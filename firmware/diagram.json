@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "author": "Vitor Mendes Oliverio",
+  "editor": "wokwi",
+  "parts": [
+    { "type": "board-esp32-devkit-c-v4", "id": "esp", "top": 0, "left": 0, "attrs": {} },
+    { "type": "wokwi-mpu6050", "id": "imu1", "top": 80.62, "left": -132.08, "attrs": {} },
+    {
+      "type": "wokwi-pushbutton",
+      "id": "btn1",
+      "top": 15.8,
+      "left": -172.8,
+      "attrs": { "color": "green", "xray": "1" }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "r1",
+      "top": 205.55,
+      "left": -76.8,
+      "attrs": { "value": "10000" }
+    }
+  ],
+  "connections": [
+    [ "esp:TX", "$serialMonitor:RX", "", [] ],
+    [ "esp:RX", "$serialMonitor:TX", "", [] ],
+    [ "esp:3V3", "imu1:VCC", "red", [ "h0" ] ],
+    [ "esp:GND.1", "imu1:GND", "black", [ "h-14.21", "v-96", "h-67.2" ] ],
+    [ "imu1:SDA", "esp:21", "green", [ "v-105.6", "h220.88", "v96" ] ],
+    [ "imu1:SCL", "esp:22", "gold", [ "v-96", "h201.68", "v57.6" ] ],
+    [ "btn1:1.r", "esp:3V3", "green", [ "v-9.6", "h110.41" ] ],
+    [ "r1:2", "esp:GND.1", "green", [ "v0" ] ],
+    [ "btn1:2.l", "esp:27", "green", [ "h-19.2", "v105.8", "h153.6", "v-38.4", "h43.01" ] ],
+    [ "r1:1", "esp:27", "green", [ "v-48", "h48", "v-38.4" ] ]
+  ],
+  "dependencies": {}
+}

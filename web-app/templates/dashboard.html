@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartDormio - Monitoramento de Sono</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen">
+
+    <nav class="border-b border-slate-800 bg-slate-900/50 backdrop-blur-md sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+                <span class="text-2xl">🌙</span>
+                <h1 class="text-xl font-bold tracking-tight">Smart<span class="text-indigo-500">Dormio</span></h1>
+            </div>
+            <div class="flex items-center gap-4">
+                <span id="status-badge" class="px-3 py-1 rounded-full text-xs font-medium bg-green-500/10 text-green-400 border border-green-500/20">
+                    Sistema Online
+                </span>
+                <button class="text-sm text-slate-400 hover:text-white transition">Sair</button>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto px-4 py-8">
+        
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <div class="bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-xl">
+                <p class="text-slate-400 text-sm font-medium mb-1">Temperatura</p>
+                <div class="flex items-baseline gap-2">
+                    <h2 id="temp-val" class="text-3xl font-bold">--°C</h2>
+                    <span class="text-indigo-400 text-xs font-semibold uppercase tracking-wider">Ambiente</span>
+                </div>
+            </div>
+
+            <div class="bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-xl">
+                <p class="text-slate-400 text-sm font-medium mb-1">Aceleração Total</p>
+                <div class="flex items-baseline gap-2">
+                    <h2 id="mov-val" class="text-3xl font-bold">--</h2>
+                    <span class="text-slate-500 text-xs">m/s²</span>
+                </div>
+            </div>
+
+            <div class="bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-xl">
+                <p class="text-slate-400 text-sm font-medium mb-1">Fase do Sono</p>
+                <h2 id="status-val" class="text-3xl font-bold text-indigo-400">Inativo</h2>
+            </div>
+
+            <div class="bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-xl">
+                <p class="text-slate-400 text-sm font-medium mb-1">Sincronização</p>
+                <h2 id="time-val" class="text-xl font-mono text-slate-300">--:--:--</h2>
+            </div>
+        </div>
+
+        <div class="bg-slate-900 border border-slate-800 p-8 rounded-3xl shadow-2xl">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+                <div>
+                    <h3 class="text-xl font-bold">Histórico de Movimentação</h3>
+                    <p class="text-slate-500 text-sm">Dados em tempo real extraídos do sensor MPU6050 via Supabase.</p>
+                </div>
+                <div class="flex gap-2">
+                    <span class="inline-flex items-center px-3 py-1 rounded-md bg-slate-800 text-xs font-medium text-slate-300">
+                        Série Temporal: Ativa
+                    </span>
+                </div>
+            </div>
+            
+            <div class="h-[450px] w-full">
+                <canvas id="sleepChart"></canvas>
+            </div>
+        </div>
+
+        <div class="mt-8 overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/50">
+             <table class="w-full text-left text-sm text-slate-400">
+                <thead class="bg-slate-900 text-xs uppercase text-slate-500">
+                    <tr>
+                        <th class="px-6 py-4 font-semibold">Horário</th>
+                        <th class="px-6 py-4 font-semibold">Movimento (m/s²)</th>
+                        <th class="px-6 py-4 font-semibold">Temperatura</th>
+                        <th class="px-6 py-4 font-semibold">Status</th>
+                    </tr>
+                </thead>
+                <tbody id="log-table-body">
+                    </tbody>
+             </table>
+        </div>
+    </main>
+
+    <script src="{{ url_for('static', filename='js/dashboard_logic.js') }}"></script>
+</body>
+</html>
