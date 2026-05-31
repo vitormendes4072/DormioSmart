@@ -14,7 +14,7 @@ O `ROADMAP.md` **abre com a pergunta de pesquisa (RQ) e a hipótese** do TCC, fi
 
 ## Dataset público + ML — DECISÃO EM ABERTO
 
-A tese de usar uma base pública de sono e um modelo de ML como proxy de coleta (em vez de coletar dados de muitas pessoas reais) **ainda precisa de validação metodológica com o orientador**. Não tratar como decidido.
+A ideia de usar uma base pública de sono e/ou ML **foi endossada pelo orientador** como forma de demonstrar viabilidade científica real (dado real, não só hipótese) — mas o COMO ainda precisa de validação metodológica final. Direção definida: dataset público para **validação/calibração** da detecção de movimento, **não** para replicar dados nem classificar estágios. O levantamento completo (candidatos, acesso, recomendação) está em **`docs/DATASET.md`**. Conclusão-chave: **não existe dataset exato** para o cenário travesseiro — o caminho é validar a *abordagem* em acelerometria de pulso (Walch 2019) + fundamentar o não-contato na literatura + gerar dado próprio na Fase 2.
 
 Antes de implementar qualquer ML, precisam estar definidos e documentados aqui/em `docs/`:
 - A pergunta científica que o modelo responde.
@@ -58,3 +58,22 @@ Funcionar não é validar. "O dado aparece na tela" é teste funcional; **valida
 - Toda decisão técnica não óbvia deve ser registrável no texto do TCC. Ao concluir um item relevante, anotar o "porquê", não só o "o quê" (aqui, no `ROADMAP.md` ou em `docs/`).
 - Manter em `docs/` a lista de referências/artigos usados de fato, separando os que **embasam** decisões dos que são apenas contexto.
 - Não afirmar que um artigo sustenta uma escolha sem que ele tenha sido lido e citado corretamente. Sugestão de busca ≠ citação.
+
+---
+
+## Viabilidade do sensoriamento no travesseiro — o que a literatura sustenta
+
+Pergunta de engenharia (não se responde com dataset): um acelerômetro no travesseiro consegue medir os eventos de movimento que o projeto se propõe a registrar? Avaliação honesta das fontes (detalhe e links em `docs/DATASET.md`):
+
+**Comprovado (os blocos constituintes):**
+- Acelerômetro mede movimento humano (TDK — é a função do componente).
+- Movimento é proxy validado de repouso/atividade (actigrafia; SMITH et al., 2018 / AASM).
+- Acelerometria **não-contato sob o colchão** capta postura e até sinais cardiorrespiratórios (MDPI Sensors, 2023/2025) — mais sutil do que o projeto exige.
+- Um único MPU6050/GY-521 acoplado ao corpo classifica postura de sono (~93%).
+- Movimento da cabeça carrega informação de sono (acelerômetro na cabeça).
+
+**NÃO comprovado (o caso exato do projeto):**
+- "Um acelerômetro **dentro do travesseiro** capta de forma confiável os eventos de movimento do sono" — não há estudo rigoroso. O único trabalho na configuração exata (SAI SURAJ et al., 2023, smart pillow + MPU6050) é de venue de baixa credibilidade e com poucos resultados quantitativos → **não é prova**.
+- **Nuance física:** a evidência mais forte (sob colchão) tem acoplamento mecânico melhor — o corpo inteiro pesa sobre o colchão. O travesseiro tem só a cabeça → capta bem movimento da cabeça / mudança de posição que a envolve; **corpo rolando sem mexer a cabeça é a incógnita real**, a ser testada em bancada (item VIA-01 do `ROADMAP.md`).
+
+**Como escrever no TCC:** *"abordagem fundamentada na literatura, a ser validada empiricamente pelo protótipo"* — **nunca "comprovado"** para o caso travesseiro. Subprometer e validar com dado próprio (Fase 2) é mais defensável na banca, e a ausência de dataset/estudo exato vira justificativa de contribuição original.

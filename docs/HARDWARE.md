@@ -75,3 +75,45 @@ O dado que viaja do ESP32 até o Supabase precisa de um **contrato explícito e 
 
 - O que dá para testar em software (lógica isolada da camada de hardware) entra na suíte de testes normal.
 - O que só se verifica no dispositivo real (leitura do sensor montado, consumo, estabilidade do Wi-Fi, captação noturna) é **verificação manual documentada**: registrar procedimento e resultado em `hardware/` ou no devlog. **Não marcar item de Fase 2 como concluído com base apenas na simulação.**
+
+---
+
+## Arquitetura do produto: v1 (núcleo) → v2 (fusão de 2 acelerômetros)
+
+Decisão de 2026-05-31, registrada como **contingência projetada** (não como pivô já executado).
+Vem do levantamento de sensores feito no planejamento; resumo da análise abaixo.
+
+### v1 — núcleo proposto (hipótese atual)
+Um único MPU6050 embarcado no travesseiro, captando eventos de movimento (ESP32 + Deep Sleep).
+É a proposta do documento e a base da RQ. **Mantida como caminho principal.**
+
+### Limitação antecipada (por análise — ainda NÃO medida)
+Da física do acoplamento mecânico + literatura de sensor não-contato sob colchão (MDPI Sensors,
+2023/2025): o travesseiro acopla bem o **movimento da cabeça** e mudanças de posição que a
+envolvem, mas **pode subcaptar movimento do corpo sem deslocamento da cabeça** (ex.: rolar na
+cama). A evidência não-contato mais forte é **sob o colchão**, onde o corpo inteiro acopla —
+acoplamento melhor que o do travesseiro. **É uma limitação ANTECIPADA, não demonstrada:** quem
+decide é o VIA-01 (teste de bancada).
+
+> Redação honesta para o TCC: *"limitação identificada por análise de viabilidade e literatura,
+> a ser validada empiricamente pelo protótipo"* — **nunca** "limitação medida/comprovada" sem o VIA-01.
+
+### v2 — escopo do produto com 2 acelerômetros (solução de contingência)
+- **Componentes:** 2× MPU6050 — um no travesseiro, um sob o colchão (ou na estrutura da cama).
+- **Barramento:** mesmo I2C; endereços `0x68` e `0x69` via pino `AD0` do 2º módulo (sem hub).
+- **Dado:** índice de atividade por época **por fonte** (travesseiro vs. cama) + fusão (atualizar
+  o contrato de dados acima); permite mostrar a contribuição de cada sensor.
+- **Energia/térmico:** ambos de baixo consumo e **não-contato** — preserva a premissa do projeto.
+- **Custo:** +1 MPU6050 (peça barata) + fios; única compra adicional.
+- **Identidade / RQ:** deixa de ser "apenas no travesseiro" → "não-invasivo **na cama/travesseiro**".
+  **Exige revisar a redação da RQ com o orientador** (a contribuição e o escopo seguem: movimento
+  não-invasivo de baixo consumo).
+- **Embasamento:** fusão de sensores / cobertura espacial, alinhada à literatura de smart-bed (MDPI).
+
+### Gatilho de decisão
+**VIA-01** (bancada, com o hardware já em mãos) decide:
+- travesseiro sozinho distingue movimento → **fica em v1** (economia de escopo);
+- subcaptura confirmada → **aciona v2**.
+Ambos os resultados são informativos e defensáveis na banca (foresight + validação planejada).
+VIA-01 é uma sonda de bancada leve (protoboard, **sem solda**) e **não é pré-requisito do documento
+de 03/06** — é validação de Fase 2.
