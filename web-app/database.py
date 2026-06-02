@@ -28,14 +28,22 @@ class Database:
         return None
 
     def get_latest_data(self, limit=20):
+        # Sempre retorna uma lista: dados em caso de sucesso, [] em qualquer
+        # falha (cliente ausente ou erro de consulta). Isso evita que a rota
+        # quebre com 500 (FIX-01). O erro é registrado no log do servidor.
         client = self.get_client()
-        if client:
-            return client.table("sleep_data") \
+        if client is None:
+            return []
+        try:
+            response = client.table("sleep_data") \
                 .select("created_at, movimento_total, temp, status") \
                 .order("created_at", desc=True) \
                 .limit(limit) \
                 .execute()
-        return None
+            return response.data or []
+        except Exception as e:
+            print(f"❌ Erro ao consultar sleep_data: {e}")
+            return []
 
 # Instância única
 db = Database()
