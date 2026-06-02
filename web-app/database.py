@@ -3,16 +3,19 @@ from supabase import create_client, Client
 
 class Database:
     def __init__(self):
-        # Apenas salva as credenciais, NÃO conecta ainda
+        # Apenas salva as credenciais, NÃO conecta ainda.
+        # O backend é server-side (Flask na Vercel) e o navegador nunca acessa o
+        # Supabase diretamente, então usamos a chave service_role (secreta),
+        # mantendo o RLS ligado no banco. Fallback para SUPABASE_KEY por compatibilidade.
         self.url = os.environ.get("SUPABASE_URL", "")
-        self.key = os.environ.get("SUPABASE_KEY", "")
+        self.key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY") or os.environ.get("SUPABASE_KEY", "")
         self._client = None
 
     def get_client(self):
         # Conecta apenas quando alguma rota pedir dados
         if self._client is None:
             if not self.url or not self.key:
-                print("❌ ERRO: Variáveis SUPABASE_URL ou SUPABASE_KEY ausentes.")
+                print("❌ ERRO: SUPABASE_URL ou a chave (SUPABASE_SERVICE_ROLE_KEY/SUPABASE_KEY) ausentes.")
                 return None
             try:
                 self._client = create_client(self.url, self.key)
