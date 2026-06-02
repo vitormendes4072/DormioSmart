@@ -8,8 +8,9 @@ def init_routes(app):
 
     @app.route('/api/sleep-history')
     def get_history():
-        response = db.get_latest_data()
-        return jsonify(response.data)
+        # get_latest_data() já devolve uma lista ([] em caso de falha),
+        # garantindo JSON válido e evitando 500 em produção (FIX-01).
+        return jsonify(db.get_latest_data())
 
     @app.route('/api/data', methods=['POST'])
     def receive_data():
