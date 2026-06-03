@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartDormio — Monitoramento de Sono Não Invasivo</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .gradient-text {
+            background: linear-gradient(135deg, #818cf8, #a78bfa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .card-hover {
+            transition: transform 0.2s ease, border-color 0.2s ease;
+        }
+        .card-hover:hover {
+            transform: translateY(-2px);
+            border-color: #4f46e5;
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen">
+
+    <!-- Navbar -->
+    <nav class="border-b border-slate-800 bg-slate-900/50 backdrop-blur-md sticky top-0 z-50">
+        <div class="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+                <span class="text-2xl">🌙</span>
+                <span class="text-xl font-bold tracking-tight">Smart<span class="text-indigo-500">Dormio</span></span>
+            </div>
+            <a href="/dashboard"
+               class="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-sm font-semibold transition">
+                Ver Dashboard →
+            </a>
+        </div>
+    </nav>
+
+    <!-- Hero -->
+    <section class="max-w-6xl mx-auto px-6 py-24 text-center">
+        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-xs font-medium mb-6">
+            <span class="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse"></span>
+            TCC · Engenharia da Computação · Senac 2026
+        </div>
+        <h1 class="text-5xl md:text-6xl font-extrabold tracking-tight mb-6 leading-tight">
+            Monitoramento de sono<br>
+            <span class="gradient-text">não invasivo</span>
+        </h1>
+        <p class="text-slate-400 text-xl max-w-2xl mx-auto mb-10 leading-relaxed">
+            Um dispositivo embarcado de baixo consumo, instalado dentro do travesseiro,
+            que registra eventos de movimento durante o repouso — sem contato com o corpo.
+        </p>
+        <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
+            <a href="/dashboard"
+               class="px-8 py-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 font-bold text-lg transition shadow-lg shadow-indigo-900/40">
+                Abrir Dashboard →
+            </a>
+            <a href="https://github.com/vitormendes4072/DormioSmart" target="_blank"
+               class="px-8 py-4 rounded-xl border border-slate-700 hover:border-slate-500 text-slate-300 font-semibold text-lg transition">
+                Ver no GitHub
+            </a>
+        </div>
+    </section>
+
+    <!-- O que é / O que NÃO é -->
+    <section class="max-w-6xl mx-auto px-6 py-16">
+        <h2 class="text-3xl font-bold text-center mb-4">O que o SmartDormio faz</h2>
+        <p class="text-slate-400 text-center mb-12 max-w-xl mx-auto">
+            Escopo declarado — sem promessas além do que o sistema entrega de verdade.
+        </p>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- O que faz -->
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-8 card-hover">
+                <div class="text-3xl mb-4">✅</div>
+                <h3 class="text-xl font-bold mb-4 text-green-400">O que registra</h3>
+                <ul class="space-y-3 text-slate-300">
+                    <li class="flex items-start gap-3">
+                        <span class="text-green-500 mt-0.5">•</span>
+                        Eventos de movimento durante o repouso
+                    </li>
+                    <li class="flex items-start gap-3">
+                        <span class="text-green-500 mt-0.5">•</span>
+                        Intensidade e horário de cada evento
+                    </li>
+                    <li class="flex items-start gap-3">
+                        <span class="text-green-500 mt-0.5">•</span>
+                        Períodos de ausência de movimento (repouso)
+                    </li>
+                    <li class="flex items-start gap-3">
+                        <span class="text-green-500 mt-0.5">•</span>
+                        Temperatura do sensor (chip MPU6050)
+                    </li>
+                    <li class="flex items-start gap-3">
+                        <span class="text-green-500 mt-0.5">•</span>
+                        Histórico com visualização em série temporal
+                    </li>
+                </ul>
+            </div>
+            <!-- O que NÃO faz -->
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-8 card-hover">
+                <div class="text-3xl mb-4">⚠️</div>
+                <h3 class="text-xl font-bold mb-4 text-amber-400">O que não faz</h3>
+                <ul class="space-y-3 text-slate-300">
+                    <li class="flex items-start gap-3">
+                        <span class="text-amber-500 mt-0.5">•</span>
+                        Estadiamento de sono (REM, sono profundo, sono leve)
+                    </li>
+                    <li class="flex items-start gap-3">
+                        <span class="text-amber-500 mt-0.5">•</span>
+                        Diagnóstico clínico ou médico
+                    </li>
+                    <li class="flex items-start gap-3">
+                        <span class="text-amber-500 mt-0.5">•</span>
+                        Substituir polissonografia
+                    </li>
+                    <li class="flex items-start gap-3">
+                        <span class="text-amber-500 mt-0.5">•</span>
+                        Medir temperatura do ambiente do quarto
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </section>
+
+    <!-- Como funciona -->
+    <section class="max-w-6xl mx-auto px-6 py-16">
+        <h2 class="text-3xl font-bold text-center mb-4">Como funciona</h2>
+        <p class="text-slate-400 text-center mb-12 max-w-xl mx-auto">
+            Fluxo completo do sensor ao painel de visualização.
+        </p>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-8 text-center card-hover">
+                <div class="text-5xl mb-4">🛌</div>
+                <h3 class="font-bold text-lg mb-2">1. Sensor no travesseiro</h3>
+                <p class="text-slate-400 text-sm leading-relaxed">
+                    ESP32 + MPU6050 embarcados no travesseiro captam aceleração e movimento
+                    sem contato com o corpo. O microcontrolador dorme em Deep Sleep e acorda
+                    apenas ao detectar movimento.
+                </p>
+            </div>
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-8 text-center card-hover">
+                <div class="text-5xl mb-4">📡</div>
+                <h3 class="font-bold text-lg mb-2">2. Envio via Wi-Fi</h3>
+                <p class="text-slate-400 text-sm leading-relaxed">
+                    A cada evento, o dispositivo transmite um pacote JSON via HTTPS para a
+                    API Flask hospedada na Vercel, que valida e persiste os dados no
+                    banco de dados Supabase.
+                </p>
+            </div>
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-8 text-center card-hover">
+                <div class="text-5xl mb-4">📊</div>
+                <h3 class="font-bold text-lg mb-2">3. Visualização</h3>
+                <p class="text-slate-400 text-sm leading-relaxed">
+                    O dashboard exibe o histórico de movimentação em série temporal,
+                    com os eventos, intensidades e status do sensor em tempo real.
+                </p>
+            </div>
+        </div>
+        <!-- Seta conectando -->
+        <div class="hidden md:flex items-center justify-center mt-4 gap-2 text-slate-600 text-sm">
+            <span>MPU6050 ──I2C──› ESP32</span>
+            <span class="text-indigo-500 font-bold mx-2">──HTTPS──›</span>
+            <span>API Flask (Vercel)</span>
+            <span class="text-indigo-500 font-bold mx-2">──›</span>
+            <span>Supabase</span>
+            <span class="text-indigo-500 font-bold mx-2">──›</span>
+            <span>Dashboard</span>
+        </div>
+    </section>
+
+    <!-- Status do projeto -->
+    <section class="max-w-6xl mx-auto px-6 py-16">
+        <h2 class="text-3xl font-bold text-center mb-12">Status do projeto</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="bg-slate-900 border border-green-800/40 rounded-2xl p-8 card-hover">
+                <div class="flex items-center gap-3 mb-4">
+                    <span class="w-3 h-3 rounded-full bg-green-500"></span>
+                    <h3 class="font-bold text-lg text-green-400">Fase 1 — Simulação (concluída)</h3>
+                </div>
+                <ul class="space-y-2 text-slate-300 text-sm">
+                    <li>✅ Firmware validado no Wokwi (ESP32 + MPU6050)</li>
+                    <li>✅ API Flask com ingestão e persistência (Supabase)</li>
+                    <li>✅ Dashboard em produção</li>
+                    <li>✅ CI (GitHub Actions) com pytest</li>
+                    <li>✅ Segurança: RLS + service_role server-side</li>
+                </ul>
+            </div>
+            <div class="bg-slate-900 border border-indigo-800/40 rounded-2xl p-8 card-hover">
+                <div class="flex items-center gap-3 mb-4">
+                    <span class="w-3 h-3 rounded-full bg-indigo-500 animate-pulse"></span>
+                    <h3 class="font-bold text-lg text-indigo-400">Fase 2 — Protótipo físico (em desenvolvimento)</h3>
+                </div>
+                <ul class="space-y-2 text-slate-300 text-sm">
+                    <li>🔜 Montagem física no travesseiro</li>
+                    <li>🔜 Wake-on-Motion real (interrupção do MPU6050)</li>
+                    <li>🔜 Bateria + autonomia + segurança térmica</li>
+                    <li>🔜 Captação de uma noite real</li>
+                    <li>🔜 Validação com dataset público (Walch 2019)</li>
+                </ul>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA final -->
+    <section class="max-w-6xl mx-auto px-6 py-16 text-center">
+        <div class="bg-gradient-to-br from-indigo-900/30 to-slate-900 border border-indigo-800/40 rounded-3xl p-12">
+            <h2 class="text-3xl font-bold mb-4">Ver os dados em tempo real</h2>
+            <p class="text-slate-400 mb-8 max-w-md mx-auto">
+                O dashboard exibe o histórico de movimentação capturado pelo sensor,
+                atualizado automaticamente.
+            </p>
+            <a href="/dashboard"
+               class="inline-block px-10 py-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 font-bold text-lg transition shadow-lg shadow-indigo-900/40">
+                Abrir Dashboard →
+            </a>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="border-t border-slate-800 mt-8">
+        <div class="max-w-6xl mx-auto px-6 py-8 flex flex-col md:flex-row items-center justify-between gap-4 text-slate-500 text-sm">
+            <div class="flex items-center gap-2">
+                <span class="text-lg">🌙</span>
+                <span>Smart<span class="text-indigo-400">Dormio</span></span>
+            </div>
+            <span>
+                Arthur Neves Vieira Ponzoni · Vitor Mendes Oliverio
+            </span>
+            <span>TCC · Engenharia da Computação · Senac · 2026</span>
+        </div>
+    </footer>
+
+</body>
+</html>
