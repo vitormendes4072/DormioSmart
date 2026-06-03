@@ -40,7 +40,7 @@
             </div>
 
             <div class="bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-xl">
-                <p class="text-slate-400 text-sm font-medium mb-1">Movimento</p>
+                <p class="text-slate-400 text-sm font-medium mb-1">Intensidade do Movimento</p>
                 <div class="flex items-baseline gap-2">
                     <h2 id="mov-val" class="text-3xl font-bold">--</h2>
                     <span class="text-slate-500 text-xs">m/s²</span>
@@ -62,11 +62,11 @@
             <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
                 <div>
                     <h3 class="text-xl font-bold">Histórico de Movimentação</h3>
-                    <p class="text-slate-500 text-sm">Dados em tempo real extraídos do sensor MPU6050 via Supabase.</p>
+                    <p class="text-slate-500 text-sm">Intensidade do movimento — desvio em relação ao repouso (~9,8 m/s²). Picos indicam eventos de movimento.</p>
                 </div>
                 <div class="flex gap-2">
-                    <span class="inline-flex items-center px-3 py-1 rounded-md bg-slate-800 text-xs font-medium text-slate-300">
-                        Série Temporal: Ativa
+                    <span id="event-count" class="inline-flex items-center px-3 py-1 rounded-md bg-amber-500/10 text-xs font-medium text-amber-400 border border-amber-500/20">
+                        — eventos
                     </span>
                 </div>
             </div>
@@ -81,7 +81,7 @@
                 <thead class="bg-slate-900 text-xs uppercase text-slate-500">
                     <tr>
                         <th class="px-6 py-4 font-semibold">Horário</th>
-                        <th class="px-6 py-4 font-semibold">Movimento (m/s²)</th>
+                        <th class="px-6 py-4 font-semibold">Intensidade (m/s²)</th>
                         <th class="px-6 py-4 font-semibold">Temperatura</th>
                         <th class="px-6 py-4 font-semibold">Status</th>
                     </tr>
