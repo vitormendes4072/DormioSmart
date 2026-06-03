@@ -1,8 +1,8 @@
-"""Testes da rota /api/sleep-history e da leitura do banco (FIX-01).
+"""Testes das rotas da web-app: leitura (FIX-01) e escrita (FIX-02).
 
-Objetivo: garantir que o endpoint nunca devolva 500 e que a camada de
-banco degrade para uma lista vazia em qualquer falha. O Supabase é
-sempre mockado — nenhum teste depende de credencial ou rede.
+Objetivo: garantir que /api/sleep-history nunca devolva 500 (degrada para
+lista vazia) e que /api/data não minta sucesso — respondendo 503 quando nada
+persiste. O Supabase é sempre mockado — nenhum teste depende de credencial ou rede.
 """
 from unittest.mock import patch
 
@@ -55,3 +55,27 @@ def test_get_latest_data_vazio_em_excecao():
 
     with patch.object(database.db, "get_client", return_value=ClienteRuim()):
         assert database.db.get_latest_data() == []
+
+
+def test_receive_data_persistido_retorna_201():
+    # Insert bem-sucedido (resposta com .data) → 201.
+    class RespOK:
+        data = [{"id": 1}]
+
+    with patch.object(database.db, "insert_sleep_data", return_value=RespOK()):
+        resp = _client().post("/api/data", json={"ax": 0.1, "total": 9.8, "status": "Dormindo"})
+    assert resp.status_code == 201
+    assert resp.get_json()["status"] == "success"
+
+
+def test_receive_data_nao_persistido_retorna_503():
+    # Nada persistiu (cliente indisponível → None) → 503, sem mentir sucesso (FIX-02).
+    with patch.object(database.db, "insert_sleep_data", return_value=None):
+        resp = _client().post("/api/data", json={"ax": 0.1, "total": 9.8, "status": "Dormindo"})
+    assert resp.status_code == 503
+
+
+def test_receive_data_json_invalido_retorna_400():
+    # Corpo não-JSON → erro de parse tratado → 400 (comportamento preservado).
+    resp = _client().post("/api/data", data="nao-e-json", content_type="application/json")
+    assert resp.status_code == 400
