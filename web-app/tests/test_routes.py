@@ -1,19 +1,25 @@
-"""Testes das rotas da web-app: leitura (FIX-01) e escrita (FIX-02).
+"""Testes das rotas da web-app: leitura (FIX-01), escrita (FIX-02) e páginas (DASH-01).
 
 Objetivo: garantir que /api/sleep-history nunca devolva 500 (degrada para
-lista vazia) e que /api/data não minta sucesso — respondendo 503 quando nada
-persiste. O Supabase é sempre mockado — nenhum teste depende de credencial ou rede.
+lista vazia), que /api/data não minta sucesso — respondendo 503 quando nada
+persiste — e que as páginas / e /dashboard retornem 200. O Supabase é sempre
+mockado — nenhum teste depende de credencial ou rede.
 """
 from unittest.mock import patch
 
+import os
 from flask import Flask
 
 import database
 from routes import init_routes
 
+# Caminho para a pasta de templates (web-app/templates/), relativo a este arquivo
+_TEMPLATES = os.path.join(os.path.dirname(__file__), "..", "templates")
+_STATIC    = os.path.join(os.path.dirname(__file__), "..", "static")
+
 
 def _client():
-    app = Flask(__name__)
+    app = Flask(__name__, template_folder=_TEMPLATES, static_folder=_STATIC)
     init_routes(app)
     app.testing = True
     return app.test_client()
@@ -79,3 +85,17 @@ def test_receive_data_json_invalido_retorna_400():
     # Corpo não-JSON → erro de parse tratado → 400 (comportamento preservado).
     resp = _client().post("/api/data", data="nao-e-json", content_type="application/json")
     assert resp.status_code == 400
+
+
+def test_index_retorna_200():
+    # Landing Page (/) deve sempre responder 200 (DASH-01).
+    resp = _client().get("/")
+    assert resp.status_code == 200
+    assert b"SmartDormio" in resp.data
+
+
+def test_dashboard_retorna_200():
+    # Dashboard (/dashboard) deve sempre responder 200 (DASH-01).
+    resp = _client().get("/dashboard")
+    assert resp.status_code == 200
+    assert b"SmartDormio" in resp.data
