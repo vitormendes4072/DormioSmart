@@ -10,6 +10,12 @@ if base_dir not in sys.path:
     sys.path.insert(0, base_dir)
 # ---------------------------------
 
+# Carrega variáveis de ambiente do .env (desenvolvimento local).
+# Em produção (Vercel), as vars já estão no ambiente e load_dotenv()
+# não as sobrescreve — seguro em qualquer ambiente. (FIX-03)
+from dotenv import load_dotenv
+load_dotenv()
+
 from flask import Flask
 # Agora o Python consegue achar o routes.py
 from routes import init_routes
