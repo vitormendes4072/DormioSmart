@@ -1,4 +1,4 @@
-# 🌙 SmartDormio
+# 🌙 Smart Dormio
 
 [![CI](https://github.com/vitormendes4072/DormioSmart/actions/workflows/ci.yml/badge.svg?branch=develop)](https://github.com/vitormendes4072/DormioSmart/actions)
 ![Python](https://img.shields.io/badge/Python-3.11+-blue)
@@ -13,7 +13,7 @@ Dispositivo embarcado de **baixo consumo** para **monitoramento não invasivo do
 Dashboard em produção: **https://dormio-smart.vercel.app**
 
 ## 🖥️ Dashboard
-![Dashboard do SmartDormio](img/dashboard.jpeg)
+![Dashboard do Smart Dormio](img/dashboard.jpeg)
 
 Visualização do histórico de movimento, com gráfico de série temporal, temperatura do sensor e status (repouso/movimento), atualizada por *polling* na API.
 

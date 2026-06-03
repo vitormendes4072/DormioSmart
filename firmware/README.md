@@ -1,4 +1,4 @@
-# Firmware — SmartDormio (ESP32 + MPU6050)
+# Firmware — Smart Dormio (ESP32 + MPU6050)
 
 Firmware embarcado que lê o sensor inercial MPU6050, classifica repouso/movimento, empacota os dados em JSON e os envia para a API web via HTTPS. Na **Fase 1** roda em simulação (Wokwi); na **Fase 2**, na placa física.
 
