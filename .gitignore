@@ -9,6 +9,7 @@ CLAUDE.md
 ROADMAP.md
 .claude/
 docs/fontes/
+docs/devlog/
 .playwright-mcp/
 __pycache__/
 *.py[cod]
