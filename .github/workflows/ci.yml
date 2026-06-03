@@ -18,10 +18,10 @@ jobs:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true  # CI-02: opt-in Node 24 antes de set/2026
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Configurar Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.11'
 
