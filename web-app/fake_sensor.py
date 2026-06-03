@@ -1,6 +1,6 @@
 import time
 import random
-import requests
+import httpx
 import math
 
 # URL da sua API local (onde o Flask está rodando)
@@ -55,7 +55,7 @@ def gerar_dados_simulados():
             }
 
             # 6. Envia para o Flask
-            response = requests.post(API_URL, json=payload)
+            response = httpx.post(API_URL, json=payload)
 
             if response.status_code == 201:
                 print(f"✅ [201] Dados enviados! Temp: {temp_atual:.1f}°C | Mov: {movimento_total:.2f} | {status}")
