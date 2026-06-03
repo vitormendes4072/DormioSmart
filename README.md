@@ -5,7 +5,7 @@
 ![ESP32](https://img.shields.io/badge/Firmware-ESP32%20%2B%20MPU6050-orange)
 ![Deploy](https://img.shields.io/badge/Deploy-Vercel-black)
 
-Dispositivo embarcado de **baixo consumo** para **monitoramento não invasivo do sono em travesseiros** — registra **eventos de movimento** durante o repouso, sem contato com o corpo. Trabalho de Conclusão de Curso em Engenharia da Computação (Centro Universitário Senac, 2026).
+Dispositivo embarcado de **baixo consumo** para **detecção não invasiva de movimento durante o sono** — registra **eventos de movimento** no travesseiro, sem contato com o corpo. Trabalho de Conclusão de Curso em Engenharia da Computação (Centro Universitário Senac, 2026).
 
 > **Escopo (honesto):** o projeto registra indícios técnicos de movimento, ancorado em actigrafia. **Não** faz estadiamento de sono (REM/profundo) nem diagnóstico clínico, e **não** substitui polissonografia.
 
