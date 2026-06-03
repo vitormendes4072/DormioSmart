@@ -32,9 +32,13 @@ def init_routes(app):
                 "status":  content.get("status")
             }
             
-            # Agora enviamos o payload traduzido
-            db.insert_sleep_data(payload)
-            
+            # Persiste e confirma: só responde 201 se o dado foi realmente
+            # gravado. Se nada persistiu (fonte indisponível), responde 503 em
+            # vez de mentir sucesso e enganar o firmware (FIX-02).
+            result = db.insert_sleep_data(payload)
+            if not result or not getattr(result, "data", None):
+                return jsonify({"error": "dados nao persistidos (fonte indisponivel)"}), 503
+
             return jsonify({"status": "success"}), 201
         except Exception as e:
             return jsonify({"error": str(e)}), 400
