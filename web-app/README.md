@@ -1,4 +1,4 @@
-# 🌙 SmartDormio: Monitor de Sono IoT de Baixo Consumo
+# 🌙 Smart Dormio: Monitor de Sono IoT de Baixo Consumo
 
 ![Status](https://img.shields.io/badge/Status-Validado-brightgreen)
 ![Plataforma](https://img.shields.io/badge/Plataforma-ESP32-blue)
@@ -12,7 +12,7 @@
 
 ## 📖 Sobre o Projeto
 
-O **SmartDormio** é um dispositivo IoT projetado para monitorar a qualidade do sono detectando movimentos através de um acelerômetro **MPU6050**. O diferencial técnico deste projeto reside na arquitetura de software desenvolvida para operar em ambientes de simulação limitados (**Wokwi**) e, simultaneamente, em hardware real, sem necessidade de reescrever o código lógico.
+O **Smart Dormio** é um dispositivo IoT projetado para monitorar a qualidade do sono detectando movimentos através de um acelerômetro **MPU6050**. O diferencial técnico deste projeto reside na arquitetura de software desenvolvida para operar em ambientes de simulação limitados (**Wokwi**) e, simultaneamente, em hardware real, sem necessidade de reescrever o código lógico.
 
 O sistema demonstra o uso avançado do modo **Deep Sleep** do ESP32, reduzindo o consumo de corrente para a ordem de microampères (µA) até que um evento físico (movimento) o desperte.
 
