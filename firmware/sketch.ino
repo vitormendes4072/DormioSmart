@@ -15,6 +15,14 @@ const char* ssid = "Wokwi-GUEST"; // No hardware real, coloque o nome do seu Wi-
 const char* password = "";        // No hardware real, coloque a senha do seu Wi-Fi
 String serverName = "https://dormio-smart.vercel.app/api/data"; // Endereço Oficial
 
+// --- CRITERIO DE MOVIMENTO (docs/DATA-CONTRACT.md v1.1.0) ---
+// Fonte unica da verdade da classificacao: quem decide "movimento" e o
+// dispositivo. O dashboard apenas exibe o rotulo, nunca reclassifica.
+const float GRAVIDADE = 9.81;         // m/s^2 -- referencia de repouso
+const float LIMIAR_MOVIMENTO = 1.2;   // m/s^2 -- PROVISORIO, calibrar em VIA-01
+const char* STATUS_REPOUSO   = "Repouso";
+const char* STATUS_MOVIMENTO = "Movimento";
+
 Adafruit_MPU6050 mpu;
 #define PINO_WAKEUP GPIO_NUM_27
 
@@ -54,8 +62,15 @@ void setup() {
   sensors_event_t a, g, temp;
   mpu.getEvent(&a, &g, &temp);
 
+  // Magnitude do vetor de aceleracao (inclui a gravidade: ~9,81 m/s^2 em repouso).
   float total_mov = sqrt(pow(a.acceleration.x, 2) + pow(a.acceleration.y, 2) + pow(a.acceleration.z, 2));
-  String status_sono = (total_mov > 11.0 || total_mov < 8.0) ? "Movimento Detectado!" : "Dormindo";
+
+  // Criterio de movimento: desvio ABSOLUTO em relacao ao repouso (simetrico).
+  // O limiar antigo (>11,0 || <8,0) era assimetrico -- +1,19 para cima e -1,81
+  // para baixo -- e nao batia com a intensidade exibida no dashboard, que sempre
+  // foi |total - GRAVIDADE|. Ver docs/DATA-CONTRACT.md secao 2.1/2.2.
+  float intensidade = fabs(total_mov - GRAVIDADE);
+  String status_sono = (intensidade > LIMIAR_MOVIMENTO) ? STATUS_MOVIMENTO : STATUS_REPOUSO;
 
   // 4. Prepara o Payload (O Pacote JSON)
   String jsonPayload = "{";

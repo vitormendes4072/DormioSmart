@@ -10,9 +10,21 @@
  */
 
 const GRAVIDADE = 9.81; // m/s² — referência de repouso
-const STATUS_MOVIMENTO = "Movimento Detectado!";
 const COR_MOVIMENTO = "#f59e0b"; // amber-500
 const COR_REPOUSO = "#818cf8";   // indigo-400
+
+// Quem classifica "movimento" é o DISPOSITIVO, não esta tela (contrato v1.1.0,
+// seção 2.2). O dashboard exibe o rótulo recebido; reclassificar aqui criaria
+// uma segunda régua — exatamente o bug que o contrato corrigiu.
+//
+// "Movimento Detectado!" é o rótulo legado, anterior ao contrato v1.1.0. Ele
+// continua no banco e é reconhecido aqui de propósito: reescrever medição já
+// gravada para casar com nomenclatura nova seria adulterar dado coletado.
+const ROTULOS_MOVIMENTO = ["Movimento", "Movimento Detectado!"];
+
+function ehMovimento(status) {
+    return ROTULOS_MOVIMENTO.includes(status);
+}
 
 // Converte um registro do banco na intensidade do movimento (desvio do repouso).
 function intensidade(registro) {
@@ -47,7 +59,7 @@ const sleepChart = new Chart(ctx, {
             // âmbar quando é evento de movimento, indigo quando é repouso.
             segment: {
                 borderColor: (c) =>
-                    statusHistorico[c.p1DataIndex] === STATUS_MOVIMENTO
+                    ehMovimento(statusHistorico[c.p1DataIndex])
                         ? COR_MOVIMENTO
                         : COR_REPOUSO
             }
@@ -108,7 +120,7 @@ async function updateDashboard() {
         const status = latest.status || "Aguardando...";
         const statusEl = document.getElementById('status-val');
         statusEl.innerText = status;
-        statusEl.className = status === STATUS_MOVIMENTO
+        statusEl.className = ehMovimento(status)
             ? "text-3xl font-bold text-amber-400 animate-pulse"
             : "text-3xl font-bold text-indigo-400";
 
@@ -128,7 +140,7 @@ async function updateDashboard() {
         sleepChart.update();
 
         // --- RESUMO: nº de eventos de movimento na janela exibida ---
-        const eventos = history.filter(d => d.status === STATUS_MOVIMENTO).length;
+        const eventos = history.filter(d => ehMovimento(d.status)).length;
         const elCount = document.getElementById('event-count');
         if (elCount) elCount.innerText = `${eventos} ${eventos === 1 ? 'evento' : 'eventos'}`;
 
@@ -156,8 +168,7 @@ function updateTable(data) {
         const intRow = intensidade(row);
         const intStr = intRow != null ? intRow.toFixed(2) : "--";
         const temp = row.temp != null ? row.temp.toFixed(1) : "--";
-        const ehMovimento = row.status === STATUS_MOVIMENTO;
-        const corStatus = ehMovimento ? "text-amber-400" : "text-slate-400";
+        const corStatus = ehMovimento(row.status) ? "text-amber-400" : "text-slate-400";
 
         tr.innerHTML = `
             <td class="px-6 py-4">${time}</td>
