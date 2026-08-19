@@ -1,6 +1,6 @@
 # Contrato de dados — Dormio Smart
 
-**Versão:** 1.0.0 · **Item:** DATA-01
+**Versão:** 1.1.0 · **Itens:** DATA-01, DATA-02
 
 Este documento é a fonte única de verdade sobre o dado que trafega entre
 firmware, backend e banco. Firmware (`firmware/sketch.ino`), simulador
@@ -63,28 +63,54 @@ transmitida pelo device:
 intensidade = |total − 9,81|
 ```
 
-Em repouso ≈ 0; durante um evento, cresce. Essa derivação vive hoje em
-`web-app/static/js/dashboard_logic.js` (`GRAVIDADE = 9.81`).
+Em repouso ≈ 0; durante um evento, cresce. **É sobre a intensidade — não
+sobre `total` — que o limiar de movimento é aplicado** (seção 2.2).
 
-### 2.2 `status` — rótulo, não verdade científica
+### 2.2 `status` — classificação do dispositivo
 
-Valores atuais: `"Dormindo"` · `"Movimento Detectado!"`
+Valores: `"Repouso"` · `"Movimento"`
 
-O firmware classifica com um limiar fixo:
+**Critério único, simétrico:**
+
+```
+intensidade = |total − 9,81|
+status = intensidade > 1,2 m/s²  ?  "Movimento"  :  "Repouso"
+```
+
+| Constante | Valor | Onde vive |
+|---|---|---|
+| `GRAVIDADE` | 9,81 m/s² | firmware, simulador, dashboard |
+| `LIMIAR_MOVIMENTO` | **1,2 m/s²** — provisório | firmware, simulador |
+
+> O limiar de 1,2 m/s² é **provisório** e será calibrado empiricamente no
+> **VIA-01** (teste de bancada com o sensor no travesseiro). O valor preserva a
+> sensibilidade do limite superior que já existia (11,0 − 9,81 = 1,19) e estende
+> a mesma sensibilidade ao lado de baixo, que antes só disparava a −1,81.
+
+**Quem classifica é o dispositivo.** O dashboard exibe o rótulo recebido e nunca
+reclassifica: duas implementações da mesma regra foi exatamente o defeito que
+este contrato corrigiu.
+
+#### Histórico — a assimetria corrigida em 1.1.0
+
+Até a v1.0.0 o firmware usava um limiar sobre a magnitude bruta:
 
 ```cpp
 status = (total > 11.0 || total < 8.0) ? "Movimento Detectado!" : "Dormindo";
 ```
 
-> ⚠️ **Inconsistência conhecida (a resolver em DATA-02).** O limiar do firmware é
-> **assimétrico** em relação à gravidade — a faixa 8,0–11,0 equivale a −1,81 /
-> +1,19 m/s² em torno de 9,81 — enquanto o dashboard usa desvio absoluto
-> **simétrico**. Firmware e visualização não usam o mesmo critério de "movimento".
->
-> ⚠️ O rótulo `"Dormindo"` **excede o escopo do projeto**: o dispositivo não sabe
-> se alguém dorme, apenas se houve movimento. O escopo declarado no `ROADMAP.md`
-> não afirma estadiamento de sono. Renomear para `"Repouso"` / `"Movimento"`
-> está previsto no DATA-02.
+Isso equivalia a **+1,19 para cima e −1,81 para baixo** em torno de 9,81 —
+enquanto o dashboard sempre exibiu desvio absoluto. Consequência visível: um
+pico *mais alto* podia ser pintado como repouso ao lado de um pico *mais baixo*
+pintado como movimento.
+
+O rótulo `"Dormindo"` também **excedia o escopo do projeto** — o dispositivo não
+sabe se alguém dorme, apenas se houve movimento (ver Escopo no `ROADMAP.md`).
+
+**Rótulos legados permanecem no banco.** As linhas gravadas antes desta versão
+mantêm `"Dormindo"` / `"Movimento Detectado!"`, e o dashboard os reconhece. Não
+reescrevemos medição já coletada para casar com nomenclatura nova: o dado
+registrado é o que o dispositivo de fato reportou naquele momento.
 
 ### 2.3 `t` — temperatura do chip, não do ambiente
 
@@ -92,9 +118,9 @@ O MPU6050 reporta a temperatura **do próprio circuito integrado**. Não é
 temperatura ambiente, não é temperatura corporal e não deve ser apresentada
 como qualquer uma das duas (ver Escopo no `ROADMAP.md`).
 
-> ⚠️ **Inconsistência conhecida.** O `fake_sensor.py` documenta esse campo como
-> "temperatura base do quarto (24 °C)", o que contradiz o contrato. Corrigir em
-> DATA-02/SIM-02.
+O `fake_sensor.py` simula esse campo em torno de **32 °C**, coerente com um CI
+em operação. Até a v1.0.0 ele simulava 24 °C descrito como "temperatura base do
+quarto" — corrigido na v1.1.0.
 
 ### 2.4 Timestamp
 
@@ -178,3 +204,4 @@ unidade alterada, novo header obrigatório). **MINOR** = campo opcional novo.
 | Versão | Data | Mudança |
 |---|---|---|
 | 1.0.0 | 2026-08-19 | Contrato inicial; formaliza payload existente, adiciona `X-Device-Token`, `user_id` e `device_id` (DATA-01/SEC-04) |
+| 1.1.0 | 2026-08-19 | Critério de movimento simétrico (`\|total−9,81\| > 1,2`); rótulos `Repouso`/`Movimento`; `t` documentado e simulado como temperatura de chip (DATA-02) |
