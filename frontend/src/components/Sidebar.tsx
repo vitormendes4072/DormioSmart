@@ -46,9 +46,12 @@ export function Sidebar() {
           <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
             <User className="w-4 h-4 text-primary" />
           </div>
+          {/* Nome e e-mail reais chegam com a sessao (AUTH-01). Ate la, nao
+              inventamos um usuario: "Rafael Silva / rafael@email.com" era
+              persona do prototipo e nao pode aparecer como se fosse conta. */}
           <div className="min-w-0">
-            <p className="text-sm font-medium text-foreground truncate">Rafael Silva</p>
-            <p className="text-xs text-muted-foreground truncate">rafael@email.com</p>
+            <p className="text-sm font-medium text-foreground truncate">Conta</p>
+            <p className="text-xs text-muted-foreground truncate">não autenticada</p>
           </div>
         </div>
         <button
