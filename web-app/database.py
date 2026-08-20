@@ -1,4 +1,6 @@
 import os
+from datetime import datetime, timezone
+
 from supabase import create_client, Client
 
 class Database:
@@ -29,6 +31,41 @@ class Database:
         if client:
             return client.table("sleep_data").insert(data).execute()
         return None
+
+    def get_device_by_token_hash(self, token_hash):
+        """Resolve o token de um device (SEC-02).
+
+        Devolve o dict do dispositivo ou None — ausente, revogado ou falha de
+        consulta caem todos em None, e a rota responde 401. Nunca levanta:
+        indisponibilidade do banco não deve virar 500 no caminho de ingestão.
+        """
+        client = self.get_client()
+        if client is None:
+            return None
+        try:
+            response = client.table("devices")                 .select("id, user_id, revoked_at")                 .eq("token_hash", token_hash)                 .limit(1)                 .execute()
+            linhas = response.data or []
+            if not linhas:
+                return None
+            device = linhas[0]
+            # Revogação é soft delete: a linha continua, mas o token não vale.
+            if device.get("revoked_at"):
+                return None
+            return device
+        except Exception as e:
+            print(f"❌ Erro ao consultar devices: {e}")
+            return None
+
+    def touch_device(self, device_id):
+        """Marca o último contato do dispositivo. Best-effort de propósito:
+        falhar aqui não pode derrubar uma leitura que já foi persistida."""
+        client = self.get_client()
+        if client is None:
+            return
+        try:
+            client.table("devices")                 .update({"last_seen_at": datetime.now(timezone.utc).isoformat()})                 .eq("id", device_id)                 .execute()
+        except Exception as e:
+            print(f"⚠️  Falha ao atualizar last_seen_at de {device_id}: {e}")
 
     def get_latest_data(self, limit=20):
         # Sempre retorna uma lista: dados em caso de sucesso, [] em qualquer

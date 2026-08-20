@@ -1,10 +1,19 @@
-import time
-import random
-import httpx
 import math
+import os
+import random
+import time
+
+import httpx
+
+from device_auth import TOKEN_HEADER
 
 # URL da sua API local (onde o Flask está rodando)
 API_URL = "http://127.0.0.1:5000/api/data"
+
+# Token do dispositivo (SEC-02). O backend exige o header X-Device-Token; sem
+# ele a API responde 401. Pareie um device pela aplicação e exporte o token:
+#   export DORMIO_DEVICE_TOKEN="<token>"     (Windows: $env:DORMIO_DEVICE_TOKEN=...)
+DEVICE_TOKEN = os.environ.get("DORMIO_DEVICE_TOKEN", "")
 
 # --- CRITÉRIO DE MOVIMENTO (docs/DATA-CONTRACT.md v1.1.0) ---
 # Réplica exata da regra do firmware. Se um dos dois mudar, o outro muda junto:
@@ -78,7 +87,9 @@ def gerar_dados_simulados():
             }
 
             # 6. Envia para o Flask
-            response = httpx.post(API_URL, json=payload)
+            response = httpx.post(
+                API_URL, json=payload, headers={TOKEN_HEADER: DEVICE_TOKEN}
+            )
 
             if response.status_code == 201:
                 print(f"✅ [201] Dados enviados! Temp: {temp_atual:.1f}°C | Mov: {movimento_total:.2f} | {status}")
