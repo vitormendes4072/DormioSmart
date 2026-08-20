@@ -35,7 +35,7 @@ jobs:
           python -m pytest tests/ -v
 
   frontend:
-    name: Build do frontend (tsc + vite)
+    name: Frontend (vitest + tsc + vite)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -58,6 +58,10 @@ jobs:
       # O script `build` roda `tsc --noEmit && vite build`, então esta etapa
       # cobre erro de tipo E erro de bundle. Sem ela, um frontend quebrado
       # passava despercebido — o pipeline só olhava para o Python.
+      - name: Testes (vitest)
+        working-directory: frontend
+        run: npm test
+
       - name: Type-check e build
         working-directory: frontend
         run: npm run build
