@@ -30,6 +30,13 @@ _AUTH = {TOKEN_HEADER: "token-de-teste"}
 _LEITURA = {"ax": 0.10, "ay": 0.20, "az": 9.80, "gx": 0.0, "gy": 0.0, "gz": 0.0,
             "t": 32.0, "total": 9.80, "status": "Repouso"}
 
+# AUTH-03: /api/sleep-history passou a exigir JWT. Estes testes verificam a
+# resiliencia da leitura (FIX-01), nao a autenticacao — entao autenticam com
+# um usuario mockado. A autenticacao em si esta em test_auth_usuario.py.
+_JWT = "jwt-de-teste"
+_USUARIO = "user-uuid-1"
+_SESSAO = {"Authorization": f"Bearer {_JWT}"}
+
 
 def _client():
     app = Flask(__name__, template_folder=_TEMPLATES, static_folder=_STATIC)
@@ -47,15 +54,15 @@ def test_history_retorna_dados():
             "status": "Dormindo",
         }
     ]
-    with patch.object(database.db, "get_latest_data", return_value=amostra):
-        resp = _client().get("/api/sleep-history")
+    with patch.object(database.db, "validar_token_de_usuario", return_value=_USUARIO),          patch.object(database.db, "get_leituras_do_usuario", return_value=amostra):
+        resp = _client().get("/api/sleep-history", headers=_SESSAO)
     assert resp.status_code == 200
     assert resp.get_json() == amostra
 
 
 def test_history_vazio_retorna_200():
-    with patch.object(database.db, "get_latest_data", return_value=[]):
-        resp = _client().get("/api/sleep-history")
+    with patch.object(database.db, "validar_token_de_usuario", return_value=_USUARIO),          patch.object(database.db, "get_leituras_do_usuario", return_value=[]):
+        resp = _client().get("/api/sleep-history", headers=_SESSAO)
     assert resp.status_code == 200
     assert resp.get_json() == []
 

@@ -22,7 +22,12 @@ class Database:
         # mantendo o RLS ligado no banco. Fallback para SUPABASE_KEY por compatibilidade.
         self.url = os.environ.get("SUPABASE_URL", "")
         self.key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY") or os.environ.get("SUPABASE_KEY", "")
+        # Chave anon: usada para validar o JWT do usuario e para montar o
+        # cliente por requisicao que carrega esse JWT (AUTH-03). E publica por
+        # design — o isolamento vem do RLS, nao do sigilo dela.
+        self.anon_key = os.environ.get("SUPABASE_ANON_KEY", "")
         self._client = None
+        self._client_anon = None
 
     def get_client(self):
         """Cliente Supabase, criado sob demanda.
@@ -44,6 +49,81 @@ class Database:
                 logger.exception("Falha ao conectar no Supabase.")
                 return None
         return self._client
+
+    def _get_client_anon(self):
+        """Cliente com a chave anon, sem sessao. Usado para validar tokens."""
+        if self._client_anon is None:
+            if not self.url or not self.anon_key:
+                logger.error("SUPABASE_URL ou SUPABASE_ANON_KEY ausentes (necessarias no AUTH-03).")
+                return None
+            try:
+                self._client_anon = create_client(self.url, self.anon_key)
+            except Exception:
+                logger.exception("Falha ao criar cliente anon do Supabase.")
+                return None
+        return self._client_anon
+
+    def validar_token_de_usuario(self, jwt):
+        """Valida o JWT no servidor de Auth. Devolve o id do usuario ou None.
+
+        A validacao e remota de proposito: conferir assinatura localmente
+        exigiria gerenciar chaves (e acertar o algoritmo), enquanto o Auth ja
+        responde de forma autoritativa, inclusive para token revogado.
+        """
+        try:
+            client = self._get_client_anon()
+            if client is None:
+                return None
+            resposta = client.auth.get_user(jwt)
+            usuario = getattr(resposta, "user", None)
+            return getattr(usuario, "id", None)
+        except Exception:
+            # Token expirado/invalido chega aqui como excecao da lib.
+            logger.info("Token de usuario rejeitado.")
+            return None
+
+    def cliente_do_usuario(self, jwt):
+        """Cliente que carrega o JWT do usuario — o RLS enxerga `auth.uid()`.
+
+        Um cliente novo por requisicao, e nao um compartilhado com sessao
+        trocada: dois pedidos simultaneos de usuarios diferentes num servidor
+        com threads poderiam ler o dado um do outro.
+        """
+        try:
+            if not self.url or not self.anon_key:
+                logger.error("SUPABASE_ANON_KEY ausente: leitura por usuario indisponivel.")
+                return None
+            client = create_client(self.url, self.anon_key)
+            client.postgrest.auth(jwt)
+            return client
+        except Exception:
+            logger.exception("Falha ao montar cliente do usuario.")
+            return None
+
+    def get_leituras_do_usuario(self, jwt, usuario_id, limit=20):
+        """Leituras do usuario autenticado, mais recentes primeiro.
+
+        Dupla proteção deliberada: o RLS filtra no banco E o `.eq(user_id)`
+        filtra na consulta. Redundante de proposito — se o RLS for desligado
+        por engano numa migracao, o filtro segura; se o filtro tiver bug, o
+        RLS segura. Nenhum dos dois sozinho merece confianca total.
+        """
+        try:
+            client = self.cliente_do_usuario(jwt)
+            if client is None:
+                return []
+            resposta = (
+                client.table("sleep_data")
+                .select("created_at, movimento_total, temp, status")
+                .eq("user_id", usuario_id)
+                .order("created_at", desc=True)
+                .limit(limit)
+                .execute()
+            )
+            return resposta.data or []
+        except Exception:
+            logger.exception("Falha ao consultar sleep_data do usuario.")
+            return []
 
     def insert_sleep_data(self, data):
         """Persiste uma leitura. Devolve None se nada foi gravado."""
