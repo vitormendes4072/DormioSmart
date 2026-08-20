@@ -180,7 +180,12 @@ export function Dashboard() {
                 content={<TooltipDoGrafico />}
                 cursor={{ fill: "var(--secondary)", fillOpacity: 0.5 }}
               />
-              <Bar dataKey="intensidade" radius={[3, 3, 0, 0]}>
+              {/* Animacao desligada de proposito: o dashboard recarrega os
+                  dados periodicamente, e reanimar as barras a cada atualizacao
+                  vira ruido visual. Tambem torna a captura de tela confiavel —
+                  com animacao, um print pode pegar as barras no meio do
+                  crescimento e mostrar valores que nao existem. */}
+              <Bar dataKey="intensidade" radius={[3, 3, 0, 0]} isAnimationActive={false}>
                 {serie.map((ponto, i) => (
                   <Cell key={i} fill={ponto.movimento ? COR_MOVIMENTO : COR_REPOUSO} />
                 ))}

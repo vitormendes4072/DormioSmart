@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { ErroApi, buscarHistorico } from "../lib/api";
+import { estaEmModoDemo, gerarNoiteDemo } from "../lib/demo";
 import type { LeituraSono } from "../types/sleep";
 
 export type EstadoHistorico = {
@@ -26,6 +27,12 @@ export function useHistorico(): EstadoHistorico {
     setCarregando(true);
     setErro(null);
     try {
+      // Modo demo (DEMO-01): dados gerados no cliente, sem tocar na API.
+      // Guardado por build de desenvolvimento — ver lib/demo.ts.
+      if (estaEmModoDemo()) {
+        setLeituras(gerarNoiteDemo());
+        return;
+      }
       setLeituras(await buscarHistorico());
     } catch (e) {
       // 401 ja disparou o callback de sessao expirada dentro do cliente; aqui
