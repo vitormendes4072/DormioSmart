@@ -32,6 +32,28 @@ class Database:
             return client.table("sleep_data").insert(data).execute()
         return None
 
+    def verificar_conexao(self):
+        """Checagem leve de saude do banco (WEB-04).
+
+        Devolve (ok, motivo). Nao levanta: o /health precisa responder mesmo
+        com o banco fora, senao ele mesmo vira uma fonte de erro. A consulta e
+        de contagem com limite 1 — confirma credencial e alcance de rede sem
+        trazer dado.
+        """
+        if not self.url or not self.key:
+            return False, "credenciais ausentes"
+        client = self.get_client()
+        if client is None:
+            return False, "cliente indisponivel"
+        try:
+            client.table("sleep_data").select("created_at").limit(1).execute()
+            return True, None
+        except Exception as e:
+            # A mensagem vai para o log do servidor, nunca para a resposta:
+            # erro de driver pode conter host e credencial.
+            print(f"❌ /health: consulta de sanidade falhou: {e}")
+            return False, "consulta falhou"
+
     def get_device_by_token_hash(self, token_hash):
         """Resolve o token de um device (SEC-02).
 

@@ -6,6 +6,7 @@ Scripts SQL versionados, aplicados **em ordem numérica** no Supabase
 | # | Arquivo | Item | O que faz |
 |---|---|---|---|
 | 001 | `001_multiusuario.sql` | SEC-04 | `profiles`, `devices`, `user_id`/`device_id` em `sleep_data`, políticas RLS por dono, trigger de criação de perfil |
+| 002 | `002_backfill_dono_dos_dados.sql` | DATA-03 | Associa as leituras órfãs (anteriores ao 001) a uma conta. **Requer edição** — troque o e-mail antes de rodar. Traz no apêndice o pareamento manual de um dispositivo. |
 
 ## Antes de aplicar
 
@@ -25,3 +26,13 @@ Rodar o bloco de VERIFICAÇÃO no rodapé do próprio script. Esperado:
 
 O teste que realmente importa (usuário A não lê linha do usuário B) só é
 possível com dois usuários reais e vem no **AUTH-03**, junto do repasse de JWT.
+
+## Ordem de execução com os itens de código
+
+```
+001  →  (criar uma conta)  →  002  →  AUTH-03
+```
+
+O **002 tem que rodar antes do AUTH-03**. Hoje a leitura usa `service_role`, que
+ignora RLS, então tudo aparece no dashboard. No momento em que o AUTH-03 passar a
+ler com o JWT do usuário, toda linha sem dono desaparece.
