@@ -11,11 +11,18 @@ import os
 from flask import Flask
 
 import database
+from device_auth import TOKEN_HEADER
 from routes import init_routes
 
 # Caminho para a pasta de templates (web-app/templates/), relativo a este arquivo
 _TEMPLATES = os.path.join(os.path.dirname(__file__), "..", "templates")
 _STATIC    = os.path.join(os.path.dirname(__file__), "..", "static")
+
+# SEC-02: POST /api/data passou a exigir X-Device-Token. Os testes abaixo
+# verificam persistência (FIX-02), não autenticação — então autenticam com um
+# device válido mockado. A autenticação em si é coberta em test_device_auth.py.
+_DEVICE = {"id": "dev-uuid-1", "user_id": "user-uuid-1", "revoked_at": None}
+_AUTH = {TOKEN_HEADER: "token-de-teste"}
 
 
 def _client():
@@ -68,22 +75,29 @@ def test_receive_data_persistido_retorna_201():
     class RespOK:
         data = [{"id": 1}]
 
-    with patch.object(database.db, "insert_sleep_data", return_value=RespOK()):
-        resp = _client().post("/api/data", json={"ax": 0.1, "total": 9.8, "status": "Dormindo"})
+    with patch.object(database.db, "get_device_by_token_hash", return_value=_DEVICE),          patch.object(database.db, "insert_sleep_data", return_value=RespOK()),          patch.object(database.db, "touch_device"):
+        resp = _client().post(
+            "/api/data", json={"ax": 0.1, "total": 9.8, "status": "Repouso"}, headers=_AUTH
+        )
     assert resp.status_code == 201
     assert resp.get_json()["status"] == "success"
 
 
 def test_receive_data_nao_persistido_retorna_503():
     # Nada persistiu (cliente indisponível → None) → 503, sem mentir sucesso (FIX-02).
-    with patch.object(database.db, "insert_sleep_data", return_value=None):
-        resp = _client().post("/api/data", json={"ax": 0.1, "total": 9.8, "status": "Dormindo"})
+    with patch.object(database.db, "get_device_by_token_hash", return_value=_DEVICE),          patch.object(database.db, "insert_sleep_data", return_value=None):
+        resp = _client().post(
+            "/api/data", json={"ax": 0.1, "total": 9.8, "status": "Repouso"}, headers=_AUTH
+        )
     assert resp.status_code == 503
 
 
 def test_receive_data_json_invalido_retorna_400():
     # Corpo não-JSON → erro de parse tratado → 400 (comportamento preservado).
-    resp = _client().post("/api/data", data="nao-e-json", content_type="application/json")
+    with patch.object(database.db, "get_device_by_token_hash", return_value=_DEVICE):
+        resp = _client().post(
+            "/api/data", data="nao-e-json", content_type="application/json", headers=_AUTH
+        )
     assert resp.status_code == 400
 
 
