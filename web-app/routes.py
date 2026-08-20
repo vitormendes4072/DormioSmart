@@ -4,6 +4,9 @@ from database import db
 from device_auth import extrair_token, hash_token
 from validacao import validar_leitura
 
+# Versao do contrato que este backend implementa (docs/DATA-CONTRACT.md).
+CONTRATO_DE_DADOS = "1.2.0"
+
 def init_routes(app):
     @app.route('/')
     def index():
@@ -12,6 +15,26 @@ def init_routes(app):
     @app.route('/dashboard')
     def dashboard():
         return render_template('dashboard.html')
+
+    @app.route('/health')
+    def health():
+        """Health check (WEB-04).
+
+        200 quando o app responde E o banco esta alcancavel; 503 quando o app
+        esta de pe mas o banco nao — a distincao importa para um monitor de
+        uptime saber se o problema e a aplicacao ou a fonte de dados.
+
+        Sem autenticacao de proposito: um health check que exige credencial e
+        inutil para monitoramento externo. Por isso a resposta nao revela nada
+        alem de "ok"/"indisponivel" — nunca URL, chave ou erro de driver.
+        """
+        banco_ok, motivo = db.verificar_conexao()
+        corpo = {
+            "status": "ok" if banco_ok else "degradado",
+            "banco": "ok" if banco_ok else (motivo or "indisponivel"),
+            "contrato_de_dados": CONTRATO_DE_DADOS,
+        }
+        return jsonify(corpo), (200 if banco_ok else 503)
 
     @app.route('/api/sleep-history')
     def get_history():
