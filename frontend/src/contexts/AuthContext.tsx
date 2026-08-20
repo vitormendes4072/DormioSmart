@@ -1,7 +1,7 @@
 import type { Session, User } from "@supabase/supabase-js";
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 
-import { definirProvedorDeToken } from "../lib/api";
+import { definirCallbackDeSessaoExpirada, definirProvedorDeToken } from "../lib/api";
 import { obterSupabase, problemaDeConfiguracao } from "../lib/supabase";
 
 /**
@@ -61,6 +61,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       ativo = false;
       assinatura.subscription.unsubscribe();
     };
+  }, []);
+
+  // 401 vindo da API significa sessao morta no servidor — mesmo que o cliente
+  // ainda ache que tem uma. Limpar aqui evita o estado em que a tela parece
+  // logada e nada carrega. O guarda de rota faz o resto (AUTH-04).
+  useEffect(() => {
+    definirCallbackDeSessaoExpirada(() => setSessao(null));
   }, []);
 
   // Liga a sessao ao cliente de API. Fica dentro de efeito para rodar tambem

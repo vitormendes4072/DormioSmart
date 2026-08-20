@@ -1,6 +1,6 @@
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { useState } from "react";
-import { Link, useNavigate } from "react-router";
+import { Link, useLocation, useNavigate } from "react-router";
 
 import { AuthLayout } from "../components/AuthLayout";
 import { entrar, recuperarSenha } from "../lib/autenticacao";
@@ -8,6 +8,9 @@ import { BOTAO_PRIMARIO_CLS, INPUT_CLS, LABEL_CLS } from "../lib/ui";
 
 export function Login() {
   const navigate = useNavigate();
+  const local = useLocation();
+  // O guarda de rota guarda aqui para onde a pessoa tentava ir antes do login.
+  const destino = (local.state as { de?: string } | null)?.de ?? "/dashboard";
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
   const [mostrarSenha, setMostrarSenha] = useState(false);
@@ -27,7 +30,7 @@ export function Login() {
     setEnviando(false);
 
     if (resultado.ok) {
-      navigate("/dashboard");
+      navigate(destino, { replace: true });
       return;
     }
     setErro(resultado.mensagem);
