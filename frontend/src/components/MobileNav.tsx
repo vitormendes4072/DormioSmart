@@ -1,6 +1,8 @@
 import { LogOut } from "lucide-react";
 import { NavLink, useNavigate } from "react-router";
 
+import { useAuth } from "../contexts/AuthContext";
+
 import { ITENS_NAV } from "./nav";
 
 /** Navegação de celular: barra fixa no rodapé, no alcance do polegar.
@@ -8,6 +10,7 @@ import { ITENS_NAV } from "./nav";
  *  — não esconde a navegação atrás de um toque extra. */
 export function MobileNav() {
   const navigate = useNavigate();
+  const { sair } = useAuth();
 
   const base =
     "flex-1 flex flex-col items-center justify-center gap-1 py-2.5 text-xs font-medium transition-colors";
@@ -26,7 +29,13 @@ export function MobileNav() {
           {label}
         </NavLink>
       ))}
-      <button onClick={() => navigate("/login")} className={`${base} text-muted-foreground`}>
+      <button
+        onClick={async () => {
+          await sair();
+          navigate("/login");
+        }}
+        className={`${base} text-muted-foreground`}
+      >
         <LogOut className="w-5 h-5" />
         Sair
       </button>
