@@ -1,5 +1,6 @@
-from flask import render_template, request, jsonify
+from flask import g, jsonify, render_template, request
 
+from auth import require_auth
 from database import db
 from device_auth import extrair_token, hash_token
 from validacao import validar_leitura
@@ -37,10 +38,15 @@ def init_routes(app):
         return jsonify(corpo), (200 if banco_ok else 503)
 
     @app.route('/api/sleep-history')
+    @require_auth
     def get_history():
-        # get_latest_data() já devolve uma lista ([] em caso de falha),
-        # garantindo JSON válido e evitando 500 em produção (FIX-01).
-        return jsonify(db.get_latest_data())
+        """Leituras do usuário autenticado (AUTH-03).
+
+        A consulta usa o JWT de quem pediu, então o RLS aplica a política por
+        dono no banco. Continua devolvendo lista sempre — [] em qualquer
+        falha, nunca 500 (FIX-01/FIX-08).
+        """
+        return jsonify(db.get_leituras_do_usuario(g.jwt, g.usuario_id))
 
     @app.route('/api/data', methods=['POST'])
     def receive_data():

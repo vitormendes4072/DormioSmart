@@ -50,8 +50,11 @@ def _get_client_explode():
 # --- a rota de leitura nao pode virar 500 (FIX-01) -----------------------
 
 def test_history_responde_200_mesmo_com_get_client_levantando():
-    with _get_client_explode():
-        resp = _client().get("/api/sleep-history")
+    # AUTH-03: a rota exige JWT, entao autenticamos e explodimos so a camada
+    # de banco — o que se verifica aqui e que falha de banco nao vira 500.
+    with patch.object(database.db, "validar_token_de_usuario", return_value="user-1"),          patch.object(database.db, "cliente_do_usuario", side_effect=UnicodeEncodeError(
+             "charmap", "x", 0, 1, "nao mapeavel")):
+        resp = _client().get("/api/sleep-history", headers={"Authorization": "Bearer jwt"})
     assert resp.status_code == 200
     assert resp.get_json() == []
 
