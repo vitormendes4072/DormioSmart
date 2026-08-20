@@ -22,9 +22,19 @@ import {
 } from "../lib/metricas";
 import { ehMovimento, intensidade } from "../types/sleep";
 
-/** Herdadas do DASH-02, ja mergeado: ambar = evento, indigo = repouso. */
-const COR_MOVIMENTO = "#f59e0b";
-const COR_REPOUSO = "#818cf8";
+/**
+ * Cores da serie via token, nao hex cru (BRAND-01).
+ *
+ * Precisam mudar junto com o tema — um ambar calibrado para fundo escuro
+ * perde contraste sobre branco. Os valores por tema estao em theme.css, com o
+ * contraste verificado ao lado de cada um.
+ *
+ * A cor nunca e o unico sinal: o tooltip e a coluna "Estado" da tabela dizem
+ * "Movimento"/"Repouso" por escrito, o que resolve tanto daltonismo quanto
+ * impressao em preto e branco.
+ */
+const COR_MOVIMENTO = "var(--chart-movimento)";
+const COR_REPOUSO = "var(--chart-repouso)";
 
 function TooltipDoGrafico({
   active,
@@ -157,18 +167,18 @@ export function Dashboard() {
                 dataKey="hora"
                 axisLine={false}
                 tickLine={false}
-                tick={{ fill: "#6b7a99", fontSize: 11, fontFamily: "Outfit" }}
+                tick={{ fill: "var(--muted-foreground)", fontSize: 11, fontFamily: "Outfit" }}
                 minTickGap={24}
               />
               <YAxis
                 axisLine={false}
                 tickLine={false}
-                tick={{ fill: "#6b7a99", fontSize: 11, fontFamily: "Outfit" }}
+                tick={{ fill: "var(--muted-foreground)", fontSize: 11, fontFamily: "Outfit" }}
                 tickFormatter={(v: number) => v.toFixed(1)}
               />
               <Tooltip
                 content={<TooltipDoGrafico />}
-                cursor={{ fill: "rgba(139, 127, 248, 0.06)" }}
+                cursor={{ fill: "var(--secondary)", fillOpacity: 0.5 }}
               />
               <Bar dataKey="intensidade" radius={[3, 3, 0, 0]}>
                 {serie.map((ponto, i) => (

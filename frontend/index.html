@@ -8,6 +8,25 @@
       <title>Dormio Smart</title>
       <meta name="description" content="Monitoramento nao invasivo de movimento durante o repouso." />
       <meta name="robots" content="noindex, nofollow" />
+      <script>
+        // Resolve o tema ANTES da primeira pintura. Sem isto, a pagina
+        // apareceria clara por um instante antes do React aplicar o escuro —
+        // o "flash de tema errado", que num app usado de madrugada ofusca.
+        // Mantido inline e sincrono de proposito: um <script src> seria
+        // carregado tarde demais para evitar o flash.
+        (function () {
+          try {
+            var salvo = localStorage.getItem('dormio-tema');
+            var escuro =
+              salvo === 'escuro' ||
+              ((!salvo || salvo === 'sistema') &&
+                window.matchMedia('(prefers-color-scheme: dark)').matches);
+            document.documentElement.dataset.theme = escuro ? 'dark' : 'light';
+          } catch (e) {
+            document.documentElement.dataset.theme = 'light';
+          }
+        })();
+      </script>
       <style>html, body { height: 100%; margin: 0; } #root { height: 100%; }</style>
       
     </head>
