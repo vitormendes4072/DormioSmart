@@ -1,7 +1,11 @@
+from datetime import datetime, timezone
+
 from flask import g, jsonify, render_template, request
 
+import dispositivos
 from auth import require_auth
 from database import db
+from device_auth import gerar_token, hash_token
 from device_auth import extrair_token, hash_token
 from validacao import validar_leitura
 
@@ -47,6 +51,83 @@ def init_routes(app):
         falha, nunca 500 (FIX-01/FIX-08).
         """
         return jsonify(db.get_leituras_do_usuario(g.jwt, g.usuario_id))
+
+    # --- Dispositivos do usuário (AUTH-05) ---
+    #
+    # Todas usam o cliente montado com o JWT de quem pediu: o RLS decide a
+    # posse. O `user_id` vem sempre de `g.usuario_id`, nunca do corpo ou da URL.
+
+    def _cliente_do_usuario():
+        """Cliente com o JWT da requisição, ou None se indisponível."""
+        return db.cliente_do_usuario(g.jwt)
+
+    @app.route('/api/devices')
+    @require_auth
+    def listar_devices():
+        client = _cliente_do_usuario()
+        if client is None:
+            return jsonify({"error": "fonte de dados indisponivel"}), 503
+
+        lista = dispositivos.listar(client, g.usuario_id)
+        if lista is None:
+            return jsonify({"error": "fonte de dados indisponivel"}), 503
+        return jsonify(lista)
+
+    @app.route('/api/devices', methods=['POST'])
+    @require_auth
+    def criar_device():
+        corpo = request.get_json(silent=True) or {}
+        nome, erro = dispositivos.validar_nome(corpo.get("nome"))
+        if erro:
+            return jsonify({"error": erro}), 400
+
+        client = _cliente_do_usuario()
+        if client is None:
+            return jsonify({"error": "fonte de dados indisponivel"}), 503
+
+        token = gerar_token()
+        device = dispositivos.criar(client, g.usuario_id, nome, hash_token(token))
+        if device is None:
+            return jsonify({"error": "nao foi possivel parear o dispositivo"}), 503
+
+        # ÚNICA vez que o token em claro sai daqui. Não é recuperável depois:
+        # o banco só tem o hash.
+        return jsonify({"device": device, "token": token}), 201
+
+    @app.route('/api/devices/<device_id>', methods=['PATCH'])
+    @require_auth
+    def renomear_device(device_id):
+        corpo = request.get_json(silent=True) or {}
+        if "nome" not in corpo:
+            return jsonify({"error": "campo nome ausente"}), 400
+
+        nome, erro = dispositivos.validar_nome(corpo.get("nome"))
+        if erro:
+            return jsonify({"error": erro}), 400
+
+        client = _cliente_do_usuario()
+        if client is None:
+            return jsonify({"error": "fonte de dados indisponivel"}), 503
+
+        device = dispositivos.renomear(client, g.usuario_id, device_id, nome)
+        if device is None:
+            # Inexistente e "de outra pessoa" respondem igual: distinguir
+            # permitiria descobrir ids de dispositivos alheios.
+            return jsonify({"error": "dispositivo nao encontrado"}), 404
+        return jsonify(device)
+
+    @app.route('/api/devices/<device_id>/revogar', methods=['POST'])
+    @require_auth
+    def revogar_device(device_id):
+        client = _cliente_do_usuario()
+        if client is None:
+            return jsonify({"error": "fonte de dados indisponivel"}), 503
+
+        agora = datetime.now(timezone.utc).isoformat()
+        device = dispositivos.revogar(client, g.usuario_id, device_id, agora)
+        if device is None:
+            return jsonify({"error": "dispositivo nao encontrado"}), 404
+        return jsonify(device)
 
     @app.route('/api/data', methods=['POST'])
     def receive_data():

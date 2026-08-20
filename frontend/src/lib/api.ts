@@ -46,9 +46,20 @@ export function definirCallbackDeSessaoExpirada(callback: () => void) {
   aoPerderSessao = callback;
 }
 
-async function requisitar<T>(caminho: string, opcoes: RequestInit = {}): Promise<T> {
+/**
+ * Requisicao autenticada a API, com resposta JSON.
+ *
+ * Exportada a partir do AUTH-05: alem da leitura do historico, o app passou a
+ * criar, renomear e revogar dispositivos. Toda chamada a `/api/*` passa por
+ * aqui para que a injecao do JWT e o tratamento de 401 sejam automaticos.
+ */
+export async function requisitarJson<T>(caminho: string, opcoes: RequestInit = {}): Promise<T> {
   const cabecalhos = new Headers(opcoes.headers);
   cabecalhos.set("Accept", "application/json");
+  // O backend so aceita JSON; definir aqui evita repetir em cada chamada.
+  if (opcoes.body && !cabecalhos.has("Content-Type")) {
+    cabecalhos.set("Content-Type", "application/json");
+  }
 
   const token = obterToken();
   if (token) cabecalhos.set("Authorization", `Bearer ${token}`);
@@ -93,6 +104,6 @@ async function extrairMensagemDeErro(resposta: Response): Promise<string> {
  * a UI quebraria feio se viesse outra coisa, e o custo da checagem e zero.
  */
 export async function buscarHistorico(): Promise<LeituraSono[]> {
-  const dados = await requisitar<unknown>("/api/sleep-history");
+  const dados = await requisitarJson<unknown>("/api/sleep-history");
   return Array.isArray(dados) ? (dados as LeituraSono[]) : [];
 }

@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 
+import { MeusDispositivos } from "../components/MeusDispositivos";
 import { SeletorDeTema } from "../components/SeletorDeTema";
 import { buscarHistorico } from "../lib/api";
 import { baixarCsv } from "../lib/exportar";
@@ -107,12 +108,9 @@ function SecaoDispositivos() {
     <Secao
       titulo="Meus dispositivos"
       icone={Cpu}
-      aviso="O pareamento gera um token exibido uma única vez, usado pelo ESP32 para enviar leituras. Disponível após a autenticação."
+      aviso="Cada dispositivo pertence a esta conta e envia leituras com um token próprio. O token aparece uma única vez, no pareamento."
     >
-      <div className="rounded-xl border border-dashed border-border px-4 py-6 text-center">
-        <p className="text-sm text-muted-foreground">Nenhum dispositivo pareado</p>
-      </div>
-      <ItemDeAcao rotulo="Parear dispositivo" icone={Cpu} desabilitado />
+      <MeusDispositivos />
     </Secao>
   );
 }
