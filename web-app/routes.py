@@ -2,6 +2,7 @@ from flask import render_template, request, jsonify
 
 from database import db
 from device_auth import extrair_token, hash_token
+from validacao import validar_leitura
 
 def init_routes(app):
     @app.route('/')
@@ -36,7 +37,14 @@ def init_routes(app):
                 return jsonify({"error": "device nao autorizado"}), 401
 
             content = request.json
-            
+
+            # --- VALIDAÇÃO DE ENTRADA (SEC-03) ---
+            # Autenticado não é o mesmo que confiável: token roubado, sensor
+            # solto ou firmware antigo não podem contaminar a base.
+            content, erro = validar_leitura(content)
+            if erro:
+                return jsonify({"error": erro}), 400
+
             # --- O TRADUTOR ---
             # Aqui convertemos o "dialeto" do ESP32 (chaves curtas)
             # para o "idioma" do Supabase (nomes das colunas)
