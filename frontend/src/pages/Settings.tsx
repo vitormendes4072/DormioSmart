@@ -4,11 +4,13 @@ import {
   Download,
   Loader2,
   Lock,
+  Palette,
   Shield,
   User,
 } from "lucide-react";
 import { useState } from "react";
 
+import { SeletorDeTema } from "../components/SeletorDeTema";
 import { buscarHistorico } from "../lib/api";
 import { baixarCsv } from "../lib/exportar";
 
@@ -32,6 +34,7 @@ export function Settings() {
         <p className="text-sm text-muted-foreground mt-0.5">Conta, dispositivos e seus dados</p>
       </div>
 
+      <SecaoAparencia />
       <SecaoPerfil />
       <SecaoDispositivos />
       <SecaoDados />
@@ -63,6 +66,18 @@ function Secao({
 }
 
 const AVISO_SESSAO = "Disponível após a autenticação de usuário entrar no ar.";
+
+function SecaoAparencia() {
+  return (
+    <Secao
+      titulo="Aparência"
+      icone={Palette}
+      aviso="O tema claro segue a identidade da Dormio Labs; o escuro existe porque o app é consultado de madrugada."
+    >
+      <SeletorDeTema />
+    </Secao>
+  );
+}
 
 function SecaoPerfil() {
   const rotulo = "text-xs font-medium text-muted-foreground mb-1.5 block uppercase tracking-wider";
