@@ -1,0 +1,8 @@
+@import 'tailwindcss' source(none);
+@source '../**/*.{js,ts,jsx,tsx}';
+
+/* O bundle original importava 'tw-animate-css', que existe para as animações
+   dos componentes shadcn/ui. Como esses componentes não são usados (nenhuma
+   classe animate-* no código), o import foi removido na importação (UI-01).
+   As animações do próprio Tailwind v4 (animate-pulse, animate-spin) continuam
+   disponíveis sem ele. */
