@@ -1,6 +1,6 @@
 # Contrato de dados — Dormio Smart
 
-**Versão:** 1.1.0 · **Itens:** DATA-01, DATA-02
+**Versão:** 1.2.0 · **Itens:** DATA-01, DATA-02, SEC-02, SEC-03
 
 Este documento é a fonte única de verdade sobre o dado que trafega entre
 firmware, backend e banco. Firmware (`firmware/sketch.ino`), simulador
@@ -176,6 +176,31 @@ Header obrigatório: `X-Device-Token: <token opaco>`
 
 `201` só é devolvido se a gravação foi **confirmada** — nunca otimista (FIX-02).
 
+A ordem importa: **autenticação antes de validação**. Um payload inválido sem
+token devolve `401`, não `400` — quem não se identifica não recebe diagnóstico
+do próprio payload.
+
+### 5.1 Regras de validação (SEC-03)
+
+Todos os nove campos são **obrigatórios**. Numéricos precisam ser finitos
+(`NaN` e `Infinity` são rejeitados) e booleano não conta como número.
+
+| Campo | Faixa aceita | De onde vem o limite |
+|---|---|---|
+| `ax`, `ay`, `az` | −100 a 100 m/s² | `MPU6050_RANGE_8_G` = ±78,5 m/s², com margem |
+| `gx`, `gy`, `gz` | −12 a 12 rad/s | `MPU6050_RANGE_500_DEG` = ±8,73 rad/s, com margem |
+| `t` | −40 a 85 °C | faixa de operação do datasheet do MPU6050 |
+| `total` | 0 a 175 m/s² | magnitude nunca é negativa; teto = √3 · 100 |
+| `status` | `"Repouso"` ou `"Movimento"` | seção 2.2 |
+
+**Coerência interna:** `total` precisa bater com `√(ax²+ay²+az²)` dentro de
+**0,5 m/s²**. O firmware transmite 2 casas decimais, então o desvio esperado é
+de centésimos; a folga pega payload montado errado sem punir arredondamento.
+
+> Os rótulos legados (`"Dormindo"`, `"Movimento Detectado!"`) **são rejeitados na
+> escrita** — o contrato v1.1.0 os aposentou. Continuam sendo lidos do banco,
+> onde já estão gravados (seção 2.2).
+
 ---
 
 ## 6. Leitura (backend → SPA)
@@ -204,4 +229,5 @@ unidade alterada, novo header obrigatório). **MINOR** = campo opcional novo.
 | Versão | Data | Mudança |
 |---|---|---|
 | 1.0.0 | 2026-08-19 | Contrato inicial; formaliza payload existente, adiciona `X-Device-Token`, `user_id` e `device_id` (DATA-01/SEC-04) |
+| 1.2.0 | 2026-08-19 | Validação de entrada: campos obrigatórios, faixas físicas, coerência de `total`, `status` restrito (SEC-03); autenticação de device implementada (SEC-02) |
 | 1.1.0 | 2026-08-19 | Critério de movimento simétrico (`\|total−9,81\| > 1,2`); rótulos `Repouso`/`Movimento`; `t` documentado e simulado como temperatura de chip (DATA-02) |

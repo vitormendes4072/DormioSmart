@@ -24,6 +24,12 @@ _STATIC    = os.path.join(os.path.dirname(__file__), "..", "static")
 _DEVICE = {"id": "dev-uuid-1", "user_id": "user-uuid-1", "revoked_at": None}
 _AUTH = {TOKEN_HEADER: "token-de-teste"}
 
+# SEC-03: o corpo passou a ser validado por completo. Estes testes verificam
+# persistência (FIX-02), não validação — então usam uma leitura válida. As
+# regras de validação em si estão em test_validacao.py.
+_LEITURA = {"ax": 0.10, "ay": 0.20, "az": 9.80, "gx": 0.0, "gy": 0.0, "gz": 0.0,
+            "t": 32.0, "total": 9.80, "status": "Repouso"}
+
 
 def _client():
     app = Flask(__name__, template_folder=_TEMPLATES, static_folder=_STATIC)
@@ -76,9 +82,7 @@ def test_receive_data_persistido_retorna_201():
         data = [{"id": 1}]
 
     with patch.object(database.db, "get_device_by_token_hash", return_value=_DEVICE),          patch.object(database.db, "insert_sleep_data", return_value=RespOK()),          patch.object(database.db, "touch_device"):
-        resp = _client().post(
-            "/api/data", json={"ax": 0.1, "total": 9.8, "status": "Repouso"}, headers=_AUTH
-        )
+        resp = _client().post("/api/data", json=_LEITURA, headers=_AUTH)
     assert resp.status_code == 201
     assert resp.get_json()["status"] == "success"
 
@@ -86,9 +90,7 @@ def test_receive_data_persistido_retorna_201():
 def test_receive_data_nao_persistido_retorna_503():
     # Nada persistiu (cliente indisponível → None) → 503, sem mentir sucesso (FIX-02).
     with patch.object(database.db, "get_device_by_token_hash", return_value=_DEVICE),          patch.object(database.db, "insert_sleep_data", return_value=None):
-        resp = _client().post(
-            "/api/data", json={"ax": 0.1, "total": 9.8, "status": "Repouso"}, headers=_AUTH
-        )
+        resp = _client().post("/api/data", json=_LEITURA, headers=_AUTH)
     assert resp.status_code == 503
 
 
