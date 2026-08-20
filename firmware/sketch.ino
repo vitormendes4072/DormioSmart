@@ -5,14 +5,19 @@
 #include <Adafruit_Sensor.h>
 #include <Wire.h>
 
+// Credenciais e token do dispositivo. Arquivo NAO versionado: copie
+// secrets.example.h para secrets.h e preencha. O build falhar por ausencia
+// dele e intencional -- melhor nao compilar do que hardcodar segredo.
+#include "secrets.h"
+
 // --- CONFIGURAÇÃO MESTRA ---
 // Deixe como 'true' para usar no Wokwi. 
 // Mude para 'false' quando for gravar na placa real do TCC.
 #define MODO_SIMULADOR true 
 
-// --- CREDENCIAIS DA REDE ---
-const char* ssid = "Wokwi-GUEST"; // No hardware real, coloque o nome do seu Wi-Fi
-const char* password = "";        // No hardware real, coloque a senha do seu Wi-Fi
+// --- CREDENCIAIS DA REDE (de secrets.h) ---
+const char* ssid = WIFI_SSID;
+const char* password = WIFI_PASSWORD;
 String serverName = "https://dormio-smart.vercel.app/api/data"; // Endereço Oficial
 
 // --- CRITERIO DE MOVIMENTO (docs/DATA-CONTRACT.md v1.1.0) ---
@@ -93,13 +98,23 @@ void setup() {
   Serial.println("Enviando dados para a Nuvem...");
   http.begin(client, serverName);
   http.addHeader("Content-Type", "application/json");
+  // Autenticacao do dispositivo (SEC-02). Sem este header a API responde 401
+  // e a leitura e descartada -- ver docs/DATA-CONTRACT.md secao 3.
+  http.addHeader("X-Device-Token", DEVICE_TOKEN);
   
   int httpResponseCode = http.POST(jsonPayload);
   
-  if (httpResponseCode > 0) {
-    Serial.println("✅ [SUCESSO] Dados salvos no Supabase! Codigo HTTP: " + String(httpResponseCode));
+  if (httpResponseCode == 201) {
+    Serial.println("✅ [SUCESSO] Dados salvos no Supabase!");
+  } else if (httpResponseCode == 401) {
+    Serial.println("🔒 [401] Dispositivo nao autorizado. Confira DEVICE_TOKEN em secrets.h");
+    Serial.println("        (token ausente, revogado ou de outro dispositivo)");
+  } else if (httpResponseCode == 400) {
+    Serial.println("⚠️  [400] Leitura rejeitada pela validacao: " + http.getString());
+  } else if (httpResponseCode > 0) {
+    Serial.println("❌ [ERRO] Resposta inesperada da API: " + String(httpResponseCode));
   } else {
-    Serial.println("❌ [ERRO] Falha ao enviar para Vercel: " + String(httpResponseCode));
+    Serial.println("❌ [ERRO] Falha de conexao com a Vercel: " + String(httpResponseCode));
   }
   http.end();
 
