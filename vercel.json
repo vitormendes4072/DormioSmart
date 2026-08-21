@@ -8,17 +8,34 @@
     {
       "src": "frontend/package.json",
       "use": "@vercel/static-build",
-      "config": { "distDir": "dist" }
+      "config": {
+        "distDir": "dist"
+      }
     }
   ],
   "routes": [
-    { "src": "/api/(.*)", "dest": "web-app/app.py" },
-    { "src": "/health", "dest": "web-app/app.py" },
-
-    { "handle": "filesystem" },
-
-    { "src": "/assets/(.*)", "dest": "/frontend/assets/$1" },
-    { "src": "/(.*\.[a-zA-Z0-9]+)", "dest": "/frontend/$1" },
-    { "src": "/(.*)", "dest": "/frontend/index.html" }
+    {
+      "src": "/api/(.*)",
+      "dest": "web-app/app.py"
+    },
+    {
+      "src": "/health",
+      "dest": "web-app/app.py"
+    },
+    {
+      "handle": "filesystem"
+    },
+    {
+      "src": "/assets/(.*)",
+      "dest": "/frontend/assets/$1"
+    },
+    {
+      "src": "/(.*\\.[a-zA-Z0-9]+)",
+      "dest": "/frontend/$1"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/frontend/index.html"
+    }
   ]
 }
