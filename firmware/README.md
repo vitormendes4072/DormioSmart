@@ -1,6 +1,6 @@
-# Firmware — SmartDormio (ESP32 + MPU6050)
+# Firmware — Smart Dormio (ESP32 + MPU6050)
 
-Firmware embarcado que lê o sensor inercial MPU6050, classifica repouso/movimento, empacota os dados em JSON e os envia para a API web via HTTPS. Na **Fase 1** roda em simulação (Wokwi); na **Fase 2**, na placa física.
+Firmware embarcado que lê o sensor inercial MPU6050, classifica repouso/movimento (limiar simétrico — ver `docs/DATA-CONTRACT.md`), empacota os dados em JSON e os envia para a API web via HTTPS. Na **Fase 1** roda em simulação (Wokwi); na **Fase 2**, na placa física.
 
 ## Arquivos
 | Arquivo | Função |
@@ -8,6 +8,33 @@ Firmware embarcado que lê o sensor inercial MPU6050, classifica repouso/movimen
 | `sketch.ino` | Firmware principal (lógica híbrida simulação/físico) |
 | `diagram.json` | Mapeamento do circuito no Wokwi |
 | `libraries.txt` | Bibliotecas utilizadas |
+| `secrets.example.h` | Modelo de credenciais — **copiar para `secrets.h`** |
+| `secrets.h` | Credenciais reais — **ignorado pelo git, nunca versionar** |
+
+## Credenciais (obrigatório antes de compilar)
+
+O firmware não compila sem `secrets.h`. Isso é proposital: melhor falhar o build
+do que compilar com credencial escrita no código, que é como segredo acaba no
+histórico do git.
+
+```bash
+cp firmware/secrets.example.h firmware/secrets.h
+# e preencha os três valores
+```
+
+| Macro | Fase 1 (Wokwi) | Fase 2 (placa real) |
+|---|---|---|
+| `WIFI_SSID` | `Wokwi-GUEST` | sua rede |
+| `WIFI_PASSWORD` | vazio | sua senha |
+| `DEVICE_TOKEN` | token do dispositivo pareado na aplicação | idem |
+
+O **`DEVICE_TOKEN`** é gerado ao parear o dispositivo na aplicação e exibido uma
+única vez (SEC-02). Sem ele, `POST /api/data` responde **401** e nada é gravado —
+o monitor serial diz exatamente isso quando acontece.
+
+> No Wokwi, `secrets.h` precisa ser criado **dentro do projeto do simulador**
+> (aba de arquivos), já que o git não o traz junto. Ao gravar tela para o devlog,
+> **não deixe essa aba aberta.**
 
 ## Pinagem (Fase 1 — Wokwi)
 
@@ -46,6 +73,7 @@ O **núcleo** do ESP32 suporta Deep Sleep da ordem de microampères. A placa **D
 ## Como rodar (Wokwi)
 
 1. Abra a pasta `firmware/` no [Wokwi](https://wokwi.com).
-2. Mantenha `#define MODO_SIMULADOR true`.
-3. Inicie a simulação; o console exibe o ciclo de leitura e o estado de sono.
-4. Clique no botão do diagrama para emular o despertar por movimento.
+2. Crie o arquivo `secrets.h` no projeto (ver "Credenciais" acima).
+3. Mantenha `#define MODO_SIMULADOR true`.
+4. Inicie a simulação; o console exibe o ciclo de leitura e o estado de repouso.
+5. Clique no botão do diagrama para emular o despertar por movimento.

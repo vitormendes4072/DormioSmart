@@ -33,3 +33,35 @@ jobs:
         run: |
           cd web-app
           python -m pytest tests/ -v
+
+  frontend:
+    name: Frontend (vitest + tsc + vite)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Configurar Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          # Reaproveita o cache do npm entre execuções, indexado pelo lockfile.
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      # `npm ci` (e não `install`) para instalar exatamente o que está no
+      # lockfile: o CI precisa reproduzir o build, não resolver versões novas.
+      - name: Instalar dependências
+        working-directory: frontend
+        run: npm ci
+
+      # O script `build` roda `tsc --noEmit && vite build`, então esta etapa
+      # cobre erro de tipo E erro de bundle. Sem ela, um frontend quebrado
+      # passava despercebido — o pipeline só olhava para o Python.
+      - name: Testes (vitest)
+        working-directory: frontend
+        run: npm test
+
+      - name: Type-check e build
+        working-directory: frontend
+        run: npm run build
