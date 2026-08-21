@@ -1,15 +1,22 @@
 {
-    "version": 2,
-    "builds": [
-        {
-            "src": "web-app/app.py",
-            "use": "@vercel/python"
-        }
-    ],
-    "routes": [
-        {
-            "src": "/(.*)",
-            "dest": "web-app/app.py"
-        }
-    ]
+  "version": 2,
+  "builds": [
+    {
+      "src": "web-app/app.py",
+      "use": "@vercel/python"
+    },
+    {
+      "src": "frontend/package.json",
+      "use": "@vercel/static-build",
+      "config": { "distDir": "dist" }
+    }
+  ],
+  "routes": [
+    { "src": "/api/(.*)", "dest": "web-app/app.py" },
+    { "src": "/health", "dest": "web-app/app.py" },
+
+    { "handle": "filesystem" },
+
+    { "src": "/(.*)", "dest": "/index.html" }
+  ]
 }
