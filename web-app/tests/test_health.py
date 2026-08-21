@@ -13,12 +13,10 @@ from flask import Flask
 import database
 from routes import init_routes
 
-_TEMPLATES = os.path.join(os.path.dirname(__file__), "..", "templates")
-_STATIC = os.path.join(os.path.dirname(__file__), "..", "static")
 
 
 def _client():
-    app = Flask(__name__, template_folder=_TEMPLATES, static_folder=_STATIC)
+    app = Flask(__name__)
     init_routes(app)
     app.testing = True
     return app.test_client()

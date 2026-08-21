@@ -14,8 +14,6 @@ import dispositivos
 from device_auth import hash_token
 from routes import init_routes
 
-_TEMPLATES = os.path.join(os.path.dirname(__file__), "..", "templates")
-_STATIC = os.path.join(os.path.dirname(__file__), "..", "static")
 
 JWT = "jwt-da-ana"
 ID_ANA = "11111111-1111-1111-1111-111111111111"
@@ -30,7 +28,7 @@ DEVICE = {
 
 
 def _client():
-    app = Flask(__name__, template_folder=_TEMPLATES, static_folder=_STATIC)
+    app = Flask(__name__)
     init_routes(app)
     app.testing = True
     return app.test_client()

@@ -19,8 +19,6 @@ import database
 from device_auth import TOKEN_HEADER
 from routes import init_routes
 
-_TEMPLATES = os.path.join(os.path.dirname(__file__), "..", "templates")
-_STATIC = os.path.join(os.path.dirname(__file__), "..", "static")
 
 _LEITURA = {"ax": 0.10, "ay": 0.20, "az": 9.80, "gx": 0.0, "gy": 0.0, "gz": 0.0,
             "t": 32.0, "total": 9.80, "status": "Repouso"}
@@ -28,7 +26,7 @@ _AUTH = {TOKEN_HEADER: "token-de-teste"}
 
 
 def _client():
-    app = Flask(__name__, template_folder=_TEMPLATES, static_folder=_STATIC)
+    app = Flask(__name__)
     init_routes(app)
     app.testing = True
     return app.test_client()

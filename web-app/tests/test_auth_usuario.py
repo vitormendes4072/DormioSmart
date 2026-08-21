@@ -15,8 +15,6 @@ import database
 from auth import extrair_bearer
 from routes import init_routes
 
-_TEMPLATES = os.path.join(os.path.dirname(__file__), "..", "templates")
-_STATIC = os.path.join(os.path.dirname(__file__), "..", "static")
 
 JWT_ANA = "jwt-da-ana"
 JWT_BRUNO = "jwt-do-bruno"
@@ -32,7 +30,7 @@ LEITURA_DA_ANA = {
 
 
 def _client():
-    app = Flask(__name__, template_folder=_TEMPLATES, static_folder=_STATIC)
+    app = Flask(__name__)
     init_routes(app)
     app.testing = True
     return app.test_client()
