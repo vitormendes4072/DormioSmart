@@ -239,7 +239,27 @@ export function Landing() {
       </main>
 
       <footer className="border-t border-border">
-        <div className="mx-auto max-w-5xl px-4 sm:px-6 py-6 flex flex-wrap items-center justify-between gap-3">
+        <div className="mx-auto max-w-5xl px-4 sm:px-6 py-8 space-y-6">
+          {/* Assinatura da Dormio Labs.
+              A Labs é o laboratório; o Smart Dormio é o produto. Por isso a
+              marca da Labs aparece como assinatura no rodapé, e não no
+              cabeçalho — quem entra está usando o produto, não o laboratório.
+
+              A cor está fixa no SVG (#37a1ee) de propósito. Carregado via
+              <img>, `currentColor` não herda nada da página e resolveria para
+              preto. E cor de marca não deve mudar com o tema: é identidade,
+              não decoração. O arquivo tem um único `fill`, então recolorir
+              continua sendo uma troca de uma linha se um dia for inlinado. */}
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-muted-foreground">um projeto da</span>
+            <img
+              src="/dormio-labs.svg"
+              alt="Dormio Labs"
+              className="h-5 w-auto"
+            />
+          </div>
+
+          <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="text-xs text-muted-foreground">
             {NOME_PRODUTO} — registra indícios de movimento por acelerometria. Não realiza
             estadiamento de sono nem diagnóstico clínico.
@@ -252,6 +272,7 @@ export function Landing() {
           >
             Código aberto no GitHub
           </a>
+          </div>
         </div>
       </footer>
     </div>

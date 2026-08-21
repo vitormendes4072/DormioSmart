@@ -1,4 +1,4 @@
-# Contrato de dados — Dormio Smart
+# Contrato de dados — Smart Dormio
 
 **Versão:** 1.2.0 · **Itens:** DATA-01, DATA-02, SEC-02, SEC-03
 

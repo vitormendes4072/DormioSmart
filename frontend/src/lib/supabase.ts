@@ -36,7 +36,7 @@ export function obterSupabase(): SupabaseClient | null {
   if (problema) {
     motivoDaFalha = problema;
     // Erro, nao warning: configuracao ausente impede login por completo.
-    console.error(`[Dormio Smart] ${problema}`);
+    console.error(`[Smart Dormio] ${problema}`);
     return null;
   }
 
