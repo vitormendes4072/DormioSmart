@@ -125,9 +125,9 @@ export function Dashboard() {
           corDoIcone="text-blue-400"
         />
         <CardMetrica
-          rotulo="Sem movimento"
+          rotulo="Maior pausa"
           valor={formatarDuracao(m.maiorPeriodoSemMovimentoMs)}
-          detalhe="maior intervalo contínuo"
+          detalhe="sem eventos de movimento"
           icone={Moon}
           corDoIcone="text-indigo-400"
         />
@@ -170,7 +170,13 @@ export function Dashboard() {
                 tick={{ fill: "var(--muted-foreground)", fontSize: 11, fontFamily: "Outfit" }}
                 minTickGap={24}
               />
+              {/* `width` explícito: o padrão do recharts é 60px, que num
+                  gráfico de ~310px no celular consome um quinto da área útil.
+                  Menos marcações pelo mesmo motivo — o valor exato está no
+                  tooltip, o eixo só precisa dar a escala. */}
               <YAxis
+                width={32}
+                tickCount={4}
                 axisLine={false}
                 tickLine={false}
                 tick={{ fill: "var(--muted-foreground)", fontSize: 11, fontFamily: "Outfit" }}
