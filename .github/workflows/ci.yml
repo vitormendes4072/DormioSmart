@@ -4,8 +4,15 @@ on:
   push:
     branches:
       - develop
+      # Prefixos alinhados aos tipos de commit do projeto. `chore/**` foi
+      # acrescentado depois de uma branch desse tipo passar SEM verificacao
+      # nenhuma — o CI so cobria feature e bugfix.
       - 'feature/**'
       - 'bugfix/**'
+      - 'chore/**'
+      - 'docs/**'
+      - 'security/**'
+      - 'ci/**'
   pull_request:
     branches:
       - develop

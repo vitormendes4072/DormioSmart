@@ -49,7 +49,7 @@ o monitor serial diz exatamente isso quando acontece.
 
 O **GPIO 27** foi escolhido por pertencer ao domínio RTC (RTC_GPIO17), requisito para o despertar por EXT1 a partir do Deep Sleep, e por ser isolado dos pinos de *bootstrapping*.
 
-> **Botão e resistor são andaime de simulação** (Fase 1). No dispositivo físico (Fase 2), o despertar passa a vir da interrupção do próprio MPU6050 — ver `docs/HARDWARE.md`.
+> **Botão e resistor são andaime de simulação** (Fase 1). No dispositivo físico (Fase 2), o despertar passa a vir da interrupção do próprio MPU6050.
 
 ![Circuito](../img/circuito.png)
 
@@ -68,7 +68,7 @@ O Wokwi tem limitações: não emula o Deep Sleep nativo do ESP32 (o `esp_deep_s
 
 ## Baixo consumo (nota honesta)
 
-O **núcleo** do ESP32 suporta Deep Sleep da ordem de microampères. A placa **DevKit V1**, porém, mantém regulador de tensão e conversor USB-serial alimentados, elevando o consumo de repouso para a ordem de miliampères. O consumo real será **medido no protótipo** na Fase 2; a avaliação de uma placa de menor consumo faz parte dessa etapa (ver `docs/HARDWARE.md` e `docs/METODOLOGIA.md`).
+O **núcleo** do ESP32 suporta Deep Sleep da ordem de microampères. A placa **DevKit V1**, porém, mantém regulador de tensão e conversor USB-serial alimentados, elevando o consumo de repouso para a ordem de miliampères. O consumo real será **medido no protótipo** na Fase 2; a avaliação de uma placa de menor consumo faz parte dessa etapa.
 
 ## Como rodar (Wokwi)
 
