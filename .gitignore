@@ -7,6 +7,9 @@ secrets.h
 arduino_secrets.h
 CLAUDE.md
 ROADMAP.md
+HISTORICO.md
+DOCUMENTO-TCC.md
+ROTEIRO-APRESENTACAO.md
 .claude/
 docs/fontes/
 docs/devlog/
@@ -28,3 +31,10 @@ build/
 .idea/
 .DS_Store
 Thumbs.db
+
+# Material interno — planejamento, texto academico e figuras do TCC.
+# Nao serve a quem le o repositorio; serve aos autores. Nunca versionado.
+docs/METODOLOGIA.md
+docs/DATASET.md
+docs/HARDWARE.md
+img/MPU6050 Sleep Data Pipeline*
