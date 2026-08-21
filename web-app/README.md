@@ -1,4 +1,4 @@
-# API — Dormio Smart
+# API — Smart Dormio
 
 Serviço Flask que recebe as leituras do dispositivo, valida, persiste no Supabase e as
 devolve ao aplicativo — cada usuário vendo apenas as próprias.

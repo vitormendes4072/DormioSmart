@@ -1,5 +1,5 @@
 /**
- * Cliente da API do Dormio Smart.
+ * Cliente da API do Smart Dormio.
  *
  * Todo acesso a `/api/*` passa por aqui. Em desenvolvimento o Vite faz proxy
  * para o Flask local (ver vite.config.ts); em producao quem roteia e o

@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 # tem utilidade para a interface e é material sensível.
 CAMPOS = "id, nome, created_at, last_seen_at, revoked_at"
 
-NOME_PADRAO = "Dormio Smart"
+NOME_PADRAO = "Smart Dormio"
 NOME_MAXIMO = 60
 
 
