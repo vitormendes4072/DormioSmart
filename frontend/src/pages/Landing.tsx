@@ -245,7 +245,7 @@ export function Landing() {
               marca da Labs aparece como assinatura no rodapé, e não no
               cabeçalho — quem entra está usando o produto, não o laboratório.
 
-              A cor está fixa no SVG (#37a1ee) de propósito. Carregado via
+              A cor está fixa dentro do próprio SVG, de propósito. Carregado via
               <img>, `currentColor` não herda nada da página e resolveria para
               preto. E cor de marca não deve mudar com o tema: é identidade,
               não decoração. O arquivo tem um único `fill`, então recolorir
