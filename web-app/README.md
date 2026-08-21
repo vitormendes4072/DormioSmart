@@ -1,114 +1,115 @@
-# 🌙 Smart Dormio: Monitor de Sono IoT de Baixo Consumo
+# API — Dormio Smart
 
-![Status](https://img.shields.io/badge/Status-Validado-brightgreen)
-![Plataforma](https://img.shields.io/badge/Plataforma-ESP32-blue)
-![Linguagem](https://img.shields.io/badge/Linguagem-C%2B%2B-orange)
-![Simulador](https://img.shields.io/badge/Simulador-Wokwi-red)
+Serviço Flask que recebe as leituras do dispositivo, valida, persiste no Supabase e as
+devolve ao aplicativo — cada usuário vendo apenas as próprias.
 
-> **Projeto de Engenharia de Computação (TCC) - 2026**
-> Desenvolvimento de um sistema de monitoramento de sono focado em eficiência energética (Deep Sleep) e despertar por interrupção externa (Wake-on-Motion).
-
----
-
-## 📖 Sobre o Projeto
-
-O **Smart Dormio** é um dispositivo IoT projetado para monitorar a qualidade do sono detectando movimentos através de um acelerômetro **MPU6050**. O diferencial técnico deste projeto reside na arquitetura de software desenvolvida para operar em ambientes de simulação limitados (**Wokwi**) e, simultaneamente, em hardware real, sem necessidade de reescrever o código lógico.
-
-O sistema demonstra o uso avançado do modo **Deep Sleep** do ESP32, reduzindo o consumo de corrente para a ordem de microampères (µA) até que um evento físico (movimento) o desperte.
+> **Este serviço não serve páginas.** Ele responde apenas `/api/*` e `/health`. A interface
+> é o SPA React em [`../frontend/`](../frontend), entregue como arquivos estáticos. O
+> roteamento entre os dois está no `vercel.json` e documentado em
+> [`../docs/DEPLOY.md`](../docs/DEPLOY.md).
 
 ---
 
-## ⚙️ Arquitetura de Hardware
+## Dois caminhos, credenciais diferentes
 
-Para garantir a estabilidade do sistema e evitar despertares falsos causados por ruído eletromagnético (pinos flutuantes), o projeto utiliza uma topologia com **Resistor de Pull-Down Físico**.
+```
+ESP32 ──POST /api/data────────▶ Flask ──service_role──▶ Supabase
+        X-Device-Token                                      ▲
+                                                            │ RLS
+App ────GET /api/sleep-history─▶ Flask ──JWT do usuário─────┘
+        Authorization: Bearer
+```
 
-### Diagrama de Conexões (Pinout)
+A separação é deliberada:
 
-A escolha do **GPIO 27** é estratégica, pois este pino pertence ao domínio RTC (RTC_GPIO17) e é isolado de funções de *bootstrapping* (como o GPIO 13), garantindo um despertar limpo.
-
-| Componente | Pino ESP32 | Função Técnica |
-| :--- | :--- | :--- |
-| **MPU6050 VCC** | 3V3 | Alimentação |
-| **MPU6050 GND** | GND | Referência Comum |
-| **MPU6050 SDA** | GPIO 21 | Barramento I2C (Dados) |
-| **MPU6050 SCL** | GPIO 22 | Barramento I2C (Clock) |
-| **Botão (Lado A)** | 3V3 | Sinal de Interrupção (HIGH) |
-| **Botão (Lado B)** | GPIO 27 | Pino de Despertar (Wake-up Source) |
-| **Resistor 10kΩ** | GPIO 27 ↔ GND | **Pull-Down Físico:** Garante LOW estável durante o sono |
-
-### Esquemático Visual
-![Diagrama do Circuito](img/circuito.png)
+- **Ingestão** não tem sessão de usuário, então o RLS não se aplica. O backend usa a
+  `service_role` e autentica o **dispositivo** por token.
+- **Leitura** tem sessão. O backend repassa o JWT do usuário ao Supabase, e quem filtra é o
+  **RLS no banco** — não um `if` em Python que alguém pode esquecer numa consulta futura.
 
 ---
 
-## ⚠️ Desafio Técnico e Solução de Engenharia
+## Endpoints
 
-Durante o desenvolvimento no simulador Wokwi, identificou-se uma limitação crítica no kernel de emulação.
+| Método | Rota | Autenticação | Resposta |
+|---|---|---|---|
+| `POST` | `/api/data` | `X-Device-Token` | `201` · `400` payload inválido · `401` token · `503` não persistiu |
+| `GET` | `/api/sleep-history` | `Bearer <JWT>` | `200` com as leituras do usuário · `401` |
+| `GET` | `/api/devices` | `Bearer <JWT>` | `200` · `503` |
+| `POST` | `/api/devices` | `Bearer <JWT>` | `201` com o token **exibido uma única vez** |
+| `PATCH` | `/api/devices/<id>` | `Bearer <JWT>` | `200` · `404` |
+| `POST` | `/api/devices/<id>/revogar` | `Bearer <JWT>` | `200` · `404` |
+| `GET` | `/health` | nenhuma | `200` saudável · `503` banco indisponível |
 
-### O Problema: Crash no Deep Sleep
-Ao executar o comando `esp_deep_sleep_start()` com a biblioteca I2C ativa, o simulador entra em colapso e reinicia o microcontrolador com o código de erro `rst:0x1 (POWERON_RESET)` em vez de entrar em suspensão. Além disso, o sensor MPU6050 virtual não simula o pino de interrupção (INT).
-
-### A Solução: Arquitetura Híbrida (Mocking)
-Foi desenvolvida uma camada de abstração de hardware controlada via software. Uma flag de pré-processamento define como o ESP32 deve se comportar ao "dormir":
-
-1.  **Modo Simulação (`true`):** Implementa um *Mock* (simulação) do sono. O código entra em um loop infinito (travando o processamento) e monitora o botão manualmente. Ao detectar o clique, executa um *Soft Reset* (`ESP.restart()`), emulando visualmente o despertar.
-2.  **Modo Produção (`false`):** Compila as instruções reais de baixo nível. Utiliza `esp_deep_sleep_start()` e configura o despertar via máscara de bits **EXT1**, ideal para o hardware físico.
-
----
-
-## 🚀 Como Utilizar (Guia de Replicação)
-
-### 1. Pré-requisitos
-Instale as seguintes bibliotecas no seu ambiente (Arduino IDE / PlatformIO):
-* `Adafruit MPU6050`
-* `Adafruit Unified Sensor`
-* `Adafruit BusIO`
-
-### 2. Configuração do Código
-No arquivo principal (`sketch.ino` ou `main.cpp`), localize a linha de configuração mestra no topo:
-
-```cpp
-// ALTERNE AQUI CONFORME O AMBIENTE:
-// true  = Para validar lógica no Wokwi (Evita Crash)
-// false = Para gravar na placa ESP32 real (Economia de Bateria)
-#define MODO_SIMULADOR true
-````
-
-## 3. Executando a Simulação (Wokwi)
-
-Mantenha `#define MODO_SIMULADOR true`.
-
-Inicie a simulação.
-
-O console exibirá `Zzz... Entrando em MODO SLEEP` e o log irá parar.
-
-Clique no botão físico no diagrama.
-
-O sistema reiniciará exibindo `>>> WOKWI: BOTAO DETECTADO! <<<`.
+O contrato do dado que trafega está em [`../docs/DATA-CONTRACT.md`](../docs/DATA-CONTRACT.md).
 
 ---
 
-## 4. Gravando no Hardware Real
+## Rodando localmente
 
-Altere para `#define MODO_SIMULADOR false`.
+```bash
+cd web-app
+pip install -r requirements.txt
+cp .env.example .env      # e preencha os três valores
+python app.py             # http://127.0.0.1:5000
+```
 
-Faça o upload para a placa.
+Sem o `.env` o serviço sobe, mas não conecta: `/health` responde **503** dizendo
+`"credenciais ausentes"`, e a leitura devolve lista vazia em vez de quebrar.
 
-O sistema entrará em Deep Sleep verdadeiro.
+Para gerar leituras sem hardware, com o servidor no ar:
 
-Ao pressionar o botão, o ESP32 acordará mantendo o contexto RTC e exibirá `>>> HARDWARE REAL: ACORDEI PELO BOTAO! <<<`.
+```bash
+python fake_sensor.py
+```
+
+### Variáveis de ambiente
+
+| | |
+|---|---|
+| `SUPABASE_URL` | URL do projeto |
+| `SUPABASE_SERVICE_ROLE_KEY` | chave secreta — ignora RLS, **só no servidor** |
+| `SUPABASE_ANON_KEY` | chave publicável — valida o JWT e monta o cliente do usuário |
 
 ---
 
-## 📂 Estrutura do Repositório
+## Banco de dados
+
+As migrações ficam em [`migrations/`](migrations) e são aplicadas manualmente no SQL Editor
+do Supabase, em ordem numérica. O `README` da pasta explica a ordem e o que conferir depois
+de cada uma.
+
+---
+
+## Testes
+
+```bash
+python -m pytest tests/ -v
+```
+
+**O Supabase é sempre mockado** — nenhum teste depende de credencial ou de rede, e a suíte
+roda no CI a cada push.
+
+Vale saber de uma limitação que já custou um bug em produção: os testes mockam
+`get_client()`, então a linha que cria o cliente nunca executa neles. Um `print` com emoji
+ali dentro derrubava a API inteira em console Windows, com 70 testes passando. Por isso há
+testes que leem o próprio código-fonte (`test_resiliencia.py`) e falham se um `print`
+reaparecer ou se uma mensagem de log ganhar caractere fora de ASCII.
+
+---
+
+## Estrutura
 
 ```plaintext
-/
-├── src/
-│   └── sketch.ino       # Firmware principal (Lógica Híbrida)
-├── img/
-│   └── circuito.png     # Esquemático de conexões
-├── diagram.json         # Arquivo de mapeamento do Wokwi
-├── README.md            # Documentação do projeto
-└── LICENSE              # Licença de uso
-
+web-app/
+├── app.py               # entrypoint; expõe `app` para o Vercel importar
+├── routes.py            # rotas da API
+├── auth.py              # require_auth — valida o JWT do usuário
+├── device_auth.py       # token de dispositivo: geração e hash SHA-256
+├── dispositivos.py      # operações de devices sob o RLS do usuário
+├── validacao.py         # validação da leitura antes de persistir
+├── database.py          # camada Supabase
+├── fake_sensor.py       # simulador de leituras
+├── migrations/          # SQL versionado
+└── tests/               # pytest
+```

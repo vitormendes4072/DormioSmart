@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from flask import g, jsonify, render_template, request
+from flask import g, jsonify, request
 
 import dispositivos
 from auth import require_auth
@@ -13,14 +13,15 @@ from validacao import validar_leitura
 CONTRATO_DE_DADOS = "1.2.0"
 
 def init_routes(app):
-    @app.route('/')
-    def index():
-        return render_template('index.html')
+    """Rotas da API.
 
-    @app.route('/dashboard')
-    def dashboard():
-        return render_template('dashboard.html')
-
+    O Flask serve APENAS `/api/*` e `/health` (UI-09). As páginas são do SPA
+    React, entregues como arquivos estáticos — ver `vercel.json` e
+    `docs/DEPLOY.md`. As antigas rotas Jinja `/` e `/dashboard` foram
+    removidas: desde o UI-08 elas eram inalcançáveis em produção, mas ainda
+    respondiam em execução local, mostrando uma interface obsoleta que não
+    existe mais no produto.
+    """
     @app.route('/health')
     def health():
         """Health check (WEB-04).

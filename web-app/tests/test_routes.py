@@ -1,4 +1,4 @@
-"""Testes das rotas da web-app: leitura (FIX-01), escrita (FIX-02) e páginas (DASH-01).
+"""Testes das rotas da API: leitura (FIX-01) e escrita (FIX-02).
 
 Objetivo: garantir que /api/sleep-history nunca devolva 500 (degrada para
 lista vazia), que /api/data não minta sucesso — respondendo 503 quando nada
@@ -14,9 +14,6 @@ import database
 from device_auth import TOKEN_HEADER
 from routes import init_routes
 
-# Caminho para a pasta de templates (web-app/templates/), relativo a este arquivo
-_TEMPLATES = os.path.join(os.path.dirname(__file__), "..", "templates")
-_STATIC    = os.path.join(os.path.dirname(__file__), "..", "static")
 
 # SEC-02: POST /api/data passou a exigir X-Device-Token. Os testes abaixo
 # verificam persistência (FIX-02), não autenticação — então autenticam com um
@@ -39,7 +36,7 @@ _SESSAO = {"Authorization": f"Bearer {_JWT}"}
 
 
 def _client():
-    app = Flask(__name__, template_folder=_TEMPLATES, static_folder=_STATIC)
+    app = Flask(__name__)
     init_routes(app)
     app.testing = True
     return app.test_client()
@@ -110,15 +107,4 @@ def test_receive_data_json_invalido_retorna_400():
     assert resp.status_code == 400
 
 
-def test_index_retorna_200():
-    # Landing Page (/) deve sempre responder 200 (DASH-01).
-    resp = _client().get("/")
-    assert resp.status_code == 200
-    assert b"SmartDormio" in resp.data
 
-
-def test_dashboard_retorna_200():
-    # Dashboard (/dashboard) deve sempre responder 200 (DASH-01).
-    resp = _client().get("/dashboard")
-    assert resp.status_code == 200
-    assert b"SmartDormio" in resp.data
