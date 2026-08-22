@@ -13,4 +13,4 @@ export const BOTAO_PRIMARIO_CLS =
 
 /** Nome do produto. Existe como constante para não voltar a espalhar string
  *  de marca pelo código — o protótipo do Figma dizia "Dormix" em 3 lugares. */
-export const NOME_PRODUTO = "Dormio Smart";
+export const NOME_PRODUTO = "Smart Dormio";

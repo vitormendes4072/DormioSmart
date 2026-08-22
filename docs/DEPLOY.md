@@ -1,4 +1,4 @@
-# Deploy — Dormio Smart
+# Deploy — Smart Dormio
 
 Produção: **https://dormio-smart.vercel.app** · Deploy automático a partir de `main`.
 

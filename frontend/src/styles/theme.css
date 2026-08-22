@@ -22,12 +22,20 @@
  *
  * Todos os pares foram verificados; os numeros estao ao lado de cada token.
  *
- * ── O azul da marca e ESTIMADO ──────────────────────────────────────────
+ * ── A origem do azul ────────────────────────────────────────────────────
  *
- * `--brand` foi lido por aproximacao das imagens do perfil, nao do arquivo
- * original. Quando o SVG da logo chegar, o valor exato sai de dentro dele e
- * substitui este — e so este token muda, porque `--primary` e derivado por
- * escurecimento. Nenhum componente conhece cor crua.
+ * `--brand` vem do arquivo da logo (`public/dormio-labs.svg`), que e a fonte
+ * da verdade da identidade. Se a logo mudar de cor, este token muda junto —
+ * nunca o contrario.
+ *
+ * Historico: a logo nasceu como imagem gerada, sem vetor. Passou por tracado
+ * automatico (dezenas de azuis de antialiasing, dominante #37a1ee) e depois
+ * por retipografia em Fredoka no Figma, que produziu o vetor atual. A
+ * diferenca entre as duas amostras era de 2 pontos por canal — imperceptivel,
+ * mas dois valores sao um a mais do que deve existir.
+ *
+ * `--primary` continua derivado por escurecimento, e nenhum componente conhece
+ * cor crua.
  */
 
 @custom-variant dark (&:is([data-theme="dark"] *));
@@ -40,8 +48,9 @@
   --font-weight-medium: 500;
   --radius: 0.875rem;
 
-  /* Identidade — apenas logo e ornamento (ver nota acima) */
-  --brand: #38a8f0;
+  /* Identidade — apenas logo e ornamento (ver nota acima).
+     Valor extraído do arquivo da logo, não estimado (BRAND-02). */
+  --brand: #35a2ef;
 
   --background: #f4f7fb;
   --foreground: #0c1522;           /* 17,05:1 sobre o fundo */
@@ -76,7 +85,7 @@
   --chart-movimento: #b45309;      /* 5,02:1 sobre card */
   --chart-repouso: #0b6db5;        /* 5,43:1 sobre card */
   --chart-1: #0b6db5;
-  --chart-2: #38a8f0;
+  --chart-2: #35a2ef;
   --chart-3: #b45309;
   --chart-4: #047857;
   --chart-5: #7c3aed;
@@ -92,7 +101,7 @@
 }
 
 :root[data-theme="dark"] {
-  --brand: #38a8f0;
+  --brand: #35a2ef;
 
   --background: #070d18;
   --foreground: #e6edf7;           /* 16,50:1 sobre o fundo */
@@ -124,7 +133,7 @@
   --chart-movimento: #f59e0b;      /* 8,36:1 sobre card */
   --chart-repouso: #4fb3f5;        /* 7,78:1 sobre card */
   --chart-1: #4fb3f5;
-  --chart-2: #38a8f0;
+  --chart-2: #35a2ef;
   --chart-3: #f59e0b;
   --chart-4: #34d399;
   --chart-5: #a78bfa;
