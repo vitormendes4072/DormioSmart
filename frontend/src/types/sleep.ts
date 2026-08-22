@@ -10,6 +10,20 @@
 export const GRAVIDADE = 9.81;
 
 /**
+ * Limiar do criterio de movimento do DISPOSITIVO, em m/s2 (DATA-02).
+ *
+ * ATENCAO: esta constante NAO classifica nada. Ela existe para DOCUMENTAR e
+ * ILUSTRAR o criterio que roda no firmware — desenhar a faixa de limiar no
+ * grafico da landing, gerar dado de demonstracao coerente. Quem decide se uma
+ * leitura e movimento continua sendo o dispositivo, e a leitura chega ao app
+ * ja rotulada (ver `ehMovimento` abaixo).
+ *
+ * Usar este valor para reclassificar leitura recriaria a segunda regua que o
+ * contrato v1.1.0 eliminou.
+ */
+export const LIMIAR_DE_MOVIMENTO = 1.2;
+
+/**
  * Rotulos que significam movimento.
  *
  * "Movimento" e o rotulo do contrato v1.1.0 em diante. "Movimento Detectado!"

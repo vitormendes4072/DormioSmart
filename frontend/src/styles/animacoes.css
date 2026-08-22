@@ -1,0 +1,131 @@
+/**
+ * Movimento da interface (UI-15).
+ *
+ * ── TRES REGRAS ─────────────────────────────────────────────────────────
+ *
+ * 1. Nada aqui e requisito para ler a pagina. O estado padrao de todo
+ *    elemento e "visivel". A animacao e um acrescimo; a ausencia dela nunca
+ *    esconde conteudo. Ver a nota em `lib/animacao.ts`.
+ *
+ * 2. `prefers-reduced-motion` desliga tudo. Movimento na tela provoca enjoo e
+ *    enxaqueca em quem tem disturbio vestibular — nao e questao de gosto. O
+ *    bloco no fim do arquivo anula cada animacao declarada acima, e um teste
+ *    trava a correspondencia entre as duas listas.
+ *
+ * 3. Nenhuma animacao roda JavaScript. Tudo e `transform` e `opacity`, que o
+ *    navegador compoe na GPU sem recalcular layout. O tracado do
+ *    acelerometro, que anima continuamente, custa zero de CPU depois da
+ *    montagem: e um unico `translateX` em loop.
+ *
+ * As cores vem sempre dos tokens de `theme.css` — nenhum valor cru aqui.
+ */
+
+/* ── Revelacao no scroll ────────────────────────────────────────────── */
+
+/* Repare que NAO existe regra escondendo nada por conta propria. Quem
+   esconde e o hook, adicionando `.revelar-armado` imediatamente antes de
+   observar o elemento. Sem JS, sem IntersectionObserver ou com preferencia
+   por menos movimento, a classe nunca chega e a pagina fica legivel. */
+.revelar-armado {
+  opacity: 0;
+  transform: translateY(14px);
+  transition:
+    opacity 520ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 520ms cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: opacity, transform;
+}
+
+.revelar-visivel {
+  opacity: 1;
+  transform: none;
+}
+
+/* ── Tracado do acelerometro (hero) ─────────────────────────────────── */
+
+/* O caminho contem dois periodos do sinal e a camada tem o dobro da largura
+   do recorte. Deslocar exatamente metade dela devolve um quadro identico ao
+   inicial — por isso o loop nao tem emenda. A garantia do lado do desenho
+   esta em `lib/sinal.ts` (`caminhoEmLoop`). */
+@keyframes dormio-rolar-tracado {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.tracado-rolagem {
+  animation: dormio-rolar-tracado 34s linear infinite;
+  will-change: transform;
+}
+
+/* ── Varredura da linha de fluxo ────────────────────────────────────── */
+
+/* Um brilho percorre o texto no sentido do dado: sensor para painel. O
+   gradiente tem a cor de base nas duas pontas, entao o instante do reinicio
+   e indistinguivel do inicio e o loop nao pisca. */
+@keyframes dormio-varrer-fluxo {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: 0% 0;
+  }
+}
+
+@supports (background-clip: text) or (-webkit-background-clip: text) {
+  .fluxo-animado {
+    background-image: linear-gradient(
+      90deg,
+      var(--muted-foreground) 0%,
+      var(--muted-foreground) 42%,
+      var(--primary) 50%,
+      var(--muted-foreground) 58%,
+      var(--muted-foreground) 100%
+    );
+    background-size: 300% 100%;
+    background-repeat: no-repeat;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    animation: dormio-varrer-fluxo 6s linear infinite;
+  }
+}
+
+/* ── Rolagem suave ──────────────────────────────────────────────────── */
+
+/* Declarada apenas na ausencia de preferencia por menos movimento, e nao
+   desligada depois: assim o padrao do navegador nunca chega a ser trocado
+   para quem pediu reducao. */
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+/* ── Reducao de movimento ───────────────────────────────────────────── */
+
+/* Anula TODA animacao declarada acima. Este bloco tem que vir por ultimo:
+   e a posicao no arquivo que o faz vencer a cascata, ja que a
+   especificidade e a mesma. */
+@media (prefers-reduced-motion: reduce) {
+  .revelar-armado,
+  .revelar-visivel {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+
+  .tracado-rolagem {
+    animation: none;
+  }
+
+  .fluxo-animado {
+    animation: none;
+    background-image: none;
+    -webkit-background-clip: border-box;
+    background-clip: border-box;
+    color: var(--muted-foreground);
+  }
+}

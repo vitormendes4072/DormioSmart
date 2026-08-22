@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
 
+import { useRevelacao } from "../hooks/useRevelacao";
+
 /**
  * Elementos de blueprint — a assinatura visual da Dormio Labs (BRAND-01).
  *
@@ -9,11 +11,18 @@ import type { ReactNode } from "react";
  *
  * Vivem aqui, e não espalhados pelas telas, para que a linguagem seja
  * consistente e trocável num lugar só.
+ *
+ * O movimento (UI-15) segue a mesma ideia: os cantos crescem no hover, como
+ * uma cota que se abre quando o desenho recebe atenção. Nada gratuito — o
+ * gesto reforça que a moldura é um elemento de desenho, não um cartão comum.
  */
 
 /** Marcações de canto, como as de um desenho técnico. */
 function Cantos() {
-  const base = "absolute w-2.5 h-2.5 border-primary/40 pointer-events-none";
+  const base =
+    "absolute w-2.5 h-2.5 border-primary/40 pointer-events-none " +
+    "transition-all duration-300 ease-out " +
+    "group-hover:w-4 group-hover:h-4 group-hover:border-primary/80";
   return (
     <>
       <span className={`${base} top-0 left-0 border-t border-l`} />
@@ -24,16 +33,29 @@ function Cantos() {
   );
 }
 
-/** Moldura de linha fina com marcações nos cantos. */
+/**
+ * Moldura de linha fina com marcações nos cantos.
+ *
+ * `atraso` liga a revelação no scroll e escalona a entrada em relação às
+ * molduras irmãs. Ausente, a moldura não anima — o componente também é usado
+ * fora da landing, onde entrada animada não faz sentido.
+ */
 export function Moldura({
   children,
   className = "",
+  atraso,
 }: {
   children: ReactNode;
   className?: string;
+  atraso?: number;
 }) {
+  const ref = useRevelacao<HTMLDivElement>(atraso ?? 0, atraso !== undefined);
+
   return (
-    <div className={`relative border border-border/70 p-5 sm:p-6 ${className}`}>
+    <div
+      ref={ref}
+      className={`group relative border border-border/70 p-5 sm:p-6 transition-colors duration-300 hover:border-primary/40 ${className}`}
+    >
       <Cantos />
       {children}
     </div>
