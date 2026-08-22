@@ -57,6 +57,23 @@ valida o JWT e monta o cliente que carrega o token do usuário. Sem ela,
 
 ## Verificação após o deploy
 
+```bash
+./scripts/verificar-deploy.sh            # verifica o HEAD de main
+./scripts/verificar-deploy.sh <sha>      # um commit especifico
+./scripts/verificar-deploy.sh <sha> <url-do-preview>
+```
+
+O script **espera o deploy daquele commit ficar pronto** antes de testar, e só
+então roda as verificações. Isso não é conveniência: testar logo após o `push`
+mede o deploy **anterior**, porque a Vercel leva algumas dezenas de segundos
+para construir e trocar.
+
+> Isso já produziu um diagnóstico falso: `/dormio-labs.svg` respondeu 404 e o
+> `<title>` veio com o nome antigo. Os dois "defeitos" eram a versão velha ainda
+> respondendo. A correção não é esperar um pouco — é **esperar o commit certo**.
+
+### Verificação manual, se preferir
+
 Rode contra o preview **antes** de promover para `main`:
 
 ```bash
