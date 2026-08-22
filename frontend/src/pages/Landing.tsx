@@ -1,4 +1,4 @@
-import { ArrowRight, BarChart3, BedDouble, Check, Github, Radio, X } from "lucide-react";
+import { ArrowRight, BarChart3, BedDouble, Check, Github, Instagram, Radio, X } from "lucide-react";
 import { Link } from "react-router";
 
 import { LinhaDeCota, Moldura, RotuloDeSecao } from "../components/Blueprint";
@@ -20,6 +20,7 @@ import { NOME_PRODUTO } from "../lib/ui";
  */
 
 const REPOSITORIO = "https://github.com/vitormendes4072/DormioSmart";
+const INSTAGRAM = "https://www.instagram.com/dormio.labs/";
 
 const REGISTRA = [
   "Eventos de movimento durante o repouso",
@@ -81,12 +82,25 @@ export function Landing() {
       <header className="border-b border-border">
         <div className="mx-auto max-w-5xl px-4 sm:px-6 py-4 flex items-center justify-between gap-4">
           <MarcaDoProduto className="h-7 sm:h-8" />
-          <Link
-            to={sessao ? "/dashboard" : "/login"}
-            className="flex-shrink-0 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition"
-          >
-            {sessao ? "Ir para o painel" : "Entrar"}
-          </Link>
+          {/* Quem já tem sessão é usuário: o painel merece destaque.
+              Visitante sem conta não tem o que fazer lá dentro — nenhum
+              dispositivo existe para parear — então o login fica discreto,
+              onde quem procura encontra, sem ser a chamada da página. */}
+          {sessao ? (
+            <Link
+              to="/dashboard"
+              className="flex-shrink-0 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition"
+            >
+              Ir para o painel
+            </Link>
+          ) : (
+            <Link
+              to="/login"
+              className="flex-shrink-0 text-sm font-medium text-muted-foreground hover:text-foreground transition"
+            >
+              Entrar
+            </Link>
+          )}
         </div>
       </header>
 
@@ -105,14 +119,31 @@ export function Landing() {
             registra eventos de movimento durante o repouso — sem nada em contato com o corpo.
           </p>
 
+          {/* A chamada principal muda conforme quem está olhando.
+              Sem sessão, oferecer "entrar no painel" seria prometer um painel
+              que nasce vazio: não existe dispositivo para parear além do
+              protótipo do autor. O que essa pessoa pode de fato fazer é
+              acompanhar o desenvolvimento. */}
           <div className="mt-8 flex flex-wrap gap-3">
-            <Link
-              to={sessao ? "/dashboard" : "/login"}
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition"
-            >
-              {sessao ? "Abrir o painel" : "Entrar no painel"}
-              <ArrowRight className="w-4 h-4" />
-            </Link>
+            {sessao ? (
+              <Link
+                to="/dashboard"
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition"
+              >
+                Abrir o painel
+                <ArrowRight className="w-4 h-4" />
+              </Link>
+            ) : (
+              <a
+                href={INSTAGRAM}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition"
+              >
+                <Instagram className="w-4 h-4" />
+                Acompanhar o desenvolvimento
+              </a>
+            )}
             <a
               href={REPOSITORIO}
               target="_blank"
@@ -248,11 +279,18 @@ export function Landing() {
               continua sendo uma troca de uma linha se um dia for inlinado. */}
           <div className="flex items-center gap-3">
             <span className="text-xs text-muted-foreground">um projeto da</span>
-            <img
-              src="/dormio-labs.svg"
-              alt="Dormio Labs"
-              className="h-5 w-auto"
-            />
+            {/* A marca da Labs leva ao perfil dela — é onde o trabalho é
+                documentado publicamente. Clicar no logo de uma organização e
+                chegar até ela é o comportamento esperado. */}
+            <a
+              href={INSTAGRAM}
+              target="_blank"
+              rel="noreferrer"
+              aria-label="Dormio Labs no Instagram"
+              className="transition hover:opacity-70"
+            >
+              <img src="/dormio-labs.svg" alt="Dormio Labs" className="h-5 w-auto" />
+            </a>
           </div>
 
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -260,14 +298,26 @@ export function Landing() {
             {NOME_PRODUTO} — registra indícios de movimento por acelerometria. Não realiza
             estadiamento de sono nem diagnóstico clínico.
           </p>
-          <a
-            href={REPOSITORIO}
-            target="_blank"
-            rel="noreferrer"
-            className="text-xs text-primary hover:text-accent transition font-semibold"
-          >
-            Código aberto no GitHub
-          </a>
+          <div className="flex items-center gap-4">
+            <a
+              href={INSTAGRAM}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1.5 text-xs text-primary hover:text-accent transition font-semibold"
+            >
+              <Instagram className="w-3.5 h-3.5" />
+              @dormio.labs
+            </a>
+            <a
+              href={REPOSITORIO}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1.5 text-xs text-primary hover:text-accent transition font-semibold"
+            >
+              <Github className="w-3.5 h-3.5" />
+              Código aberto
+            </a>
+          </div>
           </div>
         </div>
       </footer>
