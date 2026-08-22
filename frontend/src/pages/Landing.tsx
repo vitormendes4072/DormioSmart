@@ -1,7 +1,8 @@
-import { ArrowRight, Check, Cpu, Github, Moon, Radio, X } from "lucide-react";
+import { ArrowRight, BarChart3, BedDouble, Check, Github, Radio, X } from "lucide-react";
 import { Link } from "react-router";
 
 import { LinhaDeCota, Moldura, RotuloDeSecao } from "../components/Blueprint";
+import { MarcaDoProduto } from "../components/MarcaDoProduto";
 import { useAuth } from "../contexts/AuthContext";
 import { NOME_PRODUTO } from "../lib/ui";
 
@@ -36,7 +37,7 @@ const NAO_REGISTRA = [
 
 const ETAPAS = [
   {
-    icone: Moon,
+    icone: BedDouble,
     titulo: "Sensor no travesseiro",
     texto:
       "ESP32 e MPU6050 embarcados no travesseiro captam aceleração sem contato com o corpo. O microcontrolador dorme em Deep Sleep e acorda ao detectar movimento.",
@@ -48,7 +49,7 @@ const ETAPAS = [
       "A cada evento, o dispositivo transmite um pacote JSON por HTTPS, autenticado com um token próprio. O backend valida a leitura antes de persistir.",
   },
   {
-    icone: Cpu,
+    icone: BarChart3,
     titulo: "Visualização",
     texto:
       "O painel mostra a intensidade do movimento ao longo da captação, a contagem de eventos e o maior intervalo contínuo em repouso.",
@@ -79,12 +80,7 @@ export function Landing() {
     <div className="min-h-screen bg-background">
       <header className="border-b border-border">
         <div className="mx-auto max-w-5xl px-4 sm:px-6 py-4 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-8 h-8 rounded-xl bg-primary/15 flex items-center justify-center flex-shrink-0">
-              <Moon className="w-4 h-4 text-primary" />
-            </div>
-            <span className="font-semibold text-foreground truncate">{NOME_PRODUTO}</span>
-          </div>
+          <MarcaDoProduto className="h-7 sm:h-8" />
           <Link
             to={sessao ? "/dashboard" : "/login"}
             className="flex-shrink-0 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition"
