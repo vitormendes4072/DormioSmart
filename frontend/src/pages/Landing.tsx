@@ -1,4 +1,4 @@
-import { ArrowRight, BarChart3, BedDouble, Check, Github, Radio, X } from "lucide-react";
+import { ArrowRight, BarChart3, BedDouble, Check, Github, Instagram, Radio, X } from "lucide-react";
 import { Link } from "react-router";
 
 import { LinhaDeCota, Moldura, RotuloDeSecao } from "../components/Blueprint";
@@ -20,6 +20,7 @@ import { NOME_PRODUTO } from "../lib/ui";
  */
 
 const REPOSITORIO = "https://github.com/vitormendes4072/DormioSmart";
+const INSTAGRAM = "https://www.instagram.com/dormio.labs/";
 
 const REGISTRA = [
   "Eventos de movimento durante o repouso",
@@ -248,11 +249,18 @@ export function Landing() {
               continua sendo uma troca de uma linha se um dia for inlinado. */}
           <div className="flex items-center gap-3">
             <span className="text-xs text-muted-foreground">um projeto da</span>
-            <img
-              src="/dormio-labs.svg"
-              alt="Dormio Labs"
-              className="h-5 w-auto"
-            />
+            {/* A marca da Labs leva ao perfil dela — é onde o trabalho é
+                documentado publicamente. Clicar no logo de uma organização e
+                chegar até ela é o comportamento esperado. */}
+            <a
+              href={INSTAGRAM}
+              target="_blank"
+              rel="noreferrer"
+              aria-label="Dormio Labs no Instagram"
+              className="transition hover:opacity-70"
+            >
+              <img src="/dormio-labs.svg" alt="Dormio Labs" className="h-5 w-auto" />
+            </a>
           </div>
 
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -260,14 +268,26 @@ export function Landing() {
             {NOME_PRODUTO} — registra indícios de movimento por acelerometria. Não realiza
             estadiamento de sono nem diagnóstico clínico.
           </p>
-          <a
-            href={REPOSITORIO}
-            target="_blank"
-            rel="noreferrer"
-            className="text-xs text-primary hover:text-accent transition font-semibold"
-          >
-            Código aberto no GitHub
-          </a>
+          <div className="flex items-center gap-4">
+            <a
+              href={INSTAGRAM}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1.5 text-xs text-primary hover:text-accent transition font-semibold"
+            >
+              <Instagram className="w-3.5 h-3.5" />
+              @dormio.labs
+            </a>
+            <a
+              href={REPOSITORIO}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1.5 text-xs text-primary hover:text-accent transition font-semibold"
+            >
+              <Github className="w-3.5 h-3.5" />
+              Código aberto
+            </a>
+          </div>
           </div>
         </div>
       </footer>
