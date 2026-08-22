@@ -1,4 +1,4 @@
-import { Activity, Clock, Moon, Waves } from "lucide-react";
+import { Activity, Clock, Pause, Waves } from "lucide-react";
 import {
   Bar,
   BarChart,
@@ -128,7 +128,7 @@ export function Dashboard() {
           rotulo="Maior pausa"
           valor={formatarDuracao(m.maiorPeriodoSemMovimentoMs)}
           detalhe="sem eventos de movimento"
-          icone={Moon}
+          icone={Pause}
           corDoIcone="text-indigo-400"
         />
         <CardMetrica

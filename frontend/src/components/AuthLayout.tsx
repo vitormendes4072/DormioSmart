@@ -1,7 +1,6 @@
-import { Moon } from "lucide-react";
 import type { ReactNode } from "react";
 
-import { NOME_PRODUTO } from "../lib/ui";
+import { MarcaDoProduto } from "./MarcaDoProduto";
 
 /** Casca compartilhada de login e cadastro — as duas telas do protótipo
  *  repetiam o mesmo cabeçalho e os mesmos borrões de fundo. */
@@ -19,13 +18,8 @@ export function AuthLayout({
 
       <div className="relative w-full max-w-sm">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-primary/20 border border-primary/20 mb-4">
-            <Moon className="w-7 h-7 text-primary" />
-          </div>
-          <h1 className="text-2xl font-semibold text-foreground tracking-tight">
-            {NOME_PRODUTO}
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">{subtitulo}</p>
+          <MarcaDoProduto className="h-9 mx-auto mb-3" />
+          <p className="text-sm text-muted-foreground">{subtitulo}</p>
         </div>
 
         <div className="bg-card border border-border rounded-2xl p-6 sm:p-7 space-y-5">

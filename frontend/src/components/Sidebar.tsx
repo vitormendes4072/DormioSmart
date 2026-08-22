@@ -1,10 +1,10 @@
-import { LogOut, Moon, User } from "lucide-react";
+import { LogOut, User } from "lucide-react";
 import { NavLink, useNavigate } from "react-router";
 
 import { useAuth } from "../contexts/AuthContext";
 
-import { NOME_PRODUTO } from "../lib/ui";
 import { ITENS_NAV } from "./nav";
+import { MarcaDoProduto } from "./MarcaDoProduto";
 
 /** Navegação de desktop. Em telas menores que `md` dá lugar à MobileNav —
  *  uma barra lateral de 224px fixa não cabe num celular. */
@@ -18,14 +18,9 @@ export function Sidebar() {
   return (
     <aside className="hidden md:flex w-56 flex-shrink-0 bg-card border-r border-border flex-col h-screen sticky top-0">
       <div className="p-6 border-b border-border">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-primary/20 flex items-center justify-center">
-            <Moon className="w-5 h-5 text-primary" />
-          </div>
-          <span className="font-semibold text-foreground text-lg tracking-tight">
-            {NOME_PRODUTO}
-          </span>
-        </div>
+        {/* Ocupa a largura util da sidebar (176px), o que dá ~30px de altura —
+            o tamanho em que o "SMART" foi verificado como legível. */}
+        <MarcaDoProduto className="h-[30px]" />
       </div>
 
       <nav className="flex-1 p-4 space-y-0.5">
