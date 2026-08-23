@@ -1,7 +1,12 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
-import { CONSULTA_MENOS_MOVIMENTO, podeAnimarRevelacao, prefereMenosMovimento } from "./animacao";
+import {
+  CONSULTA_MENOS_MOVIMENTO,
+  jaUltrapassado,
+  podeAnimarRevelacao,
+  prefereMenosMovimento,
+} from "./animacao";
 
 /** Janela falsa: `matchMedia` responde o que o teste mandar. */
 function janela(reduz: boolean, comObservador = true) {
@@ -40,6 +45,23 @@ describe("podeAnimarRevelacao", () => {
     // Sem observador nao ha quem revele. Armar o elemento nesse caso o
     // esconderia para sempre — o oposto de falhar aberto.
     expect(podeAnimarRevelacao(janela(false, false))).toBe(false);
+  });
+});
+
+describe("jaUltrapassado", () => {
+  it("nao considera ultrapassado o bloco na janela ou abaixo dela", () => {
+    expect(jaUltrapassado({ bottom: 0 })).toBe(false);
+    expect(jaUltrapassado({ bottom: 640 })).toBe(false);
+    expect(jaUltrapassado({ bottom: 12000 })).toBe(false);
+  });
+
+  it("considera ultrapassado o bloco inteiro acima da janela", () => {
+    // Defeito observado em producao: o navegador restaura a rolagem ao
+    // recarregar, e o IntersectionObserver nunca reporta o que esta acima da
+    // janela. Esses blocos ficavam escondidos ate o usuario voltar ao topo, e
+    // entao animavam de novo — releitura virava desfile.
+    expect(jaUltrapassado({ bottom: -1 })).toBe(true);
+    expect(jaUltrapassado({ bottom: -1488 })).toBe(true);
   });
 });
 
