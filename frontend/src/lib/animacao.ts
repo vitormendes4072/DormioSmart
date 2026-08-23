@@ -65,3 +65,23 @@ export function podeAnimarRevelacao(alvo?: AlvoComMatchMedia & { IntersectionObs
   if (prefereMenosMovimento(janela)) return false;
   return typeof janela?.IntersectionObserver === "function";
 }
+
+/**
+ * O elemento ja ficou inteiro acima da janela?
+ *
+ * Nasceu de um defeito observado em producao (UI-16): o navegador restaura a
+ * posicao de rolagem, a pagina monta com metade do conteudo acima da janela, e
+ * o IntersectionObserver so reporta o que intersecta — o que esta inteiramente
+ * acima nao intersecta e nunca mais gera callback, porque rolar de zero de
+ * intersecao para zero de intersecao nao e mudanca. Os blocos ficavam
+ * escondidos ate o usuario rolar de volta.
+ *
+ * Quem esta nessa posicao ja passou por aquele conteudo. Ele deve aparecer
+ * pronto, sem transicao: releitura nao e desfile.
+ *
+ * `bottom < 0` e a condicao exata — a base do elemento acima do topo da janela
+ * significa que ele passou inteiro.
+ */
+export function jaUltrapassado(retangulo: { bottom: number }): boolean {
+  return retangulo.bottom < 0;
+}
