@@ -21,19 +21,9 @@
  * Uso:  http://localhost:5173/dashboard?demo=1
  */
 import { GRAVIDADE, type LeituraSono } from "../types/sleep";
+import { geradorPseudoAleatorio } from "./pseudoAleatorio";
 
 export const PARAMETRO_DEMO = "demo";
-
-/** A geracao e deterministica para a mesma semente: a mesma captura pode ser
- *  refeita depois, o que importa para documentacao. LCG simples basta —
- *  nao ha requisito criptografico aqui. */
-function geradorPseudoAleatorio(semente: number) {
-  let estado = semente >>> 0;
-  return () => {
-    estado = (estado * 1664525 + 1013904223) >>> 0;
-    return estado / 4294967296;
-  };
-}
 
 /**
  * Quantas leituras a demo gera, por padrao.

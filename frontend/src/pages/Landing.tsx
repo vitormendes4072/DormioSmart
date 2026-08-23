@@ -3,6 +3,8 @@ import { Link } from "react-router";
 
 import { LinhaDeCota, Moldura, RotuloDeSecao } from "../components/Blueprint";
 import { MarcaDoProduto } from "../components/MarcaDoProduto";
+import { Revelar } from "../components/Revelar";
+import { TracadoDeMovimento } from "../components/TracadoDeMovimento";
 import { useAuth } from "../contexts/AuthContext";
 import { NOME_PRODUTO } from "../lib/ui";
 
@@ -17,10 +19,28 @@ import { NOME_PRODUTO } from "../lib/ui";
  * validado no Wokwi", e o firmware mudou no FW-05 sem nunca ter sido
  * compilado. O teste de bancada (VIA-01) também não aconteceu. As duas
  * coisas aparecem agora como pendentes, não como concluídas.
+ *
+ * O movimento da página (UI-15) é deliberadamente contido: entrada suave dos
+ * blocos ao aparecerem, elevação de 1px nos botões, e um único elemento
+ * animado de forma contínua — o traçado de aceleração do hero, que existe
+ * para mostrar o critério de movimento em vez de descrevê-lo. Tudo desliga
+ * sob `prefers-reduced-motion`.
  */
 
 const REPOSITORIO = "https://github.com/vitormendes4072/DormioSmart";
 const INSTAGRAM = "https://www.instagram.com/dormio.labs/";
+
+/* A elevação no hover é de 1px — o suficiente para o botão responder ao
+   cursor, longe de chamar atenção para si. No `:active` ele volta ao lugar,
+   que é o gesto de afundar sob o clique. */
+const BOTAO_BASE =
+  "group inline-flex items-center gap-2 px-6 py-3 rounded-xl font-semibold " +
+  "transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0";
+const BOTAO_PRIMARIO =
+  `${BOTAO_BASE} bg-primary text-primary-foreground hover:bg-primary/90 ` +
+  "hover:shadow-lg hover:shadow-primary/25";
+const BOTAO_SECUNDARIO =
+  `${BOTAO_BASE} border border-border text-foreground hover:bg-secondary hover:border-primary/40`;
 
 const REGISTRA = [
   "Eventos de movimento durante o repouso",
@@ -89,7 +109,7 @@ export function Landing() {
           {sessao ? (
             <Link
               to="/dashboard"
-              className="flex-shrink-0 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition"
+              className="flex-shrink-0 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold transition-all duration-200 hover:bg-primary/90 hover:-translate-y-0.5 active:translate-y-0"
             >
               Ir para o painel
             </Link>
@@ -106,71 +126,79 @@ export function Landing() {
 
       <main className="mx-auto max-w-5xl px-4 sm:px-6 py-12 sm:py-16 space-y-16">
         {/* ── Hero ───────────────────────────────────────────────── */}
+        {/* A entrada é escalonada de cima para baixo, em passos de 90ms: a
+            página se monta na ordem em que é lida. As margens ficam no
+            invólucro, e não no filho, para não depender de colapso de margem
+            atravessar um elemento que ganha `transform`. */}
         <section>
-          <p className="font-mono text-xs text-muted-foreground tracking-widest uppercase">
-            TCC · Engenharia da Computação · 2026
-          </p>
-          <h1 className="mt-4 text-3xl sm:text-5xl font-semibold text-foreground tracking-tight">
-            Monitoramento de movimento
-            <span className="block text-primary">durante o repouso</span>
-          </h1>
-          <p className="mt-5 text-base sm:text-lg text-muted-foreground max-w-2xl">
-            Um dispositivo embarcado de baixo consumo, instalado dentro do travesseiro, que
-            registra eventos de movimento durante o repouso — sem nada em contato com o corpo.
-          </p>
+          <Revelar>
+            <p className="font-mono text-xs text-muted-foreground tracking-widest uppercase">
+              TCC · Engenharia da Computação · 2026
+            </p>
+          </Revelar>
+          <Revelar atraso={90} className="mt-4">
+            <h1 className="text-3xl sm:text-5xl font-semibold text-foreground tracking-tight">
+              Monitoramento de movimento
+              <span className="block text-primary">durante o repouso</span>
+            </h1>
+          </Revelar>
+          <Revelar atraso={180} className="mt-5">
+            <p className="text-base sm:text-lg text-muted-foreground max-w-2xl">
+              Um dispositivo embarcado de baixo consumo, instalado dentro do travesseiro, que
+              registra eventos de movimento durante o repouso — sem nada em contato com o corpo.
+            </p>
+          </Revelar>
 
           {/* A chamada principal muda conforme quem está olhando.
               Sem sessão, oferecer "entrar no painel" seria prometer um painel
               que nasce vazio: não existe dispositivo para parear além do
               protótipo do autor. O que essa pessoa pode de fato fazer é
               acompanhar o desenvolvimento. */}
-          <div className="mt-8 flex flex-wrap gap-3">
-            {sessao ? (
-              <Link
-                to="/dashboard"
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition"
-              >
-                Abrir o painel
-                <ArrowRight className="w-4 h-4" />
-              </Link>
-            ) : (
-              <a
-                href={INSTAGRAM}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition"
-              >
-                <Instagram className="w-4 h-4" />
-                Acompanhar o desenvolvimento
+          <Revelar atraso={270} className="mt-8">
+            <div className="flex flex-wrap gap-3">
+              {sessao ? (
+                <Link to="/dashboard" className={BOTAO_PRIMARIO}>
+                  Abrir o painel
+                  {/* A seta avança um passo no hover — a direção do gesto. */}
+                  <ArrowRight className="w-4 h-4 transition-transform duration-200 group-hover:translate-x-0.5" />
+                </Link>
+              ) : (
+                <a href={INSTAGRAM} target="_blank" rel="noreferrer" className={BOTAO_PRIMARIO}>
+                  <Instagram className="w-4 h-4" />
+                  Acompanhar o desenvolvimento
+                </a>
+              )}
+              <a href={REPOSITORIO} target="_blank" rel="noreferrer" className={BOTAO_SECUNDARIO}>
+                <Github className="w-4 h-4" />
+                Ver no GitHub
               </a>
-            )}
-            <a
-              href={REPOSITORIO}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl border border-border text-foreground font-semibold hover:bg-secondary transition"
-            >
-              <Github className="w-4 h-4" />
-              Ver no GitHub
-            </a>
-          </div>
+            </div>
+          </Revelar>
+
+          {/* O único elemento da página que demonstra o critério de movimento
+              em vez de descrevê-lo. Sinal sintético e rotulado como tal. */}
+          <Revelar atraso={360} className="mt-10">
+            <TracadoDeMovimento />
+          </Revelar>
         </section>
 
         <LinhaDeCota />
 
         {/* ── Escopo ─────────────────────────────────────────────── */}
         <section>
-          <RotuloDeSecao numero="01" texto="Escopo declarado" />
-          <h2 className="text-2xl font-semibold text-foreground">
-            O que o aparelho faz — e o que não faz
-          </h2>
-          <p className="mt-2 text-sm text-muted-foreground max-w-2xl">
-            O sensor é um acelerômetro. Ele mede movimento, e apenas isso. Tudo que exigiria
-            outro tipo de medição está fora, de propósito.
-          </p>
+          <Revelar>
+            <RotuloDeSecao numero="01" texto="Escopo declarado" />
+            <h2 className="text-2xl font-semibold text-foreground">
+              O que o aparelho faz — e o que não faz
+            </h2>
+            <p className="mt-2 text-sm text-muted-foreground max-w-2xl">
+              O sensor é um acelerômetro. Ele mede movimento, e apenas isso. Tudo que exigiria
+              outro tipo de medição está fora, de propósito.
+            </p>
+          </Revelar>
 
           <div className="mt-6 grid gap-4 sm:grid-cols-2">
-            <Moldura>
+            <Moldura atraso={0}>
               <h3 className="text-sm font-semibold text-foreground mb-4">Registra</h3>
               <ul className="space-y-2.5">
                 {REGISTRA.map((item) => (
@@ -182,7 +210,7 @@ export function Landing() {
               </ul>
             </Moldura>
 
-            <Moldura>
+            <Moldura atraso={110}>
               <h3 className="text-sm font-semibold text-foreground mb-4">Não registra</h3>
               <ul className="space-y-2.5">
                 {NAO_REGISTRA.map((item) => (
@@ -198,24 +226,29 @@ export function Landing() {
 
         {/* ── Como funciona ──────────────────────────────────────── */}
         <section>
-          <RotuloDeSecao numero="02" texto="Fluxo de dados" />
-          <h2 className="text-2xl font-semibold text-foreground">Como funciona</h2>
+          <Revelar>
+            <RotuloDeSecao numero="02" texto="Fluxo de dados" />
+            <h2 className="text-2xl font-semibold text-foreground">Como funciona</h2>
+          </Revelar>
 
           <div className="mt-6 grid gap-4 sm:grid-cols-3">
             {ETAPAS.map(({ icone: Icone, titulo, texto }, i) => (
-              <Moldura key={titulo}>
+              <Moldura key={titulo} atraso={i * 110}>
                 <span className="font-mono text-xs text-primary tracking-widest">
                   {String(i + 1).padStart(2, "0")}
                 </span>
-                <Icone className="w-5 h-5 text-primary mt-3" />
+                <Icone className="w-5 h-5 text-primary mt-3 transition-transform duration-300 group-hover:scale-110" />
                 <h3 className="mt-3 text-sm font-semibold text-foreground">{titulo}</h3>
                 <p className="mt-2 text-sm text-muted-foreground">{texto}</p>
               </Moldura>
             ))}
           </div>
 
+          {/* Um brilho percorre a linha no sentido do dado. A cor do texto
+              continua declarada aqui: é ela que aparece se o navegador não
+              suportar `background-clip: text`, ou sob redução de movimento. */}
           <div className="mt-4 overflow-x-auto">
-            <p className="font-mono text-xs text-muted-foreground whitespace-nowrap py-3">
+            <p className="fluxo-animado font-mono text-xs text-muted-foreground whitespace-nowrap py-3">
               MPU6050 ──I2C──▸ ESP32 ──HTTPS──▸ API ──▸ Banco ──▸ Painel
             </p>
           </div>
@@ -223,11 +256,13 @@ export function Landing() {
 
         {/* ── Status ─────────────────────────────────────────────── */}
         <section>
-          <RotuloDeSecao numero="03" texto="Estado do projeto" />
-          <h2 className="text-2xl font-semibold text-foreground">Onde está hoje</h2>
+          <Revelar>
+            <RotuloDeSecao numero="03" texto="Estado do projeto" />
+            <h2 className="text-2xl font-semibold text-foreground">Onde está hoje</h2>
+          </Revelar>
 
           <div className="mt-6 grid gap-4 sm:grid-cols-2">
-            <Moldura>
+            <Moldura atraso={0}>
               <h3 className="text-sm font-semibold text-foreground">Fase 1 — Software</h3>
               <ul className="mt-4 space-y-2.5">
                 {FASE_1.map(({ pronto, texto }) => (
@@ -245,7 +280,7 @@ export function Landing() {
               </ul>
             </Moldura>
 
-            <Moldura>
+            <Moldura atraso={110}>
               <h3 className="text-sm font-semibold text-foreground">Fase 2 — Protótipo físico</h3>
               <ul className="mt-4 space-y-2.5">
                 {FASE_2.map((texto) => (
@@ -303,7 +338,7 @@ export function Landing() {
               href={INSTAGRAM}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center gap-1.5 text-xs text-primary hover:text-accent transition font-semibold"
+              className="inline-flex items-center gap-1.5 text-xs text-primary hover:text-accent transition-colors duration-200 font-semibold"
             >
               <Instagram className="w-3.5 h-3.5" />
               @dormio.labs
@@ -312,7 +347,7 @@ export function Landing() {
               href={REPOSITORIO}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center gap-1.5 text-xs text-primary hover:text-accent transition font-semibold"
+              className="inline-flex items-center gap-1.5 text-xs text-primary hover:text-accent transition-colors duration-200 font-semibold"
             >
               <Github className="w-3.5 h-3.5" />
               Código aberto
