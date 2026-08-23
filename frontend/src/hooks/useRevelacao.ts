@@ -42,9 +42,10 @@ import {
  * 1. Na montagem — cobre quando a rolagem JA foi restaurada antes do React
  *    montar (navegacao de volta, bfcache). Bloco acima da janela nem chega a
  *    ser armado: nasce visivel, sem transicao.
- * 2. Depois da carga — cobre a ordem inversa, que e a de producao. Uma
- *    varredura unica revela o que ficou para tras. Nao e listener permanente:
- *    dispara uma vez e sai.
+ * 2. Depois da carga E no primeiro `scroll` — cobre a ordem inversa, que e a
+ *    de producao. Dois gatilhos porque nao ha garantia de quando o navegador
+ *    aplica a restauracao: `load` pega o caso comum, o primeiro `scroll` pega
+ *    qualquer momento. Ambos de uma vez so, nada de listener permanente.
  *
  * Nos dois casos o bloco ultrapassado aparece sem animacao, e nao com ela.
  * Quem recarrega no meio da pagina e volta ao topo esta relendo — releitura
@@ -76,28 +77,38 @@ export function useRevelacao<T extends HTMLElement>(atrasoEmMs = 0, ativo = true
 
     observador.observe(elemento);
 
-    // Defesa 2: a rolagem foi restaurada depois de montarmos. Sem transicao —
-    // o bloco ja deveria estar lido a esta altura.
-    const revelarSemAnimar = () => {
+    // Defesa 2: a rolagem foi restaurada DEPOIS de montarmos — a ordem de
+    // producao. Sem transicao: o bloco ja deveria estar lido a esta altura.
+    const encerrar: (() => void)[] = [];
+
+    const conferir = () => {
       if (!jaUltrapassado(elemento.getBoundingClientRect())) return;
       elemento.style.transitionDelay = "";
       elemento.classList.remove(CLASSE_ARMADO);
       observador.unobserve(elemento);
     };
 
-    let quadro = 0;
-    const varrer = () => {
-      // Um quadro depois da carga: a restauracao de rolagem ja foi aplicada.
-      quadro = requestAnimationFrame(revelarSemAnimar);
+    // Dois gatilhos, porque nao ha garantia de quando o navegador aplica a
+    // restauracao. `load` cobre o caso comum; o primeiro `scroll` cobre
+    // qualquer momento — inclusive uma restauracao tardia. Os dois sao de uma
+    // vez so, e `conferir` nao faz nada quando nao ha o que corrigir.
+    const aoCarregar = () => {
+      const quadro = requestAnimationFrame(conferir);
+      encerrar.push(() => cancelAnimationFrame(quadro));
     };
 
-    if (document.readyState === "complete") varrer();
-    else window.addEventListener("load", varrer, { once: true });
+    if (document.readyState === "complete") aoCarregar();
+    else {
+      window.addEventListener("load", aoCarregar, { once: true });
+      encerrar.push(() => window.removeEventListener("load", aoCarregar));
+    }
+
+    window.addEventListener("scroll", conferir, { once: true, passive: true });
+    encerrar.push(() => window.removeEventListener("scroll", conferir));
 
     return () => {
       observador.disconnect();
-      window.removeEventListener("load", varrer);
-      cancelAnimationFrame(quadro);
+      for (const parar of encerrar) parar();
     };
   }, [atrasoEmMs, ativo]);
 
