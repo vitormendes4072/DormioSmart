@@ -1,5 +1,6 @@
 import { AlertTriangle, Check, Play, Smartphone, Square, X } from "lucide-react";
 import { useState } from "react";
+import { Link } from "react-router";
 
 import { Moldura } from "../components/Blueprint";
 import { NotaDeEscopo } from "../components/NotaDeEscopo";
@@ -86,8 +87,11 @@ export function Coletar() {
             className="mt-1.5 w-full rounded-lg border border-border bg-input-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-60"
           />
           <span className="mt-1.5 block text-xs text-muted-foreground">
-            Pareie um dispositivo do tipo <strong>celular</strong> em Configurações e cole o
-            token aqui. Ele fica só nesta aba e some quando você a fecha.
+            Pareie um dispositivo do tipo <strong>celular</strong> em{" "}
+            <Link to="/configuracoes" className="text-primary font-semibold hover:underline">
+              Configurações
+            </Link>{" "}
+            e cole o token aqui. Ele fica só nesta aba e some quando você a fecha.
           </span>
         </label>
 
