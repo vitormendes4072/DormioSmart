@@ -138,3 +138,57 @@ describe("prepararSerie", () => {
     expect(serie[0].intensidade).toBeNull();
   });
 });
+
+// --- media do repouso (DASH-07) -----------------------------------------
+//
+// O card do painel diz "media do desvio do repouso", mas a media incluia os
+// eventos de movimento. Com um evento a diferenca e pequena; numa noite real,
+// com dezenas, o numero vira uma mistura que nao e nem linha de base nem
+// medida de movimento.
+
+describe("intensidadeMedia considera apenas o repouso", () => {
+  /** Leitura com a intensidade pedida, acima ou abaixo do repouso. */
+  function leitura(minuto: number, desvio: number, status: string): LeituraSono {
+    return {
+      created_at: `2026-08-24T17:${String(minuto).padStart(2, "0")}:00Z`,
+      movimento_total: GRAVIDADE + desvio,
+      temp: 21,
+      status,
+    };
+  }
+
+  it("um evento de movimento nao levanta a linha de base", () => {
+    // Numeros da primeira coleta com hardware real (2026-08-24): repouso em
+    // ~0,85 por causa do vies do sensor, e um evento em 2,51.
+    const leituras = [
+      leitura(1, 0.85, "Repouso"),
+      leitura(2, 0.85, "Repouso"),
+      leitura(3, 0.85, "Repouso"),
+      leitura(4, 2.51, "Movimento"),
+    ];
+    // Media de tudo daria 1,26 — acima do proprio limiar, o que seria absurdo
+    // para um numero rotulado como "repouso".
+    expect(calcularMetricas(leituras).intensidadeMedia).toBeCloseTo(0.85, 2);
+  });
+
+  it("sem nenhuma leitura de repouso, devolve null em vez de zero", () => {
+    // Zero afirmaria uma linha de base que nunca foi medida.
+    const so = [leitura(1, 2.5, "Movimento"), leitura(2, 3.1, "Movimento")];
+    expect(calcularMetricas(so).intensidadeMedia).toBeNull();
+  });
+
+  it("le o rotulo do dispositivo, nao recalcula o limiar", () => {
+    // Intensidade acima de 1,2 mas rotulada como Repouso pelo aparelho: o
+    // painel obedece o rotulo (contrato, secao 2.2).
+    const leituras = [leitura(1, 0.5, "Repouso"), leitura(2, 2.0, "Repouso")];
+    expect(calcularMetricas(leituras).intensidadeMedia).toBeCloseTo(1.25, 2);
+  });
+
+  it("aceita o rotulo legado de movimento", () => {
+    const leituras = [
+      leitura(1, 0.85, "Repouso"),
+      leitura(2, 5.0, "Movimento Detectado!"),
+    ];
+    expect(calcularMetricas(leituras).intensidadeMedia).toBeCloseTo(0.85, 2);
+  });
+});
