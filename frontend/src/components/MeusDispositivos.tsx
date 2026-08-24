@@ -7,6 +7,8 @@ import {
   descreverUltimoContato,
   estaAtivo,
   listarDispositivos,
+  TIPOS,
+  type TipoDeDispositivo,
   parearDispositivo,
   renomearDispositivo,
   revogarDispositivo,
@@ -20,6 +22,9 @@ export function MeusDispositivos() {
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
   const [pareando, setPareando] = useState(false);
+  // O tipo escolhido no pareamento (DATA-05). Padrao travesseiro: e o
+  // dispositivo do projeto, e o celular e instrumento de referencia.
+  const [tipo, setTipo] = useState<TipoDeDispositivo>("travesseiro");
   const [novoToken, setNovoToken] = useState<Pareamento | null>(null);
 
   const carregar = useCallback(async () => {
@@ -42,7 +47,7 @@ export function MeusDispositivos() {
     setPareando(true);
     setErro(null);
     try {
-      const resultado = await parearDispositivo("");
+      const resultado = await parearDispositivo("", tipo);
       setNovoToken(resultado);
       await carregar();
     } catch (e) {
@@ -105,6 +110,31 @@ export function MeusDispositivos() {
           ))}
         </ul>
       )}
+
+      <fieldset className="space-y-2" disabled={pareando}>
+        <legend className="text-xs uppercase tracking-wider text-muted-foreground">
+          Tipo do instrumento
+        </legend>
+        {TIPOS.map(({ valor, rotulo, ajuda }) => (
+          <label
+            key={valor}
+            className="flex items-start gap-3 rounded-xl border border-border p-3 cursor-pointer transition-colors hover:border-primary/40 has-[:checked]:border-primary/60 has-[:checked]:bg-secondary/50"
+          >
+            <input
+              type="radio"
+              name="tipo-do-dispositivo"
+              value={valor}
+              checked={tipo === valor}
+              onChange={() => setTipo(valor)}
+              className="mt-0.5 accent-[var(--primary)]"
+            />
+            <span className="min-w-0">
+              <span className="block text-sm font-medium text-foreground">{rotulo}</span>
+              <span className="block text-xs text-muted-foreground">{ajuda}</span>
+            </span>
+          </label>
+        ))}
+      </fieldset>
 
       <button
         onClick={parear}

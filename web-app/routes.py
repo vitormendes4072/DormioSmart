@@ -7,10 +7,10 @@ from auth import require_auth
 from database import db
 from consulta import ler_parametros
 from device_auth import extrair_token, gerar_token, hash_token
-from validacao import validar_leitura
+from validacao import validar_captacao, validar_leitura
 
 # Versao do contrato que este backend implementa (docs/DATA-CONTRACT.md).
-CONTRATO_DE_DADOS = "1.3.0"
+CONTRATO_DE_DADOS = "2.0.0"
 
 def init_routes(app):
     """Rotas da API.
@@ -103,12 +103,18 @@ def init_routes(app):
         if erro:
             return jsonify({"error": erro}), 400
 
+        # Ausente vira 'travesseiro': todo dispositivo que existia antes do
+        # DATA-05 e um ESP32, e cliente antigo continua funcionando.
+        tipo, erro = dispositivos.validar_tipo(corpo.get("tipo"))
+        if erro:
+            return jsonify({"error": erro}), 400
+
         client = _cliente_do_usuario()
         if client is None:
             return jsonify({"error": "fonte de dados indisponivel"}), 503
 
         token = gerar_token()
-        device = dispositivos.criar(client, g.usuario_id, nome, hash_token(token))
+        device = dispositivos.criar(client, g.usuario_id, nome, hash_token(token), tipo)
         if device is None:
             return jsonify({"error": "nao foi possivel parear o dispositivo"}), 503
 
@@ -177,6 +183,13 @@ def init_routes(app):
             if erro:
                 return jsonify({"error": erro}), 400
 
+            # Instante da MEDIÇÃO, quando o dispositivo souber informá-lo
+            # (contrato v2.0.0). O `created_at` do banco continua sendo o do
+            # recebimento — este é um campo novo, não uma substituição.
+            captado_em, erro = validar_captacao(content.get("ts"))
+            if erro:
+                return jsonify({"error": erro}), 400
+
             # --- O TRADUTOR ---
             # Aqui convertemos o "dialeto" do ESP32 (chaves curtas)
             # para o "idioma" do Supabase (nomes das colunas)
@@ -190,6 +203,12 @@ def init_routes(app):
                 "temp":    content.get("t"),
                 "movimento_total": content.get("total"),
                 "status":  content.get("status"),
+                # Agregação por época (v2.0.0). Nulos para o ESP32, que envia
+                # amostra instantânea.
+                "captured_at":      captado_em,
+                "epoca_segundos":   content.get("epoca_s"),
+                "metodo_agregacao": content.get("metodo"),
+                "amostras":         content.get("amostras"),
                 # Carimbo do dono, resolvido pelo token — nunca vem do corpo
                 # da requisição. O device não escolhe de quem é o dado.
                 "user_id":   device["user_id"],
