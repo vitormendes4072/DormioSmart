@@ -7,6 +7,8 @@ Scripts SQL versionados, aplicados **em ordem numérica** no Supabase
 |---|---|---|---|
 | 001 | `001_multiusuario.sql` | SEC-04 | `profiles`, `devices`, `user_id`/`device_id` em `sleep_data`, políticas RLS por dono, trigger de criação de perfil |
 | 002 | `002_backfill_dono_dos_dados.sql` | DATA-03 | Associa as leituras órfãs (anteriores ao 001) a uma conta. **Requer edição** — troque o e-mail antes de rodar. Traz no apêndice o pareamento manual de um dispositivo. |
+| 003 | `003_padroniza_nome_do_dispositivo.sql` | — | Nome padrão do dispositivo `Dormio Smart` → `Smart Dormio`. Não afeta quem deu nome próprio. |
+| 004 | `004_tipo_de_dispositivo_e_agregacao.sql` | DATA-05 | `devices.tipo` (`travesseiro`/`celular`), `captured_at` e campos de agregação em `sleep_data`, índice por dispositivo. Sem edição; idempotente. |
 
 ## Antes de aplicar
 

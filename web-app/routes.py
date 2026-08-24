@@ -5,12 +5,12 @@ from flask import g, jsonify, request
 import dispositivos
 from auth import require_auth
 from database import db
-from device_auth import gerar_token, hash_token
-from device_auth import extrair_token, hash_token
-from validacao import validar_leitura
+from consulta import ler_parametros
+from device_auth import extrair_token, gerar_token, hash_token
+from validacao import validar_captacao, validar_leitura
 
 # Versao do contrato que este backend implementa (docs/DATA-CONTRACT.md).
-CONTRATO_DE_DADOS = "1.2.0"
+CONTRATO_DE_DADOS = "2.0.0"
 
 def init_routes(app):
     """Rotas da API.
@@ -45,13 +45,34 @@ def init_routes(app):
     @app.route('/api/sleep-history')
     @require_auth
     def get_history():
-        """Leituras do usuário autenticado (AUTH-03).
+        """Leituras do usuário autenticado (AUTH-03, DASH-05, DASH-06).
 
         A consulta usa o JWT de quem pediu, então o RLS aplica a política por
         dono no banco. Continua devolvendo lista sempre — [] em qualquer
-        falha, nunca 500 (FIX-01/FIX-08).
+        falha de infraestrutura, nunca 500 (FIX-01/FIX-08).
+
+        Aceita recorte opcional por `device`, janela `desde`/`ate` e `limite`.
+        Sem parâmetro nenhum o comportamento é o de antes: as 20 leituras mais
+        recentes de todos os dispositivos do usuário.
+
+        Parâmetro malformado responde **400**, e não lista vazia: um uuid
+        digitado errado que devolvesse `[]` faria o usuário concluir que o
+        dispositivo não mandou nada. Ver a nota em `consulta.py`.
         """
-        return jsonify(db.get_leituras_do_usuario(g.jwt, g.usuario_id))
+        parametros, erro = ler_parametros(request.args)
+        if erro:
+            return jsonify({"error": erro}), 400
+
+        return jsonify(
+            db.get_leituras_do_usuario(
+                g.jwt,
+                g.usuario_id,
+                device_id=parametros["device_id"],
+                desde=parametros["desde"],
+                ate=parametros["ate"],
+                limite=parametros["limite"],
+            )
+        )
 
     # --- Dispositivos do usuário (AUTH-05) ---
     #
@@ -82,12 +103,18 @@ def init_routes(app):
         if erro:
             return jsonify({"error": erro}), 400
 
+        # Ausente vira 'travesseiro': todo dispositivo que existia antes do
+        # DATA-05 e um ESP32, e cliente antigo continua funcionando.
+        tipo, erro = dispositivos.validar_tipo(corpo.get("tipo"))
+        if erro:
+            return jsonify({"error": erro}), 400
+
         client = _cliente_do_usuario()
         if client is None:
             return jsonify({"error": "fonte de dados indisponivel"}), 503
 
         token = gerar_token()
-        device = dispositivos.criar(client, g.usuario_id, nome, hash_token(token))
+        device = dispositivos.criar(client, g.usuario_id, nome, hash_token(token), tipo)
         if device is None:
             return jsonify({"error": "nao foi possivel parear o dispositivo"}), 503
 
@@ -156,6 +183,13 @@ def init_routes(app):
             if erro:
                 return jsonify({"error": erro}), 400
 
+            # Instante da MEDIÇÃO, quando o dispositivo souber informá-lo
+            # (contrato v2.0.0). O `created_at` do banco continua sendo o do
+            # recebimento — este é um campo novo, não uma substituição.
+            captado_em, erro = validar_captacao(content.get("ts"))
+            if erro:
+                return jsonify({"error": erro}), 400
+
             # --- O TRADUTOR ---
             # Aqui convertemos o "dialeto" do ESP32 (chaves curtas)
             # para o "idioma" do Supabase (nomes das colunas)
@@ -169,6 +203,12 @@ def init_routes(app):
                 "temp":    content.get("t"),
                 "movimento_total": content.get("total"),
                 "status":  content.get("status"),
+                # Agregação por época (v2.0.0). Nulos para o ESP32, que envia
+                # amostra instantânea.
+                "captured_at":      captado_em,
+                "epoca_segundos":   content.get("epoca_s"),
+                "metodo_agregacao": content.get("metodo"),
+                "amostras":         content.get("amostras"),
                 # Carimbo do dono, resolvido pelo token — nunca vem do corpo
                 # da requisição. O device não escolhe de quem é o dado.
                 "user_id":   device["user_id"],

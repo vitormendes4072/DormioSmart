@@ -1,6 +1,6 @@
 # Contrato de dados — Smart Dormio
 
-**Versão:** 1.2.0 · **Itens:** DATA-01, DATA-02, SEC-02, SEC-03
+**Versão:** 2.0.0 · **Itens:** DATA-01, DATA-02, SEC-02, SEC-03, DASH-05, DASH-06, DATA-04, APP-01
 
 Este documento é a fonte única de verdade sobre o dado que trafega entre
 firmware, backend e banco. Firmware (`firmware/sketch.ino`), simulador
@@ -34,15 +34,71 @@ Dois caminhos, credenciais distintas e propositalmente diferentes:
 
 | Campo | Tipo | Unidade | Origem | Obrigatório |
 |---|---|---|---|---|
-| `ax` | float | m/s² | `a.acceleration.x` | sim |
-| `ay` | float | m/s² | `a.acceleration.y` | sim |
-| `az` | float | m/s² | `a.acceleration.z` | sim |
-| `gx` | float | rad/s | `g.gyro.x` | sim |
-| `gy` | float | rad/s | `g.gyro.y` | sim |
-| `gz` | float | rad/s | `g.gyro.z` | sim |
-| `t` | float | °C | `temp.temperature` | sim |
-| `total` | float | m/s² | magnitude do vetor de aceleração | sim |
-| `status` | string | — | rótulo do firmware | sim |
+| `ax` | float | m/s² | `a.acceleration.x` | **sim** |
+| `ay` | float | m/s² | `a.acceleration.y` | **sim** |
+| `az` | float | m/s² | `a.acceleration.z` | **sim** |
+| `total` | float | m/s² | magnitude do vetor de aceleração | **sim** |
+| `status` | string | — | rótulo do dispositivo | **sim** |
+| `gx` | float | rad/s | `g.gyro.x` | não (v2.0.0) |
+| `gy` | float | rad/s | `g.gyro.y` | não (v2.0.0) |
+| `gz` | float | rad/s | `g.gyro.z` | não (v2.0.0) |
+| `t` | float | °C | `temp.temperature` | não (v2.0.0) |
+| `ts` | string | ISO 8601 | relógio do dispositivo | não (v2.0.0) |
+| `epoca_s` | int | s | janela agregada | não (v2.0.0) |
+| `metodo` | string | — | como a janela foi resumida | se `epoca_s` |
+| `amostras` | int | — | amostras no agregado | não |
+
+### 2.0 Dois tipos de dispositivo (v2.0.0)
+
+Até a v1.2.0 o único emissor era o ESP32 e todo campo era obrigatório. Com o
+celular como segunda fonte (APP-01), três deixaram de fazer sentido universal:
+
+- **`t`** é a temperatura do **chip do MPU6050**. Celular não tem equivalente.
+  Enviar número inventado seria mentir no dado.
+- **`gx/gy/gz`** dependem de giroscópio, que nem todo aparelho tem — e a web
+  devolve `rotationRate` nulo nesse caso. O giroscópio **não entra em nenhum
+  critério**: o movimento é decidido só pela magnitude da aceleração.
+
+Ausente é aceito; **presente continua sendo validado com a mesma régua**.
+
+**Faixa do giroscópio ampliada** de ±12 para ±40 rad/s: MPU6050 em ±500 °/s dá
+±8,73 rad/s, mas celular vai a ±2000 °/s ≈ ±34,9. *Tradeoff assumido:* com o
+teto antigo, um MPU6050 corrompido reportando 30 rad/s era rejeitado como
+fisicamente impossível; esse filtro se perde. Aceito porque o giroscópio não
+alimenta nenhuma decisão, e porque a alternativa — faixa por tipo de
+dispositivo — acoplaria a validação ao cadastro para proteger um campo que
+ninguém lê.
+
+### 2.5 Agregação por época (v2.0.0)
+
+O ESP32 envia **uma amostra por evento**: acorda, mede, dorme. Um celular
+amostrando a 50 Hz geraria **~180 mil linhas por hora** — precisa resumir uma
+janela antes de enviar.
+
+Ambos ausentes (`epoca_s` e `metodo`) = amostra instantânea, o comportamento
+do ESP32. Com `epoca_s`, `metodo` passa a ser **obrigatório**: uma leitura que
+resume 60 s sem dizer *como* resumiu não é interpretável depois, e o histórico
+ficaria ambíguo no dia em que o método mudasse. Mesmo princípio de `status`,
+que viaja com o dado em vez de ser recalculado.
+
+| `metodo` | O que `total` significa |
+|---|---|
+| `pico-da-magnitude` | A maior magnitude \|a\| observada na janela |
+
+**Por que o pico, e não a média.** A média sobre 60 s dilui um giro de 2 s até
+ele desaparecer — exatamente o evento que se quer registrar. O pico preserva a
+detectabilidade e **mantém as unidades e o limiar existentes**: `total`
+continua sendo magnitude em m/s², e `|total − 9,81| > 1,2` continua sendo o
+critério, sem exceção para o celular.
+
+**Consequência que fez o método ser escolhido:** o dispositivo envia `ax/ay/az`
+**da amostra de pico**, então a checagem de coerência da seção 5.1 continua
+valendo sem caso especial.
+
+> ⚠️ **`pico-da-magnitude` é a escolha provisória.** O `CALC-03` formaliza o
+> índice de atividade (SMA, ENMO, contagens). O identificador viaja com o dado
+> justamente para que trocar de método depois não torne o histórico ambíguo —
+> cada linha diz como foi produzida.
 
 **Chaves curtas por decisão de projeto:** economizam bytes na transmissão do
 ESP32. O backend traduz para os nomes de coluna (seção 4).
@@ -124,14 +180,28 @@ quarto" — corrigido na v1.1.0.
 
 ### 2.4 Timestamp
 
+> **Atualizado na v2.0.0:** o campo `ts` passou a existir, **opcional**. O texto
+> abaixo continua descrevendo o caso em que ele é omitido — que é o do ESP32.
+
 O device **não envia timestamp**. O ESP32 não tem RTC com bateria e perde a
 hora a cada Deep Sleep; um relógio derivado do NTP a cada acordar gastaria
 energia e falharia offline. O `created_at` é gerado pelo **banco** (`default now()`).
 
-*Consequência assumida:* o timestamp é o do **recebimento**, não o da captação.
-Com a rede saudável a diferença é de segundos. Quando o buffer local offline
-existir (HW-05), o device precisará enviar um deslocamento relativo — isso
-exigirá **versão 2.0.0** deste contrato.
+*Consequência assumida:* sem `ts`, o timestamp é o do **recebimento**, não o da
+captação. Com a rede saudável a diferença é de segundos.
+
+**`ts` (v2.0.0)** existe para os dois casos em que isso deixa de servir: um
+celular que agrega por época e envia em lote, e o buffer offline do `HW-05`,
+que enviará leitura de horas antes. Vai para a coluna `captured_at`.
+
+`created_at` **continua existindo e continua sendo o do recebimento** — `ts` é
+campo novo, não substituição, então nenhuma linha antiga muda de significado.
+
+**Instante no futuro é recusado.** Relógio de celular é ajustável pelo usuário;
+uma leitura com data futura envenenaria qualquer janela de consulta e ficaria
+pendurada no topo do gráfico para sempre. Tolerância de 5 minutos de
+adiantamento, que cobre relógio dessincronizado sem aceitar disparate.
+`ts` sem fuso horário é recusado — instante ambíguo não é instante.
 
 ---
 
@@ -212,11 +282,42 @@ Devolve um array (possivelmente vazio — nunca `500`, FIX-01) das leituras
 
 ```json
 [{ "created_at": "2026-08-19T03:14:22.511Z",
-   "movimento_total": 9.83, "temp": 31.2, "status": "Dormindo" }]
+   "movimento_total": 9.83, "temp": 31.2, "status": "Dormindo",
+   "device_id": "8f14e45f-ceea-467a-9f3d-a1b2c3d4e5f6" }]
 ```
 
 `401` sem JWT válido. O isolamento entre usuários é garantido pelo **RLS**, não
 por filtro em código.
+
+### 6.1 Recorte da consulta (DASH-05, DASH-06)
+
+Todos os parâmetros são opcionais. **Sem nenhum deles o comportamento é o
+anterior**: as 20 leituras mais recentes de todos os dispositivos do usuário.
+
+| Parâmetro | Tipo | Padrão | Efeito |
+|---|---|---|---|
+| `device` | uuid | — | Recorta por instrumento |
+| `desde` | ISO 8601 | — | Limite inferior de `created_at` |
+| `ate` | ISO 8601 | — | Limite superior de `created_at` |
+| `limite` | inteiro ≥ 1 | 20 | Máximo de linhas; teto de **2000** |
+
+**Por que `device` existe.** Até o DASH-05 a consulta filtrava só por dono.
+Quem pareasse dois dispositivos recebia os dois **misturados na mesma série e
+nas mesmas métricas**, com o limite repartido por ordem de chegada — dois
+instrumentos plotados como um. Por isso `device_id` também entrou no retorno:
+sem ele o cliente não tem como rotular a origem de cada ponto quando exibe
+todos.
+
+**Por que parâmetro inválido responde `400`, e não lista vazia.** A garantia de
+"sempre devolve lista, nunca 500" (FIX-01) vale para *falha de infraestrutura*.
+Não vale para *erro do cliente*: um uuid digitado errado que respondesse `[]`
+mostraria um gráfico vazio e faria o usuário concluir que o dispositivo não
+mandou nada. `limite` acima do teto é a exceção — é grampeado, não recusado,
+porque pedir demais não é erro.
+
+**`device` do cliente é seguro.** O `user_id` nunca vem da requisição: sai do
+JWT validado. A consulta filtra pelos dois e o RLS filtra de novo no banco.
+Pedir o dispositivo de outra pessoa devolve vazio porque o dono não casa.
 
 ---
 
@@ -228,6 +329,8 @@ unidade alterada, novo header obrigatório). **MINOR** = campo opcional novo.
 
 | Versão | Data | Mudança |
 |---|---|---|
+| 2.0.0 | 2026-08-24 | `t` e `gx/gy/gz` viram opcionais; faixa do giroscópio para ±40 rad/s; campos `ts`, `epoca_s`, `metodo` e `amostras` (DATA-04, APP-01). **MAJOR** pela regra abaixo — nenhum firmware em campo quebra, mas a obrigatoriedade de campo mudou |
+| 1.3.0 | 2026-08-23 | Leitura aceita recorte por `device`, janela `desde`/`ate` e `limite`; retorno passa a incluir `device_id` (DASH-05, DASH-06). **Compatível:** ingestão intocada, e a leitura sem parâmetros responde como antes |
 | 1.0.0 | 2026-08-19 | Contrato inicial; formaliza payload existente, adiciona `X-Device-Token`, `user_id` e `device_id` (DATA-01/SEC-04) |
 | 1.2.0 | 2026-08-19 | Validação de entrada: campos obrigatórios, faixas físicas, coerência de `total`, `status` restrito (SEC-03); autenticação de device implementada (SEC-02) |
 | 1.1.0 | 2026-08-19 | Critério de movimento simétrico (`\|total−9,81\| > 1,2`); rótulos `Repouso`/`Movimento`; `t` documentado e simulado como temperatura de chip (DATA-02) |

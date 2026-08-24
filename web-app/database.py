@@ -3,6 +3,7 @@ import os
 from datetime import datetime, timezone
 
 from supabase import create_client
+from consulta import LIMITE_PADRAO
 
 # Log de servidor via `logging`, não `print` (FIX-08).
 #
@@ -100,25 +101,42 @@ class Database:
             logger.exception("Falha ao montar cliente do usuario.")
             return None
 
-    def get_leituras_do_usuario(self, jwt, usuario_id, limit=20):
+    def get_leituras_do_usuario(
+        self, jwt, usuario_id, device_id=None, desde=None, ate=None, limite=LIMITE_PADRAO
+    ):
         """Leituras do usuario autenticado, mais recentes primeiro.
 
         Dupla proteção deliberada: o RLS filtra no banco E o `.eq(user_id)`
         filtra na consulta. Redundante de proposito — se o RLS for desligado
         por engano numa migracao, o filtro segura; se o filtro tiver bug, o
         RLS segura. Nenhum dos dois sozinho merece confianca total.
+
+        `device_id` recorta por instrumento (DASH-05). Ate aqui a consulta
+        filtrava so por dono, entao quem pareasse dois dispositivos recebia os
+        dois **misturados na mesma serie e nas mesmas metricas**, com o limite
+        repartido por ordem de chegada. Ninguem esbarrou nisso porque so existe
+        um dispositivo — o do autor.
+
+        `device_id` sai da consulta tambem no SELECT: sem ele o cliente nao tem
+        como rotular de qual instrumento veio cada ponto quando exibe todos.
         """
         try:
             client = self.cliente_do_usuario(jwt)
             if client is None:
                 return []
-            resposta = (
+            consulta = (
                 client.table("sleep_data")
-                .select("created_at, movimento_total, temp, status")
+                .select("created_at, movimento_total, temp, status, device_id")
                 .eq("user_id", usuario_id)
-                .order("created_at", desc=True)
-                .limit(limit)
-                .execute()
+            )
+            if device_id:
+                consulta = consulta.eq("device_id", device_id)
+            if desde:
+                consulta = consulta.gte("created_at", desde)
+            if ate:
+                consulta = consulta.lte("created_at", ate)
+            resposta = (
+                consulta.order("created_at", desc=True).limit(limite).execute()
             )
             return resposta.data or []
         except Exception:

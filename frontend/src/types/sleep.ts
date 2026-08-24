@@ -40,6 +40,9 @@ export type LeituraSono = {
   movimento_total: number | null;
   temp: number | null;
   status: string | null;
+  /** De qual dispositivo veio a leitura (DASH-05). Nulo nas linhas anteriores
+   *  ao multiusuario, que nao tem dono nem dispositivo registrado. */
+  device_id?: string | null;
 };
 
 /**

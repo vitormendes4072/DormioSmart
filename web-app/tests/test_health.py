@@ -66,10 +66,23 @@ def test_resposta_nao_vaza_infraestrutura():
 
 def test_informa_a_versao_do_contrato_de_dados():
     """Permite conferir de fora qual contrato o backend implementa — util
-    quando firmware e servidor podem estar em versoes diferentes."""
+    quando firmware e servidor podem estar em versoes diferentes.
+
+    A versao esperada e lida do PROPRIO documento, e nao fixada aqui: com um
+    literal, subir o contrato exigia lembrar de editar este teste, e o unico
+    aviso de esquecimento era uma falha sem relacao aparente. Assim, backend e
+    `docs/DATA-CONTRACT.md` nao tem como divergir em silencio.
+    """
+    from pathlib import Path
+    import re
+
+    doc = Path(__file__).resolve().parents[2] / "docs" / "DATA-CONTRACT.md"
+    declarada = re.search(r"\*\*Versão:\*\*\s*([0-9]+\.[0-9]+\.[0-9]+)", doc.read_text(encoding="utf-8"))
+    assert declarada, "DATA-CONTRACT.md nao declara versao no cabecalho"
+
     with patch.object(database.db, "verificar_conexao", return_value=(True, None)):
         resp = _client().get("/health")
-    assert resp.get_json()["contrato_de_dados"] == "1.2.0"
+    assert resp.get_json()["contrato_de_dados"] == declarada.group(1)
 
 
 def test_health_nao_exige_autenticacao():

@@ -6,9 +6,30 @@
  */
 import { requisitarJson } from "./api";
 
+/** Classe do instrumento (DATA-05). Nao e o nome: nome e escolha do usuario.
+ *  O tipo e o que permite separar acoplamentos diferentes — um travesseiro
+ *  mede perto da cabeca; um celular no colchao mede um corpo de massa alta,
+ *  amortecido, e compartilhado com quem dorme do lado. */
+export type TipoDeDispositivo = "travesseiro" | "celular";
+
+export const TIPOS: { valor: TipoDeDispositivo; rotulo: string; ajuda: string }[] = [
+  {
+    valor: "travesseiro",
+    rotulo: "Travesseiro",
+    ajuda: "ESP32 com MPU6050 embarcado no travesseiro.",
+  },
+  {
+    valor: "celular",
+    rotulo: "Celular",
+    ajuda: "Acelerometro do proprio aparelho, pela tela de coleta.",
+  },
+];
+
 export type Dispositivo = {
   id: string;
   nome: string;
+  /** Ausente nas respostas anteriores ao DATA-05. */
+  tipo?: TipoDeDispositivo;
   created_at: string;
   last_seen_at: string | null;
   revoked_at: string | null;
@@ -26,10 +47,13 @@ export function listarDispositivos(): Promise<Dispositivo[]> {
   return requisitarJson<Dispositivo[]>("/api/devices");
 }
 
-export function parearDispositivo(nome: string): Promise<Pareamento> {
+export function parearDispositivo(
+  nome: string,
+  tipo: TipoDeDispositivo = "travesseiro",
+): Promise<Pareamento> {
   return requisitarJson<Pareamento>("/api/devices", {
     method: "POST",
-    body: JSON.stringify({ nome }),
+    body: JSON.stringify({ nome, tipo }),
   });
 }
 
@@ -69,4 +93,50 @@ export function descreverUltimoContato(dispositivo: Dispositivo): string {
 
   const dias = Math.floor(horas / 24);
   return dias === 1 ? "ontem" : `há ${dias} dias`;
+}
+
+/**
+ * Escolha de instrumento no painel (DASH-05).
+ *
+ * ── POR QUE ISTO EXISTE ─────────────────────────────────────────────────
+ *
+ * Ate o DASH-05 a leitura filtrava so por dono. Quem pareasse dois
+ * dispositivos recebia os dois **misturados na mesma serie e nas mesmas
+ * metricas** — dois instrumentos plotados como um. Ninguem esbarrou porque so
+ * existe um dispositivo no mundo.
+ *
+ * As funcoes abaixo sao puras para poderem ser testadas sem montar tela.
+ */
+
+/** Valor do seletor quando nenhum dispositivo esta recortado. */
+export const TODOS_OS_DISPOSITIVOS = "";
+
+/**
+ * Vale mostrar o seletor?
+ *
+ * Com um dispositivo so — o caso do autor e o de qualquer pessoa comum — o
+ * seletor seria um controle com uma opcao. Ruido.
+ */
+export function precisaEscolherDispositivo(dispositivos: Dispositivo[]): boolean {
+  return dispositivos.length > 1;
+}
+
+/**
+ * A serie exibida esta misturando instrumentos?
+ *
+ * Quando sim, a tela precisa DIZER isso. Um travesseiro e um celular medem o
+ * mesmo fenomeno por acoplamentos diferentes; empilhar os dois numa linha sem
+ * avisar e o mesmo problema de honestidade do tracado sintetico da landing.
+ */
+export function serieMisturaInstrumentos(
+  dispositivos: Dispositivo[],
+  selecionado: string | null,
+): boolean {
+  return !selecionado && dispositivos.length > 1;
+}
+
+/** Nome do dispositivo, ou um rotulo neutro se ele nao estiver na lista. */
+export function nomeDoDispositivo(dispositivos: Dispositivo[], id: string | null): string {
+  if (!id) return "Todos os dispositivos";
+  return dispositivos.find((d) => d.id === id)?.nome ?? "Dispositivo desconhecido";
 }
