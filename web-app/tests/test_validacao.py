@@ -39,18 +39,69 @@ def test_leitura_valida_passa():
     assert dados is not None
 
 
-@pytest.mark.parametrize("campo", list(VALIDA.keys()))
-def test_todo_campo_e_obrigatorio(campo):
+@pytest.mark.parametrize("campo", ["ax", "ay", "az", "total", "status"])
+def test_campo_essencial_e_obrigatorio(campo):
+    """Sem estes não há leitura, só um objeto JSON."""
     incompleta = {k: v for k, v in VALIDA.items() if k != campo}
     _, erro = validar_leitura(incompleta)
     assert erro is not None
     assert campo in erro
 
 
-@pytest.mark.parametrize("campo", ["ax", "t", "total"])
-def test_campo_nulo_e_rejeitado(campo):
+@pytest.mark.parametrize("campo", ["ax", "ay", "az", "total"])
+def test_campo_essencial_nulo_e_rejeitado(campo):
     _, erro = validar_leitura(dict(VALIDA, **{campo: None}))
     assert erro is not None
+
+
+# --- v2.0.0: campos que dependem do tipo de dispositivo -------------------
+#
+# `t` é a temperatura do chip do MPU6050 — um celular não tem equivalente, e
+# inventar número seria mentir no dado. `gx/gy/gz` dependem de giroscópio, que
+# nem todo aparelho tem, e não entram em nenhum critério de movimento.
+
+@pytest.mark.parametrize("campo", ["gx", "gy", "gz", "t"])
+def test_campo_de_sensor_ausente_e_aceito(campo):
+    sem = {k: v for k, v in VALIDA.items() if k != campo}
+    dados, erro = validar_leitura(sem)
+    assert erro is None, f"{campo} ausente deveria ser aceito: {erro}"
+    assert dados is not None
+
+
+@pytest.mark.parametrize("campo", ["gx", "gy", "gz", "t"])
+def test_campo_de_sensor_nulo_e_aceito(campo):
+    """Ausente e nulo significam a mesma coisa: o dispositivo não tem o sensor."""
+    dados, erro = validar_leitura(dict(VALIDA, **{campo: None}))
+    assert erro is None
+    assert dados is not None
+
+
+def test_leitura_de_celular_passa():
+    """Sem giroscópio e sem temperatura — o payload mínimo do APP-01."""
+    dados, erro = validar_leitura(
+        {"ax": 0.10, "ay": 0.20, "az": 9.80, "total": 9.80, "status": "Repouso"}
+    )
+    assert erro is None
+    assert dados is not None
+
+
+@pytest.mark.parametrize("campo", ["gx", "gy", "gz", "t"])
+def test_campo_de_sensor_presente_ainda_e_validado(campo):
+    """Opcional não é 'aceita qualquer coisa'."""
+    _, erro = validar_leitura(dict(VALIDA, **{campo: 1e9}))
+    assert erro is not None
+    assert campo in erro
+
+    _, erro = validar_leitura(dict(VALIDA, **{campo: float("nan")}))
+    assert erro is not None
+    assert "finito" in erro
+
+
+def test_giroscopio_de_celular_cabe_na_faixa():
+    """±2000 °/s ≈ 34,9 rad/s — acima do teto antigo, de 12."""
+    dados, erro = validar_leitura(dict(VALIDA, gx=34.9))
+    assert erro is None
+    assert dados is not None
 
 
 @pytest.mark.parametrize("valor", ["9.8", [9.8], {"v": 9.8}, True, False])

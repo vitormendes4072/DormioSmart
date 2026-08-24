@@ -6,9 +6,30 @@
  */
 import { requisitarJson } from "./api";
 
+/** Classe do instrumento (DATA-05). Nao e o nome: nome e escolha do usuario.
+ *  O tipo e o que permite separar acoplamentos diferentes — um travesseiro
+ *  mede perto da cabeca; um celular no colchao mede um corpo de massa alta,
+ *  amortecido, e compartilhado com quem dorme do lado. */
+export type TipoDeDispositivo = "travesseiro" | "celular";
+
+export const TIPOS: { valor: TipoDeDispositivo; rotulo: string; ajuda: string }[] = [
+  {
+    valor: "travesseiro",
+    rotulo: "Travesseiro",
+    ajuda: "ESP32 com MPU6050 embarcado no travesseiro.",
+  },
+  {
+    valor: "celular",
+    rotulo: "Celular",
+    ajuda: "Acelerometro do proprio aparelho, pela tela de coleta.",
+  },
+];
+
 export type Dispositivo = {
   id: string;
   nome: string;
+  /** Ausente nas respostas anteriores ao DATA-05. */
+  tipo?: TipoDeDispositivo;
   created_at: string;
   last_seen_at: string | null;
   revoked_at: string | null;
@@ -26,10 +47,13 @@ export function listarDispositivos(): Promise<Dispositivo[]> {
   return requisitarJson<Dispositivo[]>("/api/devices");
 }
 
-export function parearDispositivo(nome: string): Promise<Pareamento> {
+export function parearDispositivo(
+  nome: string,
+  tipo: TipoDeDispositivo = "travesseiro",
+): Promise<Pareamento> {
   return requisitarJson<Pareamento>("/api/devices", {
     method: "POST",
-    body: JSON.stringify({ nome }),
+    body: JSON.stringify({ nome, tipo }),
   });
 }
 

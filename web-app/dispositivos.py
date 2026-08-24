@@ -17,7 +17,14 @@ logger = logging.getLogger(__name__)
 
 # Campos devolvidos ao cliente. `token_hash` NUNCA entra nesta lista: ele não
 # tem utilidade para a interface e é material sensível.
-CAMPOS = "id, nome, created_at, last_seen_at, revoked_at"
+CAMPOS = "id, nome, tipo, created_at, last_seen_at, revoked_at"
+
+# Classes de instrumento (DATA-05). Nao e o nome — nome e escolha do usuario.
+# O tipo e o que permite separar acoplamentos diferentes na UI e na analise:
+# um travesseiro mede perto da cabeca; um celular no colchao mede um corpo de
+# massa alta, amortecido, e compartilhado com quem dorme do lado.
+TIPOS = ("travesseiro", "celular")
+TIPO_PADRAO = "travesseiro"
 
 NOME_PADRAO = "Smart Dormio"
 NOME_MAXIMO = 60
@@ -54,12 +61,26 @@ def listar(client, usuario_id):
         return None
 
 
-def criar(client, usuario_id, nome, token_hash):
+def validar_tipo(valor):
+    """Devolve `(tipo, None)` ou `(None, motivo)`. Ausente usa o padrao."""
+    if valor is None:
+        return TIPO_PADRAO, None
+    if not isinstance(valor, str) or valor not in TIPOS:
+        return None, f"tipo deve ser um de {list(TIPOS)}"
+    return valor, None
+
+
+def criar(client, usuario_id, nome, token_hash, tipo=TIPO_PADRAO):
     """Cria o dispositivo. Devolve a linha criada ou None."""
     try:
         resposta = (
             client.table("devices")
-            .insert({"user_id": usuario_id, "nome": nome, "token_hash": token_hash})
+            .insert({
+                "user_id": usuario_id,
+                "nome": nome,
+                "token_hash": token_hash,
+                "tipo": tipo,
+            })
             .execute()
         )
         linhas = resposta.data or []

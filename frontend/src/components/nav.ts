@@ -1,4 +1,4 @@
-import { Home, Settings, type LucideIcon } from "lucide-react";
+import { Home, Settings, Smartphone, type LucideIcon } from "lucide-react";
 
 export type ItemNav = {
   to: string;
@@ -10,5 +10,6 @@ export type ItemNav = {
  *  MobileNav (celular), para as duas nunca saírem de sincronia. */
 export const ITENS_NAV: ItemNav[] = [
   { to: "/dashboard", label: "Início", icon: Home },
+  { to: "/coletar", label: "Coletar", icon: Smartphone },
   { to: "/configuracoes", label: "Configurações", icon: Settings },
 ];

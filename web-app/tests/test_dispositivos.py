@@ -85,7 +85,7 @@ def test_o_token_gravado_e_o_hash_do_token_devolvido():
     """Se os dois divergirem, o dispositivo nunca conseguiria autenticar."""
     capturado = {}
 
-    def criar_falso(_client, _usuario, nome, token_hash):
+    def criar_falso(_client, _usuario, nome, token_hash, *_extras):
         capturado["hash"] = token_hash
         return dict(DEVICE, nome=nome)
 
@@ -110,7 +110,7 @@ def test_dois_pareamentos_geram_tokens_diferentes():
 def test_o_dono_vem_do_token_e_nao_do_corpo():
     capturado = {}
 
-    def criar_falso(_client, usuario_id, nome, _hash):
+    def criar_falso(_client, usuario_id, nome, _hash, *_extras):
         capturado["usuario"] = usuario_id
         return dict(DEVICE, nome=nome)
 
@@ -212,3 +212,52 @@ def test_falha_na_listagem_responde_503_em_vez_de_lista_vazia():
          patch.object(dispositivos, "listar", return_value=None):
         resp = _client().get("/api/devices", headers=_SESSAO)
     assert resp.status_code == 503
+
+
+# --- tipo de instrumento (DATA-05) ---------------------------------------
+
+def test_tipo_ausente_vira_travesseiro():
+    """Todo dispositivo anterior ao DATA-05 é um ESP32; cliente antigo segue valendo."""
+    capturado = {}
+
+    def criar_falso(_client, _usuario, nome, _hash, tipo="travesseiro"):
+        capturado["tipo"] = tipo
+        return dict(DEVICE, nome=nome)
+
+    with _autenticado(), \
+         patch.object(database.db, "cliente_do_usuario", return_value=MagicMock()), \
+         patch.object(dispositivos, "criar", side_effect=criar_falso):
+        _client().post("/api/devices", json={}, headers=_SESSAO)
+
+    assert capturado["tipo"] == "travesseiro"
+
+
+def test_tipo_celular_e_aceito():
+    capturado = {}
+
+    def criar_falso(_client, _usuario, nome, _hash, tipo="travesseiro"):
+        capturado["tipo"] = tipo
+        return dict(DEVICE, nome=nome)
+
+    with _autenticado(), \
+         patch.object(database.db, "cliente_do_usuario", return_value=MagicMock()), \
+         patch.object(dispositivos, "criar", side_effect=criar_falso):
+        _client().post("/api/devices", json={"tipo": "celular"}, headers=_SESSAO)
+
+    assert capturado["tipo"] == "celular"
+
+
+def test_tipo_desconhecido_responde_400_e_nao_cria():
+    with _autenticado(), \
+         patch.object(database.db, "cliente_do_usuario", return_value=MagicMock()), \
+         patch.object(dispositivos, "criar") as criar:
+        resp = _client().post("/api/devices", json={"tipo": "geladeira"}, headers=_SESSAO)
+
+    assert resp.status_code == 400
+    criar.assert_not_called()
+
+
+def test_o_tipo_nao_vaza_o_hash_do_token():
+    """CAMPOS ganhou coluna: conferir que `token_hash` continua fora."""
+    assert "token_hash" not in dispositivos.CAMPOS
+    assert "tipo" in dispositivos.CAMPOS
