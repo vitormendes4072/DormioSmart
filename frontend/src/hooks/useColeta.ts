@@ -25,7 +25,29 @@ import { ErroDeIngestao, enviarLeitura } from "../lib/coleta";
  *
  * A tela DIZ isso ao usuario. Um coletor que promete a noite e entrega 4
  * minutos e pior do que nenhum.
+ *
+ * ── POR QUE EXISTE UMA SONDA DE SINAL (APP-06) ──────────────────────────
+ *
+ * `"DeviceMotionEvent" in window` e TRUE em navegador de desktop, que nao tem
+ * acelerometro nenhum. A API existe; os eventos e que nunca chegam. Sem a
+ * sonda, comecar a coletar num computador iniciava, mostrava "0 amostras" e
+ * nao produzia leitura nenhuma — para sempre, sem dizer por que.
+ *
+ * Falha silenciosa e o pior tipo. A sonda espera alguns segundos pela
+ * primeira amostra e, se nada chegar, para e explica.
+ *
+ * O limiar e seguro porque `devicemotion` dispara por AMOSTRAGEM, e nao por
+ * movimento: um celular parado na mesa continua emitindo dezenas de eventos
+ * por segundo, todos perto de 9,81. Zero evento significa ausencia de sensor,
+ * nao ausencia de movimento.
  */
+
+/** Tempo de espera pela primeira amostra antes de declarar que nao ha sensor. */
+export const ESPERA_DE_SINAL_MS = 2500;
+
+export const MENSAGEM_SEM_SINAL =
+  "Nenhuma amostra chegou do acelerometro. Computador nao tem esse sensor — " +
+  "abra esta pagina no celular.";
 
 export type EstadoDaColeta = "ocioso" | "coletando" | "erro";
 
@@ -101,17 +123,21 @@ export function useColeta(epocaSegundos: number, token: string | null) {
     setRegistros((atuais) => [...atuais]);
   }, [epocaSegundos]);
 
-  const parar = useCallback(() => {
-    setEstado("ocioso");
+  const soltarTela = useCallback(() => {
     void wakeLock.current?.release().catch(() => {});
     wakeLock.current = null;
   }, []);
+
+  const parar = useCallback(() => {
+    setEstado("ocioso");
+    soltarTela();
+  }, [soltarTela]);
 
   const comecar = useCallback(async () => {
     setErro(null);
 
     if (!suportaAcelerometro()) {
-      setErro("Este navegador nao expoe o acelerometro.");
+      setErro("Este navegador nao expoe a API de acelerometro.");
       setEstado("erro");
       return;
     }
@@ -153,11 +179,20 @@ export function useColeta(epocaSegundos: number, token: string | null) {
     window.addEventListener("devicemotion", aoMover);
     const relogio = setInterval(() => void fecharEpoca(), epocaSegundos * 1000);
 
+    // Sonda de sinal. Ver a nota no topo do arquivo.
+    const sonda = setTimeout(() => {
+      if (buffer.current.length > 0) return;
+      setErro(MENSAGEM_SEM_SINAL);
+      setEstado("erro");
+      soltarTela();
+    }, ESPERA_DE_SINAL_MS);
+
     return () => {
       window.removeEventListener("devicemotion", aoMover);
       clearInterval(relogio);
+      clearTimeout(sonda);
     };
-  }, [estado, epocaSegundos, fecharEpoca]);
+  }, [estado, epocaSegundos, fecharEpoca, soltarTela]);
 
   // Solta o wake lock se o componente sair enquanto coletava.
   useEffect(() => () => void wakeLock.current?.release().catch(() => {}), []);
