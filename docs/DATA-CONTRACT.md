@@ -1,6 +1,6 @@
 # Contrato de dados — Smart Dormio
 
-**Versão:** 1.2.0 · **Itens:** DATA-01, DATA-02, SEC-02, SEC-03
+**Versão:** 1.3.0 · **Itens:** DATA-01, DATA-02, SEC-02, SEC-03, DASH-05, DASH-06
 
 Este documento é a fonte única de verdade sobre o dado que trafega entre
 firmware, backend e banco. Firmware (`firmware/sketch.ino`), simulador
@@ -212,11 +212,42 @@ Devolve um array (possivelmente vazio — nunca `500`, FIX-01) das leituras
 
 ```json
 [{ "created_at": "2026-08-19T03:14:22.511Z",
-   "movimento_total": 9.83, "temp": 31.2, "status": "Dormindo" }]
+   "movimento_total": 9.83, "temp": 31.2, "status": "Dormindo",
+   "device_id": "8f14e45f-ceea-467a-9f3d-a1b2c3d4e5f6" }]
 ```
 
 `401` sem JWT válido. O isolamento entre usuários é garantido pelo **RLS**, não
 por filtro em código.
+
+### 6.1 Recorte da consulta (DASH-05, DASH-06)
+
+Todos os parâmetros são opcionais. **Sem nenhum deles o comportamento é o
+anterior**: as 20 leituras mais recentes de todos os dispositivos do usuário.
+
+| Parâmetro | Tipo | Padrão | Efeito |
+|---|---|---|---|
+| `device` | uuid | — | Recorta por instrumento |
+| `desde` | ISO 8601 | — | Limite inferior de `created_at` |
+| `ate` | ISO 8601 | — | Limite superior de `created_at` |
+| `limite` | inteiro ≥ 1 | 20 | Máximo de linhas; teto de **2000** |
+
+**Por que `device` existe.** Até o DASH-05 a consulta filtrava só por dono.
+Quem pareasse dois dispositivos recebia os dois **misturados na mesma série e
+nas mesmas métricas**, com o limite repartido por ordem de chegada — dois
+instrumentos plotados como um. Por isso `device_id` também entrou no retorno:
+sem ele o cliente não tem como rotular a origem de cada ponto quando exibe
+todos.
+
+**Por que parâmetro inválido responde `400`, e não lista vazia.** A garantia de
+"sempre devolve lista, nunca 500" (FIX-01) vale para *falha de infraestrutura*.
+Não vale para *erro do cliente*: um uuid digitado errado que respondesse `[]`
+mostraria um gráfico vazio e faria o usuário concluir que o dispositivo não
+mandou nada. `limite` acima do teto é a exceção — é grampeado, não recusado,
+porque pedir demais não é erro.
+
+**`device` do cliente é seguro.** O `user_id` nunca vem da requisição: sai do
+JWT validado. A consulta filtra pelos dois e o RLS filtra de novo no banco.
+Pedir o dispositivo de outra pessoa devolve vazio porque o dono não casa.
 
 ---
 
@@ -228,6 +259,7 @@ unidade alterada, novo header obrigatório). **MINOR** = campo opcional novo.
 
 | Versão | Data | Mudança |
 |---|---|---|
+| 1.3.0 | 2026-08-23 | Leitura aceita recorte por `device`, janela `desde`/`ate` e `limite`; retorno passa a incluir `device_id` (DASH-05, DASH-06). **Compatível:** ingestão intocada, e a leitura sem parâmetros responde como antes |
 | 1.0.0 | 2026-08-19 | Contrato inicial; formaliza payload existente, adiciona `X-Device-Token`, `user_id` e `device_id` (DATA-01/SEC-04) |
 | 1.2.0 | 2026-08-19 | Validação de entrada: campos obrigatórios, faixas físicas, coerência de `total`, `status` restrito (SEC-03); autenticação de device implementada (SEC-02) |
 | 1.1.0 | 2026-08-19 | Critério de movimento simétrico (`\|total−9,81\| > 1,2`); rótulos `Repouso`/`Movimento`; `t` documentado e simulado como temperatura de chip (DATA-02) |

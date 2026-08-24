@@ -5,12 +5,12 @@ from flask import g, jsonify, request
 import dispositivos
 from auth import require_auth
 from database import db
-from device_auth import gerar_token, hash_token
-from device_auth import extrair_token, hash_token
+from consulta import ler_parametros
+from device_auth import extrair_token, gerar_token, hash_token
 from validacao import validar_leitura
 
 # Versao do contrato que este backend implementa (docs/DATA-CONTRACT.md).
-CONTRATO_DE_DADOS = "1.2.0"
+CONTRATO_DE_DADOS = "1.3.0"
 
 def init_routes(app):
     """Rotas da API.
@@ -45,13 +45,34 @@ def init_routes(app):
     @app.route('/api/sleep-history')
     @require_auth
     def get_history():
-        """Leituras do usuário autenticado (AUTH-03).
+        """Leituras do usuário autenticado (AUTH-03, DASH-05, DASH-06).
 
         A consulta usa o JWT de quem pediu, então o RLS aplica a política por
         dono no banco. Continua devolvendo lista sempre — [] em qualquer
-        falha, nunca 500 (FIX-01/FIX-08).
+        falha de infraestrutura, nunca 500 (FIX-01/FIX-08).
+
+        Aceita recorte opcional por `device`, janela `desde`/`ate` e `limite`.
+        Sem parâmetro nenhum o comportamento é o de antes: as 20 leituras mais
+        recentes de todos os dispositivos do usuário.
+
+        Parâmetro malformado responde **400**, e não lista vazia: um uuid
+        digitado errado que devolvesse `[]` faria o usuário concluir que o
+        dispositivo não mandou nada. Ver a nota em `consulta.py`.
         """
-        return jsonify(db.get_leituras_do_usuario(g.jwt, g.usuario_id))
+        parametros, erro = ler_parametros(request.args)
+        if erro:
+            return jsonify({"error": erro}), 400
+
+        return jsonify(
+            db.get_leituras_do_usuario(
+                g.jwt,
+                g.usuario_id,
+                device_id=parametros["device_id"],
+                desde=parametros["desde"],
+                ate=parametros["ate"],
+                limite=parametros["limite"],
+            )
+        )
 
     # --- Dispositivos do usuário (AUTH-05) ---
     #
