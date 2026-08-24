@@ -103,7 +103,30 @@ async function extrairMensagemDeErro(resposta: Response): Promise<string> {
  * O backend garante array — nunca 500 (FIX-01). Ainda assim conferimos o tipo:
  * a UI quebraria feio se viesse outra coisa, e o custo da checagem e zero.
  */
-export async function buscarHistorico(): Promise<LeituraSono[]> {
-  const dados = await requisitarJson<unknown>("/api/sleep-history");
+export type FiltroDeHistorico = {
+  /** Recorta por instrumento. Ausente = todos os dispositivos do usuario. */
+  dispositivo?: string | null;
+  desde?: string | null;
+  ate?: string | null;
+  limite?: number | null;
+};
+
+/** Monta a query string, omitindo o que nao foi pedido.
+ *
+ * Exportada para teste: montar parametro errado e o tipo de bug que so
+ * aparece em producao, como uma tela vazia sem explicacao.
+ */
+export function montarConsultaDeHistorico(filtro: FiltroDeHistorico = {}): string {
+  const parametros = new URLSearchParams();
+  if (filtro.dispositivo) parametros.set("device", filtro.dispositivo);
+  if (filtro.desde) parametros.set("desde", filtro.desde);
+  if (filtro.ate) parametros.set("ate", filtro.ate);
+  if (filtro.limite != null) parametros.set("limite", String(filtro.limite));
+  const query = parametros.toString();
+  return query ? `/api/sleep-history?${query}` : "/api/sleep-history";
+}
+
+export async function buscarHistorico(filtro: FiltroDeHistorico = {}): Promise<LeituraSono[]> {
+  const dados = await requisitarJson<unknown>(montarConsultaDeHistorico(filtro));
   return Array.isArray(dados) ? (dados as LeituraSono[]) : [];
 }

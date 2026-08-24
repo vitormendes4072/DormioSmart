@@ -1,4 +1,5 @@
 import { Activity, Clock, Pause, Waves } from "lucide-react";
+import { useState, type ReactNode } from "react";
 import {
   Bar,
   BarChart,
@@ -12,7 +13,10 @@ import {
 import { CardMetrica } from "../components/CardMetrica";
 import { Carregando, FalhaAoCarregar, SemLeituras } from "../components/EstadoDaTela";
 import { NotaDeEscopo } from "../components/NotaDeEscopo";
+import { AvisoDeMistura, SeletorDeDispositivo } from "../components/SeletorDeDispositivo";
+import { useDispositivos } from "../hooks/useDispositivos";
 import { useHistorico } from "../hooks/useHistorico";
+import { nomeDoDispositivo, serieMisturaInstrumentos } from "../lib/dispositivos";
 import {
   calcularMetricas,
   formatarDuracao,
@@ -62,12 +66,26 @@ function TooltipDoGrafico({
 }
 
 export function Dashboard() {
-  const { leituras, carregando, erro, recarregar } = useHistorico();
+  // `null` = todos os dispositivos. O recorte por instrumento (DASH-05) e
+  // opcional: sem ele o painel se comporta como antes.
+  const [dispositivo, setDispositivo] = useState<string | null>(null);
+  const dispositivos = useDispositivos();
+  const { leituras, carregando, erro, recarregar } = useHistorico({ dispositivo });
 
+  const seletor = (
+    <SeletorDeDispositivo
+      dispositivos={dispositivos}
+      selecionado={dispositivo}
+      aoSelecionar={setDispositivo}
+    />
+  );
+
+  // O seletor aparece tambem nos tres estados iniciais: se o dispositivo
+  // escolhido nao tem leitura, e preciso poder trocar sem sair da tela.
   if (carregando) {
     return (
       <div className="space-y-6">
-        <Cabecalho />
+        <Cabecalho acao={seletor} />
         <Carregando />
       </div>
     );
@@ -76,7 +94,7 @@ export function Dashboard() {
   if (erro) {
     return (
       <div className="space-y-6">
-        <Cabecalho />
+        <Cabecalho acao={seletor} />
         <FalhaAoCarregar mensagem={erro} aoTentarNovamente={recarregar} />
       </div>
     );
@@ -85,7 +103,7 @@ export function Dashboard() {
   if (leituras.length === 0) {
     return (
       <div className="space-y-6">
-        <Cabecalho />
+        <Cabecalho acao={seletor} />
         <NotaDeEscopo />
         <SemLeituras />
       </div>
@@ -105,7 +123,13 @@ export function Dashboard() {
             ? `${formatarHora(m.janela.inicio)} — ${formatarHora(m.janela.fim)}`
             : undefined
         }
+        instrumento={
+          dispositivos.length > 1 ? nomeDoDispositivo(dispositivos, dispositivo) : undefined
+        }
+        acao={seletor}
       />
+
+      {serieMisturaInstrumentos(dispositivos, dispositivo) && <AvisoDeMistura />}
 
       <NotaDeEscopo />
 
@@ -296,15 +320,29 @@ export function Dashboard() {
   );
 }
 
-function Cabecalho({ periodo }: { periodo?: string }) {
+function Cabecalho({
+  periodo,
+  instrumento,
+  acao,
+}: {
+  periodo?: string;
+  /** Qual dispositivo produziu a serie. So aparece quando ha mais de um —
+   *  com um so, dizer o nome nao informa nada. */
+  instrumento?: string;
+  acao?: ReactNode;
+}) {
   return (
-    <div className="min-w-0">
-      <p className="text-xs text-muted-foreground uppercase tracking-wider">
-        {periodo ?? "Monitoramento"}
-      </p>
-      <h1 className="text-xl sm:text-2xl font-semibold text-foreground mt-1">
-        Movimento durante o repouso
-      </h1>
+    <div className="flex flex-wrap items-start justify-between gap-3">
+      <div className="min-w-0">
+        <p className="text-xs text-muted-foreground uppercase tracking-wider">
+          {periodo ?? "Monitoramento"}
+          {instrumento ? ` · ${instrumento}` : ""}
+        </p>
+        <h1 className="text-xl sm:text-2xl font-semibold text-foreground mt-1">
+          Movimento durante o repouso
+        </h1>
+      </div>
+      {acao}
     </div>
   );
 }
