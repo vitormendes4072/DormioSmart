@@ -77,3 +77,42 @@ O **núcleo** do ESP32 suporta Deep Sleep da ordem de microampères. A placa **D
 3. Mantenha `#define MODO_SIMULADOR true`.
 4. Inicie a simulação; o console exibe o ciclo de leitura e o estado de repouso.
 5. Clique no botão do diagrama para emular o despertar por movimento.
+
+## `caracterizacao/` — instrumento de bancada (CALC-02)
+
+Sketch separado que mede o viés e a escala de **cada eixo** do MPU6050 pelo método
+clássico de 6 posições. **Não é firmware de produto:** não conecta Wi-Fi, não envia
+nada e não dorme.
+
+Está em pasta própria porque a IDE do Arduino concatena todos os `.ino` de uma mesma
+pasta — dois `setup()` no mesmo build não compilam. A separação também garante que ele
+não seja gravado no dispositivo por engano.
+
+**Por que existe.** Uma medição real de bancada (2026-08-24) mostrou o sensor **parado**
+marcando `|a| = 9,20 m/s²`, e não 9,81. O critério do projeto é `|total − 9,81| > 1,2`,
+então o repouso já nasce com intensidade 0,61 — metade do orçamento do limiar gasta sem
+ninguém se mexer, e com assimetria de 3,1× entre subir e descer.
+
+Uma única orientação não distingue **erro de escala** (as 6 magnitudes saem parecidas e
+baixas; corrige-se com um fator) de **viés por eixo** (as 6 variam; cada eixo precisa do
+seu offset). O sketch mede as seis e calcula as duas coisas.
+
+Uso: gravar, abrir o Monitor Serial a 115200 com "Nova linha", seguir as seis poses e
+copiar o bloco entre as linhas de `=====`.
+
+## `envio-continuo/` — fechar o laço de dados
+
+Sketch de bancada que lê o MPU6050 e envia para a API num intervalo fixo, para sempre.
+**Não dorme, não usa botão, não usa GPIO extra** — só 3V3, GND, SDA=21 e SCL=22.
+
+**Por que não usar o `sketch.ino`.** Ele envia *uma* leitura e dorme esperando sinal no
+GPIO 27, o que exige botão e pull-down de 10 kΩ. Sem eles o pino flutua e `digitalRead`
+devolve ruído: ou a placa reinicia sozinha, ou nunca acorda. Não dá para testar o laço de
+dados com essa variável solta.
+
+O objetivo aqui é estreito: provar que a leitura sai do sensor, passa pela validação,
+chega ao Supabase carimbada com o dono e aparece no painel.
+
+**O dado vai cru.** O viés de hardware (`|a| = 9,20` em repouso nesta unidade) **não** é
+corrigido aqui — a correção depende do `CALC-02`, e mascarar agora esconderia justamente o
+que precisa ser medido. Em repouso a intensidade aparece perto de 0,6 no painel, e não de 0.

@@ -26,7 +26,19 @@ export type Metricas = {
    * sustentar: ausencia prolongada de movimento. NAO e "tempo dormindo".
    */
   maiorPeriodoSemMovimentoMs: number | null;
-  /** Media da intensidade das leituras que tem magnitude. Null se nenhuma tem. */
+  /**
+   * Media da intensidade das leituras EM REPOUSO. Null se nenhuma houver.
+   *
+   * So repouso, de proposito (DASH-07). Ate aqui a media incluia os eventos
+   * de movimento, embora o painel a rotulasse como "media do desvio do
+   * repouso". Com um evento a diferenca e pequena; numa noite real, com
+   * dezenas, o numero vira uma mistura que nao e nem linha de base nem medida
+   * de movimento — nao serve para nada.
+   *
+   * Separado, ele e a LINHA DE BASE do aparelho: com um sensor perfeito
+   * ficaria perto de zero. O que sobra acima de zero e o vies de calibracao
+   * daquela unidade (CALC-02) — na bancada de 2026-08-24 deu 0,85.
+   */
   intensidadeMedia: number | null;
 };
 
@@ -63,7 +75,10 @@ export function calcularMetricas(leituras: LeituraSono[]): Metricas {
     .filter(({ leitura }) => ehMovimento(leitura.status))
     .map(({ instante }) => instante.getTime());
 
-  const intensidades = datadas
+  // So as leituras que o DISPOSITIVO rotulou como repouso. Quem classifica
+  // continua sendo ele; aqui apenas lemos o rotulo (contrato, secao 2.2).
+  const intensidadesEmRepouso = datadas
+    .filter(({ leitura }) => !ehMovimento(leitura.status))
     .map(({ leitura }) => intensidade(leitura))
     .filter((v): v is number => v !== null);
 
@@ -78,8 +93,9 @@ export function calcularMetricas(leituras: LeituraSono[]): Metricas {
       fim.getTime(),
     ),
     intensidadeMedia:
-      intensidades.length > 0
-        ? intensidades.reduce((soma, v) => soma + v, 0) / intensidades.length
+      intensidadesEmRepouso.length > 0
+        ? intensidadesEmRepouso.reduce((soma, v) => soma + v, 0) /
+          intensidadesEmRepouso.length
         : null,
   };
 }

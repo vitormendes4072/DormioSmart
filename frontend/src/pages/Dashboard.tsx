@@ -4,6 +4,7 @@ import {
   Bar,
   BarChart,
   Cell,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -24,7 +25,7 @@ import {
   prepararSerie,
   type PontoDaSerie,
 } from "../lib/metricas";
-import { ehMovimento, intensidade } from "../types/sleep";
+import { LIMIAR_DE_MOVIMENTO, ehMovimento, intensidade } from "../types/sleep";
 
 /**
  * Cores da serie via token, nao hex cru (BRAND-01).
@@ -182,6 +183,14 @@ export function Dashboard() {
               <span className="w-3 h-3 rounded-sm inline-block" style={{ background: COR_MOVIMENTO }} />
               Movimento
             </span>
+            <span className="flex items-center gap-1.5">
+              {/* Tracejada, como a linha do grafico. */}
+              <span
+                className="w-3 inline-block border-t-2 border-dashed"
+                style={{ borderColor: COR_MOVIMENTO }}
+              />
+              Limiar
+            </span>
           </div>
         </div>
         <div className="h-44 sm:h-56">
@@ -209,6 +218,30 @@ export function Dashboard() {
               <Tooltip
                 content={<TooltipDoGrafico />}
                 cursor={{ fill: "var(--secondary)", fillOpacity: 0.5 }}
+              />
+              {/* A fronteira da decisao, desenhada (DASH-07).
+                  Sem ela o grafico engana: numa captacao so de repouso o eixo
+                  se ajusta ao maior valor, as barras enchem a altura toda e
+                  parece muito movimento — quando na verdade nada chegou perto
+                  do limiar. Foi exatamente o que aconteceu na primeira coleta
+                  com hardware real, em 2026-08-24.
+                  O tracado da landing ja mostrava a faixa de limiar; aqui,
+                  onde o dado e real, ela importa mais.
+                  `ifOverflow="extendDomain"` garante que a linha apareca
+                  mesmo quando todos os pontos ficam abaixo dela. */}
+              <ReferenceLine
+                y={LIMIAR_DE_MOVIMENTO}
+                ifOverflow="extendDomain"
+                stroke={COR_MOVIMENTO}
+                strokeDasharray="5 4"
+                strokeWidth={1.5}
+                label={{
+                  value: `limiar ${LIMIAR_DE_MOVIMENTO.toFixed(1).replace(".", ",")}`,
+                  position: "insideTopRight",
+                  fill: "var(--muted-foreground)",
+                  fontSize: 10,
+                  fontFamily: "Outfit",
+                }}
               />
               {/* Animacao desligada de proposito: o dashboard recarrega os
                   dados periodicamente, e reanimar as barras a cada atualizacao
