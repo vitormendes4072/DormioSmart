@@ -99,3 +99,20 @@ seu offset). O sketch mede as seis e calcula as duas coisas.
 
 Uso: gravar, abrir o Monitor Serial a 115200 com "Nova linha", seguir as seis poses e
 copiar o bloco entre as linhas de `=====`.
+
+## `envio-continuo/` — fechar o laço de dados
+
+Sketch de bancada que lê o MPU6050 e envia para a API num intervalo fixo, para sempre.
+**Não dorme, não usa botão, não usa GPIO extra** — só 3V3, GND, SDA=21 e SCL=22.
+
+**Por que não usar o `sketch.ino`.** Ele envia *uma* leitura e dorme esperando sinal no
+GPIO 27, o que exige botão e pull-down de 10 kΩ. Sem eles o pino flutua e `digitalRead`
+devolve ruído: ou a placa reinicia sozinha, ou nunca acorda. Não dá para testar o laço de
+dados com essa variável solta.
+
+O objetivo aqui é estreito: provar que a leitura sai do sensor, passa pela validação,
+chega ao Supabase carimbada com o dono e aparece no painel.
+
+**O dado vai cru.** O viés de hardware (`|a| = 9,20` em repouso nesta unidade) **não** é
+corrigido aqui — a correção depende do `CALC-02`, e mascarar agora esconderia justamente o
+que precisa ser medido. Em repouso a intensidade aparece perto de 0,6 no painel, e não de 0.
