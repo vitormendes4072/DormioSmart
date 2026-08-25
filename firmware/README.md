@@ -145,3 +145,27 @@ para promovê-la.
 Duas garantias: nenhum valor de credencial é impresso (o terminal pode estar sendo
 gravado), e o script recusa escrever em qualquer pasta que o `.gitignore` não cubra —
 credencial versionada fica no histórico para sempre.
+
+## `diagnostico-i2c/` — o barramento está confiável?
+
+Fala **direto com os registradores** do MPU6050 pelo `Wire`, sem a biblioteca da Adafruit —
+se a biblioteca fosse a suspeita, usá-la para investigar não provaria nada.
+
+**Por que existe.** Em 25/08/2026 a bancada apresentou dois defeitos seguidos: primeiro
+todos os registradores zerados (temperatura em 36,53 °C exatos), depois valores absurdos e
+**instáveis** — `|a| = 56,5 m/s²` com a placa parada e ruído de 1,57 contra os 0,043 de um
+sensor saudável. Erro de configuração daria valor errado porém *estável*; valor que pula
+37× mais que o normal é corrupção de barramento.
+
+Mede: varredura de endereços (3 passadas), `WHO_AM_I` mil vezes, bloco de 14 bytes mil
+vezes com verificação de plausibilidade — tudo em 100 kHz e em 400 kHz.
+
+| Resultado | Significa |
+|---|---|
+| 0 erros nas duas velocidades | barramento ok, o defeito é outro |
+| erros só em 400 kHz | fio comprido ou pull-up fraco |
+| erros nas duas | contato intermitente ou solda fria |
+| nada responde na varredura | alimentação ou fio trocado |
+
+Enquanto ele mede, **pressione cada fio e os pinos do header**. Se a contagem de erros mudar
+com a pressão, o defeito é mecânico.
