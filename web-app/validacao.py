@@ -131,7 +131,54 @@ def validar_leitura(content):
             f"recebido {content['total']:.2f}, esperado ~{magnitude:.2f}"
         )
 
+    erro = _recusar_sensor_mudo(content)
+    if erro:
+        return None, erro
+
     return _validar_agregacao(content)
+
+
+def _recusar_sensor_mudo(content):
+    """Recusa a assinatura de sensor que responde mas nao mede (SEC-06).
+
+    ── O CASO REAL ──────────────────────────────────────────────────────
+
+    Em 25/08/2026, durante a caracterizacao de bancada, o MPU6050 passou a
+    devolver TODOS os registradores zerados. O delator foi a temperatura:
+    36,5 C e exatamente o que a biblioteca produz com o registrador em zero
+    (`raw / 340 + 36,53`). Causa tipica: alimentacao mal encaixada — o chip
+    sobrevive do vazamento dos pull-ups do I2C, responde no barramento e nao
+    mede.
+
+    ── POR QUE O BACKEND PRECISA RECUSAR ────────────────────────────────
+
+    Com os eixos zerados, `total` = 0 e o dispositivo calcula a intensidade
+    como |0 - 9,81| = 9,81, muito acima do limiar. Ele classifica como
+    MOVIMENTO e envia.
+
+    E o payload passa em tudo o mais: 0 esta dentro da faixa fisica, e a
+    coerencia fecha (0 = raiz de 0+0+0). Ou seja, um fio solto encheria a
+    base de eventos de movimento FABRICADOS a noite inteira — e num trabalho
+    de actigrafia isso nao e tela quebrada, e resultado invalido.
+
+    O firmware ja nao envia (guarda de magnitude implausivel), mas firmware
+    velho continua em campo e a base e o que sobra no fim. Defesa em
+    profundidade, como o RLS junto do filtro por dono.
+
+    ── POR QUE A REGRA E "OS TRES EXATAMENTE ZERO" ──────────────────────
+
+    Nao um piso de magnitude: em queda livre |a| REALMENTE tende a zero, e
+    nao cabe ao backend decidir que isso nunca acontece. Ja os tres eixos
+    darem exatamente 0,00 ao mesmo tempo nao e medida — o ruido de um
+    acelerometro vivo torna isso praticamente impossivel. E assinatura de
+    registrador morto, nao de fisica.
+    """
+    if content["ax"] == 0 and content["ay"] == 0 and content["az"] == 0:
+        return (
+            "os tres eixos vieram exatamente zero: assinatura de sensor que "
+            "responde mas nao mede (confira a alimentacao do MPU6050)"
+        )
+    return None
 
 
 def _fora_da_faixa(campo, valor, minimo, maximo):

@@ -1,0 +1,44 @@
+{
+  "name": "Smart Dormio",
+  "short_name": "Dormio",
+  "description": "Registra eventos de movimento durante o repouso, por acelerometria.",
+  "start_url": "/dashboard",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f4f7fb",
+  "theme_color": "#35a2ef",
+  "lang": "pt-BR",
+  "icons": [
+    {
+      "src": "/icone-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icone-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icone-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Coletar pelo celular",
+      "url": "/coletar",
+      "icons": [
+        {
+          "src": "/icone-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ]
+}

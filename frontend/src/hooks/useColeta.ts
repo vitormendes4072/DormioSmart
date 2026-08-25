@@ -6,6 +6,7 @@ import {
   agregar,
   montarPayload,
 } from "../lib/acelerometro";
+import { useAuth } from "../contexts/AuthContext";
 import { ErroDeIngestao, enviarLeitura } from "../lib/coleta";
 
 /**
@@ -83,7 +84,7 @@ export async function pedirPermissao(): Promise<boolean> {
   }
 }
 
-export function useColeta(epocaSegundos: number, token: string | null) {
+export function useColeta(epocaSegundos: number, dispositivoId: string | null) {
   const [estado, setEstado] = useState<EstadoDaColeta>("ocioso");
   const [erro, setErro] = useState<string | null>(null);
   const [registros, setRegistros] = useState<Registro[]>([]);
@@ -94,8 +95,11 @@ export function useColeta(epocaSegundos: number, token: string | null) {
   // pagina que esta medindo.
   const buffer = useRef<Amostra[]>([]);
   const wakeLock = useRef<{ release: () => Promise<void> } | null>(null);
-  const tokenRef = useRef(token);
-  tokenRef.current = token;
+  // Refs para o que o listener e o temporizador consultam sem re-renderizar.
+  const dispositivoRef = useRef(dispositivoId);
+  dispositivoRef.current = dispositivoId;
+  const jwtRef = useRef<string | null>(null);
+  jwtRef.current = useAuth().sessao?.access_token ?? null;
 
   const fecharEpoca = useCallback(async () => {
     const amostras = buffer.current;
@@ -108,11 +112,11 @@ export function useColeta(epocaSegundos: number, token: string | null) {
     const registro: Registro = { agregado, enviada: false, falha: null };
     setRegistros((atuais) => [registro, ...atuais]);
 
-    const credencial = tokenRef.current;
-    if (!credencial) return;
+    const alvo = dispositivoRef.current;
+    if (!alvo) return;
 
     try {
-      await enviarLeitura(montarPayload(agregado), credencial);
+      await enviarLeitura(montarPayload(agregado), alvo, jwtRef.current);
       registro.enviada = true;
     } catch (e) {
       registro.falha =

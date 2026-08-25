@@ -116,3 +116,56 @@ chega ao Supabase carimbada com o dono e aparece no painel.
 **O dado vai cru.** O viés de hardware (`|a| = 9,20` em repouso nesta unidade) **não** é
 corrigido aqui — a correção depende do `CALC-02`, e mascarar agora esconderia justamente o
 que precisa ser medido. Em repouso a intensidade aparece perto de 0,6 no painel, e não de 0.
+
+## `secrets.h` — um canônico, cópias descartáveis
+
+O Arduino IDE 1.8.x **copia a pasta do sketch** para um diretório temporário antes de
+compilar (é o `arduino_build_NNNNNN` do log). Arquivo de fora não vai junto, então
+`#include "../secrets.h"` **não funciona**: o `..` do temporário não é o `..` do projeto.
+
+Cada sketch precisa da sua cópia. A duplicação é imposta pela ferramenta, não é escolha.
+O que dá para fazer é impedir que as cópias divirjam em silêncio — o que já aconteceu uma
+vez, com a senha do Wi-Fi corrigida em apenas uma delas.
+
+| | |
+|---|---|
+| `firmware/secrets.h` | **canônico** — edite este |
+| `firmware/<sketch>/secrets.h` | cópias, descartáveis |
+
+```bash
+./firmware/sincronizar-secrets.sh              # canônico -> cópias
+./firmware/sincronizar-secrets.sh --conferir   # só relata, não escreve
+./firmware/sincronizar-secrets.sh --de <pasta> # promove uma cópia a canônico
+```
+
+**Se você editou uma cópia por engano** — fácil, é a que está aberta na IDE — o script
+detecta que ela é mais nova, **aborta em vez de sobrescrever**, e sugere `--de <pasta>`
+para promovê-la.
+
+Duas garantias: nenhum valor de credencial é impresso (o terminal pode estar sendo
+gravado), e o script recusa escrever em qualquer pasta que o `.gitignore` não cubra —
+credencial versionada fica no histórico para sempre.
+
+## `diagnostico-i2c/` — o barramento está confiável?
+
+Fala **direto com os registradores** do MPU6050 pelo `Wire`, sem a biblioteca da Adafruit —
+se a biblioteca fosse a suspeita, usá-la para investigar não provaria nada.
+
+**Por que existe.** Em 25/08/2026 a bancada apresentou dois defeitos seguidos: primeiro
+todos os registradores zerados (temperatura em 36,53 °C exatos), depois valores absurdos e
+**instáveis** — `|a| = 56,5 m/s²` com a placa parada e ruído de 1,57 contra os 0,043 de um
+sensor saudável. Erro de configuração daria valor errado porém *estável*; valor que pula
+37× mais que o normal é corrupção de barramento.
+
+Mede: varredura de endereços (3 passadas), `WHO_AM_I` mil vezes, bloco de 14 bytes mil
+vezes com verificação de plausibilidade — tudo em 100 kHz e em 400 kHz.
+
+| Resultado | Significa |
+|---|---|
+| 0 erros nas duas velocidades | barramento ok, o defeito é outro |
+| erros só em 400 kHz | fio comprido ou pull-up fraco |
+| erros nas duas | contato intermitente ou solda fria |
+| nada responde na varredura | alimentação ou fio trocado |
+
+Enquanto ele mede, **pressione cada fio e os pinos do header**. Se a contagem de erros mudar
+com a pressão, o defeito é mecânico.
