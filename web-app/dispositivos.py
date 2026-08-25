@@ -27,6 +27,8 @@ TIPOS = ("travesseiro", "celular")
 TIPO_PADRAO = "travesseiro"
 
 NOME_PADRAO = "Smart Dormio"
+# Nome do dispositivo criado pelo pareamento automatico (APP-08).
+NOME_CELULAR = "Meu celular"
 NOME_MAXIMO = 60
 
 
@@ -87,6 +89,62 @@ def criar(client, usuario_id, nome, token_hash, tipo=TIPO_PADRAO):
         return linhas[0] if linhas else None
     except Exception:
         logger.exception("Falha ao criar device.")
+        return None
+
+
+def buscar_do_dono(client, usuario_id, device_id):
+    """Devolve o dispositivo ATIVO daquele dono, ou None.
+
+    Usado na ingestao por sessao (APP-08): antes de gravar, confere que o
+    `device_id` informado pertence a quem pediu.
+
+    O filtro por `user_id` acompanha o RLS, como no resto do modulo — se um
+    cair, o outro segura. E `revoked_at is null` importa: revogar precisa
+    valer para os dois caminhos de ingestao, senao o caminho por sessao
+    seria uma porta que a revogacao nao fecha.
+    """
+    try:
+        resposta = (
+            client.table("devices")
+            .select(CAMPOS)
+            .eq("id", device_id)
+            .eq("user_id", usuario_id)
+            .is_("revoked_at", "null")
+            .limit(1)
+            .execute()
+        )
+        linhas = resposta.data or []
+        return linhas[0] if linhas else None
+    except Exception:
+        logger.exception("Falha ao buscar device do dono.")
+        return None
+
+
+def primeiro_do_tipo(client, usuario_id, tipo):
+    """Dispositivo ATIVO mais antigo daquele tipo, ou None.
+
+    Serve ao pareamento automatico do celular: em vez de criar um dispositivo
+    novo a cada coleta — o que encheria a conta de orfaos e tornaria o painel
+    inutil — reaproveita o que ja existe.
+
+    Mais antigo, e nao mais recente, de proposito: se por algum motivo houver
+    duplicados, a escolha e estavel entre chamadas.
+    """
+    try:
+        resposta = (
+            client.table("devices")
+            .select(CAMPOS)
+            .eq("user_id", usuario_id)
+            .eq("tipo", tipo)
+            .is_("revoked_at", "null")
+            .order("created_at", desc=False)
+            .limit(1)
+            .execute()
+        )
+        linhas = resposta.data or []
+        return linhas[0] if linhas else None
+    except Exception:
+        logger.exception("Falha ao buscar device por tipo.")
         return None
 
 

@@ -1,11 +1,11 @@
-import { AlertTriangle, Check, Play, Smartphone, Square, X } from "lucide-react";
-import { useState } from "react";
-import { Link } from "react-router";
+import { AlertTriangle, Check, Loader2, Play, Smartphone, Square, X } from "lucide-react";
+import { useEffect, useState } from "react";
 
 import { Moldura } from "../components/Blueprint";
 import { NotaDeEscopo } from "../components/NotaDeEscopo";
 import { EPOCAS_DISPONIVEIS_S, EPOCA_PADRAO_S, desvio } from "../lib/acelerometro";
-import { esquecerToken, guardarToken, lerTokenGuardado } from "../lib/coleta";
+import { prepararDispositivoDoCelular } from "../lib/coleta";
+import { ErroApi } from "../lib/api";
 import { useColeta } from "../hooks/useColeta";
 import { GRAVIDADE, LIMIAR_DE_MOVIMENTO } from "../types/sleep";
 
@@ -29,20 +29,39 @@ import { GRAVIDADE, LIMIAR_DE_MOVIMENTO } from "../types/sleep";
  */
 
 export function Coletar() {
-  const [token, setToken] = useState(() => lerTokenGuardado() ?? "");
   const [epoca, setEpoca] = useState<number>(EPOCA_PADRAO_S);
+  // Pareamento automático (APP-08): a sessão já identifica o dono, então o
+  // aparelho prepara o próprio dispositivo sem o usuário ver credencial.
+  const [dispositivo, setDispositivo] = useState<string | null>(null);
+  const [nomeDoDispositivo, setNomeDoDispositivo] = useState<string | null>(null);
+  const [erroDePreparo, setErroDePreparo] = useState<string | null>(null);
+
   const { estado, erro, registros, amostrasNaEpoca, comecar, parar } = useColeta(
     epoca,
-    token.trim() || null,
+    dispositivo,
   );
 
-  const coletando = estado === "coletando";
+  useEffect(() => {
+    let vivo = true;
+    prepararDispositivoDoCelular()
+      .then((d) => {
+        if (!vivo) return;
+        setDispositivo(d.id);
+        setNomeDoDispositivo(d.nome);
+      })
+      .catch((e) => {
+        if (!vivo) return;
+        setErroDePreparo(
+          e instanceof ErroApi ? e.message : "Não foi possível preparar este aparelho.",
+        );
+      });
+    return () => {
+      vivo = false;
+    };
+  }, []);
 
-  function aoComecar() {
-    const limpo = token.trim();
-    if (limpo) guardarToken(limpo);
-    void comecar();
-  }
+  const coletando = estado === "coletando";
+  const pronto = dispositivo !== null;
 
   return (
     <div className="space-y-6">
@@ -73,27 +92,25 @@ export function Coletar() {
       <Moldura>
         <h2 className="text-sm font-semibold text-foreground">Configuração</h2>
 
-        <label className="block mt-4">
-          <span className="text-xs uppercase tracking-wider text-muted-foreground">
-            Token do dispositivo
-          </span>
-          <input
-            type="password"
-            value={token}
-            onChange={(e) => setToken(e.target.value)}
-            disabled={coletando}
-            autoComplete="off"
-            placeholder="cole aqui o token exibido no pareamento"
-            className="mt-1.5 w-full rounded-lg border border-border bg-input-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-60"
-          />
-          <span className="mt-1.5 block text-xs text-muted-foreground">
-            Pareie um dispositivo do tipo <strong>celular</strong> em{" "}
-            <Link to="/configuracoes" className="text-primary font-semibold hover:underline">
-              Configurações
-            </Link>{" "}
-            e cole o token aqui. Ele fica só nesta aba e some quando você a fecha.
-          </span>
-        </label>
+        {/* Nenhum campo de credencial, de propósito. Ver a nota em lib/coleta.ts. */}
+        <div className="mt-4 text-sm">
+          {erroDePreparo ? (
+            <p className="text-destructive" role="alert">
+              {erroDePreparo}
+            </p>
+          ) : pronto ? (
+            <p className="text-muted-foreground">
+              Enviando como{" "}
+              <strong className="font-semibold text-foreground">{nomeDoDispositivo}</strong>.
+              Este aparelho aparece no painel como um dispositivo seu.
+            </p>
+          ) : (
+            <p className="inline-flex items-center gap-2 text-muted-foreground">
+              <Loader2 className="w-4 h-4 animate-spin" aria-hidden />
+              Preparando este aparelho...
+            </p>
+          )}
+        </div>
 
         <label className="block mt-4">
           <span className="text-xs uppercase tracking-wider text-muted-foreground">
@@ -128,24 +145,12 @@ export function Coletar() {
             </button>
           ) : (
             <button
-              onClick={aoComecar}
-              disabled={!token.trim()}
+              onClick={() => void comecar()}
+              disabled={!pronto}
               className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 font-semibold text-primary-foreground transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50 disabled:hover:translate-y-0"
             >
               <Play className="w-4 h-4" />
               Começar a coletar
-            </button>
-          )}
-
-          {token && !coletando && (
-            <button
-              onClick={() => {
-                esquecerToken();
-                setToken("");
-              }}
-              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-            >
-              Esquecer token
             </button>
           )}
 
