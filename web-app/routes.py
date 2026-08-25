@@ -10,7 +10,7 @@ from device_auth import extrair_token, gerar_token, hash_token
 from validacao import validar_captacao, validar_leitura
 
 # Versao do contrato que este backend implementa (docs/DATA-CONTRACT.md).
-CONTRATO_DE_DADOS = "2.0.0"
+CONTRATO_DE_DADOS = "2.1.0"
 
 def init_routes(app):
     """Rotas da API.

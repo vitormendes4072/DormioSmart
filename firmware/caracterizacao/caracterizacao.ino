@@ -86,6 +86,24 @@ const int   ASSENTAMENTO_MS = 1500; // tempo para a mao sair e a placa parar
 // imovel; 0,15 e folga generosa que ainda pega mao encostada.
 const float RUIDO_MAXIMO = 0.15;
 
+// Parado na Terra, |a| vale ~9,81 em QUALQUER pose. Bem abaixo disso nao e
+// pose ruim: e ausencia de medida.
+//
+// O caso classico e alimentacao mal encaixada. Sem VCC firme, o MPU6050
+// sobrevive do vazamento dos resistores de pull-up do I2C: energia bastante
+// para responder no barramento - entao `mpu.begin()` PASSA - e insuficiente
+// para os sensores funcionarem. Todos os registradores voltam zero.
+//
+// O sintoma delator e a temperatura: a biblioteca calcula
+// `raw / 340,0 + 36,53`, entao registrador zerado imprime exatamente
+// 36,53 C. Se aparecer isso com |a| = 0, o problema e fiacao, nao pose.
+//
+// Foi um furo desta versao: os dois avisos anteriores nao disparavam com
+// zero (`0 > 0,15` e falso, e `0 < 0,90*0` tambem), entao o sketch aceitava
+// leitura vazia calado e seguia para a pose seguinte.
+const float MAGNITUDE_MINIMA_PLAUSIVEL = 3.0;
+const float MAGNITUDE_MAXIMA_PLAUSIVEL = 20.0;
+
 // --- Poses ---------------------------------------------------------------
 
 const int N_POSES = 6;
@@ -204,6 +222,29 @@ void setup() {
     const Medida &m = medidas[p];
     Serial.printf("   ax=%7.3f  ay=%7.3f  az=%7.3f  |a|=%6.3f  ruido=%.4f  %.1f C\n",
                   m.eixo[0], m.eixo[1], m.eixo[2], m.mag, m.ruido, m.temp);
+
+    if (m.mag < MAGNITUDE_MINIMA_PLAUSIVEL || m.mag > MAGNITUDE_MAXIMA_PLAUSIVEL) {
+      Serial.println();
+      Serial.println("   ====================================================");
+      Serial.printf("   PARADO: |a| = %.3f e fisicamente impossivel.
+", m.mag);
+      Serial.println("   Em repouso, em qualquer pose, tem que dar ~9,81.");
+      Serial.println();
+      if (m.mag < 0.01) {
+        Serial.printf("   A temperatura marcou %.1f C. Se for 36,5, e o valor que a
+", m.temp);
+        Serial.println("   biblioteca produz com o registrador ZERADO (raw/340+36,53).");
+        Serial.println("   Sensor respondendo no I2C mas sem medir = alimentacao solta.");
+        Serial.println();
+        Serial.println("   CONFIRA, nesta ordem:");
+        Serial.println("     1. 3V3 do ESP32 -> VCC do MPU6050  (o suspeito numero um)");
+        Serial.println("     2. GND -> GND");
+        Serial.println("     3. GPIO21 -> SDA   e   GPIO22 -> SCL");
+        Serial.println("   Reencaixe os jumpers e grave de novo.");
+      }
+      Serial.println("   ====================================================");
+      while (1) delay(1000);
+    }
 
     if (m.ruido > RUIDO_MAXIMO) {
       Serial.printf("   AVISO: ruido %.4f acima de %.2f - a placa tremeu. "

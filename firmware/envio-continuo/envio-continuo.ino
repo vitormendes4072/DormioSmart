@@ -82,11 +82,34 @@ const float LIMIAR_MOVIMENTO = 1.2;
 const char *STATUS_REPOUSO = "Repouso";
 const char *STATUS_MOVIMENTO = "Movimento";
 
+// Parado na Terra, |a| vale ~9,81 em qualquer pose. Fora desta faixa nao e
+// medida: e sensor mudo.
+//
+// POR QUE ISTO E CRITICO AQUI, E NAO SO UM AVISO:
+//
+// Com os registradores zerados, |a| = 0 e a intensidade vira |0 - 9,81| =
+// 9,81 - muito acima do limiar. O aparelho classificaria como MOVIMENTO e
+// enviaria. E o backend ACEITARIA: o payload e internamente coerente
+// (0 = raiz de 0+0+0) e zero esta dentro da faixa fisica declarada.
+//
+// Ou seja: um fio de alimentacao solto encheria o banco de eventos de
+// movimento FABRICADOS, a noite inteira. Pior que silencio - silencio se
+// percebe, dado inventado nao.
+//
+// O caso classico e VCC mal encaixado: o MPU6050 sobrevive do vazamento dos
+// pull-ups do I2C, responde no barramento (entao mpu.begin() PASSA) e nao
+// mede. Delator: a temperatura marca exatamente 36,5 C, que e o que a
+// biblioteca produz com o registrador zerado (raw/340 + 36,53).
+const float MAGNITUDE_MINIMA_PLAUSIVEL = 3.0;
+const float MAGNITUDE_MAXIMA_PLAUSIVEL = 20.0;
+
 Adafruit_MPU6050 mpu;
 
 bool sensorOnline = false;
 unsigned long enviadas = 0;
 unsigned long falhas = 0;
+// Para o diagnostico completo sair uma vez, e nao a cada ciclo.
+bool avisouSensorMudo = false;
 
 // --- Wi-Fi --------------------------------------------------------------
 
@@ -217,6 +240,39 @@ void loop() {
                 enviadas + falhas + 1,
                 a.acceleration.x, a.acceleration.y, a.acceleration.z,
                 total, temp.temperature);
+
+  // Nao envia leitura impossivel. Ver a nota nas constantes do topo.
+  if (total < MAGNITUDE_MINIMA_PLAUSIVEL || total > MAGNITUDE_MAXIMA_PLAUSIVEL) {
+    falhas++;
+    Serial.printf("  |a| = %.2f e fisicamente impossivel - NAO ENVIADO
+", total);
+    if (!avisouSensorMudo) {
+      avisouSensorMudo = true;
+      Serial.println();
+      Serial.println("  ====================================================");
+      Serial.println("  O sensor responde no I2C mas nao esta medindo.");
+      Serial.printf("  Temperatura em %.1f C. Se for 36,5, e o valor que a
+",
+                    temp.temperature);
+      Serial.println("  biblioteca produz com o registrador ZERADO.");
+      Serial.println();
+      Serial.println("  CONFIRA, nesta ordem:");
+      Serial.println("    1. 3V3 do ESP32 -> VCC do MPU6050  (o suspeito numero um)");
+      Serial.println("    2. GND -> GND");
+      Serial.println("    3. GPIO21 -> SDA   e   GPIO22 -> SCL");
+      Serial.println();
+      Serial.println("  Nada sera enviado enquanto isso. Reencaixe os jumpers:");
+      Serial.println("  a coleta volta sozinha, sem precisar gravar de novo.");
+      Serial.println("  ====================================================");
+      Serial.println();
+    }
+    return;
+  }
+
+  if (avisouSensorMudo) {
+    avisouSensorMudo = false;
+    Serial.println("  sensor voltou a medir - retomando o envio");
+  }
 
   // Duas casas decimais, como o contrato descreve. A tolerancia de coerencia
   // do backend e 0,5 m/s2, entao o arredondamento nao chega perto de
