@@ -1,6 +1,6 @@
 # Contrato de dados — Smart Dormio
 
-**Versão:** 2.1.0 · **Itens:** DATA-01, DATA-02, SEC-02, SEC-03, DASH-05, DASH-06, DATA-04, APP-01, SEC-06
+**Versão:** 2.2.0 · **Itens:** DATA-01, DATA-02, SEC-02, SEC-03, DASH-05, DASH-06, DATA-04, APP-01, SEC-06, APP-08
 
 Este documento é a fonte única de verdade sobre o dado que trafega entre
 firmware, backend e banco. Firmware (`firmware/sketch.ino`), simulador
@@ -205,7 +205,53 @@ adiantamento, que cobre relógio dessincronizado sem aceitar disparate.
 
 ---
 
-## 3. Autenticação do dispositivo (SEC-02)
+## 3. Autenticação na ingestão
+
+A partir da **v2.2.0** há **dois caminhos**, um por classe de origem. Em ambos, o
+`user_id` **nunca vem do corpo da requisição**.
+
+| Origem | Credencial | De onde sai o dono |
+|---|---|---|
+| ESP32 | `X-Device-Token: <token>` | da linha do dispositivo, resolvida pelo hash |
+| Celular | `Authorization: Bearer <JWT>` + `device_id` no corpo | do JWT validado |
+
+O token tem precedência quando os dois vêm — cenário que só acontece por engano de
+cliente, já que um ESP32 nunca envia `Authorization`.
+
+### 3.1 Por que o celular não usa token (APP-08)
+
+O `X-Device-Token` existe porque **o ESP32 não tem login**. Não há usuário na frente
+dele, não há sessão, não há como renovar credencial; um segredo longo no `secrets.h` é o
+que resta.
+
+O celular não tem esse problema: quem abre a tela de coleta já está autenticado — a mesma
+sessão que carrega o painel. Exigir que essa pessoa pareie um dispositivo, copie um token
+de 43 caracteres e cole noutra tela era pedir que ela fizesse à mão o que o navegador já
+tinha feito.
+
+E era pior que incômodo: colocava uma credencial de **escrita** dentro do navegador, onde
+não existe equivalente ao Keystore do Android. O melhor possível ali era `sessionStorage`,
+que apenas encurta a janela de exposição.
+
+Com autenticação por sessão, **não há token nenhum no navegador** — não há o que um XSS
+exfiltrar.
+
+### 3.2 O que o cliente pode e não pode dizer
+
+No caminho por sessão, o cliente informa **apenas qual dos seus dispositivos** está
+enviando. Isso é conferido contra o dono **antes de qualquer escrita**, com filtro por
+`user_id` acompanhando o RLS.
+
+`device_id` inexistente, revogado ou **de outra pessoa** respondem igual — `404`.
+Distinguir os casos permitiria descobrir ids de dispositivos alheios.
+
+`POST /api/devices/celular` (autenticado) devolve o dispositivo `celular` do usuário,
+criando na primeira vez. É *create-or-get*: uma chamada por sessão de coleta criando toda
+vez encheria a conta de órfãos. **Nunca devolve token** — a linha tem um `token_hash`
+gerado cujo valor em claro é descartado, então o caminho por token simplesmente não é
+utilizável nesse registro, que é o desejado.
+
+## 3.3 Autenticação do dispositivo (SEC-02)
 
 Header obrigatório: `X-Device-Token: <token opaco>`
 
@@ -356,6 +402,7 @@ unidade alterada, novo header obrigatório). **MINOR** = campo opcional novo.
 
 | Versão | Data | Mudança |
 |---|---|---|
+| 2.2.0 | 2026-08-25 | Ingestão aceita autenticação por **sessão** (`Authorization: Bearer` + `device_id`) além do token de dispositivo; rota `POST /api/devices/celular` (APP-08). **MINOR:** caminho novo e opcional, o do ESP32 segue intocado |
 | 2.1.0 | 2026-08-25 | Recusa leitura com os três eixos exatamente zero — assinatura de sensor que responde mas não mede (SEC-06). **MINOR:** só rejeita o que já era dado inválido; nenhum dispositivo saudável é afetado |
 | 2.0.0 | 2026-08-24 | `t` e `gx/gy/gz` viram opcionais; faixa do giroscópio para ±40 rad/s; campos `ts`, `epoca_s`, `metodo` e `amostras` (DATA-04, APP-01). **MAJOR** pela regra abaixo — nenhum firmware em campo quebra, mas a obrigatoriedade de campo mudou |
 | 1.3.0 | 2026-08-23 | Leitura aceita recorte por `device`, janela `desde`/`ate` e `limite`; retorno passa a incluir `device_id` (DASH-05, DASH-06). **Compatível:** ingestão intocada, e a leitura sem parâmetros responde como antes |

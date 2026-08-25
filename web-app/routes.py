@@ -3,14 +3,15 @@ from datetime import datetime, timezone
 from flask import g, jsonify, request
 
 import dispositivos
-from auth import require_auth
+from auth import extrair_bearer, require_auth
 from database import db
 from consulta import ler_parametros
+from ingestao import CAMINHO_SESSAO, CAMINHO_TOKEN, extrair_device_id, identificar_caminho
 from device_auth import extrair_token, gerar_token, hash_token
 from validacao import validar_captacao, validar_leitura
 
 # Versao do contrato que este backend implementa (docs/DATA-CONTRACT.md).
-CONTRATO_DE_DADOS = "2.1.0"
+CONTRATO_DE_DADOS = "2.2.0"
 
 def init_routes(app):
     """Rotas da API.
@@ -122,6 +123,45 @@ def init_routes(app):
         # o banco só tem o hash.
         return jsonify({"device": device, "token": token}), 201
 
+    @app.route('/api/devices/celular', methods=['POST'])
+    @require_auth
+    def device_do_celular():
+        """Devolve o dispositivo `celular` do usuário, criando se não houver.
+
+        É o pareamento automático do APP-08. Sem isto, quem quer usar o
+        próprio aparelho precisa parear à mão e colar um token de 43
+        caracteres — fluxo de desenvolvedor, não de usuário.
+
+        **Reaproveita em vez de criar.** Uma chamada por sessão de coleta,
+        criando toda vez, encheria a conta de dispositivos órfãos e tornaria
+        o painel inútil. Create-or-get.
+
+        **Não devolve token, e isso é o ponto.** O aparelho vai enviar
+        autenticado por sessão (ver `ingestao.py`), então nenhuma credencial
+        de escrita precisa existir no navegador.
+
+        O `token_hash` da linha é gerado e o valor em claro é **descartado**:
+        a coluna é obrigatória e única no esquema, e um segredo que ninguém
+        conhece é mais seguro do que abrir exceção de nulo para esta classe
+        de dispositivo. O caminho por token simplesmente não é utilizável
+        neste registro — o que é exatamente o desejado.
+        """
+        client = _cliente_do_usuario()
+        if client is None:
+            return jsonify({"error": "fonte de dados indisponivel"}), 503
+
+        device = dispositivos.primeiro_do_tipo(client, g.usuario_id, "celular")
+        if device is not None:
+            return jsonify(device), 200
+
+        device = dispositivos.criar(
+            client, g.usuario_id, dispositivos.NOME_CELULAR,
+            hash_token(gerar_token()), "celular",
+        )
+        if device is None:
+            return jsonify({"error": "nao foi possivel preparar o dispositivo"}), 503
+        return jsonify(device), 201
+
     @app.route('/api/devices/<device_id>', methods=['PATCH'])
     @require_auth
     def renomear_device(device_id):
@@ -157,22 +197,69 @@ def init_routes(app):
             return jsonify({"error": "dispositivo nao encontrado"}), 404
         return jsonify(device)
 
+    def _device_por_token():
+        """Caminho do dispositivo em campo (SEC-02). Inalterado."""
+        token = extrair_token(request.headers)
+        if token is None:
+            return None, "X-Device-Token ausente", 401
+
+        device = db.get_device_by_token_hash(hash_token(token))
+        if device is None:
+            # Ausente, revogado ou desconhecido: a mesma resposta para os
+            # três. Não informamos qual é o caso — isso só ajudaria quem
+            # estivesse sondando tokens.
+            return None, "device nao autorizado", 401
+        return device, None, 200
+
+    def _device_por_sessao():
+        """Caminho do celular (APP-08): a sessão já identifica o dono.
+
+        O `user_id` sai do JWT validado, nunca do corpo. O cliente informa
+        apenas QUAL dos seus dispositivos está enviando, e isso é conferido
+        contra o dono antes de qualquer escrita.
+        """
+        jwt = extrair_bearer(request.headers)
+        usuario_id = db.validar_token_de_usuario(jwt) if jwt else None
+        if usuario_id is None:
+            return None, "sessao invalida ou expirada", 401
+
+        device_id, erro = extrair_device_id(request.get_json(silent=True))
+        if erro:
+            return None, erro, 400
+
+        client = db.cliente_do_usuario(jwt)
+        if client is None:
+            return None, "fonte de dados indisponivel", 503
+
+        device = dispositivos.buscar_do_dono(client, usuario_id, device_id)
+        if device is None:
+            # Inexistente, revogado e "de outra pessoa" respondem igual:
+            # distinguir permitiria descobrir ids de dispositivos alheios.
+            return None, "dispositivo nao encontrado", 404
+
+        # `buscar_do_dono` não devolve `user_id` (não está em CAMPOS), e o
+        # resto da rota carimba a linha com ele. Vem do JWT, não do corpo.
+        return dict(device, user_id=usuario_id), None, 200
+
     @app.route('/api/data', methods=['POST'])
     def receive_data():
         try:
             # --- AUTENTICAÇÃO DO DISPOSITIVO (SEC-02) ---
             # Antes de olhar o corpo: quem não se identifica não gasta nosso
             # tempo de parsing nem entra no banco.
-            token = extrair_token(request.headers)
-            if token is None:
-                return jsonify({"error": "X-Device-Token ausente"}), 401
+            # Dois caminhos, um por classe de origem. Ver `ingestao.py` para
+            # o porquê. O `user_id` nunca vem do corpo em nenhum dos dois.
+            caminho = identificar_caminho(request.headers)
 
-            device = db.get_device_by_token_hash(hash_token(token))
+            if caminho == CAMINHO_TOKEN:
+                device, erro, status = _device_por_token()
+            elif caminho == CAMINHO_SESSAO:
+                device, erro, status = _device_por_sessao()
+            else:
+                return jsonify({"error": "credencial ausente"}), 401
+
             if device is None:
-                # Ausente, revogado ou desconhecido: a mesma resposta para os
-                # três. Não informamos qual é o caso — isso só ajudaria quem
-                # estivesse sondando tokens.
-                return jsonify({"error": "device nao autorizado"}), 401
+                return jsonify({"error": erro}), status
 
             content = request.json
 
