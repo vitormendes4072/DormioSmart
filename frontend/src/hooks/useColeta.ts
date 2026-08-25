@@ -103,11 +103,15 @@ export function useColeta(epocaSegundos: number, dispositivoId: string | null) {
   const [erro, setErro] = useState<string | null>(null);
   const [registros, setRegistros] = useState<Registro[]>([]);
   const [amostrasNaEpoca, setAmostrasNaEpoca] = useState(0);
+  const [decorridoMs, setDecorridoMs] = useState(0);
 
   // Refs, e nao estado: o listener dispara dezenas de vezes por segundo, e
   // re-renderizar a cada amostra derrubaria o quadro a quadro da propria
   // pagina que esta medindo.
   const buffer = useRef<Amostra[]>([]);
+  // Instante em que a coleta comecou. Ref, e nao estado: quem le e o
+  // temporizador de 1 Hz, que nao deve reiniciar quando o valor muda.
+  const inicioRef = useRef<number | null>(null);
   const wakeLock = useRef<{ release: () => Promise<void> } | null>(null);
   // Refs para o que o listener e o temporizador consultam sem re-renderizar.
   const dispositivoRef = useRef(dispositivoId);
@@ -157,6 +161,7 @@ export function useColeta(epocaSegundos: number, dispositivoId: string | null) {
 
   const parar = useCallback(() => {
     setEstado("ocioso");
+    inicioRef.current = null;
     soltarTela();
   }, [soltarTela]);
 
@@ -175,7 +180,9 @@ export function useColeta(epocaSegundos: number, dispositivoId: string | null) {
     }
 
     buffer.current = [];
+    inicioRef.current = Date.now();
     setAmostrasNaEpoca(0);
+    setDecorridoMs(0);
     setEstado("coletando");
 
     // Sem isto a tela bloqueia e o `devicemotion` para. Falhar aqui nao
@@ -200,11 +207,22 @@ export function useColeta(epocaSegundos: number, dispositivoId: string | null) {
       // ~0 em repouso e quebraria o limiar.
       if (!a || a.x == null || a.y == null || a.z == null) return;
       buffer.current.push({ ax: a.x, ay: a.y, az: a.z });
-      setAmostrasNaEpoca(buffer.current.length);
+      // Sem `setState` aqui, de proposito (APP-12). O evento dispara ~60x por
+      // segundo; atualizar estado a cada amostra custava 60 renderizacoes por
+      // segundo durante a coleta inteira — bateria queimada para animar um
+      // contador. O relogio de 1 Hz abaixo le o buffer e publica.
     };
 
     window.addEventListener("devicemotion", aoMover);
     const relogio = setInterval(() => void fecharEpoca(), epocaSegundos * 1000);
+
+    // Um unico temporizador de 1 Hz publica tempo decorrido e amostras. Ver a
+    // nota no listener acima.
+    const pulso = setInterval(() => {
+      setAmostrasNaEpoca(buffer.current.length);
+      const inicio = inicioRef.current;
+      if (inicio !== null) setDecorridoMs(Date.now() - inicio);
+    }, 1000);
 
     // Sonda de sinal. Ver a nota no topo do arquivo.
     const sonda = setTimeout(() => {
@@ -217,6 +235,7 @@ export function useColeta(epocaSegundos: number, dispositivoId: string | null) {
     return () => {
       window.removeEventListener("devicemotion", aoMover);
       clearInterval(relogio);
+      clearInterval(pulso);
       clearTimeout(sonda);
     };
   }, [estado, epocaSegundos, fecharEpoca, soltarTela]);
@@ -224,5 +243,5 @@ export function useColeta(epocaSegundos: number, dispositivoId: string | null) {
   // Solta o wake lock se o componente sair enquanto coletava.
   useEffect(() => () => void wakeLock.current?.release().catch(() => {}), []);
 
-  return { estado, erro, registros, amostrasNaEpoca, comecar, parar };
+  return { estado, erro, registros, amostrasNaEpoca, decorridoMs, comecar, parar };
 }
