@@ -52,9 +52,23 @@ export const MENSAGEM_SEM_SINAL =
 
 export type EstadoDaColeta = "ocioso" | "coletando" | "erro";
 
+/**
+ * Estado do envio de uma epoca (APP-10).
+ *
+ * Tres estados EXPLICITOS, e nao um booleano `enviada` mais um `falha`
+ * anulavel. A versao anterior codificava tres situacoes em dois campos, e a
+ * tela leu como duas: `enviada ? check : X`. Resultado — a epoca aparecia com
+ * X VERMELHO enquanto ainda estava sendo enviada, e virava check um segundo
+ * depois. Alarme falso.
+ *
+ * Com um tipo de tres valores, esquecer um caso vira erro de compilacao em
+ * vez de susto na tela.
+ */
+export type EstadoDoEnvio = "enviando" | "gravada" | "falhou";
+
 export type Registro = {
   agregado: Agregado;
-  enviada: boolean;
+  envio: EstadoDoEnvio;
   falha: string | null;
 };
 
@@ -109,16 +123,25 @@ export function useColeta(epocaSegundos: number, dispositivoId: string | null) {
     const agregado = agregar(amostras, epocaSegundos, Date.now());
     if (agregado === null) return; // época sem amostra não vira leitura
 
-    const registro: Registro = { agregado, enviada: false, falha: null };
+    const registro: Registro = { agregado, envio: "enviando", falha: null };
     setRegistros((atuais) => [registro, ...atuais]);
 
     const alvo = dispositivoRef.current;
-    if (!alvo) return;
+    if (!alvo) {
+      // Nao deveria acontecer — o botao so libera com o aparelho preparado.
+      // Mas deixar a epoca presa em "enviando" para sempre seria pior que
+      // dizer que nao deu.
+      registro.envio = "falhou";
+      registro.falha = "Aparelho ainda nao preparado.";
+      setRegistros((atuais) => [...atuais]);
+      return;
+    }
 
     try {
       await enviarLeitura(montarPayload(agregado), alvo, jwtRef.current);
-      registro.enviada = true;
+      registro.envio = "gravada";
     } catch (e) {
+      registro.envio = "falhou";
       registro.falha =
         e instanceof ErroDeIngestao ? e.message : "Falha inesperada ao enviar.";
     }

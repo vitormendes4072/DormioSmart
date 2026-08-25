@@ -6,7 +6,7 @@ import { NotaDeEscopo } from "../components/NotaDeEscopo";
 import { EPOCAS_DISPONIVEIS_S, EPOCA_PADRAO_S, desvio } from "../lib/acelerometro";
 import { prepararDispositivoDoCelular } from "../lib/coleta";
 import { ErroApi } from "../lib/api";
-import { useColeta } from "../hooks/useColeta";
+import { useColeta, type Registro } from "../hooks/useColeta";
 import { GRAVIDADE, LIMIAR_DE_MOVIMENTO } from "../types/sleep";
 
 /**
@@ -27,6 +27,34 @@ import { GRAVIDADE, LIMIAR_DE_MOVIMENTO } from "../types/sleep";
  * que nenhum, então o aviso é fixo e não dispensável — a mesma regra da faixa
  * de demonstração e da legenda do traçado da landing.
  */
+
+/**
+ * O estado do envio de uma época (APP-10).
+ *
+ * Três estados, três desenhos. A versão anterior mostrava **X vermelho
+ * enquanto ainda estava enviando** — o registro entra na lista antes de a
+ * requisição terminar, e a tela lia `enviada ? check : X`. A época piscava
+ * em vermelho e virava certa um segundo depois, o que parece perda de dado.
+ *
+ * O motivo da falha fica na própria linha, e não num `title`: `title` é
+ * tooltip de passagem de mouse, e esta tela existe para ser usada no celular,
+ * onde não há mouse. O texto ficava inalcançável justamente em quem mais
+ * precisa dele.
+ */
+function MarcaDeEnvio({ registro }: { registro: Registro }) {
+  if (registro.envio === "enviando") {
+    return (
+      <Loader2
+        className="w-4 h-4 flex-shrink-0 animate-spin text-muted-foreground"
+        aria-label="enviando"
+      />
+    );
+  }
+  if (registro.envio === "gravada") {
+    return <Check className="w-4 h-4 flex-shrink-0 text-primary" aria-label="gravada" />;
+  }
+  return <X className="w-4 h-4 flex-shrink-0 text-destructive" aria-label="falhou" />;
+}
 
 export function Coletar() {
   const [epoca, setEpoca] = useState<number>(EPOCA_PADRAO_S);
@@ -181,28 +209,31 @@ export function Coletar() {
               return (
                 <li
                   key={r.agregado.fimEmMs}
-                  className="flex items-center justify-between gap-3 border-b border-border/50 pb-2 text-sm last:border-0"
+                  className="border-b border-border/50 pb-2 text-sm last:border-0"
                 >
-                  <span className="font-mono text-xs text-muted-foreground">
-                    {new Date(r.agregado.fimEmMs).toLocaleTimeString("pt-BR")}
-                  </span>
-                  <span className="font-mono text-xs text-muted-foreground">
-                    {r.agregado.amostras} am.
-                  </span>
-                  <span className="font-mono text-xs tabular-nums text-foreground">
-                    {intensidade.toFixed(2)} m/s²
-                  </span>
-                  <span
-                    className={`text-xs font-semibold ${movimento ? "text-chart-movimento" : "text-chart-repouso"}`}
-                  >
-                    {movimento ? "Movimento" : "Repouso"}
-                  </span>
-                  {r.enviada ? (
-                    <Check className="w-4 h-4 flex-shrink-0 text-primary" aria-label="enviada" />
-                  ) : (
-                    <span title={r.falha ?? "enviando"}>
-                      <X className="w-4 h-4 flex-shrink-0 text-destructive" aria-label="falhou" />
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="font-mono text-xs text-muted-foreground">
+                      {new Date(r.agregado.fimEmMs).toLocaleTimeString("pt-BR")}
                     </span>
+                    <span className="font-mono text-xs text-muted-foreground">
+                      {r.agregado.amostras} am.
+                    </span>
+                    <span className="font-mono text-xs tabular-nums text-foreground">
+                      {intensidade.toFixed(2)} m/s²
+                    </span>
+                    <span
+                      className={`text-xs font-semibold ${movimento ? "text-chart-movimento" : "text-chart-repouso"}`}
+                    >
+                      {movimento ? "Movimento" : "Repouso"}
+                    </span>
+                    <MarcaDeEnvio registro={r} />
+                  </div>
+                  {/* O motivo fica na própria linha. `title` é tooltip de
+                      mouse, e esta tela é para celular. */}
+                  {r.envio === "falhou" && r.falha && (
+                    <p className="mt-1 text-xs text-destructive" role="alert">
+                      {r.falha}
+                    </p>
                   )}
                 </li>
               );
