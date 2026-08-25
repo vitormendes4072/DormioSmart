@@ -116,3 +116,32 @@ chega ao Supabase carimbada com o dono e aparece no painel.
 **O dado vai cru.** O viés de hardware (`|a| = 9,20` em repouso nesta unidade) **não** é
 corrigido aqui — a correção depende do `CALC-02`, e mascarar agora esconderia justamente o
 que precisa ser medido. Em repouso a intensidade aparece perto de 0,6 no painel, e não de 0.
+
+## `secrets.h` — um canônico, cópias descartáveis
+
+O Arduino IDE 1.8.x **copia a pasta do sketch** para um diretório temporário antes de
+compilar (é o `arduino_build_NNNNNN` do log). Arquivo de fora não vai junto, então
+`#include "../secrets.h"` **não funciona**: o `..` do temporário não é o `..` do projeto.
+
+Cada sketch precisa da sua cópia. A duplicação é imposta pela ferramenta, não é escolha.
+O que dá para fazer é impedir que as cópias divirjam em silêncio — o que já aconteceu uma
+vez, com a senha do Wi-Fi corrigida em apenas uma delas.
+
+| | |
+|---|---|
+| `firmware/secrets.h` | **canônico** — edite este |
+| `firmware/<sketch>/secrets.h` | cópias, descartáveis |
+
+```bash
+./firmware/sincronizar-secrets.sh              # canônico -> cópias
+./firmware/sincronizar-secrets.sh --conferir   # só relata, não escreve
+./firmware/sincronizar-secrets.sh --de <pasta> # promove uma cópia a canônico
+```
+
+**Se você editou uma cópia por engano** — fácil, é a que está aberta na IDE — o script
+detecta que ela é mais nova, **aborta em vez de sobrescrever**, e sugere `--de <pasta>`
+para promovê-la.
+
+Duas garantias: nenhum valor de credencial é impresso (o terminal pode estar sendo
+gravado), e o script recusa escrever em qualquer pasta que o `.gitignore` não cubra —
+credencial versionada fica no histórico para sempre.
