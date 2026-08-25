@@ -1,6 +1,6 @@
 # Contrato de dados — Smart Dormio
 
-**Versão:** 2.0.0 · **Itens:** DATA-01, DATA-02, SEC-02, SEC-03, DASH-05, DASH-06, DATA-04, APP-01
+**Versão:** 2.1.0 · **Itens:** DATA-01, DATA-02, SEC-02, SEC-03, DASH-05, DASH-06, DATA-04, APP-01, SEC-06
 
 Este documento é a fonte única de verdade sobre o dado que trafega entre
 firmware, backend e banco. Firmware (`firmware/sketch.ino`), simulador
@@ -252,6 +252,33 @@ do próprio payload.
 
 ### 5.1 Regras de validação (SEC-03)
 
+> **v2.1.0 — os três eixos exatamente zero são recusados (SEC-06).**
+>
+> Caso real de bancada em 25/08/2026: o MPU6050 passou a devolver **todos os
+> registradores zerados**. O delator foi a temperatura — **36,5 °C** é
+> exatamente o que a biblioteca produz com o registrador em zero
+> (`raw / 340 + 36,53`). Causa típica: alimentação mal encaixada. O chip
+> sobrevive do vazamento dos pull-ups do I²C, responde no barramento — então
+> `mpu.begin()` **passa** — e não mede.
+>
+> **Por que isso era perigoso.** Com os eixos zerados, `total` = 0, e o
+> dispositivo calcula a intensidade como `|0 − 9,81| = 9,81` — muito acima do
+> limiar. Ele classifica como **Movimento** e envia. E o payload passava em
+> tudo o mais: zero está dentro da faixa física, a coerência fecha
+> (`0 = √(0+0+0)`) e o status é válido. Um fio solto encheria a base de
+> eventos de movimento **fabricados** a noite inteira — e num trabalho de
+> actigrafia isso não é tela quebrada, é resultado inválido.
+>
+> **Por que a regra é "os três exatamente zero", e não um piso de magnitude.**
+> Em queda livre `|a|` realmente tende a zero, e não cabe ao backend decidir
+> que isso nunca acontece. Já os três eixos darem `0,00` ao mesmo tempo não é
+> medida: o ruído de um acelerômetro vivo torna isso praticamente impossível.
+> É assinatura de registrador morto, não de física.
+>
+> O firmware já não envia (guarda de magnitude implausível nos dois sketches),
+> mas firmware velho continua em campo e a base é o que sobra no fim. Defesa
+> em profundidade, como o RLS junto do filtro por dono.
+
 Todos os nove campos são **obrigatórios**. Numéricos precisam ser finitos
 (`NaN` e `Infinity` são rejeitados) e booleano não conta como número.
 
@@ -329,6 +356,7 @@ unidade alterada, novo header obrigatório). **MINOR** = campo opcional novo.
 
 | Versão | Data | Mudança |
 |---|---|---|
+| 2.1.0 | 2026-08-25 | Recusa leitura com os três eixos exatamente zero — assinatura de sensor que responde mas não mede (SEC-06). **MINOR:** só rejeita o que já era dado inválido; nenhum dispositivo saudável é afetado |
 | 2.0.0 | 2026-08-24 | `t` e `gx/gy/gz` viram opcionais; faixa do giroscópio para ±40 rad/s; campos `ts`, `epoca_s`, `metodo` e `amostras` (DATA-04, APP-01). **MAJOR** pela regra abaixo — nenhum firmware em campo quebra, mas a obrigatoriedade de campo mudou |
 | 1.3.0 | 2026-08-23 | Leitura aceita recorte por `device`, janela `desde`/`ate` e `limite`; retorno passa a incluir `device_id` (DASH-05, DASH-06). **Compatível:** ingestão intocada, e a leitura sem parâmetros responde como antes |
 | 1.0.0 | 2026-08-19 | Contrato inicial; formaliza payload existente, adiciona `X-Device-Token`, `user_id` e `device_id` (DATA-01/SEC-04) |
