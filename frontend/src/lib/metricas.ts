@@ -10,6 +10,7 @@ import {
   calcularCobertura,
   fracaoEmMovimento,
   maiorPausaCobertaMs,
+  trechosDeMovimento,
   type Cobertura,
 } from "./cobertura";
 import { ehMovimento, intensidade, type LeituraSono } from "../types/sleep";
@@ -73,6 +74,9 @@ type LeituraDatada = { leitura: LeituraSono; instante: Date };
 
 function comInstanteValido(leituras: LeituraSono[]): LeituraDatada[] {
   return leituras
+    // `new Date(null)` NAO da NaN: da 1970, e uma linha assim arrastaria a
+    // janela por decadas passando ilesa pelo filtro de NaN abaixo.
+    .filter((leitura) => typeof leitura.created_at === "string" && leitura.created_at !== "")
     .map((leitura) => ({ leitura, instante: new Date(leitura.created_at) }))
     // `new Date("lixo")` produz Invalid Date, cujo getTime() e NaN. Descartar
     // aqui evita que uma linha corrompida envenene todas as contas abaixo.
@@ -99,13 +103,17 @@ export function calcularMetricas(leituras: LeituraSono[]): Metricas {
   const inicio = datadas[0].instante;
   const fim = datadas[datadas.length - 1].instante;
 
-  const instantesDeMovimento = datadas
-    .filter(({ leitura }) => ehMovimento(leitura.status))
-    .map(({ instante }) => instante.getTime());
+  const eventosDeMovimento = datadas.filter(({ leitura }) =>
+    ehMovimento(leitura.status),
+  ).length;
 
   // So as leituras que o DISPOSITIVO rotulou como repouso. Quem classifica
   // continua sendo ele; aqui apenas lemos o rotulo (contrato, secao 2.2).
   const cobertura = calcularCobertura(leituras);
+  // Movimento como INTERVALO, nao como instante (DASH-11): a leitura resume um
+  // periodo, e a pausa se mede entre periodos. Calculado uma vez e reusado
+  // pelas duas metricas, para que numerador e denominador nunca divirjam.
+  const movimento = trechosDeMovimento(leituras, ehMovimento);
 
   const intensidadesEmRepouso = datadas
     .filter(({ leitura }) => !ehMovimento(leitura.status))
@@ -114,12 +122,12 @@ export function calcularMetricas(leituras: LeituraSono[]): Metricas {
 
   return {
     totalLeituras: datadas.length,
-    eventosDeMovimento: instantesDeMovimento.length,
+    eventosDeMovimento,
     janela: { inicio, fim },
     duracaoDaJanelaMs: fim.getTime() - inicio.getTime(),
-    maiorPeriodoSemMovimentoMs: maiorPausaCobertaMs(cobertura, instantesDeMovimento),
+    maiorPeriodoSemMovimentoMs: maiorPausaCobertaMs(cobertura, movimento),
     cobertura,
-    fracaoEmMovimento: fracaoEmMovimento(leituras, ehMovimento),
+    fracaoEmMovimento: fracaoEmMovimento(cobertura, movimento),
     intensidadeMedia:
       intensidadesEmRepouso.length > 0
         ? intensidadesEmRepouso.reduce((soma, v) => soma + v, 0) /
@@ -189,7 +197,10 @@ export function prepararSerie(
     if (i > 0 && cobertura) {
       const anterior = pontos[i - 1].instante.getTime();
       const atual = instante.getTime();
-      const dentro = cobertura.lacunas.find(
+      // Materiais apenas: jitter de rede de decimos de segundo nao e buraco de
+      // coleta, e desenhar uma coluna cinza para ele picotava o grafico de uma
+      // captacao inteira (DASH-11).
+      const dentro = cobertura.lacunasMateriais.find(
         (l) => l.inicio >= anterior && l.fim <= atual && l.fim > l.inicio,
       );
       if (dentro) {

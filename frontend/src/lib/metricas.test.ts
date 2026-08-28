@@ -82,10 +82,14 @@ describe("maior periodo sem movimento — SO DENTRO DO QUE FOI MEDIDO", () => {
    */
 
   it("nao conta trecho sem leitura como pausa", () => {
-    // Leituras em 0, 20 e 60. Entre 0 e 20 nao houve medicao nenhuma; a
-    // cadencia mediana e de 20 min, entao cada leitura cobre 20 min para tras
-    // e a cobertura fica continua de -20 ate 60. A pausa nao pode exceder
-    // isso, e sobretudo nao pode inventar cobertura onde nao houve leitura.
+    // Leituras em 0, 20 e 60. Os intervalos sao 20 e 40 min, entao a cadencia
+    // mediana e 30 min: cada leitura cobre 30 min para tras, a cobertura fica
+    // em [-30, 20] e [30, 60], e sobra uma lacuna de 10 min. A pausa nao pode
+    // exceder o que foi coberto, e sobretudo nao pode inventar cobertura onde
+    // nao houve leitura.
+    //
+    // (O comentario anterior dizia 20 min e cobertura continua — errado nos
+    // dois pontos, e a assercao frouxa deixava passar. Corrigido no DASH-11.)
     const m = calcularMetricas([leitura(0), leitura(20), leitura(60)]);
     expect(m.maiorPeriodoSemMovimentoMs).not.toBeNull();
     expect(m.maiorPeriodoSemMovimentoMs!).toBeLessThanOrEqual(m.cobertura.tempoCobertoMs);

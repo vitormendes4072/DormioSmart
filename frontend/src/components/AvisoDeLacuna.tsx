@@ -10,21 +10,26 @@ import { formatarDuracao } from "../lib/metricas";
  * significam alguma coisa. Uma captação com 3% de cobertura produz métricas
  * que parecem tão sólidas quanto as de uma captação completa.
  *
- * O limiar de 95% é folgado de propósito: arredondamento e jitter de rede
- * produzem lacunas de segundos que não são perda real. O que se quer marcar é
- * o buraco que muda a leitura dos números.
+ * Conta só lacuna MATERIAL — a que significa leitura perdida (ver
+ * `lib/cobertura.ts`). A versão anterior somava também o jitter de rede, e
+ * podia disparar anunciando "há 0 trechos sem leitura nenhuma": a fração caía
+ * abaixo do limiar por acúmulo de décimos de segundo, sem que existisse buraco
+ * algum para citar.
+ *
+ * O limiar de 5% é folgado de propósito: o que se quer marcar é o buraco que
+ * muda a leitura dos números, não todo desvio de cadência.
  */
 
-const COBERTURA_ACEITAVEL = 0.95;
+const PERDA_TOLERAVEL = 0.05;
 
 export function AvisoDeLacuna({ cobertura }: { cobertura: Cobertura }) {
   if (cobertura.janelaMs <= 0) return null;
 
-  const fracao = cobertura.tempoCobertoMs / cobertura.janelaMs;
-  if (fracao >= COBERTURA_ACEITAVEL) return null;
+  const perdido = cobertura.lacunasMateriais.reduce((s, l) => s + (l.fim - l.inicio), 0);
+  if (perdido <= 0) return null;
+  if (perdido / cobertura.janelaMs < PERDA_TOLERAVEL) return null;
 
-  const perdido = cobertura.janelaMs - cobertura.tempoCobertoMs;
-  const maior = cobertura.lacunas.reduce((m, l) => Math.max(m, l.fim - l.inicio), 0);
+  const maior = cobertura.lacunasMateriais.reduce((m, l) => Math.max(m, l.fim - l.inicio), 0);
 
   return (
     <div className="flex gap-3 rounded-xl border border-amber-500/40 bg-amber-500/5 p-4">
@@ -34,14 +39,14 @@ export function AvisoDeLacuna({ cobertura }: { cobertura: Cobertura }) {
           Faltou medição em {formatarDuracao(perdido)} desta janela.
         </p>
         <p>
-          {cobertura.lacunas.length === 1
+          {cobertura.lacunasMateriais.length === 1
             ? "Há um trecho sem leitura nenhuma"
-            : `Há ${cobertura.lacunas.length} trechos sem leitura nenhuma`}
+            : `Há ${cobertura.lacunasMateriais.length} trechos sem leitura nenhuma`}
           {maior > 0 ? `, o maior de ${formatarDuracao(maior)}` : ""}. Os números abaixo
           valem para o tempo <strong className="font-semibold">que foi medido</strong> —
           nada se afirma sobre o resto.
           {cobertura.cadenciaInferida
-            ? " A duração de cada leitura foi estimada pelo intervalo entre elas, porque o dispositivo não a declarou."
+            ? " A duração das leituras que não a declaram foi estimada pelo intervalo entre elas."
             : ""}
         </p>
       </div>

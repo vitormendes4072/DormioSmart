@@ -166,6 +166,14 @@ export function Dashboard() {
   // (contrato v2.0.0 tornou o campo opcional), então numa captação só de
   // celular a coluna nunca tem nada.
   const temMedidaDeTemperatura = leiturasVisiveis.some((l) => l.temp != null);
+  // A tabela promete "da mais recente para a mais antiga". A API devolve
+  // assim, mas `agruparEmSessoes` reordena crescente para poder recortar — no
+  // modo padrão a tabela mostrava as MAIS ANTIGAS sob o rótulo contrário, e a
+  // ordem virava sozinha ao clicar "Ver todas" (DASH-11). Ordenar aqui deixa a
+  // promessa valer nos dois modos.
+  const maisRecentes = [...leiturasVisiveis]
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    .slice(0, 8);
 
   return (
     <div className="space-y-6">
@@ -192,6 +200,7 @@ export function Dashboard() {
         <SeletorDeSessao
           total={sessoes.length}
           verTudo={verTudo}
+          leiturasFora={leituras.length - leiturasVisiveis.length}
           aoAlternar={() => setVerTudo((v) => !v)}
         />
       )}
@@ -210,7 +219,11 @@ export function Dashboard() {
           detalhe={
             pctCoberto == null
               ? "tempo com leitura"
-              : `${pctCoberto.toFixed(0)}% de ${formatarDuracao(m.duracaoDaJanelaMs)}`
+              // A janela é a de COBERTURA (`cob.janelaMs`), a mesma que gerou
+              // o percentual. `m.duracaoDaJanelaMs` mede da primeira à última
+              // leitura e é menor: usá-la aqui produzia frases aritmeticamente
+              // impossíveis, do tipo "4m 0s · 100% de 3m 0s" (DASH-11).
+              : `${pctCoberto.toFixed(0)}% de ${formatarDuracao(cob.janelaMs)}`
           }
           icone={Clock}
           corDoIcone="text-blue-400"
@@ -410,7 +423,7 @@ export function Dashboard() {
                 </tr>
               </thead>
               <tbody>
-                {leiturasVisiveis.slice(0, 8).map((leitura, i) => {
+                {maisRecentes.map((leitura, i) => {
                   const valor = intensidade(leitura);
                   const movimento = ehMovimento(leitura.status);
                   const instante = new Date(leitura.created_at);
