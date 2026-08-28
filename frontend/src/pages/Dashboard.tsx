@@ -26,6 +26,7 @@ import {
   type PontoDaSerie,
 } from "../lib/metricas";
 import { LIMIAR_DE_MOVIMENTO, ehMovimento, intensidade } from "../types/sleep";
+import { AvisoDeLacuna } from "../components/AvisoDeLacuna";
 
 /**
  * Cores da serie via token, nao hex cru (BRAND-01).
@@ -52,6 +53,21 @@ function TooltipDoGrafico({
 }) {
   const ponto = payload?.[0]?.payload;
   if (!active || !ponto) return null;
+
+  // Lacuna nao e leitura: dizer "Repouso" aqui seria o mesmo defeito que o
+  // DASH-09 corrigiu nas metricas, so que no tooltip.
+  if (ponto.lacuna) {
+    return (
+      <div className="bg-card border border-border rounded-xl px-3 py-2 text-sm shadow-2xl">
+        <p className="text-foreground font-semibold">Sem medição</p>
+        <p className="text-xs text-muted-foreground mt-0.5">
+          {ponto.duracaoDaLacunaMs == null
+            ? "trecho sem leitura"
+            : `${formatarDuracao(ponto.duracaoDaLacunaMs)} sem leitura`}
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-card border border-border rounded-xl px-3 py-2 text-sm shadow-2xl">
@@ -112,9 +128,30 @@ export function Dashboard() {
   }
 
   const m = calcularMetricas(leituras);
-  const serie = prepararSerie(leituras);
-  const emRepouso = m.totalLeituras - m.eventosDeMovimento;
-  const pctMovimento = m.totalLeituras > 0 ? (m.eventosDeMovimento / m.totalLeituras) * 100 : 0;
+  const serie = prepararSerie(leituras, m.cobertura);
+  const temLacuna = serie.some((p) => p.lacuna);
+  // A coluna cinza precisa de altura para existir; usa o topo da série, ou o
+  // limiar quando tudo ficou abaixo dele.
+  const topo = Math.max(
+    LIMIAR_DE_MOVIMENTO,
+    ...serie.map((p) => p.intensidade ?? 0),
+  );
+  const serieComLacuna = serie.map((p) => ({
+    ...p,
+    alturaDaLacuna: p.lacuna ? topo : undefined,
+  }));
+  // Por TEMPO MEDIDO, e não por contagem de amostra (DASH-09). Com
+  // amostragem irregular, "9 eventos em 20 leituras = 45%" não significava
+  // nada: as 20 leituras podiam cobrir três minutos de uma janela de duas
+  // horas.
+  const pctMovimento = m.fracaoEmMovimento == null ? null : m.fracaoEmMovimento * 100;
+  const cob = m.cobertura;
+  const pctCoberto =
+    cob.janelaMs > 0 ? (cob.tempoCobertoMs / cob.janelaMs) * 100 : null;
+  // Coluna inteira de "--" é ruído. O celular não reporta temperatura de chip
+  // (contrato v2.0.0 tornou o campo opcional), então numa captação só de
+  // celular a coluna nunca tem nada.
+  const temMedidaDeTemperatura = leituras.some((l) => l.temp != null);
 
   return (
     <div className="space-y-6">
@@ -132,6 +169,10 @@ export function Dashboard() {
 
       {serieMisturaInstrumentos(dispositivos, dispositivo) && <AvisoDeMistura />}
 
+      {/* A coleta teve buracos? Isso precisa aparecer ANTES dos números, e
+          não depois — porque é o que decide se eles significam algo. */}
+      <AvisoDeLacuna cobertura={cob} />
+
       <NotaDeEscopo />
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
@@ -143,16 +184,20 @@ export function Dashboard() {
           corDoIcone="text-amber-400"
         />
         <CardMetrica
-          rotulo="Captação"
-          valor={formatarDuracao(m.duracaoDaJanelaMs)}
-          detalhe="janela registrada"
+          rotulo="Medido"
+          valor={formatarDuracao(cob.tempoCobertoMs)}
+          detalhe={
+            pctCoberto == null
+              ? "tempo com leitura"
+              : `${pctCoberto.toFixed(0)}% de ${formatarDuracao(m.duracaoDaJanelaMs)}`
+          }
           icone={Clock}
           corDoIcone="text-blue-400"
         />
         <CardMetrica
           rotulo="Maior pausa"
           valor={formatarDuracao(m.maiorPeriodoSemMovimentoMs)}
-          detalhe="sem eventos de movimento"
+          detalhe="sem movimento, dentro do medido"
           icone={Pause}
           corDoIcone="text-indigo-400"
         />
@@ -160,7 +205,7 @@ export function Dashboard() {
           rotulo="Intensidade"
           valor={m.intensidadeMedia == null ? null : m.intensidadeMedia.toFixed(2)}
           unidade="m/s²"
-          detalhe="média do desvio do repouso"
+          detalhe={`média do repouso · limiar ${LIMIAR_DE_MOVIMENTO.toFixed(1).replace(".", ",")}`}
           icone={Waves}
           corDoIcone="text-primary"
         />
@@ -189,13 +234,19 @@ export function Dashboard() {
                 className="w-3 inline-block border-t-2 border-dashed"
                 style={{ borderColor: COR_MOVIMENTO }}
               />
-              Limiar
+              Limiar {LIMIAR_DE_MOVIMENTO.toFixed(1).replace(".", ",")}
             </span>
+            {temLacuna && (
+              <span className="flex items-center gap-1.5">
+                <span className="w-3 h-3 rounded-sm inline-block bg-muted-foreground/25" />
+                Sem dados
+              </span>
+            )}
           </div>
         </div>
         <div className="h-44 sm:h-56">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={serie} margin={{ top: 4, right: 4, left: -12, bottom: 0 }}>
+            <BarChart data={serieComLacuna} margin={{ top: 4, right: 4, left: -12, bottom: 0 }}>
               <XAxis
                 dataKey="hora"
                 axisLine={false}
@@ -203,17 +254,19 @@ export function Dashboard() {
                 tick={{ fill: "var(--muted-foreground)", fontSize: 11, fontFamily: "Outfit" }}
                 minTickGap={24}
               />
-              {/* `width` explícito: o padrão do recharts é 60px, que num
+              {/* `width` explícito porque o padrão do recharts é 60px, que num
                   gráfico de ~310px no celular consome um quinto da área útil.
-                  Menos marcações pelo mesmo motivo — o valor exato está no
-                  tooltip, o eixo só precisa dar a escala. */}
+                  Mas 32px era estreito demais: com um evento de 20 m/s², os
+                  rótulos viravam "l.0" e ".0" — cortados ao meio. 40px cabe
+                  dois dígitos, e o formato larga a casa decimal acima de 10,
+                  onde ela não informa nada. */}
               <YAxis
-                width={32}
+                width={40}
                 tickCount={4}
                 axisLine={false}
                 tickLine={false}
                 tick={{ fill: "var(--muted-foreground)", fontSize: 11, fontFamily: "Outfit" }}
-                tickFormatter={(v: number) => v.toFixed(1)}
+                tickFormatter={(v: number) => (v >= 10 ? v.toFixed(0) : v.toFixed(1))}
               />
               <Tooltip
                 content={<TooltipDoGrafico />}
@@ -235,14 +288,21 @@ export function Dashboard() {
                 stroke={COR_MOVIMENTO}
                 strokeDasharray="5 4"
                 strokeWidth={1.5}
-                label={{
-                  value: `limiar ${LIMIAR_DE_MOVIMENTO.toFixed(1).replace(".", ",")}`,
-                  position: "insideTopRight",
-                  fill: "var(--muted-foreground)",
-                  fontSize: 10,
-                  fontFamily: "Outfit",
-                }}
               />
+              {/* A lacuna vira uma coluna cinza de altura cheia. O eixo é
+                  categórico — cada leitura ocupa a mesma largura — então um
+                  buraco de duas horas ficava visualmente idêntico a dez
+                  segundos. Sem esta coluna, a tela não mostrava que a coleta
+                  tinha caído (DASH-09). */}
+              {temLacuna && (
+                <Bar
+                  dataKey="alturaDaLacuna"
+                  radius={[3, 3, 0, 0]}
+                  isAnimationActive={false}
+                  fill="var(--muted-foreground)"
+                  fillOpacity={0.18}
+                />
+              )}
               {/* Animacao desligada de proposito: o dashboard recarrega os
                   dados periodicamente, e reanimar as barras a cada atualizacao
                   vira ruido visual. Tambem torna a captura de tela confiavel —
@@ -262,23 +322,30 @@ export function Dashboard() {
         <div className="lg:col-span-2 bg-card border border-border rounded-2xl p-4 sm:p-6">
           <h3 className="text-sm font-semibold text-foreground">Repouso × Movimento</h3>
           <p className="text-xs text-muted-foreground mt-0.5 mb-5">
-            Dois estados — é o que o sensor distingue
+            Proporção do <strong className="font-semibold">tempo medido</strong> — não da
+            contagem de leituras
           </p>
 
-          <div className="space-y-4">
-            <Barra
-              rotulo="Repouso"
-              quantidade={emRepouso}
-              porcentagem={100 - pctMovimento}
-              cor={COR_REPOUSO}
-            />
-            <Barra
-              rotulo="Movimento"
-              quantidade={m.eventosDeMovimento}
-              porcentagem={pctMovimento}
-              cor={COR_MOVIMENTO}
-            />
-          </div>
+          {pctMovimento == null ? (
+            <p className="text-sm text-muted-foreground">
+              Sem medição suficiente para calcular proporção.
+            </p>
+          ) : (
+            <div className="space-y-4">
+              <Barra
+                rotulo="Repouso"
+                detalhe={formatarDuracao(cob.tempoCobertoMs * (1 - m.fracaoEmMovimento!))}
+                porcentagem={100 - pctMovimento}
+                cor={COR_REPOUSO}
+              />
+              <Barra
+                rotulo="Movimento"
+                detalhe={formatarDuracao(cob.tempoCobertoMs * m.fracaoEmMovimento!)}
+                porcentagem={pctMovimento}
+                cor={COR_MOVIMENTO}
+              />
+            </div>
+          )}
 
           {m.janela ? (
             <div className="mt-5 pt-5 border-t border-border grid grid-cols-2 gap-3">
@@ -310,7 +377,9 @@ export function Dashboard() {
                 <tr className="text-xs text-muted-foreground uppercase tracking-wider">
                   <th className="text-left font-medium pb-2">Hora</th>
                   <th className="text-right font-medium pb-2">Intensidade</th>
-                  <th className="text-right font-medium pb-2">Temp. chip</th>
+                  {temMedidaDeTemperatura && (
+                    <th className="text-right font-medium pb-2">Temp. chip</th>
+                  )}
                   <th className="text-right font-medium pb-2">Estado</th>
                 </tr>
               </thead>
@@ -327,9 +396,11 @@ export function Dashboard() {
                       <td className="py-2.5 text-right font-mono text-muted-foreground">
                         {valor == null ? "--" : valor.toFixed(2)}
                       </td>
-                      <td className="py-2.5 text-right text-muted-foreground">
-                        {leitura.temp == null ? "--" : `${leitura.temp.toFixed(1)}°C`}
-                      </td>
+                      {temMedidaDeTemperatura && (
+                        <td className="py-2.5 text-right text-muted-foreground">
+                          {leitura.temp == null ? "--" : `${leitura.temp.toFixed(1)}°C`}
+                        </td>
+                      )}
                       <td
                         className="py-2.5 text-right text-xs font-medium"
                         style={{ color: movimento ? COR_MOVIMENTO : COR_REPOUSO }}
@@ -344,8 +415,7 @@ export function Dashboard() {
           </div>
 
           <p className="text-xs text-muted-foreground mt-4">
-            O agrupamento por sessão de noite depende do modelo de amostragem (DATA-02), ainda
-            em aberto — por isso a lista mostra amostras, não sessões.
+            Cada linha é uma leitura, na ordem em que chegou.
           </p>
         </div>
       </div>
@@ -380,14 +450,16 @@ function Cabecalho({
   );
 }
 
+/** Uma proporção do tempo medido. `detalhe` traz a duração correspondente —
+ *  percentual sozinho não diz se são dez minutos ou seis horas. */
 function Barra({
   rotulo,
-  quantidade,
+  detalhe,
   porcentagem,
   cor,
 }: {
   rotulo: string;
-  quantidade: number;
+  detalhe: string;
   porcentagem: number;
   cor: string;
 }) {
@@ -396,7 +468,7 @@ function Barra({
       <div className="flex justify-between text-xs mb-1.5">
         <span className="text-muted-foreground">{rotulo}</span>
         <span className="text-foreground font-semibold">
-          {quantidade} · {porcentagem.toFixed(0)}%
+          {detalhe} · {porcentagem.toFixed(0)}%
         </span>
       </div>
       <div className="h-1.5 bg-secondary rounded-full overflow-hidden">

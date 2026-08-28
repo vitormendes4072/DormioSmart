@@ -140,3 +140,11 @@ export function nomeDoDispositivo(dispositivos: Dispositivo[], id: string | null
   if (!id) return "Todos os dispositivos";
   return dispositivos.find((d) => d.id === id)?.nome ?? "Dispositivo desconhecido";
 }
+
+/** Nome legivel do tipo, para exibir na lista de dispositivos. */
+export function rotuloDoTipo(tipo: TipoDeDispositivo | undefined): string {
+  // Ausente nas respostas anteriores ao DATA-05. Ali, todo dispositivo era um
+  // ESP32 — mas afirmar isso seria inventar; "dispositivo" e o que se sabe.
+  if (!tipo) return "Dispositivo";
+  return TIPOS.find((t) => t.valor === tipo)?.rotulo ?? "Dispositivo";
+}
