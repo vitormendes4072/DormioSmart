@@ -215,3 +215,50 @@ export function fracaoEmMovimento(
   }
   return total > 0 ? movimento / total : null;
 }
+
+/**
+ * Uma sessao de captacao: um trecho continuo de medicao (DASH-10).
+ *
+ * ── POR QUE "SESSAO" E NAO "NOITE" ──────────────────────────────────────
+ *
+ * A revisao de produto apontou, com razao, que falta o conceito de recorte:
+ * o painel mostrava uma janela continua "das 14h as 16h" — dado diurno,
+ * espalhado, sem inicio nem fim que signifiquem algo para quem olha.
+ *
+ * O agrupamento natural seria "a noite de 27/08". Mas isso AFIRMA que o dado
+ * e sono, e o escopo declarado do projeto diz o contrario: registra movimento
+ * durante o repouso, sem estadiamento nem diagnostico. Chamar de "noite" seria
+ * o mesmo tipo de afirmacao indevida que este modulo existe para eliminar.
+ *
+ * "Sessao de captacao" e neutro e verdadeiro: e o periodo em que o aparelho
+ * de fato mediu. Se um dia o projeto decidir afirmar noites, isso vira decisao
+ * de escopo (e depende do `DATA-02`), nao de tela.
+ *
+ * O criterio e o mesmo da cobertura: um buraco separa sessoes. Nao ha
+ * heuristica nova aqui — a sessao E o trecho coberto.
+ */
+export type Sessao = {
+  inicio: number;
+  fim: number;
+  leituras: LeituraSono[];
+};
+
+export function agruparEmSessoes(leituras: LeituraSono[]): Sessao[] {
+  const cobertura = calcularCobertura(leituras);
+  if (cobertura.trechos.length === 0) return [];
+
+  const lista = datadas(leituras);
+
+  return cobertura.trechos
+    .map((trecho) => ({
+      inicio: trecho.inicio,
+      fim: trecho.fim,
+      leituras: lista
+        .filter(({ t }) => t >= trecho.inicio && t <= trecho.fim)
+        .map(({ leitura }) => leitura),
+    }))
+    // Trecho sem leitura nao e sessao. Nao deveria acontecer — os trechos sao
+    // construidos A PARTIR das leituras — mas uma sessao vazia produziria
+    // metricas de nada, que e o defeito que o DASH-09 corrigiu.
+    .filter((s) => s.leituras.length > 0);
+}

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  agruparEmSessoes,
   cadenciaMedianaMs,
   calcularCobertura,
   fracaoEmMovimento,
@@ -142,5 +143,72 @@ describe("fracaoEmMovimento — por tempo, nao por amostra", () => {
 
   it("sessao vazia devolve null", () => {
     expect(fracaoEmMovimento([], ehMovimento)).toBeNull();
+  });
+});
+
+// --- sessoes de captacao (DASH-10) ---------------------------------------
+
+describe("agruparEmSessoes", () => {
+  it("medicao continua e UMA sessao", () => {
+    const l = [];
+    for (let m = 0; m <= 10; m++) l.push(leitura(m));
+    expect(agruparEmSessoes(l)).toHaveLength(1);
+  });
+
+  it("o buraco separa sessoes", () => {
+    // O caso real de 25/08: leituras em 0-1, buraco, leituras em 107-108.
+    // O painel mostrava isso como uma janela unica "das 14h as 16h".
+    const s = agruparEmSessoes([leitura(0), leitura(1), leitura(107), leitura(108)]);
+    expect(s).toHaveLength(2);
+    expect(s[0].leituras).toHaveLength(2);
+    expect(s[1].leituras).toHaveLength(2);
+  });
+
+  it("as sessoes vem em ordem, da mais antiga para a mais recente", () => {
+    const s = agruparEmSessoes([leitura(0), leitura(1), leitura(107), leitura(108)]);
+    expect(s[0].fim).toBeLessThan(s[1].inicio);
+  });
+
+  it("cada leitura cai em exatamente uma sessao", () => {
+    const leituras = [leitura(0), leitura(1), leitura(107), leitura(108)];
+    const s = agruparEmSessoes(leituras);
+    const total = s.reduce((n, x) => n + x.leituras.length, 0);
+    expect(total).toBe(leituras.length);
+  });
+
+  it("sem leitura nenhuma, nao ha sessao", () => {
+    // E nao "uma sessao vazia", que produziria metricas de nada.
+    expect(agruparEmSessoes([])).toEqual([]);
+  });
+
+  it("uma leitura sozinha ainda e uma sessao", () => {
+    expect(agruparEmSessoes([leitura(0)])).toHaveLength(1);
+  });
+});
+
+describe("o recorte muda o que o painel afirma", () => {
+  it("a ultima sessao tem janela propria, e nao a soma de tudo", () => {
+    // O caso real: o painel dizia "14:08 — 16:06", 1h57m de "captacao",
+    // quando as leituras eram dois punhados de ~1 min separados por um
+    // buraco de 105 min. A ultima sessao dura ~1 min, e e isso que a tela
+    // deve mostrar por padrao.
+    const leituras = [leitura(0), leitura(1), leitura(107), leitura(108)];
+    const sessoes = agruparEmSessoes(leituras);
+    const ultima = sessoes[sessoes.length - 1];
+
+    const janelaDaUltima = ultima.fim - ultima.inicio;
+    const janelaDeTudo = calcularCobertura(leituras).janelaMs;
+
+    expect(janelaDeTudo).toBeGreaterThan(100 * 60_000);
+    expect(janelaDaUltima).toBeLessThan(10 * 60_000);
+  });
+
+  it("dentro de uma sessao nao ha lacuna", () => {
+    // E a definicao: sessao E trecho coberto. Se sobrasse lacuna dentro,
+    // o agrupamento estaria errado.
+    const leituras = [leitura(0), leitura(1), leitura(107), leitura(108)];
+    for (const s of agruparEmSessoes(leituras)) {
+      expect(calcularCobertura(s.leituras).lacunas).toHaveLength(0);
+    }
   });
 });

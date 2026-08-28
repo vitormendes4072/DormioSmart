@@ -18,6 +18,7 @@ import { AvisoDeMistura, SeletorDeDispositivo } from "../components/SeletorDeDis
 import { useDispositivos } from "../hooks/useDispositivos";
 import { useHistorico } from "../hooks/useHistorico";
 import { nomeDoDispositivo, serieMisturaInstrumentos } from "../lib/dispositivos";
+import { agruparEmSessoes } from "../lib/cobertura";
 import {
   calcularMetricas,
   formatarDuracao,
@@ -27,6 +28,7 @@ import {
 } from "../lib/metricas";
 import { LIMIAR_DE_MOVIMENTO, ehMovimento, intensidade } from "../types/sleep";
 import { AvisoDeLacuna } from "../components/AvisoDeLacuna";
+import { SeletorDeSessao } from "../components/SeletorDeSessao";
 
 /**
  * Cores da serie via token, nao hex cru (BRAND-01).
@@ -86,6 +88,7 @@ export function Dashboard() {
   // `null` = todos os dispositivos. O recorte por instrumento (DASH-05) e
   // opcional: sem ele o painel se comporta como antes.
   const [dispositivo, setDispositivo] = useState<string | null>(null);
+  const [verTudo, setVerTudo] = useState(false);
   const dispositivos = useDispositivos();
   const { leituras, carregando, erro, recarregar } = useHistorico({ dispositivo });
 
@@ -127,8 +130,19 @@ export function Dashboard() {
     );
   }
 
-  const m = calcularMetricas(leituras);
-  const serie = prepararSerie(leituras, m.cobertura);
+  // ── O RECORTE (DASH-10) ────────────────────────────────────────────
+  // O painel mostrava tudo o que chegou como uma janela contínua — "das 14h
+  // às 16h" — mesmo quando as leituras eram dois punhados separados por duas
+  // horas de silêncio. Isso não é uma captação, são duas.
+  //
+  // Por padrão mostra a ÚLTIMA sessão, que é a resposta para "e agora?".
+  // Quem quiser o histórico inteiro troca no seletor.
+  const sessoes = agruparEmSessoes(leituras);
+  const ultima = sessoes.length > 0 ? sessoes[sessoes.length - 1] : null;
+  const leiturasVisiveis = verTudo || ultima === null ? leituras : ultima.leituras;
+
+  const m = calcularMetricas(leiturasVisiveis);
+  const serie = prepararSerie(leiturasVisiveis, m.cobertura);
   const temLacuna = serie.some((p) => p.lacuna);
   // A coluna cinza precisa de altura para existir; usa o topo da série, ou o
   // limiar quando tudo ficou abaixo dele.
@@ -151,7 +165,7 @@ export function Dashboard() {
   // Coluna inteira de "--" é ruído. O celular não reporta temperatura de chip
   // (contrato v2.0.0 tornou o campo opcional), então numa captação só de
   // celular a coluna nunca tem nada.
-  const temMedidaDeTemperatura = leituras.some((l) => l.temp != null);
+  const temMedidaDeTemperatura = leiturasVisiveis.some((l) => l.temp != null);
 
   return (
     <div className="space-y-6">
@@ -173,7 +187,14 @@ export function Dashboard() {
           não depois — porque é o que decide se eles significam algo. */}
       <AvisoDeLacuna cobertura={cob} />
 
-      <NotaDeEscopo />
+      {/* O recorte, e como sair dele. */}
+      {sessoes.length > 1 && (
+        <SeletorDeSessao
+          total={sessoes.length}
+          verTudo={verTudo}
+          aoAlternar={() => setVerTudo((v) => !v)}
+        />
+      )}
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <CardMetrica
@@ -210,6 +231,11 @@ export function Dashboard() {
           corDoIcone="text-primary"
         />
       </div>
+
+      {/* Depois dos números, e não antes. A revisão apontou que quem abre o
+          painel lia dois parágrafos de ressalva antes de ver qualquer dado —
+          continua na tela, e em qualquer captura dela, mas não na frente. */}
+      <NotaDeEscopo />
 
       <div className="bg-card border border-border rounded-2xl p-4 sm:p-6">
         <div className="flex items-start justify-between gap-4 mb-5 flex-wrap">
@@ -384,7 +410,7 @@ export function Dashboard() {
                 </tr>
               </thead>
               <tbody>
-                {leituras.slice(0, 8).map((leitura, i) => {
+                {leiturasVisiveis.slice(0, 8).map((leitura, i) => {
                   const valor = intensidade(leitura);
                   const movimento = ehMovimento(leitura.status);
                   const instante = new Date(leitura.created_at);
