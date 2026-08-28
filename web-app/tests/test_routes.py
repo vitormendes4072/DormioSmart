@@ -64,20 +64,44 @@ def test_history_vazio_retorna_200():
     assert resp.get_json() == []
 
 
-def test_get_latest_data_vazio_sem_cliente():
+def test_leitura_vazia_sem_cliente():
     # Sem cliente Supabase (credenciais ausentes) → lista vazia, sem exceção.
-    with patch.object(database.db, "get_client", return_value=None):
-        assert database.db.get_latest_data() == []
+    with patch.object(database.db, "cliente_do_usuario", return_value=None):
+        assert database.db.get_leituras_do_usuario("jwt", "user-1") == []
 
 
-def test_get_latest_data_vazio_em_excecao():
+def test_leitura_vazia_em_excecao():
     # Consulta que lança exceção → tratada, devolve [] (nunca propaga → nunca 500).
     class ClienteRuim:
         def table(self, *args, **kwargs):
             raise RuntimeError("falha simulada")
 
-    with patch.object(database.db, "get_client", return_value=ClienteRuim()):
-        assert database.db.get_latest_data() == []
+    with patch.object(database.db, "cliente_do_usuario", return_value=ClienteRuim()):
+        assert database.db.get_leituras_do_usuario("jwt", "user-1") == []
+
+
+def test_nao_existe_leitura_sem_dono(monkeypatch):
+    """Nenhum metodo de leitura pode usar o cliente service_role (SEC-07).
+
+    `get_latest_data` fazia isso: lia sleep_data com a chave que IGNORA o RLS,
+    sem filtro por dono, devolvendo as leituras de todos os usuarios. Nao era
+    chamado por rota nenhuma — mas um metodo assim, disponivel na instancia,
+    e um vazamento entre contas esperando alguem liga-lo a uma rota por
+    engano.
+    """
+    import inspect
+
+    for nome, metodo in inspect.getmembers(database.Database, inspect.isfunction):
+        if not nome.startswith("get_") or "leitura" not in nome and "data" not in nome:
+            continue
+        if nome in ("get_client", "get_device_by_token_hash"):
+            continue  # ingestao e autenticacao de device: service_role e correto
+        fonte = inspect.getsource(metodo)
+        if "sleep_data" not in fonte:
+            continue
+        assert "cliente_do_usuario" in fonte, (
+            f"{nome} le sleep_data sem o cliente com JWT do usuario — o RLS nao se aplica"
+        )
 
 
 def test_receive_data_persistido_retorna_201():
