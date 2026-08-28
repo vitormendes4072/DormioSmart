@@ -43,6 +43,17 @@ export type LeituraSono = {
   /** De qual dispositivo veio a leitura (DASH-05). Nulo nas linhas anteriores
    *  ao multiusuario, que nao tem dono nem dispositivo registrado. */
   device_id?: string | null;
+  /**
+   * Quantos segundos esta linha RESUME (contrato v2.0.0).
+   *
+   * Nulo = amostra instantanea, o caso do ESP32. Presente = a linha cobre uma
+   * janela, o caso do celular.
+   *
+   * E o que permite ao painel distinguir "repouso" de "sem medicao": sem esta
+   * informacao, duas horas de silencio e duas horas de repouso continuo sao
+   * indistinguiveis (DASH-09).
+   */
+  epoca_segundos?: number | null;
 };
 
 /**

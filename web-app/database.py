@@ -126,7 +126,14 @@ class Database:
                 return []
             consulta = (
                 client.table("sleep_data")
-                .select("created_at, movimento_total, temp, status, device_id")
+                .select(
+                    "created_at, movimento_total, temp, status, device_id, "
+                    # `epoca_segundos` diz QUANTO TEMPO a linha resume. Sem
+                    # ele, o painel nao consegue distinguir "duas horas de
+                    # repouso" de "duas horas sem leitura nenhuma" — e passava
+                    # a reportar buraco de coleta como pausa (DASH-09).
+                    "epoca_segundos"
+                )
                 .eq("user_id", usuario_id)
             )
             if device_id:

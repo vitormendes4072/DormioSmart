@@ -12,7 +12,6 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router";
 
 import { Moldura } from "../components/Blueprint";
-import { NotaDeEscopo } from "../components/NotaDeEscopo";
 import { EPOCAS_DISPONIVEIS_S, EPOCA_PADRAO_S, desvio } from "../lib/acelerometro";
 import { ErroApi } from "../lib/api";
 import { prepararDispositivoDoCelular } from "../lib/coleta";
@@ -191,7 +190,6 @@ export function Coletar() {
         )}
       </Moldura>
 
-      <NotaDeEscopo />
 
       {/* --- as engrenagens, recolhidas --- */}
       <details className="rounded-xl border border-border/70 bg-card">
@@ -223,8 +221,7 @@ export function Coletar() {
               ))}
             </select>
             <span className="mt-1.5 block text-xs text-muted-foreground">
-              Um registro por janela, com o pico de magnitude do período. O aparelho amostra
-              a ~60 Hz; enviar tudo daria mais de 200 mil linhas por hora.
+              Um registro por janela, com o pico de magnitude do período.
             </span>
           </label>
 
