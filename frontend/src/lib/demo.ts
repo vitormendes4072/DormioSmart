@@ -28,10 +28,10 @@ export const PARAMETRO_DEMO = "demo";
 /**
  * Quantas leituras a demo gera, por padrao.
  *
- * E o mesmo `limit=20` de `get_latest_data` no backend. Gerar mais do que a
- * API devolve produziria uma captura de tela que o app real nunca consegue
- * exibir — alem de espremer as barras a menos de 1px, ponto em que o grafico
- * simplesmente nao desenha.
+ * E o mesmo `LIMITE_PADRAO = 20` de `consulta.py` no backend. Gerar mais do
+ * que a API devolve produziria uma captura de tela que o app real nunca
+ * consegue exibir — alem de espremer as barras a menos de 1px, ponto em que
+ * o grafico simplesmente nao desenha.
  */
 export const LEITURAS_POR_PADRAO = 20;
 
