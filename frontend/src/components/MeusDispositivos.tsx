@@ -8,6 +8,7 @@ import {
   estaAtivo,
   listarDispositivos,
   TIPOS,
+  rotuloDoTipo,
   type TipoDeDispositivo,
   parearDispositivo,
   renomearDispositivo,
@@ -111,39 +112,47 @@ export function MeusDispositivos() {
         </ul>
       )}
 
-      <fieldset className="space-y-2" disabled={pareando}>
-        <legend className="text-xs uppercase tracking-wider text-muted-foreground">
-          Tipo do instrumento
-        </legend>
-        {TIPOS.map(({ valor, rotulo, ajuda }) => (
-          <label
-            key={valor}
-            className="flex items-start gap-3 rounded-xl border border-border p-3 cursor-pointer transition-colors hover:border-primary/40 has-[:checked]:border-primary/60 has-[:checked]:bg-secondary/50"
-          >
-            <input
-              type="radio"
-              name="tipo-do-dispositivo"
-              value={valor}
-              checked={tipo === valor}
-              onChange={() => setTipo(valor)}
-              className="mt-0.5 accent-[var(--primary)]"
-            />
-            <span className="min-w-0">
-              <span className="block text-sm font-medium text-foreground">{rotulo}</span>
-              <span className="block text-xs text-muted-foreground">{ajuda}</span>
-            </span>
-          </label>
-        ))}
-      </fieldset>
+      {/* O tipo e o botao formam UMA unidade visual, dentro de uma moldura
+          propria. Soltos entre a lista e o botao, os radios pareciam
+          propriedade dos dispositivos ja listados — "qual deles e o
+          travesseiro?" — quando na verdade descrevem o PROXIMO a ser criado. */}
+      <div className="rounded-xl border border-border p-4 space-y-3">
+        <p className="text-sm font-semibold text-foreground">Parear novo dispositivo</p>
 
-      <button
-        onClick={parear}
-        disabled={pareando}
-        className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-secondary hover:bg-secondary/70 transition text-sm font-semibold text-foreground disabled:opacity-70"
-      >
-        {pareando ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-        {pareando ? "Gerando token..." : "Parear novo dispositivo"}
-      </button>
+        <fieldset className="space-y-2" disabled={pareando}>
+          <legend className="text-xs uppercase tracking-wider text-muted-foreground mb-2">
+            O novo dispositivo será um
+          </legend>
+          {TIPOS.map(({ valor, rotulo, ajuda }) => (
+            <label
+              key={valor}
+              className="flex items-start gap-3 rounded-xl border border-border p-3 cursor-pointer transition-colors hover:border-primary/40 has-[:checked]:border-primary/60 has-[:checked]:bg-secondary/50"
+            >
+              <input
+                type="radio"
+                name="tipo-do-dispositivo"
+                value={valor}
+                checked={tipo === valor}
+                onChange={() => setTipo(valor)}
+                className="mt-0.5 accent-[var(--primary)]"
+              />
+              <span className="min-w-0">
+                <span className="block text-sm font-medium text-foreground">{rotulo}</span>
+                <span className="block text-xs text-muted-foreground">{ajuda}</span>
+              </span>
+            </label>
+          ))}
+        </fieldset>
+
+        <button
+          onClick={parear}
+          disabled={pareando}
+          className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-secondary hover:bg-secondary/70 transition text-sm font-semibold text-foreground disabled:opacity-70"
+        >
+          {pareando ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+          {pareando ? "Preparando..." : "Parear"}
+        </button>
+      </div>
     </div>
   );
 }
@@ -304,6 +313,11 @@ function LinhaDoDispositivo({
           <>
             <p className="text-sm font-medium text-foreground truncate">{dispositivo.nome}</p>
             <p className="text-xs text-muted-foreground">
+              {/* O TIPO na propria linha. Sem ele, nada distinguia um
+                  travesseiro de um celular a nao ser o nome — que e escolha
+                  livre do usuario e nao classifica nada. */}
+              {rotuloDoTipo(dispositivo.tipo)}
+              {" · "}
               {ativo ? descreverUltimoContato(dispositivo) : "revogado"}
             </p>
           </>

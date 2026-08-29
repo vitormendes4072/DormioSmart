@@ -6,6 +6,13 @@
  * estagio de sono, nao ha pontuacao, nao ha duracao de sono — o escopo do
  * projeto nao afirma nenhuma dessas coisas (ver ROADMAP.md).
  */
+import {
+  calcularCobertura,
+  fracaoEmMovimento,
+  maiorPausaCobertaMs,
+  trechosDeMovimento,
+  type Cobertura,
+} from "./cobertura";
 import { ehMovimento, intensidade, type LeituraSono } from "../types/sleep";
 
 export type Janela = { inicio: Date; fim: Date };
@@ -20,12 +27,32 @@ export type Metricas = {
   /** Duracao da janela de captacao, em ms. */
   duracaoDaJanelaMs: number;
   /**
-   * Maior intervalo continuo sem nenhum evento de movimento, em ms.
+   * Maior intervalo continuo sem movimento **dentro do que foi medido**.
    *
    * E o indicador mais proximo de "repouso" que este dispositivo consegue
    * sustentar: ausencia prolongada de movimento. NAO e "tempo dormindo".
+   *
+   * ── CORRIGIDO NO DASH-09 ─────────────────────────────────────────────
+   *
+   * Ate aqui esta conta usava so os instantes de movimento e as bordas da
+   * janela — nao sabia se houve LEITURA no meio. Numa coleta real de
+   * 25/08/2026 isso pintou na tela "maior pausa: 1h47m sem eventos de
+   * movimento", quando o que houve foi 1h47m sem leitura nenhuma. Num app de
+   * sono o defeito e fatal: a noite em que o sensor caiu vira sono perfeito.
+   *
+   * Agora so conta trecho coberto. Ver `lib/cobertura.ts`.
    */
   maiorPeriodoSemMovimentoMs: number | null;
+  /** Onde houve medicao, e onde nao houve (DASH-09). */
+  cobertura: Cobertura;
+  /**
+   * Fracao do tempo MEDIDO em que houve movimento, de 0 a 1.
+   *
+   * Por tempo, e nao por contagem de amostra: com amostragem irregular, "9
+   * eventos em 20 leituras = 45%" nao significa nada — as 20 leituras podiam
+   * cobrir tres minutos de uma janela de duas horas.
+   */
+  fracaoEmMovimento: number | null;
   /**
    * Media da intensidade das leituras EM REPOUSO. Null se nenhuma houver.
    *
@@ -47,6 +74,9 @@ type LeituraDatada = { leitura: LeituraSono; instante: Date };
 
 function comInstanteValido(leituras: LeituraSono[]): LeituraDatada[] {
   return leituras
+    // `new Date(null)` NAO da NaN: da 1970, e uma linha assim arrastaria a
+    // janela por decadas passando ilesa pelo filtro de NaN abaixo.
+    .filter((leitura) => typeof leitura.created_at === "string" && leitura.created_at !== "")
     .map((leitura) => ({ leitura, instante: new Date(leitura.created_at) }))
     // `new Date("lixo")` produz Invalid Date, cujo getTime() e NaN. Descartar
     // aqui evita que uma linha corrompida envenene todas as contas abaixo.
@@ -65,18 +95,26 @@ export function calcularMetricas(leituras: LeituraSono[]): Metricas {
       duracaoDaJanelaMs: 0,
       maiorPeriodoSemMovimentoMs: null,
       intensidadeMedia: null,
+      cobertura: calcularCobertura([]),
+      fracaoEmMovimento: null,
     };
   }
 
   const inicio = datadas[0].instante;
   const fim = datadas[datadas.length - 1].instante;
 
-  const instantesDeMovimento = datadas
-    .filter(({ leitura }) => ehMovimento(leitura.status))
-    .map(({ instante }) => instante.getTime());
+  const eventosDeMovimento = datadas.filter(({ leitura }) =>
+    ehMovimento(leitura.status),
+  ).length;
 
   // So as leituras que o DISPOSITIVO rotulou como repouso. Quem classifica
   // continua sendo ele; aqui apenas lemos o rotulo (contrato, secao 2.2).
+  const cobertura = calcularCobertura(leituras);
+  // Movimento como INTERVALO, nao como instante (DASH-11): a leitura resume um
+  // periodo, e a pausa se mede entre periodos. Calculado uma vez e reusado
+  // pelas duas metricas, para que numerador e denominador nunca divirjam.
+  const movimento = trechosDeMovimento(leituras, ehMovimento);
+
   const intensidadesEmRepouso = datadas
     .filter(({ leitura }) => !ehMovimento(leitura.status))
     .map(({ leitura }) => intensidade(leitura))
@@ -84,14 +122,12 @@ export function calcularMetricas(leituras: LeituraSono[]): Metricas {
 
   return {
     totalLeituras: datadas.length,
-    eventosDeMovimento: instantesDeMovimento.length,
+    eventosDeMovimento,
     janela: { inicio, fim },
     duracaoDaJanelaMs: fim.getTime() - inicio.getTime(),
-    maiorPeriodoSemMovimentoMs: maiorIntervaloSemMovimento(
-      instantesDeMovimento,
-      inicio.getTime(),
-      fim.getTime(),
-    ),
+    maiorPeriodoSemMovimentoMs: maiorPausaCobertaMs(cobertura, movimento),
+    cobertura,
+    fracaoEmMovimento: fracaoEmMovimento(cobertura, movimento),
     intensidadeMedia:
       intensidadesEmRepouso.length > 0
         ? intensidadesEmRepouso.reduce((soma, v) => soma + v, 0) /
@@ -100,28 +136,6 @@ export function calcularMetricas(leituras: LeituraSono[]): Metricas {
   };
 }
 
-/**
- * Maior "buraco" entre eventos de movimento dentro da janela.
- *
- * As bordas contam: o trecho do inicio da janela ate o primeiro evento, e do
- * ultimo evento ate o fim, sao periodos sem movimento tanto quanto os do meio.
- * Sem nenhum evento, o periodo e a janela inteira.
- */
-function maiorIntervaloSemMovimento(
-  instantesDeMovimento: number[],
-  inicioJanela: number,
-  fimJanela: number,
-): number | null {
-  if (fimJanela <= inicioJanela) return null;
-  if (instantesDeMovimento.length === 0) return fimJanela - inicioJanela;
-
-  const marcos = [inicioJanela, ...instantesDeMovimento, fimJanela];
-  let maior = 0;
-  for (let i = 1; i < marcos.length; i++) {
-    maior = Math.max(maior, marcos[i] - marcos[i - 1]);
-  }
-  return maior;
-}
 
 /** Duracao legivel: "8h 15m", "45m", "2m 30s", "12s". */
 export function formatarDuracao(ms: number | null): string {
@@ -150,13 +164,64 @@ export type PontoDaSerie = {
   hora: string;
   intensidade: number | null;
   movimento: boolean;
+  /**
+   * Ponto sintetico marcando AUSENCIA DE MEDICAO (DASH-09).
+   *
+   * O eixo do grafico e categorico: cada leitura ocupa a mesma largura,
+   * independentemente do tempo entre elas. Sem marcar, um buraco de duas horas
+   * fica visualmente idêntico a dez segundos — foi assim que a tela deixou de
+   * mostrar que a coleta tinha caido.
+   */
+  lacuna: boolean;
+  /** Duracao da lacuna, so nos pontos sinteticos. */
+  duracaoDaLacunaMs?: number;
 };
 
-/** Serie temporal para o grafico, do mais antigo ao mais recente. */
-export function prepararSerie(leituras: LeituraSono[]): PontoDaSerie[] {
-  return comInstanteValido(leituras).map(({ leitura, instante }) => ({
-    hora: formatarHora(instante),
-    intensidade: intensidade(leitura),
-    movimento: ehMovimento(leitura.status),
-  }));
+/**
+ * Serie temporal para o grafico, do mais antigo ao mais recente.
+ *
+ * Com `cobertura`, insere um ponto sintetico onde faltou medicao. Sem ela,
+ * comporta-se como antes — util para a demo, que gera serie continua.
+ */
+export function prepararSerie(
+  leituras: LeituraSono[],
+  cobertura?: Cobertura,
+): PontoDaSerie[] {
+  const pontos = comInstanteValido(leituras);
+  const serie: PontoDaSerie[] = [];
+
+  for (let i = 0; i < pontos.length; i++) {
+    const { leitura, instante } = pontos[i];
+
+    // Antes de desenhar este ponto: houve lacuna entre o anterior e ele?
+    if (i > 0 && cobertura) {
+      const anterior = pontos[i - 1].instante.getTime();
+      const atual = instante.getTime();
+      // So INTERRUPCAO — o aparelho ter parado de mandar. Jitter de rede de
+      // decimos de segundo nao e buraco de coleta, e desenhar uma coluna cinza
+      // para cada um picotava o grafico de uma captacao inteira em centenas de
+      // colunas "sem dados" (DASH-11).
+      const dentro = cobertura.interrupcoes.find(
+        (l) => l.inicio >= anterior && l.fim <= atual && l.fim > l.inicio,
+      );
+      if (dentro) {
+        serie.push({
+          hora: "sem dados",
+          intensidade: null,
+          movimento: false,
+          lacuna: true,
+          duracaoDaLacunaMs: dentro.fim - dentro.inicio,
+        });
+      }
+    }
+
+    serie.push({
+      hora: formatarHora(instante),
+      intensidade: intensidade(leitura),
+      movimento: ehMovimento(leitura.status),
+      lacuna: false,
+    });
+  }
+
+  return serie;
 }

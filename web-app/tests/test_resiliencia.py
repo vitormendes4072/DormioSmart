@@ -57,9 +57,12 @@ def test_history_responde_200_mesmo_com_get_client_levantando():
     assert resp.get_json() == []
 
 
-def test_get_latest_data_degrada_para_lista_vazia():
+def test_get_leituras_do_usuario_degrada_para_lista_vazia():
+    # Migrado do `get_latest_data`, removido no SEC-07 por ser codigo morto
+    # que lia sem RLS. A propriedade continua importando — so que agora no
+    # metodo que as rotas de fato usam.
     with _get_client_explode():
-        assert database.db.get_latest_data() == []
+        assert database.db.get_leituras_do_usuario("jwt", "user-1") == []
 
 
 # --- os demais metodos tambem nao podem levantar -------------------------

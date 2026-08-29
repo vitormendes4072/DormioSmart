@@ -1,17 +1,20 @@
-import { LogOut } from "lucide-react";
-import { NavLink, useNavigate } from "react-router";
-
-import { useAuth } from "../contexts/AuthContext";
+import { NavLink } from "react-router";
 
 import { ITENS_NAV } from "./nav";
 
-/** Navegação de celular: barra fixa no rodapé, no alcance do polegar.
- *  Com apenas dois destinos, uma barra inferior é mais direta que uma gaveta
- *  — não esconde a navegação atrás de um toque extra. */
+/**
+ * Navegação de celular: barra fixa no rodapé, no alcance do polegar.
+ *
+ * ── SO DESTINOS, NENHUMA ACAO ──────────────────────────────────────────
+ *
+ * "Sair" ficava aqui e ocupava um quarto da barra — um slot permanente para
+ * uma acao que se usa uma vez por sessao, ao lado de tres lugares que se
+ * visita o tempo todo. Pior, uma barra de navegacao ensina que cada item e
+ * um lugar; um botao destrutivo no meio quebra essa expectativa.
+ *
+ * Foi para o fim de Configuracoes, que e onde se procura por ele.
+ */
 export function MobileNav() {
-  const navigate = useNavigate();
-  const { sair } = useAuth();
-
   const base =
     "flex-1 flex flex-col items-center justify-center gap-1 py-2.5 text-xs font-medium transition-colors";
 
@@ -29,16 +32,6 @@ export function MobileNav() {
           {label}
         </NavLink>
       ))}
-      <button
-        onClick={async () => {
-          await sair();
-          navigate("/login");
-        }}
-        className={`${base} text-muted-foreground`}
-      >
-        <LogOut className="w-5 h-5" />
-        Sair
-      </button>
     </nav>
   );
 }

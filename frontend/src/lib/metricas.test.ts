@@ -67,22 +67,92 @@ describe("eventos de movimento", () => {
   });
 });
 
-describe("maior periodo sem movimento", () => {
-  it("sem nenhum evento, e a janela inteira", () => {
+describe("maior periodo sem movimento — SO DENTRO DO QUE FOI MEDIDO", () => {
+  /**
+   * Estes tres testes MUDARAM no DASH-09, e a mudanca e o conserto.
+   *
+   * Antes eles afirmavam que a pausa cobre a janela inteira entre eventos,
+   * independentemente de haver leitura no meio. Era exatamente esse
+   * comportamento que produziu, numa coleta real de 25/08/2026, a frase
+   * "Maior pausa: 1h47m sem eventos de movimento" — quando o que houve foi
+   * 1h47m SEM LEITURA NENHUMA.
+   *
+   * Um teste que trava comportamento errado e pior que teste nenhum: ele
+   * defende o defeito. Foram reescritos para exigir o oposto.
+   */
+
+  it("a pausa nao atravessa o aparelho ter parado, e nao passa da captacao", () => {
+    // Leituras em 0, 20 e 60. Os intervalos sao 20 e 40 min, entao a cadencia
+    // mediana e 30 min: cada leitura cobre 30 min para tras, a cobertura fica
+    // em [-30, 20] e [30, 60], e sobra uma lacuna de 10 min. O aparelho NAO
+    // parou (40 min < 3x30), entao e uma captacao so, de [-30, 60].
+    //
+    // ── ESTA ASSERCAO MUDOU NO DASH-11, E A MUDANCA E DELIBERADA ────────
+    //
+    // Antes exigia `pausa <= tempoCoberto`. Essa era a regra do desenho
+    // anterior, em que a pausa se media sobre os trechos de cobertura — e ela
+    // produzia absurdo em dado real: com jitter de rede, a cobertura de uma
+    // noite fica picotada em 960 pedacos de 30 s, e a maior pausa POSSIVEL
+    // passa a ser 30 s. A tela dizia "Maior pausa: 30s" para 8h11m sem um
+    // unico rotulo de movimento (ver cobertura.test.ts).
+    //
+    // A pausa agora se mede sobre a CAPTACAO, e dentro dela um buraco de
+    // cadencia conta como "nao registrou movimento" — que e o que a tela
+    // afirma, literalmente ("sem movimento registrado"). Aqui isso da 90 min
+    // de pausa com 80 min cobertos: os 10 min sem leitura entram.
+    //
+    // Nao e afrouxamento: os 10 min aparecem no aviso de cobertura (11% da
+    // janela, acima do limiar de 5%), e as DUAS invariantes que importam
+    // continuam exigidas abaixo. O que o DASH-09 proibiu — pausa atravessando
+    // um silencio de 1h47m — segue proibido, e esta travado no teste seguinte.
     const m = calcularMetricas([leitura(0), leitura(20), leitura(60)]);
-    expect(m.maiorPeriodoSemMovimentoMs).toBe(60 * MINUTO);
+    expect(m.maiorPeriodoSemMovimentoMs).not.toBeNull();
+
+    // 1. Nunca excede a captacao em que vive.
+    const captacao = m.cobertura.blocos[0];
+    expect(m.maiorPeriodoSemMovimentoMs!).toBeLessThanOrEqual(captacao.fim - captacao.inicio);
+
+    // 2. O aparelho nao parou, entao nao ha silencio a atravessar.
+    expect(m.cobertura.interrupcoes).toHaveLength(0);
+
+    // 3. E o que faltou medir esta declarado, nao escondido.
+    expect(m.cobertura.janelaMs - m.cobertura.tempoCobertoMs).toBe(10 * MINUTO);
   });
 
-  it("e o maior intervalo entre eventos consecutivos", () => {
-    // eventos em 10 e 50 -> intervalos: 0-10, 10-50, 50-60. Maior = 40min.
-    const m = calcularMetricas([leitura(0), movimento(10), movimento(50), leitura(60)]);
-    expect(m.maiorPeriodoSemMovimentoMs).toBe(40 * MINUTO);
+  it("o buraco de coleta aparece como lacuna, e nao como repouso", () => {
+    // O caso real: leituras nos minutos 0 e 1, depois nada ate 107.
+    const m = calcularMetricas([leitura(0), leitura(1), leitura(107), leitura(108)]);
+
+    expect(m.cobertura.lacunas.length).toBeGreaterThan(0);
+    // A versao anterior responderia ~105 min aqui.
+    expect(m.maiorPeriodoSemMovimentoMs!).toBeLessThan(10 * MINUTO);
   });
 
-  it("conta as bordas da janela, nao so os intervalos do meio", () => {
-    // unico evento no minuto 55: a borda inicial (0-55) e maior que a final.
-    const m = calcularMetricas([leitura(0), movimento(55), leitura(60)]);
-    expect(m.maiorPeriodoSemMovimentoMs).toBe(55 * MINUTO);
+  it("dentro de medicao continua, e o maior intervalo entre eventos", () => {
+    // Leituras de minuto em minuto de 0 a 10, com movimento em 2 e 4.
+    // A maior pausa medida vai de 4 ate 10.
+    const leituras = [];
+    for (let i = 0; i <= 10; i++) {
+      leituras.push(i === 2 || i === 4 ? movimento(i) : leitura(i));
+    }
+    const m = calcularMetricas(leituras);
+    expect(m.maiorPeriodoSemMovimentoMs!).toBeCloseTo(6 * MINUTO, -3);
+  });
+});
+
+describe("proporcao por tempo, nao por contagem", () => {
+  it("uma leitura que cobre mais tempo pesa mais", () => {
+    // Contagem daria 50%. Por tempo medido, o movimento de 10 s pesa muito
+    // menos que o repouso de 300 s.
+    const curta = { ...movimento(0), epoca_segundos: 10 };
+    const longa = { ...leitura(5), epoca_segundos: 300 };
+    const m = calcularMetricas([curta, longa]);
+    expect(m.fracaoEmMovimento!).toBeLessThan(0.1);
+  });
+
+  it("sem leitura nenhuma, a proporcao e null e nao zero", () => {
+    // Zero afirmaria "voce nao se mexeu"; a ausencia de medicao nao afirma.
+    expect(calcularMetricas([]).fracaoEmMovimento).toBeNull();
   });
 });
 
@@ -190,5 +260,49 @@ describe("intensidadeMedia considera apenas o repouso", () => {
       leitura(2, 5.0, "Movimento Detectado!"),
     ];
     expect(calcularMetricas(leituras).intensidadeMedia).toBeCloseTo(0.85, 2);
+  });
+});
+
+// --- lacunas na serie do grafico (DASH-09) -------------------------------
+//
+// O eixo do grafico e categorico: cada leitura ocupa a mesma largura,
+// independentemente do tempo entre elas. Um buraco de duas horas ficava
+// visualmente identico a dez segundos — foi assim que a tela deixou de
+// mostrar que a coleta tinha caido.
+
+describe("prepararSerie marca onde faltou medicao", () => {
+  it("sem cobertura, comporta-se como antes", () => {
+    // A demo gera serie continua e nao passa cobertura.
+    const s = prepararSerie([leitura(0), leitura(1), leitura(2)]);
+    expect(s).toHaveLength(3);
+    expect(s.every((p) => !p.lacuna)).toBe(true);
+  });
+
+  it("insere um ponto sintetico no buraco", () => {
+    const leituras = [leitura(0), leitura(1), leitura(107), leitura(108)];
+    const m = calcularMetricas(leituras);
+    const s = prepararSerie(leituras, m.cobertura);
+
+    const lacunas = s.filter((p) => p.lacuna);
+    expect(lacunas).toHaveLength(1);
+    expect(lacunas[0].intensidade).toBeNull();
+    expect(lacunas[0].duracaoDaLacunaMs!).toBeGreaterThan(60 * MINUTO);
+  });
+
+  it("a lacuna fica ENTRE as leituras que a cercam, e nao no fim", () => {
+    const leituras = [leitura(0), leitura(1), leitura(107), leitura(108)];
+    const m = calcularMetricas(leituras);
+    const s = prepararSerie(leituras, m.cobertura);
+
+    const i = s.findIndex((p) => p.lacuna);
+    expect(i).toBeGreaterThan(0);
+    expect(i).toBeLessThan(s.length - 1);
+  });
+
+  it("medicao continua nao ganha lacuna nenhuma", () => {
+    const leituras = [];
+    for (let i = 0; i <= 6; i++) leituras.push(leitura(i));
+    const m = calcularMetricas(leituras);
+    expect(prepararSerie(leituras, m.cobertura).some((p) => p.lacuna)).toBe(false);
   });
 });

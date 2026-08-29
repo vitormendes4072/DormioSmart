@@ -1,19 +1,20 @@
 import {
-  ChevronRight,
   Cpu,
   Download,
   Loader2,
-  Lock,
+  LogOut,
   Palette,
   Shield,
   User,
 } from "lucide-react";
 import { useState } from "react";
+import { useNavigate } from "react-router";
 
 import { MeusDispositivos } from "../components/MeusDispositivos";
 import { SeletorDeTema } from "../components/SeletorDeTema";
 import { buscarHistorico } from "../lib/api";
 import { baixarCsv } from "../lib/exportar";
+import { useAuth } from "../contexts/AuthContext";
 
 /**
  * Configuracoes.
@@ -36,9 +37,10 @@ export function Settings() {
       </div>
 
       <SecaoAparencia />
-      <SecaoPerfil />
+      <SecaoConta />
       <SecaoDispositivos />
       <SecaoDados />
+      <SecaoSair />
     </div>
   );
 }
@@ -66,8 +68,6 @@ function Secao({
   );
 }
 
-const AVISO_SESSAO = "Disponível após a autenticação de usuário entrar no ar.";
-
 function SecaoAparencia() {
   return (
     <Secao
@@ -80,25 +80,35 @@ function SecaoAparencia() {
   );
 }
 
-function SecaoPerfil() {
-  const rotulo = "text-xs font-medium text-muted-foreground mb-1.5 block uppercase tracking-wider";
-  const campo =
-    "w-full px-3.5 py-2.5 bg-secondary text-muted-foreground border border-border rounded-xl text-sm " +
-    "disabled:opacity-60 disabled:cursor-not-allowed";
+/**
+ * A conta em que a pessoa está.
+ *
+ * Antes esta seção mostrava dois campos vazios, desabilitados, sob o aviso
+ * "Disponível após a autenticação de usuário entrar no ar" — texto que ficou
+ * obsoleto quando o AUTH-02/03 subiu, e passou a afirmar que uma coisa pronta
+ * não existia.
+ *
+ * Campo vazio desabilitado não é funcionalidade futura visível: é promessa não
+ * cumprida ocupando espaço. Ficou o que é verdade — quem está logado.
+ */
+function SecaoConta() {
+  const { usuario } = useAuth();
+  const nome = (usuario?.user_metadata?.nome as string | undefined)?.trim();
 
   return (
-    <Secao titulo="Perfil" icone={User} aviso={AVISO_SESSAO}>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div>
-          <label className={rotulo} htmlFor="perfil-nome">Nome</label>
-          <input id="perfil-nome" type="text" placeholder="—" className={campo} disabled />
+    <Secao titulo="Conta" icone={User}>
+      <dl className="space-y-3 text-sm">
+        {nome && (
+          <div className="flex justify-between gap-4">
+            <dt className="text-muted-foreground">Nome</dt>
+            <dd className="text-foreground font-medium truncate">{nome}</dd>
+          </div>
+        )}
+        <div className="flex justify-between gap-4">
+          <dt className="text-muted-foreground">E-mail</dt>
+          <dd className="text-foreground font-medium truncate">{usuario?.email ?? "—"}</dd>
         </div>
-        <div>
-          <label className={rotulo} htmlFor="perfil-idade">Idade</label>
-          <input id="perfil-idade" type="number" placeholder="—" className={campo} disabled />
-        </div>
-      </div>
-      <ItemDeAcao rotulo="Alterar senha" icone={Lock} desabilitado />
+      </dl>
     </Secao>
   );
 }
@@ -108,7 +118,7 @@ function SecaoDispositivos() {
     <Secao
       titulo="Meus dispositivos"
       icone={Cpu}
-      aviso="Cada dispositivo pertence a esta conta e envia leituras com um token próprio. O token aparece uma única vez, no pareamento."
+      aviso="Cada aparelho que envia leituras aparece aqui. Você pode renomear ou remover a qualquer momento."
     >
       <MeusDispositivos />
     </Secao>
@@ -167,39 +177,42 @@ function SecaoDados() {
       ) : null}
       {erro ? <p className="text-xs text-destructive mt-3">{erro}</p> : null}
 
-      <ItemDeAcao rotulo="Política de privacidade" desabilitado nota="em elaboração" />
-      <ItemDeAcao rotulo="Excluir conta" desabilitado destrutivo />
+      {/* "Política de privacidade (em elaboração)" e "Excluir conta"
+          desabilitado saíram daqui. Item morto não é funcionalidade futura
+          visível: é promessa não cumprida ocupando espaço — e, num app que
+          coleta dado corporal, uma política "em elaboração" anunciada na tela
+          chama atenção para a lacuna sem resolvê-la. Voltam quando existirem
+          (LGPD-01). */}
     </Secao>
   );
 }
 
-function ItemDeAcao({
-  rotulo,
-  icone: Icone,
-  desabilitado,
-  destrutivo,
-  nota,
-}: {
-  rotulo: string;
-  icone?: typeof User;
-  desabilitado?: boolean;
-  destrutivo?: boolean;
-  nota?: string;
-}) {
+/**
+ * Sair da conta.
+ *
+ * Veio da barra de navegação do celular, onde ocupava um quarto do espaço —
+ * um slot permanente para uma ação usada uma vez por sessão, ao lado de três
+ * lugares visitados o tempo todo. Barra de navegação ensina que cada item é
+ * um destino; um botão destrutivo no meio quebra essa expectativa.
+ */
+function SecaoSair() {
+  const navigate = useNavigate();
+  const { sair } = useAuth();
+  const [saindo, setSaindo] = useState(false);
+
   return (
     <button
-      disabled={desabilitado}
-      className={`w-full flex items-center justify-between gap-3 px-1 py-3.5 mt-1 border-t border-border text-left transition
-        ${desabilitado ? "opacity-50 cursor-not-allowed" : "hover:bg-secondary"}`}
+      onClick={async () => {
+        setSaindo(true);
+        await sair();
+        navigate("/login");
+      }}
+      disabled={saindo}
+      className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-border text-sm font-medium text-muted-foreground hover:text-destructive hover:border-destructive/40 transition disabled:opacity-60"
     >
-      <span
-        className={`flex items-center gap-2.5 text-sm ${destrutivo ? "text-destructive" : "text-foreground"}`}
-      >
-        {Icone ? <Icone className="w-4 h-4" /> : null}
-        {rotulo}
-        {nota ? <span className="text-xs text-muted-foreground">({nota})</span> : null}
-      </span>
-      <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+      <LogOut className="w-4 h-4" />
+      {saindo ? "Saindo..." : "Sair da conta"}
     </button>
   );
 }
+

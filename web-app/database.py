@@ -126,7 +126,14 @@ class Database:
                 return []
             consulta = (
                 client.table("sleep_data")
-                .select("created_at, movimento_total, temp, status, device_id")
+                .select(
+                    "created_at, movimento_total, temp, status, device_id, "
+                    # `epoca_segundos` diz QUANTO TEMPO a linha resume. Sem
+                    # ele, o painel nao consegue distinguir "duas horas de
+                    # repouso" de "duas horas sem leitura nenhuma" — e passava
+                    # a reportar buraco de coleta como pausa (DASH-09).
+                    "epoca_segundos"
+                )
                 .eq("user_id", usuario_id)
             )
             if device_id:
@@ -222,29 +229,6 @@ class Database:
             )
         except Exception:
             logger.warning("Falha ao atualizar last_seen_at de %s.", device_id, exc_info=True)
-
-    def get_latest_data(self, limit=20):
-        """Leituras mais recentes.
-
-        Sempre devolve uma lista: dados em caso de sucesso, [] em qualquer
-        falha — cliente ausente, erro de consulta ou erro ao obter o cliente.
-        É o que impede a rota de responder 500 (FIX-01/FIX-08).
-        """
-        try:
-            client = self.get_client()
-            if client is None:
-                return []
-            response = (
-                client.table("sleep_data")
-                .select("created_at, movimento_total, temp, status")
-                .order("created_at", desc=True)
-                .limit(limit)
-                .execute()
-            )
-            return response.data or []
-        except Exception:
-            logger.exception("Falha ao consultar sleep_data.")
-            return []
 
 
 # Instância única
