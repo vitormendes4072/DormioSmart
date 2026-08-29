@@ -81,18 +81,42 @@ describe("maior periodo sem movimento — SO DENTRO DO QUE FOI MEDIDO", () => {
    * defende o defeito. Foram reescritos para exigir o oposto.
    */
 
-  it("nao conta trecho sem leitura como pausa", () => {
+  it("a pausa nao atravessa o aparelho ter parado, e nao passa da captacao", () => {
     // Leituras em 0, 20 e 60. Os intervalos sao 20 e 40 min, entao a cadencia
     // mediana e 30 min: cada leitura cobre 30 min para tras, a cobertura fica
-    // em [-30, 20] e [30, 60], e sobra uma lacuna de 10 min. A pausa nao pode
-    // exceder o que foi coberto, e sobretudo nao pode inventar cobertura onde
-    // nao houve leitura.
+    // em [-30, 20] e [30, 60], e sobra uma lacuna de 10 min. O aparelho NAO
+    // parou (40 min < 3x30), entao e uma captacao so, de [-30, 60].
     //
-    // (O comentario anterior dizia 20 min e cobertura continua — errado nos
-    // dois pontos, e a assercao frouxa deixava passar. Corrigido no DASH-11.)
+    // ── ESTA ASSERCAO MUDOU NO DASH-11, E A MUDANCA E DELIBERADA ────────
+    //
+    // Antes exigia `pausa <= tempoCoberto`. Essa era a regra do desenho
+    // anterior, em que a pausa se media sobre os trechos de cobertura — e ela
+    // produzia absurdo em dado real: com jitter de rede, a cobertura de uma
+    // noite fica picotada em 960 pedacos de 30 s, e a maior pausa POSSIVEL
+    // passa a ser 30 s. A tela dizia "Maior pausa: 30s" para 8h11m sem um
+    // unico rotulo de movimento (ver cobertura.test.ts).
+    //
+    // A pausa agora se mede sobre a CAPTACAO, e dentro dela um buraco de
+    // cadencia conta como "nao registrou movimento" — que e o que a tela
+    // afirma, literalmente ("sem movimento registrado"). Aqui isso da 90 min
+    // de pausa com 80 min cobertos: os 10 min sem leitura entram.
+    //
+    // Nao e afrouxamento: os 10 min aparecem no aviso de cobertura (11% da
+    // janela, acima do limiar de 5%), e as DUAS invariantes que importam
+    // continuam exigidas abaixo. O que o DASH-09 proibiu — pausa atravessando
+    // um silencio de 1h47m — segue proibido, e esta travado no teste seguinte.
     const m = calcularMetricas([leitura(0), leitura(20), leitura(60)]);
     expect(m.maiorPeriodoSemMovimentoMs).not.toBeNull();
-    expect(m.maiorPeriodoSemMovimentoMs!).toBeLessThanOrEqual(m.cobertura.tempoCobertoMs);
+
+    // 1. Nunca excede a captacao em que vive.
+    const captacao = m.cobertura.blocos[0];
+    expect(m.maiorPeriodoSemMovimentoMs!).toBeLessThanOrEqual(captacao.fim - captacao.inicio);
+
+    // 2. O aparelho nao parou, entao nao ha silencio a atravessar.
+    expect(m.cobertura.interrupcoes).toHaveLength(0);
+
+    // 3. E o que faltou medir esta declarado, nao escondido.
+    expect(m.cobertura.janelaMs - m.cobertura.tempoCobertoMs).toBe(10 * MINUTO);
   });
 
   it("o buraco de coleta aparece como lacuna, e nao como repouso", () => {

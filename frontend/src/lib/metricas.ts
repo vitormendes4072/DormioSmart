@@ -197,10 +197,11 @@ export function prepararSerie(
     if (i > 0 && cobertura) {
       const anterior = pontos[i - 1].instante.getTime();
       const atual = instante.getTime();
-      // Materiais apenas: jitter de rede de decimos de segundo nao e buraco de
-      // coleta, e desenhar uma coluna cinza para ele picotava o grafico de uma
-      // captacao inteira (DASH-11).
-      const dentro = cobertura.lacunasMateriais.find(
+      // So INTERRUPCAO — o aparelho ter parado de mandar. Jitter de rede de
+      // decimos de segundo nao e buraco de coleta, e desenhar uma coluna cinza
+      // para cada um picotava o grafico de uma captacao inteira em centenas de
+      // colunas "sem dados" (DASH-11).
+      const dentro = cobertura.interrupcoes.find(
         (l) => l.inicio >= anterior && l.fim <= atual && l.fim > l.inicio,
       );
       if (dentro) {

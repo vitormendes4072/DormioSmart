@@ -27,7 +27,7 @@ import {
   type PontoDaSerie,
 } from "../lib/metricas";
 import { LIMIAR_DE_MOVIMENTO, ehMovimento, intensidade } from "../types/sleep";
-import { AvisoDeLacuna } from "../components/AvisoDeLacuna";
+import { AvisoDeLacuna, NotaDeInferencia } from "../components/AvisoDeLacuna";
 import { SeletorDeSessao } from "../components/SeletorDeSessao";
 
 /**
@@ -171,16 +171,28 @@ export function Dashboard() {
   // modo padrão a tabela mostrava as MAIS ANTIGAS sob o rótulo contrário, e a
   // ordem virava sozinha ao clicar "Ver todas" (DASH-11). Ordenar aqui deixa a
   // promessa valer nos dois modos.
+  const instanteDe = (l: { created_at: string }) =>
+    typeof l.created_at === "string" && l.created_at !== ""
+      ? new Date(l.created_at).getTime()
+      : NaN;
   const maisRecentes = [...leiturasVisiveis]
-    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    .filter((l) => !Number.isNaN(instanteDe(l)))
+    .sort((a, b) => instanteDe(b) - instanteDe(a))
     .slice(0, 8);
 
   return (
     <div className="space-y-6">
       <Cabecalho
+        // A MESMA janela do card "Medido": do início da cobertura ao fim dela.
+        // Usar a primeira/última leitura aqui fazia o cabeçalho discordar do
+        // card ao lado — "22:00 — 22:19" contra "100% de 20 min" (DASH-11).
+        // O painel "Primeira/Última leitura", mais abaixo, continua com os
+        // instantes das leituras, porque é isso que os rótulos dele prometem.
         periodo={
-          m.janela
-            ? `${formatarHora(m.janela.inicio)} — ${formatarHora(m.janela.fim)}`
+          cob.trechos.length > 0
+            ? `${formatarHora(new Date(cob.trechos[0].inicio))} — ${formatarHora(
+                new Date(cob.trechos[cob.trechos.length - 1].fim),
+              )}`
             : undefined
         }
         instrumento={
@@ -231,7 +243,11 @@ export function Dashboard() {
         <CardMetrica
           rotulo="Maior pausa"
           valor={formatarDuracao(m.maiorPeriodoSemMovimentoMs)}
-          detalhe="sem movimento, dentro do medido"
+          // "registrado", e não "houve": a afirmação é sobre o registro do
+          // aparelho, não sobre o mundo. Dentro de uma captação o aparelho
+          // esteve operando e não registrou movimento; a pausa nunca
+          // atravessa uma interrupção, que é o defeito do DASH-09.
+          detalhe="sem movimento registrado, na captação"
           icone={Pause}
           corDoIcone="text-indigo-400"
         />
@@ -244,6 +260,11 @@ export function Dashboard() {
           corDoIcone="text-primary"
         />
       </div>
+
+      {/* Fora do aviso de lacuna de propósito: numa captação de ESP32 com
+          cobertura perfeita — justamente onde TUDO é inferido — não há aviso
+          de lacuna, e a inferência não aparecia em lugar nenhum da tela. */}
+      <NotaDeInferencia cobertura={cob} />
 
       {/* Depois dos números, e não antes. A revisão apontou que quem abre o
           painel lia dois parágrafos de ressalva antes de ver qualquer dado —

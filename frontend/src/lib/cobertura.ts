@@ -1,7 +1,7 @@
 import type { LeituraSono } from "../types/sleep";
 
 /**
- * Onde houve medicao, e onde nao houve (DASH-09, corrigido no DASH-11).
+ * Onde houve medicao, e onde o aparelho parou (DASH-09, refeito no DASH-11).
  *
  * ── O DEFEITO QUE ISTO CONSERTA ─────────────────────────────────────────
  *
@@ -19,71 +19,85 @@ import type { LeituraSono } from "../types/sleep";
  * por 20 leituras. Com amostragem irregular, as 20 leituras cobriam ~3 minutos
  * de uma janela de 117. O numero nao significava nada.
  *
- * ── COMO SE SABE O QUE FOI COBERTO ──────────────────────────────────────
+ * ── DUAS PERGUNTAS DIFERENTES, QUE FORAM CONFUNDIDAS ────────────────────
  *
- * Duas fontes, nesta ordem:
+ * A primeira tentativa de conserto tratou as duas como uma so, e foi por isso
+ * que ela falhou de tres maneiras. Elas sao:
  *
- * 1. **`epoca_segundos`, quando a leitura declara.** E o caso do celular: a
- *    linha diz "eu resumo 30 segundos". Isso e informacao do dispositivo, nao
- *    suposicao nossa.
+ * **1. Quanto tempo foi medido?** Responde `trechos` / `tempoCobertoMs`. Sai
+ * da duracao que cada leitura cobre: `epoca_segundos` quando o dispositivo
+ * declara ("eu resumo 30 segundos"), senao a MEDIANA dos intervalos — mediana,
+ * e nao media, porque um unico buraco de duas horas puxaria a media e faria o
+ * buraco parecer cadencia normal. Aqui nao se arredonda a favor: todo instante
+ * sem leitura conta como nao medido, inclusive os decimos de segundo.
  *
- * 2. **Cadencia inferida, quando nao declara.** E o caso do ESP32 e das linhas
- *    antigas. Usamos a MEDIANA dos intervalos entre leituras consecutivas —
- *    mediana, e nao media, porque um unico buraco de duas horas puxaria a
- *    media e faria o buraco parecer cobertura normal.
+ * **2. O aparelho parou de medir?** Responde `blocos` / `interrupcoes`. Sai do
+ * INTERVALO ENTRE CHEGADAS, nao da cobertura. Uma leitura atrasada 1,5 s nao
+ * significa que o aparelho parou; uma hora de silencio significa.
  *
- * A segunda e inferencia, e a interface precisa dizer isso. O que NAO se faz e
- * assumir cobertura total no silencio.
+ * Confundir as duas produziu, em medicao real:
  *
- * ── LACUNA MATERIAL: O QUE O DASH-11 CORRIGIU ───────────────────────────
+ * - **Uma noite virava centenas de "sessoes".** Cada leitura cobre uma
+ *   cadencia para tras, e a cadencia e a mediana — logo metade dos intervalos
+ *   e maior que ela, e virava "lacuna". Cortando sessao em toda lacuna, 960
+ *   leituras de 8 h de celular com jitter normal de rede davam **960 sessoes,
+ *   a ultima com 1 leitura**. O painel abria a noite inteira com uma amostra.
  *
- * A primeira versao chamava de lacuna QUALQUER intervalo descoberto, por menor
- * que fosse. Isso parece rigoroso e e, na verdade, um defeito grave: cada
- * leitura cobre exatamente uma cadencia para tras, e a cadencia e a MEDIANA
- * dos intervalos — logo, por definicao de mediana, cerca de METADE dos
- * intervalos e maior que ela. Jitter de rede de decimos de segundo virava
- * "lacuna".
+ * - **Filtrar a lacuna por tamanho cegava o painel para perda sistematica.**
+ *   Um dispositivo que resume 30 s mas so envia a cada 45 s deixa 33% do tempo
+ *   sem medicao — em buracos de 15 s, pequenos demais para o filtro. A tela
+ *   mostrava uma captacao limpa, sem aviso, com 1/3 da janela nao medida.
  *
- * Como `agruparEmSessoes` cortava em toda lacuna, o efeito na tela era brutal:
- * numa captacao de 8h de celular com latencia normal, 960 leituras viravam
- * ~476 "sessoes", e o painel abria mostrando a ultima — com DUAS leituras.
- * Uma noite inteira medida virava uma tela vazia. O remedio tinha ficado pior
- * que a doenca.
+ * - **E havia um penhasco.** Com envio a cada 60 s e epoca de 30 s, cada
+ *   buraco tem exatamente 30 s e o filtro voltava a cortar tudo: 120 leituras,
+ *   120 "sessoes". Um segundo de diferenca separava "uma captacao" de "cento e
+ *   vinte".
  *
- * O criterio que resolve nao e um numero escolhido a dedo: **uma lacuna e
- * material quando cabe nela ao menos uma leitura que deveria ter chegado e nao
- * chegou** — isto e, quando dura ao menos uma cobertura tipica (a mediana das
- * coberturas individuais, `referenciaMs`). Abaixo disso, nada se perdeu: o
- * atraso da leitura seguinte descreve o mesmo tempo, so que um pouco depois.
+ * Separadas, cada pergunta usa o sinal que de fato a responde.
  *
- * As duas listas coexistem de proposito:
- * - `lacunas` — todas, inclusive as de milissegundos. E o que sustenta a
- *   aritmetica de `tempoCobertoMs`, que continua sem arredondar a favor.
- * - `lacunasMateriais` — as que significam leitura perdida. E o que recorta
- *   sessoes, o que o grafico desenha e o que o aviso relata.
+ * ── QUANDO SE DIZ QUE O APARELHO PAROU ──────────────────────────────────
+ *
+ * Quando o intervalo passa de `FATOR_DE_INTERRUPCAO` vezes o intervalo tipico
+ * — ou seja, quando ao menos duas leituras esperadas nao chegaram. Uma que
+ * falhou e soluco; tres intervalos de silencio e parada. O criterio e sobre
+ * CHEGADA, entao a duty cycle do dispositivo (resumir 30 s a cada 60 s) nao
+ * conta como parada: ele nunca parou, so mede menos do que o tempo que passa.
+ * Isso e perda de cobertura, e aparece como perda de cobertura.
  *
  * ── UMA PERGUNTA QUE ESTE MODULO NAO RESOLVE ────────────────────────────
  *
  * Para um ESP32 com Wake-on-Motion (`HW-03`, ainda nao construido), o silencio
- * teria significado oposto: dormir sem acordar E a evidencia de repouso. Aqui
- * o silencio e tratado como ausencia de informacao, que e o correto para
- * amostragem regular — que e como os dois dispositivos funcionam hoje.
+ * teria significado oposto: dormir sem acordar E a evidencia de repouso, e o
+ * intervalo entre chegadas seria disperso por natureza — nenhum "intervalo
+ * tipico" descreveria o aparelho. Aqui o silencio e tratado como ausencia de
+ * informacao, que e o correto para amostragem regular, que e como os dois
+ * dispositivos funcionam hoje.
  *
  * Quando o wake-on-motion existir, isto precisa ser revisto junto com o
  * `DATA-02` (modelo de amostragem), que segue em aberto.
  *
  * ── E UMA QUE ELE ESCONDE ───────────────────────────────────────────────
  *
- * Tudo aqui usa `created_at`, que o banco gera na CHEGADA (contrato §
- * "Campos", `default now()`). O dispositivo tambem manda o instante em que
- * mediu (`captured_at`), e esse e que descreve a captacao — mas ele nao vem no
- * `select` do painel hoje. Enquanto for assim, latencia de rede aparece como
- * irregularidade de cadencia, e o buffer offline do `HW-05` chegara todo
- * empilhado em poucos segundos. Trocar a base de tempo e o `DASH-12`.
+ * Tudo aqui usa `created_at`, que o banco gera na CHEGADA. O dispositivo
+ * tambem manda o instante em que mediu (`captured_at`), e esse e que descreve
+ * a captacao — mas ele nao vem no `select` do painel hoje. Enquanto for assim,
+ * latencia de rede aparece como irregularidade de cadencia, e o buffer offline
+ * do `HW-05` chegara todo empilhado em poucos segundos. Trocar a base de tempo
+ * e o `DASH-12`.
  */
 
 /** Um intervalo continuo, em milissegundos desde a epoca. */
 export type Trecho = { inicio: number; fim: number };
+
+/**
+ * Quantas vezes o intervalo tipico caracteriza uma parada.
+ *
+ * Tres: ao menos duas leituras esperadas nao chegaram. Uma leitura perdida e
+ * soluco de rede — o proprio app descarta a epoca sem amostra
+ * (`useColeta.ts`) e nao regrava envio que falhou, entao o intervalo dobrado
+ * e esperado em operacao normal.
+ */
+const FATOR_DE_INTERRUPCAO = 3;
 
 export type Cobertura = {
   /** Trechos em que houve medicao, em ordem e sem sobreposicao. */
@@ -92,12 +106,14 @@ export type Cobertura = {
   tempoCobertoMs: number;
   /** Do inicio da primeira leitura ao fim da ultima. */
   janelaMs: number;
-  /** TODOS os trechos sem medicao dentro da janela, inclusive jitter. */
+  /** TODO instante sem medicao dentro da janela, inclusive jitter. */
   lacunas: Trecho[];
-  /** Só as lacunas grandes o bastante para significar leitura perdida. */
-  lacunasMateriais: Trecho[];
-  /** Cobertura tipica de uma leitura (mediana). `null` com menos de uma. */
-  referenciaMs: number | null;
+  /** Periodos em que o aparelho esteve operando, sem parar. */
+  blocos: Trecho[];
+  /** Silencios entre blocos: o aparelho parou de mandar. */
+  interrupcoes: Trecho[];
+  /** Mediana do intervalo entre chegadas. `null` com menos de duas leituras. */
+  intervaloTipicoMs: number | null;
   /** `true` quando ALGUMA leitura teve a cadencia inferida, nao declarada. */
   cadenciaInferida: boolean;
 };
@@ -151,12 +167,14 @@ function duracaoTotal(trechos: Trecho[]): number {
   return trechos.reduce((soma, t) => soma + (t.fim - t.inicio), 0);
 }
 
-/** `base` menos `remover`. Ambos precisam estar unidos e em ordem. */
+/** `base` menos `remover`. Ambos sao unidos e ordenados antes, por seguranca. */
 function subtrair(base: Trecho[], remover: Trecho[]): Trecho[] {
+  const alvo = unir(base);
+  const buracos = unir(remover);
   const restante: Trecho[] = [];
-  for (const trecho of base) {
+  for (const trecho of alvo) {
     let cursor = trecho.inicio;
-    for (const buraco of remover) {
+    for (const buraco of buracos) {
       if (buraco.fim <= cursor) continue;
       if (buraco.inicio >= trecho.fim) break;
       if (buraco.inicio > cursor) restante.push({ inicio: cursor, fim: buraco.inicio });
@@ -207,25 +225,24 @@ function brutosDe(lista: Datada[], cadencia: number | null): Trecho[] {
 }
 
 /**
- * Onde houve medicao.
+ * Onde houve medicao, e quando o aparelho esteve operando.
  *
  * Cada leitura cobre o intervalo que TERMINA no seu instante — a leitura
- * resume o periodo anterior a ela, nao o posterior. Trechos que se tocam sao
- * unidos.
+ * resume o periodo anterior a ela, nao o posterior.
  */
 export function calcularCobertura(leituras: LeituraSono[]): Cobertura {
   const lista = datadas(leituras);
   const vazio: Cobertura = {
-    trechos: [], tempoCobertoMs: 0, janelaMs: 0, lacunas: [], lacunasMateriais: [],
-    referenciaMs: null, cadenciaInferida: false,
+    trechos: [], tempoCobertoMs: 0, janelaMs: 0, lacunas: [], blocos: [],
+    interrupcoes: [], intervaloTipicoMs: null, cadenciaInferida: false,
   };
   if (lista.length === 0) return vazio;
 
   const cadencia = cadenciaMedianaMs(leituras);
-  // `some`, e nao `every`: basta UMA leitura sem `epoca_segundos` para que
-  // parte da cobertura na tela seja inferida — e a tela tem que dizer isso.
-  // A versao anterior so avisava quando NENHUMA declarava, o que silenciava
-  // justamente a serie mista (celular + ESP32).
+  // `some` sobre quem NAO declara: basta uma leitura sem `epoca_segundos` para
+  // que parte da cobertura na tela seja inferida — e a tela tem que dizer
+  // isso. A versao anterior so avisava quando NENHUMA declarava, o que
+  // silenciava justamente a serie mista (celular + ESP32).
   const algumaInfere = lista.some(
     ({ leitura }) => !(typeof leitura.epoca_segundos === "number" && leitura.epoca_segundos > 0),
   );
@@ -236,11 +253,23 @@ export function calcularCobertura(leituras: LeituraSono[]): Cobertura {
   const janelaInicio = trechos[0].inicio;
   const janelaFim = trechos[trechos.length - 1].fim;
 
-  const referenciaMs = mediana(brutos.map((b) => b.fim - b.inicio).filter((d) => d > 0));
-
   const lacunas: Trecho[] = [];
   for (let i = 1; i < trechos.length; i++) {
     lacunas.push({ inicio: trechos[i - 1].fim, fim: trechos[i].inicio });
+  }
+
+  // Blocos de operacao: quebram no intervalo entre CHEGADAS, nao na cobertura.
+  const limite = cadencia == null ? Infinity : cadencia * FATOR_DE_INTERRUPCAO;
+  const blocos: Trecho[] = [];
+  for (let i = 0; i < lista.length; i++) {
+    const abreBloco = i === 0 || lista[i].t - lista[i - 1].t > limite;
+    if (abreBloco) blocos.push({ inicio: brutos[i].inicio, fim: lista[i].t });
+    else blocos[blocos.length - 1].fim = Math.max(blocos[blocos.length - 1].fim, lista[i].t);
+  }
+
+  const interrupcoes: Trecho[] = [];
+  for (let i = 1; i < blocos.length; i++) {
+    interrupcoes.push({ inicio: blocos[i - 1].fim, fim: blocos[i].inicio });
   }
 
   return {
@@ -248,22 +277,11 @@ export function calcularCobertura(leituras: LeituraSono[]): Cobertura {
     tempoCobertoMs: duracaoTotal(trechos),
     janelaMs: janelaFim - janelaInicio,
     lacunas,
-    lacunasMateriais: lacunas.filter((l) => ehMaterial(l.fim - l.inicio, referenciaMs)),
-    referenciaMs,
+    blocos,
+    interrupcoes,
+    intervaloTipicoMs: cadencia,
     cadenciaInferida: algumaInfere && cadencia !== null,
   };
-}
-
-/**
- * A lacuna representa leitura perdida, ou so atraso?
- *
- * Material quando cabe nela ao menos uma cobertura tipica. Sem referencia
- * (uma leitura so) nao ha lacuna a classificar; devolver `false` evita
- * inventar buraco onde nao se sabe medir.
- */
-function ehMaterial(duracaoMs: number, referenciaMs: number | null): boolean {
-  if (referenciaMs == null || referenciaMs <= 0) return false;
-  return duracaoMs >= referenciaMs;
 }
 
 /**
@@ -289,25 +307,37 @@ export function trechosDeMovimento(
 }
 
 /**
- * Maior periodo sem movimento **dentro do que foi medido**.
+ * Maior periodo sem movimento registrado, **dentro de uma captacao**.
  *
- * A diferenca para a versao anterior e toda aqui: um trecho so entra na conta
- * se houve medicao nele. Buraco de coleta nao vira pausa.
+ * ── POR QUE SOBRE `blocos`, E NAO SOBRE `trechos` ───────────────────────
  *
- * Devolve `null` quando nao ha cobertura — e nao zero. Zero afirmaria "voce
+ * Esta e a correcao mais importante do DASH-11, e ela reverte uma decisao da
+ * primeira tentativa. Medir a pausa sobre os trechos de COBERTURA parece o
+ * mais rigoroso — so conta onde houve medicao — e produz absurdo: com jitter
+ * de rede, a cobertura de uma noite fica picotada em 960 pedacos de 30 s, e a
+ * maior pausa possivel passa a ser 30 s. Medido, numa noite de 8h11m com ZERO
+ * leituras de movimento, a tela dizia **"Maior pausa: 30s"**. Erro de ~980x,
+ * no card mais visivel do painel.
+ *
+ * O que o dado sustenta e: entre duas leituras seguidas, ambas rotuladas
+ * repouso, o aparelho estava operando e nao registrou movimento. Isso e uma
+ * afirmacao sobre o REGISTRO, nao sobre o mundo — por isso o rotulo na tela e
+ * "sem movimento registrado". O que nao se pode fazer e atravessar uma
+ * interrupcao: ali o aparelho parou, e o `DASH-09` existe por causa disso.
+ *
+ * Devolve `null` quando nao houve medicao — e nao zero. Zero afirmaria "voce
  * nao teve pausa nenhuma", que e uma medida; a ausencia de medicao nao e. A
- * guarda e sobre TEMPO COBERTO, nao sobre existir trecho: uma leitura solta
- * sem `epoca_segundos` produz um trecho de duracao zero, que existe na lista e
- * nao mede nada.
+ * guarda e sobre TEMPO COBERTO, nao sobre existir bloco: uma leitura solta sem
+ * `epoca_segundos` produz um bloco de duracao zero, que existe e nao mede nada.
  */
 export function maiorPausaCobertaMs(
   cobertura: Cobertura,
   movimento: Trecho[],
 ): number | null {
   if (cobertura.tempoCobertoMs <= 0) return null;
-  const semMovimento = subtrair(cobertura.trechos, movimento);
-  // Lista vazia aqui e uma medida de verdade: todo o tempo medido foi
-  // movimento, logo a maior pausa foi zero.
+  const semMovimento = subtrair(cobertura.blocos, movimento);
+  // Lista vazia aqui e uma medida de verdade: todo o tempo da captacao teve
+  // movimento registrado, logo a maior pausa foi zero.
   return semMovimento.reduce((maior, t) => Math.max(maior, t.fim - t.inicio), 0);
 }
 
@@ -318,10 +348,10 @@ export function maiorPausaCobertaMs(
  * eventos em 20 leituras = 45%" nao significa nada: as 20 leituras podiam
  * cobrir tres minutos de uma janela de duas horas.
  *
- * Numerador e denominador saem da MESMA uniao de trechos. A versao anterior
- * somava os pesos brutos no denominador e a cobertura unida no numerador: com
- * leituras sobrepostas (reenvio, carimbo duplicado, epoca maior que o
- * intervalo) os dois divergiam, e a tela multiplicava um pelo outro.
+ * Aqui o denominador e a COBERTURA, e nao o bloco: a pergunta e "do que foi
+ * medido, quanto foi movimento?". Numerador e denominador saem da mesma
+ * uniao — a versao anterior somava os pesos brutos no denominador e a
+ * cobertura unida no numerador, e leitura duplicada era contada duas vezes.
  */
 export function fracaoEmMovimento(
   cobertura: Cobertura,
@@ -333,7 +363,59 @@ export function fracaoEmMovimento(
 }
 
 /**
- * Uma sessao de captacao: um trecho continuo de medicao (DASH-10).
+ * O que dizer sobre o que faltou medir (DASH-09, refeito no DASH-11).
+ *
+ * Devolve `null` quando nao ha o que avisar. Existe como funcao pura, fora do
+ * componente, porque a decisao "avisa ou nao avisa" e exatamente onde a
+ * primeira tentativa errou — e nao havia teste nenhum sobre ela.
+ *
+ * O gatilho e a PERDA REAL (`janela - coberto`), nao o tamanho dos buracos. Foi
+ * essa troca que cegou o painel: um dispositivo que resume 30 s e envia a cada
+ * 45 s perde 33% da janela em buracos de 15 s, pequenos demais para qualquer
+ * filtro de tamanho, e a tela mostrava uma captacao limpa.
+ */
+export type AvisoDeCobertura = {
+  /** Tempo da janela sem medicao nenhuma. */
+  perdidoMs: number;
+  /** Silencios em que o aparelho parou. Pode ser vazio. */
+  interrupcoes: Trecho[];
+  /** Maior interrupcao, ou 0 se nao houve. */
+  maiorInterrupcaoMs: number;
+  /**
+   * `true` quando a perda nao esta nas interrupcoes, e sim espalhada: o
+   * aparelho nunca parou, so resume menos tempo do que o intervalo entre
+   * envios. E uma causa diferente, e a frase na tela precisa ser outra.
+   */
+  perdaDistribuida: boolean;
+  cadenciaInferida: boolean;
+};
+
+/** Acima disto a perda muda a leitura dos numeros. Folgado de proposito. */
+const PERDA_TOLERAVEL = 0.05;
+
+export function avaliarCobertura(cobertura: Cobertura): AvisoDeCobertura | null {
+  if (cobertura.janelaMs <= 0) return null;
+
+  const perdidoMs = cobertura.janelaMs - cobertura.tempoCobertoMs;
+  if (perdidoMs <= 0) return null;
+  if (perdidoMs / cobertura.janelaMs < PERDA_TOLERAVEL) return null;
+
+  const emInterrupcoes = duracaoTotal(cobertura.interrupcoes);
+
+  return {
+    perdidoMs,
+    interrupcoes: cobertura.interrupcoes,
+    maiorInterrupcaoMs: cobertura.interrupcoes.reduce(
+      (m, l) => Math.max(m, l.fim - l.inicio), 0,
+    ),
+    // Mais da metade da perda esta fora das interrupcoes.
+    perdaDistribuida: emInterrupcoes < perdidoMs / 2,
+    cadenciaInferida: cobertura.cadenciaInferida,
+  };
+}
+
+/**
+ * Uma sessao de captacao: um periodo em que o aparelho esteve operando.
  *
  * ── POR QUE "SESSAO" E NAO "NOITE" ──────────────────────────────────────
  *
@@ -347,12 +429,11 @@ export function fracaoEmMovimento(
  * o mesmo tipo de afirmacao indevida que este modulo existe para eliminar.
  *
  * "Sessao de captacao" e neutro e verdadeiro: e o periodo em que o aparelho
- * de fato mediu. Se um dia o projeto decidir afirmar noites, isso vira decisao
- * de escopo (e depende do `DATA-02`), nao de tela.
+ * de fato esteve medindo. Se um dia o projeto decidir afirmar noites, isso
+ * vira decisao de escopo (e depende do `DATA-02`), nao de tela.
  *
- * O corte e a LACUNA MATERIAL, nao qualquer descontinuidade — ver o cabecalho
- * deste arquivo. Cortar em toda lacuna fazia jitter de rede picotar uma noite
- * inteira em centenas de "sessoes".
+ * O corte e a INTERRUPCAO — o aparelho parar de mandar —, e nao qualquer
+ * descontinuidade de cobertura. Ver o cabecalho deste arquivo.
  */
 export type Sessao = {
   inicio: number;
@@ -362,22 +443,11 @@ export type Sessao = {
 
 export function agruparEmSessoes(leituras: LeituraSono[]): Sessao[] {
   const cobertura = calcularCobertura(leituras);
-  if (cobertura.trechos.length === 0) return [];
-
-  // Reagrupa os trechos: so a lacuna material separa sessoes.
-  const blocos: Trecho[] = [];
-  for (const trecho of cobertura.trechos) {
-    const ultimo = blocos[blocos.length - 1];
-    if (ultimo && !ehMaterial(trecho.inicio - ultimo.fim, cobertura.referenciaMs)) {
-      ultimo.fim = Math.max(ultimo.fim, trecho.fim);
-    } else {
-      blocos.push({ ...trecho });
-    }
-  }
+  if (cobertura.blocos.length === 0) return [];
 
   const lista = datadas(leituras);
 
-  return blocos
+  return cobertura.blocos
     .map((bloco) => ({
       inicio: bloco.inicio,
       fim: bloco.fim,
@@ -385,7 +455,7 @@ export function agruparEmSessoes(leituras: LeituraSono[]): Sessao[] {
         .filter(({ t }) => t >= bloco.inicio && t <= bloco.fim)
         .map(({ leitura }) => leitura),
     }))
-    // Trecho sem leitura nao e sessao. Nao deveria acontecer — os trechos sao
+    // Bloco sem leitura nao e sessao. Nao deveria acontecer — os blocos sao
     // construidos A PARTIR das leituras — mas uma sessao vazia produziria
     // metricas de nada, que e o defeito que o DASH-09 corrigiu.
     .filter((s) => s.leituras.length > 0);

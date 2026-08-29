@@ -5,6 +5,7 @@ import {
   cadenciaMedianaMs,
   calcularCobertura,
   fracaoEmMovimento,
+  avaliarCobertura,
   maiorPausaCobertaMs,
   trechosDeMovimento,
 } from "./cobertura";
@@ -223,73 +224,164 @@ describe("o recorte muda o que o painel afirma", () => {
   });
 });
 
-// --- DASH-11: o remedio nao pode ser pior que a doenca -------------------
 
-/** Leitura em instante arbitrario (ms desde BASE), para simular jitter. */
-function em(ms: number, opcoes: { movimento?: boolean; epoca?: number | null } = {}) {
-  const { movimento = false, epoca = null } = opcoes;
-  const l: LeituraSono = {
-    created_at: new Date(BASE + ms).toISOString(),
-    movimento_total: GRAVIDADE + (movimento ? 5 : 0.2),
-    temp: null,
-    status: movimento ? "Movimento" : "Repouso",
-  };
-  if (epoca !== null) l.epoca_segundos = epoca;
-  return l;
+// --- DASH-11: duas perguntas diferentes ----------------------------------
+//
+// A primeira tentativa de conserto tratou "quanto foi medido?" e "o aparelho
+// parou?" como uma pergunta so, e errou de tres maneiras. Cada bloco abaixo
+// trava uma delas, com o cenario que a produziu na tela.
+
+/** Serie sintetica com intervalo e epoca controlados. */
+function serie(opcoes: {
+  n: number;
+  intervaloMs: number;
+  epoca?: number | null;
+  jitterMs?: number;
+  movimentoEm?: (i: number) => boolean;
+}): LeituraSono[] {
+  const { n, intervaloMs, epoca = null, jitterMs = 0, movimentoEm = () => false } = opcoes;
+  const lista: LeituraSono[] = [];
+  let t = 0;
+  for (let i = 0; i < n; i++) {
+    // Jitter deterministico: teste que sorteia numero nao serve de regressao.
+    t += intervaloMs + (jitterMs > 0 ? (i * 137) % jitterMs : 0);
+    const l: LeituraSono = {
+      created_at: new Date(BASE + t).toISOString(),
+      movimento_total: GRAVIDADE + (movimentoEm(i) ? 5 : 0.2),
+      temp: null,
+      status: movimentoEm(i) ? "Movimento" : "Repouso",
+    };
+    if (epoca !== null) l.epoca_segundos = epoca;
+    lista.push(l);
+  }
+  return lista;
 }
 
-describe("lacuna material — jitter de rede nao e buraco de coleta", () => {
+describe("jitter de rede nao e o aparelho parar", () => {
   it("uma captacao de 8 h de celular com latencia e UMA sessao, nao centenas", () => {
     // O defeito: cada leitura cobre exatamente uma cadencia para tras, e a
     // cadencia e a MEDIANA — logo metade dos intervalos e maior que ela, e
-    // toda diferenca virava lacuna. `agruparEmSessoes` cortava em cada uma.
-    // Resultado medido antes da correcao: 960 leituras -> 476 "sessoes", e o
-    // painel abria mostrando a ultima, com DUAS leituras. Uma noite inteira
-    // medida virava uma tela vazia.
-    const leituras: LeituraSono[] = [];
-    let t = 0;
-    for (let i = 0; i < 960; i++) {
-      t += 30_000 + ((i * 137) % 1500); // jitter deterministico de 0 a 1,5 s
-      leituras.push(em(t, { epoca: 30 }));
-    }
+    // toda diferenca virava lacuna. Cortando sessao em toda lacuna, o
+    // resultado medido foi 960 leituras -> 960 "sessoes", e o painel abria
+    // mostrando a ultima, com UMA leitura. Uma noite inteira medida virava
+    // uma tela vazia.
+    const leituras = serie({ n: 960, intervaloMs: 30_000, epoca: 30, jitterMs: 1500 });
 
     expect(agruparEmSessoes(leituras)).toHaveLength(1);
-    expect(calcularCobertura(leituras).lacunasMateriais).toHaveLength(0);
+    expect(calcularCobertura(leituras).interrupcoes).toHaveLength(0);
+  });
+
+  it("e a maior pausa dessa noite e a noite inteira, nao 30 segundos", () => {
+    // Este e o achado mais grave da segunda revisao, e ele reverte uma decisao
+    // da primeira: medir a pausa sobre os trechos de COBERTURA parece o mais
+    // rigoroso e produz absurdo. Com a cobertura picotada em 960 pedacos de
+    // 30 s, a maior pausa POSSIVEL passa a ser 30 s — e a tela dizia
+    // "Maior pausa: 30s" para 8h11m sem um unico rotulo de movimento.
+    const leituras = serie({ n: 960, intervaloMs: 30_000, epoca: 30, jitterMs: 1500 });
+    const pausa = pausaDe(leituras)!;
+
+    expect(pausa).toBeGreaterThan(8 * 60 * MIN);
+    // A pausa nao pode exceder a propria captacao.
+    const sessao = agruparEmSessoes(leituras)[0];
+    expect(pausa).toBeLessThanOrEqual(sessao.fim - sessao.inicio);
   });
 
   it("o mesmo vale sem epoca declarada, com a cadencia inferida", () => {
-    // O caso do ESP32: cadencia de 10 s com variacao de +-5%.
-    const leituras: LeituraSono[] = [];
-    let t = 0;
-    for (let i = 0; i < 200; i++) {
-      t += 10_000 + ((i * 91) % 900) - 450;
-      leituras.push(em(t));
-    }
+    const leituras = serie({ n: 200, intervaloMs: 10_000, jitterMs: 900 });
     expect(agruparEmSessoes(leituras)).toHaveLength(1);
   });
 
-  it("mas a leitura que de fato faltou continua sendo lacuna", () => {
-    // Criterio: cabe ao menos uma cobertura tipica dentro do buraco. Aqui
-    // faltam tres leituras seguidas, e isso PRECISA aparecer.
-    const leituras: LeituraSono[] = [];
-    let t = 0;
-    for (let i = 0; i < 40; i++) {
-      t += i === 20 ? 4 * 30_000 : 30_000;
-      leituras.push(em(t, { epoca: 30 }));
-    }
-
-    const c = calcularCobertura(leituras);
-    expect(c.lacunasMateriais).toHaveLength(1);
-    expect(c.lacunasMateriais[0].fim - c.lacunasMateriais[0].inicio).toBe(3 * 30_000);
-    expect(agruparEmSessoes(leituras)).toHaveLength(2);
-  });
-
-  it("a lacuna real de 25/08 continua separando sessoes", () => {
+  it("mas o aparelho ter parado continua separando sessoes", () => {
     // A correcao nao pode desfazer o DASH-09: 105 min de silencio com
     // cadencia de 1 min sao 105 leituras perdidas.
     const leituras = [leitura(0), leitura(1), leitura(107), leitura(108)];
-    expect(calcularCobertura(leituras).lacunasMateriais).toHaveLength(1);
+    expect(calcularCobertura(leituras).interrupcoes).toHaveLength(1);
     expect(agruparEmSessoes(leituras)).toHaveLength(2);
+    // E a pausa nao pode atravessar o silencio.
+    expect(pausaDe(leituras)!).toBeLessThan(10 * MIN);
+  });
+
+  it("tres intervalos de silencio separam; dois nao", () => {
+    // O criterio: ao menos duas leituras esperadas nao chegaram. Uma leitura
+    // perdida e soluco de rede — o app descarta a epoca sem amostra e nao
+    // regrava envio que falhou, entao intervalo dobrado e operacao normal.
+    const uma = serie({ n: 30, intervaloMs: 30_000, epoca: 30 });
+    const comSoluco = [...uma];
+    comSoluco.splice(15, 1); // uma leitura some -> intervalo dobra
+    expect(agruparEmSessoes(comSoluco)).toHaveLength(1);
+
+    const comParada = [...uma];
+    comParada.splice(15, 3); // tres somem -> intervalo quadruplica
+    expect(agruparEmSessoes(comParada)).toHaveLength(2);
+  });
+
+  it("NAO HA PENHASCO: envio a cada 2x a epoca continua sendo uma captacao", () => {
+    // O filtro por TAMANHO DA LACUNA tinha um penhasco exatamente aqui: com
+    // epoca de 30 s e envio a cada 60 s, cada buraco tem exatos 30 s e o
+    // filtro voltava a cortar tudo — 120 leituras viravam 120 "sessoes".
+    // Um segundo de diferenca separava "uma captacao" de "cento e vinte".
+    for (const intervalo of [59_000, 60_000, 61_000, 90_000]) {
+      const l = serie({ n: 120, intervaloMs: intervalo, epoca: 30 });
+      expect(agruparEmSessoes(l)).toHaveLength(1);
+    }
+  });
+});
+
+describe("avaliarCobertura — a decisao de avisar", () => {
+  it("PERDA SISTEMATICA APARECE, mesmo sem buraco grande nenhum", () => {
+    // O segundo defeito da primeira tentativa: ela trocou o gatilho de "perda
+    // real" para "tamanho dos buracos". Um dispositivo que resume 30 s e envia
+    // a cada 45 s perde 33% da janela em buracos de 15 s — pequenos demais
+    // para qualquer filtro de tamanho. A tela mostrava captacao limpa, sem
+    // aviso, com um terco da janela nao medida.
+    const l = serie({ n: 120, intervaloMs: 45_000, epoca: 30 });
+    const c = calcularCobertura(l);
+
+    expect(c.interrupcoes).toHaveLength(0);
+    expect(c.tempoCobertoMs / c.janelaMs).toBeLessThan(0.7);
+
+    const aviso = avaliarCobertura(c)!;
+    expect(aviso).not.toBeNull();
+    expect(aviso.perdaDistribuida).toBe(true);
+    expect(aviso.interrupcoes).toHaveLength(0);
+  });
+
+  it("o tempo anunciado e a perda REAL, nao a soma dos buracos citaveis", () => {
+    // A frase da tela e "Faltou medicao em X". Anunciar so o que cabe nas
+    // interrupcoes subdeclarava o que faltou — afirmacao falsa na direcao que
+    // a regra do projeto proibe.
+    const l = serie({ n: 120, intervaloMs: 45_000, epoca: 30 });
+    const c = calcularCobertura(l);
+    const aviso = avaliarCobertura(c)!;
+
+    expect(aviso.perdidoMs).toBe(c.janelaMs - c.tempoCobertoMs);
+    expect(aviso.maiorInterrupcaoMs).toBe(0);
+  });
+
+  it("jitter sozinho nao dispara aviso", () => {
+    // 5% de folga: arredondamento e latencia nao sao perda que mude a leitura
+    // dos numeros.
+    const l = serie({ n: 960, intervaloMs: 30_000, epoca: 30, jitterMs: 1500 });
+    expect(avaliarCobertura(calcularCobertura(l))).toBeNull();
+  });
+
+  it("cobertura perfeita nao dispara aviso", () => {
+    const l = serie({ n: 50, intervaloMs: 60_000, epoca: 60 });
+    expect(avaliarCobertura(calcularCobertura(l))).toBeNull();
+  });
+
+  it("o aparelho que parou e citavel, e o aviso o cita", () => {
+    const l = [leitura(0), leitura(1), leitura(107), leitura(108)];
+    const aviso = avaliarCobertura(calcularCobertura(l))!;
+
+    expect(aviso.interrupcoes).toHaveLength(1);
+    expect(aviso.maiorInterrupcaoMs).toBe(105 * MIN);
+    expect(aviso.perdaDistribuida).toBe(false);
+  });
+
+  it("janela de duracao zero nao produz aviso", () => {
+    expect(avaliarCobertura(calcularCobertura([]))).toBeNull();
+    expect(avaliarCobertura(calcularCobertura([leitura(0)]))).toBeNull();
   });
 });
 
@@ -299,28 +391,23 @@ describe("movimento e intervalo, nao instante", () => {
     // de movimento com epoca de 60 s dava, ao mesmo tempo, "100% em
     // movimento" e "Maior pausa: 1m 0s" — no mesmo minuto medido. A causa era
     // tratar o movimento como um PONTO no fim do trecho que ele resume.
-    const l = [em(0, { movimento: true, epoca: 60 })];
+    const l = serie({ n: 1, intervaloMs: 0, epoca: 60, movimentoEm: () => true });
     expect(fracaoDe(l)).toBe(1);
     expect(pausaDe(l)).toBe(0);
   });
 
   it("a pausa desconta o periodo que a leitura de movimento resume", () => {
-    // Seis leituras de 1 em 1 min, epoca de 60 s: a cobertura vai de -1 min
+    // Seis leituras de 1 em 1 min, epoca de 60 s: a captacao vai de -1 min
     // (a primeira resume o minuto anterior a ela) ate 5 min. O movimento em
     // 5 min cobre [4, 5], entao a pausa medida e [-1, 4] = 5 min.
     //
     // Tratando o movimento como PONTO, como antes, ele nao descontaria nada e
-    // a pausa seria a cobertura inteira, 6 min.
-    const l = [
-      em(0, { epoca: 60 }),
-      em(60_000, { epoca: 60 }),
-      em(2 * MIN, { epoca: 60 }),
-      em(3 * MIN, { epoca: 60 }),
-      em(4 * MIN, { epoca: 60 }),
-      em(5 * MIN, { movimento: true, epoca: 60 }),
-    ];
+    // a pausa seria a captacao inteira, 6 min.
+    const l = serie({
+      n: 6, intervaloMs: 60_000, epoca: 60, movimentoEm: (i) => i === 5,
+    });
     expect(pausaDe(l)).toBe(5 * MIN);
-    expect(pausaDe(l)!).toBeLessThan(calcularCobertura(l).tempoCobertoMs);
+    expect(pausaDe(l)!).toBeLessThan(calcularCobertura(l).janelaMs);
   });
 });
 
@@ -351,10 +438,11 @@ describe("guardas que a versao anterior nao tinha", () => {
   it("epoca variavel nao subestima a cobertura", () => {
     // Trechos ordenados pelo FIM podiam comecar fora de ordem, e a uniao
     // ingenua descartava o pedaco inicial do trecho mais longo.
-    const c = calcularCobertura([
-      em(100_000, { epoca: 1 }),
-      em(1_000_000, { epoca: 950 }),
-    ]);
+    const l: LeituraSono[] = [
+      { ...leitura(0), created_at: new Date(BASE + 100_000).toISOString(), epoca_segundos: 1 },
+      { ...leitura(0), created_at: new Date(BASE + 1_000_000).toISOString(), epoca_segundos: 950 },
+    ];
+    const c = calcularCobertura(l);
     expect(c.trechos).toHaveLength(1);
     expect(c.trechos[0].inicio).toBe(BASE + 50_000);
     expect(c.tempoCobertoMs).toBe(950_000);
@@ -364,14 +452,28 @@ describe("guardas que a versao anterior nao tinha", () => {
     // Numerador e denominador saem da mesma uniao. Antes, o denominador
     // somava pesos brutos (90 s) e o numerador vinha da uniao (60 s): a tela
     // dizia 33% de movimento sobre 60 s medidos, com 30 s contados em dobro.
-    const l = [
-      em(0, { epoca: 30 }),
-      em(0, { movimento: true, epoca: 30 }),
-      em(30_000, { epoca: 30 }),
-    ];
+    const emT = (ms: number, mov: boolean): LeituraSono => ({
+      created_at: new Date(BASE + ms).toISOString(),
+      movimento_total: GRAVIDADE + (mov ? 5 : 0.2),
+      temp: null,
+      status: mov ? "Movimento" : "Repouso",
+      epoca_segundos: 30,
+    });
+    const l = [emT(0, false), emT(0, true), emT(30_000, false)];
     const c = calcularCobertura(l);
     expect(c.tempoCobertoMs).toBe(60_000);
-    expect(fracaoDe(l)).toBeCloseTo(30_000 / 60_000, 5);
+    expect(fracaoDe(l)).toBeCloseTo(0.5, 5);
+  });
+
+  it("a pausa nao muda se os trechos de movimento chegarem fora de ordem", () => {
+    // `subtrair` exige entrada unida e ordenada, e as duas funcoes sao
+    // exportadas. Une por dentro em vez de confiar em quem chama.
+    const l = serie({
+      n: 10, intervaloMs: 60_000, epoca: 60, movimentoEm: (i) => i === 3 || i === 7,
+    });
+    const c = calcularCobertura(l);
+    const mov = trechosDeMovimento(l, ehMovimento);
+    expect(maiorPausaCobertaMs(c, [...mov].reverse())).toBe(maiorPausaCobertaMs(c, mov));
   });
 
   it("created_at ausente e descartado, e nao vira 1970", () => {
