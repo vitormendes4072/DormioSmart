@@ -59,8 +59,17 @@ describe("nada em ingles chega ao usuario", () => {
 
   it("falha de rede e distinguida de credencial errada", () => {
     const rede = traduzirErroDeAuth(erro({ status: 0, message: "Failed to fetch" }));
-    expect(rede).toContain("conexão");
+    expect(rede).toMatch(/servidor|serviço/);
     expect(rede).not.toContain("senha");
+  });
+
+  it("falha de rede nao culpa a conexao do usuario", () => {
+    // `Failed to fetch` cobre tanto a rede do usuario quanto o servico fora do
+    // ar, e o navegador nao diz qual dos dois foi. Afirmar "verifique sua
+    // internet" acerta so metade das vezes — e a metade errada manda a pessoa
+    // depurar algo que esta funcionando.
+    const rede = traduzirErroDeAuth(erro({ status: 0, message: "Failed to fetch" }));
+    expect(rede).not.toMatch(/sua internet|sua conexão|sua rede/i);
   });
 });
 

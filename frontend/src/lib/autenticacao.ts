@@ -53,8 +53,13 @@ export function traduzirErroDeAuth(erro: AuthError | null | undefined): string {
   if (eh("over_request_rate_limit", "rate limit")) {
     return "Muitas tentativas em pouco tempo. Aguarde alguns instantes.";
   }
+  // O navegador nao distingue "sua rede caiu" de "o servico esta fora": as duas
+  // coisas chegam aqui como `Failed to fetch` com status 0. Mandar o usuario
+  // "verificar a internet" acusa o lado errado sempre que a causa e a segunda —
+  // foi o que aconteceu quando o projeto Supabase ficou pausado e o DNS do host
+  // deixou de resolver. A frase agora cobre os dois casos sem culpar nenhum.
   if (erro.status === 0 || texto.includes("fetch") || texto.includes("network")) {
-    return "Sem conexão com o servidor. Verifique sua internet.";
+    return "Não foi possível falar com o servidor. Se persistir, o serviço pode estar temporariamente fora.";
   }
 
   // Sem correspondencia: nao repassar o texto cru em ingles, que nao ajuda
