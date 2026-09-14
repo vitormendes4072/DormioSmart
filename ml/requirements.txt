@@ -1,0 +1,16 @@
+# Versões PINADAS. Ambiente pinado é requisito do METODOLOGIA.md, não sugestão:
+# sem isso o resultado não reproduz em outra máquina.
+#
+# Verificado rodando em Python 3.10.12 em 2026-09-10.
+
+numpy==2.2.6
+pandas==2.3.3
+scipy==1.15.3
+scikit-learn==1.7.2
+PyYAML==6.0.3
+pytest==9.1.1
+
+# Leitura dos .bin do GENEActiv (Newcastle). O formato é proprietário; esta
+# biblioteca é opcional e o carregador tem um leitor próprio de fallback.
+# Descomente se for usá-la:
+# actipy==3.1.5

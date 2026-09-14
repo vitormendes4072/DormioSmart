@@ -1,0 +1,127 @@
+{
+  "experimento": "ML-02 baselines",
+  "dataset": "sintetico",
+  "AVISO": "DADO SINTÉTICO — exercita o pipeline, NÃO é medição nem achado",
+  "hash_config": "aec203907e6f",
+  "seed": 20260910,
+  "utc": "20260911T022308Z",
+  "n_epocas": 10800,
+  "n_sujeitos": 12,
+  "prevalencia_sono": 0.8731481481481481,
+  "validacao": {
+    "estrategia": "leave_one_subject_out"
+  },
+  "resultados": {
+    "0_sempre_dormindo": {
+      "n": 10800,
+      "n_sono": 9430,
+      "n_vigilia": 1370,
+      "prevalencia_sono": 0.8731481481481481,
+      "acuracia": 0.8731481481481481,
+      "sensibilidade": 1.0,
+      "especificidade": 0.0,
+      "kappa": 0.0,
+      "f1_sono": 0.9322787938704894,
+      "f1_vigilia": NaN,
+      "vp": 9430,
+      "vn": 0,
+      "fp": 1370,
+      "fn": 0
+    },
+    "1a_cole_kripke_substituto": {
+      "n": 10800,
+      "n_sono": 9430,
+      "n_vigilia": 1370,
+      "prevalencia_sono": 0.8731481481481481,
+      "acuracia": 0.8731481481481481,
+      "sensibilidade": 1.0,
+      "especificidade": 0.0,
+      "kappa": 0.0,
+      "f1_sono": 0.9322787938704894,
+      "f1_vigilia": NaN,
+      "vp": 9430,
+      "vn": 0,
+      "fp": 1370,
+      "fn": 0
+    },
+    "1b_sadeh_substituto": {
+      "n": 10800,
+      "n_sono": 9430,
+      "n_vigilia": 1370,
+      "prevalencia_sono": 0.8731481481481481,
+      "acuracia": 0.8731481481481481,
+      "sensibilidade": 1.0,
+      "especificidade": 0.0,
+      "kappa": 0.0,
+      "f1_sono": 0.9322787938704894,
+      "f1_vigilia": NaN,
+      "vp": 9430,
+      "vn": 0,
+      "fp": 1370,
+      "fn": 0
+    },
+    "2_regressao_logistica_loso": {
+      "n": 10800,
+      "n_sono": 9430,
+      "n_vigilia": 1370,
+      "prevalencia_sono": 0.8731481481481481,
+      "acuracia": 0.9025,
+      "sensibilidade": 0.9193001060445387,
+      "especificidade": 0.7868613138686131,
+      "kappa": 0.6160351998120083,
+      "f1_sono": 0.9427437333478333,
+      "f1_vigilia": 0.6718603926456841,
+      "vp": 8669,
+      "vn": 1078,
+      "fp": 292,
+      "fn": 761
+    },
+    "4_logistica_mais_suavizacao": {
+      "n": 10800,
+      "n_sono": 9430,
+      "n_vigilia": 1370,
+      "prevalencia_sono": 0.8731481481481481,
+      "acuracia": 0.9083333333333333,
+      "sensibilidade": 0.9243902439024391,
+      "especificidade": 0.7978102189781022,
+      "kappa": 0.6357362746981844,
+      "f1_sono": 0.9462657403386887,
+      "f1_vigilia": 0.6882871536523929,
+      "vp": 8717,
+      "vn": 1093,
+      "fp": 277,
+      "fn": 713
+    }
+  },
+  "config": {
+    "versao_config": 1,
+    "seed": 20260910,
+    "taxa_comum_hz": 32.0,
+    "corte_antialiasing_frac_nyquist": 0.8,
+    "epoca_s": 30.0,
+    "contexto_epocas": 2,
+    "g_ms2": 9.80665,
+    "classes": {
+      "vigilia": 0,
+      "sono": 1
+    },
+    "baseline": {
+      "banda_contagem_hz": [
+        0.25,
+        3.0
+      ],
+      "escala_contagem": 100.0
+    },
+    "validacao": {
+      "estrategia": "leave_one_subject_out"
+    },
+    "sintetico": {
+      "n_sujeitos": 12,
+      "horas_por_noite": 7.5,
+      "taxa_origem_hz": 85.7,
+      "fracao_sono": 0.87,
+      "fracao_vigilia_quieta": 0.55,
+      "ruido_mg": 3.0
+    }
+  }
+}

@@ -1,0 +1,18 @@
+# DADO NUNCA ENTRA NO GIT.
+# O bruto é grande (Newcastle = 962,8 MB) e, no caso das bases com DUA, a
+# redistribuição é proibida pelo próprio acordo assinado.
+dados/bruto/*
+dados/processado/*
+!dados/bruto/.gitkeep
+!dados/processado/.gitkeep
+
+# Saídas de experimento: o log de métricas (.json) É versionado de propósito,
+# porque é o registro do resultado. O resto, não.
+experimentos/saida/*
+!experimentos/saida/.gitkeep
+!experimentos/saida/*.json
+
+__pycache__/
+*.pyc
+.pytest_cache/
+.ipynb_checkpoints/
