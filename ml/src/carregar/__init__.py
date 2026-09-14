@@ -8,6 +8,8 @@ string. É o detalhe que decide se a Fase 2 custa um dia ou uma semana.
 
 from __future__ import annotations
 
+from collections.abc import Iterable
+
 import numpy as np
 
 from ..configuracao import Config, carregar_config
@@ -21,12 +23,21 @@ __all__ = ["carregar", "processar_gravacoes", "DATASETS"]
 DATASETS = ("newcastle", "sintetico")
 
 
-def processar_gravacoes(gravacoes: list[Gravacao], cfg: Config) -> ConjuntoEpocas:
-    """Bruto -> épocas de 30 s -> 8 features -> contexto ±N. O caminho inteiro."""
+def processar_gravacoes(gravacoes: Iterable[Gravacao], cfg: Config) -> ConjuntoEpocas:
+    """Bruto -> épocas de 30 s -> 8 features -> contexto ±N. O caminho inteiro.
+
+    `gravacoes` é consumido uma vez, em ordem — pode ser um generator. Isso
+    importa para o Newcastle: `carregar_newcastle()` produz uma gravação por
+    vez para não ter as 55 (4,6 GB brutos) na memória simultaneamente (ver
+    ARMADILHA 4 em `src/carregar/newcastle.py`). Por isso `n_gravacoes` é
+    contado no laço, não com `len()`.
+    """
     Xs, ys, ids = [], [], []
     descartadas = 0
+    n_gravacoes = 0
 
     for gr in gravacoes:
+        n_gravacoes += 1
         t, a = reamostrar(
             gr.t, gr.a,
             taxa_destino=cfg.taxa_comum_hz,
@@ -71,7 +82,7 @@ def processar_gravacoes(gravacoes: list[Gravacao], cfg: Config) -> ConjuntoEpoca
         id_sujeito=np.concatenate(ids),
         nomes_features=tuple(nomes),
         meta={
-            "n_gravacoes": len(gravacoes),
+            "n_gravacoes": n_gravacoes,
             "epocas_descartadas_sem_cobertura": descartadas,
             "hash_config": cfg.hash,
         },

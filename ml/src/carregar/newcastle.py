@@ -63,11 +63,79 @@ antes da validação acima):
      **por eixo, por aparelho** da seção "Calibration Data" do cabeçalho
      (`x/y/z gain`, `x/y/z offset`). Ver o docstring de `_ler_bin_geneactiv`
      para a fórmula e o tamanho do erro que ignorá-la introduz.
+
+=============================================================================
+ARMADILHA 4 — carregar as 55 gravações inteiras de uma vez estoura memória
+=============================================================================
+Os 55 `.bin` somam 4,6 GB de texto hex (um sozinho tem 282 MB — o protocolo é
+"uma noite", mas a duração real varia bastante por participante). A primeira
+versão de `carregar_newcastle()` devolvia `list[Gravacao]`, o que força ter
+as 55 gravações a 85,7 Hz — brutas, sem decimar — na memória ao mesmo tempo.
+Em execução real (máquina de 12 GB), isso passou de 3 GB e continuava
+crescendo antes de terminar um terço dos arquivos.
+
+**Duas mudanças, uma para cada metade do problema:**
+  - `_ler_bin_geneactiv` decodifica o hex inteiro com numpy vetorizado em vez
+    de um laço Python por amostra (era o gargalo de CPU: ~6 s/arquivo médio,
+    escalando mal para os arquivos grandes).
+  - `carregar_newcastle` virou **generator** (`yield`, não `list` + `return`):
+    `processar_gravacoes()` (`src/carregar/__init__.py`) já consome uma
+    gravação por vez — extrai as features de 30 s e descarta o bruto antes de
+    seguir para a próxima — então nada exigia ter as 55 na RAM simultaneamente.
+    O pico de memória agora é o de UM arquivo (o maior, ~282 MB de texto), não
+    a soma dos 55.
+
+=============================================================================
+ARMADILHA 5 — o rótulo NÃO começa quando o acelerômetro liga
+=============================================================================
+A primeira versão deste carregador usava `t0_rotulo = t[0]` — sempre zero,
+por construção (`t` começa em zero em `_ler_bin_geneactiv`). Isso assume que
+o primeiro rótulo de PSG corresponde à primeira amostra do acelerômetro.
+
+**É falso, e não é um detalhe pequeno.** No participante 1: o acelerômetro
+("Start Time" do cabeçalho do `.bin`) liga às 19:30:00; o primeiro rótulo de
+PSG ("Recording Date" + primeira linha "Time [hh:mm:ss]" do `.txt`) é às
+21:22:40 — **1h52min50s depois**. O dispositivo é colocado no participante
+antes de ele ir para a clínica se preparar para o estudo; a pontuação de PSG
+só começa quando o estudo de fato começa.
+
+Com `t0_rotulo=0`, `fatiar_epocas()` procura cada rótulo no trecho ERRADO do
+sinal — na prática, quase toda época falha o teste de cobertura e é
+descartada. Rodado assim contra os 55 arquivos reais, sobraram **275 épocas
+em 28 sujeitos** (a noite inteira deveria render milhares) — o sintoma que
+expôs o bug.
+
+**A correção:** `_ler_bin_geneactiv` agora devolve o instante `Start Time` do
+cabeçalho; `_ler_rotulos_psg` devolve o instante do primeiro rótulo
+(`Recording Date` + hora da primeira linha de dado). `t0_rotulo` é a
+diferença entre os dois, em segundos — não mais uma suposição. Uma checagem
+de sanidade (`0 <= t0_rotulo <= duração da gravação`) levanta erro alto e
+claro se o alinhamento calculado cair fora da gravação, em vez de silenciar
+como "zero épocas cobertas".
+
+Segundo bug, encontrado no caminho: `_ler_rotulos` (antiga) lia o arquivo
+linha a linha sem pular o cabeçalho do RemLogic, e a seção "Events Included:"
+lista os códigos de estágio um por linha ("R", "W", "N1", "N2", "N3") — que
+batem por acidente no mapa de estágio -> label e viram 5 épocas FALSAS antes
+de qualquer dado real. `_ler_rotulos_psg` só começa a ler depois de achar a
+linha de cabeçalho de colunas ("Sleep Stage\t...").
+
+**Checagem de sanidade encontrou 1 caso real** (de 28): `ncl029` tem os dois
+acelerômetros (esquerdo e direito) configurados para 24h a partir de
+2014-02-06 18:00:00, mas a PSG só começa a pontuar em 2014-02-07 20:25:57 —
+**2h26min DEPOIS do fim da janela gravada**. Não é bug de parsing (os outros
+27 participantes calculam `t0_rotulo` dentro da gravação sem exceção); é uma
+inconsistência real na coleta original do dataset — o Zenodo não documenta a
+causa. `carregar_newcastle()` pula esse participante com aviso em stderr, em
+vez de abortar a noite dos outros 27 por causa de 1.
 """
 
 from __future__ import annotations
 
 import re
+import sys
+from collections.abc import Iterator
+from datetime import date, datetime
 from pathlib import Path
 
 import numpy as np
@@ -97,9 +165,19 @@ def _id_do_nome_do_arquivo(caminho: Path) -> str:
 #: Chaves de calibração exigidas no cabeçalho do .bin — ver ARMADILHA 3.
 _CHAVES_CALIBRACAO = ("x_gain", "x_offset", "y_gain", "y_offset", "z_gain", "z_offset")
 
+#: Tabela de conversão de caractere hex ASCII -> nibble (4 bits), para decodificar
+#: o bloco de amostras inteiro de uma vez com numpy em vez de laço por amostra.
+_LUT_HEX = np.zeros(256, dtype=np.uint8)
+for _c in "0123456789abcdefABCDEF":
+    _LUT_HEX[ord(_c)] = int(_c, 16)
 
-def _ler_bin_geneactiv(caminho: Path) -> tuple[np.ndarray, np.ndarray]:
-    """Leitor mínimo do .bin do GENEActiv. Devolve (t_segundos, a_g).
+
+def _ler_bin_geneactiv(caminho: Path) -> tuple[np.ndarray, np.ndarray, datetime]:
+    """Leitor mínimo do .bin do GENEActiv. Devolve (t_segundos, a_g, inicio).
+
+    `inicio` é o instante (data+hora) da amostra t=0, lido do cabeçalho
+    ("Start Time"). É o que permite alinhar esta gravação com o rótulo de
+    PSG — ver ARMADILHA 5.
 
     ✅ Validado contra `actipy` (OxWearables) em amostra real do Newcastle —
     ver ARMADILHA 3 abaixo. Antes da correção, a leitura batia com `actipy`
@@ -108,6 +186,10 @@ def _ler_bin_geneactiv(caminho: Path) -> tuple[np.ndarray, np.ndarray]:
 
     O formato é texto ASCII com blocos: cada página traz um cabeçalho de
     metadados e ~300 amostras codificadas em hexadecimal, 12 bits por eixo.
+    A decodificação do hex é vetorizada (numpy) — a primeira versão fazia um
+    laço Python por amostra e, nos 55 arquivos reais (4,6 GB, um com 282 MB
+    sozinho), levava a memória a >3 GB e crescendo numa máquina de 12 GB antes
+    de terminar um terço dos arquivos. Ver ARMADILHA 4 no topo do módulo.
 
     =========================================================================
     ARMADILHA 3 — o valor bruto NÃO é a aceleração; falta a calibração por
@@ -128,36 +210,28 @@ def _ler_bin_geneactiv(caminho: Path) -> tuple[np.ndarray, np.ndarray]:
     a calibração por eixo teria introduzido viés sistemático — não ruído —
     em toda medição feita sobre o Newcastle.
     """
-    tempos: list[float] = []
-    amostras: list[tuple[int, int, int]] = []
+    blocos: list[str] = []
     calib: dict[str, int] = {}
+    inicio: datetime | None = None
 
     with open(caminho, "r", errors="ignore") as fh:
         linhas = fh.read().splitlines()
 
-    t_pagina = None
     for linha in linhas:
         m = re.match(r"^([xyz]) (gain|offset):(-?\d+)", linha.strip())
         if m:
             eixo, campo, valor = m.groups()
             calib[f"{eixo}_{campo}"] = int(valor)
             continue
-        if linha.startswith("Page Time"):
-            t_pagina = linha.split(":", 1)[1].strip()
-        elif len(linha) >= 3000 and re.fullmatch(r"[0-9a-fA-F]+", linha.strip()):
-            bloco = linha.strip()
-            n = len(bloco) // 12          # 12 hex chars = x,y,z,luz (3 cada)
-            for k in range(n):
-                p = bloco[k * 12 : k * 12 + 9]
-                vals = []
-                for j in range(3):
-                    v = int(p[j * 3 : j * 3 + 3], 16)
-                    if v > 2047:          # complemento de dois em 12 bits
-                        v -= 4096
-                    vals.append(v)
-                amostras.append(tuple(vals))
-            if t_pagina is not None:
-                tempos.append(len(amostras))
+        l = linha.strip()
+        if inicio is None and l.startswith("Start Time:"):
+            m2 = re.search(r"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})", l)
+            if m2:
+                inicio = datetime.strptime(m2.group(1), "%Y-%m-%d %H:%M:%S")
+            continue
+        if len(l) >= 3000 and re.fullmatch(r"[0-9a-fA-F]+", l):
+            usavel = (len(l) // 12) * 12  # 12 hex chars = x,y,z,luz (3 cada)
+            blocos.append(l[:usavel])
 
     faltando = [c for c in _CHAVES_CALIBRACAO if c not in calib]
     if faltando:
@@ -165,36 +239,98 @@ def _ler_bin_geneactiv(caminho: Path) -> tuple[np.ndarray, np.ndarray]:
             f"calibração incompleta no cabeçalho de {caminho.name}: faltam {faltando}. "
             "Sem isso a conversão para g não é confiável — ver ARMADILHA 3."
         )
-    if not amostras:
+    if inicio is None:
+        raise ValueError(f"'Start Time' não encontrado no cabeçalho de {caminho.name}")
+    if not blocos:
         raise ValueError(f"nenhuma amostra lida de {caminho.name} — formato inesperado")
 
-    bruto = np.asarray(amostras, dtype=float)
+    hexall = "".join(blocos)
+    nibbles = _LUT_HEX[np.frombuffer(hexall.encode("ascii"), dtype=np.uint8)]
+    grupos = nibbles.reshape(-1, 3).astype(np.int32)         # cada linha: 1 valor de 12 bits
+    valores = grupos[:, 0] * 256 + grupos[:, 1] * 16 + grupos[:, 2]
+    bruto = valores.reshape(-1, 4)[:, :3]                    # x, y, z (descarta luz)
+    bruto = np.where(bruto > 2047, bruto - 4096, bruto)      # complemento de dois em 12 bits
+
     ganho = np.array([calib["x_gain"], calib["y_gain"], calib["z_gain"]], dtype=float)
     offset = np.array([calib["x_offset"], calib["y_offset"], calib["z_offset"]], dtype=float)
-    a = (bruto * 100.0 - offset) / ganho
+    a = (bruto.astype(float) * 100.0 - offset) / ganho
     t = np.arange(a.shape[0], dtype=float) / TAXA_NOMINAL_HZ
-    return t, a
+    return t, a, inicio
 
 
-def _ler_rotulos(caminho: Path) -> np.ndarray:
-    """Rótulos de PSG (.txt, 30 s) mapeados para 0 = vigília, 1 = sono, -1 = n/d.
+#: Estágio AASM -> 0 (vigília) / 1 (sono). Estadiamento é limite FÍSICO do
+#: escopo (ver §1 do ML-DATASETS-E-PLANO.md), não algorítmico: tudo que não é
+#: vigília vira sono.
+_MAPA_ESTAGIO = {
+    "w": 0, "wake": 0, "0": 0,
+    "n1": 1, "n2": 1, "n3": 1, "n4": 1, "r": 1, "rem": 1,
+    "1": 1, "2": 1, "3": 1, "4": 1, "5": 1,
+}
 
-    O Newcastle traz estágios AASM. Como o escopo é sono×vigília (ver §1 do
-    ML-DATASETS-E-PLANO.md: estadiamento é limite FÍSICO, não algorítmico),
-    tudo que não é vigília vira sono.
+
+def _ler_rotulos_psg(caminho: Path) -> tuple[datetime, np.ndarray]:
+    """Cabeçalho + rótulos de PSG (.txt, 30 s). Devolve (inicio, rotulos).
+
+    `inicio` é o instante (data+hora) do PRIMEIRO rótulo — é isso que alinha
+    esta gravação com o `.bin` do acelerômetro. Ver ARMADILHA 5.
+
+    Duas armadilhas de formato que só apareceram com os 28 arquivos reais:
+
+      1. O layout de colunas NÃO é fixo entre participantes — alguns têm uma
+         coluna "Position" a mais, outros não (`mecsleep01` vs `mecsleep34`).
+         Por isso o parsing é por NOME de coluna (a partir da linha
+         "Sleep Stage\t...\tTime [hh:mm:ss]\t..."), nunca por índice fixo.
+      2. O arquivo tem um cabeçalho de metadados (RemLogic) ANTES da tabela de
+         dados, incluindo uma seção "Events Included:" que lista os códigos de
+         estágio um por linha — "R", "W", "N1", "N2", "N3". Ler o arquivo linha
+         a linha sem pular esse cabeçalho faz esses códigos **baterem por
+         acidente** no mapa de estágios e virarem 5 épocas falsas antes de
+         qualquer dado real — silenciosamente. Por isso o parsing só começa
+         depois de achar a linha "Sleep Stage" (cabeçalho de colunas).
     """
-    mapa = {
-        "w": 0, "wake": 0, "0": 0,
-        "n1": 1, "n2": 1, "n3": 1, "n4": 1, "r": 1, "rem": 1,
-        "1": 1, "2": 1, "3": 1, "4": 1, "5": 1,
-    }
-    out = []
-    for linha in Path(caminho).read_text(errors="ignore").splitlines():
-        chave = linha.strip().lower()
-        if not chave:
+    linhas = Path(caminho).read_text(errors="ignore").splitlines()
+
+    data_gravacao: date | None = None
+    idx_cabecalho: int | None = None
+    for i, linha in enumerate(linhas):
+        if data_gravacao is None and linha.strip().lower().startswith("recording date"):
+            partes = linha.split("\t")
+            if len(partes) >= 2 and partes[1].strip():
+                data_gravacao = datetime.strptime(partes[1].strip(), "%d/%m/%Y").date()
+        if linha.strip().lower().startswith("sleep stage"):
+            idx_cabecalho = i
+            break
+
+    if data_gravacao is None:
+        raise ValueError(f"'Recording Date' não encontrado em {caminho.name}")
+    if idx_cabecalho is None:
+        raise ValueError(f"linha de cabeçalho de colunas ('Sleep Stage...') não achada em {caminho.name}")
+
+    colunas = [c.strip() for c in linhas[idx_cabecalho].split("\t")]
+    try:
+        i_estagio = colunas.index("Sleep Stage")
+        i_tempo = colunas.index("Time [hh:mm:ss]")
+    except ValueError as e:
+        raise ValueError(f"colunas esperadas ausentes em {caminho.name}: {colunas}") from e
+
+    rotulos: list[int] = []
+    inicio: datetime | None = None
+    for linha in linhas[idx_cabecalho + 1:]:
+        if not linha.strip():
             continue
-        out.append(mapa.get(chave, -1))
-    return np.asarray(out, dtype=int)
+        campos = linha.split("\t")
+        if len(campos) <= max(i_estagio, i_tempo):
+            continue
+        chave = campos[i_estagio].strip().lower()
+        rotulos.append(_MAPA_ESTAGIO.get(chave, -1))
+        if inicio is None:
+            hora = datetime.strptime(campos[i_tempo].strip(), "%H:%M:%S").time()
+            inicio = datetime.combine(data_gravacao, hora)
+
+    if inicio is None:
+        raise ValueError(f"nenhuma linha de dado em {caminho.name}")
+
+    return inicio, np.asarray(rotulos, dtype=int)
 
 
 def _achar_bins(pasta: Path) -> list[Path]:
@@ -221,11 +357,16 @@ def _indice_rotulos(pasta: Path) -> dict[str, Path]:
     return indice
 
 
-def carregar_newcastle(pasta: Path | str = PASTA_PADRAO) -> list[Gravacao]:
+def carregar_newcastle(pasta: Path | str = PASTA_PADRAO) -> Iterator[Gravacao]:
     """Todas as gravações do Newcastle presentes em `pasta`.
 
     Levanta FileNotFoundError com instrução de download se a pasta estiver
     vazia — o dado não entra no git, por tamanho e por princípio.
+
+    ⚠️ **Generator, não lista** — ver ARMADILHA 4. `processar_gravacoes()` já
+    consome uma gravação por vez (extrai features e descarta o bruto antes de
+    seguir para a próxima); manter tudo em memória ao mesmo tempo, como a
+    primeira versão fazia, não tem por que existir.
     """
     pasta = Path(pasta)
     bins = _achar_bins(pasta)
@@ -238,29 +379,56 @@ def carregar_newcastle(pasta: Path | str = PASTA_PADRAO) -> list[Gravacao]:
         )
 
     rotulos_por_id = _indice_rotulos(pasta)
-    gravacoes = []
     for b in bins:
         id_sujeito = _id_do_nome_do_arquivo(b)  # ARMADILHA 2
         rot = rotulos_por_id.get(id_sujeito)
         if rot is None:
             continue
-        t, a = _ler_bin_geneactiv(b)
-        y = _ler_rotulos(rot)
-        gravacoes.append(
-            Gravacao(
-                id_sujeito=id_sujeito,
-                t=t,
-                a=a,
-                rotulos=y,
-                t0_rotulo=float(t[0]),
-                meta={
-                    "fonte": "newcastle2015",
-                    "arquivo": b.name,
-                    "taxa_origem_hz": TAXA_NOMINAL_HZ,
-                    "faixa_g": FAIXA_G,
-                    "bits": BITS,
-                    "id_cabecalho_ignorado": True,
-                },
+        t, a, inicio_acc = _ler_bin_geneactiv(b)
+        inicio_psg, y = _ler_rotulos_psg(rot)
+
+        # ARMADILHA 5: t0_rotulo é o instante do PRIMEIRO rótulo relativo ao
+        # início da gravação do acelerômetro — NÃO é zero. O acelerômetro liga
+        # bem antes do estudo de sono começar (aqui, ~1h50 antes no
+        # participante 1); tratar as duas gravações como simultâneas descarta
+        # quase todas as épocas por "falta de cobertura" (fatiar_epocas
+        # procura o rótulo no lugar errado do sinal) e ainda embaralha o
+        # pouco que sobra. Ver ARMADILHA 5 no topo do módulo.
+        t0_rotulo = (inicio_psg - inicio_acc).total_seconds()
+        duracao_s = float(t[-1]) if t.shape[0] else 0.0
+        if not (0.0 <= t0_rotulo <= duracao_s):
+            # Não é bug de parsing: nos 28 participantes, só este caso ocorre,
+            # e a causa é rastreável no próprio cabeçalho (ver ARMADILHA 5) —
+            # ex.: ncl029 tem os DOIS acelerômetros (esquerdo e direito)
+            # configurados para 24h a partir de 2014-02-06 18:00, mas a PSG
+            # começa a pontuar em 2014-02-07 20:25:57 — 2h26min DEPOIS do fim
+            # da janela gravada. É uma inconsistência real na coleta do
+            # dataset, não um erro de leitura. Pular com aviso, não abortar a
+            # noite inteira dos outros 27 participantes por causa de 1.
+            print(
+                f"[newcastle] pulando {id_sujeito} ({b.name}): alinhamento "
+                f"PSG/acelerômetro fora da gravação (t0_rotulo={t0_rotulo:.1f}s, "
+                f"duração={duracao_s:.1f}s, inicio_acc={inicio_acc}, "
+                f"inicio_psg={inicio_psg}) — provável inconsistência na coleta "
+                "original, não erro de parsing (ver ARMADILHA 5).",
+                file=sys.stderr,
             )
+            continue
+
+        yield Gravacao(
+            id_sujeito=id_sujeito,
+            t=t,
+            a=a,
+            rotulos=y,
+            t0_rotulo=t0_rotulo,
+            meta={
+                "fonte": "newcastle2015",
+                "arquivo": b.name,
+                "taxa_origem_hz": TAXA_NOMINAL_HZ,
+                "faixa_g": FAIXA_G,
+                "bits": BITS,
+                "id_cabecalho_ignorado": True,
+                "inicio_acc": inicio_acc.isoformat(),
+                "inicio_psg": inicio_psg.isoformat(),
+            },
         )
-    return gravacoes
