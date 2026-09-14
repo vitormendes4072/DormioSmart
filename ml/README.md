@@ -13,22 +13,29 @@
 |---|---|
 | `ML-01` · estrutura reprodutível, features, carregadores | ✅ escrito |
 | `ML-02` · baselines medidos | ✅ **executado** sobre dado sintético |
-| Testes (3 arquivos, 18 casos) | ⚠️ **15 passaram, 3 reprovaram e foram corrigidos — correção NÃO reexecutada** |
-| Newcastle em disco | ❌ **não baixado** (ver abaixo) |
+| Carregador do **Wearanize+ OA** (`ML-03`) | ✅ **escrito**, ⚠️ **não executado** |
+| Script de download do Wearanize+ | ✅ **escrito**, ⚠️ **não executado** |
+| Testes (4 arquivos, ~45 casos) | ⚠️ **nada reexecutado nesta sessão** |
+| Newcastle em disco | ❌ não baixado |
+| Wearanize+ em disco | ❌ não baixado |
 | Vetor dourado p/ o firmware | ⚠️ invalidado, **precisa ser regenerado** |
 
-### ⚠️ Duas coisas que ficaram sem verificação por execução
+### ⚠️ O que ficou sem verificação por execução
 
-1. **O Newcastle não foi baixado.** A rede do ambiente onde isto foi escrito
-   bloqueia o Zenodo (`403 blocked-by-allowlist`). O carregador real está
-   escrito (`src/carregar/newcastle.py`) mas **nunca rodou contra um `.bin`
-   verdadeiro** — em particular o leitor do formato proprietário. Todo número
-   já produzido veio do gerador sintético.
+1. **Nada foi executado na sessão de 2026-09-14 (2ª parte).** O ambiente
+   perdeu o shell (bug de plataforma, lock da pasta). O carregador do
+   Wearanize+, o script de download e os testes novos estão escritos e **nunca
+   rodaram**. Comece por `pytest`.
 
-2. **A correção de 2026-09-14 não foi reexecutada.** Três testes reprovaram,
-   o diagnóstico foi conclusivo, a correção foi escrita — mas naquela sessão o
-   sandbox perdeu o acesso ao sistema de arquivos e a suíte não pôde rodar de
-   novo. **Rode `pytest` antes de confiar.**
+2. **O que FOI verificado nessa sessão, e não é pouco:** o formato do dataset
+   foi conferido **abrindo os arquivos reais** no servidor (WebDAV anônimo, sem
+   baixar tudo) — 100 cabeçalhos EDF, 100 `channels.tsv`, e um registro de
+   dados decodificado amostra a amostra. As taxas, as unidades, a grafia dos
+   canais e o censo de sensores no carregador **são medidos, não supostos**.
+   Detalhe em `docs/WEARANIZE-ACESSO.md` §6.
+
+3. **O Newcastle continua não baixado.** `src/carregar/newcastle.py` nunca
+   rodou contra um `.bin` verdadeiro.
 
 ```bash
 cd ml
@@ -36,6 +43,106 @@ pip install -r requirements.txt
 python -m pytest testes -q                       # ← comece por aqui
 python -m experimentos.ml02_baselines --dataset sintetico
 ```
+
+---
+
+## Wearanize+ OA — baixar e rodar
+
+> **O DUA não está no caminho crítico.** A coleção aberta `Wearanize+ OA`
+> (DOI `10.34973/xrmf-5726`, **CC-BY-4.0**) tem os três acelerômetros e a PSG
+> pontuada, baixa **sem cadastro**, e é a versão com a unidade do Empatica
+> **corrigida**. O DUA da coleção restrita destrava só os questionários.
+> Procedimento completo: `docs/WEARANIZE-ACESSO.md`.
+
+### 1. Baixar
+
+```bash
+cd ml
+
+# Auditar o formato sem gastar banda: só os sidecars, poucos MB
+python -m ferramentas.baixar_wearanize --so-metadados --n-sujeitos 100
+
+# Piloto: 10 sujeitos, ~5 GB  ← comece por aqui
+python -m ferramentas.baixar_wearanize --n-sujeitos 10
+
+# Sujeitos específicos
+python -m ferramentas.baixar_wearanize --sujeitos sub-005 sub-007 sub-008
+
+# O N do experimento pulso -> cabeça: ~45 GB
+python -m ferramentas.baixar_wearanize --n-sujeitos 92
+
+# Conferir integridade (relê o cabeçalho EDF e checa o tamanho previsto)
+python -m ferramentas.baixar_wearanize --verificar
+```
+
+**Download interrompido retoma de onde parou** — o servidor aceita
+`Range` (HTTP 206, verificado). Rodar o mesmo comando de novo continua; não
+recomeça.
+
+Volume medido em 20 sujeitos: **486 MB por EDF em média** (mín. 285, máx. 553).
+
+### 2. Rodar
+
+```bash
+python -m pytest testes/test_wearanize.py -q
+
+python -m experimentos.ml02_baselines --dataset wearanize --posicao cabeca
+```
+
+### 3. O experimento que é a contribuição original (`ML-03`)
+
+```python
+from src.carregar import carregar
+from src.carregar.wearanize import sujeitos_com_posicoes
+
+# As 9 células da matriz TÊM de rodar sobre o mesmo conjunto de sujeitos,
+# senão as quedas de kappa não são comparáveis entre si.
+comuns = sujeitos_com_posicoes(["cabeca", "pulso", "coxa"])   # N = 86
+
+treino = carregar("wearanize", posicao="pulso",  sujeitos=comuns)
+teste  = carregar("wearanize", posicao="cabeca", sujeitos=comuns)
+# ... treinar em `treino`, avaliar em `teste`, reportar Δκ
+
+# Só a transferência principal, com N maior:
+comuns2 = sujeitos_com_posicoes(["pulso", "cabeca"])          # N = 92
+
+# O teto inter-avaliador — o número contra o qual o Δκ deve ser lido:
+p1 = carregar("wearanize", posicao="cabeca", pontuador=1, sujeitos=comuns)
+p2 = carregar("wearanize", posicao="cabeca", pontuador=2, sujeitos=comuns)
+```
+
+### 4. O que o dataset tem, medido nos arquivos (não na documentação)
+
+| | Canal | Taxa | Unidade no EDF | Sujeitos |
+|---|---|---:|---|---:|
+| **cabeça** | `Zmax_ACC[XYZ]` | 256 Hz | `g` | **100**/100 |
+| **pulso** | `Emp_ACC[XYZ]` | 32 Hz | **`g/64`** | **92**/100 |
+| **coxa** | `ActivPal_ACC[XYZ]` | 20 Hz | `g` | **93**/100 |
+| pontuador 1 | `PSG_Manual_Scor1` | 1/30 Hz | — | **100**/100 |
+| pontuador 2 | `PSG_Manual_Scor2` | 1/30 Hz | — | **96**/100 |
+| postura | `PSG_Pos.` | 4 Hz | — | 96/100 |
+
+**cabeça + pulso = 92** · **três posições = 86**. Para comparar: Newcastle tem
+28 e Walch tem 31.
+
+### 5. As cinco armadilhas, todas tratadas e testadas
+
+Documentadas por extenso em `src/carregar/wearanize.py`, uma por teste em
+`testes/test_wearanize.py`:
+
+| # | Armadilha | Por que morde |
+|:-:|---|---|
+| **1** | O rótulo é `PSG_Manual_Scor1` no EDF e `PSG_Manual_scor1` no `.tsv` — **S maiúsculo só num deles** | Casamento sensível a maiúscula acha o acelerômetro e **perde o rótulo**. O sintoma não é exceção: é zero época. |
+| **2** | O Empatica está em **`g/64`**, não em `g` | Sem dividir, a aceleração de pulso sai **64× maior**. E a v1.0 (coleção **restrita**) declara `g/16` — **fator 4 de erro** no braço "treina" do ML-03. O carregador **aborta** se encontrar `g/16`. |
+| **3** | Nem todo sujeito tem os três sensores (8 sem pulso, 7 sem coxa) | Pedir "pulso" não pode derrubar os 92 que têm. São pulados com aviso. E a matriz 3×3 precisa do **mesmo N nas 9 células**. |
+| **4** | O `channels.tsv` **declara** `scor2` para os 100, mas o **EDF só tem em 96** | Montar a lista de sujeitos pelo `.tsv` quebra em 4. O teto inter-avaliador é **N = 96**, não 100. |
+| **5** | O nº de canais varia por sujeito (**38 a 61**) | Indexar canal por posição fixa quebra. Tudo é por nome. |
+
+**E uma coisa que o dataset dá de graça:** o registro de dados do EDF dura
+**exatamente 30 s** e os canais de pontuação têm **1 amostra por registro**. Um
+registro = uma época = um rótulo. `t0_rotulo = 0.0` não é suposição, é a
+estrutura do arquivo — o que elimina inteira a classe de bug que foi a
+ARMADILHA 5 do `newcastle.py`.
 
 ---
 
@@ -107,16 +214,27 @@ ml/
 │   ├── epocas.py          # janelamento de 30 s + contexto
 │   ├── features.py        # as 8 features
 │   ├── carregar/          # interface única: X, y, id = carregar("newcastle")
+│   │   ├── base.py        #   o contrato (Gravacao, ConjuntoEpocas)
+│   │   ├── newcastle.py   #   GENEActiv, punho, .bin proprietário
+│   │   ├── wearanize.py   #   Zmax/Empatica/ActivPAL, EDF, 3 posições
+│   │   └── sintetico.py   #   gerador — exercita o pipeline, não é resultado
 │   ├── baseline.py        # trivial, Cole-Kripke, Sadeh, calibração
 │   ├── modelos.py         # logística, RF, suavização
 │   └── avaliar.py         # métricas + split por sujeito
+├── ferramentas/           # CLI: baixar_wearanize.py (download + integridade)
 ├── experimentos/          # ml02_baselines.py + saida/*.json (log versionado)
-└── testes/                # vetor dourado, reamostragem, sanidade
+└── testes/                # vetor dourado, reamostragem, sanidade, wearanize
 ```
 
 **A interface única é o que decide se trocar de dataset custa um dia ou uma
-semana.** Quando o Wearanize+ chegar, é escrever `src/carregar/wearanize.py` e
-trocar a string.
+semana.** Ela já provou o ponto: o Wearanize+ entrou como
+`src/carregar/wearanize.py` + uma string, sem tocar em feature, época,
+baseline, modelo ou métrica.
+
+A única extensão que o `ML-03` exigiu foi `posicao=`, porque o Wearanize+ é o
+único dataset com mais de uma posição de sensor — e posição é parâmetro dele,
+não um dataset separado. Datasets de uma posição só **rejeitam** o argumento
+(`TypeError`), em vez de ignorá-lo em silêncio.
 
 ---
 
@@ -139,12 +257,25 @@ trocar a string.
 
 ---
 
-## Próximos passos
+## Próximos passos — nesta ordem
 
-1. **Rodar `pytest`** e confirmar a correção de 2026-09-14. Regenerar o vetor
-   dourado (`testes/vetor_dourado.json` está invalidado de propósito).
-2. **Baixar o Newcastle** (CC-BY 4.0, sem cadastro, 962,8 MB) para
-   `dados/bruto/newcastle/` e validar o leitor de `.bin` contra um arquivo real
-   — de preferência comparando com `actipy`.
-3. **Rodar o `ML-02` sobre dado real.** Aí sim os números valem.
-4. `ML-03` — transferência entre posições, quando o DUA do Wearanize+ sair.
+Tudo abaixo **exige execução**, e nada foi executado ainda.
+
+1. **`python -m pytest testes -q`.** Confirma a correção pendente de
+   2026-09-14 **e** a suíte nova do Wearanize+. Os testes do Wearanize+ não
+   precisam do dataset em disco — eles fabricam EDFs mínimos com as mesmas
+   esquisitices dos arquivos reais. Regenerar o vetor dourado
+   (`testes/vetor_dourado.json` está invalidado de propósito).
+2. **`python -m ferramentas.baixar_wearanize --so-metadados`.** Poucos MB.
+   Confirma que a rede alcança o servidor e que o formato é o esperado, antes
+   de comprometer 5 GB.
+3. **`python -m ferramentas.baixar_wearanize --n-sujeitos 10`** (~5 GB) e
+   `--verificar`.
+4. **`python -m experimentos.ml02_baselines --dataset wearanize --posicao cabeca`.**
+   O primeiro número real do projeto. Esperar que o baseline trivial seja
+   competitivo — é o ponto do `ML-02`, não um problema.
+5. **Baixar o Newcastle** (CC-BY 4.0, 962,8 MB) e validar o leitor de `.bin`
+   contra um arquivo real, comparando com `actipy`.
+6. **`ML-03`** — a matriz 3×3 de transferência entre posições, com o teto
+   inter-avaliador ao lado. É a contribuição original do trabalho, e agora não
+   depende de DUA nenhum.

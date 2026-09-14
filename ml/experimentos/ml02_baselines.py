@@ -3,6 +3,8 @@
 Uso:
     python -m experimentos.ml02_baselines --dataset sintetico
     python -m experimentos.ml02_baselines --dataset newcastle
+    python -m experimentos.ml02_baselines --dataset wearanize --posicao cabeca
+    python -m experimentos.ml02_baselines --dataset wearanize --posicao pulso
 
 Grava o log de métricas em experimentos/saida/, com o hash do config junto.
 """
@@ -113,7 +115,14 @@ def _processar_unificado(
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--dataset", default="sintetico")
+    ap.add_argument("--dataset", default="sintetico",
+                    choices=("sintetico", "newcastle", "wearanize"))
+    # Só o Wearanize+ tem mais de uma posição de sensor. É o parâmetro do ML-03:
+    # treinar numa e testar em outra, medindo a queda de kappa.
+    ap.add_argument("--posicao", default="cabeca", choices=("cabeca", "pulso", "coxa"),
+                    help="só para --dataset wearanize (padrão: cabeca)")
+    ap.add_argument("--pontuador", type=int, default=1, choices=(1, 2),
+                    help="qual pontuação manual usar; a 2ª existe em 96 dos 100")
     args = ap.parse_args()
 
     cfg = carregar_config()
@@ -131,12 +140,22 @@ def main() -> int:
             taxa_origem_hz=float(s["taxa_origem_hz"]), fracao_sono=float(s["fracao_sono"]),
             fracao_vigilia_quieta=float(s["fracao_vigilia_quieta"]),
             ruido_mg=float(s["ruido_mg"]), epoca_s=cfg.epoca_s, seed=cfg.seed)
+    elif args.dataset == "wearanize":
+        from src.carregar.wearanize import carregar_wearanize
+        gravacoes = carregar_wearanize(
+            posicao=args.posicao, pontuador=args.pontuador
+        )
     else:
         from src.carregar.newcastle import carregar_newcastle
         gravacoes = carregar_newcastle()
 
     conj, c, y_c, id_c = _processar_unificado(gravacoes, cfg)
     conj.meta["dataset"] = args.dataset
+    if args.dataset == "wearanize":
+        # Um resultado do ML-03 sem a posição registrada é um resultado sem
+        # sentido: as células da matriz só diferem nisso.
+        conj.meta["posicao"] = args.posicao
+        conj.meta["pontuador"] = args.pontuador
 
     print(f"\n{len(conj)} épocas · {len(set(conj.id_sujeito.tolist()))} sujeitos · "
           f"{conj.X.shape[1]} features (8 × {2*cfg.contexto_epocas+1} janelas)")
@@ -214,10 +233,13 @@ def main() -> int:
     saida = RAIZ / "experimentos" / "saida"
     saida.mkdir(parents=True, exist_ok=True)
     carimbo = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-    destino = saida / f"ml02_{args.dataset}_{cfg.hash}_{carimbo}.json"
+    sufixo = f"_{args.posicao}" if args.dataset == "wearanize" else ""
+    destino = saida / f"ml02_{args.dataset}{sufixo}_{cfg.hash}_{carimbo}.json"
     destino.write_text(json.dumps({
         "experimento": "ML-02 baselines",
         "dataset": args.dataset,
+        **({"posicao": args.posicao, "pontuador": args.pontuador}
+           if args.dataset == "wearanize" else {}),
         "AVISO": ("DADO SINTÉTICO — exercita o pipeline, NÃO é medição nem achado"
                   if args.dataset == "sintetico" else "dado real"),
         "hash_config": cfg.hash, "seed": cfg.seed, "utc": carimbo,

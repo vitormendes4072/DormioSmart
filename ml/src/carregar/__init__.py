@@ -1,9 +1,15 @@
 """Interface única de carregamento.
 
     X, y, id_sujeito = carregar("newcastle")
+    X, y, id_sujeito = carregar("wearanize", posicao="pulso")
 
 Todo carregador devolve a mesma coisa, e trocar de dataset vira trocar uma
 string. É o detalhe que decide se a Fase 2 custa um dia ou uma semana.
+
+O `ML-03` — treinar numa posição de sensor e testar em outra — é o motivo de
+`carregar()` aceitar `**opcoes`: o Wearanize+ é o único dataset com mais de uma
+posição, e a posição é parâmetro dele, não um dataset separado. Datasets de uma
+posição só ignoram o argumento (e levantam erro se algo for passado por engano).
 """
 
 from __future__ import annotations
@@ -18,9 +24,12 @@ from ..features import NOMES_FEATURES, features_de_epoca
 from ..sinal import reamostrar
 from .base import ConjuntoEpocas, Gravacao
 
-__all__ = ["carregar", "processar_gravacoes", "DATASETS"]
+__all__ = ["carregar", "processar_gravacoes", "DATASETS", "POSICOES_WEARANIZE"]
 
-DATASETS = ("newcastle", "sintetico")
+DATASETS = ("newcastle", "sintetico", "wearanize")
+
+#: Posições de sensor do Wearanize+. Só este dataset aceita `posicao=`.
+POSICOES_WEARANIZE = ("cabeca", "pulso", "coxa")
 
 
 def processar_gravacoes(gravacoes: Iterable[Gravacao], cfg: Config) -> ConjuntoEpocas:
@@ -89,15 +98,53 @@ def processar_gravacoes(gravacoes: Iterable[Gravacao], cfg: Config) -> ConjuntoE
     )
 
 
-def carregar(nome: str, cfg: Config | None = None) -> ConjuntoEpocas:
-    """`carregar("newcastle")` ou `carregar("sintetico")`."""
+def carregar(nome: str, cfg: Config | None = None, **opcoes) -> ConjuntoEpocas:
+    """`carregar("newcastle")`, `carregar("sintetico")`, `carregar("wearanize", ...)`.
+
+    Opções aceitas por dataset
+    --------------------------
+    wearanize :
+        posicao   : "cabeca" (padrão) | "pulso" | "coxa"
+        pontuador : 1 (padrão) ou 2 — a segunda pontuação manual existe em 96
+                    dos 100 sujeitos; comparar as duas dá o teto inter-avaliador
+        sujeitos  : lista de IDs, para fixar o mesmo N entre células da matriz
+                    do ML-03 (ver `carregar.wearanize.sujeitos_com_posicoes`)
+    newcastle, sintetico :
+        nenhuma — passar `posicao=` aqui é erro, e é sinalizado como tal em vez
+        de ser ignorado em silêncio.
+
+    Exemplo — a célula que é o resultado original do trabalho::
+
+        from src.carregar.wearanize import sujeitos_com_posicoes
+        comuns = sujeitos_com_posicoes(["pulso", "cabeca"])   # N = 92
+        treino = carregar("wearanize", posicao="pulso",  sujeitos=comuns)
+        teste  = carregar("wearanize", posicao="cabeca", sujeitos=comuns)
+    """
     cfg = cfg or carregar_config()
     nome = nome.lower().strip()
 
     if nome == "newcastle":
+        if opcoes:
+            raise TypeError(
+                f"carregar('newcastle') não aceita {sorted(opcoes)}. "
+                "O Newcastle tem só uma posição (punho)."
+            )
         from .newcastle import carregar_newcastle
         gravacoes = carregar_newcastle()
+    elif nome == "wearanize":
+        from .wearanize import carregar_wearanize
+        desconhecidas = set(opcoes) - {"posicao", "pontuador", "sujeitos", "pasta"}
+        if desconhecidas:
+            raise TypeError(f"opções desconhecidas para 'wearanize': {sorted(desconhecidas)}")
+        gravacoes = carregar_wearanize(
+            posicao=opcoes.get("posicao", "cabeca"),
+            pontuador=int(opcoes.get("pontuador", 1)),
+            sujeitos=opcoes.get("sujeitos"),
+            **({"pasta": opcoes["pasta"]} if "pasta" in opcoes else {}),
+        )
     elif nome == "sintetico":
+        if opcoes:
+            raise TypeError(f"carregar('sintetico') não aceita {sorted(opcoes)}.")
         from .sintetico import gerar_sinteticos
         s = cfg.sintetico
         gravacoes = gerar_sinteticos(
@@ -115,4 +162,9 @@ def carregar(nome: str, cfg: Config | None = None) -> ConjuntoEpocas:
 
     conj = processar_gravacoes(gravacoes, cfg)
     conj.meta["dataset"] = nome
+    # A posição vai para o meta porque o ML-03 compara conjuntos que só diferem
+    # nisso: um resultado sem a posição registrada é um resultado sem sentido.
+    if nome == "wearanize":
+        conj.meta["posicao"] = opcoes.get("posicao", "cabeca")
+        conj.meta["pontuador"] = int(opcoes.get("pontuador", 1))
     return conj
