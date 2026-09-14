@@ -109,6 +109,12 @@ def carregar(nome: str, cfg: Config | None = None, **opcoes) -> ConjuntoEpocas:
                     dos 100 sujeitos; comparar as duas dá o teto inter-avaliador
         sujeitos  : lista de IDs, para fixar o mesmo N entre células da matriz
                     do ML-03 (ver `carregar.wearanize.sujeitos_com_posicoes`)
+        qualidade : "original" (padrão) | "e4" — degrada o sinal para a grade
+                    do Empatica E4 antes de extrair features. Aplicado a
+                    posicao="cabeca" dá o braço de controle "cabeça
+                    degradada" que isola custo de posição de custo de
+                    qualidade de sensor (ver `carregar.wearanize`, seção
+                    "CONTROLE EXPERIMENTAL")
     newcastle, sintetico :
         nenhuma — passar `posicao=` aqui é erro, e é sinalizado como tal em vez
         de ser ignorado em silêncio.
@@ -133,13 +139,14 @@ def carregar(nome: str, cfg: Config | None = None, **opcoes) -> ConjuntoEpocas:
         gravacoes = carregar_newcastle()
     elif nome == "wearanize":
         from .wearanize import carregar_wearanize
-        desconhecidas = set(opcoes) - {"posicao", "pontuador", "sujeitos", "pasta"}
+        desconhecidas = set(opcoes) - {"posicao", "pontuador", "sujeitos", "pasta", "qualidade"}
         if desconhecidas:
             raise TypeError(f"opções desconhecidas para 'wearanize': {sorted(desconhecidas)}")
         gravacoes = carregar_wearanize(
             posicao=opcoes.get("posicao", "cabeca"),
             pontuador=int(opcoes.get("pontuador", 1)),
             sujeitos=opcoes.get("sujeitos"),
+            qualidade=opcoes.get("qualidade", "original"),
             **({"pasta": opcoes["pasta"]} if "pasta" in opcoes else {}),
         )
     elif nome == "sintetico":
@@ -167,4 +174,5 @@ def carregar(nome: str, cfg: Config | None = None, **opcoes) -> ConjuntoEpocas:
     if nome == "wearanize":
         conj.meta["posicao"] = opcoes.get("posicao", "cabeca")
         conj.meta["pontuador"] = int(opcoes.get("pontuador", 1))
+        conj.meta["qualidade"] = opcoes.get("qualidade", "original")
     return conj

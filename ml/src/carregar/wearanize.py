@@ -134,6 +134,41 @@ O que este dataset dá de graça — e o Newcastle não dava
    independente das features `inclinacao_rel` / `d_angulo`.
 
 =============================================================================
+CONTROLE EXPERIMENTAL — "cabeça degradada", para não confundir posição com
+qualidade de sensor no ML-03
+=============================================================================
+A matriz de transferência ingênua (treina numa posição, testa noutra) mistura
+duas variáveis: o Zmax da cabeça é 256 Hz / 12 bits / 0,977 mg-LSB; o Empatica
+do pulso é 32 Hz / 8 bits / 15,625 mg-LSB — **16× mais grosseiro**. Treinar em
+pulso e testar em cabeça muda a posição E a qualidade do sensor ao mesmo
+tempo, e o Δκ que sai dali não se pode atribuir a nenhuma das duas sozinha.
+
+`qualidade="e4"` em `carregar_wearanize()` isola as duas variáveis: reamostra
+e requantiza o sinal pedido para a grade exata do Empatica E4 (via
+`degradar_para_e4()`, que reusa o `reamostrar()` de `src/sinal.py` — o mesmo
+anti-aliasing do resto do pipeline, não um atalho). Aplicado à cabeça, dá o
+braço de controle:
+
+  cabeça original   vs. cabeça degradada  →  custo da QUALIDADE, isolado
+  pulso             vs. cabeça degradada  →  custo da POSIÇÃO, isolado —
+                                              os dois lados na mesma qualidade
+  cabeça original   vs. pulso             →  a matriz ingênua, continua
+                                              reportada (é o que a
+                                              literatura faria)
+
+Aplicado ao próprio sinal do Empatica, `qualidade="e4"` tem de ser
+**aproximadamente idempotente** — já está na grade que descreve; a única
+mudança esperada é o resíduo de reamostrar 32→32 Hz (interpolação na mesma
+grade, filtro não entra: `reamostrar()` só filtra quando a origem é mais
+rápida que o destino). Ver `testes/test_wearanize.py::test_degradar_e4_e_quase_idempotente`.
+
+**A cabeça degradada é também o proxy mais honesto do que o MPU6050 do
+Dormio entregaria** — 16 bits nominal, mas a resolução que sobra depois de
+qualquer bit de folga é mais perto da grade do E4 do que da do Zmax. Esse
+número interessa duas vezes: como controle experimental E como estimativa de
+desempenho esperado do dispositivo real.
+
+=============================================================================
 Especificações dos sensores — o que é lido e o que é DERIVADO
 =============================================================================
 | Sensor    | Taxa       | Unidade no EDF | Faixa   | Bits | Resolução     |
@@ -163,13 +198,16 @@ from pathlib import Path
 
 import numpy as np
 
+from ..sinal import reamostrar
 from .base import Gravacao
 
 __all__ = [
     "carregar_wearanize",
     "sujeitos_disponiveis",
     "sujeitos_com_posicoes",
+    "degradar_para_e4",
     "POSICOES",
+    "QUALIDADES",
     "PASTA_PADRAO",
 ]
 
@@ -234,6 +272,48 @@ CANAIS_ROTULO = {
 }
 
 CANAL_POSTURA = "PSG_Pos."
+
+QUALIDADES: tuple[str, ...] = ("original", "e4")
+
+#: Grade do Empatica E4 (ver `Posicao["pulso"]` acima): 8 bits com sinal,
+#: 1/64 g por LSB, 32 Hz. `degradar_para_e4()` reproduz exatamente isto.
+_E4_BITS = 8
+_E4_LSB_G = 1.0 / 64.0                              # 15,625 mg
+_E4_TAXA_HZ = 32.0
+_E4_MIN_G = -(2 ** (_E4_BITS - 1)) * _E4_LSB_G       # -128/64 = -2,000 g
+_E4_MAX_G = (2 ** (_E4_BITS - 1) - 1) * _E4_LSB_G    #  127/64 =  1,984375 g
+
+
+def degradar_para_e4(t: np.ndarray, a: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """Reamostra e requantiza `(t, a)` para a grade do Empatica E4.
+
+    Ver "CONTROLE EXPERIMENTAL" no topo do módulo para o porquê. Duas etapas,
+    nesta ordem:
+
+    1. **Reamostrar para 32 Hz com anti-aliasing** — `reamostrar()` de
+       `src/sinal.py`, o mesmo usado no resto do pipeline (a taxa de origem é
+       derivada de `t`, não precisa ser passada). Decimar sem filtrar
+       dobraria energia de alta frequência para dentro da banda; se a origem
+       já estiver a <= 32 Hz, `reamostrar()` já sabe não filtrar.
+    2. **Requantizar para 8 bits com sinal, 1/64 g por LSB, faixa ±2 g** —
+       `round(a / LSB) * LSB`, com saturação nos extremos. É exatamente o que
+       um ADC de 8 bits faz; sem a saturação, um pico acima de ±2 g na cabeça
+       (a faixa do Zmax é maior) apareceria como um valor que o E4 nunca
+       poderia ter produzido.
+
+    Parameters
+    ----------
+    t, a : mesma forma de `Gravacao.t` / `.a` — `a` já em **g**.
+
+    Returns
+    -------
+    (t_novo, a_novo) — `a_novo` na grade do E4: 32 Hz, valores múltiplos de
+    1/64 g, saturados em [-2, 1,984375] g.
+    """
+    t_novo, a_novo = reamostrar(t, a, taxa_destino=_E4_TAXA_HZ)
+    a_sat = np.clip(a_novo, _E4_MIN_G, _E4_MAX_G)
+    a_quant = np.round(a_sat / _E4_LSB_G) * _E4_LSB_G
+    return t_novo, a_quant
 
 #: Rótulo do dataset -> convenção interna (0 = vigília, 1 = sono, -1 = descartar).
 #: Mapa oficial: -1 não pontuável · 0 vigília · 1 N1 · 2 N2 · 3 N3 · 4 REM.
@@ -541,6 +621,7 @@ def carregar_wearanize(
     pasta: Path | str = PASTA_PADRAO,
     pontuador: int = 1,
     sujeitos: Sequence[str] | None = None,
+    qualidade: str = "original",
 ) -> Iterator[Gravacao]:
     """Gravações do Wearanize+ OA para uma posição de sensor.
 
@@ -557,6 +638,12 @@ def carregar_wearanize(
     sujeitos : lista de IDs, opcional
         Restringe o conjunto. Use com `sujeitos_com_posicoes()` para garantir
         que todas as células da matriz 3x3 rodem sobre o MESMO N.
+    qualidade : "original" (padrão) | "e4"
+        "e4" reamostra e requantiza o sinal para a grade do Empatica E4
+        (`degradar_para_e4()`) antes de devolver. Aplicado a `posicao="cabeca"`
+        dá o braço de controle "cabeça degradada" que isola custo de posição
+        de custo de qualidade de sensor no `ML-03` — ver "CONTROLE
+        EXPERIMENTAL" no topo do módulo.
 
     Yields
     ------
@@ -572,6 +659,8 @@ def carregar_wearanize(
     pos = _posicao(posicao)
     if pontuador not in (1, 2):
         raise ValueError(f"pontuador deve ser 1 ou 2, recebido {pontuador!r}")
+    if qualidade not in QUALIDADES:
+        raise ValueError(f"qualidade deve ser {QUALIDADES}, recebido {qualidade!r}")
 
     pasta = Path(pasta)
     pnp = _pasta_plugnplay(pasta)
@@ -624,6 +713,9 @@ def carregar_wearanize(
         a = np.stack([_ler_canal(cab, int(i)) for i in idx], axis=1) * pos.para_g
         t = np.arange(a.shape[0], dtype=float) / taxa
 
+        if qualidade == "e4":
+            t, a = degradar_para_e4(t, a)
+
         n_rot = int(rotulos.shape[0])
         if n_rot != cab.n_registros:
             raise ValueError(
@@ -654,6 +746,7 @@ def carregar_wearanize(
                 "taxa_origem_hz": taxa,
                 "unidade_edf": cab.dimensoes[int(idx[0])],
                 "fator_para_g": pos.para_g,
+                "qualidade": qualidade,
                 "pontuador": pontuador,
                 "canal_rotulo": CANAIS_ROTULO[pontuador],
                 "n_registros": cab.n_registros,

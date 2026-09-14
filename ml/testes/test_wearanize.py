@@ -34,6 +34,7 @@ from src.carregar.wearanize import (
     POSICOES,
     SUBPASTA_PLUGNPLAY,
     carregar_wearanize,
+    degradar_para_e4,
     ler_cabecalho_edf,
     sujeitos_com_posicoes,
     sujeitos_disponiveis,
@@ -638,3 +639,137 @@ def test_censo_real_coerente():
     assert len(SEM_SCOR2) == c["n_sujeitos_plugnplay"] - c["scor2"] == 4
     # Os 4 sem 2º pontuador são os do Mentalab, e 2 deles também não têm pulso.
     assert set(SEM_SCOR2) & set(SEM_PULSO) == {"sub-129", "sub-130"}
+
+
+# =========================================================================
+# degradar_para_e4 — o controle experimental "cabeça degradada"
+# =========================================================================
+# Isola custo de POSIÇÃO de custo de QUALIDADE DE SENSOR no ML-03: o Zmax
+# (12 bits, 0,977 mg/LSB, 256 Hz) é objetivamente melhor sensor que o
+# Empatica (8 bits, 15,625 mg/LSB, 32 Hz) -- treinar em pulso e testar em
+# cabeça, sem controle, mistura as duas variáveis. Ver a seção "CONTROLE
+# EXPERIMENTAL" no topo de src/carregar/wearanize.py.
+
+_E4_LSB_G = 1.0 / 64.0
+_E4_MIN_G = -2.0
+_E4_MAX_G = 127.0 / 64.0
+
+
+def _sinal_cabeca_sintetico(fs: float = 256.0, dur_s: float = 60.0, seed: int = 0):
+    """Um sinal ~Zmax: 256 Hz, tons dentro da banda de movimento + gravidade."""
+    rng = np.random.default_rng(seed)
+    n = int(fs * dur_s)
+    t = np.arange(n) / fs
+    a = np.zeros((n, 3))
+    for eixo in range(3):
+        for freq in (0.5, 1.3, 2.7):
+            a[:, eixo] += 0.3 * np.sin(2 * np.pi * freq * t + rng.uniform(0, 6.28))
+        a[:, eixo] += rng.normal(0, 0.01, n)
+    a[:, 2] += 1.0  # gravidade no eixo z
+    return t, a
+
+
+def test_degradar_e4_bate_com_a_grade_do_e4():
+    """A saída tem de estar na grade que um E4 de verdade produz: 32 Hz,
+    múltiplos de 1/64 g, dentro de [-2, 1,984375] g -- não uma aproximação
+    livre, a grade exata."""
+    t, a = _sinal_cabeca_sintetico()
+    t2, a2 = degradar_para_e4(t, a)
+
+    dt = np.diff(t2)
+    assert np.allclose(dt, 1.0 / 32.0, atol=1e-9), "taxa de saída não é 32 Hz"
+
+    razao = a2 / _E4_LSB_G
+    assert np.allclose(razao, np.round(razao), atol=1e-6), (
+        "valores fora da grade de 1/64 g -- não é o que um ADC de 8 bits produziria"
+    )
+    assert a2.min() >= _E4_MIN_G - 1e-9
+    assert a2.max() <= _E4_MAX_G + 1e-9
+
+
+def test_degradar_e4_satura_picos_acima_da_faixa_do_e4():
+    """Um pico fora de ±2 g (a faixa do Zmax é maior) tem de SATURAR em
+    1,984375 g / -2 g, não vazar como um valor que o E4 nunca produziria."""
+    fs = 256.0
+    n = int(fs * 2)
+    t = np.arange(n) / fs
+    a = np.zeros((n, 3))
+    a[:, 0] = 5.0
+    a[:, 1] = -5.0
+    a[:, 2] = 1.0
+    _, a2 = degradar_para_e4(t, a)
+    assert np.all(a2[:, 0] <= _E4_MAX_G + 1e-9)
+    assert np.all(a2[:, 1] >= _E4_MIN_G - 1e-9)
+
+
+def test_degradar_e4_reduz_a_resolucao_efetiva():
+    """A cabeça (0,977 mg/LSB) tem resolução ~16x mais fina que o E4
+    (15,625 mg/LSB). Depois de degradar, o menor incremento não-nulo entre
+    valores tem de bater com o LSB do E4 -- é o próprio ponto do controle."""
+    t, a = _sinal_cabeca_sintetico(dur_s=10.0)
+    _, a_deg = degradar_para_e4(t, a)
+
+    def resolucao(x):
+        u = np.unique(np.round(x, 9))
+        d = np.diff(u)
+        return np.median(d[d > 1e-9])
+
+    res_original = resolucao(a[:, 0])
+    res_degradada = resolucao(a_deg[:, 0])
+    assert res_degradada == pytest.approx(_E4_LSB_G, rel=1e-6)
+    assert res_degradada > res_original * 10
+
+
+def test_degradar_e4_e_aproximadamente_idempotente():
+    """Degradar um sinal que JÁ está na grade do E4 (32 Hz, passo 1/64 g) tem
+    de devolver quase o mesmo sinal -- a função não pode inventar diferença
+    onde não há.
+
+    'Aproximadamente' porque `reamostrar()` reinterpola a série (a grade nova
+    começa em t[0] e o número de pontos pode diferir por 1 do original) --
+    mas a diferença amostra a amostra tem de ficar dentro de 1 LSB, e a
+    maioria das amostras tem de bater exato."""
+    fs = 32.0
+    n = int(fs * 60)
+    rng = np.random.default_rng(42)
+    t = np.arange(n) / fs
+    bruto = rng.integers(-128, 128, size=(n, 3))
+    a_e4 = bruto.astype(float) / 64.0  # já na grade do E4
+
+    _, a_deg = degradar_para_e4(t, a_e4)
+
+    n_comp = min(a_e4.shape[0], a_deg.shape[0])
+    diff = np.abs(a_e4[:n_comp] - a_deg[:n_comp])
+    assert diff.max() <= _E4_LSB_G + 1e-9, (
+        f"degradar o próprio sinal do E4 mudou valores além de 1 LSB: {diff.max()}"
+    )
+    assert (diff < 1e-9).mean() > 0.9, "a maioria das amostras deveria bater exato"
+
+
+def test_qualidade_invalida_levanta(colecao: Path):
+    with pytest.raises(ValueError, match="qualidade"):
+        next(carregar_wearanize(
+            "cabeca", pasta=colecao, sujeitos=["sub-005"], qualidade="ruim"
+        ))
+
+
+def test_carregar_com_qualidade_e4_degrada_a_cabeca(colecao: Path):
+    """O braço de controle "cabeça degradada": carregar cabeça com
+    qualidade="e4" tem de sair a 32 Hz, na grade do E4."""
+    gr = next(carregar_wearanize(
+        "cabeca", pasta=colecao, sujeitos=["sub-005"], qualidade="e4"
+    ))
+    assert gr.meta["qualidade"] == "e4"
+    dt = np.median(np.diff(gr.t))
+    assert dt == pytest.approx(1.0 / 32.0, rel=1e-6)
+    razao = gr.a / _E4_LSB_G
+    assert np.allclose(razao, np.round(razao), atol=1e-6)
+
+
+def test_carregar_com_qualidade_original_nao_degrada(colecao: Path):
+    gr = next(carregar_wearanize(
+        "cabeca", pasta=colecao, sujeitos=["sub-005"], qualidade="original"
+    ))
+    assert gr.meta["qualidade"] == "original"
+    dt = np.median(np.diff(gr.t))
+    assert dt == pytest.approx(1.0 / 256.0, rel=1e-6)
