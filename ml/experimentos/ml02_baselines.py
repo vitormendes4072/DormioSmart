@@ -26,36 +26,89 @@ for _fluxo in (sys.stdout, sys.stderr):
     if hasattr(_fluxo, "reconfigure"):
         _fluxo.reconfigure(encoding="utf-8")
 
+from collections.abc import Iterable                               # noqa: E402
+
 from src.avaliar import avaliar_epoca, split_por_sujeito          # noqa: E402
 from src.baseline import (                                        # noqa: E402
     calibrar_escala, cole_kripke, fracao_implicada_de_sono, sadeh,
     sempre_dormindo, substituto_de_contagem,
 )
-from src.carregar import carregar                                  # noqa: E402
-from src.carregar.base import Gravacao                             # noqa: E402
+from src.carregar.base import ConjuntoEpocas, Gravacao              # noqa: E402
 from src.configuracao import carregar_config, fixar_seed           # noqa: E402
-from src.epocas import fatiar_epocas                               # noqa: E402
+from src.epocas import empilhar_contexto, fatiar_epocas             # noqa: E402
+from src.features import NOMES_FEATURES, features_de_epoca         # noqa: E402
 from src.modelos import regressao_logistica, suavizar_mediana      # noqa: E402
 from src.sinal import reamostrar                                   # noqa: E402
 
 
-def _contagens_por_gravacao(gravacoes: list[Gravacao], cfg) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """Substituto de contagem + rótulo + id, alinhados. Ver DECISÃO TÉCNICA 3."""
-    cs, ys, ids = [], [], []
+def _processar_unificado(
+    gravacoes: Iterable[Gravacao], cfg
+) -> tuple[ConjuntoEpocas, np.ndarray, np.ndarray, np.ndarray]:
+    """Uma passada só sobre as gravações brutas: features (para `conj`, usado
+    pela regressão logística) e substituto de contagem (para Cole-Kripke e
+    Sadeh — ver DECISÃO TÉCNICA 3 em src/baseline.py), lado a lado.
+
+    Substitui duas passadas independentes que existiam antes — uma via
+    `carregar()` só para as features, outra local só para o substituto de
+    contagem — cada uma lendo e decodificando as MESMAS gravações brutas do
+    zero. Para o Newcastle (55 arquivos, 4,6 GB, sem cache: cada leitura
+    decodifica o `.bin` de novo) isso dobrava o tempo de execução por nada:
+    reamostragem e fatiamento em épocas (`reamostrar` + `fatiar_epocas`) já
+    são idênticos para as duas saídas, então rodam uma vez só por gravação.
+    """
     lo, hi = cfg.baseline["banda_contagem_hz"]
+    Xs, ys, ids = [], [], []
+    cs, ys_c, ids_c = [], [], []
+    n_gravacoes = 0
+    descartadas = 0
+
     for gr in gravacoes:
+        n_gravacoes += 1
         t, a = reamostrar(gr.t, gr.a, cfg.taxa_comum_hz, cfg.corte_antialiasing_frac_nyquist)
         a_ep, idx = fatiar_epocas(t, a, gr.t0_rotulo, int(gr.rotulos.shape[0]),
                                   cfg.epoca_s, cfg.taxa_comum_hz)
         if a_ep.shape[0] == 0:
             continue
+        descartadas += int(gr.rotulos.shape[0]) - a_ep.shape[0]
+
+        y_ep = gr.rotulos[idx]
+        ok = y_ep >= 0                      # não pontuadas (-1) saem: sem verdade p/ comparar
+        if not ok.any():
+            continue
+        y_ok = y_ep[ok]
+        ids_ok = np.full(int(ok.sum()), gr.id_sujeito, dtype=object)
+
+        X, _ = features_de_epoca(a_ep, fs=cfg.taxa_comum_hz)
+        Xs.append(empilhar_contexto(X[ok], cfg.contexto_epocas))
+        ys.append(y_ok)
+        ids.append(ids_ok)
+
         c = substituto_de_contagem(a_ep, cfg.taxa_comum_hz, (float(lo), float(hi)),
                                    float(cfg.baseline["escala_contagem"]))
-        y = gr.rotulos[idx]
-        ok = y >= 0
-        cs.append(c[ok]); ys.append(y[ok])
-        ids.append(np.full(int(ok.sum()), gr.id_sujeito, dtype=object))
-    return np.concatenate(cs), np.concatenate(ys), np.concatenate(ids)
+        cs.append(c[ok])
+        ys_c.append(y_ok)
+        ids_c.append(ids_ok)
+
+    if not Xs:
+        raise ValueError("nenhuma época válida — verifique o alinhamento dos rótulos")
+
+    nomes: list[str] = []
+    for d in range(-cfg.contexto_epocas, cfg.contexto_epocas + 1):
+        suf = "" if d == 0 else f"__{d:+d}"
+        nomes.extend(f"{n}{suf}" for n in NOMES_FEATURES)
+
+    conj = ConjuntoEpocas(
+        X=np.concatenate(Xs),
+        y=np.concatenate(ys),
+        id_sujeito=np.concatenate(ids),
+        nomes_features=tuple(nomes),
+        meta={
+            "n_gravacoes": n_gravacoes,
+            "epocas_descartadas_sem_cobertura": descartadas,
+            "hash_config": cfg.hash,
+        },
+    )
+    return conj, np.concatenate(cs), np.concatenate(ys_c), np.concatenate(ids_c)
 
 
 def main() -> int:
@@ -82,8 +135,8 @@ def main() -> int:
         from src.carregar.newcastle import carregar_newcastle
         gravacoes = carregar_newcastle()
 
-    conj = carregar(args.dataset, cfg)
-    c, y_c, id_c = _contagens_por_gravacao(gravacoes, cfg)
+    conj, c, y_c, id_c = _processar_unificado(gravacoes, cfg)
+    conj.meta["dataset"] = args.dataset
 
     print(f"\n{len(conj)} épocas · {len(set(conj.id_sujeito.tolist()))} sujeitos · "
           f"{conj.X.shape[1]} features (8 × {2*cfg.contexto_epocas+1} janelas)")
