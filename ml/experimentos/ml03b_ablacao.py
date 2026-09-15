@@ -392,8 +392,30 @@ def main() -> int:
         sujeitos = sujeitos[: args.n_sujeitos]
     print(f"config hash={cfg.hash} · seed={seed} · sujeitos={len(sujeitos)}")
 
-    print("Carregando os três braços (sem empilhar contexto ainda)...", file=sys.stderr)
-    base = carregar_base(sujeitos, cfg, pasta=args.pasta)
+    # Cache em disco do carregamento bruto (a etapa mais cara -- ~20 min lendo
+    # 92 EDFs de ~500 MB a 256 Hz). Um processo em segundo plano já morreu no
+    # meio deste script uma vez (sessão encerrada por fora) -- sem isto, cada
+    # nova tentativa paga de novo o mesmo custo antes de chegar ao que
+    # realmente pode falhar (o item 2, que não converge). O cache é só um
+    # pickle; se o hash do config ou a lista de sujeitos mudar, o nome do
+    # arquivo muda junto, então nunca serve dado velho por engano.
+    import hashlib
+    import pickle
+    cache_chave = hashlib.sha256(
+        (cfg.hash + "|" + ",".join(sujeitos)).encode("utf-8")
+    ).hexdigest()[:16]
+    cache_caminho = RAIZ / "dados" / "processado" / f"_cache_base_wearanize_{cache_chave}.pkl"
+    if cache_caminho.exists():
+        print(f"Cache encontrado ({cache_caminho.name}), pulando releitura dos EDFs...", file=sys.stderr)
+        with open(cache_caminho, "rb") as fh:
+            base = pickle.load(fh)
+    else:
+        print("Carregando os três braços (sem empilhar contexto ainda)...", file=sys.stderr)
+        base = carregar_base(sujeitos, cfg, pasta=args.pasta)
+        cache_caminho.parent.mkdir(parents=True, exist_ok=True)
+        with open(cache_caminho, "wb") as fh:
+            pickle.dump(base, fh, protocol=pickle.HIGHEST_PROTOCOL)
+        print(f"Cache salvo em {cache_caminho.name}", file=sys.stderr)
 
     resultado_json: dict = {
         "experimento": "ML-03b -- ablacao H1/H2 + otimizacoes de especificidade",
