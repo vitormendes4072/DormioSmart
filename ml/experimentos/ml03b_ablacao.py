@@ -217,7 +217,16 @@ def matriz_generica(Xs: dict[str, np.ndarray], ys: dict[str, np.ndarray],
                 m.fit(X_tr, y_tr)
                 ajustes[tr] = ("pipeline", m)
             elif modo == "sem_scaler":
-                clf = LogisticRegression(max_iter=2000, class_weight="balanced", random_state=seed)
+                # max_iter baixo DE PROPÓSITO: sobre features cruas (escalas
+                # bem diferentes entre si) o LBFGS não converge nem com 2000
+                # iterações -- confirmado rodando contra o dado real, onde
+                # isso tornou esta única célula mais lenta que o resto do
+                # script inteiro somado. 300 ainda não converge (o aviso
+                # continua saindo, e é esperado), mas falha rápido em vez de
+                # gastar as 2000 iterações inteiras 276 vezes -- não muda a
+                # comparação qualitativa entre braços, que é o que este modo
+                # existe para medir.
+                clf = LogisticRegression(max_iter=300, class_weight="balanced", random_state=seed)
                 clf.fit(X_tr, y_tr)
                 ajustes[tr] = ("cru", clf)
             elif modo == "rf":
@@ -391,6 +400,19 @@ def main() -> int:
         "hash_config": cfg.hash, "seed": seed, "n_sujeitos": len(sujeitos),
     }
 
+    saida = RAIZ / "experimentos" / "saida"
+    saida.mkdir(parents=True, exist_ok=True)
+    carimbo = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    destino = saida / f"ml03b_ablacao_{cfg.hash}_{carimbo}.json"
+
+    def salvar(parcial: bool) -> None:
+        """Grava o que já foi calculado depois de CADA item -- se o processo
+        precisar ser interrompido (o item 2, sem scaler, não converge e pode
+        ser lento), o resultado parcial não se perde."""
+        resultado_json["parcial"] = parcial
+        resultado_json["config"] = cfg.bruto
+        destino.write_text(json.dumps(resultado_json, indent=2, ensure_ascii=False), encoding="utf-8")
+
     # ---------------------------------------------------------------
     # Item 4 -- caracterização da divergência (não precisa de modelo)
     # ---------------------------------------------------------------
@@ -407,6 +429,7 @@ def main() -> int:
         d3 = divergencia["por_feature"]["cabeca_e4~pulso"][feat]
         print(f"    {feat:<16} cabeca~cabeca_e4={d1:6.3f}  cabeca~pulso={d2:6.3f}  cabeca_e4~pulso={d3:6.3f}")
     resultado_json["item4_divergencia"] = divergencia
+    salvar(parcial=True)
 
     # ---------------------------------------------------------------
     # Referência: matriz padrão (contexto=2, com scaler, balanceado)
@@ -420,6 +443,7 @@ def main() -> int:
     matriz_ref = matriz_generica(Xs_ref, ys_ref, ids_ref, seed, modo="logistica")
     imprimir_matriz_kappa(matriz_ref, "REFERÊNCIA")
     resultado_json["referencia"] = {f"{a}->{b}": m.dict() for (a, b), m in matriz_ref.items()}
+    salvar(parcial=True)
 
     # ---------------------------------------------------------------
     # Item 1 -- rescaler no domínio de teste
@@ -430,6 +454,22 @@ def main() -> int:
     matriz_rescaler = matriz_generica(Xs_ref, ys_ref, ids_ref, seed, modo="rescaler_teste")
     imprimir_matriz_kappa(matriz_rescaler, "RESCALER-NO-TESTE")
     resultado_json["item1_rescaler_teste"] = {f"{a}->{b}": m.dict() for (a, b), m in matriz_rescaler.items()}
+    salvar(parcial=True)
+
+    # ---------------------------------------------------------------
+    # Item 3 -- Random Forest (invariante a escala) -- ANTES do item 2 de
+    # propósito: é o falseador mais limpo (sem scaler para culpar), e o item
+    # 2 (logística sem scaler) é lento por não convergir -- se algo travar ou
+    # precisar ser interrompido, o resultado que decide entre H1 e H2 já
+    # está seguro.
+    # ---------------------------------------------------------------
+    print("\n" + "=" * 70)
+    print("ITEM 3 -- Random Forest (invariante a escala por construção)")
+    print("=" * 70)
+    matriz_rf = matriz_generica(Xs_ref, ys_ref, ids_ref, seed, modo="rf")
+    imprimir_matriz_kappa(matriz_rf, "RANDOM FOREST")
+    resultado_json["item3_random_forest"] = {f"{a}->{b}": m.dict() for (a, b), m in matriz_rf.items()}
+    salvar(parcial=True)
 
     # ---------------------------------------------------------------
     # Item 2 -- sem scaler nenhum
@@ -440,16 +480,7 @@ def main() -> int:
     matriz_sem_scaler = matriz_generica(Xs_ref, ys_ref, ids_ref, seed, modo="sem_scaler")
     imprimir_matriz_kappa(matriz_sem_scaler, "SEM SCALER")
     resultado_json["item2_sem_scaler"] = {f"{a}->{b}": m.dict() for (a, b), m in matriz_sem_scaler.items()}
-
-    # ---------------------------------------------------------------
-    # Item 3 -- Random Forest (invariante a escala)
-    # ---------------------------------------------------------------
-    print("\n" + "=" * 70)
-    print("ITEM 3 -- Random Forest (invariante a escala por construção)")
-    print("=" * 70)
-    matriz_rf = matriz_generica(Xs_ref, ys_ref, ids_ref, seed, modo="rf")
-    imprimir_matriz_kappa(matriz_rf, "RANDOM FOREST")
-    resultado_json["item3_random_forest"] = {f"{a}->{b}": m.dict() for (a, b), m in matriz_rf.items()}
+    salvar(parcial=True)
 
     # ---------------------------------------------------------------
     # Item 5 -- normalização por sujeito
@@ -463,6 +494,7 @@ def main() -> int:
     matriz_suj = matriz_generica(Xs_suj, ys_ref, ids_ref, seed, modo="sem_scaler")
     imprimir_matriz_kappa(matriz_suj, "NORMALIZAÇÃO POR SUJEITO")
     resultado_json["item5_normalizacao_por_sujeito"] = {f"{a}->{b}": m.dict() for (a, b), m in matriz_suj.items()}
+    salvar(parcial=True)
 
     # ---------------------------------------------------------------
     # Itens 6-9 -- otimizações de especificidade, na DIAGONAL de cada braço
@@ -501,12 +533,7 @@ def main() -> int:
             f"contexto_largo_{args.contexto_largo}": m9.dict(),
         }
 
-    saida = RAIZ / "experimentos" / "saida"
-    saida.mkdir(parents=True, exist_ok=True)
-    carimbo = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-    destino = saida / f"ml03b_ablacao_{cfg.hash}_{carimbo}.json"
-    resultado_json["config"] = cfg.bruto
-    destino.write_text(json.dumps(resultado_json, indent=2, ensure_ascii=False), encoding="utf-8")
+    salvar(parcial=False)
     print(f"\nlog: {destino.relative_to(RAIZ)}")
     return 0
 
