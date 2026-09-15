@@ -66,11 +66,12 @@ for _fluxo in (sys.stdout, sys.stderr):
         _fluxo.reconfigure(encoding="utf-8")
 
 from src.avaliar import MetricasAgregadas, avaliar_por_sujeito              # noqa: E402
-from src.carregar import processar_gravacoes                                # noqa: E402
+from src.baseline import calibrar_escala, sadeh, sempre_dormindo            # noqa: E402
 from src.carregar.base import ConjuntoEpocas                                # noqa: E402
 from src.carregar.wearanize import carregar_wearanize, sujeitos_com_posicoes  # noqa: E402
 from src.configuracao import carregar_config, fixar_seed                    # noqa: E402
 from src.modelos import regressao_logistica                                 # noqa: E402
+from experimentos.ml02_baselines import _processar_unificado                # noqa: E402
 
 #: Os três braços do experimento: nome -> (posicao, qualidade).
 BRACOS: dict[str, tuple[str, str]] = {
@@ -82,25 +83,16 @@ BRACOS: dict[str, tuple[str, str]] = {
 METRICAS_RELATORIO = ("acuracia", "especificidade", "kappa")
 
 
-def carregar_bracos(sujeitos: list[str], cfg) -> dict[str, ConjuntoEpocas]:
-    """Os três `ConjuntoEpocas`, restritos ao MESMO conjunto de sujeitos."""
-    bracos: dict[str, ConjuntoEpocas] = {}
-    for nome, (posicao, qualidade) in BRACOS.items():
-        gravacoes = carregar_wearanize(posicao=posicao, qualidade=qualidade, sujeitos=sujeitos)
-        conj = processar_gravacoes(gravacoes, cfg)
-        conj.meta["braco"] = nome
-        conj.meta["posicao"] = posicao
-        conj.meta["qualidade"] = qualidade
-        bracos[nome] = conj
-        presentes = set(conj.id_sujeito.tolist())
-        faltando = set(sujeitos) - presentes
-        if faltando:
-            print(
-                f"[ml03] AVISO: braço {nome!r} não cobriu {len(faltando)} sujeito(s) "
-                f"pedido(s) (época válida zero para eles?): {sorted(faltando)[:5]}...",
-                file=sys.stderr,
-            )
-    return bracos
+def _sadeh_calibrado_loso(c: np.ndarray, y_c: np.ndarray, id_c: np.ndarray, seed: int) -> np.ndarray:
+    """Predição pooled do Sadeh com escala calibrada por dobra (LOSO), só no
+    treino de cada dobra -- mesma lógica de `ml02_baselines.py`, aqui isolada
+    porque este script não precisa do Cole-Kripke."""
+    from src.avaliar import split_por_sujeito
+    pred = np.zeros_like(y_c)
+    for _, tr, te in split_por_sujeito(id_c):
+        escala = calibrar_escala(c[tr], y_c[tr], sadeh)
+        pred[te] = sadeh(c[te] * escala)
+    return pred
 
 
 def matriz_de_transferencia(
@@ -199,32 +191,52 @@ def main() -> int:
         sujeitos = sujeitos[: args.n_sujeitos]
 
     print(f"config hash={cfg.hash} · seed={cfg.seed} · sujeitos(cabeça∩pulso)={len(sujeitos)}")
-    print("Carregando os três braços (cabeca, cabeca_e4, pulso)...")
+    print("Carregando os três braços (cabeca, cabeca_e4, pulso) -- features E substituto de contagem, uma passada só...")
 
-    def _carregar(nome, posicao, qualidade):
+    bracos: dict[str, ConjuntoEpocas] = {}
+    contagens: dict[str, tuple] = {}   # nome -> (c, y_c, id_c)
+    for nome, (posicao, qualidade) in BRACOS.items():
         gravacoes = carregar_wearanize(
             posicao=posicao, qualidade=qualidade, sujeitos=sujeitos, **kwargs_pasta
         )
-        conj = processar_gravacoes(gravacoes, cfg)
+        conj, c, y_c, id_c = _processar_unificado(gravacoes, cfg)
         conj.meta.update(braco=nome, posicao=posicao, qualidade=qualidade)
-        return conj
+        bracos[nome] = conj
+        contagens[nome] = (c, y_c, id_c)
+        faltando = set(sujeitos) - set(conj.id_sujeito.tolist())
+        if faltando:
+            print(f"[ml03] AVISO: braço {nome!r} não cobriu {sorted(faltando)}", file=sys.stderr)
 
-    bracos = {nome: _carregar(nome, pos, qual) for nome, (pos, qual) in BRACOS.items()}
     for nome, conj in bracos.items():
         print(f"  {nome:<10} {len(conj)} épocas · {len(set(conj.id_sujeito.tolist()))} sujeitos "
               f"· prevalência de sono {conj.y.mean():.1%}")
 
-    print("\nRodando a matriz de transferência (LOSO, 3 modelos por fold)...")
+    print("\nML-02 por braço -- trivial e Sadeh calibrado (LOSO), cada um com IC 95% e")
+    print("desvio-padrão ENTRE SUJEITOS (não é o resultado pooled):")
+    baselines_por_braco: dict[str, dict[str, MetricasAgregadas]] = {}
+    for nome, conj in bracos.items():
+        c, y_c, id_c = contagens[nome]
+        m_trivial = avaliar_por_sujeito(conj.y, sempre_dormindo(len(conj)), conj.id_sujeito,
+                                         metricas=METRICAS_RELATORIO, seed=cfg.seed)
+        pred_sadeh = _sadeh_calibrado_loso(c, y_c, id_c, cfg.seed)
+        m_sadeh = avaliar_por_sujeito(y_c, pred_sadeh, id_c,
+                                       metricas=METRICAS_RELATORIO, seed=cfg.seed)
+        print(f"\n  === {nome} ===")
+        print(f"    trivial      kappa={m_trivial.resumo('kappa')}  espec={m_trivial.resumo('especificidade')}")
+        print(f"    Sadeh LOSO   kappa={m_sadeh.resumo('kappa')}  espec={m_sadeh.resumo('especificidade')}")
+        baselines_por_braco[nome] = {"trivial": m_trivial, "sadeh_calibrado_loso": m_sadeh}
+
+    print("\nRodando a matriz de transferência (LOSO, 3 modelos por fold) -- a diagonal É")
+    print("o resultado da regressão logística por braço, não recalculado separadamente...")
     matriz = matriz_de_transferencia(bracos, cfg.seed)
+    print("\n(logística por braço, LOSO -- é a diagonal da matriz abaixo)")
+    for nome in BRACOS:
+        m = matriz[(nome, nome)]
+        print(f"    {nome:<10} kappa={m.resumo('kappa')}  espec={m.resumo('especificidade')}")
 
     for metrica in METRICAS_RELATORIO:
         imprimir_matriz(matriz, metrica)
     imprimir_delta_kappa(matriz)
-
-    print("\nDiagonal com intervalo de confiança (é o resultado por-braço, LOSO padrão):")
-    for nome in BRACOS:
-        m = matriz[(nome, nome)]
-        print(f"  {nome:<10} kappa={m.resumo('kappa')}  espec={m.resumo('especificidade')}")
 
     def k(tr: str, te: str) -> float:
         return matriz[(tr, te)].media["kappa"]
@@ -282,6 +294,10 @@ def main() -> int:
         "n_sujeitos": len(sujeitos), "sujeitos": sujeitos,
         "bracos": {n: {"posicao": p, "qualidade": q} for n, (p, q) in BRACOS.items()},
         "prevalencia_sono": {n: float(c.y.mean()) for n, c in bracos.items()},
+        "baselines_por_braco": {
+            nome: {chave: m.dict() for chave, m in bl.items()}
+            for nome, bl in baselines_por_braco.items()
+        },
         "matriz": {
             f"{tr}->{te}": m.dict() for (tr, te), m in matriz.items()
         },
