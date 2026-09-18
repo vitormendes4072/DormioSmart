@@ -357,7 +357,10 @@ def _indice_rotulos(pasta: Path) -> dict[str, Path]:
     return indice
 
 
-def carregar_newcastle(pasta: Path | str = PASTA_PADRAO) -> Iterator[Gravacao]:
+def carregar_newcastle(
+    pasta: Path | str = PASTA_PADRAO,
+    aceitar=None,
+) -> Iterator[Gravacao]:
     """Todas as gravações do Newcastle presentes em `pasta`.
 
     Levanta FileNotFoundError com instrução de download se a pasta estiver
@@ -367,6 +370,12 @@ def carregar_newcastle(pasta: Path | str = PASTA_PADRAO) -> Iterator[Gravacao]:
     consome uma gravação por vez (extrai features e descarta o bruto antes de
     seguir para a próxima); manter tudo em memória ao mesmo tempo, como a
     primeira versão fazia, não tem por que existir.
+
+    `aceitar(caminho_do_bin, id_sujeito) -> bool` filtra ANTES de decodificar
+    o .bin. Existe para quem extrai features em pedaços retomáveis
+    (`experimentos/ml04_validacao_externa.py --preparar`): sem isso, retomar
+    custa reler os ~4,6 GB inteiros só para descartar o que já está em cache,
+    e a releitura é a parte cara — a decodificação, não o disco.
     """
     pasta = Path(pasta)
     bins = _achar_bins(pasta)
@@ -383,6 +392,8 @@ def carregar_newcastle(pasta: Path | str = PASTA_PADRAO) -> Iterator[Gravacao]:
         id_sujeito = _id_do_nome_do_arquivo(b)  # ARMADILHA 2
         rot = rotulos_por_id.get(id_sujeito)
         if rot is None:
+            continue
+        if aceitar is not None and not aceitar(b, id_sujeito):
             continue
         t, a, inicio_acc = _ler_bin_geneactiv(b)
         inicio_psg, y = _ler_rotulos_psg(rot)

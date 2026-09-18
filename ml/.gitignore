@@ -12,6 +12,11 @@ experimentos/saida/*
 !experimentos/saida/.gitkeep
 !experimentos/saida/*.json
 
+# Checkpoints por dobra do LOSO retomável (experimentos/_retomada.py). São
+# estado intermediário de execução, não resultado: o resultado vai para o
+# .json. Já cairiam na regra acima; explícito porque a pasta é nova.
+experimentos/saida/_parciais/
+
 __pycache__/
 *.pyc
 .pytest_cache/
