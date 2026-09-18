@@ -7,42 +7,46 @@
 
 ---
 
-## Estado (2026-09-14)
+## Estado (2026-09-18)
 
 | Item | Estado |
 |---|---|
 | `ML-01` · estrutura reprodutível, features, carregadores | ✅ escrito |
-| `ML-02` · baselines medidos | ✅ **executado** sobre dado sintético |
-| Carregador do **Wearanize+ OA** (`ML-03`) | ✅ **escrito**, ⚠️ **não executado** |
-| Script de download do Wearanize+ | ✅ **escrito**, ⚠️ **não executado** |
-| Testes (4 arquivos, ~45 casos) | ⚠️ **nada reexecutado nesta sessão** |
-| Newcastle em disco | ❌ não baixado |
-| Wearanize+ em disco | ❌ não baixado |
-| Vetor dourado p/ o firmware | ⚠️ invalidado, **precisa ser regenerado** |
-
-### ⚠️ O que ficou sem verificação por execução
-
-1. **Nada foi executado na sessão de 2026-09-14 (2ª parte).** O ambiente
-   perdeu o shell (bug de plataforma, lock da pasta). O carregador do
-   Wearanize+, o script de download e os testes novos estão escritos e **nunca
-   rodaram**. Comece por `pytest`.
-
-2. **O que FOI verificado nessa sessão, e não é pouco:** o formato do dataset
-   foi conferido **abrindo os arquivos reais** no servidor (WebDAV anônimo, sem
-   baixar tudo) — 100 cabeçalhos EDF, 100 `channels.tsv`, e um registro de
-   dados decodificado amostra a amostra. As taxas, as unidades, a grafia dos
-   canais e o censo de sensores no carregador **são medidos, não supostos**.
-   Detalhe em `docs/WEARANIZE-ACESSO.md` §6.
-
-3. **O Newcastle continua não baixado.** `src/carregar/newcastle.py` nunca
-   rodou contra um `.bin` verdadeiro.
+| `ML-02` · baselines medidos | ✅ executado (sintético, Wearanize+, Newcastle) |
+| Wearanize+ OA em disco | ✅ **100 sujeitos, ~46 GB** |
+| Newcastle em disco | ✅ **55 `.bin` + 28 PSG** |
+| `ML-03` · matriz de transferência entre posições | ✅ executada, **N = 92** |
+| `ML-03b` · ablação (itens 1–5) | ✅ executada, N = 92 |
+| `ML-03b` · otimizações (itens 6, 7, 8, **8b**, **9**) | ✅ executadas, N = 92 |
+| `ML-04` · **validação externa** (treina Wearanize+, testa Newcastle) | ✅ executada, N = 27 |
+| `ML-04` · validação externa no **Walch** | ❌ **dado não baixado** — ver abaixo |
+| Testes (6 arquivos, 66 casos) | ✅ **66 passando** em 2026-09-18 |
 
 ```bash
 cd ml
 pip install -r requirements.txt
-python -m pytest testes -q                       # ← comece por aqui
-python -m experimentos.ml02_baselines --dataset sintetico
+python -m pytest testes -q                       # 66 passando
+python -m experimentos.ml03b_otimizacoes --item resumo
+python -m experimentos.ml04_validacao_externa --comparar
 ```
+
+### Por que os experimentos rodam em pedaços
+
+`experimentos/_retomada.py` faz o leave-one-subject-out salvar um checkpoint
+**por dobra**. Não é enfeite: as rodadas longas deste projeto já foram
+interrompidas quatro vezes por limite externo, e um item de ~11 minutos não
+cabe numa chamada de shell de 2 minutos. Com o checkpoint, uma interrupção
+custa **uma dobra** (~2 s) em vez de um item inteiro, e o N continua 92 —
+não foi preciso reduzir amostra em item nenhum.
+
+O resultado **não depende de onde a execução foi cortada**: cada dobra é
+independente por construção e a predição de cada sujeito é gravada na
+posição dele. `testes/test_retomada.py` verifica que rodar em uma chamada e
+rodar em vinte dão o mesmo vetor, bit a bit.
+
+Os itens caros (`8b`, `9`) e o `--preparar` do `ML-04` imprimem `INCOMPLETO`
+e saem com código 2 quando o orçamento da chamada acaba. **Rode o mesmo
+comando de novo** até dizer `COMPLETO`.
 
 ---
 
@@ -143,6 +147,124 @@ Documentadas por extenso em `src/carregar/wearanize.py`, uma por teste em
 registro = uma época = um rótulo. `t0_rotulo = 0.0` não é suposição, é a
 estrutura do arquivo — o que elimina inteira a classe de bug que foi a
 ARMADILHA 5 do `newcastle.py`.
+
+---
+
+## ML-03b — otimizações 6 a 9 (Wearanize+, N = 92, LOSO)
+
+> Base: features normalizadas **por sujeito** (item 5 da ablação — não usa
+> rótulo nenhum, logo não vaza), logística com `class_weight="balanced"`,
+> contexto ±2 épocas. É a linha "baseline" da tabela.
+
+Δ é contra o baseline do mesmo braço. **Ganho dentro do IC não é ganho.**
+
+| item | | κ cabeça | Δκ (IC95 pareado) | espec. cabeça | Δespec. (IC95 pareado) |
+|---|---|---:|---|---:|---|
+| — | baseline (±2) | 0,383 | — | 0,724 | — |
+| 6 | sem `class_weight` | 0,417 | +0,034 — **dentro do IC** | 0,379 | −0,345 **PERDA** |
+| 7 | limiar de Youden | 0,333 | −0,050 — dentro do IC | 0,792 | +0,068 **ganho** |
+| 8 | mediana móvel (janela 5) | 0,399 | +0,016 — **dentro do IC** | 0,734 | +0,010 — dentro do IC |
+| **8b** | **HMM de 2 estados** | **0,507** | **+0,123 [+0,105, +0,142]** | 0,727 | +0,003 — dentro do IC |
+| **9** | **contexto ±11 (~11 min)** | 0,458 | **+0,075 [+0,060, +0,090]** | **0,825** | **+0,101 [+0,083, +0,118]** |
+
+Os três braços concordam, e a concordância é o achado:
+
+| | Δκ (8b · HMM) | Δκ (9 · ±11) | Δespec. (9 · ±11) |
+|---|---|---|---|
+| cabeça | +0,123 [+0,105, +0,142] | +0,075 [+0,060, +0,090] | +0,101 [+0,083, +0,118] |
+| cabeça degradada (E4) | +0,122 [+0,101, +0,145] | +0,082 [+0,066, +0,099] | +0,106 [+0,088, +0,126] |
+| pulso | +0,123 [+0,105, +0,142] | +0,058 [+0,041, +0,075] | +0,119 [+0,099, +0,139] |
+
+**As quatro leituras:**
+
+1. **A suavização temporal só rende na versão forte.** A mediana móvel — o
+   que o §7 chamava de "passo 4" — não sai do ruído em nenhum braço
+   (Δκ ≤ +0,016). O HMM de 2 estados, com a matriz de transição contada nos
+   rótulos **do treino de cada dobra**, rende **+0,12 de κ** nos três. A
+   diferença entre os dois é o custo de trocar de estado ser calibrado nos
+   dados em vez de arbitrado por uma janela fixa.
+
+2. **A janela do Sadeh era mesmo a diferença.** Passar o contexto de ±2 para
+   ±11 épocas dá o único ganho que aparece **em κ e em especificidade ao
+   mesmo tempo** — e especificidade é a métrica do §0. Confirma a suspeita
+   que motivou o item: o Sadeh vinha batendo a logística porque enxergava
+   ~11 minutos, não porque fosse um algoritmo melhor.
+
+3. **Os itens 6 e 7 são contrafactuais, não melhorias.** O item 6 mede o que
+   `class_weight="balanced"` compra: tirá-lo derruba a especificidade em 34
+   pontos e o κ nem sobe fora do IC. O item 7 troca κ por especificidade, sem
+   ganhar nos dois.
+
+4. **Dois testes, lado a lado, em toda comparação.** `[IC disjunto]` exige
+   que os dois IC95 individuais não se sobreponham; `[pareado]` é o IC95
+   bootstrap da **diferença** sobre os mesmos 92 sujeitos. Os braços rodam
+   sobre os mesmos sujeitos, e a variância entre sujeitos (dp ≈ 0,16 em κ) é
+   comum aos dois — exigir IC disjuntos descartaria como ruído um efeito que
+   o par reproduz em quase todo sujeito. O veredito formal é o pareado; o
+   conservador fica como piso. O item 9 no braço cabeça é exatamente o caso
+   em que os dois discordam.
+
+---
+
+## ML-04 — validação externa: treina Wearanize+, testa Newcastle
+
+> Treino: **92 sujeitos** do Wearanize+, de uma vez. Teste: **27 sujeitos**
+> do Newcastle 2015 (punho esquerdo), **sem reajuste de nada** — sem refazer
+> scaler no domínio de teste, sem recalibrar limiar, sem olhar um rótulo do
+> Newcastle antes de medir.
+
+⚠️ **Não leia estes κ lado a lado com os do LOSO.** A prevalência de sono é
+**0,699** no Newcastle e ~0,85 no Wearanize+, e κ depende da prevalência. A
+leitura válida é contra o trivial medido **no próprio Newcastle**, que está
+na primeira linha.
+
+| treino | configuração | κ | espec. |
+|---|---|---:|---:|
+| — | **trivial "sempre dormindo" no Newcastle** | **0,000** | **0,000** |
+| pulso | base (±2) | 0,265 [0,191, 0,346] | 0,412 |
+| pulso | + HMM (8b) | 0,301 | 0,375 |
+| pulso | **contexto ±11 (9)** | **0,334 [0,254, 0,416]** | **0,507** |
+| pulso | ±11 + HMM | 0,338 | 0,466 |
+| cabeça | base (±2) | 0,239 | 0,357 |
+| cabeça | contexto ±11 (9) | 0,301 | 0,438 |
+
+Comparação **pareada entre configurações**, nos mesmos 27 sujeitos:
+
+| treino | vs. base (±2) | Δκ | Δespec. |
+|---|---|---|---|
+| pulso | + HMM (8b) | +0,036 [+0,008, +0,067] | **−0,037 [−0,058, −0,014]** |
+| pulso | contexto ±11 (9) | **+0,069 [+0,039, +0,102]** | **+0,095 [+0,065, +0,130]** |
+| cabeça | + HMM (8b) | +0,008 — dentro do IC | **−0,050 [−0,073, −0,029]** |
+| cabeça | contexto ±11 (9) | **+0,062 [+0,040, +0,086]** | **+0,081 [+0,057, +0,108]** |
+
+**As três leituras, e a segunda é a que muda uma conclusão:**
+
+1. **Todas as configurações ficam acima do trivial na coorte nova**, com o
+   IC95 de κ inteiramente acima de zero. O modelo generaliza — não bem, mas
+   generaliza, e isso não era garantido.
+
+2. **O ganho do HMM não atravessa a coorte; o do contexto largo atravessa.**
+   Dentro do Wearanize+ o HMM valia **+0,12 de κ**, o triplo do contexto
+   largo. No Newcastle sobra **+0,036** no melhor braço, e **custa
+   especificidade em todos os três** (−0,04 a −0,05, fora do IC). A
+   explicação é direta: a matriz de transição do HMM é ajustada à estrutura
+   de uma coorte com ~85% de sono, e o Newcastle tem 70%. **O item 9 é o
+   ganho real do trabalho; o item 8b é um ganho de coorte.** É o tipo de
+   conclusão que só a validação externa produz — o LOSO teria eleito o HMM.
+
+3. **A degradação entre coortes é grande, e tem de ir para o texto.** No
+   melhor braço (pulso → punho, contexto ±11): κ cai de 0,414 para 0,334, e a
+   **especificidade cai de 0,802 para 0,507**. O número honesto do trabalho é
+   o de fora, não o de dentro.
+
+### O que falta: Walch
+
+O Walch et al. 2019 (Apple Watch, 31 sujeitos, PhysioNet `sleep-accel`) era a
+segunda coorte independente prevista, e **não foi feito**: o servidor do
+PhysioNet não é alcançável do ambiente desta sessão (o proxy devolve 403 no
+túnel TLS). Falta baixar o dado **e** escrever `src/carregar/walch.py` — a
+interface única já garante que só isso é preciso, mas nada disso está
+escrito. Não confundir com "rodou e deu ruim": não rodou.
 
 ---
 
