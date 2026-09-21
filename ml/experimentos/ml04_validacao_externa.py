@@ -302,6 +302,108 @@ def rodar(cfg, seed: int, punho: str, destino: Path) -> dict:
     return resultado
 
 
+def _prever(clf, X_ctx, y_alvo, ids, usa_hmm: bool, A):
+    if not usa_hmm:
+        return clf.predict(X_ctx)
+    pred = np.zeros_like(y_alvo)
+    for s in sorted(set(ids.tolist())):
+        m = ids == s
+        pred[m] = suavizar_hmm(clf.predict_proba(X_ctx[m])[:, 1], A)
+    return pred
+
+
+def lados(cfg, seed: int, destino: Path) -> dict:
+    """Quanto o lado do corpo importa — com participante como unidade.
+
+    Ver o cabeçalho de `experimentos/_lados.py` para por que isto não é um
+    `--punho ambos` com n = 53.
+    """
+    from experimentos._lados import (
+        alinhar_por_sujeito, bootstrap_agregado, bootstrap_pareado_intra_sujeito,
+    )
+
+    sujeitos = sujeitos_com_posicoes(["cabeca", "pulso"])
+    base = _base_wearanize(sujeitos, cfg)
+
+    dados_lado = {}
+    for lado in ("esquerdo", "direito"):
+        Xb, yl, idl = carregar_features_newcastle(cfg, lado)
+        # Cada gravação é normalizada contra ela mesma. É o que um produto
+        # real faz (não tem o outro punho à mão), e mantém os dois lados
+        # independentes um do outro no pré-processamento.
+        dados_lado[lado] = (normalizar_por_sujeito(Xb, idl), yl, idl)
+        print(f"{lado}: {Xb.shape[0]} épocas · {len(set(idl.tolist()))} participantes",
+              file=sys.stderr)
+
+    so_esq = sorted(set(dados_lado["esquerdo"][2].tolist())
+                    - set(dados_lado["direito"][2].tolist()))
+    print(f"sem punho direito: {so_esq or 'nenhum'}", file=sys.stderr)
+
+    resultado = {
+        "experimento": "ML-04b -- efeito do lado do corpo, participante como unidade",
+        "hash_config": cfg.hash, "seed": seed,
+        "utc": datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ"),
+        "treino": {"dataset": "wearanize", "n_sujeitos": len(sujeitos),
+                   "reajuste_no_teste": "nenhum"},
+        "unidade_de_agrupamento": "participante",
+        "censo": {
+            "n_esquerdo": len(set(dados_lado["esquerdo"][2].tolist())),
+            "n_direito": len(set(dados_lado["direito"][2].tolist())),
+            "sem_punho_direito": so_esq,
+        },
+        "resultados": {},
+    }
+
+    for nome_braco in NOMES_BRACOS:
+        Xw = normalizar_por_sujeito(base[nome_braco]["X"], base[nome_braco]["id"])
+        yw, idw = base[nome_braco]["y"], base[nome_braco]["id"]
+        resultado["resultados"][nome_braco] = {}
+        print(f"\n=== treino: {nome_braco} ===")
+
+        for nome_cfg, opcoes in CONFIGS.items():
+            ctx = int(opcoes["contexto"])
+            clf = LogisticRegression(max_iter=2000, class_weight="balanced", random_state=seed)
+            clf.fit(empilhar_contexto(Xw, ctx), yw)
+            A = transicoes_hmm(yw, idw)[0] if opcoes["hmm"] else None
+
+            metricas_lado = {}
+            for lado, (Xl, yl, idl) in dados_lado.items():
+                pred = _prever(clf, empilhar_contexto(Xl, ctx), yl, idl, opcoes["hmm"], A)
+                metricas_lado[lado] = avaliar_por_sujeito(
+                    yl, pred, idl, metricas=METRICAS, seed=seed)
+
+            entrada = {
+                "a_esquerdo_isolado": metricas_lado["esquerdo"].dict(),
+                "b_direito_isolado": metricas_lado["direito"].dict(),
+                "c_efeito_do_lado_intra_sujeito": {},
+                "d_INCORRETO_empilhado": {},
+            }
+            print(f"  {nome_cfg}:")
+            for metrica in ("kappa", "especificidade"):
+                par = bootstrap_pareado_intra_sujeito(
+                    metricas_lado["esquerdo"], metricas_lado["direito"], metrica, seed=seed)
+                entrada["c_efeito_do_lado_intra_sujeito"][metrica] = par
+
+                # A versão errada: empilha as duas gravações de cada
+                # participante como se fossem observações independentes.
+                # Só serve para medir o estreitamento indevido do IC.
+                ve, vd, _ = alinhar_por_sujeito(
+                    metricas_lado["esquerdo"], metricas_lado["direito"], metrica)
+                empilhado = bootstrap_agregado(np.concatenate([ve, vd]), seed=seed)
+                entrada["d_INCORRETO_empilhado"][metrica] = empilhado
+
+                print(f"    {metrica:<15} esq={par['media_a']:.3f}  dir={par['media_b']:.3f}  "
+                      f"Δ(esq−dir)={par['delta_medio']:+.4f} "
+                      f"IC95 [{par['ic95_baixo']:+.4f}, {par['ic95_alto']:+.4f}] "
+                      f"n={par['n_participantes']} -> "
+                      f"{'DIFERENÇA REAL' if par['significativo'] else 'IC inclui zero'}")
+            resultado["resultados"][nome_braco][nome_cfg] = entrada
+
+    destino.write_text(json.dumps(resultado, indent=2, ensure_ascii=False), encoding="utf-8")
+    print(f"\nsalvo em {destino.relative_to(RAIZ)}")
+    return resultado
+
+
 def comparar(destino: Path) -> None:
     """Confronta as configurações ENTRE SI na coorte externa, pareado.
 
@@ -339,6 +441,9 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--comparar", action="store_true",
                     help="lê o .json já salvo e compara as configurações entre si, pareado")
+    ap.add_argument("--lados", action="store_true",
+                    help="efeito do lado do corpo, com PARTICIPANTE como unidade de "
+                         "agrupamento (ver experimentos/_lados.py)")
     ap.add_argument("--preparar", action="store_true",
                     help="extrai features do Newcastle (retomável; repita até COMPLETO)")
     ap.add_argument("--rodar", action="store_true")
@@ -380,7 +485,12 @@ def main() -> int:
         comparar(destino)
         return 0
 
-    ap.error("escolha --preparar, --rodar ou --comparar")
+    if args.lados:
+        lados(cfg, cfg.seed, RAIZ / "experimentos" / "saida"
+              / f"ml04b_efeito_do_lado_{cfg.hash}.json")
+        return 0
+
+    ap.error("escolha --preparar, --rodar, --comparar ou --lados")
 
 
 if __name__ == "__main__":
