@@ -7,7 +7,7 @@
 
 ---
 
-## Estado (2026-09-18)
+## Estado (2026-09-21)
 
 | Item | Estado |
 |---|---|
@@ -19,15 +19,17 @@
 | `ML-03b` · ablação (itens 1–5) | ✅ executada, N = 92 |
 | `ML-03b` · otimizações (itens 6, 7, 8, **8b**, **9**) | ✅ executadas, N = 92 |
 | `ML-04` · **validação externa** (treina Wearanize+, testa Newcastle) | ✅ executada, N = 27 |
+| `ML-04b` · **efeito do lado do corpo** (punho esq. × dir.) | ✅ executada, pareada, N = 26 |
 | `ML-04` · validação externa no **Walch** | ❌ **dado não baixado** — ver abaixo |
-| Testes (6 arquivos, 66 casos) | ✅ **66 passando** em 2026-09-18 |
+| Testes (7 arquivos, 70 casos) | ✅ **70 passando** em 2026-09-21 |
 
 ```bash
 cd ml
 pip install -r requirements.txt
-python -m pytest testes -q                       # 66 passando
+python -m pytest testes -q                       # 70 passando
 python -m experimentos.ml03b_otimizacoes --item resumo
 python -m experimentos.ml04_validacao_externa --comparar
+python -m experimentos.ml04_validacao_externa --lados
 ```
 
 ### Por que os experimentos rodam em pedaços
@@ -256,6 +258,52 @@ Comparação **pareada entre configurações**, nos mesmos 27 sujeitos:
    melhor braço (pulso → punho, contexto ±11): κ cai de 0,414 para 0,334, e a
    **especificidade cai de 0,802 para 0,507**. O número honesto do trabalho é
    o de fora, não o de dentro.
+
+### ML-04b — quanto o lado do corpo importa
+
+```bash
+python -m experimentos.ml04_validacao_externa --lados
+```
+
+O Newcastle tem os **dois punhos** de quase todo participante, o que permite isolar o
+efeito do lado. Censo: **27 esquerdos, 26 direitos, 26 com os dois** (o `ncl010` não tem
+punho direito, então o pareado fecha 26 — não 27).
+
+⚠️ **As 53 gravações não são 53 observações.** Os dois punhos de um participante são a
+mesma noite, o mesmo sono e a mesma pontuação de PSG, medidos de dois lugares. A unidade
+de agrupamento é o **participante**. Por isso a saída traz três coisas separadas, e nunca
+uma média das 53:
+
+| | o que é | n |
+|---|---|---:|
+| (a) | esquerdo isolado | 27 |
+| (b) | direito isolado | 26 |
+| **(c)** | **efeito do lado, pareado DENTRO do participante** | **26** |
+
+A (c) é a comparação limpa: cada participante é seu próprio controle — mesma noite, mesmo
+rótulo, mesmo modelo, muda só o lado — e toda a variância entre participantes, que é a
+maior fonte de ruído aqui (dp ≈ 0,2 em κ), sai da conta.
+
+**Resultado: o lado não importa.** Nas 24 comparações (3 braços × 4 configurações × 2
+métricas), **todos os IC95 contêm zero**. A maior diferença absoluta observada foi 0,027
+em κ. Na melhor configuração (pulso, contexto ±11):
+
+| métrica | esquerdo | direito | Δ (esq − dir) |
+|---|---:|---:|---|
+| κ | 0,334 | 0,326 | +0,009 [−0,015, +0,031] |
+| especificidade | 0,507 | 0,519 | −0,009 [−0,038, +0,017] |
+
+É evidência a favor das DECISÕES TÉCNICAS 1 e 2 (`src/features.py`): as features foram
+construídas invariantes a rotação — `inclinacao_rel` no lugar de `angulo_z`, norma L2 no
+lugar da SMA L1 — e invariância a montagem prevê exatamente insensibilidade ao lado. Com
+26 participantes, porém, efeito menor que ~0,03 em κ não seria distinguível do ruído:
+**ausência de efeito detectável não é demonstração de ausência de efeito.**
+
+**O número errado, calculado de propósito.** O JSON guarda, sob `d_INCORRETO_empilhado`,
+o que sairia se as 52 gravações pareadas fossem empilhadas como independentes. O IC de κ
+passa de 0,163 de largura para 0,114 — **estreita ~30%** sem que nenhuma evidência nova
+tenha entrado (próximo do fator 1/√2 que se espera de dobrar o N artificialmente). Está
+ali para documentar o tamanho do viés; não vai para tabela.
 
 ### O que falta: Walch
 
