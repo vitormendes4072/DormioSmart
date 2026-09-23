@@ -27,6 +27,7 @@ node_modules/
 .vercel
 .pio/
 build/
+firmware/nucleo/bin/
 .vscode/
 .idea/
 .DS_Store
