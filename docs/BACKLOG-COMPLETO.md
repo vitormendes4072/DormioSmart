@@ -26,17 +26,21 @@
 5. **O número honesto do trabalho é o externo**, não o interno: especificidade cai de 0,802
    para 0,507 ao trocar de coorte. Está declarado em `LIMITACOES-TCC.md`.
 6. **Backend e dashboard estão maduros** e aguentam uma noite real. O que falta ali é pouco.
-7. **O que trava tudo continua sendo físico:** os 8 pinos do MPU6050 não estão soldados.
+7. **O firmware já aguenta uma noite offline.** O `HW-05` fechou em 22/09: amostragem
+   desacoplada da rede, buffer de épocas de 30 s com degradação de resolução, 8,5 h de
+   autonomia sem rede em resolução cheia — medidas, não estimadas. O `sketch.ino` de produto
+   continua estruturalmente errado para captação noturna (`FW-07`).
+8. **O que trava tudo continua sendo físico:** os 8 pinos do MPU6050 não estão soldados.
    Sem isso não há calibração, bancada, noite captada nem validação no dispositivo.
-8. **Nada do bloco L0 substitui a medição** — e nada do que falta em L0 é grande.
+9. **Nada do bloco L0 substitui a medição** — e nada do que falta em L0 é grande.
 
 **Se você tem uma hora:** rode `DATA-03` no Supabase (um SQL, destrava o dashboard de conta
 nova). **Se tem um fim de semana:** solde. **Se tem um mês sem ferro de solda:** escreva os
 `CALC-*` e `DIAG-*`, que são o que a banca lê.
 
-**Contagem:** 64 itens abertos · **L0: 35** · L1: 12 · L2: 10 · L3: 7.
+**Contagem:** 65 itens abertos · **L0: 36** · L1: 12 · L2: 10 · L3: 7.
 
-Eram 64 em 10/09 também — **nove fecharam, nove entraram**. A conta empata e o significado não:
+Eram 64 em 10/09 também — **dez fecharam, onze entraram**. A conta quase empata e o significado não:
 o que saiu era o bloco de maior valor acadêmico disponível (`ML-01` → `ML-03`, o acesso ao
 dataset, a verificação de referências); o que entrou é sobretudo **redação** (`DOC-08`) e
 **higiene** (`GIT-03`, `CI-04`, `CI-05`). Fechar o ML não encurtou a lista — mudou a
@@ -78,10 +82,10 @@ E um **peso**: 🔴 caminho crítico da defesa · 🟡 importante · ⚪ polimen
                     └─────────────────────────────────────────────┘
 
    L0  EM PARALELO, SEM DEPENDER DE NADA DISSO:
-       CALC-01..04 · DIAG-01..04 · REQ-01 · LGPD-01 · HW-05 · FW-01/03
+       CALC-01..04 · DIAG-01..04 · REQ-01 · LGPD-01 · FW-07 · FW-01/03 · API-03
        DATA-07 · INFRA-01 · SEC-05 · ML-06(carregador) · DOC-08 · PWA-01
 
-   ✅ FECHADO:  ML-01 · ML-02 · ML-03 · ML-03b · ML-04 · ML-04b
+   ✅ FECHADO:  ML-01 · ML-02 · ML-03 · ML-03b · ML-04 · ML-04b · HW-05
                 DADOS em disco · DUA resolvido · REF-01 · DOC-06 · DOC-07
 ```
 
@@ -108,6 +112,21 @@ Não aparece nas listas abertas abaixo. Está aqui para o histórico ficar legí
 | **ML-04** ✅ | **Validação externa.** Treina nos 92 do Wearanize+, testa nos 27 do Newcastle **sem reajuste de nada**. Tudo acima do trivial medido na própria coorte. Degradação: κ 0,414 → 0,334, **especificidade 0,802 → 0,507**. | `ml/experimentos/saida/ml04_validacao_externa_*.json` |
 | **ML-04b** ✅ | **Lateralidade**, com participante como unidade de agrupamento: esquerdo isolado (27), direito isolado (26), efeito do lado pareado **dentro** do participante (26). **Todos os 24 IC95 contêm zero** — o lado não importa, o que sustenta as features invariantes a rotação. | `ml/experimentos/saida/ml04b_efeito_do_lado_*.json` |
 | **ML-07** ✅ *(não estava catalogado)* | **Infraestrutura de execução retomável.** LOSO com checkpoint por dobra; interrupção custa uma dobra, não um item, e nenhum experimento precisou reduzir N. Teste garante que rodar em uma chamada e em vinte dá o mesmo vetor. | `ml/experimentos/_retomada.py` |
+
+### Firmware — o buffer offline
+
+| Item | O que ficou pronto | Onde |
+|---|---|---|
+| **HW-05** ✅ | **Amostragem desacoplada da rede, com buffer de épocas.** Os três travamentos saíram (`while (!Serial)`, `while(1)` no `mpu.begin()` falho, conexão síncrona dentro do laço de amostragem). O núcleo é C++ puro, testado no host com `g++`: **341 verificações**, incluindo duas noites simuladas de 8 h. Buffer de **épocas de 30 s**, não de amostras — o que permite *degradar resolução* quando enche, em vez de descartar. Capacidade **medida**: 32 B por época, 1024 épocas = 8,53 h em resolução cheia. | `firmware/nucleo/`, `firmware/envio-continuo/` |
+
+> **A razão de tudo:** `conectarWiFi()` era chamada dentro do laço e bloqueava até 20 s com
+> `delay(500)`. Com intervalo de 10 s, uma queda de rede fazia cada ciclo levar 20–30 s — e a
+> série continuava saindo, com aparência normal, com a base de tempo derivada. Para actigrafia
+> isso é pior que lacuna: a lacuna a análise vê, a deriva não. **A perda de dado era o problema
+> menor.**
+>
+> Ficou de fora, virou item próprio: a reescrita do `sketch.ino` (`FW-07`) e o endpoint de lote
+> (`API-03`).
 
 ### Acesso ao dado — o DUA deixou de ser bloqueante
 
@@ -192,8 +211,9 @@ diagrama** — que é o que a banca lê.
 
 | Item | O quê | Peso |
 |---|---|:---:|
-| **HW-05** | Buffer local + sync + timeout de Wi-Fi. **Hoje o firmware trava offline** (`while (WiFi.status() != WL_CONNECTED)` sem saída). É bug real, e dá para escrever e testar sem a placa. | 🔴 |
-| **FW-01** | Lógica atividade/repouso por época no firmware (`DATA-02`). Escrevível e testável no Wokwi; só a calibração espera a solda. | 🟡 |
+| **FW-07** *(novo)* | **Reescrever o `sketch.ino`.** Hoje ele tira **uma amostra por boot** e dorme: não registraria uma noite nem com rede perfeita, porque não tem amostragem periódica nenhuma. Em 22/09 recebeu só a correção defensiva dos travamentos — os `while` sem saída e a medição que vinha depois da rede. O conserto de verdade é reorganizá-lo em torno do núcleo (`firmware/nucleo/`), com **buffer no RTC** (`RTC_DATA_ATTR`, 128 épocas ≈ 1 h em resolução cheia e 65 h degradado — o heap não sobrevive ao Deep Sleep) e ciclo acordar → medir → agregar → dormir. O núcleo já existe e está testado; o que falta é a máquina de estados do sono. | 🔴 |
+| **API-03** *(novo)* | **Endpoint de lote no `/api/data`.** Drenar uma noite de 8 h são **960 POSTs**, um handshake TLS novo cada — número medido, não estimado (`firmware/nucleo/capacidade.cpp`). Hoje o firmware contorna com rajada limitada (3 por volta, e só com folga até o próximo tick), o que funciona e é lento. Um `POST /api/data/lote` com um array de leituras, validando item a item e respondendo quais entraram, resolve. **Observação de dimensionamento:** foi por causa desses 960 que o backoff ganhou teto de 2 min — sem teto, o aparelho não perceberia a rede voltando; com teto curto demais, gastaria rádio para falhar. | 🟡 |
+| **FW-01** | Lógica atividade/repouso por época no firmware (`DATA-02`). Escrevível e testável no Wokwi; só a calibração espera a solda. **Parcialmente coberto:** o `envio-continuo` já classifica por época de 30 s desde o `HW-05`; falta levar ao `sketch.ino` (`FW-07`). | 🟡 |
 | **FW-03** | Empacotamento do dado conforme `DATA-01`. | 🟡 |
 | **HW-01** | Revisar o BOM: o que é andaime (botão, pull-down de 10 kΩ) e o que é produto. É análise, não montagem. | 🟡 |
 
@@ -275,7 +295,7 @@ Se só houver tempo para uma sequência, é esta:
 
 **Em paralelo, sem esperar nada:** `DOC-08` (o capítulo de resultados do ML, que é o conteúdo
 mais forte do trabalho e hoje não existe em prosa), `CALC-01..04`, `DIAG-01..04`, `LGPD-01`,
-`HW-05`, `DATA-07`.
+`FW-07`, `DATA-07`.
 
 > **O que mudou no caminho crítico desde 10/09:** o bloco `ML-01 → ML-02 → ML-03` saiu dele —
 > está feito. O gargalo acadêmico deixou de ser *produzir o resultado* e passou a ser
