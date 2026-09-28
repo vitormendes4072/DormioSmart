@@ -44,14 +44,19 @@ deve encostar em dado real.
 
 `esquema_base.sql` recria só os primitivos de que as migrações dependem:
 o schema `auth`, `auth.users`, `auth.uid()`, os papéis `anon` /
-`authenticated` / `service_role` e os GRANTs que o Supabase aplica em `public`.
-Em cima disso, as migrações **001**, **003** e **004** são aplicadas do disco,
-sem nenhuma adaptação. As policies sob teste são as do repositório — não há
-cópia delas aqui, porque uma cópia envelheceria em silêncio e a suíte passaria
-a testar a si mesma.
+`authenticated` / `service_role` / `authenticator` e os GRANTs que o Supabase
+aplica em `public`. Em cima disso, as migrações **001, 003, 004, 005, 006 e
+007** são aplicadas do disco, sem nenhuma adaptação. As policies e funções sob
+teste são as do repositório — não há cópia delas aqui, porque uma cópia
+envelheceria em silêncio e a suíte passaria a testar a si mesma.
 
 A **002** fica de fora: ela exige edição manual (o e-mail de destino), atribui
 posse de dado e não cria nem altera policy nenhuma.
+
+O setup também **derruba os papéis** antes de recriar o esquema. Papel é objeto
+de *cluster*, não de schema, então `drop schema cascade` não o alcança — e um
+`alter role ... bypassrls` de uma execução anterior sobrevivia e contaminava a
+seguinte.
 
 Três decisões merecem ser explícitas:
 
@@ -80,8 +85,12 @@ dado, cria o próprio dispositivo, edita o próprio perfil) são o que impede is
 | `esquema_base.sql` | Primitivos do Supabase + `sleep_data` no estado pré-001 |
 | `grants_pos_migracao.sql` | GRANTs nas tabelas criadas pela 001 |
 | `conftest.py` | Aplica esquema e migrações, semeia duas contas, monta sessões autenticadas |
-| `test_rls_isolamento.py` | O adversarial: A tenta alcançar o dado de B por todo comando, nas três tabelas |
+| `test_rls_isolamento.py` | O adversarial: A tenta alcançar o dado de B por todo comando (SEC-05) |
 | `test_rls_estrutura.py` | Invariantes do catálogo: RLS ligado, policies esperadas, nada permissivo |
+| `test_rls_ingestao.py` | O papel de ingestão é mínimo de fato, e não escolhe o dono (SEC-06) |
+| `test_rls_eliminacao.py` | Direito de eliminação, e o que ele não pode abrir (SEC-07) |
+| `test_rls_credencial.py` | A credencial do dispositivo é inalcançável pelo cliente (SEC-08) |
+| `verificar_por_mutacao.py` | Sabota o esquema de 25 maneiras e confere que a suíte acusa |
 
 `test_rls_estrutura.py` existe porque os testes de acesso só provam que o que
 existe hoje se comporta bem. Eles não pegam uma tabela nova que nasça sem RLS
@@ -169,14 +178,20 @@ revisão:
   não estão aqui. Para o RLS, um usuário é um UUID na claim `sub`.
 - **O PostgREST em si.** A tradução de querystring para SQL não é testada;
   o que é testado é o SQL que ela produz.
-- **O caminho de ingestão.** `POST /api/data` usa `service_role`, que tem
-  `BYPASSRLS` — o RLS **não protege nada ali**, de propósito (SEC-02).
-  `test_service_role_ignora_o_rls` documenta a assimetria em vez de deixá-la
-  implícita. A consequência: se a `service_role` vazar, ou se uma rota montar a
-  consulta com ela em vez do JWT do usuário, o isolamento desaparece e nenhum
-  teste desta pasta cai. É por isso que `_cliente_do_usuario()` em `routes.py`
-  é o ponto mais sensível daquele arquivo.
+- **O caminho de ingestão não está mais sob `service_role`** (SEC-06): ele usa
+  o papel `dormio_ingestao`, que tem `EXECUTE` em três funções e nenhum
+  privilégio de tabela — coberto por `test_rls_ingestao.py`. O que continua
+  valendo: **credencial privilegiada não está sujeita a RLS**. Se uma rota
+  montar a consulta com o cliente de ingestão em vez do JWT do usuário, o
+  isolamento desaparece e nenhum teste desta pasta cai — o RLS não é violado,
+  é ignorado. É por isso que existe `tests/test_privilegio_minimo.py`, que
+  falha se qualquer função fora de uma lista explícita tocar aquele cliente.
 - **`force row level security`.** As tabelas não têm. Isso significa que o
   DONO delas ignora RLS — no Supabase, o papel `postgres`. Não é exposição para
   usuário do app, mas é a razão de o `conftest.py` nunca exercitar policy pela
   conexão do dono.
+- **A ausência de bug dentro das funções `security definer`.** Elas rodam com o
+  privilégio do dono, então um defeito em qualquer uma é desvio completo do RLS.
+  Os testes cobrem a superfície — o que entra, o que sai, quem pode chamar — e
+  os invariantes (`search_path` fixo, sem parâmetro de usuário, uma sobrecarga
+  só). Não cobrem a lógica interna estar correta.
