@@ -94,8 +94,8 @@ def test_nao_existe_leitura_sem_dono(monkeypatch):
     for nome, metodo in inspect.getmembers(database.Database, inspect.isfunction):
         if not nome.startswith("get_") or "leitura" not in nome and "data" not in nome:
             continue
-        if nome in ("get_client", "get_device_by_token_hash"):
-            continue  # ingestao e autenticacao de device: service_role e correto
+        if nome in ("cliente_de_ingestao", "get_device_by_token_hash"):
+            continue  # ingestao: credencial de privilegio minimo (SEC-06)
         fonte = inspect.getsource(metodo)
         if "sleep_data" not in fonte:
             continue
@@ -105,11 +105,8 @@ def test_nao_existe_leitura_sem_dono(monkeypatch):
 
 
 def test_receive_data_persistido_retorna_201():
-    # Insert bem-sucedido (resposta com .data) → 201.
-    class RespOK:
-        data = [{"id": 1}]
-
-    with patch.object(database.db, "get_device_by_token_hash", return_value=_DEVICE),          patch.object(database.db, "insert_sleep_data", return_value=RespOK()),          patch.object(database.db, "touch_device"):
+    # Gravacao confirmada (a funcao devolve o id da linha) -> 201.
+    with patch.object(database.db, "get_device_by_token_hash", return_value=_DEVICE),          patch.object(database.db, "registrar_leitura", return_value=1):
         resp = _client().post("/api/data", json=_LEITURA, headers=_AUTH)
     assert resp.status_code == 201
     assert resp.get_json()["status"] == "success"
@@ -117,7 +114,7 @@ def test_receive_data_persistido_retorna_201():
 
 def test_receive_data_nao_persistido_retorna_503():
     # Nada persistiu (cliente indisponível → None) → 503, sem mentir sucesso (FIX-02).
-    with patch.object(database.db, "get_device_by_token_hash", return_value=_DEVICE),          patch.object(database.db, "insert_sleep_data", return_value=None):
+    with patch.object(database.db, "get_device_by_token_hash", return_value=_DEVICE),          patch.object(database.db, "registrar_leitura", return_value=None):
         resp = _client().post("/api/data", json=_LEITURA, headers=_AUTH)
     assert resp.status_code == 503
 

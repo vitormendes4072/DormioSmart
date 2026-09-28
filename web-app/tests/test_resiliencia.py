@@ -32,22 +32,27 @@ def _client():
     return app.test_client()
 
 
-def _get_client_explode():
-    """Reproduz o defeito original: get_client levanta em vez de devolver None.
+def _cliente_explode():
+    """Reproduz o defeito original: o acessor levanta em vez de devolver None.
 
     UnicodeEncodeError e a excecao real que acontecia — um `print` com emoji
     num console cp1252.
+
+    O metodo se chamava `get_client`; virou `cliente_de_ingestao` na SEC-06,
+    quando o caminho de ingestao passou a usar credencial de privilegio minimo.
+    O nome novo e proposital: pegar o cliente privilegiado deixou de parecer
+    uma operacao neutra. Ver `tests/test_privilegio_minimo.py`.
     """
     return patch.object(
         database.db,
-        "get_client",
+        "cliente_de_ingestao",
         side_effect=UnicodeEncodeError("charmap", "❌", 0, 1, "nao mapeavel"),
     )
 
 
 # --- a rota de leitura nao pode virar 500 (FIX-01) -----------------------
 
-def test_history_responde_200_mesmo_com_get_client_levantando():
+def test_history_responde_200_mesmo_com_o_cliente_levantando():
     # AUTH-03: a rota exige JWT, entao autenticamos e explodimos so a camada
     # de banco — o que se verifica aqui e que falha de banco nao vira 500.
     with patch.object(database.db, "validar_token_de_usuario", return_value="user-1"),          patch.object(database.db, "cliente_do_usuario", side_effect=UnicodeEncodeError(
@@ -61,32 +66,40 @@ def test_get_leituras_do_usuario_degrada_para_lista_vazia():
     # Migrado do `get_latest_data`, removido no SEC-07 por ser codigo morto
     # que lia sem RLS. A propriedade continua importando — so que agora no
     # metodo que as rotas de fato usam.
-    with _get_client_explode():
+    with _cliente_explode():
         assert database.db.get_leituras_do_usuario("jwt", "user-1") == []
 
 
 # --- os demais metodos tambem nao podem levantar -------------------------
 
 def test_get_device_by_token_hash_devolve_none():
-    with _get_client_explode():
+    with _cliente_explode():
         assert database.db.get_device_by_token_hash("qualquer") is None
 
 
-def test_insert_sleep_data_devolve_none():
-    with _get_client_explode():
-        assert database.db.insert_sleep_data({"a": 1}) is None
+def test_registrar_leitura_devolve_none():
+    with _cliente_explode():
+        assert database.db.registrar_leitura("hash", {"a": 1}) is None
 
 
-def test_touch_device_nao_levanta():
-    """Best-effort: falhar aqui nao pode derrubar leitura ja persistida."""
-    with _get_client_explode():
-        database.db.touch_device("dev-1")  # nao deve levantar
+def test_registrar_leitura_da_sessao_devolve_none():
+    """O caminho do celular degrada igual — e por outro cliente.
+
+    Ele nao usa o cliente de ingestao: a gravacao por sessao vai pelo JWT do
+    usuario (SEC-06). Entao o que tem de explodir aqui e `cliente_do_usuario`.
+    """
+    with patch.object(
+        database.db,
+        "cliente_do_usuario",
+        side_effect=UnicodeEncodeError("charmap", "❌", 0, 1, "nao mapeavel"),
+    ):
+        assert database.db.registrar_leitura_da_sessao("jwt", "dev-1", {"a": 1}) is None
 
 
 def test_verificar_conexao_reporta_falha_sem_levantar():
     with patch.object(database.db, "url", "https://exemplo.supabase.co"), \
          patch.object(database.db, "key", "chave"), \
-         _get_client_explode():
+         _cliente_explode():
         ok, motivo = database.db.verificar_conexao()
     assert ok is False
     assert motivo == "consulta falhou"
@@ -97,7 +110,7 @@ def test_verificar_conexao_reporta_falha_sem_levantar():
 def test_post_data_responde_401_e_nao_400_quando_o_banco_falha():
     """Token nao resolve por falha de banco -> 401 (nao autorizado), que e o
     que o firmware sabe tratar. Antes virava 400, sugerindo payload ruim."""
-    with _get_client_explode():
+    with _cliente_explode():
         resp = _client().post("/api/data", json=_LEITURA, headers=_AUTH)
     assert resp.status_code == 401
 
@@ -105,7 +118,7 @@ def test_post_data_responde_401_e_nao_400_quando_o_banco_falha():
 def test_health_responde_503_e_nunca_500():
     with patch.object(database.db, "url", "https://exemplo.supabase.co"), \
          patch.object(database.db, "key", "chave"), \
-         _get_client_explode():
+         _cliente_explode():
         resp = _client().get("/health")
     assert resp.status_code == 503
     assert resp.get_json()["status"] == "degradado"

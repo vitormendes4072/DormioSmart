@@ -65,7 +65,15 @@ begin
         -- sem policy de insert em sleep_data.
         create role service_role nologin noinherit bypassrls;
     end if;
+    -- `authenticator` é o papel com que o PostgREST conecta; ele faz SET ROLE
+    -- para o papel da claim `role` do JWT. Existe aqui para que a 005 possa
+    -- conceder `dormio_ingestao` a ele sem ramificar entre teste e produção.
+    if not exists (select 1 from pg_roles where rolname = 'authenticator') then
+        create role authenticator nologin noinherit;
+    end if;
 end $$;
+
+grant anon, authenticated, service_role to authenticator;
 
 -- ---------------------------------------------------------------------
 -- 2. Schema auth e auth.users

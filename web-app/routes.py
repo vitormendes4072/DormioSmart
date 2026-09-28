@@ -11,7 +11,7 @@ from device_auth import extrair_token, gerar_token, hash_token
 from validacao import validar_captacao, validar_leitura
 
 # Versao do contrato que este backend implementa (docs/DATA-CONTRACT.md).
-CONTRATO_DE_DADOS = "2.2.0"
+CONTRATO_DE_DADOS = "2.3.0"
 
 def init_routes(app):
     """Rotas da API.
@@ -198,18 +198,23 @@ def init_routes(app):
         return jsonify(device)
 
     def _device_por_token():
-        """Caminho do dispositivo em campo (SEC-02). Inalterado."""
+        """Caminho do dispositivo em campo (SEC-02).
+
+        Devolve o dispositivo já com o hash do token: a gravação o repassa ao
+        banco para que o DONO seja resolvido lá dentro, e não aqui (SEC-06).
+        """
         token = extrair_token(request.headers)
         if token is None:
             return None, "X-Device-Token ausente", 401
 
-        device = db.get_device_by_token_hash(hash_token(token))
+        token_hash = hash_token(token)
+        device = db.get_device_by_token_hash(token_hash)
         if device is None:
             # Ausente, revogado ou desconhecido: a mesma resposta para os
             # três. Não informamos qual é o caso — isso só ajudaria quem
             # estivesse sondando tokens.
             return None, "device nao autorizado", 401
-        return device, None, 200
+        return dict(device, token_hash=token_hash), None, 200
 
     def _device_por_sessao():
         """Caminho do celular (APP-08): a sessão já identifica o dono.
@@ -237,9 +242,11 @@ def init_routes(app):
             # distinguir permitiria descobrir ids de dispositivos alheios.
             return None, "dispositivo nao encontrado", 404
 
-        # `buscar_do_dono` não devolve `user_id` (não está em CAMPOS), e o
-        # resto da rota carimba a linha com ele. Vem do JWT, não do corpo.
-        return dict(device, user_id=usuario_id), None, 200
+        # `buscar_do_dono` não devolve `user_id` (não está em CAMPOS). O `jwt`
+        # segue junto porque a gravação deste caminho vai pelo cliente do
+        # USUÁRIO, não por chave privilegiada: a função no banco deriva o dono
+        # de `auth.uid()` (SEC-06).
+        return dict(device, user_id=usuario_id, jwt=jwt), None, 200
 
     @app.route('/api/data', methods=['POST'])
     def receive_data():
@@ -296,20 +303,34 @@ def init_routes(app):
                 "epoca_segundos":   content.get("epoca_s"),
                 "metodo_agregacao": content.get("metodo"),
                 "amostras":         content.get("amostras"),
-                # Carimbo do dono, resolvido pelo token — nunca vem do corpo
-                # da requisição. O device não escolhe de quem é o dado.
-                "user_id":   device["user_id"],
-                "device_id": device["id"],
+                # `user_id` e `device_id` NÃO entram aqui (SEC-06). Quem carimba
+                # o dono é a função no banco, a partir do token ou do
+                # `auth.uid()` do JWT. Antes eram estas duas linhas de Python
+                # que separavam uma chave vazada da posse de dado alheio; agora
+                # não existe parâmetro por onde escolher o dono.
             }
-            
+
             # Persiste e confirma: só responde 201 se o dado foi realmente
             # gravado. Se nada persistiu (fonte indisponível), responde 503 em
             # vez de mentir sucesso e enganar o firmware (FIX-02).
-            result = db.insert_sleep_data(payload)
-            if not result or not getattr(result, "data", None):
+            #
+            # Dois caminhos, duas credenciais — e nenhum dos dois manda o dono:
+            #
+            #   token   -> chave de ingestão (privilégio mínimo), dono do token
+            #   sessão  -> JWT do usuário,    dono de `auth.uid()`
+            #
+            # O `last_seen_at` do dispositivo é atualizado dentro da própria
+            # função, na mesma chamada — ver migrations/005.
+            if caminho == CAMINHO_TOKEN:
+                gravado = db.registrar_leitura(device["token_hash"], payload)
+            else:
+                gravado = db.registrar_leitura_da_sessao(
+                    device["jwt"], device["id"], payload
+                )
+
+            if not gravado:
                 return jsonify({"error": "dados nao persistidos (fonte indisponivel)"}), 503
 
-            db.touch_device(device["id"])
             return jsonify({"status": "success"}), 201
         except Exception as e:
             return jsonify({"error": str(e)}), 400

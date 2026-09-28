@@ -1,6 +1,5 @@
 import logging
 import os
-from datetime import datetime, timezone
 
 from supabase import create_client
 from consulta import LIMITE_PADRAO
@@ -18,11 +17,23 @@ logger = logging.getLogger(__name__)
 class Database:
     def __init__(self):
         # Apenas salva as credenciais, NÃO conecta ainda.
-        # O backend é server-side (Flask na Vercel) e o navegador nunca acessa o
-        # Supabase diretamente, então usamos a chave service_role (secreta),
-        # mantendo o RLS ligado no banco. Fallback para SUPABASE_KEY por compatibilidade.
+        #
+        # A chave do caminho de ingestão (SEC-06). Ordem de preferência:
+        #
+        #   1. SUPABASE_INGESTAO_KEY — JWT do papel `dormio_ingestao`, que só
+        #      tem EXECUTE em três funções e NENHUM privilégio de tabela. É a
+        #      configuração correta; ver migrations/005 e o README.
+        #   2. SUPABASE_SERVICE_ROLE_KEY — cai aqui só até a chave nova ser
+        #      emitida. Funciona, mas NÃO reduz privilégio nenhum: a
+        #      service_role ignora RLS e tem acesso total. O aviso no
+        #      `cliente_de_ingestao` existe para que isso não passe em silêncio.
         self.url = os.environ.get("SUPABASE_URL", "")
-        self.key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY") or os.environ.get("SUPABASE_KEY", "")
+        self.ingestao_key = os.environ.get("SUPABASE_INGESTAO_KEY", "")
+        self.key = (
+            self.ingestao_key
+            or os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
+            or os.environ.get("SUPABASE_KEY", "")
+        )
         # Chave anon: usada para validar o JWT do usuario e para montar o
         # cliente por requisicao que carrega esse JWT (AUTH-03). E publica por
         # design — o isolamento vem do RLS, nao do sigilo dela.
@@ -30,8 +41,19 @@ class Database:
         self._client = None
         self._client_anon = None
 
-    def get_client(self):
-        """Cliente Supabase, criado sob demanda.
+    def cliente_de_ingestao(self):
+        """Cliente do caminho de ingestão (SEC-06). Criado sob demanda.
+
+        ESTE CLIENTE NÃO CONSEGUE LER DADO DE USUÁRIO. Com a chave correta
+        (`SUPABASE_INGESTAO_KEY`) ele carrega o papel `dormio_ingestao`, que
+        tem EXECUTE em `sanidade`, `resolver_dispositivo` e `registrar_leitura`
+        e nenhum privilégio de tabela. Qualquer `.table(...)` por aqui falha
+        por permissão — e é proposital: é o que faz o pior caso de um
+        vazamento desta chave ser "insere lixo" em vez de "lê o banco todo".
+
+        Só o caminho de ingestão e o `/health` devem usá-lo. Toda rota de
+        usuário usa `cliente_do_usuario`, para que o RLS decida a posse.
+        `tests/test_privilegio_minimo.py` falha se isso deixar de valer.
 
         Devolve None em vez de levantar quando não dá para conectar. Todos os
         chamadores dependem disso — ver a nota do FIX-08 no topo do arquivo.
@@ -42,6 +64,16 @@ class Database:
                     "SUPABASE_URL ou a chave (SUPABASE_SERVICE_ROLE_KEY/SUPABASE_KEY) ausentes."
                 )
                 return None
+            if not self.ingestao_key:
+                # Um aviso por processo, no momento em que a chave de alto
+                # privilégio entra em uso de fato. Silenciar isto seria deixar
+                # a configuração insegura parecer a configuração normal.
+                logger.warning(
+                    "Ingestao usando chave de ALTO PRIVILEGIO "
+                    "(SUPABASE_SERVICE_ROLE_KEY). Emita a chave do papel "
+                    "dormio_ingestao e configure SUPABASE_INGESTAO_KEY -- ver "
+                    "web-app/README.md, secao 'Rotacao da chave de ingestao'."
+                )
             try:
                 self._client = create_client(self.url, self.key)
             except Exception:
@@ -132,7 +164,22 @@ class Database:
                     # ele, o painel nao consegue distinguir "duas horas de
                     # repouso" de "duas horas sem leitura nenhuma" — e passava
                     # a reportar buraco de coleta como pausa (DASH-09).
-                    "epoca_segundos"
+                    "epoca_segundos, "
+                    # `captured_at` diz QUANDO a linha foi medida (DASH-12).
+                    # `created_at` e a hora de CHEGADA, gerada pelo banco. Sem
+                    # este campo, o painel aceitava a DURACAO declarada pelo
+                    # dispositivo e ignorava o INSTANTE declarado pelo mesmo
+                    # dispositivo — incoerencia que fazia latencia de rede
+                    # parecer irregularidade de cadencia, e que faria o buffer
+                    # offline do HW-05 chegar todo empilhado em poucos
+                    # segundos de `created_at`.
+                    #
+                    # A ORDENACAO segue por `created_at`: ele nunca e nulo
+                    # (`default now()`), e ordenar por uma coluna que pode ser
+                    # nula deixaria as linhas antigas em posicao arbitraria.
+                    # O cliente reordena pelo instante de medicao com fallback
+                    # — ver `instanteDaLeitura` em `types/sleep.ts`.
+                    "captured_at"
                 )
                 .eq("user_id", usuario_id)
             )
@@ -150,15 +197,55 @@ class Database:
             logger.exception("Falha ao consultar sleep_data do usuario.")
             return []
 
-    def insert_sleep_data(self, data):
-        """Persiste uma leitura. Devolve None se nada foi gravado."""
+    def registrar_leitura(self, token_hash, leitura):
+        """Persiste uma leitura do caminho do dispositivo (SEC-02, SEC-06).
+
+        Devolve o id da linha criada, ou None se nada foi gravado.
+
+        O TOKEN VAI JUNTO DE PROPÓSITO. A função no banco resolve o dono a
+        partir dele e carimba a linha — não existe parâmetro para escolher o
+        `user_id`. Antes isto era uma linha de Python em `routes.py`: correta,
+        mas era o que separava uma chave vazada da posse de dado alheio. Agora
+        é estrutural. Ver migrations/005.
+
+        Nulo do banco significa "token não resolve" (ausente, desconhecido ou
+        revogado). A rota trata isso como 401, como já fazia.
+        """
         try:
-            client = self.get_client()
+            client = self.cliente_de_ingestao()
             if client is None:
                 return None
-            return client.table("sleep_data").insert(data).execute()
+            resposta = client.rpc(
+                "registrar_leitura",
+                {"p_token_hash": token_hash, "p_leitura": leitura},
+            ).execute()
+            return getattr(resposta, "data", None)
         except Exception:
-            logger.exception("Falha ao inserir em sleep_data.")
+            logger.exception("Falha ao registrar leitura.")
+            return None
+
+    def registrar_leitura_da_sessao(self, jwt, device_id, leitura):
+        """Persiste uma leitura do caminho do celular (APP-08, SEC-06).
+
+        Vai pelo cliente do USUÁRIO, não por chave privilegiada: a função no
+        banco deriva o dono de `auth.uid()` e confere a posse do dispositivo
+        antes de gravar. Este caminho deixou de tocar a service_role.
+
+        Devolve o id da linha criada, ou None quando o dispositivo não é do
+        usuário, está revogado, ou não existe — os três iguais, para não
+        revelar id de dispositivo alheio.
+        """
+        try:
+            client = self.cliente_do_usuario(jwt)
+            if client is None:
+                return None
+            resposta = client.rpc(
+                "registrar_leitura_da_sessao",
+                {"p_device_id": device_id, "p_leitura": leitura},
+            ).execute()
+            return getattr(resposta, "data", None)
+        except Exception:
+            logger.exception("Falha ao registrar leitura por sessao.")
             return None
 
     def verificar_conexao(self):
@@ -172,10 +259,17 @@ class Database:
         if not self.url or not self.key:
             return False, "credenciais ausentes"
         try:
-            client = self.get_client()
+            client = self.cliente_de_ingestao()
             if client is None:
                 return False, "cliente indisponivel"
-            client.table("sleep_data").select("created_at").limit(1).execute()
+            # `sanidade()` em vez do antigo `select from sleep_data`: confirma
+            # credencial, rede e esquema sem exigir privilégio de leitura em
+            # tabela nenhuma. Era esse select que obrigava o papel de ingestão
+            # a poder ler TODO o dado de sono (SEC-06).
+            resposta = client.rpc("sanidade").execute()
+            estado = getattr(resposta, "data", None)
+            if estado != "ok":
+                return False, "esquema incompleto"
             return True, None
         except Exception:
             # O motivo devolvido e generico de proposito: o /health nao exige
@@ -192,43 +286,23 @@ class Database:
         indisponibilidade do banco não deve virar 500 no caminho de ingestão.
         """
         try:
-            client = self.get_client()
+            client = self.cliente_de_ingestao()
             if client is None:
                 return None
-            response = (
-                client.table("devices")
-                .select("id, user_id, revoked_at")
-                .eq("token_hash", token_hash)
-                .limit(1)
-                .execute()
-            )
-            linhas = response.data or []
+            # `resolver_dispositivo()` em vez do antigo select em `devices`: a
+            # revogação é aplicada dentro da função e `token_hash` não volta.
+            # Era aquele select que obrigava o papel de ingestão a poder LISTAR
+            # o hash do token de todo dispositivo de todo usuário (SEC-06).
+            resposta = client.rpc(
+                "resolver_dispositivo", {"p_token_hash": token_hash}
+            ).execute()
+            linhas = getattr(resposta, "data", None) or []
             if not linhas:
                 return None
-            device = linhas[0]
-            # Revogação é soft delete: a linha continua, mas o token não vale.
-            if device.get("revoked_at"):
-                return None
-            return device
+            return linhas[0]
         except Exception:
-            logger.exception("Falha ao consultar devices.")
+            logger.exception("Falha ao resolver dispositivo.")
             return None
-
-    def touch_device(self, device_id):
-        """Marca o último contato do dispositivo. Best-effort de propósito:
-        falhar aqui não pode derrubar uma leitura que já foi persistida."""
-        try:
-            client = self.get_client()
-            if client is None:
-                return
-            (
-                client.table("devices")
-                .update({"last_seen_at": datetime.now(timezone.utc).isoformat()})
-                .eq("id", device_id)
-                .execute()
-            )
-        except Exception:
-            logger.warning("Falha ao atualizar last_seen_at de %s.", device_id, exc_info=True)
 
 
 # Instância única

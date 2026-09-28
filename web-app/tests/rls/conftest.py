@@ -54,6 +54,7 @@ MIGRACOES_APLICADAS = (
     "001_multiusuario.sql",
     "003_padroniza_nome_do_dispositivo.sql",
     "004_tipo_de_dispositivo_e_agregacao.sql",
+    "005_papel_de_ingestao_minimo.sql",
 )
 
 VARIAVEL = "DORMIO_RLS_DATABASE_URL"
