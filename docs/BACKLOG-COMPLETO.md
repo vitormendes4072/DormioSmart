@@ -83,9 +83,10 @@ E um **peso**: 🔴 caminho crítico da defesa · 🟡 importante · ⚪ polimen
 
    L0  EM PARALELO, SEM DEPENDER DE NADA DISSO:
        CALC-01..04 · DIAG-01..04 · REQ-01 · LGPD-01 · FW-07 · FW-01/03 · API-03
-       DATA-07 · ML-06(carregador) · DOC-08 · PWA-01 · UI-10
+       DATA-07 · ML-06(carregador) · PWA-01 · UI-10
 
-   ✅ FECHADO:  ML-01 · ML-02 · ML-03 · ML-03b · ML-04 · ML-04b · HW-05
+   ✅ FECHADO:  ML-01 · ML-02 · ML-03 · ML-03b · ML-04 · ML-04b · ML-05 · HW-05
+                DOC-08
                 INFRA-01 · SEC-05 · SEC-06 · SEC-07
                 DADOS em disco · DUA resolvido · REF-01 · DOC-06 · DOC-07
 ```
@@ -112,6 +113,7 @@ Não aparece nas listas abertas abaixo. Está aqui para o histórico ficar legí
 | **ML-03b** ✅ | **As quatro otimizações (6, 7, 8, 9) + o item 8b**, N = 92, com bootstrap pareado. Resumo: `class_weight="balanced"` vale 34 pontos de especificidade (item 6, contrafactual); limiar de Youden troca κ por especificidade (7); mediana móvel não sai do ruído (8); **HMM de 2 estados: Δκ = +0,123** (8b); **contexto ±11 épocas: Δκ = +0,075 e Δespecificidade = +0,101** (9). | `ml/experimentos/saida/ml03b_otimizacoes_*.json` |
 | **ML-04** ✅ | **Validação externa.** Treina nos 92 do Wearanize+, testa nos 27 do Newcastle **sem reajuste de nada**. Tudo acima do trivial medido na própria coorte. Degradação: κ 0,414 → 0,334, **especificidade 0,802 → 0,507**. | `ml/experimentos/saida/ml04_validacao_externa_*.json` |
 | **ML-04b** ✅ | **Lateralidade**, com participante como unidade de agrupamento: esquerdo isolado (27), direito isolado (26), efeito do lado pareado **dentro** do participante (26). **Todos os 24 IC95 contêm zero** — o lado não importa, o que sustenta as features invariantes a rotação. | `ml/experimentos/saida/ml04b_efeito_do_lado_*.json` |
+| **ML-05** ✅ *(28/09)* | **Teto de concordância entre pontuadores.** As duas pontuações manuais do Wearanize+, na mesma redução binária do pipeline: **κ = 0,607 [0,569, 0,643] nos 96** com as duas, e **0,612 [0,572, 0,650] nos 90** que também estão nos 92 da base — este é o divisor. Dá a referência superior dos Δκ: a faixa de leitura é [0; 0,61], não [0; 1]. Achado de brinde: o pontuador 2 marca 7,8 pontos percentuais mais de vigília, e a especificidade humana vale 0,958 ou 0,520 conforme a referência. **Não há teto para o Newcastle** — aquela coleção não publica segunda pontuação. | `ml/experimentos/saida/ml05_teto_interavaliador_*.json` |
 | **ML-07** ✅ *(não estava catalogado)* | **Infraestrutura de execução retomável.** LOSO com checkpoint por dobra; interrupção custa uma dobra, não um item, e nenhum experimento precisou reduzir N. Teste garante que rodar em uma chamada e em vinte dá o mesmo vetor. | `ml/experimentos/_retomada.py` |
 
 ### Firmware — o buffer offline
@@ -186,7 +188,7 @@ diagrama** — que é o que a banca lê.
 | **DIAG-03** | Fluxograma do firmware / máquina de estados. | 🔴 |
 | **DIAG-04** | Diagrama de sequência do fluxo autenticado + **modelo ER** com `devices` e `profiles`. Também é a parte pendente do `DOC-05`. | 🟡 |
 | **DOC-05** | READMEs e `CLAUDE.md` — falta só o `DIAG-04`. | 🟡 |
-| **DOC-08** *(novo)* | **Levar o bloco de ML para o texto do TCC.** Os resultados existem e estão versionados em JSON, mas **só o `LIMITACOES-TCC.md` foi redigido**. Falta a seção de resultados: a matriz de transferência com a assimetria, a ablação que mostra que o colapso é de escala, a tabela das otimizações e a validação externa. É o capítulo com o conteúdo mais forte do trabalho, e hoje ele não existe em prosa. | 🔴 |
+| ~~**DOC-08**~~ ✅ | **Feito em 28/09.** `docs/RESULTADOS-TCC.md` — o capítulo de resultados em prosa, entre os mesmos marcadores do `LIMITACOES-TCC.md`, com nota de procedência que amarra cada número a um JSON e ao comando que o reproduz. Fechou junto o `ML-05` (teto interavaliador), que era a lacuna barata que faltava. | ✅ |
 | **DOC-06b** | **Ler os artigos antes de citá-los** (referência conferida ≠ artigo lido) e converter para o padrão de citação do TCC se não for autor-data. Herdado do `DOC-06`. | 🔴 |
 | **LGPD-01** | Política de privacidade e termos. Hoje Configurações exibe o link como "em elaboração". Falta o direito de eliminação ("Excluir conta", desabilitado); a exportação em CSV já cobre portabilidade. **Rascunho é L0; a revisão com o orientador é `LGPD-03`.** | 🔴 |
 | **REQ-01** | Documentar requisitos: dimensões, conforto, autonomia, aquecimento, custo, segurança. | 🟡 |
@@ -297,13 +299,13 @@ Se só houver tempo para uma sequência, é esta:
 5. **`VAL-01`** — uma noite real captada. O painel já aguenta.
 6. **`DASH-04` + `VAL-02`** — a noite na tela e os números medidos.
 
-**Em paralelo, sem esperar nada:** `DOC-08` (o capítulo de resultados do ML, que é o conteúdo
-mais forte do trabalho e hoje não existe em prosa), `CALC-01..04`, `DIAG-01..04`, `LGPD-01`,
-`FW-07`, `DATA-07`.
+**Em paralelo, sem esperar nada:** `CALC-01..04`, `DIAG-01..04`, `LGPD-01`, `FW-07`, `DATA-07`.
 
 > **O que mudou no caminho crítico desde 10/09:** o bloco `ML-01 → ML-02 → ML-03` saiu dele —
-> está feito. O gargalo acadêmico deixou de ser *produzir o resultado* e passou a ser
-> **escrever o resultado** (`DOC-08`). O gargalo material continua sendo o mesmo ferro de solda.
+> está feito. O gargalo acadêmico era *escrever o resultado* (`DOC-08`), e **isso fechou em
+> 28/09**: o capítulo está em `docs/RESULTADOS-TCC.md`. O que sobra de texto é `CALC-*` e
+> `DIAG-*`, que dependem de números de hardware, não de análise. O gargalo material continua
+> sendo o mesmo ferro de solda.
 
 ---
 

@@ -20,6 +20,7 @@
 | `ML-03b` · otimizações (itens 6, 7, 8, **8b**, **9**) | ✅ executadas, N = 92 |
 | `ML-04` · **validação externa** (treina Wearanize+, testa Newcastle) | ✅ executada, N = 27 |
 | `ML-04b` · **efeito do lado do corpo** (punho esq. × dir.) | ✅ executada, pareada, N = 26 |
+| `ML-05` · **teto de concordância entre pontuadores** | ✅ executado, n = 96 e n = 90 |
 | `ML-04` · validação externa no **Walch** | ❌ **dado não baixado** — ver abaixo |
 | Testes (7 arquivos, 70 casos) | ✅ **70 passando** em 2026-09-21 |
 
@@ -112,7 +113,10 @@ teste  = carregar("wearanize", posicao="cabeca", sujeitos=comuns)
 # Só a transferência principal, com N maior:
 comuns2 = sujeitos_com_posicoes(["pulso", "cabeca"])          # N = 92
 
-# O teto inter-avaliador — o número contra o qual o Δκ deve ser lido:
+# O teto inter-avaliador — o número contra o qual o Δκ deve ser lido.
+# ✅ MEDIDO: ver `ML-05` abaixo. κ = 0,612 [0,572, 0,650] nos 90 que têm as duas
+# pontuações E estão nos 92 da base. Não precisa refazer esta conta à mão:
+#   python -m experimentos.ml05_teto_interavaliador --resumo
 p1 = carregar("wearanize", posicao="cabeca", pontuador=1, sujeitos=comuns)
 p2 = carregar("wearanize", posicao="cabeca", pontuador=2, sujeitos=comuns)
 ```
@@ -304,6 +308,44 @@ o que sairia se as 52 gravações pareadas fossem empilhadas como independentes.
 passa de 0,163 de largura para 0,114 — **estreita ~30%** sem que nenhuma evidência nova
 tenha entrado (próximo do fator 1/√2 que se espera de dobrar o N artificialmente). Está
 ali para documentar o tamanho do viés; não vai para tabela.
+
+## ML-05 — teto de concordância entre pontuadores (Wearanize+)
+
+```bash
+python -m experimentos.ml05_teto_interavaliador            # ~2,5 min, relê os 100 EDFs
+python -m experimentos.ml05_teto_interavaliador --resumo   # relê o JSON, instantâneo
+python -m experimentos.ml05_teto_interavaliador --reescrever-notas   # só a prosa do JSON
+```
+
+O dataset tem **duas pontuações manuais** da mesma PSG. Compará-las, na mesma redução
+binária que o pipeline usa, dá a **referência superior** dos Δκ — quanto do erro do
+modelo é erro e quanto é margem onde dois humanos também discordam.
+
+| recorte | κ | acurácia |
+|---|---:|---:|
+| 96 com as duas pontuações | 0,607 [0,569, 0,643] | 0,916 [0,906, 0,926] |
+| **90** — interseção com os 92 da base | **0,612 [0,572, 0,650]** | 0,916 [0,905, 0,927] |
+
+**São 96, não 100 nem 92.** ARMADILHA 4: o `channels.tsv` declara `scor2` para os 100, o
+EDF só tem em 96. E os 92 da base não são subconjunto dos 96 — a interseção é **90**. O
+divisor de toda fração do teto é o 0,612 dos 90, porque é o único medido nos *mesmos*
+participantes dos números do modelo.
+
+Lido contra ele: base ±2 = 62,7% · contexto ±11 = 75,0% · HMM = 82,9% (braço cabeça). O
+custo de posição é 8,1% do teto e o de sensor, 11,6%.
+
+⚠️ **Três coisas que este κ não é.** (1) Não é concordância em **estadiamento**, e **não é
+comparável** com os κ de 5 classes da literatura em direção nenhuma — o colapso de classes
+puxa para cima, a correção pelo acaso com classe majoritária puxa para baixo, e nenhum dos
+dois efeitos foi quantificado. (2) Não é limite teórico: um modelo pode concordar com o
+pontuador 1 mais do que o pontuador 2 concorda. (3) **Não vale para o Newcastle**, que não
+publica segunda pontuação — logo os números do `ML-04` não têm teto e não são expressos como
+fração dele.
+
+**A discordância humana é assimétrica e mora na vigília.** O pontuador 2 marca 7,8 pontos
+percentuais mais de vigília. Com o pontuador 1 como referência a especificidade humana é
+0,958; com o pontuador 2, 0,520 — mesmo par de pontuações. κ e acurácia não se movem. Sempre
+diga qual é a referência.
 
 ### O que falta: Walch
 

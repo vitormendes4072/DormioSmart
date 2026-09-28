@@ -20,6 +20,20 @@
 > restante do arquivo, esses números **não vêm da literatura**: vêm de
 > `ml/experimentos/saida/*.json` e podem ser reproduzidos com os comandos ali listados.
 >
+> ✅ **Alinhado em 2026-09-28 com o `docs/RESULTADOS-TCC.md`.** Três mudanças, todas de
+> alinhamento numérico com os JSONs, nenhuma de conteúdo:
+> 1. **X.3** — o IC do Δκ de lateralidade passou de `−0,015` para **`−0,014`**. O valor no JSON
+>    é −0,014499; o arredondamento anterior estava para cima. O `RESULTADOS-TCC.md` já usava
+>    −0,014, e os dois documentos agora dizem o mesmo número.
+> 2. **X.4** — a prevalência da base de desenvolvimento passou de "aproximadamente 0,85" para
+>    **0,895**, que é o valor medido (`prevalencia_sono` em `ml03_transferencia_*.json`). A da
+>    coorte externa passou de "aproximadamente 0,70" para **0,699**, idem.
+> 3. **X.4** — um parágrafo novo registra que o **teto de concordância entre pontuadores** foi
+>    medido na base de desenvolvimento (κ = 0,612), mas **não existe** para a coorte externa, que
+>    não publica segunda pontuação. Consequência declarada: a degradação de κ e de especificidade
+>    não pode ser decomposta entre perda do método e diferença de concordância da rotulagem.
+>    Este é o único acréscimo de conteúdo, e ele *acrescenta* uma limitação.
+>
 > **Sugestão de posição:** seção própria ao final do desenvolvimento, antes das
 > Considerações Finais. Declarar limitação num lugar só, de forma organizada, é sinal de
 > maturidade metodológica — espalhá-las pelo texto parece tentativa de diluí-las.
@@ -159,7 +173,7 @@ a noite, a rotulagem polissonográfica e o modelo são os mesmos, variando apena
 que o acelerômetro foi acoplado. Sob essa formulação, a diferença entre os punhos esquerdo e
 direito **não se distinguiu de zero** em nenhuma das configurações avaliadas: para a
 configuração de melhor desempenho, obteve-se diferença de coeficiente kappa de +0,009
-(IC 95%: −0,015 a +0,031) e de especificidade de −0,009 (IC 95%: −0,038 a +0,017); nas vinte
+(IC 95%: −0,014 a +0,031) e de especificidade de −0,009 (IC 95%: −0,038 a +0,017); nas vinte
 e quatro comparações realizadas, a maior diferença absoluta observada foi de 0,027 em kappa,
 e todos os intervalos de confiança contiveram o valor nulo.
 
@@ -210,10 +224,15 @@ apoiar quaisquer afirmações de generalização.
 
 Registra-se que os coeficientes kappa das duas condições **não são diretamente comparáveis
 entre si**, uma vez que o kappa depende da prevalência da classe majoritária, que é de
-aproximadamente 0,70 na coorte externa e de aproximadamente 0,85 na base de desenvolvimento.
+0,699 na coorte externa e de 0,895 na base de desenvolvimento.
 Por essa razão, a leitura adotada não é a comparação absoluta entre os dois valores, mas a
 comparação de cada um contra o classificador trivial medido **na própria coorte** — referência
-que, por construção, apresenta kappa nulo. Sob esse critério, todas as configurações
+que, por construção, apresenta kappa nulo. Registra-se que a referência superior correspondente
+— a concordância entre dois pontuadores humanos — foi medida na base de desenvolvimento, e não
+na coorte externa, que não dispõe de segunda pontuação manual (ver a seção REFERÊNCIA INTERNA —
+teto de concordância entre pontuadores). Em consequência, **não é possível decompor a degradação
+relatada** entre perda de desempenho do método e diferença de concordância da rotulagem de
+referência entre as duas coortes. Sob esse critério, todas as configurações
 avaliadas permaneceram com o intervalo de confiança de 95% integralmente acima de zero na
 coorte externa, o que sustenta a afirmação de que o método generaliza, ainda que com
 desempenho reduzido.
@@ -358,6 +377,7 @@ cd ml
 python -m experimentos.ml03b_otimizacoes --item resumo        # validação interna, N=92
 python -m experimentos.ml04_validacao_externa --comparar      # validação externa, n=27
 python -m experimentos.ml04_validacao_externa --lados         # efeito do lado, n=26
+python -m experimentos.ml05_teto_interavaliador --resumo      # teto humano, n=96 e n=90
 ```
 
 **1. O que é medido e o que é antecipado.** Até esta atualização, X.3 e X.4 diziam o que se

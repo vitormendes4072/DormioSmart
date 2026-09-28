@@ -39,6 +39,11 @@ hora de colar:
    como ressalva final.
 3. **O achado da Y.6 é metodológico e vale independentemente do desempenho do protótipo.**
    Se o TCC tiver seção de contribuições, é de lá que se referencia a Y.6.
+4. **Os kappa são lidos contra duas referências, não contra 1,000.** O piso é o classificador
+   trivial (Y.1.1), que vale zero; o teto é a concordância entre dois pontuadores humanos
+   (Y.1.4), que vale 0,61 nesta base e nesta tarefa. A leitura em fração do teto aparece em
+   Y.3, Y.4 e Y.5 junto de cada número, e **não** em Y.6, onde não há teto medido. Retirar
+   essas frações devolveria ao leitor a impressão de que o intervalo disponível é [0; 1].
 
 ---
 
@@ -49,7 +54,7 @@ hora de colar:
 Este capítulo apresenta os resultados obtidos na tarefa de discriminação entre sono e vigília
 a partir de aceleração bruta. A exposição segue a ordem em que os experimentos foram
 conduzidos, que é também a ordem em que cada resultado condiciona o seguinte: estabelecem-se
-primeiro os classificadores de referência (Y.1), mede-se em seguida o desempenho em base
+primeiro as referências inferior e superior (Y.1), mede-se em seguida o desempenho em base
 pública com rotulagem polissonográfica (Y.2), quantifica-se o efeito da posição do sensor
 (Y.3) e a assimetria da transferência entre posições (Y.4), avaliam-se modificações do
 procedimento (Y.5), verifica-se a reprodução dos ganhos em coorte independente (Y.6) e
@@ -71,7 +76,15 @@ metodologia e retomadas em Y.1, a especificidade e o kappa são as grandezas sob
 conclusões se apoiam; a acurácia é reportada por comparabilidade com a literatura, não como
 evidência.
 
-### Y.1 Classificadores de referência
+### Y.1 Referências de leitura
+
+Esta seção estabelece as duas referências contra as quais todos os resultados posteriores são
+lidos. A **referência inferior** é o classificador trivial (Y.1.1), que não realiza medição
+alguma e cujo coeficiente kappa é nulo por construção. A **referência superior** é a
+concordância entre dois pontuadores humanos independentes sobre a mesma polissonografia
+(Y.1.4), que delimita a margem em que a própria variável-alvo é ambígua. Entre as duas
+subseções ficam os algoritmos clássicos de actigrafia (Y.1.2) e a demonstração aritmética de
+que a acurácia não é métrica informativa neste domínio (Y.1.3).
 
 #### Y.1.1 O classificador trivial
 
@@ -165,6 +178,89 @@ identidade estabelece é a **inadequação da acurácia como métrica de síntes
 É por essa razão que todos os resultados a seguir são apresentados com especificidade e kappa
 ao lado, e com o classificador trivial medido na própria coorte.
 
+#### Y.1.4 O teto de concordância entre pontuadores humanos
+
+O classificador trivial estabelece o piso. A referência superior é dada pela concordância
+entre dois avaliadores humanos, e foi medida porque a base de desenvolvimento dispõe de **duas
+pontuações manuais independentes da mesma polissonografia**. Comparar uma com a outra, na mesma
+redução binária sono × vigília que o modelo executa, mede a margem em que dois especialistas
+observando o mesmo traçado também discordam — isto é, o ruído da própria variável-alvo.
+
+**O recorte.** A base contém 100 participantes, dos quais **96 possuem as duas pontuações**;
+nos quatro restantes o segundo pontuador não está presente no arquivo, ainda que a
+documentação do dataset o declare. Registra-se, adicionalmente, que **90 dos 92 participantes
+da base de desenvolvimento** utilizada nas seções Y.3 a Y.5 possuem as duas pontuações: os
+conjuntos não coincidem, e por isso a medição é reportada nos dois recortes. Após a exclusão
+das épocas que qualquer um dos dois pontuadores não pontuou — 772 das 91 554 épocas, isto é,
+0,8% —, a medição compreendeu 90 782 épocas nos 96 participantes.
+
+| Recorte | Kappa | Acurácia |
+|---|---:|---:|
+| 96 participantes com as duas pontuações | 0,607 [0,569 a 0,643] | 0,916 [0,906 a 0,926] |
+| 90 participantes — interseção com a base de desenvolvimento | **0,612** [0,572 a 0,650] | 0,916 [0,905 a 0,927] |
+
+Os dois recortes produzem o mesmo valor dentro do intervalo de confiança. **Adota-se como
+referência superior o valor de 0,612 [0,572 a 0,650]**, medido nos 90 participantes que são
+também da base de desenvolvimento, por ser o único diretamente comparável aos coeficientes das
+seções seguintes — é medido nos mesmos participantes. O desvio-padrão entre participantes é de
+0,179, isto é, da mesma ordem do observado para os modelos, o que indica que a concordância
+humana varia substancialmente **entre participantes**, e não é uma propriedade uniforme da
+tarefa.
+
+**A consequência para a leitura de todo o capítulo.** A faixa de referência para a leitura do
+coeficiente kappa nesta tarefa não é [0; 1], e sim aproximadamente **[0; 0,61]**: o extremo
+superior pertinente não é a concordância perfeita, e sim a concordância que dois humanos
+alcançam entre si sobre o mesmo traçado. Um coeficiente de 0,46 não corresponde, portanto, a
+"menos da metade do possível", e sim a cerca de três quartos dessa faixa. As seções Y.3, Y.4 e
+Y.5 reportam, ao lado de cada coeficiente, a fração do teto que ele representa. Registra-se que
+0,61 **não é um máximo inatingível**: um classificador pode, em princípio, concordar com o
+primeiro pontuador mais do que o segundo concorda, e o item 2 das delimitações abaixo
+desenvolve esse ponto.
+
+**A discordância humana é sistemática, e concentra-se na vigília.** Os valores deste parágrafo
+referem-se ao recorte de 90 participantes, adotado como referência. Os dois pontuadores não
+discordam de modo simétrico: o primeiro classificou 89,9% das épocas como sono e o segundo,
+82,1% — o segundo pontuador identifica 7,8 pontos percentuais mais de vigília. A
+consequência aparece nas métricas direcionais. Tomando o primeiro pontuador como referência,
+95,8% [94,5% a 97,0%] das épocas que ele classificou como vigília foram também assim
+classificadas pelo segundo; tomando o segundo como referência, apenas 52,0%
+[48,0% a 55,8%] das épocas que ele classificou como vigília foram assim classificadas pelo
+primeiro. Registra-se que a acurácia e o coeficiente kappa são simétricos e não se alteram com
+a troca de referência, ao contrário da sensibilidade e da especificidade; a referência adotada
+neste trabalho é o **primeiro pontuador**, que é a verdade empregada em todos os demais
+experimentos.
+
+Esse achado reforça, por via independente, o argumento da seção Y.1.3 e da seção de limitações:
+**a vigília é a classe cuja definição é menos estável**, e o é já no nível da rotulagem humana,
+antes de qualquer questão de sensor ou de modelo. A especificidade de um classificador é
+medida contra um rótulo de vigília sobre o qual dois especialistas concordam de forma
+assimétrica.
+
+**O que este teto mede, e o que não mede.** Três delimitações são necessárias, e a primeira é
+a que mais facilmente se perde:
+
+1. **Não é a concordância interavaliador em estadiamento do sono.** O valor de 0,612 refere-se
+   à tarefa binária sono × vigília, obtida pela redução dos estágios do padrão AASM a duas
+   classes, e **não é comparável aos coeficientes kappa de concordância interavaliador em
+   estadiamento reportados na literatura de polissonografia** — em nenhuma das duas direções.
+   Dois efeitos atuam em sentidos opostos e não foram quantificados neste trabalho: o colapso de
+   N1, N2, N3 e REM em uma única classe "sono" elimina a discordância interna ao sono, o que
+   tende a aumentar a concordância observada; mas a correção pelo acaso embutida no kappa é mais
+   severa quando uma classe é majoritária, como é o caso na tarefa binária, o que atua em sentido
+   contrário. O valor aqui reportado **não deve ser citado como concordância interavaliador em
+   polissonografia**, nem confrontado com valores publicados para estadiamento.
+2. **Não é um limite teórico de desempenho.** A discordância entre dois pontuadores não
+   demonstra a existência de uma resposta correta inacessível; demonstra que a variável-alvo
+   carrega ruído de rotulagem dessa magnitude. Um classificador que atingisse 0,612 estaria
+   concordando com o primeiro pontuador tanto quanto o segundo pontuador concorda — o que é uma
+   referência interpretável, e não um teto no sentido de barreira física.
+3. **Não se aplica à coorte externa.** O teto foi medido na base de desenvolvimento. A coorte
+   independente empregada na validação externa (Y.6) **não publica segunda pontuação manual**,
+   de modo que não há teto medido para ela. As frações do teto, por essa razão, não são
+   reportadas em Y.6, e **não se deve transportar o valor de 0,612 para aquela coorte** — a
+   equipe de pontuação, o protocolo e os critérios são outros, e a concordância humana é
+   propriedade da equipe, não da tarefa.
+
 ### Y.2 Primeira medição em base com rotulagem polissonográfica
 
 A primeira medição sobre dado real empregou a coorte de Newcastle, com acelerometria de punho
@@ -199,6 +295,12 @@ nas três métricas nesta coorte — kappa de 0,408 contra 0,355 e especificidad
 0,501. A regressão logística empregada nesta medição utiliza contexto de ±2 épocas, ao passo
 que o algoritmo de Sadeh opera sobre uma janela de aproximadamente onze minutos. Essa
 observação motivou o experimento relatado em Y.5, cujo resultado a confirma.
+
+Registra-se que **esta coorte não dispõe de teto de concordância medido**: a coleção não
+publica segunda pontuação manual, de modo que os coeficientes desta tabela não podem ser lidos
+como fração de uma referência superior, ao contrário dos das seções Y.3 a Y.5. O teto de 0,612
+estabelecido em Y.1.4 é propriedade da equipe de pontuação da base de desenvolvimento e não é
+transportável para cá.
 
 Registra-se que as métricas desta tabela são agregadas sobre o conjunto das épocas, sem
 intervalo de confiança de bootstrap — a agregação por participante, com o intervalo
@@ -247,7 +349,10 @@ Coeficiente kappa por célula, com IC 95%:
 
 Os classificadores de referência medidos sobre os mesmos 92 participantes situam-se em kappa
 de 0,000 para o trivial e entre 0,435 [0,405 a 0,465] e 0,462 [0,428 a 0,494] para o algoritmo
-de Sadeh com escala calibrada, conforme o braço.
+de Sadeh com escala calibrada, conforme o braço. Contra o teto de concordância humana
+estabelecido em Y.1.4 — 0,612 [0,572 a 0,650], medido em 90 destes mesmos participantes —, a
+diagonal de cabeça corresponde a 65,1% do teto e o algoritmo de Sadeh no braço de cabeça a
+72,9%.
 
 **A decomposição do custo.** Lidas pelas diagonais, que são o desempenho de cada braço na
 posição em que foi treinado, as duas comparações controladas produzem:
@@ -258,6 +363,12 @@ posição em que foi treinado, as duas comparações controladas produzem:
 - **custo da posição:** kappa decresce de 0,377 [0,347 a 0,407] no punho para 0,327
   [0,299 a 0,358] na cabeça degradada, isto é, **0,050** atribuível à posição, com a qualidade
   de aquisição mantida constante.
+
+Lidos contra o teto de Y.1.4, esses dois custos correspondem a **8,1% e 11,6%** da margem
+disponível — isto é, trocar a posição do sensor consome menos de um décimo da faixa em que o
+desempenho pode variar nesta tarefa, e degradar a grade de aquisição consome pouco mais de um
+décimo. A comparação é aproximada, e não exata: o teto foi medido em 90 dos 92 participantes
+desta mesma matriz.
 
 A leitura que se extrai é que, nesta base e nesta tarefa, **o custo de mover o sensor do punho
 para a cabeça é da ordem de 0,05 em kappa, e é menor que o custo de degradar a grade de
@@ -281,6 +392,11 @@ duas: o kappa decresce de 0,398 [0,365 a 0,431] na própria posição para 0,067
 0,332 e 0,352 em kappa, isto é, de 83,3% e 88,5% do valor na diagonal. A
 transferência entre posições, portanto, **não é simétrica**: uma direção atravessa e a outra
 não.
+
+A magnitude desse colapso fica mais legível contra o teto de Y.1.4: a queda de 0,352 equivale a
+**57,6% de toda a margem** entre o classificador trivial e a concordância humana. Não se trata,
+portanto, de degradação marginal — em uma única troca de posição de teste perde-se mais da
+metade do intervalo em que o desempenho pode variar nesta tarefa.
 
 Duas hipóteses concorrentes explicariam o colapso, e a distinção entre elas tem consequência
 prática oposta. Pela primeira, **hipótese de escala**, o colapso é de normalização: o modelo
@@ -331,7 +447,9 @@ quantificados separadamente:
 1. **Componente de escala**, responsável por **71% a 78%** da lacuna na transferência
    cabeça → punho, recuperável por normalização por participante, sem rótulo do destino.
 2. **Componente residual**, da ordem de **0,19 a 0,23 em kappa**, que subsiste em um modelo
-   sem normalizador e é, portanto, atribuível a diferença genuína entre os domínios.
+   sem normalizador e é, portanto, atribuível a diferença genuína entre os domínios. Contra o
+   teto de Y.1.4, esse residual corresponde a 30,4% a 37,6% da margem disponível — ou seja,
+   mesmo a parcela não explicável por escala é grande em relação ao que há para perder.
 
 Não se afirma, por conseguinte, que a assimetria seja um achado sobre a informação contida em
 cada posição, nem que seja um artefato de normalização. Ela é as duas coisas, em proporções
@@ -356,23 +474,23 @@ nos três braços. Cada modificação é reportada contra a base do próprio bra
 bootstrap pareado da diferença. Adota-se o critério de que **diferença cujo intervalo contém
 zero não é contada como ganho**.
 
-Configuração de base, por braço:
+Configuração de base, por braço, com a fração do teto de Y.1.4 ao lado do coeficiente kappa:
 
-| Braço | Kappa | Especificidade |
-|---|---:|---:|
-| Cabeça | 0,383 [0,348 a 0,418] | 0,724 [0,690 a 0,758] |
-| Cabeça degradada | 0,325 [0,292 a 0,359] | 0,700 [0,666 a 0,734] |
-| Punho | 0,356 [0,325 a 0,388] | 0,682 [0,647 a 0,717] |
+| Braço | Kappa | Fração do teto | Especificidade |
+|---|---:|---:|---:|
+| Cabeça | 0,383 [0,348 a 0,418] | 62,7% | 0,724 [0,690 a 0,758] |
+| Cabeça degradada | 0,325 [0,292 a 0,359] | 53,2% | 0,700 [0,666 a 0,734] |
+| Punho | 0,356 [0,325 a 0,388] | 58,2% | 0,682 [0,647 a 0,717] |
 
 Modificações, no braço de cabeça:
 
-| Modificação | Kappa | Δ kappa (pareado) | Especificidade | Δ especificidade (pareado) |
-|---|---:|---|---:|---|
-| Retirada da ponderação de classes | 0,417 [0,386 a 0,450] | +0,034 [−0,005 a +0,073] | 0,379 [0,344 a 0,415] | **−0,345** [−0,368 a −0,322] |
-| Limiar de decisão de Youden | 0,333 [0,296 a 0,370] | −0,050 [−0,060 a −0,040] | 0,792 [0,760 a 0,822] | +0,068 [+0,056 a +0,080] |
-| Mediana móvel de 5 épocas | 0,399 [0,363 a 0,435] | +0,016 [+0,012 a +0,020] | 0,734 [0,699 a 0,768] | +0,010 [+0,006 a +0,014] |
-| **Modelo oculto de Markov de 2 estados** | **0,507** [0,463 a 0,548] | **+0,123** [+0,105 a +0,142] | 0,727 [0,685 a 0,767] | +0,003 [−0,015 a +0,022] |
-| **Contexto ampliado para ±11 épocas** | 0,458 [0,418 a 0,499] | **+0,075** [+0,060 a +0,090] | **0,825** [0,791 a 0,856] | **+0,101** [+0,083 a +0,118] |
+| Modificação | Kappa | Fração do teto | Δ kappa (pareado) | Especificidade | Δ especificidade (pareado) |
+|---|---:|---:|---|---:|---|
+| Retirada da ponderação de classes | 0,417 [0,386 a 0,450] | 68,2% | +0,034 [−0,005 a +0,073] | 0,379 [0,344 a 0,415] | **−0,345** [−0,368 a −0,322] |
+| Limiar de decisão de Youden | 0,333 [0,296 a 0,370] | 54,5% | −0,050 [−0,060 a −0,040] | 0,792 [0,760 a 0,822] | +0,068 [+0,056 a +0,080] |
+| Mediana móvel de 5 épocas | 0,399 [0,363 a 0,435] | 65,3% | +0,016 [+0,012 a +0,020] | 0,734 [0,699 a 0,768] | +0,010 [+0,006 a +0,014] |
+| **Modelo oculto de Markov de 2 estados** | **0,507** [0,463 a 0,548] | **82,9%** | **+0,123** [+0,105 a +0,142] | 0,727 [0,685 a 0,767] | +0,003 [−0,015 a +0,022] |
+| **Contexto ampliado para ±11 épocas** | 0,458 [0,418 a 0,499] | **75,0%** | **+0,075** [+0,060 a +0,090] | **0,825** [0,791 a 0,856] | **+0,101** [+0,083 a +0,118] |
 
 As duas últimas linhas reproduzem-se nos três braços, e a reprodução é parte do resultado:
 
@@ -382,7 +500,17 @@ As duas últimas linhas reproduzem-se nos três braços, e a reprodução é par
 | Cabeça degradada | +0,122 [+0,101 a +0,145] | +0,082 [+0,066 a +0,099] | +0,106 [+0,088 a +0,126] |
 | Punho | +0,123 [+0,105 a +0,142] | +0,058 [+0,041 a +0,075] | +0,119 [+0,099 a +0,139] |
 
-Quatro leituras.
+Cinco leituras.
+
+**Lida contra o teto, a distância que resta é menor do que os coeficientes sugerem.** A
+configuração de base alcança 62,7% da margem entre o classificador trivial e a concordância
+humana; a ampliação do contexto leva essa fração a 75,0% e o modelo de Markov a 82,9%, ambos no
+braço de cabeça. A leitura pertinente não é, portanto, que um coeficiente de 0,458 esteja
+distante de 1,000, e sim que restam aproximadamente 25% da margem disponível. Duas ressalvas
+acompanham essa leitura, e a segunda é decisiva: o teto foi medido em 90 dos 92 participantes,
+de modo que as frações comparam populações quase — não exatamente — coincidentes; e **a fração
+de 82,9% do modelo de Markov não se sustenta fora desta coorte**, conforme a seção Y.6, razão
+pela qual ela não deve ser apresentada como o desempenho do método.
 
 **A imposição de estrutura temporal rende, mas apenas na formulação em que o custo de
 transição é estimado dos dados.** A mediana móvel de cinco épocas — suavização de janela fixa
@@ -455,6 +583,16 @@ coorte externa, e a especificidade decresce de **0,802** [0,768 a 0,831] para **
 domínio: aproximadamente trinta pontos percentuais de especificidade não sobrevivem à troca de
 coorte. Considera-se, por consequência, que **o desempenho externo, e não o interno, constitui
 a estimativa defensável do comportamento esperado do método em população não observada**.
+
+**Não há teto de concordância humana medido nesta coorte**, e por isso os coeficientes desta
+seção não são acompanhados da fração do teto que acompanha os das seções Y.3 a Y.5. A coleção
+externa não publica segunda pontuação manual; o valor de 0,612 estabelecido em Y.1.4 é
+propriedade da equipe de pontuação da base de desenvolvimento e não se transporta. Trata-se de
+medição **não executada por indisponibilidade do dado**, e não de medição executada com
+resultado diferente. Em consequência, não é possível afirmar quanto da degradação relatada
+abaixo corresponde a perda de desempenho do método e quanto corresponde a rotulagem de
+referência mais ou menos concordante na coorte de destino — a decomposição existe em princípio e
+não foi medida.
 
 Registra-se que os coeficientes kappa das duas condições **não são diretamente comparáveis
 entre si**, uma vez que o kappa depende da prevalência da classe majoritária, que é de 0,699
@@ -564,31 +702,43 @@ Reunindo o que foi medido:
    [0,877 a 0,912] nas duas bases empregadas, com kappa nulo em ambas. A acurácia não é
    métrica informativa neste domínio, e a identidade derivada em Y.1.3 mostra que a
    constatação se estende a resultados publicados na literatura.
-2. Os algoritmos clássicos de actigrafia, aplicados a um substituto de contagem sem calibração
+2. A concordância entre dois pontuadores humanos sobre a mesma polissonografia, na mesma tarefa
+   binária, é de kappa 0,612 [0,572 a 0,650] nos 90 participantes que são também da base de
+   desenvolvimento, e de 0,607 [0,569 a 0,643] nos 96 que dispõem das duas pontuações. A faixa
+   disponível para o coeficiente kappa nesta tarefa é, portanto, aproximadamente [0; 0,61], e
+   não [0; 1]. A discordância humana é sistemática e concentra-se na vigília: o segundo
+   pontuador identifica 7,8 pontos percentuais mais de vigília que o primeiro.
+3. Os algoritmos clássicos de actigrafia, aplicados a um substituto de contagem sem calibração
    de escala, degeneram exatamente para esse classificador trivial — evidência de que
    contagens proprietárias não se reproduzem a partir de aceleração bruta.
-3. O custo de mover o sensor do punho para a cabeça é de 0,050 em kappa, com a qualidade de
-   aquisição controlada, e é menor que o custo de degradar a grade de aquisição, de 0,071.
-4. A transferência entre posições é assimétrica: do punho atravessa, da cabeça colapsa. O
+4. O custo de mover o sensor do punho para a cabeça é de 0,050 em kappa, com a qualidade de
+   aquisição controlada, e é menor que o custo de degradar a grade de aquisição, de 0,071. Os
+   dois correspondem a 8,1% e 11,6% da margem entre o classificador trivial e a concordância
+   humana.
+5. A transferência entre posições é assimétrica: do punho atravessa, da cabeça colapsa. O
    colapso decompõe-se em uma componente de escala, responsável por 71% a 78% da lacuna e
    recuperável sem rótulo do destino, e uma componente residual da ordem de 0,19 a 0,23 em
-   kappa, atribuível a diferença genuína entre os domínios.
-5. Entre as modificações avaliadas, a ampliação da janela de contexto para aproximadamente
+   kappa, atribuível a diferença genuína entre os domínios. A queda total equivale a 57,6% da
+   margem disponível.
+6. Entre as modificações avaliadas, a ampliação da janela de contexto para aproximadamente
    onze minutos é a única que melhora kappa e especificidade simultaneamente, e é a única cujo
-   ganho se reproduz em coorte independente.
-6. O desempenho em coorte independente é kappa de 0,334 [0,254 a 0,416] e especificidade de
+   ganho se reproduz em coorte independente. Com ela, o desempenho interno alcança 75,0% da
+   margem disponível no braço de cabeça e 67,6% no braço de punho.
+7. O desempenho em coorte independente é kappa de 0,334 [0,254 a 0,416] e especificidade de
    0,507 [0,442 a 0,576], acima do classificador trivial da própria coorte e substancialmente
-   inferior ao desempenho interno. É esta a estimativa que se adota como defensável.
-7. O lado do corpo em que o sensor é acoplado não produziu efeito distinguível de zero em
+   inferior ao desempenho interno. É esta a estimativa que se adota como defensável. Não há
+   teto de concordância medido naquela coorte, de modo que este valor não é expresso como
+   fração de margem alguma.
+8. O lado do corpo em que o sensor é acoplado não produziu efeito distinguível de zero em
    nenhuma das vinte e quatro comparações realizadas.
 
 O que permanece **não medido**, e é declarado como tal: o comportamento do dispositivo
 desenvolvido neste trabalho em placa, uma vez que a validação em hardware depende de etapa não
 concluída; o custo do acoplamento mecânico através de um travesseiro, distinto do custo da
 posição anatômica medido em Y.3; a segunda coorte externa prevista; e o teto de concordância
-entre pontuadores humanos da base de desenvolvimento, que forneceria a referência superior
-contra a qual os decréscimos de kappa deveriam ser lidos. Nenhum desses procedimentos foi
-executado com resultado desfavorável — nenhum foi executado.
+entre pontuadores na coorte externa, que permitiria decompor a degradação relatada em Y.6 entre
+perda de desempenho do método e diferença de concordância da rotulagem de referência. Nenhum
+desses procedimentos foi executado com resultado desfavorável — nenhum foi executado.
 
 ── FIM DO TEXTO ─────────────────────────────────────────────────────────────
 
@@ -607,7 +757,22 @@ pip install -r requirements.txt
 python -m experimentos.ml03b_otimizacoes    --item resumo    # Y.5 (interno, N=92)
 python -m experimentos.ml04_validacao_externa --comparar     # Y.6 (externo, n=27)
 python -m experimentos.ml04_validacao_externa --lados        # Y.7 (lado, n=26)
+python -m experimentos.ml05_teto_interavaliador --resumo     # Y.1.4 (teto, n=96 e n=90)
 ```
+
+O `ml05` é o único que **precisa do dataset em disco** para recalcular — os outros três leem o
+JSON. Sem bandeira alguma ele relê os 100 EDFs e leva cerca de 2 min 30 s; com `--resumo`, relê o
+JSON e é instantâneo. Ele lê **somente os dois canais de pontuação** de cada arquivo, via o
+`memmap` de `_ler_canal`: o acelerômetro não é tocado, e é por isso que 46 GB em disco custam
+dois minutos e meio, não uma hora.
+
+Há ainda `python -m experimentos.ml05_teto_interavaliador --reescrever-notas`, que atualiza no
+JSON **apenas** as chaves de prosa (`o_que_nao_mede`, `teto_no_newcastle`, `nota_assimetria`) a
+partir das constantes do código, sem recalcular medição alguma e preservando o `utc` da medição.
+Ele existe porque corrigir uma nota não deve custar 2,5 min de E/S — e porque "reprocessar só
+para atualizar um texto" é exatamente como um número novo entra por acidente. É idempotente:
+rodar duas vezes avisa que não há o que mudar. O campo `utc_notas` registra quando as notas
+foram regravadas, separado do `utc` da medição.
 
 > ⚠️ **O `--lados` regrava o JSON.** Ele sobrescreve
 > `ml04b_efeito_do_lado_aec203907e6f.json`, e a **única** diferença em relação à versão
@@ -637,6 +802,77 @@ próximos. Isso é verificável: nos três JSONs de `ml02_*` as três chaves tê
 `NaN` nessas linhas (divisão por zero, nenhuma época predita como vigília), e **`NaN` em JSON
 não é JSON válido em sentido estrito**. Se algum dia esses arquivos passarem por um parser
 mais rigoroso que o do Python, é aí que vai quebrar.
+
+### Y.1.4 — teto de concordância entre pontuadores
+
+Tudo em `ml05_teto_interavaliador_aec203907e6f.json`, reproduzido por
+`python -m experimentos.ml05_teto_interavaliador --resumo`:
+
+| Número no texto | Chave |
+|---|---|
+| 100 no disco, **96** com as duas pontuações, 4 sem a segunda | `censo_de_sujeitos.n_no_disco`, `.n_com_os_dois_pontuadores`, `.sem_o_segundo` (`sub-115`, `sub-124`, `sub-129`, `sub-130`) |
+| base de desenvolvimento 92, interseção **90** | `censo_de_sujeitos.n_base_desenvolvimento_cabeca_e_pulso`, `.n_intersecao` |
+| 91 554 épocas brutas, 90 782 válidas nos dois, 772 excluídas (0,8%) | `todos_os_96.censo_de_epocas` |
+| **κ 0,607 [0,569 a 0,643]** e ac 0,916 [0,906 a 0,926] nos 96 | `todos_os_96.referencia_pontuador_1.media/.ic95_*` |
+| **κ 0,612 [0,572 a 0,650]** e ac 0,916 [0,905 a 0,927] nos 90 | `recorte_92_do_ml03.referencia_pontuador_1` |
+| dp entre participantes 0,179 | `recorte_92_do_ml03.referencia_pontuador_1.desvio_padrao.kappa` |
+| prevalência de sono 89,9% (pontuador 1) e 82,1% (pontuador 2); diferença de 7,8 pt | `recorte_92_do_ml03.prevalencia_sono_pontuador_1` (0,8989), `.._2` (0,8212) — **não** as do recorte de 96, que dão 89,9% e 82,2% |
+| espec. 0,958 [0,945 a 0,970] com o pontuador 1 como referência | `recorte_92_do_ml03.referencia_pontuador_1.media.especificidade` |
+| espec. 0,520 [0,480 a 0,558] com o pontuador 2 como referência | `recorte_92_do_ml03.referencia_pontuador_2.media.especificidade` |
+
+**As frações do teto são derivadas, e o divisor é sempre o mesmo.** Todas usam
+κ_teto = 0,6117, o valor dos **90** participantes. Conferência:
+
+| No texto | Conta |
+|---|---|
+| diagonal de cabeça = 65,1% | 0,3983 / 0,6117 |
+| Sadeh na cabeça = 72,9% | 0,4461 / 0,6117 |
+| custo de posição = 8,1% · de sensor = 11,6% | 0,0498 / 0,6117 · 0,0709 / 0,6117 |
+| colapso cabeça → punho = 57,6% | 0,3524 / 0,6117 |
+| residual do RF = 30,4% a 37,6% | 0,1858 / 0,6117 e 0,2301 / 0,6117 |
+| base = 62,7% / 53,2% / 58,2% | `itens.baseline.<braço>` / 0,6117 |
+| item 6 = 68,2% · item 7 = 54,5% · item 8 = 65,3% (cabeça) | `itens.<n>.cabeca` / 0,6117 |
+| HMM = 82,9% · contexto ±11 = 75,0% (cabeça) | 0,5066 / 0,6117 · 0,4585 / 0,6117 |
+| contexto ±11 no punho = 67,6% | 0,4136 / 0,6117 |
+
+🔧 **Cinco ressalvas, e as três primeiras mudam o que se pode afirmar.**
+
+**1. O divisor é medido em 90 participantes; os numeradores, em 92.** Dois dos 92 da base de
+desenvolvimento não têm a segunda pontuação. As frações comparam, portanto, populações quase
+coincidentes, não idênticas. O texto de Y.1.4 e o de Y.5 declaram isso. **Não apague essa
+ressalva para encurtar** — é a primeira coisa que um avaliador atento vai perguntar, e a
+resposta ("90 dos 92") é boa; a ausência de resposta, não.
+
+**2. Este κ NÃO é comparável com κ de estadiamento da literatura — e a primeira redação desta
+nota errava a direção.** O 0,612 é sobre binário sono × vigília, obtido colapsando N1/N2/N3/REM
+em "sono" pelo mesmo `_MAPA_ROTULO` do pipeline. A versão anterior deste arquivo afirmava que
+ele seria **maior** que um κ de estadiamento "por construção". **Isso não se sustenta**: o
+colapso de classes de fato apaga a discordância interna ao sono e puxa a concordância para cima,
+mas o κ corrige pelo acaso, e a correção é mais severa quando uma classe domina — o que é
+exatamente o caso do binário, com ~90% de sono. Os dois efeitos atuam em sentidos opostos,
+**nenhum deles foi quantificado neste trabalho**, e não há medição nem citação aqui que
+sustente uma direção. A redação corrigida, no texto e no código, diz apenas que os dois números
+não são comparáveis. Se você citar este número ao lado de um κ de estadiamento publicado, está
+comparando duas tarefas diferentes sem saber para que lado o viés aponta.
+
+**3. Teto não é barreira física.** Dois pontuadores discordarem não prova que exista resposta
+certa inacessível: prova que a variável-alvo tem ruído de rotulagem dessa magnitude. Um modelo
+em 0,612 estaria concordando com o pontuador 1 tanto quanto o pontuador 2 concorda. O texto diz
+isso; a formulação "teto" é usada porque é o termo corrente, não porque seja um limite.
+
+**4. A assimetria direcional é grande e é substantiva.** O pontuador 2 marca ~8 pontos
+percentuais mais de vigília. Consequência: com o pontuador 1 como referência a especificidade
+humana é 0,958, e com o pontuador 2 é 0,520 — **o mesmo par de pontuações**. κ e acurácia são
+simétricos e não se movem. Sempre diga qual é a referência ao citar especificidade humana. A
+referência adotada é o pontuador 1, porque é a verdade de todos os outros experimentos.
+
+**5. Um número que NÃO deve ir para o texto.** A especificidade humana na direção pontuador 2
+como referência (0,520) é numericamente próxima da especificidade externa do modelo (0,507, Y.6).
+**É coincidência entre coortes e direções diferentes, e não sustenta afirmação alguma.** Posta
+lado a lado no texto, ela vira inevitavelmente a leitura de que "o modelo erra a vigília tanto
+quanto dois humanos discordam dela" — que é uma afirmação forte, sobre populações distintas, sem
+nada que a sustente. Deixada aqui de propósito, para que a tentação seja registrada e recusada
+uma vez só.
 
 ### Y.2 — Newcastle
 
@@ -829,7 +1065,8 @@ você colar as duas seções sem os `n`, vira erro aparente de transcrição.
 
 ## Checklist antes de colar no documento
 
-- [ ] Ajustar `Y` para o número do capítulo, e conferir as referências internas a `Y.1`–`Y.8`.
+- [ ] Ajustar `Y` para o número do capítulo, e conferir as referências internas a `Y.1`–`Y.8`,
+      incluindo as remissões a `Y.1.4` que aparecem em Y.2, Y.3, Y.4, Y.5 e Y.6.
 - [ ] Substituir "a seção de metodologia", "a seção de limitações" e "a seção de extração de
       características" pelos números de seção reais do TCC.
 - [ ] **Alinhar com o `LIMITACOES-TCC.md`.** As seções X.3 (lateralidade) e X.4 (degradação
@@ -868,11 +1105,18 @@ você colar as duas seções sem os `n`, vira erro aparente de transcrição.
   `ml02_wearanize_pulso_*` (N = 7) foram execuções de verificação antes do N = 92. Os
   resultados definitivos da mesma base são os de Y.3 a Y.5, com N = 92 e IC. Citar os pilotos
   ao lado só criaria dois números para a mesma coisa.
-- **Não apresenta o teto de concordância entre pontuadores.** A base tem dois pontuadores
-  humanos em 96 participantes, e esse teto seria a referência superior natural para ler os Δκ.
-  **Não foi medido** — e é a lacuna mais barata de fechar que sobrou neste capítulo: o dado
-  está em disco, o carregador aceita `pontuador=2`, e são duas chamadas de `carregar()` mais
-  um kappa. Se sobrar um dia antes da entrega, é aqui que ele rende mais.
+- **Não apresenta teto de concordância para a coorte externa.** O teto da base de
+  desenvolvimento foi medido (Y.1.4, `ML-05`), mas o da coorte externa **não existe como dado**:
+  a coleção Newcastle 2015 OA não publica segunda pontuação manual. Sem ele, não há como separar,
+  na degradação de Y.6, o que é perda de desempenho do método do que é rotulagem de referência
+  mais ou menos concordante. É procedimento **impossível com o dado publicado**, e não
+  procedimento pendente — diferente do Walch, que é pendente.
+- **Não converte especificidade em fração do teto.** As frações do teto são calculadas só para
+  kappa. Especificidade humana depende de qual pontuador é a referência (0,958 contra 0,520 para
+  o mesmo par), então uma "fração do teto de especificidade" teria dois valores conforme a
+  escolha — e escolher o que favorece o trabalho seria exatamente o tipo de coisa que este
+  capítulo evita. Se precisar do enquadramento, cite os dois valores humanos e deixe o leitor
+  comparar.
 - **Não afirma nada sobre o protótipo em placa.** Nenhum número deste capítulo foi medido no
   dispositivo. Todo ele é sobre bases públicas de acelerometria com rotulagem
   polissonográfica, e a seção Y.8 declara isso.
