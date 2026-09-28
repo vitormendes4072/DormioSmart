@@ -56,6 +56,7 @@ MIGRACOES_APLICADAS = (
     "004_tipo_de_dispositivo_e_agregacao.sql",
     "005_papel_de_ingestao_minimo.sql",
     "006_direito_de_eliminacao.sql",
+    "007_credencial_fora_da_tabela_exposta.sql",
 )
 
 VARIAVEL = "DORMIO_RLS_DATABASE_URL"
@@ -201,11 +202,21 @@ def cenario(_conexao_dona, esquema):
         # O trigger `on_auth_user_created` da 001 deve ter criado os profiles.
         cursor.execute(
             """
-            insert into public.devices (id, user_id, nome, token_hash, tipo) values
-                (%s, %s, 'Travesseiro da Ana',   'hash-ana-1',   'travesseiro'),
-                (%s, %s, 'Travesseiro do Bruno', 'hash-bruno-1', 'travesseiro')
+            insert into public.devices (id, user_id, nome, tipo) values
+                (%s, %s, 'Travesseiro da Ana',   'travesseiro'),
+                (%s, %s, 'Travesseiro do Bruno', 'travesseiro')
             """,
             (DEVICE_ANA, ANA, DEVICE_BRUNO, BRUNO),
+        )
+
+        # A credencial vive em `device_tokens` desde a 007 (SEC-08): `devices`
+        # e exposta ao PostgREST, e GRANT de tabela alcanca toda coluna dela.
+        cursor.execute(
+            """
+            insert into public.device_tokens (device_id, token_hash) values
+                (%s, 'hash-ana-1'), (%s, 'hash-bruno-1')
+            """,
+            (DEVICE_ANA, DEVICE_BRUNO),
         )
 
         linhas = {}

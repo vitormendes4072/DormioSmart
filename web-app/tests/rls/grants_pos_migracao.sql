@@ -18,3 +18,8 @@ grant select, insert, update, delete on public.devices    to anon, authenticated
 grant select, insert, update, delete on public.sleep_data to anon, authenticated, service_role;
 
 grant usage, select on all sequences in schema public to anon, authenticated, service_role;
+
+-- `device_tokens` (SEC-08) NAO recebe GRANT, e a ausencia e a protecao: sem
+-- privilegio, o PostgREST nao expoe a tabela como endpoint. Este comentario
+-- existe para que ninguem acrescente a linha "por simetria" com as de cima.
+-- Ver tests/rls/test_rls_credencial.py.

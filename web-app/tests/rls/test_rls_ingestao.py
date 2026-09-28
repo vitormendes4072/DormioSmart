@@ -24,7 +24,7 @@ import pytest
 
 PAPEL = "dormio_ingestao"
 
-TABELAS = ("profiles", "devices", "sleep_data")
+TABELAS = ("profiles", "devices", "sleep_data", "device_tokens")
 
 # Assinaturas como o Postgres as identifica, para `has_function_privilege`.
 F_SANIDADE = "public.sanidade()"
@@ -124,9 +124,13 @@ def test_o_papel_nao_insere_direto_em_sleep_data(como, cenario):
 
 
 def test_o_papel_nao_le_o_token_hash_de_ninguem(como, cenario):
-    """O material que o SEC-02 existe para não entregar."""
+    """O material que o SEC-02 existe para não entregar.
+
+    Desde a 007 a credencial vive em `device_tokens`, e o papel de ingestao
+    tambem nao a alcanca — ele resolve o token pela funcao, nunca pela tabela.
+    """
     with como(cenario["ana"], papel=PAPEL) as ingestao:
-        ingestao.negado("select token_hash from public.devices")
+        ingestao.negado("select token_hash from public.device_tokens")
 
 
 def test_o_papel_executa_exatamente_tres_funcoes(catalogo):

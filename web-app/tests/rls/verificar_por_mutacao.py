@@ -163,8 +163,10 @@ SABOTADORES = {
             set search_path = '' as $SAB$
             declare v_device uuid; v_dono uuid; v_id bigint;
             begin
-                select d.id, d.user_id into v_device, v_dono from public.devices d
-                 where d.token_hash = p_token_hash and d.revoked_at is null limit 1;
+                select d.id, d.user_id into v_device, v_dono
+                  from public.device_tokens t
+                  join public.devices d on d.id = t.device_id
+                 where t.token_hash = p_token_hash and d.revoked_at is null limit 1;
                 if v_device is null then return null; end if;
                 insert into public.sleep_data (movimento_total, user_id, device_id)
                 values (
@@ -226,14 +228,100 @@ SABOTADORES = {
         minimo=2,
         exige="test_o_direito_de_apagar_nao_virou_direito_de_reescrever",
     ),
+    # --- SEC-08: a credencial fora da tabela exposta ---
+    "credencial_de_volta_em_devices": dict(
+        descricao="token_hash recriada como coluna de devices",
+        sql="alter table public.devices add column token_hash text;",
+        minimo=1,
+        exige="test_devices_nao_tem_mais_token_hash",
+    ),
+    "cliente_alcanca_as_credenciais": dict(
+        descricao="authenticated ganha select em device_tokens",
+        sql="grant select on public.device_tokens to authenticated;",
+        minimo=1,
+        exige="test_nem_anon_nem_authenticated_tem_privilegio_na_tabela",
+    ),
+    "credenciais_sem_rls": dict(
+        descricao="device_tokens perde o RLS (a segunda camada)",
+        sql="alter table public.device_tokens disable row level security;",
+        minimo=1,
+        exige="test_a_tabela_tem_rls_ligado_mesmo_sem_grant",
+    ),
+    "pareamento_escolhe_o_dono": dict(
+        descricao="parear_dispositivo ganha parametro de usuario",
+        sql="""
+            create or replace function public.parear_dispositivo(
+                p_nome text, p_tipo text, p_token_hash text, p_user_id uuid default null
+            ) returns table (
+                id uuid, nome text, tipo text,
+                created_at timestamptz, last_seen_at timestamptz, revoked_at timestamptz
+            ) language plpgsql volatile security definer set search_path = '' as $SAB$
+            declare v_dono uuid := coalesce(p_user_id, auth.uid()); v_device uuid;
+            begin
+                if v_dono is null then return; end if;
+                insert into public.devices (user_id, nome, tipo)
+                values (v_dono, p_nome, coalesce(p_tipo, 'travesseiro'))
+                returning devices.id into v_device;
+                insert into public.device_tokens (device_id, token_hash)
+                values (v_device, p_token_hash);
+                return query select d.id, d.nome, d.tipo, d.created_at,
+                                    d.last_seen_at, d.revoked_at
+                               from public.devices d where d.id = v_device;
+            end; $SAB$;
+            grant execute on function
+                public.parear_dispositivo(text, text, text, uuid) to authenticated;
+        """,
+        minimo=1,
+        exige="test_o_pareamento_nao_aceita_escolher_o_dono",
+    ),
+    "insert_direto_em_devices_de_volta": dict(
+        descricao="devices_insert_own recriada (dispositivo sem credencial)",
+        sql="""
+            create policy devices_insert_own on public.devices for insert
+                to authenticated with check (user_id = (select auth.uid()));
+        """,
+        minimo=1,
+        exige="test_nao_da_para_criar_dispositivo_sem_credencial",
+    ),
+    "revogacao_ignorada_na_juncao": dict(
+        descricao="resolver_dispositivo esquece o revoked_at na juncao",
+        sql="""
+            create or replace function public.resolver_dispositivo(p_token_hash text)
+            returns table (id uuid, user_id uuid) language sql stable security definer
+            set search_path = '' as $SAB$
+                select d.id, d.user_id
+                  from public.device_tokens t
+                  join public.devices d on d.id = t.device_id
+                 where t.token_hash = p_token_hash
+                 limit 1
+            $SAB$;
+        """,
+        minimo=1,
+        exige="test_revogar_o_dispositivo_invalida_o_token",
+    ),
+    "credencial_sem_cascade": dict(
+        descricao="device_tokens sem cascade (credencial orfa apos exclusao)",
+        sql="""
+            alter table public.device_tokens
+                drop constraint device_tokens_device_id_fkey;
+            alter table public.device_tokens
+                add constraint device_tokens_device_id_fkey
+                foreign key (device_id) references public.devices(id);
+        """,
+        minimo=1,
+        exige="test_apagar_o_dispositivo_apaga_a_credencial",
+    ),
     "definer_da_005_sem_search_path": dict(
         descricao="resolver_dispositivo sem search_path fixo",
         sql="""
             create or replace function public.resolver_dispositivo(p_token_hash text)
             returns table (id uuid, user_id uuid) language sql stable security definer
             as $SAB$
-                select d.id, d.user_id from public.devices d
-                 where d.token_hash = p_token_hash and d.revoked_at is null limit 1
+                select d.id, d.user_id
+                  from public.device_tokens t
+                  join public.devices d on d.id = t.device_id
+                 where t.token_hash = p_token_hash and d.revoked_at is null
+                 limit 1
             $SAB$;
         """,
         minimo=1,
@@ -271,6 +359,23 @@ def rodar(nome, sabotador, url):
             for linha in saida.splitlines()
             if linha.startswith("FAILED")
         ]
+
+        # SABOTADOR QUEBRADO vs. SABOTAGEM NAO DETECTADA — a distincao custou
+        # um diagnostico errado. Quando o SQL do sabotador nao aplica (o caso
+        # real: ele referenciava `devices.token_hash`, que a migration 007
+        # removeu), o setup do esquema falha e o pytest emite ERROR, nao FAILED.
+        # Contando so FAILED, o script dizia "a suite nao acusa" — e mandava
+        # consertar a suite, quando o defeito era no proprio sabotador.
+        erros_de_setup = [
+            linha for linha in saida.splitlines()
+            if linha.startswith("ERROR") or "error at setup of" in linha.lower()
+        ]
+        if erros_de_setup and not caidos:
+            return False, (
+                "SABOTADOR QUEBRADO: o SQL nao aplicou, o esquema nao subiu. "
+                "Conserte o sabotador, nao a suite. Primeira linha: "
+                + erros_de_setup[0][:160]
+            )
 
         if not caidos:
             return False, "NENHUM teste caiu — a suite nao acusa esta sabotagem"

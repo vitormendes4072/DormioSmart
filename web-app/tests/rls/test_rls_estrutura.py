@@ -25,12 +25,21 @@ import pytest
 # Tabelas que carregam dado pessoal e por isso exigem RLS.
 TABELAS_PESSOAIS = ("profiles", "devices", "sleep_data")
 
+# `device_tokens` carrega credencial e nao e alcancavel pelo cliente por
+# ausencia de GRANT (SEC-08). Fica fora de TABELAS_PESSOAIS porque as
+# assercoes daqui exigem policy, e ela nao deve ter nenhuma — o regime dela
+# esta em `test_rls_credencial.py`.
+
 # Contagem esperada de policies, conforme o bloco de VERIFICAÇÃO da 001.
 # Mudar este número é uma decisão de segurança; o teste existe para que a
 # mudança seja explícita e revisada.
 POLICIES_ESPERADAS = {
     "profiles": {"SELECT", "INSERT", "UPDATE", "DELETE"},
-    "devices": {"SELECT", "INSERT", "UPDATE", "DELETE"},
+    # Sem INSERT desde a 007: o unico caminho de criacao e
+    # `parear_dispositivo()`, que cria o dispositivo E a credencial na mesma
+    # transacao. Com a policy de insert, daria para criar dispositivo SEM
+    # credencial — linha que o caminho por token nunca resolve.
+    "devices": {"SELECT", "UPDATE", "DELETE"},
     # SELECT e DELETE, e deliberadamente NEM INSERT NEM UPDATE.
     #
     #   · sem INSERT: a escrita de leitura de sensor e exclusiva do

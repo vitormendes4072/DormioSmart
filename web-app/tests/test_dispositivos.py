@@ -85,7 +85,7 @@ def test_o_token_gravado_e_o_hash_do_token_devolvido():
     """Se os dois divergirem, o dispositivo nunca conseguiria autenticar."""
     capturado = {}
 
-    def criar_falso(_client, _usuario, nome, token_hash, *_extras):
+    def criar_falso(_client, nome, token_hash, *_extras):
         capturado["hash"] = token_hash
         return dict(DEVICE, nome=nome)
 
@@ -107,11 +107,30 @@ def test_dois_pareamentos_geram_tokens_diferentes():
     assert len(tokens) == 2
 
 
-def test_o_dono_vem_do_token_e_nao_do_corpo():
+def test_o_dono_nao_e_informado_pela_rota(): 
+    """O `user_id` deixou de existir como argumento (SEC-08).
+
+    A rota passava `g.usuario_id` para `dispositivos.criar`, e o RLS conferia no
+    insert. Agora o pareamento vai por `parear_dispositivo()` no banco, que
+    deriva o dono de `auth.uid()` — nao ha por onde informa-lo errado, nem por
+    onde o corpo da requisicao influenciar. Este teste trava a ASSINATURA, que e
+    onde a garantia passou a morar.
+
+    Que o dono seja de fato o de `auth.uid()` esta verificado contra Postgres
+    real em `tests/rls/test_rls_credencial.py::test_ana_pareia_um_dispositivo_novo`.
+    """
+    import inspect
+
+    parametros = list(inspect.signature(dispositivos.criar).parameters)
+    assert "usuario_id" not in parametros, (
+        f"`dispositivos.criar` voltou a receber o dono: {parametros}. O dono "
+        "pertence a `auth.uid()` dentro do banco (SEC-08)."
+    )
+
     capturado = {}
 
-    def criar_falso(_client, usuario_id, nome, _hash, *_extras):
-        capturado["usuario"] = usuario_id
+    def criar_falso(_client, nome, _hash, *_extras):
+        capturado["argumentos"] = (nome,) + _extras
         return dict(DEVICE, nome=nome)
 
     with _autenticado(), \
@@ -119,7 +138,9 @@ def test_o_dono_vem_do_token_e_nao_do_corpo():
          patch.object(dispositivos, "criar", side_effect=criar_falso):
         _client().post("/api/devices", json={"user_id": ID_BRUNO}, headers=_SESSAO)
 
-    assert capturado["usuario"] == ID_ANA
+    assert ID_BRUNO not in str(capturado["argumentos"]), (
+        "o user_id do corpo chegou ao pareamento"
+    )
 
 
 # --- nome -----------------------------------------------------------------
@@ -220,7 +241,7 @@ def test_tipo_ausente_vira_travesseiro():
     """Todo dispositivo anterior ao DATA-05 é um ESP32; cliente antigo segue valendo."""
     capturado = {}
 
-    def criar_falso(_client, _usuario, nome, _hash, tipo="travesseiro"):
+    def criar_falso(_client, nome, _hash, tipo="travesseiro"):
         capturado["tipo"] = tipo
         return dict(DEVICE, nome=nome)
 
@@ -235,7 +256,7 @@ def test_tipo_ausente_vira_travesseiro():
 def test_tipo_celular_e_aceito():
     capturado = {}
 
-    def criar_falso(_client, _usuario, nome, _hash, tipo="travesseiro"):
+    def criar_falso(_client, nome, _hash, tipo="travesseiro"):
         capturado["tipo"] = tipo
         return dict(DEVICE, nome=nome)
 

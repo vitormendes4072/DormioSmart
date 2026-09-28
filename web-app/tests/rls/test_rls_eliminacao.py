@@ -180,16 +180,26 @@ def test_a_funcao_nao_tem_parametro_de_usuario(catalogo):
     usuário apagaria a conta de qualquer outro, porque `security definer`
     ignora o RLS. É a diferença entre um direito e uma arma.
     """
-    assinatura = catalogo(
+    assinaturas = catalogo(
         """
         select pg_get_function_identity_arguments(p.oid)
           from pg_proc p join pg_namespace n on n.oid = p.pronamespace
          where n.nspname = 'public' and p.proname = 'apagar_minha_conta'
         """
     )
-    assert assinatura, "funcao apagar_minha_conta ausente — migration 006 aplicada?"
-    assert assinatura[0][0] == "", (
-        f"apagar_minha_conta ganhou parametro: {assinatura[0][0]!r}. "
+    assert assinaturas, "funcao apagar_minha_conta ausente — migration 006 aplicada?"
+
+    # TODAS as sobrecargas, e exatamente UMA — mesmo furo que a verificacao por
+    # mutacao encontrou no teste equivalente de `parear_dispositivo`. Aqui seria
+    # pior: uma sobrecarga `apagar_minha_conta(uuid)` deixada ao lado da boa
+    # transforma qualquer JWT valido em arma contra qualquer conta, e o diff da
+    # funcao original nao mostraria nada.
+    assert len(assinaturas) == 1, (
+        "apagar_minha_conta tem %d sobrecargas: %s. Deve haver uma so."
+        % (len(assinaturas), [a[0] for a in assinaturas])
+    )
+    assert assinaturas[0][0] == "", (
+        f"apagar_minha_conta ganhou parametro: {assinaturas[0][0]!r}. "
         "Sem parametro ela apaga quem chamou; com parametro, quem for indicado."
     )
 

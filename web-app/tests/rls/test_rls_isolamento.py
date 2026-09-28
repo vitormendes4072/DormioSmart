@@ -209,24 +209,16 @@ def test_ana_nao_alcanca_dispositivo_do_bruno_pelo_id(como, cenario):
     assert linhas == []
 
 
-def test_ana_nao_le_o_token_hash_do_bruno(como, cenario):
-    """`token_hash` é a credencial de ingestão do dispositivo (SEC-02).
-
-    A camada Python nunca devolve essa coluna (`dispositivos.CAMPOS` a omite),
-    mas o PostgREST devolve qualquer coluna que o SELECT peça — a lista de
-    campos do Python não protege nada aqui. Quem protege é o RLS.
-    """
-    with como(cenario["ana"]) as ana:
-        linhas = ana.executar(
-            "select token_hash from public.devices where user_id = %s",
-            (cenario["bruno"],),
-        )
-        todos = ana.executar("select token_hash from public.devices")
-
-    assert linhas == []
-    assert {linha[0] for linha in todos} == {"hash-ana-1"}, (
-        "a Ana alcancou token_hash que nao e dela"
-    )
+# O TESTE DO `token_hash` MUDOU DE LUGAR.
+#
+# Aqui havia um teste conferindo que a Ana nao lia `devices.token_hash` do
+# Bruno. Ele passava — o RLS nunca deixou ler linha alheia. O que ele NAO
+# cobria, e a analise que o acompanhava dizia o contrario, e que a Ana lia o
+# hash do PROPRIO dispositivo: `dispositivos.CAMPOS` omitia a coluna, mas
+# omissao em Python nao e permissao no banco.
+#
+# A 007 tirou a coluna de `devices` e a pos em `device_tokens`, sem GRANT para
+# o cliente. O regime todo da credencial esta em `test_rls_credencial.py`.
 
 
 def test_ana_nao_renomeia_dispositivo_do_bruno(como, cenario):
@@ -249,13 +241,21 @@ def test_ana_nao_revoga_dispositivo_do_bruno(como, cenario):
     assert afetadas == 0
 
 
-def test_ana_nao_troca_o_token_hash_do_bruno(como, cenario):
-    """Sequestro de dispositivo: reescrever o hash apontaria a ingestão do
-    Bruno para um token escolhido pela Ana."""
+def test_ana_nao_sequestra_o_dispositivo_do_bruno(como, cenario):
+    """Sequestro de dispositivo: apontar a ingestão do Bruno para um token
+    escolhido pela Ana.
+
+    Desde a 007 a credencial nao esta em `devices`, entao o UPDATE daquela
+    coluna nem existe mais. A tentativa equivalente — escrever em
+    `device_tokens` — esta em
+    `test_rls_credencial.py::test_ana_nao_escreve_na_tabela_de_credenciais`.
+    O que sobra aqui e a outra metade do sequestro: renomear ou desrevogar
+    o dispositivo alheio.
+    """
     with como(cenario["ana"]) as ana:
         afetadas = ana.contar_afetadas(
-            "update public.devices set token_hash = %s where id = %s",
-            ("hash-escolhido-pela-ana", cenario["device_bruno"]),
+            "update public.devices set revoked_at = null, nome = %s where id = %s",
+            ("Meu agora", cenario["device_bruno"]),
         )
     assert afetadas == 0
 
@@ -271,12 +271,17 @@ def test_ana_nao_apaga_dispositivo_do_bruno(como, cenario):
 
 def test_ana_nao_cria_dispositivo_no_nome_do_bruno(como, cenario):
     """Plantar um dispositivo na conta de outro daria à Ana um token válido
-    que escreve leitura carimbada como sendo do Bruno."""
+    que escreve leitura carimbada como sendo do Bruno.
+
+    Desde a 007 nem no proprio nome da para inserir direto — a policy de insert
+    saiu. A versao pela funcao esta em
+    `test_rls_credencial.py::test_o_pareamento_nao_aceita_escolher_o_dono`.
+    """
     with como(cenario["ana"]) as ana:
         ana.negado(
             """
-            insert into public.devices (user_id, nome, token_hash)
-            values (%s, 'Presente de grego', 'hash-plantado')
+            insert into public.devices (user_id, nome)
+            values (%s, 'Presente de grego')
             """,
             (cenario["bruno"],),
         )
@@ -292,21 +297,12 @@ def test_ana_nao_transfere_o_proprio_dispositivo_para_o_bruno(como, cenario):
         )
 
 
-def test_ana_cria_o_proprio_dispositivo(como, cenario):
-    """Caminho feliz do pareamento (AUTH-05). Prova que a policy de insert
-    existe e funciona — as negativas acima não são "tudo bloqueado"."""
-    with como(cenario["ana"]) as ana:
-        linhas = ana.executar(
-            """
-            insert into public.devices (user_id, nome, token_hash, tipo)
-            values (%s, 'Meu celular', 'hash-ana-celular', 'celular')
-            returning id, nome, tipo
-            """,
-            (cenario["ana"],),
-        )
-    assert len(linhas) == 1
-    assert linhas[0][1] == "Meu celular"
-    assert linhas[0][2] == "celular"
+# O CAMINHO FELIZ DO PAREAMENTO MUDOU DE LUGAR.
+#
+# Era um INSERT direto em `devices`, permitido pela policy `devices_insert_own`.
+# A 007 removeu aquela policy: o unico caminho de criacao passou a ser
+# `parear_dispositivo()`, que cria o dispositivo E a credencial na mesma
+# transacao. Ver `test_rls_credencial.py::test_ana_pareia_um_dispositivo_novo`.
 
 
 def test_ana_renomeia_o_proprio_dispositivo(como, cenario):

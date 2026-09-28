@@ -123,7 +123,7 @@ def init_routes(app):
             return jsonify({"error": "fonte de dados indisponivel"}), 503
 
         token = gerar_token()
-        device = dispositivos.criar(client, g.usuario_id, nome, hash_token(token), tipo)
+        device = dispositivos.criar(client, nome, hash_token(token), tipo)
         if device is None:
             return jsonify({"error": "nao foi possivel parear o dispositivo"}), 503
 
@@ -149,10 +149,11 @@ def init_routes(app):
         de escrita precisa existir no navegador.
 
         O `token_hash` da linha é gerado e o valor em claro é **descartado**:
-        a coluna é obrigatória e única no esquema, e um segredo que ninguém
-        conhece é mais seguro do que abrir exceção de nulo para esta classe
-        de dispositivo. O caminho por token simplesmente não é utilizável
-        neste registro — o que é exatamente o desejado.
+        a credencial é obrigatória e única no esquema (agora em
+        `device_tokens`, SEC-08), e um segredo que ninguém conhece é mais
+        seguro do que abrir exceção de nulo para esta classe de dispositivo. O
+        caminho por token simplesmente não é utilizável neste registro — o que
+        é exatamente o desejado.
         """
         client = _cliente_do_usuario()
         if client is None:
@@ -163,8 +164,7 @@ def init_routes(app):
             return jsonify(device), 200
 
         device = dispositivos.criar(
-            client, g.usuario_id, dispositivos.NOME_CELULAR,
-            hash_token(gerar_token()), "celular",
+            client, dispositivos.NOME_CELULAR, hash_token(gerar_token()), "celular",
         )
         if device is None:
             return jsonify({"error": "nao foi possivel preparar o dispositivo"}), 503
