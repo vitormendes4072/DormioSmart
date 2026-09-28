@@ -90,24 +90,78 @@ existe hoje se comporta bem. Eles não pegam uma tabela nova que nasça sem RLS
 desligado, mas mantém `rowsecurity = true` e o painel do Supabase mostrando a
 tabela como protegida.
 
+## No CI
+
+O job `rls` do workflow sobe um serviço Postgres e roda esta pasta a cada push,
+**em matriz de versão (14 e 16)**. RLS e privilégio são área onde o Postgres muda
+de comportamento entre *majors* — a 15 mudou o dono e os privilégios do schema
+`public`, por exemplo — e o harness foi desenvolvido na 14. Rodar nas duas faz a
+diferença aparecer no CI, com o diff na mão.
+
+A etapa que importa ali é **"Conferir que os testes de RLS não foram pulados"**.
+`pytest.skip` não falha o job: se a variável de ambiente sumisse, se o serviço
+não subisse ou se o `psycopg2` deixasse de instalar, esta pasta seria pulada e o
+CI ficaria verde — anunciando uma cobertura de segurança que não rodou. Pulo
+silencioso é pior que falha, porque ninguém investiga o verde. Os três cenários
+foram exercitados à mão antes de a etapa entrar.
+
 ## Verificação por mutação
 
-Uma suíte de segurança que nunca falhou não provou nada. Estes oito sabotadores
-foram aplicados ao esquema e **cada um foi detectado**:
+Uma suíte de segurança que nunca falhou não provou nada. O script
+`verificar_por_mutacao.py` aplica **25 sabotagens** ao esquema, uma por vez, e
+confere que a suíte acusa cada uma — e que o teste que *nomeadamente* deveria
+acusá-la esteja entre os que caem, para a suíte não passar por acidente.
+
+```bash
+python tests/rls/verificar_por_mutacao.py
+python tests/rls/verificar_por_mutacao.py --apenas rls_desligado   # investigar um
+```
+
+Rodar depois de **toda** mudança de esquema. Roda no CI, na versão 16.
+
+Duas coisas que o script aprendeu a distinguir, porque confundir manda consertar
+o lugar errado:
+
+- **sabotagem não detectada** — a suíte passou, e é regressão dela;
+- **sabotador quebrado** — o SQL não aplicou, o esquema não subiu, e o defeito é
+  no sabotador. Aconteceu de verdade: dois sabotadores referenciavam
+  `devices.token_hash` depois de a migração 007 remover a coluna.
+
+Amostra do que cada sabotagem derruba:
 
 | Sabotagem | Testes que caem |
 |---|---|
-| `disable row level security` em `sleep_data` | 16 |
+| `disable row level security` em `sleep_data` | 18 |
 | `create policy ... using (true)` em `sleep_data` | 7 |
-| `devices_update_own` sem `with check` | 1 (`test_policies_de_update_tem_with_check`) |
+| `devices_update_own` sem `with check` | 1 |
 | Policy de select para `anon` em `profiles` | 4 |
-| Policy de insert liberada em `sleep_data` | 2 |
-| Tabela nova com `user_id` e sem RLS | 1 (`test_toda_tabela_de_dado_pessoal_tem_rls`) |
-| `handle_new_user` sem `search_path` fixo | 1 |
-| GRANTs retirados de `authenticated` | 24 (todos os caminhos felizes) |
+| Tabela nova com `user_id` e sem RLS | 1 |
+| `security definer` sem `search_path` fixo | 1–2 |
+| Papel de ingestão ganha `select` em `sleep_data` | 3 |
+| Papel de ingestão ganha `BYPASSRLS` | 1 |
+| `registrar_leitura` aceita o dono pelo JSON | 2 |
+| `apagar_minha_conta` ganha parâmetro de usuário | 7 |
+| `sleep_data_delete_own` com `using (true)` | 3 |
+| `token_hash` recriada como coluna de `devices` | 3 |
+| `authenticated` ganha `select` em `device_tokens` | 1 |
+| `parear_dispositivo` ganha parâmetro de usuário | 3 |
+| `resolver_dispositivo` esquece o `revoked_at` | 2 |
+| **GRANTs retirados de `authenticated`** | **32 (todos os caminhos felizes)** |
 
 O último é o mais importante: ele simula "tudo quebrado". Se a suíte passasse
 nesse cenário, ela não valeria nada.
+
+Dois furos da própria suíte foram encontrados por este script, e não por
+revisão:
+
+1. **Sobrecarga escapava dos testes de assinatura.** Acrescentar
+   `parear_dispositivo(text,text,text,uuid)` *sem* remover a versão de três
+   argumentos passava batido — o teste olhava só a primeira linha do `pg_proc`.
+   E é exatamente assim que um parâmetro de dono entraria na prática: ninguém
+   apaga a função boa, acrescenta uma "versão para o admin" ao lado.
+2. **Estado vazando entre execuções.** Papel é objeto de *cluster*, não de
+   schema, então o `drop schema cascade` do setup não o alcançava e um
+   `alter role ... bypassrls` sobrevivia para a execução seguinte.
 
 ## O que estes testes NÃO cobrem
 

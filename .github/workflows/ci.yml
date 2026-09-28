@@ -19,7 +19,7 @@ on:
 
 jobs:
   test:
-    name: Testes da web-app (pytest)
+    name: Testes da web-app (pytest, Supabase mockado)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -36,10 +36,112 @@ jobs:
           pip install -r web-app/requirements.txt
           pip install pytest
 
+      # Sem Postgres, entao `tests/rls/` e pulada aqui de proposito -- ela nao
+      # cai para mock, porque mock nao exercita policy nenhuma. Quem roda RLS e
+      # o job `rls` abaixo. `--ignore` em vez de deixar pular: pulo aparece como
+      # "s" no relatorio e vira ruido que se aprende a ignorar.
       - name: Rodar testes
         run: |
           cd web-app
-          python -m pytest tests/ -v
+          python -m pytest tests/ -v --ignore=tests/rls
+
+  rls:
+    # Isolamento entre usuarios (SEC-05), contra Postgres de verdade.
+    #
+    # MATRIZ DE VERSAO de proposito. RLS e privilegio sao area onde o Postgres
+    # muda de comportamento entre majors -- a 15 mudou o dono e os privilegios
+    # do schema `public`, por exemplo. O harness foi desenvolvido e verificado
+    # na 14; a 16 e a que se usaria hoje. Rodar nas duas faz a diferenca
+    # aparecer aqui, com o diff na mao, e nao meses depois num banco real.
+    name: RLS contra Postgres ${{ matrix.postgres }}
+    runs-on: ubuntu-latest
+
+    strategy:
+      # Uma versao falhando nao cancela a outra: saber que passa na 14 e falha
+      # na 16 e metade do diagnostico.
+      fail-fast: false
+      matrix:
+        postgres: ['14', '16']
+
+    services:
+      postgres:
+        # Versao da matriz, nunca `latest`: mudanca de major tem de ser uma
+        # decisao, nao uma surpresa numa terca-feira.
+        image: postgres:${{ matrix.postgres }}
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: dormio_rls_teste
+        ports:
+          - 5432:5432
+        # Sem healthcheck, o pytest conecta antes de o banco aceitar conexao e
+        # o job falha de forma intermitente.
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      # Banco descartavel do runner. NUNCA aponta para o Supabase: o setup roda
+      # `drop schema cascade`, e o conftest se recusa a rodar contra host remoto
+      # ou *.supabase.co. Nenhum segredo do projeto entra aqui -- este job nao
+      # toca a instancia real, e nao precisa tocar.
+      DORMIO_RLS_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/dormio_rls_teste
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Configurar Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+
+      - name: Instalar dependências
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest psycopg2-binary
+
+      - name: Rodar testes de RLS
+        run: |
+          cd web-app
+          python -m pytest tests/rls -v
+
+      # A ETAPA QUE TORNA O SERVICO POSTGRES UTIL DE VERDADE.
+      #
+      # `pytest.skip` nao falha o job. Se a variavel de ambiente sumisse, se o
+      # servico nao subisse, se o psycopg2 deixasse de instalar -- em qualquer
+      # desses casos os testes de RLS seriam PULADOS e o CI ficaria VERDE,
+      # anunciando uma cobertura de seguranca que nao rodou. Pulo silencioso e
+      # pior que falha, porque ninguem investiga o verde.
+      #
+      # Os tres cenarios foram exercitados a mao: banco de pe (passa), variavel
+      # ausente (falha), psycopg2 ausente (falha).
+      - name: Conferir que os testes de RLS não foram pulados
+        run: |
+          cd web-app
+          python -m pytest tests/rls -q --no-header -rs > /tmp/rls.txt 2>&1 || true
+          cat /tmp/rls.txt
+          if grep -qE '[0-9]+ skipped' /tmp/rls.txt; then
+            echo "::error::Os testes de RLS foram PULADOS. O servico Postgres ou a variavel DORMIO_RLS_DATABASE_URL nao estao de pe -- o isolamento entre usuarios NAO foi verificado nesta execucao."
+            exit 1
+          fi
+          if ! grep -qE '[0-9]+ passed' /tmp/rls.txt; then
+            echo "::error::Nenhum teste de RLS foi coletado -- provavelmente psycopg2 ausente."
+            exit 1
+          fi
+
+      # Verificacao por mutacao: sabota o esquema de 25 maneiras e confere que a
+      # suite acusa cada uma. E o que impede o conjunto de virar decoracao --
+      # uma suite de seguranca que nunca falhou nao provou nada.
+      #
+      # So numa versao: ela sobe o esquema 26 vezes, e o que se verifica aqui e
+      # a suite, nao o Postgres. A 16 por ser a que se usaria hoje.
+      - name: Verificação por mutação da suíte
+        if: matrix.postgres == '16'
+        run: |
+          cd web-app
+          python tests/rls/verificar_por_mutacao.py
 
   frontend:
     name: Frontend (vitest + tsc + vite)
