@@ -83,9 +83,10 @@ E um **peso**: 🔴 caminho crítico da defesa · 🟡 importante · ⚪ polimen
 
    L0  EM PARALELO, SEM DEPENDER DE NADA DISSO:
        CALC-01..04 · DIAG-01..04 · REQ-01 · LGPD-01 · FW-07 · FW-01/03 · API-03
-       DATA-07 · INFRA-01 · SEC-05 · ML-06(carregador) · DOC-08 · PWA-01
+       DATA-07 · ML-06(carregador) · DOC-08 · PWA-01 · UI-10
 
    ✅ FECHADO:  ML-01 · ML-02 · ML-03 · ML-03b · ML-04 · ML-04b · HW-05
+                INFRA-01 · SEC-05 · SEC-06 · SEC-07
                 DADOS em disco · DUA resolvido · REF-01 · DOC-06 · DOC-07
 ```
 
@@ -204,8 +205,11 @@ diagrama** — que é o que a banca lê.
 | **DATA-07** | **O contrato precisa carregar features, não só o veredito.** Hoje cada linha leva magnitude + rótulo. O modelo precisa de um vetor por época — e agora **sabemos exatamente qual**: as 8 features de `ml/src/features.py`, em épocas de 30 s. O item saiu de "a definir" para "transcrever". | 🔴 |
 | **DATA-06** | **O limiar viaja com a leitura.** Hoje `1,2 m/s²` é constante compartilhada nascida do travesseiro, e o celular é classificado pela mesma régua. A **coluna e o campo dão para criar já**; o *valor* do limiar do celular depende do `VIA-02` (L2). | 🔴 |
 | **DATA-02** | **Modelo de amostragem** — índice de atividade por época vs. evento avulso. **Decidido: 30 s**, que é a resolução dos rótulos de PSG de todos os datasets e a época do pipeline. Falta *aplicar* no firmware (`FW-05`) e no contrato (`DATA-07`). | 🔴 |
-| **INFRA-01** | Supabase CLI para migrações versionadas. **Desdobramento:** com Postgres local dá para testar o RLS de verdade (usuário A não lê linha de B), hoje impossível — o `TEST-01` mocka o Supabase inteiro. | 🟡 |
-| **SEC-05** | **Nenhum teste exercita o RLS de verdade.** Os testes mockam o Supabase, então a garantia central de isolamento entre usuários **não tem cobertura automatizada**. Depende do `INFRA-01`. | 🔴 |
+| **INFRA-01** | ✅ **Resolvido por outro caminho.** O Supabase CLI não foi adotado; em vez dele, `web-app/tests/rls/esquema_base.sql` recria os primitivos do Supabase (schema `auth`, `auth.uid()`, os papéis, os GRANTs) sobre um Postgres descartável, e as migrações do repositório são aplicadas do disco sem adaptação. Resolve o que o item existia para resolver — testar RLS de verdade — sem introduzir dependência de ferramenta. | ✅ |
+| **SEC-05** | ✅ **Fechado.** 105 testes de RLS contra Postgres real, sem mock: adversarial em `profiles`, `devices` e `sleep_data` por todo comando, mais invariantes de catálogo (tabela nova sem RLS, `using (true)`, policy para `anon`). Verificado por mutação — 18 sabotadores, todos detectados (`tests/rls/verificar_por_mutacao.py`). | ✅ |
+| **SEC-06** | ✅ **Fechado.** A ingestão saiu da `service_role`: papel `dormio_ingestao` com `EXECUTE` em três funções e nenhum privilégio de tabela. O dono da linha é resolvido dentro do banco, a partir do token. Teste estático impede que rota nova use o cliente privilegiado. Migration `005`. | ✅ |
+| **SEC-07** | ✅ **Fechado.** Direito de eliminação (LGPD art. 18, V): policies de `delete` para as próprias linhas, `apagar_minha_conta()` sem parâmetro de usuário, `DELETE /api/me` com confirmação por frase. Migration `006`. Texto acadêmico em `docs/LGPD-ELIMINACAO.md`. | ✅ |
+| **UI-10** *(novo)* | **Tela de exclusão de conta.** A eliminação existe como rota (`DELETE /api/me`) e só — não há caminho pela interface, então o titular depende de alguém chamar a API para ele, o que na prática não é exercer o direito. Precisa de: aviso do que será apagado, o campo de confirmação com a frase exata, e o que fazer quando a resposta vem com `conta_de_acesso_removida: false`. Baixo risco técnico; o cuidado é de texto, para que ninguém apague o histórico sem entender que é definitivo. | 🟡 |
 
 ### Firmware que dá para escrever sem a placa
 

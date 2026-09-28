@@ -197,6 +197,29 @@ class Database:
             logger.exception("Falha ao consultar sleep_data do usuario.")
             return []
 
+    def apagar_minha_conta(self, jwt):
+        """Elimina todo o dado pessoal do titular (SEC-07, LGPD art. 18, V).
+
+        Vai pelo cliente do USUÁRIO: o dono sai de `auth.uid()` dentro do
+        banco, e a função não aceita parâmetro de usuário. Não há como esta
+        chamada apagar a conta de outra pessoa — nem por bug de rota, porque
+        não existe onde escrever o id alheio.
+
+        Devolve o recibo (dict) com o que foi apagado, ou None em falha. O
+        campo `conta_de_acesso_removida` pode vir False: significa que o dado
+        de `public` foi eliminado mas a linha de `auth.users` (que guarda o
+        e-mail) permaneceu, por privilégio. Ver migrations/006.
+        """
+        try:
+            client = self.cliente_do_usuario(jwt)
+            if client is None:
+                return None
+            resposta = client.rpc("apagar_minha_conta").execute()
+            return getattr(resposta, "data", None)
+        except Exception:
+            logger.exception("Falha ao apagar conta.")
+            return None
+
     def registrar_leitura(self, token_hash, leitura):
         """Persiste uma leitura do caminho do dispositivo (SEC-02, SEC-06).
 

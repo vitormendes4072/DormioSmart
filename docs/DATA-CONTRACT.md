@@ -1,6 +1,13 @@
 # Contrato de dados — Smart Dormio
 
-**Versão:** 2.2.0 · **Itens:** DATA-01, DATA-02, SEC-02, SEC-03, DASH-05, DASH-06, DATA-04, APP-01, SEC-06, APP-08
+**Versão:** 2.4.0 · **Itens:** DATA-01, DATA-02, SEC-02, SEC-03, DASH-05, DASH-06, DATA-04, APP-01, SEC-06, SEC-07, APP-08, DASH-08, DASH-12, DASH-13
+
+> **2.4.0 (MINOR — nada quebra em campo):** a ingestão deixou de usar a
+> `service_role` e passou a gravar por função, com credencial de privilégio
+> mínimo (SEC-06); e entrou `DELETE /api/me`, o direito de eliminação do
+> titular (SEC-07, LGPD art. 18, V). **O payload de ingestão não mudou em
+> nada** — nenhum firmware precisa ser regravado. O que mudou é quem, do lado
+> do servidor, tem permissão para quê.
 
 Este documento é a fonte única de verdade sobre o dado que trafega entre
 firmware, backend e banco. Firmware (`firmware/sketch.ino`), simulador
@@ -12,17 +19,28 @@ declarar a mesma versão deste contrato. Divergência entre eles é bug.
 ## 1. Fluxo
 
 ```
-ESP32 + MPU6050 ──POST /api/data──▶ Flask ──service_role──▶ Supabase (sleep_data)
-                  X-Device-Token                                    │
-                                                                    │ RLS
+ESP32 + MPU6050 ──POST /api/data──▶ Flask ──registrar_leitura()──▶ Supabase
+                  X-Device-Token            (papel dormio_ingestao)   (sleep_data)
+                                                                    │
+Celular ────────▶POST /api/data──▶ Flask ──registrar_leitura_       │
+                  Authorization             da_sessao()  ───────────┤ RLS
+                                            (JWT do usuário)        │
+                                                                    │
 SPA (frontend) ──GET /api/sleep-history──▶ Flask ──JWT do usuário───┘
                   Authorization: Bearer
 ```
 
-Dois caminhos, credenciais distintas e propositalmente diferentes:
+Três caminhos, credenciais distintas e propositalmente diferentes:
 
-- **Ingestão** não tem sessão de usuário, então o RLS não se aplica. O backend
-  usa `service_role` e autentica o **dispositivo** por token.
+- **Ingestão por token** (ESP32) não tem sessão de usuário, então o RLS não se
+  aplica. Desde a v2.4.0 o backend **não usa mais a `service_role`**: usa o
+  papel `dormio_ingestao`, que tem `EXECUTE` em três funções e nenhum
+  privilégio de tabela. O dono da linha é resolvido **dentro do banco**, a
+  partir do token — não existe parâmetro por onde escolhê-lo.
+- **Ingestão por sessão** (celular) tem sessão, e desde a v2.4.0 não passa por
+  credencial privilegiada nenhuma: grava por função concedida a
+  `authenticated`, que deriva o dono de `auth.uid()` e confere a posse do
+  dispositivo no banco.
 - **Leitura** tem sessão. O backend repassa o JWT do usuário ao Supabase e quem
   filtra é o RLS, não código Python.
 
@@ -355,12 +373,37 @@ Devolve um array (possivelmente vazio — nunca `500`, FIX-01) das leituras
 
 ```json
 [{ "created_at": "2026-08-19T03:14:22.511Z",
+   "captured_at": "2026-08-19T03:14:20.000Z",
    "movimento_total": 9.83, "temp": 31.2, "status": "Dormindo",
+   "epoca_segundos": 30,
    "device_id": "8f14e45f-ceea-467a-9f3d-a1b2c3d4e5f6" }]
 ```
 
 `401` sem JWT válido. O isolamento entre usuários é garantido pelo **RLS**, não
 por filtro em código.
+
+### 6.0 Os dois instantes (DASH-12, v2.3.0)
+
+`created_at` é **quando a linha chegou** (gerado pelo banco). `captured_at` é
+**quando o dispositivo mediu** (declarado por ele, seção 2.4). São coisas
+diferentes, e o cliente usa o segundo.
+
+Até a v2.2.0 o `select` trazia só o primeiro, e isso era incoerente com o
+próprio painel: ele aceitava a **duração** declarada pelo dispositivo
+(`epoca_segundos`) como verdade e ignorava o **instante** declarado pelo mesmo
+dispositivo. Na prática, latência de rede aparecia como irregularidade de
+cadência — e o buffer offline do `HW-05` chegaria todo empilhado em poucos
+segundos de `created_at`, fazendo o painel ver uma "sessão de 2 segundos" com
+o resto da noite como lacuna.
+
+**`captured_at` é anulável** — as linhas anteriores a ele não o têm, e
+preenchê-las com `created_at` afirmaria um instante que o dispositivo nunca
+declarou. O cliente resolve com fallback explícito (`instanteDaLeitura`, em
+`frontend/src/types/sleep.ts`).
+
+**A ordenação continua por `created_at`**, que nunca é nulo (`default now()`);
+ordenar por coluna anulável deixaria as linhas antigas em posição arbitrária.
+Quem reordena pelo instante de medição é o cliente.
 
 ### 6.1 Recorte da consulta (DASH-05, DASH-06)
 
@@ -373,6 +416,13 @@ anterior**: as 20 leituras mais recentes de todos os dispositivos do usuário.
 | `desde` | ISO 8601 | — | Limite inferior de `created_at` |
 | `ate` | ISO 8601 | — | Limite superior de `created_at` |
 | `limite` | inteiro ≥ 1 | 20 | Máximo de linhas; teto de **2000** |
+
+> **O padrão de 20 é do protocolo, não da tela (DASH-13).** O painel e a
+> exportação passam `limite=2000` explicitamente. Enquanto não passavam, toda
+> a máquina de cobertura, lacuna e sessão operava sobre as 20 linhas mais
+> recentes — dez minutos de celular — enquanto a tela descrevia esse recorte
+> como a captação inteira. Uma noite de 8 h em épocas de 60 s dá ~480 linhas;
+> em épocas de 30 s, ~960.
 
 **Por que `device` existe.** Até o DASH-05 a consulta filtrava só por dono.
 Quem pareasse dois dispositivos recebia os dois **misturados na mesma série e
@@ -394,6 +444,61 @@ Pedir o dispositivo de outra pessoa devolve vazio porque o dono não casa.
 
 ---
 
+## 6.2 Eliminação do dado (SEC-07, v2.4.0)
+
+`DELETE /api/me` · `Authorization: Bearer <jwt>` · corpo obrigatório:
+
+```json
+{ "confirmacao": "APAGAR MINHA CONTA" }
+```
+
+Elimina **todo** o dado pessoal do titular: leituras, dispositivos e perfil,
+mais a linha de `auth.users` quando o privilégio permitir. Irreversível.
+
+| Código | Significado |
+|---|---|
+| `200` | Executado. Corpo traz o recibo — ver abaixo |
+| `400` | `confirmacao` ausente ou diferente da frase exata |
+| `401` | Sessão ausente, expirada ou inválida |
+| `503` | Nada foi apagado (fonte indisponível) |
+
+Recibo do `200`:
+
+```json
+{
+  "leituras_apagadas": 812,
+  "dispositivos_apagados": 2,
+  "perfil_apagado": true,
+  "conta_de_acesso_removida": true
+}
+```
+
+**`conta_de_acesso_removida: false` significa eliminação incompleta.** O dado
+de `public` saiu, mas a linha de `auth.users` — que guarda o e-mail — ficou,
+porque a tabela pertence ao Supabase e o privilégio de `DELETE` nela não existe
+em todo projeto. Nesse caso a resposta traz um campo `aviso` dizendo isso ao
+titular, em vez de reportar sucesso limpo. O conserto está no cabeçalho de
+`web-app/migrations/006_direito_de_eliminacao.sql`.
+
+**Por que a confirmação por frase.** É a única barreira entre um `DELETE`
+disparado por engano — retry automático de cliente HTTP, clique duplo, fetch
+repetido por hot reload — e a perda definitiva do histórico. Nenhum desses
+digita a frase.
+
+**Por que eliminação e não anonimização.** Dado de acelerometria noturna com
+carimbo de tempo não é razoavelmente anonimizável: a série temporal é ela mesma
+um identificador quando cruzada com outra fonte. A LGPD trata dado
+pseudonimizado como dado pessoal (art. 13, §4º), então desvincular a linha do
+dono não cumpriria o art. 18, V — e criaria exatamente a linha órfã que o
+DATA-03 existe para consertar.
+
+**O que não foi permitido junto.** `sleep_data` ganhou policy de `delete` e
+**não** de `update`. Eliminar é direito do titular; reescrever uma medição não
+é. Apagar é visível — a linha sai. Editar é invisível, e destruiria o valor
+probatório do conjunto.
+
+---
+
 ## 7. Versionamento
 
 SemVer. **MAJOR** = quebra o firmware em campo (campo removido/renomeado,
@@ -402,6 +507,8 @@ unidade alterada, novo header obrigatório). **MINOR** = campo opcional novo.
 
 | Versão | Data | Mudança |
 |---|---|---|
+| 2.4.0 | 2026-09-27 | Ingestão sai da `service_role` e passa a gravar por função, com o papel `dormio_ingestao` de privilégio mínimo (SEC-06); `DELETE /api/me` expõe o direito de eliminação do titular (SEC-07, LGPD art. 18, V). **MINOR:** o payload de ingestão é idêntico e nenhum firmware precisa ser regravado |
+| 2.3.0 | 2026-09-10 | O `select` de leitura passa a trazer `captured_at` — o instante da **medição**, ao lado de `created_at`, o da **chegada** (DASH-12). **MINOR:** campo novo e anulável na resposta; a ingestão não muda e nenhum firmware precisa ser regravado |
 | 2.2.0 | 2026-08-25 | Ingestão aceita autenticação por **sessão** (`Authorization: Bearer` + `device_id`) além do token de dispositivo; rota `POST /api/devices/celular` (APP-08). **MINOR:** caminho novo e opcional, o do ESP32 segue intocado |
 | 2.1.0 | 2026-08-25 | Recusa leitura com os três eixos exatamente zero — assinatura de sensor que responde mas não mede (SEC-06). **MINOR:** só rejeita o que já era dado inválido; nenhum dispositivo saudável é afetado |
 | 2.0.0 | 2026-08-24 | `t` e `gx/gy/gz` viram opcionais; faixa do giroscópio para ±40 rad/s; campos `ts`, `epoca_s`, `metodo` e `amostras` (DATA-04, APP-01). **MAJOR** pela regra abaixo — nenhum firmware em campo quebra, mas a obrigatoriedade de campo mudou |

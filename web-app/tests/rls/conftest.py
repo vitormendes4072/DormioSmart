@@ -55,6 +55,7 @@ MIGRACOES_APLICADAS = (
     "003_padroniza_nome_do_dispositivo.sql",
     "004_tipo_de_dispositivo_e_agregacao.sql",
     "005_papel_de_ingestao_minimo.sql",
+    "006_direito_de_eliminacao.sql",
 )
 
 VARIAVEL = "DORMIO_RLS_DATABASE_URL"
@@ -142,6 +143,26 @@ def esquema(_conexao_dona):
     with _conexao_dona.cursor() as cursor:
         cursor.execute("drop schema if exists public cascade")
         cursor.execute("drop schema if exists auth cascade")
+
+        # OS PAPÉIS TAMBÉM, e este detalhe custou um teste falhando sem motivo
+        # aparente. Papel é objeto de CLUSTER, não de schema: `drop schema
+        # cascade` não o alcança. Então um `alter role dormio_ingestao
+        # bypassrls` — que é uma das sabotagens de `verificar_por_mutacao.py` —
+        # sobrevivia ao setup e contaminava TODA execução seguinte, inclusive a
+        # limpa. O sintoma foi `test_o_papel_existe_e_nao_ignora_o_rls` falhando
+        # numa árvore sem nenhuma sabotagem aplicada.
+        #
+        # Neste ponto os papéis não possuem objeto nenhum (os schemas acabaram
+        # de cair), então o drop é seguro. `drop owned by` cobre privilégio
+        # residual em outros bancos do cluster.
+        for papel in ("dormio_ingestao", "anon", "authenticated", "service_role", "authenticator"):
+            cursor.execute(
+                "select 1 from pg_roles where rolname = %s", (papel,)
+            )
+            if cursor.fetchone():
+                cursor.execute(f'drop owned by "{papel}" cascade')
+                cursor.execute(f'drop role "{papel}"')
+
         cursor.execute("create schema public")
 
         _rodar_sql(cursor, AQUI / "esquema_base.sql")

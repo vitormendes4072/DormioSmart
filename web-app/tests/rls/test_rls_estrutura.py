@@ -29,11 +29,19 @@ TABELAS_PESSOAIS = ("profiles", "devices", "sleep_data")
 # Mudar este número é uma decisão de segurança; o teste existe para que a
 # mudança seja explícita e revisada.
 POLICIES_ESPERADAS = {
-    "profiles": {"SELECT", "INSERT", "UPDATE"},
+    "profiles": {"SELECT", "INSERT", "UPDATE", "DELETE"},
     "devices": {"SELECT", "INSERT", "UPDATE", "DELETE"},
-    # Só SELECT: a escrita de leitura de sensor é exclusiva do dispositivo,
-    # via service_role. Cliente não fabrica medição.
-    "sleep_data": {"SELECT"},
+    # SELECT e DELETE, e deliberadamente NEM INSERT NEM UPDATE.
+    #
+    #   · sem INSERT: a escrita de leitura de sensor e exclusiva do
+    #     dispositivo, pela funcao `registrar_leitura` (SEC-06). Cliente nao
+    #     fabrica medicao.
+    #   · sem UPDATE: apagar e um direito do titular (LGPD art. 18, V);
+    #     reescrever uma medicao nao e. Apagar e visivel — a linha sai.
+    #     Editar e invisivel, e destruiria o valor probatorio do conjunto.
+    #   · com DELETE desde a 006: sem ele o titular nao tinha caminho nenhum
+    #     para eliminar o proprio dado.
+    "sleep_data": {"SELECT", "DELETE"},
 }
 
 

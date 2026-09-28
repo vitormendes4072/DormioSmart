@@ -175,28 +175,16 @@ def test_ana_nao_apaga_leitura_do_bruno(como, cenario):
     assert afetadas == 0
 
 
-def test_ana_nao_apaga_a_propria_leitura(como, cenario):
-    """Documenta uma LACUNA, não uma virtude.
-
-    Não há policy de delete em `sleep_data`, então o usuário não consegue
-    apagar o próprio dado de sono por caminho nenhum do app. Isso protege o
-    histórico, mas é um problema de direito do titular (LGPD art. 18, V:
-    eliminação do dado pessoal). O teste trava o comportamento ATUAL para que
-    a mudança, quando vier, seja deliberada — e aponta o item no lugar certo.
-    """
-    with como(cenario["ana"]) as ana:
-        afetadas = ana.contar_afetadas(
-            "delete from public.sleep_data where user_id = %s",
-            (cenario["ana"],),
-        )
-    assert afetadas == 0
-
-
-def test_ana_nao_apaga_leitura_em_massa(como, cenario):
-    """O DELETE sem WHERE. Se o RLS falhar, aqui é onde a base inteira vai."""
-    with como(cenario["ana"]) as ana:
-        afetadas = ana.contar_afetadas("delete from public.sleep_data")
-    assert afetadas == 0
+# A LACUNA QUE ESTAVA AQUI FOI FECHADA PELA 006.
+#
+# Este arquivo tinha dois testes afirmando que o titular NAO conseguia apagar o
+# proprio dado — travando o comportamento de entao e apontando que era um
+# problema de direito do titular (LGPD art. 18, V), nao uma virtude.
+#
+# A 006 acrescentou as policies de delete. Os testes do direito de eliminacao,
+# e o adversarial correspondente (a Ana ganhou alcance sobre o dado do Bruno?),
+# estao em `test_rls_eliminacao.py` — inclusive a versao nova do DELETE sem
+# WHERE, que agora apaga, e cuja pergunta passou a ser QUANTO.
 
 
 # =====================================================================
@@ -383,19 +371,15 @@ def test_ana_nao_cria_profile_para_o_bruno(como, cenario):
         )
 
 
-def test_ana_nao_apaga_profile_algum(como, cenario):
-    """Não há policy de delete em `profiles` — nem para o próprio.
-
-    Igual ao caso de `sleep_data`: protege contra apagar a conta alheia, mas
-    deixa o titular sem caminho de eliminação. Travado aqui para que a decisão
-    seja explícita.
-    """
+def test_ana_nao_apaga_o_profile_do_bruno(como, cenario):
+    """Desde a 006 existe `profiles_delete_own`, e o alcance dela e o que
+    importa: o titular apaga o proprio perfil, nunca o alheio. O caminho feliz
+    e os demais casos de eliminacao estao em `test_rls_eliminacao.py`."""
     with como(cenario["ana"]) as ana:
-        for alvo in (cenario["bruno"], cenario["ana"]):
-            afetadas = ana.contar_afetadas(
-                "delete from public.profiles where id = %s", (alvo,)
-            )
-            assert afetadas == 0
+        afetadas = ana.contar_afetadas(
+            "delete from public.profiles where id = %s", (cenario["bruno"],)
+        )
+    assert afetadas == 0
 
 
 def test_ana_atualiza_o_proprio_profile(como, cenario):
@@ -426,6 +410,12 @@ def test_anon_nao_le_nada(como_anon, tabela):
 
 @pytest.mark.parametrize("tabela", ["profiles", "devices", "sleep_data"])
 def test_anon_nao_escreve_nada(como_anon, tabela):
+    """Importa mais desde a 006: agora EXISTE policy de delete nas tres tabelas.
+
+    Antes, um delete de `anon` afetava zero linhas porque nao havia policy de
+    delete para ninguem. Agora ha — para `authenticated`. Este teste e o que
+    garante que a chave publica do bundle nao entrou nessa carona.
+    """
     with como_anon() as visitante:
         assert visitante.contar_afetadas("delete from public.%s" % tabela) == 0
 

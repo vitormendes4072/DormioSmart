@@ -179,6 +179,53 @@ SABOTADORES = {
         minimo=1,
         exige="test_a_ingestao_nao_escolhe_o_dono_pelo_json",
     ),
+    # --- SEC-07: o direito de eliminação, e o que ele não pode abrir ---
+    "delete_permissivo_em_sleep_data": dict(
+        descricao="sleep_data_delete_own com using(true)",
+        sql="""
+            drop policy sleep_data_delete_own on public.sleep_data;
+            create policy sleep_data_delete_own on public.sleep_data
+                for delete to authenticated using (true);
+        """,
+        minimo=2,
+        exige="test_o_delete_em_massa_da_ana_nao_alcanca_o_bruno",
+    ),
+    "exclusao_de_conta_com_parametro": dict(
+        descricao="apagar_minha_conta ganha parametro de usuario",
+        sql="""
+            drop function if exists public.apagar_minha_conta();
+            create or replace function public.apagar_minha_conta(p_user_id uuid default null)
+            returns jsonb language plpgsql volatile security definer
+            set search_path = '' as $SAB$
+            declare v_dono uuid := coalesce(p_user_id, auth.uid());
+            begin
+                if v_dono is null then return null; end if;
+                delete from public.sleep_data where user_id = v_dono;
+                delete from public.devices where user_id = v_dono;
+                delete from public.profiles where id = v_dono;
+                return jsonb_build_object('conta_de_acesso_removida', false);
+            end; $SAB$;
+            grant execute on function public.apagar_minha_conta(uuid) to authenticated;
+        """,
+        minimo=1,
+        exige="test_a_funcao_nao_tem_parametro_de_usuario",
+    ),
+    "anon_alcanca_a_exclusao": dict(
+        descricao="anon ganha execute em apagar_minha_conta",
+        sql="grant execute on function public.apagar_minha_conta() to anon;",
+        minimo=1,
+        exige="test_anon_nao_alcanca_a_funcao",
+    ),
+    "update_liberado_em_sleep_data": dict(
+        descricao="sleep_data ganha policy de update (reescrever medicao)",
+        sql="""
+            create policy sd_update on public.sleep_data for update to authenticated
+                using (user_id = (select auth.uid()))
+                with check (user_id = (select auth.uid()));
+        """,
+        minimo=2,
+        exige="test_o_direito_de_apagar_nao_virou_direito_de_reescrever",
+    ),
     "definer_da_005_sem_search_path": dict(
         descricao="resolver_dispositivo sem search_path fixo",
         sql="""

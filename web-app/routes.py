@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime, timezone
 
 from flask import g, jsonify, request
@@ -10,8 +11,15 @@ from ingestao import CAMINHO_SESSAO, CAMINHO_TOKEN, extrair_device_id, identific
 from device_auth import extrair_token, gerar_token, hash_token
 from validacao import validar_captacao, validar_leitura
 
+logger = logging.getLogger(__name__)
+
 # Versao do contrato que este backend implementa (docs/DATA-CONTRACT.md).
-CONTRATO_DE_DADOS = "2.3.0"
+CONTRATO_DE_DADOS = "2.4.0"
+
+# Frase exigida no corpo de `DELETE /api/me` (SEC-07). Em portugues e em
+# maiusculas de proposito: tem de ser digitada, e nao pode ser o resultado de
+# um retry automatico ou de um clique duplo.
+CONFIRMACAO_EXCLUSAO = "APAGAR MINHA CONTA"
 
 def init_routes(app):
     """Rotas da API.
@@ -196,6 +204,53 @@ def init_routes(app):
         if device is None:
             return jsonify({"error": "dispositivo nao encontrado"}), 404
         return jsonify(device)
+
+    # --- Direito de eliminação (SEC-07, LGPD art. 18, V) ---
+
+    @app.route('/api/me', methods=['DELETE'])
+    @require_auth
+    def apagar_minha_conta():
+        """Elimina todo o dado pessoal do titular. Irreversível.
+
+        A confirmação explícita no corpo não é cerimônia: é a única barreira
+        entre um `DELETE` disparado por engano — um fetch repetido, um botão
+        clicado duas vezes, um cliente HTTP com retry automático — e a perda
+        definitiva de todo o histórico de sono. A frase tem de ser digitada,
+        então não sai de retry nenhum.
+
+        O dono NUNCA vem daqui: a função no banco usa `auth.uid()` e não aceita
+        parâmetro de usuário. Ver migrations/006.
+        """
+        corpo = request.get_json(silent=True) or {}
+        if corpo.get("confirmacao") != CONFIRMACAO_EXCLUSAO:
+            return jsonify({
+                "error": "confirmacao necessaria",
+                "envie": {"confirmacao": CONFIRMACAO_EXCLUSAO},
+            }), 400
+
+        recibo = db.apagar_minha_conta(g.jwt)
+        if recibo is None:
+            return jsonify({"error": "fonte de dados indisponivel"}), 503
+
+        # A eliminação pode ser parcial: o dado de `public` sai, mas a linha de
+        # `auth.users` (que guarda o e-mail) depende de privilégio que não
+        # existe em todo projeto. Dizer isso ao titular é obrigação — uma
+        # resposta de sucesso limpa esconderia dado pessoal remanescente.
+        if not recibo.get("conta_de_acesso_removida"):
+            recibo["aviso"] = (
+                "Seus dados de sono, dispositivos e perfil foram apagados. "
+                "O cadastro de acesso (e-mail) ainda existe e precisa ser "
+                "removido pelo administrador."
+            )
+            # WARNING, nao INFO: e uma pendencia de conformidade, nao um evento
+            # de rotina. Sem id de usuario no log — seria guardar justamente o
+            # dado que se acabou de apagar.
+            logger.warning(
+                "Exclusao de conta incompleta: auth.users nao removida. "
+                "Ver migrations/006 e o README."
+            )
+
+        return jsonify(recibo), 200
 
     def _device_por_token():
         """Caminho do dispositivo em campo (SEC-02).
