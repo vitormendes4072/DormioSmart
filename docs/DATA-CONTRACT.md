@@ -632,7 +632,7 @@ digita a frase.
 carimbo de tempo não é razoavelmente anonimizável: a série temporal é ela mesma
 um identificador quando cruzada com outra fonte. A LGPD trata dado
 pseudonimizado como dado pessoal (art. 13, §4º), então desvincular a linha do
-dono não cumpriria o art. 18, V — e criaria exatamente a linha órfã que o
+dono não cumpriria o art. 18, VI — e criaria exatamente a linha órfã que o
 DATA-03 existe para consertar.
 
 **O que não foi permitido junto.** `sleep_data` ganhou policy de `delete` e
@@ -651,7 +651,7 @@ unidade alterada, novo header obrigatório). **MINOR** = campo opcional novo.
 | Versão | Data | Mudança |
 |---|---|---|
 | 2.5.0 | 2026-09-29 | Payload ganha o vetor de características por época: `f` (6 intra-época), `g` (gravidade unitária) e `fs` (taxa), todos opcionais; seção 2.6 fixa ordem canônica, unidades, faixas e representação em ponto fixo (DATA-07a). **MINOR:** campo opcional novo, nenhuma obrigatoriedade muda, nenhum firmware precisa ser regravado. ⚠️ **Declarado, não implementado** — nenhum dos três lados emite, valida ou persiste `f`; isso é o `DATA-07b` |
-| 2.4.0 | 2026-09-27 | Ingestão sai da `service_role` e passa a gravar por função, com o papel `dormio_ingestao` de privilégio mínimo (SEC-06); `DELETE /api/me` expõe o direito de eliminação do titular (SEC-07, LGPD art. 18, V). **MINOR:** o payload de ingestão é idêntico e nenhum firmware precisa ser regravado |
+| 2.4.0 | 2026-09-27 | Ingestão sai da `service_role` e passa a gravar por função, com o papel `dormio_ingestao` de privilégio mínimo (SEC-06); `DELETE /api/me` expõe o direito de eliminação do titular (SEC-07, LGPD art. 18, VI). **MINOR:** o payload de ingestão é idêntico e nenhum firmware precisa ser regravado |
 | 2.3.0 | 2026-09-10 | O `select` de leitura passa a trazer `captured_at` — o instante da **medição**, ao lado de `created_at`, o da **chegada** (DASH-12). **MINOR:** campo novo e anulável na resposta; a ingestão não muda e nenhum firmware precisa ser regravado |
 | 2.2.0 | 2026-08-25 | Ingestão aceita autenticação por **sessão** (`Authorization: Bearer` + `device_id`) além do token de dispositivo; rota `POST /api/devices/celular` (APP-08). **MINOR:** caminho novo e opcional, o do ESP32 segue intocado |
 | 2.1.0 | 2026-08-25 | Recusa leitura com os três eixos exatamente zero — assinatura de sensor que responde mas não mede (SEC-06). **MINOR:** só rejeita o que já era dado inválido; nenhum dispositivo saudável é afetado |

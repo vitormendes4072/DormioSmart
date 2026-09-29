@@ -179,7 +179,7 @@ def test_ana_nao_apaga_leitura_do_bruno(como, cenario):
 #
 # Este arquivo tinha dois testes afirmando que o titular NAO conseguia apagar o
 # proprio dado — travando o comportamento de entao e apontando que era um
-# problema de direito do titular (LGPD art. 18, V), nao uma virtude.
+# problema de direito do titular (LGPD art. 18, VI), nao uma virtude.
 #
 # A 006 acrescentou as policies de delete. Os testes do direito de eliminacao,
 # e o adversarial correspondente (a Ana ganhou alcance sobre o dado do Bruno?),

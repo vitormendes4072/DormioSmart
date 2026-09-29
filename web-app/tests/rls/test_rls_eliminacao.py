@@ -35,7 +35,7 @@ def test_ana_apaga_a_propria_leitura(como, cenario):
         )
     assert afetadas == 1, (
         "o titular nao conseguiu apagar o proprio dado — a policy "
-        "sleep_data_delete_own nao esta valendo (LGPD art. 18, V)"
+        "sleep_data_delete_own nao esta valendo (LGPD art. 18, VI)"
     )
 
 

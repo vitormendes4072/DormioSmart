@@ -198,7 +198,7 @@ class Database:
             return []
 
     def apagar_minha_conta(self, jwt):
-        """Elimina todo o dado pessoal do titular (SEC-07, LGPD art. 18, V).
+        """Elimina todo o dado pessoal do titular (SEC-07, LGPD art. 18, VI).
 
         Vai pelo cliente do USUÁRIO: o dono sai de `auth.uid()` dentro do
         banco, e a função não aceita parâmetro de usuário. Não há como esta

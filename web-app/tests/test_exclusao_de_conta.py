@@ -1,4 +1,4 @@
-"""A rota de exclusão de conta (SEC-07, LGPD art. 18, V).
+"""A rota de exclusão de conta (SEC-07, LGPD art. 18, VI).
 
 Estes testes mockam o banco, como o resto de `tests/` — o que eles verificam é
 a rota: a guarda de confirmação, o repasse do JWT, o código de resposta e, o

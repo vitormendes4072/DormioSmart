@@ -82,12 +82,12 @@ E um **peso**: 🔴 caminho crítico da defesa · 🟡 importante · ⚪ polimen
                     └─────────────────────────────────────────────┘
 
    L0  EM PARALELO, SEM DEPENDER DE NADA DISSO:
-       CALC-01..04 · DIAG-01..04 · REQ-01 · LGPD-01 · FW-07 · FW-01/03 · API-03
-       DATA-07b/07c · ML-06(carregador) · PWA-01 · UI-10
+       CALC-01..04 · DIAG-01..04 · REQ-01 · LGPD-01/02 · FW-07 · FW-01/03 · API-03
+       DATA-07b/07c · ML-06(carregador) · PWA-01 · UI-11
 
    ✅ FECHADO:  ML-01 · ML-02 · ML-03 · ML-03b · ML-04 · ML-04b · ML-05 · HW-05
                 DOC-08
-                INFRA-01 · SEC-05 · SEC-06 · SEC-07 · DATA-07a
+                INFRA-01 · SEC-05 · SEC-06 · SEC-07 · DATA-07a · UI-10
                 DADOS em disco · DUA resolvido · REF-01 · DOC-06 · DOC-07
 ```
 
@@ -190,7 +190,9 @@ diagrama** — que é o que a banca lê.
 | **DOC-05** | READMEs e `CLAUDE.md` — falta só o `DIAG-04`. | 🟡 |
 | ~~**DOC-08**~~ ✅ | **Feito em 28/09.** `docs/RESULTADOS-TCC.md` — o capítulo de resultados em prosa, entre os mesmos marcadores do `LIMITACOES-TCC.md`, com nota de procedência que amarra cada número a um JSON e ao comando que o reproduz. Fechou junto o `ML-05` (teto interavaliador), que era a lacuna barata que faltava. | ✅ |
 | **DOC-06b** | **Ler os artigos antes de citá-los** (referência conferida ≠ artigo lido) e converter para o padrão de citação do TCC se não for autor-data. Herdado do `DOC-06`. | 🔴 |
-| **LGPD-01** | Política de privacidade e termos. Hoje Configurações exibe o link como "em elaboração". Falta o direito de eliminação ("Excluir conta", desabilitado); a exportação em CSV já cobre portabilidade. **Rascunho é L0; a revisão com o orientador é `LGPD-03`.** | 🔴 |
+| **LGPD-01** | Política de privacidade e termos. **Rascunho escrito em 29/09** (`docs/POLITICA-DE-PRIVACIDADE.md`), a partir do código e não da intenção: cada direito do art. 18 vem marcado como implementado, parcial ou **sem mecanismo**. Falta: **(a)** decidir o controlador e a base legal — consentimento (art. 7º, I) ou pesquisa (art. 7º, IV), que muda a política inteira e **não dá para inferir do repositório**; **(b)** a rota e a página que sirvam o texto; **(c)** revisão jurídica. **Rascunho é L0; a revisão com o orientador é `LGPD-03`.** | 🟡 |
+| **LGPD-02** *(novo)* | **Não existe política de retenção.** Nenhum expurgo automático, nenhum prazo, nenhuma inatividade que dispare remoção: uma leitura enviada hoje fica indefinidamente até o titular apagar a conta. A política teve de declarar isso na seção 7. Decidir prazo e implementar, ou declarar formalmente que não haverá — as duas saídas são defensáveis; o silêncio não. | 🟡 |
+| **LGPD-04** *(novo)* | **`profiles.idade` é coluna morta.** Existe no esquema desde a migração `001`, **nenhuma tela a preenche e nenhuma funcionalidade a lê** — está vazia para todos. Minimização (art. 6º, III) não é violada enquanto a coluna está vazia, mas é exatamente o tipo de estrutura que alguém preenche um dia "porque já estava lá". Ou ganha finalidade declarada, ou sai por migração. | ⚪ |
 | **REQ-01** | Documentar requisitos: dimensões, conforto, autonomia, aquecimento, custo, segurança. | 🟡 |
 
 ### ML — o que sobrou
@@ -212,8 +214,9 @@ diagrama** — que é o que a banca lê.
 | **INFRA-01** | ✅ **Resolvido por outro caminho.** O Supabase CLI não foi adotado; em vez dele, `web-app/tests/rls/esquema_base.sql` recria os primitivos do Supabase (schema `auth`, `auth.uid()`, os papéis, os GRANTs) sobre um Postgres descartável, e as migrações do repositório são aplicadas do disco sem adaptação. Resolve o que o item existia para resolver — testar RLS de verdade — sem introduzir dependência de ferramenta. | ✅ |
 | **SEC-05** | ✅ **Fechado.** 105 testes de RLS contra Postgres real, sem mock: adversarial em `profiles`, `devices` e `sleep_data` por todo comando, mais invariantes de catálogo (tabela nova sem RLS, `using (true)`, policy para `anon`). Verificado por mutação — 18 sabotadores, todos detectados (`tests/rls/verificar_por_mutacao.py`). | ✅ |
 | **SEC-06** | ✅ **Fechado.** A ingestão saiu da `service_role`: papel `dormio_ingestao` com `EXECUTE` em três funções e nenhum privilégio de tabela. O dono da linha é resolvido dentro do banco, a partir do token. Teste estático impede que rota nova use o cliente privilegiado. Migration `005`. | ✅ |
-| **SEC-07** | ✅ **Fechado.** Direito de eliminação (LGPD art. 18, V): policies de `delete` para as próprias linhas, `apagar_minha_conta()` sem parâmetro de usuário, `DELETE /api/me` com confirmação por frase. Migration `006`. Texto acadêmico em `docs/LGPD-ELIMINACAO.md`. | ✅ |
-| **UI-10** *(novo)* | **Tela de exclusão de conta.** A eliminação existe como rota (`DELETE /api/me`) e só — não há caminho pela interface, então o titular depende de alguém chamar a API para ele, o que na prática não é exercer o direito. Precisa de: aviso do que será apagado, o campo de confirmação com a frase exata, e o que fazer quando a resposta vem com `conta_de_acesso_removida: false`. Baixo risco técnico; o cuidado é de texto, para que ninguém apague o histórico sem entender que é definitivo. | 🟡 |
+| **SEC-07** | ✅ **Fechado.** Direito de eliminação (LGPD art. 18, VI): policies de `delete` para as próprias linhas, `apagar_minha_conta()` sem parâmetro de usuário, `DELETE /api/me` com confirmação por frase. Migration `006`. Texto acadêmico em `docs/LGPD-ELIMINACAO.md`. | ✅ |
+| **UI-10** ✅ *(29/09)* | **Tela de exclusão de conta.** *Configurações → Excluir conta*: barreira em dois passos, com a lista do que será apagado **antes** do campo de confirmação, e a frase exigida digitada à mão (comparação sem `trim` e sem ignorar caixa — cada variação aceita aproxima a barreira de um clique). **Três desfechos, não dois:** o `200` com `conta_de_acesso_removida: false` tem tela própria, com cor e ícone de alerta, porque é um estado em que dado pessoal do titular continua existindo. `interpretarRecibo` é pessimista de propósito: ausente, nulo ou `"true"` viram parcial. 23 testes. | ✅ |
+| **UI-11** *(novo)* | **Edição de perfil.** A política de privacidade teve de declarar que **não há tela para corrigir nome e e-mail** — o app os exibe e só, e o art. 18, III assegura a correção. Barato: a policy de `update` em `profiles` já existe desde a migração `001`; falta a interface. | 🟡 |
 
 ### Firmware que dá para escrever sem a placa
 

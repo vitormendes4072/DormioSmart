@@ -14,7 +14,17 @@ from validacao import validar_captacao, validar_leitura
 logger = logging.getLogger(__name__)
 
 # Versao do contrato que este backend implementa (docs/DATA-CONTRACT.md).
-CONTRATO_DE_DADOS = "2.4.0"
+#
+# 2.5.0 acrescentou `f`/`g`/`fs` -- o vetor de caracteristicas por epoca
+# (DATA-07a) -- e esta declaracao subiu junto. Isso NAO significa que a
+# ingestao processe esses campos: significa que ela e conforme a 2.5.0, e ela
+# e, porque os tres sao OPCIONAIS e nada obrigatorio mudou. Um payload sem eles
+# continua sendo o payload correto, e e o unico que existe hoje.
+#
+# O que ainda falta e o DATA-07b: aceitar, validar e persistir o vetor. Ate la
+# `f` cai na validacao como campo desconhecido, que e o comportamento desejado
+# -- aceita-lo sem ter coluna para grava-lo descartaria o dado em silencio.
+CONTRATO_DE_DADOS = "2.5.0"
 
 # Frase exigida no corpo de `DELETE /api/me` (SEC-07). Em portugues e em
 # maiusculas de proposito: tem de ser digitada, e nao pode ser o resultado de
@@ -205,7 +215,7 @@ def init_routes(app):
             return jsonify({"error": "dispositivo nao encontrado"}), 404
         return jsonify(device)
 
-    # --- Direito de eliminação (SEC-07, LGPD art. 18, V) ---
+    # --- Direito de eliminação (SEC-07, LGPD art. 18, VI) ---
 
     @app.route('/api/me', methods=['DELETE'])
     @require_auth

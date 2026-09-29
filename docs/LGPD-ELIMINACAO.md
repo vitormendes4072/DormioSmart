@@ -8,7 +8,7 @@ Item de backlog: **SEC-07**. Implementação em
 
 ## Parágrafo principal
 
-> O direito de eliminação previsto no art. 18, V, da Lei nº 13.709/2018 foi
+> O direito de eliminação previsto no art. 18, VI, da Lei nº 13.709/2018 foi
 > implementado no nível do banco de dados, e não apenas na camada de aplicação.
 > Três granularidades foram disponibilizadas ao titular: a exclusão de leituras
 > individuais, a de um dispositivo pareado e a da conta por completo. As duas
@@ -64,9 +64,20 @@ Item de backlog: **SEC-07**. Implementação em
 
 ## Notas para você, não para a banca
 
-- **Confira a numeração dos artigos** antes de entregar. Estou citando de
-  memória: art. 18, V (eliminação) e art. 13, §4º (pseudonimização equiparada
-  a dado pessoal). Valem uma olhada no texto da lei.
+- ✅ **Numeração conferida em 2026-09-29**, contra o texto da Lei 13.709/2018.
+  **E estava errada**: o texto dizia *art. 18, V* para eliminação, quando o
+  inciso V é **portabilidade** — eliminação é o **VI**. A troca aparecia em
+  onze lugares do repositório (aqui, no `DATA-CONTRACT.md`, no
+  `BACKLOG-COMPLETO.md`, no `routes.py`, no `database.py`, na migração `006` e
+  em quatro arquivos de teste) e foi corrigida em todos.
+- ⚠️ **`art. 13, §4º` merece cuidado na redação.** A citação existe e é onde a
+  pseudonimização está definida, mas o artigo inteiro trata de *estudos em
+  saúde pública* — usá-lo sozinho para sustentar "dado pseudonimizado continua
+  sendo dado pessoal" é frouxo, e uma banca atenta pode pegar. O argumento fica
+  mais firme apoiado no **art. 12**, que retira do alcance da lei apenas o dado
+  **anonimizado**: por contraste, o pseudonimizado permanece dentro. O
+  `docs/POLITICA-DE-PRIVACIDADE.md` já usa essa formulação; **o parágrafo
+  principal acima ainda usa a antiga** e conviria alinhá-lo antes de entregar.
 - A ressalva sobre `auth.users` **só se aplica se o seu projeto não tiver o
   privilégio**. Rode a verificação nº 4 do rodapé da migration 006 e veja o
   que dá. Se der `true`, corte a ressalva inteira — ela descreve um problema
@@ -77,5 +88,8 @@ Item de backlog: **SEC-07**. Implementação em
 - Não escrevi nada sobre prazo de atendimento do pedido (art. 19) porque a
   exclusão aqui é imediata e automática. Se a banca perguntar, esse é o
   argumento: não há prazo porque não há intermediação humana.
+- ✅ **A interface existe desde 29/09** (`UI-10`): *Configurações → Excluir
+  conta*, com confirmação por frase e tela própria para o desfecho parcial. A
+  linha abaixo ficou obsoleta e está mantida só para o histórico ficar legível.
 - Falta a parte de interface: hoje a eliminação existe como rota, e só. Está
   registrado como **UI-10** no backlog.

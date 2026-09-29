@@ -45,7 +45,7 @@ POLICIES_ESPERADAS = {
     #   · sem INSERT: a escrita de leitura de sensor e exclusiva do
     #     dispositivo, pela funcao `registrar_leitura` (SEC-06). Cliente nao
     #     fabrica medicao.
-    #   · sem UPDATE: apagar e um direito do titular (LGPD art. 18, V);
+    #   · sem UPDATE: apagar e um direito do titular (LGPD art. 18, VI);
     #     reescrever uma medicao nao e. Apagar e visivel — a linha sai.
     #     Editar e invisivel, e destruiria o valor probatorio do conjunto.
     #   · com DELETE desde a 006: sem ele o titular nao tinha caminho nenhum

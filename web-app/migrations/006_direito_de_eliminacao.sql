@@ -1,5 +1,5 @@
 -- =====================================================================
--- 006_direito_de_eliminacao.sql — SEC-07 (LGPD art. 18, V)
+-- 006_direito_de_eliminacao.sql — SEC-07 (LGPD art. 18, VI)
 --
 -- Até aqui o titular não tinha caminho nenhum para apagar o próprio dado.
 -- `sleep_data` e `profiles` têm RLS com policies de select/insert/update, mas
@@ -9,7 +9,7 @@
 --
 -- Isso protegia o histórico contra apagamento acidental, e foi assim que
 -- passou despercebido: o comportamento parecia uma decisão de integridade. Mas
--- a Lei 13.709/2018, art. 18, V, dá ao titular o direito de eliminação do dado
+-- a Lei 13.709/2018, art. 18, VI, dá ao titular o direito de eliminação do dado
 -- pessoal tratado com base no consentimento — que é exatamente a base deste
 -- trabalho. Um sistema de dado de sono sem esse caminho está incompleto.
 --
@@ -172,7 +172,7 @@ end;
 $$;
 
 comment on function public.apagar_minha_conta() is
-    'LGPD art. 18, V. Apaga todo o dado pessoal do titular de auth.uid(). '
+    'LGPD art. 18, VI. Apaga todo o dado pessoal do titular de auth.uid(). '
     'SEM PARAMETRO de proposito: apaga a propria conta, nunca a de outro.';
 
 revoke all on function public.apagar_minha_conta() from public;
