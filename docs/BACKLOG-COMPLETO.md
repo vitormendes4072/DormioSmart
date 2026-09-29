@@ -83,11 +83,11 @@ E um **peso**: 🔴 caminho crítico da defesa · 🟡 importante · ⚪ polimen
 
    L0  EM PARALELO, SEM DEPENDER DE NADA DISSO:
        CALC-01..04 · DIAG-01..04 · REQ-01 · LGPD-01 · FW-07 · FW-01/03 · API-03
-       DATA-07 · ML-06(carregador) · PWA-01 · UI-10
+       DATA-07b/07c · ML-06(carregador) · PWA-01 · UI-10
 
    ✅ FECHADO:  ML-01 · ML-02 · ML-03 · ML-03b · ML-04 · ML-04b · ML-05 · HW-05
                 DOC-08
-                INFRA-01 · SEC-05 · SEC-06 · SEC-07
+                INFRA-01 · SEC-05 · SEC-06 · SEC-07 · DATA-07a
                 DADOS em disco · DUA resolvido · REF-01 · DOC-06 · DOC-07
 ```
 
@@ -204,9 +204,11 @@ diagrama** — que é o que a banca lê.
 
 | Item | O quê | Peso |
 |---|---|:---:|
-| **DATA-07** | **O contrato precisa carregar features, não só o veredito.** Hoje cada linha leva magnitude + rótulo. O modelo precisa de um vetor por época — e agora **sabemos exatamente qual**: as 8 features de `ml/src/features.py`, em épocas de 30 s. O item saiu de "a definir" para "transcrever". | 🔴 |
+| **DATA-07a** ✅ *(29/09)* | **O contrato declara o vetor de características.** `f` (6 intra-época), `g` (gravidade unitária) e `fs` (taxa), todos opcionais; seção 2.6 fixa ordem canônica, unidades, faixas e representação. Contrato **v2.5.0**, MINOR — nenhum firmware precisa ser regravado, e o formato sem `f` continua sendo o corrente. A decisão de formato tem estudo próprio em `docs/DECISAO-BUFFER-E-FEATURES.md`. | ✅ |
+| **DATA-07b** *(novo)* | **Implementar o vetor — nos três lados.** ⚠️ O `DATA-07` original dizia "o item saiu de 'a definir' para 'transcrever'". **Isso estava errado**, e a verificação de 29/09 mostrou por quê: as 8 features existem **só em Python**. O núcleo C++ não tem nenhuma delas (`grep -rniE "enmo\|zcr\|p_frac\|inclinacao\|d_angulo\|mag_din" firmware/` devolve vazio) — o que existe de "lado C++" é uma referência escrita em Python dentro de `test_vetor_dourado.py`. Falta: **(a)** o biquad Butterworth de 2ª ordem ida-e-volta em C++, com inicialização em regime permanente; **(b)** acumulação por época das 6 features + `ĝ`, no registro de 40 B decidido; **(c)** um alvo de teste em C++ que leia `vetor_dourado.json` (428 KB, 5 casos × 960 amostras — hoje não há parser JSON no núcleo, que é `-fno-exceptions -fno-rtti` de propósito); **(d)** migração e mudança na função de ingestão para persistir; **(e)** derivação de `inclinacao_rel`/`d_angulo` no servidor, sobre a noite completa. Peso comparável ao `FW-07`. | 🔴 |
+| **DATA-07c** *(novo)* | **O vetor dourado precisa de casos multi-época.** Os 5 casos atuais são de época única, então `inclinacao_rel` e `d_angulo` valem 0 em todos — as duas features inter-época, que são justamente as de definição mais delicada, **não são testadas por nada**. Com a decisão de transportar `ĝ`, o que o dourado precisa fixar passa a incluir o próprio `ĝ` por época. Barato e independente do firmware. | 🟡 |
 | **DATA-06** | **O limiar viaja com a leitura.** Hoje `1,2 m/s²` é constante compartilhada nascida do travesseiro, e o celular é classificado pela mesma régua. A **coluna e o campo dão para criar já**; o *valor* do limiar do celular depende do `VIA-02` (L2). | 🔴 |
-| **DATA-02** | **Modelo de amostragem** — índice de atividade por época vs. evento avulso. **Decidido: 30 s**, que é a resolução dos rótulos de PSG de todos os datasets e a época do pipeline. Falta *aplicar* no firmware (`FW-05`) e no contrato (`DATA-07`). | 🔴 |
+| **DATA-02** | **Modelo de amostragem** — índice de atividade por época vs. evento avulso. **Decidido: 30 s**, que é a resolução dos rótulos de PSG de todos os datasets e a época do pipeline. Falta *aplicar* no firmware (`FW-05`); o contrato já o declara desde a v2.5.0 (`DATA-07a`). | 🔴 |
 | **INFRA-01** | ✅ **Resolvido por outro caminho.** O Supabase CLI não foi adotado; em vez dele, `web-app/tests/rls/esquema_base.sql` recria os primitivos do Supabase (schema `auth`, `auth.uid()`, os papéis, os GRANTs) sobre um Postgres descartável, e as migrações do repositório são aplicadas do disco sem adaptação. Resolve o que o item existia para resolver — testar RLS de verdade — sem introduzir dependência de ferramenta. | ✅ |
 | **SEC-05** | ✅ **Fechado.** 105 testes de RLS contra Postgres real, sem mock: adversarial em `profiles`, `devices` e `sleep_data` por todo comando, mais invariantes de catálogo (tabela nova sem RLS, `using (true)`, policy para `anon`). Verificado por mutação — 18 sabotadores, todos detectados (`tests/rls/verificar_por_mutacao.py`). | ✅ |
 | **SEC-06** | ✅ **Fechado.** A ingestão saiu da `service_role`: papel `dormio_ingestao` com `EXECUTE` em três funções e nenhum privilégio de tabela. O dono da linha é resolvido dentro do banco, a partir do token. Teste estático impede que rota nova use o cliente privilegiado. Migration `005`. | ✅ |
@@ -299,7 +301,7 @@ Se só houver tempo para uma sequência, é esta:
 5. **`VAL-01`** — uma noite real captada. O painel já aguenta.
 6. **`DASH-04` + `VAL-02`** — a noite na tela e os números medidos.
 
-**Em paralelo, sem esperar nada:** `CALC-01..04`, `DIAG-01..04`, `LGPD-01`, `FW-07`, `DATA-07`.
+**Em paralelo, sem esperar nada:** `CALC-01..04`, `DIAG-01..04`, `LGPD-01`, `FW-07`, `DATA-07b`.
 
 > **O que mudou no caminho crítico desde 10/09:** o bloco `ML-01 → ML-02 → ML-03` saiu dele —
 > está feito. O gargalo acadêmico era *escrever o resultado* (`DOC-08`), e **isso fechou em
