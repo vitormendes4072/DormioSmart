@@ -667,8 +667,9 @@ digita a frase.
 
 **Por que eliminação e não anonimização.** Dado de acelerometria noturna com
 carimbo de tempo não é razoavelmente anonimizável: a série temporal é ela mesma
-um identificador quando cruzada com outra fonte. A LGPD trata dado
-pseudonimizado como dado pessoal (art. 13, §4º), então desvincular a linha do
+um identificador quando cruzada com outra fonte. A LGPD só retira de seu alcance
+o dado efetivamente **anonimizado** (art. 12) — o pseudonimizado continua sendo
+dado pessoal —, então desvincular a linha do
 dono não cumpriria o art. 18, VI — e criaria exatamente a linha órfã que o
 DATA-03 existe para consertar.
 

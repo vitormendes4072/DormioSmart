@@ -24,8 +24,11 @@ Item de backlog: **SEC-07**. Implementação em
 > usada para eliminar os dados de outro usuário. Optou-se pela exclusão efetiva
 > dos registros, e não por sua anonimização, porque séries temporais de
 > acelerometria noturna não são razoavelmente anonimizáveis — a própria série
-> constitui identificador quando cruzada com outras fontes — e porque o art. 13,
-> §4º, da mesma lei equipara o dado pseudonimizado ao dado pessoal. Registra-se
+> constitui identificador quando cruzada com outras fontes — e porque o art. 12
+> da mesma lei retira de seu alcance apenas o dado efetivamente *anonimizado*,
+> de sorte que o registro meramente desvinculado de seu titular, por conservar
+> a possibilidade de reassociação, permanece dado pessoal e sujeito à disciplina
+> legal. Registra-se
 > que não foi concedida política de atualização sobre a tabela de leituras: a
 > eliminação é direito do titular, enquanto a alteração de uma medição já
 > registrada comprometeria a integridade do conjunto experimental sem produzir
@@ -70,14 +73,51 @@ Item de backlog: **SEC-07**. Implementação em
   onze lugares do repositório (aqui, no `DATA-CONTRACT.md`, no
   `BACKLOG-COMPLETO.md`, no `routes.py`, no `database.py`, na migração `006` e
   em quatro arquivos de teste) e foi corrigida em todos.
-- ⚠️ **`art. 13, §4º` merece cuidado na redação.** A citação existe e é onde a
-  pseudonimização está definida, mas o artigo inteiro trata de *estudos em
-  saúde pública* — usá-lo sozinho para sustentar "dado pseudonimizado continua
-  sendo dado pessoal" é frouxo, e uma banca atenta pode pegar. O argumento fica
-  mais firme apoiado no **art. 12**, que retira do alcance da lei apenas o dado
-  **anonimizado**: por contraste, o pseudonimizado permanece dentro. O
-  `docs/POLITICA-DE-PRIVACIDADE.md` já usa essa formulação; **o parágrafo
-  principal acima ainda usa a antiga** e conviria alinhá-lo antes de entregar.
+- ✅ **`art. 13, §4º` trocado pelo `art. 12` em 2026-09-30.** A citação antiga
+  existia e era onde a pseudonimização está definida, mas o artigo inteiro trata
+  de *estudos em saúde pública* — e, conferido no Planalto, o §4º abre com
+  **"Para os efeitos deste artigo"**, ou seja, a própria lei limita aquela
+  definição ao art. 13. Usá-lo sozinho para sustentar "dado pseudonimizado
+  continua sendo dado pessoal" era frouxo por escrito na lei, não só por
+  contexto. O parágrafo principal agora se apoia no **art. 12**, que retira do
+  alcance da lei apenas o dado **anonimizado** — e só quando a anonimização não
+  seja reversível com esforços razoáveis (art. 12, *caput* e §1º): por
+  contraste, o pseudonimizado permanece dentro. Mesma troca feita no
+  `docs/DATA-CONTRACT.md` e no cabeçalho da migração `006`, que repetiam a
+  formulação antiga. O `docs/POLITICA-DE-PRIVACIDADE.md` já usava a nova.
+- ✅ **Varredura completa do repositório em 2026-09-30.** Toda citação de artigo
+  da Lei 13.709/2018 fora de referência bibliográfica foi conferida contra o
+  texto no Planalto. As demais estão corretas:
+
+  | Citação | Confere? |
+  |---|---|
+  | art. 6º, III — necessidade (minimização) | ✅ `LGPD-04`, seção 9 da política |
+  | art. 7º, I — consentimento · art. 7º, IV — estudos por órgão de pesquisa | ✅ |
+  | art. 12 — anonimizado fora do alcance da lei | ✅ |
+  | art. 16 — eliminação após o término do tratamento | ✅ |
+  | art. 18, I e II — confirmação e acesso | ✅ |
+  | art. 18, III — correção | ✅ `UI-11` |
+  | art. 18, IV — anonimização, bloqueio ou eliminação de dado excessivo | ✅ |
+  | art. 18, V — portabilidade | ✅ |
+  | art. 18, VI — eliminação | ✅ (ver ressalva abaixo) |
+  | art. 18, VII, VIII e IX — compartilhamento, negativa, revogação | ✅ |
+  | art. 19 — prazo de atendimento | ✅ |
+  | art. 33 e seguintes — transferência internacional | ✅ |
+  | art. 13, §4º — pseudonimização | ⛔ trocado pelo art. 12 (acima) |
+
+  `docs/ML-DATASETS-E-PLANO.md` e `docs/SINTESE-PESQUISA-E-CAMINHOS.md` também
+  contêm a abreviação "art.", mas como número de artigo de periódico
+  (`Sensors` 18(10) art. 3441, `IJBNPA` 21(1) art. 40) — não são citações legais
+  e ficaram fora da varredura de propósito.
+- ⚠️ **O art. 18, VI é mais estreito do que o texto acima sugere.** O inciso lê
+  *"eliminação dos dados pessoais tratados **com o consentimento** do titular"*.
+  Isso fecha com a política atual, que declara consentimento (art. 7º, I) como
+  base legal. **Mas o `LGPD-01` deixou em aberto** a possibilidade de a base
+  migrar para o art. 7º, IV (*estudos por órgão de pesquisa*), se o projeto for
+  a comitê de ética. Se isso acontecer, o art. 18, VI deixa de ser o fundamento
+  direto e o apoio passa a ser o **art. 18, IV** combinado com o **art. 16** —
+  e este parágrafo, mais as onze ocorrências do repositório, precisam ser
+  revistos de novo. Fica registrado para não ser redescoberto na banca.
 - A ressalva sobre `auth.users` **só se aplica se o seu projeto não tiver o
   privilégio**. Rode a verificação nº 4 do rodapé da migration 006 e veja o
   que dá. Se der `true`, corte a ressalva inteira — ela descreve um problema

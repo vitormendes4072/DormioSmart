@@ -47,6 +47,13 @@ sozinho para sustentar "dado pseudonimizado continua sendo dado pessoal" é
 frouxo. O argumento fica mais firme apoiado no **art. 12**, que retira do escopo
 da lei apenas o dado **anonimizado** — de onde se segue, por contraste, que o
 pseudonimizado permanece dentro. O texto abaixo usa essa formulação.
+**Atualização de 30/09:** conferido no Planalto, o §4º do art. 13 abre com *"Para
+os efeitos deste artigo"* — a própria lei circunscreve aquela definição ao art.
+13, o que torna a objeção acima textual, e não apenas contextual. A formulação
+por contraste com o art. 12 foi estendida a `docs/LGPD-ELIMINACAO.md`,
+`docs/DATA-CONTRACT.md` e ao cabeçalho da migração `006`, que ainda repetiam a
+antiga. Nenhuma outra citação de artigo da LGPD no repositório está incorreta —
+varredura completa registrada nas notas do `LGPD-ELIMINACAO.md`.
 
 **O que eu NÃO consegui determinar pelo código, e você precisa decidir:**
 

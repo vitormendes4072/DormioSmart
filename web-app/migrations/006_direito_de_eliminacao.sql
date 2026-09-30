@@ -22,8 +22,9 @@
 -- permaneceria no conjunto — mas dado de acelerometria noturna de uma pessoa
 -- específica, com carimbo de tempo, não é razoavelmente anonimizável: a série
 -- temporal é ela mesma um identificador quando cruzada com qualquer outra
--- fonte. Chamar isso de anonimização seria impreciso, e a LGPD trata dado
--- pseudonimizado como dado pessoal (art. 13, §4º). Então apaga.
+-- fonte. Chamar isso de anonimização seria impreciso, e a LGPD só retira de seu
+-- alcance o dado efetivamente anonimizado (art. 12): o pseudonimizado continua
+-- sendo dado pessoal. Então apaga.
 --
 -- Efeito colateral aceito de propósito: a linha órfã que o desvínculo criaria
 -- é justamente o problema que o DATA-03 existe para consertar. Não faria
