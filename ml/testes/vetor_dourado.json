@@ -1,5 +1,5 @@
 {
-  "descricao": "Vetor dourado das features por \u00e9poca. O teste em C++ do firmware deve ler este arquivo e reproduzir 'esperado'.",
+  "descricao": "FRONTEIRA A (dispositivo). O teste em C++ do firmware deve ler este arquivo e reproduzir 'esperado'. As 6 primeiras features e `g` s\u00e3o o que o dispositivo transmite (contrato v2.5.0 \u00a72.6).",
   "limiar_p_frac_g": 0.12236594555735139,
   "corte_gravidade_hz": 0.25,
   "ordem_features": [
@@ -12,7 +12,25 @@
     "inclinacao_rel",
     "d_angulo"
   ],
-  "nota": "inclinacao_rel e d_angulo s\u00e3o INTER-\u00e9poca e valem 0 quando h\u00e1 uma \u00fanica \u00e9poca; a paridade delas exige uma sequ\u00eancia.",
+  "features_do_dispositivo": [
+    "enmo_media",
+    "enmo_desvio",
+    "enmo_max",
+    "mag_din_media",
+    "zcr",
+    "p_frac"
+  ],
+  "tolerancias": {
+    "enmo_abs_g": 1e-07,
+    "zcr_abs": 0.0,
+    "mag_din_rel": 0.04,
+    "p_frac_abs_amostras": 2.5,
+    "g_componente_abs": 0.005,
+    "g_angulo_graus": 0.25,
+    "nota": "Derivadas, nao escolhidas: cada uma esta entre um PISO medido (o que duas implementacoes corretas ainda divergem) e um TETO (o que mudaria uma decisao a jusante). A derivacao esta no cabecalho de test_vetor_dourado.py e e re-medida por test_as_tolerancias_ainda_cercam_o_piso."
+  },
+  "n_amostras_minimo_paridade": 960,
+  "nota": "inclinacao_rel e d_angulo sao INTER-epoca e valem 0 aqui, onde cada caso tem uma epoca so. A paridade delas NAO e desta fronteira: elas sao derivadas no servidor, e o dourado delas e vetor_dourado_sequencias.json (DATA-07c).",
   "casos": [
     {
       "seed": 1,
@@ -4821,14 +4839,19 @@
         ]
       ],
       "esperado": {
-        "enmo_media": 0.006003832235203872,
+        "enmo_media": 0.006003832235203873,
         "enmo_desvio": 0.007991373830425651,
         "enmo_max": 0.0334881547974728,
         "mag_din_media": 0.024208986163136676,
         "zcr": 0.1386861313868613,
         "p_frac": 0.0,
         "inclinacao_rel": 0.0,
-        "d_angulo": 0.0
+        "d_angulo": 0.0,
+        "g": [
+          0.36376244446192335,
+          0.8641501773841994,
+          0.3477374798981884
+        ]
       }
     },
     {
@@ -9645,7 +9668,12 @@
         "zcr": 0.10948905109489052,
         "p_frac": 0.0,
         "inclinacao_rel": 0.0,
-        "d_angulo": 0.0
+        "d_angulo": 0.0,
+        "g": [
+          0.27314865905788155,
+          -0.7550554215336827,
+          -0.5960546287610506
+        ]
       }
     },
     {
@@ -14462,7 +14490,12 @@
         "zcr": 0.12304483837330553,
         "p_frac": 0.051041666666666666,
         "inclinacao_rel": 0.0,
-        "d_angulo": 0.0
+        "d_angulo": 0.0,
+        "g": [
+          0.6189103940940061,
+          -0.7751423853305376,
+          0.12690235043720247
+        ]
       }
     },
     {
@@ -19279,7 +19312,12 @@
         "zcr": 0.21480709071949947,
         "p_frac": 0.0,
         "inclinacao_rel": 8.537736462515939e-07,
-        "d_angulo": 0.0
+        "d_angulo": 0.0,
+        "g": [
+          -0.36318400944972545,
+          -0.09754087671360552,
+          0.9265976217592848
+        ]
       }
     },
     {
@@ -24096,7 +24134,12 @@
         "zcr": 0.09801876955161627,
         "p_frac": 0.01875,
         "inclinacao_rel": 0.0,
-        "d_angulo": 0.0
+        "d_angulo": 0.0,
+        "g": [
+          -0.5113104080754793,
+          -0.8446382873201318,
+          -0.158580674064027
+        ]
       }
     }
   ]

@@ -81,7 +81,11 @@ from __future__ import annotations
 import numpy as np
 from scipy.signal import butter, filtfilt
 
-__all__ = ["NOMES_FEATURES", "features_de_epoca", "estimar_gravidade", "direcao_referencia"]
+__all__ = [
+    "NOMES_FEATURES", "features_de_epoca", "estimar_gravidade", "direcao_referencia",
+    "FEATURES_DO_DISPOSITIVO", "FEATURES_DERIVADAS_NO_SERVIDOR",
+    "unitario", "features_inter_epoca",
+]
 
 #: Ordem canônica. `DATA-07` (contrato de dados) e o firmware seguem esta ordem.
 NOMES_FEATURES: tuple[str, ...] = (
@@ -101,6 +105,16 @@ NOMES_FEATURES: tuple[str, ...] = (
 FEATURES_DEPENDENTES_DO_FILTRO: frozenset[str] = frozenset(
     {"mag_din_media", "p_frac"}
 )
+
+#: As 6 que o DISPOSITIVO calcula e transmite (contrato v2.5.0, §2.6, campo `f`).
+#: São todas intra-época: nenhuma depende de época vizinha, e por isso o lado
+#: C++ não guarda estado entre épocas.
+FEATURES_DO_DISPOSITIVO: tuple[str, ...] = NOMES_FEATURES[:6]
+
+#: As 2 que o SERVIDOR deriva de `ĝ` na drenagem, sobre a noite inteira. O
+#: dispositivo não pode calculá-las: `ĝ_ref` é a mediana geométrica de todas as
+#: épocas, e quando ele envia a época 12 as épocas 13..960 ainda não existem.
+FEATURES_DERIVADAS_NO_SERVIDOR: tuple[str, ...] = NOMES_FEATURES[6:]
 
 #: Corte do passa-baixa que separa gravidade de aceleração dinâmica.
 #: 0,25 Hz é o valor usual na área (a gravidade é quase-DC; o movimento humano
@@ -127,10 +141,16 @@ def estimar_gravidade(a: np.ndarray, fs: float) -> np.ndarray:
     return filtfilt(b, aa, a, axis=0)
 
 
-def _unitario(v: np.ndarray) -> np.ndarray:
+def unitario(v: np.ndarray) -> np.ndarray:
+    """Normaliza para norma 1 na última dimensão. Vetor ~nulo volta inalterado."""
     n = np.linalg.norm(v, axis=-1, keepdims=True)
     n = np.where(n < 1e-12, 1.0, n)
     return v / n
+
+
+#: Nome interno histórico. `unitario` é o público; este alias existe porque
+#: `testes/test_redundancia_angular.py` já o importava.
+_unitario = unitario
 
 
 def direcao_referencia(
@@ -169,6 +189,56 @@ def _angulo_entre(u: np.ndarray, v: np.ndarray) -> np.ndarray:
     """Ângulo em graus entre vetores unitários, por linha."""
     c = np.clip(np.sum(u * v, axis=-1), -1.0, 1.0)
     return np.degrees(np.arccos(c))
+
+
+def features_inter_epoca(g_epocas: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """**A derivação do servidor.** De `ĝ` por época para os dois ângulos.
+
+    Esta é a função que o backend executa na drenagem (`DATA-07b`, item (e)).
+    A entrada é exatamente o que o dispositivo transmitiu — o campo `g` do
+    contrato v2.5.0, um vetor de gravidade por época — e a saída são as duas
+    features que o dispositivo **não pode** calcular.
+
+    Ela foi extraída de `features_de_epoca` de propósito. Antes, a fórmula
+    estava embutida no laço e **copiada** em `testes/test_redundancia_angular.
+    py`; com duas cópias, o vetor dourado não conseguia fixar a derivação —
+    fixava uma das cópias. Agora há uma implementação só, e é esta que tanto o
+    pipeline quanto o dourado chamam.
+
+    Parameters
+    ----------
+    g_epocas : (n_epocas, 3) vetor gravidade por época. **Não precisa ser
+        unitário** — é normalizado aqui. É deliberado: o dispositivo transmite
+        `ĝ` já unitário (‖g‖ = 1 ± 1e−3 pelo contrato), mas o mesmo código
+        serve ao pipeline, que parte da média bruta por época.
+
+    Returns
+    -------
+    inclinacao_rel : (n_epocas,) graus, ângulo até a direção de referência.
+    d_angulo : (n_epocas,) graus, reorientação em relação à época anterior.
+        ⚠️ `d_angulo[0] = 0` por definição — a primeira época não tem anterior.
+        Zero aqui significa "indefinido", não "não houve virada"; quem consumir
+        precisa saber a diferença.
+
+    ⚠️ **Não há noção de lacuna temporal.** `d_angulo[i]` compara a época `i`
+    com a `i−1` na ordem do array, sejam elas separadas por 30 s ou por duas
+    horas de dispositivo desligado. Numa drenagem com buraco, o valor sai como
+    se a virada tivesse acontecido numa época. O vetor dourado tem um caso que
+    documenta esse comportamento (`lacuna_entre_epocas`); tratá-lo de verdade
+    exige carimbo de tempo por época, que o `DATA-07b` ainda vai decidir.
+    """
+    g_epocas = np.asarray(g_epocas, dtype=float)
+    if g_epocas.ndim != 2 or g_epocas.shape[1] != 3:
+        raise ValueError(f"esperado (n_epocas, 3), recebido {g_epocas.shape}")
+
+    u = unitario(g_epocas)
+    u_ref = direcao_referencia(g_epocas)
+    inclinacao = _angulo_entre(u, np.broadcast_to(u_ref, u.shape))
+
+    d = np.zeros(u.shape[0], dtype=float)
+    if u.shape[0] > 1:
+        d[1:] = _angulo_entre(u[1:], u[:-1])
+    return inclinacao, d
 
 
 def features_de_epoca(
@@ -228,13 +298,8 @@ def features_de_epoca(
         X[i, 5] = float(np.count_nonzero(np.linalg.norm(din, axis=1) > limiar_p_frac_g)) / n_am
 
     # --- entre épocas: os dois ângulos -------------------------------------
-    u = _unitario(g_media)
-    u_ref = direcao_referencia(g_media)
-    X[:, 6] = _angulo_entre(u, np.broadcast_to(u_ref, u.shape))
-
-    d = np.zeros(n_ep, dtype=float)
-    if n_ep > 1:
-        d[1:] = _angulo_entre(u[1:], u[:-1])
-    X[:, 7] = d
+    # Mesma função que o servidor roda na drenagem. Uma implementação só, para
+    # que o vetor dourado consiga fixar a fronteira servidor de verdade.
+    X[:, 6], X[:, 7] = features_inter_epoca(g_media)
 
     return X, g_media
