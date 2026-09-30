@@ -1,6 +1,6 @@
 # Contrato de dados — Smart Dormio
 
-**Versão:** 2.5.0 · **Itens:** DATA-01, DATA-02, SEC-02, SEC-03, DASH-05, DASH-06, DATA-04, APP-01, SEC-06, SEC-07, APP-08, DASH-08, DASH-12, DASH-13, DATA-07a
+**Versão:** 2.5.1 · **Itens:** DATA-01, DATA-02, SEC-02, SEC-03, DASH-05, DASH-06, DATA-04, APP-01, SEC-06, SEC-07, APP-08, DASH-08, DASH-12, DASH-13, DATA-07a, DATA-07c
 
 > **2.5.0 (MINOR — nada quebra em campo):** o payload ganha o **vetor de
 > características por época** (`f`), campo **opcional**, e a seção 2.6 fixa a
@@ -207,6 +207,15 @@ faixa e produz um modelo errado em silêncio.
 
 E `g` = `[gx̂, gŷ, gẑ]`, cada componente em **[−1, 1]**, com ‖g‖ = 1 ± 1e−3.
 
+> **`‖g‖ = 1 ± 1e−3` é coerência, não orçamento de paridade.** Ela pergunta
+> "este vetor é mesmo unitário?" a **um** lado, e os dois lados a satisfazem
+> sozinhos porque os dois normalizam. Ela **não** diz quanto as duas
+> implementações podem discordar em *direção* — isso é outro número, medido no
+> `DATA-07c`: o resíduo de borda do filtro faz `ĝ` divergir até **0,082 grau**
+> entre Python e a referência de firmware, e a tolerância de paridade adotada é
+> **0,25 grau**. Confundir as duas coisas leva a conferir `ĝ` com uma régua
+> 4× mais fina do que qualquer implementação correta consegue atender.
+
 **Duas armadilhas de unidade, ambas já custaram tempo neste projeto:**
 
 - **`f` está em g, não em m/s².** O resto do payload (`ax`, `ay`, `az`, `total`)
@@ -243,6 +252,34 @@ amostras a época teve) e o filtro de gravidade não é reproduzível. Mesmo
 princípio de `metodo` na seção 2.5: o que descreve **como** o número foi
 produzido viaja com o número, senão o histórico fica ambíguo no dia em que a
 taxa mudar — e ela vai mudar, porque o `FW-06` ainda não fixou a taxa final.
+
+#### Época incompleta não tem paridade (medido no DATA-07c)
+
+O vetor `f` só é comparável entre as implementações quando a época está
+**completa**. Abaixo disso as duas pontas deixam de calcular a mesma coisa, e
+não por arredondamento:
+
+| amostras na época | divergência em `mag_din_media` |
+|---:|---:|
+| 8 | 54 % |
+| 10 | 30 % |
+| 64 | 3,0 % |
+| 300 | 0,82 % |
+| 960 (completa) | 0,26 % |
+
+São duas causas somadas. Até 9 amostras, `estimar_gravidade` desiste de filtrar
+e devolve a média — um **estimador diferente**, que a referência estilo-firmware
+não tem. Acima disso, o filtro simplesmente ainda não assentou.
+
+⚠️ **Consequência para o `DATA-07b`:** o dispositivo **não pode emitir `f` de uma
+época truncada** — nem no encerramento da noite, nem quando a drenagem corta o
+buffer no meio. Ou ele descarta a época incompleta, ou o payload carrega a
+contagem de amostras para o servidor descartar. Enquanto isso não for decidido,
+o risco é real e silencioso: uma época curta produz um vetor de características
+plausível, dentro de todas as faixas desta seção, e simplesmente errado.
+
+A medição está travada em
+`ml/testes/test_vetor_dourado.py::test_epoca_incompleta_nao_tem_paridade`.
 
 #### Validação prevista (a implementar no DATA-07b)
 
@@ -650,6 +687,7 @@ unidade alterada, novo header obrigatório). **MINOR** = campo opcional novo.
 
 | Versão | Data | Mudança |
 |---|---|---|
+| 2.5.1 | 2026-09-30 | **PATCH — nenhuma mudança de formato.** A seção 2.6 ganha dois fatos medidos no `DATA-07c`, ambos sobre a seção que ainda não está implementada: **(a)** época incompleta não tem paridade entre as implementações (até 54 % de divergência em `mag_din_media`), então o dispositivo não pode emitir `f` de época truncada — decidir *como* no `DATA-07b`; **(b)** o `‖g‖ = 1 ± 1e−3` é checagem de coerência de um lado, e **não** o orçamento de discordância entre implementações, que é de 0,25 grau. Nenhum campo, faixa ou obrigatoriedade muda |
 | 2.5.0 | 2026-09-29 | Payload ganha o vetor de características por época: `f` (6 intra-época), `g` (gravidade unitária) e `fs` (taxa), todos opcionais; seção 2.6 fixa ordem canônica, unidades, faixas e representação em ponto fixo (DATA-07a). **MINOR:** campo opcional novo, nenhuma obrigatoriedade muda, nenhum firmware precisa ser regravado. ⚠️ **Declarado, não implementado** — nenhum dos três lados emite, valida ou persiste `f`; isso é o `DATA-07b` |
 | 2.4.0 | 2026-09-27 | Ingestão sai da `service_role` e passa a gravar por função, com o papel `dormio_ingestao` de privilégio mínimo (SEC-06); `DELETE /api/me` expõe o direito de eliminação do titular (SEC-07, LGPD art. 18, VI). **MINOR:** o payload de ingestão é idêntico e nenhum firmware precisa ser regravado |
 | 2.3.0 | 2026-09-10 | O `select` de leitura passa a trazer `captured_at` — o instante da **medição**, ao lado de `created_at`, o da **chegada** (DASH-12). **MINOR:** campo novo e anulável na resposta; a ingestão não muda e nenhum firmware precisa ser regravado |
