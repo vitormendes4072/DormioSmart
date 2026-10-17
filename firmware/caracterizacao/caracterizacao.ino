@@ -44,14 +44,15 @@
  *
  * -- POR QUE A LARGURA DE BANDA ESTA EM 21 Hz ----------------------------
  *
- * O `sketch.ino` de producao NAO chama setFilterBandwidth, entao roda no
- * padrao (260 Hz), que e barulhento. Medir aqui num filtro e usar outro no
- * produto invalidaria a transferencia do resultado.
+ * Ate o FW-06 o `sketch.ino` de producao NAO chamava setFilterBandwidth, e
+ * rodava no padrao (260 Hz), que e barulhento. Medir aqui num filtro e usar
+ * outro no produto invalidaria a transferencia do resultado - por isso os
+ * dois sketches agora medem na mesma banda.
  *
  * 21 Hz e a escolha certa para os dois: movimento de corpo em cama e um
  * fenomeno lento, na casa de poucos Hz. Tudo acima disso e vibracao do
  * movel, passo no comodo e ruido do proprio MEMS - largura de banda maior so
- * deixa entrar o que nao interessa. Alinhar o firmware e o item FW-06.
+ * deixa entrar o que nao interessa.
  *
  * -- COMO USAR -----------------------------------------------------------
  *
