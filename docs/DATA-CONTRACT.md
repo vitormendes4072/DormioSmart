@@ -1,6 +1,6 @@
 # Contrato de dados — Smart Dormio
 
-**Versão:** 2.5.1 · **Itens:** DATA-01, DATA-02, SEC-02, SEC-03, DASH-05, DASH-06, DATA-04, APP-01, SEC-06, SEC-07, APP-08, DASH-08, DASH-12, DASH-13, DATA-07a, DATA-07c
+**Versão:** 2.5.1 · **Itens:** DATA-01, DATA-02, SEC-02, SEC-03, DASH-05, DASH-06, DATA-04, APP-01, SEC-06, SEC-07, APP-08, DASH-08, DASH-12, DASH-13, DATA-07a, DATA-07b, DATA-07c
 
 > **2.5.0 (MINOR — nada quebra em campo):** o payload ganha o **vetor de
 > características por época** (`f`), campo **opcional**, e a seção 2.6 fixa a
@@ -147,10 +147,32 @@ ESP32. O backend traduz para os nomes de coluna (seção 4).
 
 ### 2.6 Vetor de características por época (v2.5.0, DATA-07a)
 
-> ⚠️ **Nada implementa esta seção ainda.** Ela é a especificação contra a qual
-> as três implementações serão escritas — Python, firmware e backend. O item
-> que implementa é o `DATA-07b`. Até lá, `f` não é emitido, não é validado e
-> não é persistido, e um payload sem ele é o payload correto.
+> ⚠️ **Estado em 2026-10-17 — o cálculo existe nos dois lados; o transporte
+> não.** Esta nota dizia "nada implementa esta seção ainda", e isso deixou de
+> ser verdade pela metade, então vale a precisão:
+>
+> | o que | onde | estado |
+> |---|---|---|
+> | definição das 6 + `ĝ` | `ml/src/features.py` | ✅ |
+> | **cálculo no firmware** | `firmware/nucleo/caracteristicas.{h,cpp}`, `filtro.{h,cpp}` | ✅ `DATA-07b` (a)(b) |
+> | **paridade Python ↔ C++ provada** | `firmware/nucleo/testes/testes_dourado.cpp` (`make dourado`) | ✅ `DATA-07b` (c) |
+> | emissão de `f`/`g`/`fs` no payload | `firmware/nucleo/payload.cpp` | ❌ |
+> | validação na ingestão | `web-app/validacao.py` | ❌ |
+> | persistência e migração | `web-app/` | ❌ `DATA-07b` (d) |
+> | derivação das 2 angulares no servidor | `web-app/` | ❌ `DATA-07b` (e) |
+>
+> Ou seja: **`f` continua não sendo emitido, não sendo validado e não sendo
+> persistido, e um payload sem ele continua sendo o payload correto.** O que
+> mudou é que o dispositivo já sabe calcular o vetor, com paridade medida (a
+> divergência é só o resíduo de borda do filtro, idêntica à que a referência
+> em Python já tinha contra o scipy).
+>
+> ⚠️ **E há um pré-requisito que não é de software:** o cálculo exige a época
+> completa a 32 Hz, e o firmware em campo amostra a cada 10 s — **3 amostras
+> por época**. Pela tabela de "Época incompleta não tem paridade" abaixo, isso
+> é a faixa de 54 % de divergência. O acumulador **recusa** a época em vez de
+> emitir um vetor plausível e errado, então o caminho é inerte até o `FW-06`
+> fixar a taxa.
 
 O modelo do `ML-01` não consome magnitude e rótulo: consome um **vetor de
 características por época de 30 s**. Enquanto o dispositivo enviar só
@@ -688,6 +710,7 @@ unidade alterada, novo header obrigatório). **MINOR** = campo opcional novo.
 
 | Versão | Data | Mudança |
 |---|---|---|
+| 2.5.1 *(nota de estado, 2026-10-17)* | — | **Não é mudança de contrato: nenhum campo, faixa ou obrigatoriedade mudou, e por isso a versão NÃO foi incrementada** (o backend declara `CONTRATO_DE_DADOS = "2.5.1"` e continua correto). A nota de abertura da seção 2.6 deixou de dizer "nada implementa esta seção": o `DATA-07b` implementou o **cálculo** das 6 features e de `ĝ` no firmware e **provou a paridade** Python↔C++ contra o `vetor_dourado.json` (`make dourado`). O **transporte segue não implementado** — `f` não é emitido, validado nem persistido. Registrado também o pré-requisito de taxa: a 10 s de cadência a época tem 3 amostras, e o firmware recusa emitir |
 | 2.5.1 | 2026-09-30 | **PATCH — nenhuma mudança de formato.** A seção 2.6 ganha dois fatos medidos no `DATA-07c`, ambos sobre a seção que ainda não está implementada: **(a)** época incompleta não tem paridade entre as implementações (até 54 % de divergência em `mag_din_media`), então o dispositivo não pode emitir `f` de época truncada — decidir *como* no `DATA-07b`; **(b)** o `‖g‖ = 1 ± 1e−3` é checagem de coerência de um lado, e **não** o orçamento de discordância entre implementações, que é de 0,25 grau. Nenhum campo, faixa ou obrigatoriedade muda |
 | 2.5.0 | 2026-09-29 | Payload ganha o vetor de características por época: `f` (6 intra-época), `g` (gravidade unitária) e `fs` (taxa), todos opcionais; seção 2.6 fixa ordem canônica, unidades, faixas e representação em ponto fixo (DATA-07a). **MINOR:** campo opcional novo, nenhuma obrigatoriedade muda, nenhum firmware precisa ser regravado. ⚠️ **Declarado, não implementado** — nenhum dos três lados emite, valida ou persiste `f`; isso é o `DATA-07b` |
 | 2.4.0 | 2026-09-27 | Ingestão sai da `service_role` e passa a gravar por função, com o papel `dormio_ingestao` de privilégio mínimo (SEC-06); `DELETE /api/me` expõe o direito de eliminação do titular (SEC-07, LGPD art. 18, VI). **MINOR:** o payload de ingestão é idêntico e nenhum firmware precisa ser regravado |

@@ -1226,6 +1226,214 @@ não foram pulados"); entrada de 2026-09-28 (`SEC-05`) deste diário.
 
 ---
 
+# 2026-10-17 — `DATA-07b`: as features em C++, e a paridade que finalmente tem dois lados
+
+**O problema, como foi entendido no início.** O `DATA-07c` fechou deixando um registro
+explícito: *"a paridade continua garantida de um lado só: enquanto o firmware não consumir o
+JSON, o dourado é uma especificação que ninguém leu"*. O item era escrever o lado que lê — o
+filtro Butterworth ida-e-volta em C++, a acumulação das seis features por época, e um alvo de
+teste que prove a paridade contra o `vetor_dourado.json`.
+
+**Hipótese de trabalho.** A referência `features_estilo_firmware` (em
+`ml/testes/test_vetor_dourado.py`) já é laço escalar, sem numpy, escrita justamente para ser
+transcrita. Então o trabalho seria transcrever, e o risco estaria concentrado no resíduo de
+borda do filtro — a única divergência de estimador declarada.
+
+**O que foi testado, e como.**
+
+Quatro módulos novos, e três instrumentos sobre eles:
+
+- `firmware/nucleo/filtro.{h,cpp}` — biquad Butterworth de 2ª ordem pela forma fechada
+  (prewarp por tangente + bilinear, Q = 1/√2), duas passagens com estado inicializado em
+  regime permanente. **Roda no lugar, sem vetor de rascunho:** na forma direta I as entradas
+  passadas ficam em locais, não no vetor, então sobrescrever a própria posição é seguro — 3,8 KB
+  por época a menos.
+- `firmware/nucleo/caracteristicas.{h,cpp}` — as 6 features intra-época e `ĝ`, mais o ponto
+  fixo de 16 bits (`VetorDeFeatures`, 18 B, com `static_assert` próprio).
+- `firmware/nucleo/testes/leitor_json.{h,cpp}` — leitor *pull* mínimo, sem alocação e sem
+  exceções, com autoteste de 24 verificações **incluindo os casos que ele deve recusar**.
+- `firmware/nucleo/testes/testes_dourado.cpp` — o alvo de paridade. `make dourado`.
+- `firmware/nucleo/testes/verificar_paridade_por_mutacao.sh` — quem testa o teste. `make mutacao`.
+
+Execução: `make` (341 + 157 verificações), `make mutacao` (15 casos), `make sintaxe`
+(4 sketches), `make capacidade`, e `pytest testes/` no `ml/` (107) mais
+`verificar_vetor_dourado_por_mutacao.py` (12/12 + 1 cego).
+
+**Resultado medido.**
+
+A paridade fechou nos cinco casos, com folga em todas as seis réguas:
+
+| régua | pior dos 5 casos | tolerância | uso |
+|---|---:|---:|---:|
+| ENMO (abs, g) | 2,433e−08 | 1e−07 | 24,3 % |
+| `zcr` (abs) | 0,000e+00 | 0 | exato |
+| `mag_din_media` (rel) | 0,570 % | 4 % | 14,3 % |
+| `p_frac` (amostras) | 1,00 | 2,5 | 40,0 % |
+| `ĝ` (componente) | 2,755e−04 | 5e−03 | 5,5 % |
+| `ĝ` (ângulo, grau) | 0,0178 | 0,25 | 7,1 % |
+
+**O resultado que importa mais que o "passou" é este:** medindo a divergência da *referência em
+Python* contra o scipy nas mesmas 5 sementes, dá **`mag_din` 0,570 %, `p_frac` 1,00 amostra,
+`ĝ` 0,0178 grau** — os mesmos números, dígito por dígito. Ou seja: para as três grandezas que
+dependem do filtro, **o C++ não acrescenta divergência nenhuma**. Toda a divergência observada
+é o resíduo de borda do `filtfilt` reflexivo contra o biquad causal ida-e-volta, que já estava
+medido e declarado. O resíduo de borda, que era a parte incerta do item, se comportou
+exatamente como o `DATA-07c` previu — e ficou **no fundo da faixa prevista** (p50 0,017 grau de
+200 sementes), porque as 5 sementes do dourado são de movimento pequeno.
+
+O ENMO é a exceção: o C++ diverge 2,43e−08 g onde o Python puro diverge 2,43e−17 g. São nove
+ordens de grandeza, e a causa é uma decisão de projeto — a janela guarda as amostras em
+`float32`, não em `double`. Isso consome **24 % do orçamento de paridade do ENMO** e economiza
+11,5 KB. O número está medido e o teste o reporta a cada execução; quem quiser apertar a
+tolerância do ENMO sabe o preço.
+
+Verificação por mutação do lado C++: **11 de 11 sabotadores detectados**, 3 pontos cegos
+declarados confirmados cegos.
+
+**Adaptação.** Cinco coisas deram errado, e quatro mudaram o código.
+
+**(a) `features.h` sequestrou o `<features.h>` da glibc, e nada compilava.** O primeiro nome do
+módulo foi `features.h`. Com o `-I.` do Makefile, todo cabeçalho de sistema que faz
+`#include <features.h>` — ou seja praticamente todos — passou a incluir o meu. O erro era
+`missing binary operator before token "("` **dentro de `/usr/include/`**, apontando para a
+biblioteca padrão, sem mencionar o arquivo culpado; e atingia até `filtro.cpp`, que não o
+inclui. *Corrigido:* renomeado para `caracteristicas.h`, que além de não colidir segue o padrão
+de nomes da casa (`epoca`, `cadencia`, `relogio`, `payload`) — seguir o padrão teria evitado o
+problema de graça.
+
+**(b) Os coeficientes em `float32` enviesavam o estimador, e o teste pegou.** O ganho em
+corrente contínua de um passa-baixa tem de ser exatamente 1. Saiu **1,0000120**. A causa é
+cancelamento catastrófico na própria expressão: `1 + a1 + a2 = 1 − 1,93060643 + 0,93293473 =
+0,0023283`, uma soma que perde quase três ordens de grandeza, então 1e−7 de erro por
+coeficiente vira 4,3e−5 no ganho. Em termos físicos: a gravidade estimada sai escalada por
+1,000012, o que injeta 1,2e−5 g em `‖a − ĝ‖` de forma **sistemática** — viés de estimador, não
+ruído, e portanto não se cancela no somatório. *Corrigido:* coeficientes em `double`, a custo
+**zero** — o laço interno já acumulava em `double`, então eles eram `float` truncado promovido a
+`double` em toda multiplicação, o pior dos dois mundos. O ganho DC passou a fechar em 1e−16 e
+um sinal constante de 1 g atravessa o filtro com desvio **0,000e+00**. A tentação era afrouxar a
+tolerância de 1e−5; o teste estava certo e o estimador estava errado.
+
+**(c) Os coeficientes de referência que eu escrevi no teste estavam errados.** Foram escritos de
+memória (`b0 ≈ 5,37e−4`, `a1 ≈ −1,93338`) e o valor real é `b0 = 5,8207613e−4`,
+`a1 = −1,9306064`. Conferido contra `scipy.signal.butter` de verdade (scipy 1.15.3): a forma
+fechada do módulo e o scipy concordam em **2,2e−19** nos cinco coeficientes. Fica registrado
+porque é o modo de falha mais fácil de não notar — um valor de referência inventado faz o teste
+reprovar código correto, e a reação natural é mexer no código.
+
+**(d) A asserção `inclinacao_rel == 0` reprovou, e estava mais fina que a física.** O dourado
+traz `inclinacao_rel = 8,53774e−07` no seed 4. Não é defeito do arquivo: é o piso de
+condicionamento do `arccos`, que o lado Python já havia medido e registrado — com uma época só
+`ĝ_ref` é o próprio `ĝ`, o produto interno é 1, e ali `dθ/dc = −1/√(1−c²)` explode, transformando
+1 ulp em ~6e−7 grau. *Corrigido:* régua de 1e−5 grau, a **mesma** que
+`test_angulo_entre_vetores_paralelos_nao_e_nan` usa do outro lado.
+
+**(e) Meu próprio harness de mutação tinha contaminação entre rodadas.** A primeira versão
+restaurava só `caracteristicas.cpp` entre sabotagens, deixando `filtro.cpp` sabotado da rodada
+anterior. Resultado: a sabotagem "`ĝ` com viés de 1e−4" apareceu como **detectada**, e a
+detecção era resíduo da sabotagem do corte do filtro. É o mesmo defeito que o `DATA-07c` achou
+no instrumento do Python, com outra roupa — instrumento que mede a si mesmo errado. *Corrigido:*
+árvore nova (`mktemp -d`) por sabotagem, e a exigência de que cada trecho case **exatamente uma
+vez**, com erro alto quando não casa (um sabotador morto se lê como ponto cego).
+
+**Decisão de projeto: as features ficaram FORA do `Epoca`.** O `Epoca` é o registro que o buffer
+funde quando degrada resolução, e das sete grandezas deste módulo **quatro fundem exato e três
+não**: `mag_din_media` (o `filtfilt` sobre 60 s não é a concatenação de dois de 30 s), `zcr` (os
+cruzamentos são contados contra a média da própria janela) e `ĝ` (guardamos só a direção
+unitária; a magnitude, que seria o peso da média ponderada, foi descartada). Embuti-las no
+registro que funde criaria três números que a degradação corromperia em silêncio, dentro de
+todas as faixas do contrato — exatamente o defeito que o `DATA-07` existe para evitar.
+
+**Recálculo da autonomia, que é consequência da decisão acima.** `sizeof(Epoca)` continua 32 B e
+o `static_assert` de `epoca.cpp` continua travado. O pareamento com `VetorDeFeatures` (18 B) dá
+50 B, que alinham em **52 B** — contra os **40 B** do layout D do estudo do buffer. Os 10 B de
+diferença são os 5 floats de pico que o layout D quantiza e esta mudança não tocou.
+
+| registro | bytes | 32 KiB | 1,5 MiB |
+|---|---:|---:|---:|
+| A. hoje, sem features | 32 | 8,53 h | 409,6 h |
+| D. estudo (picos quantizados) | 40 | 6,83 h | 327,7 h |
+| **implementado** | **52** | **5,25 h** | **252,1 h** |
+
+⚠️ **E a consequência não é só margem.** Com 32 B uma noite de 8 h cabia inteira em resolução
+cheia, sem degradar uma vez. Com 52 B cobre 5,25 h, então numa noite sem rede a degradação
+**passa a ser acionada** — cerca de 2,75 h precisam ser fundidas. E época degradada **não tem
+features**, pelo motivo do parágrafo anterior: o início da noite chegaria ao servidor com
+`total`/`status` e **sem** `f`. Não é perda silenciosa (a época viaja marcada `EPOCA_DEGRADADA` e
+`f` é opcional no contrato), mas é perda de **cobertura de features** que o layout D reduziria.
+É o argumento mais forte a favor de quantizar os picos, e está registrado como tal — não foi
+feito junto porque mexe na precisão **transmitida** (`ax/ay/az/total`) e na checagem de coerência
+da seção 5.1, e juntar as duas mudanças tornaria impossível dizer qual delas quebrou o quê.
+
+**Achado de RAM que o estudo do buffer não tinha como prever.** `sizeof(AcumuladorDeFeatures)` =
+**19 208 B (18,8 KiB)**, ou 59 % do orçamento de heap "conservador" de 32 KiB. O estudo
+dimensionou o **armazenamento** das features e não tinha implementação para orçar o **cálculo**.
+O custo é imposto pela matemática, não por conveniência: o filtro é de fase zero, a passagem de
+volta lê a janela do fim para o começo, então a gravidade na amostra 0 depende da amostra 959 —
+**não existe forma O(1) em streaming**. Qualquer acumulador incremental seria um filtro causal,
+isto é, outro estimador, com divergência não declarada. A alternativa de guardar a janela em
+`int16` (economia de 9,6 KB) foi recusada: injetaria quantização *dentro* do cálculo e moveria o
+piso de paridade do ENMO de 1e−7 para a ordem de 1e−3 g.
+
+**Dois pontos cegos do lado C++, um deles novo e estrutural.**
+
+`C1` é o já conhecido: `p_frac` com `>=` em vez de `>`. Copiado por leitura da seção 2.6 do
+contrato ("fração de amostras com ‖a − ĝ‖ **acima** do limiar"), com a nota no código apontando
+para o registro. Não é teste, é procedência.
+
+`C2` é **novo**: `ĝ` normalizado antes de promediar — média de direções em vez de direção da
+média. O lado Python detecta (ele compara byte a byte com o arquivo, régua de igualdade exata);
+o lado C++ não, e **não se resolve estendendo o dourado**. Medido:
+
+| amplitude | piso de borda | sabotagem |
+|---:|---:|---:|
+| 0,02 g | 0,0213° | 0,0004° |
+| 0,20 g | 0,1857° | 0,0400° |
+| 0,40 g | 0,3683° | 0,1406° |
+| 0,60 g | 0,5507° | 0,2793° |
+| 1,20 g | 1,0963° | 0,8184° |
+
+A sabotagem só cruzaria os 0,25 grau com amplitude ~0,6 g — e nessa amplitude o **piso legítimo
+já vale 0,55 grau**, o dobro. Em toda a faixa o piso é ~2× a sabotagem, e os dois escalam juntos
+porque são governados pela mesma grandeza: a variação de ‖ĝ_filtrado‖ ao longo da época. Então
+acrescentar um caso de movimento grande ao dourado **pioraria** a situação — faria o piso
+estourar a tolerância e reprovar firmware correto. A assimetria é inerente à fronteira: entre
+duas implementações só existe régua de tolerância, e uma tolerância derivada de um piso físico
+não pode ser mais fina que esse piso.
+
+**Nenhuma tolerância foi afrouxada.** As duas que se mexeram foram apertadas ou alinhadas com a
+régua já existente do outro lado: o ganho DC foi de 1e−5 para 1e−12 (corrigindo o estimador), e
+a das angulares passou de igualdade exata para os 1e−5 grau que o Python já usava.
+
+**Risco em aberto.**
+
+- **A cadência atual é 0,1 Hz, e as features precisam de 32 Hz.**
+  `INTERVALO_AMOSTRA_MS = 10000` no `envio-continuo.ino` dá **3 amostras por época**. O contrato
+  mede 54 % de divergência em 8 amostras. Ou seja: **todo este item é código correto que o
+  dispositivo ainda não tem insumo para alimentar**, e `fechar()` recusa a época em vez de emitir
+  um vetor plausível e errado. Até o `FW-06` fixar a taxa, o caminho de features é inerte. Isso
+  não estava escrito em lugar nenhum antes desta entrada.
+- **Nada disto rodou numa placa.** Os 18,8 KiB de janela, os ~29 000 MACs em `double` por época e
+  o tempo de parede do fechamento são `sizeof` e aritmética no host. Os 8 pinos do MPU6050
+  continuam sem solda.
+- **Os itens (d) e (e) do `DATA-07b` continuam abertos:** a persistência no backend e a
+  derivação das duas features angulares no servidor. Esta entrada fecha (a), (b) e (c).
+- **O `C2` fica como ponto cego permanente deste alvo**, mitigado só por leitura do código e pelo
+  fato de o lado Python continuar detectando.
+- **O payload não emite `f`.** `montar_payload` não ganhou os campos `f`, `g` e `fs`: o contrato
+  os declara opcionais e a emissão depende da decisão de época truncada, que esta entrada
+  resolve no acumulador mas não no payload. O contrato v2.5.1 continua "declarado, não
+  implementado" do lado do transporte.
+
+**Procedência.** `firmware/nucleo/filtro.{h,cpp}`, `caracteristicas.{h,cpp}`,
+`testes/leitor_json.{h,cpp}`, `testes/testes_dourado.cpp`,
+`testes/verificar_paridade_por_mutacao.sh`, `Makefile` (alvos `dourado` e `mutacao`);
+`capacidade.cpp` (seções "AUTONOMIA COM AS FEATURES" e "CUSTO DE RAM DO ACUMULADOR");
+`ml/testes/vetor_dourado.json` (tolerâncias lidas do arquivo, não copiadas);
+`ml/testes/test_vetor_dourado.py` (`features_estilo_firmware`, bloco de tolerâncias);
+`docs/DATA-CONTRACT.md` seção 2.6; `docs/DECISAO-BUFFER-E-FEATURES.md` ("O registro: 40 bytes").
+
+---
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
