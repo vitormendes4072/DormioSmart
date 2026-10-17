@@ -277,11 +277,31 @@ diagrama** — que é o que a banca lê.
 > make capacidade` (341/0, 4/4); `cd web-app && python -m pytest tests/ --ignore=tests/rls`
 > (240).
 >
-> ⚪ **O que continua sem execução:** nenhum destes jobs rodou **num runner do GitHub** —
-> rodaram todos localmente, e o `chore/GIT-01-normalizar-fim-de-linha` não foi enviado.
-> O que diferencia o runner do local é o `actions/checkout` (que é justamente o ponto
-> central da análise do `CI-05`), as versões `setup-python`/`setup-node` e o cache do
-> pip. Isso é o que falta para o selo verde valer como evidência.
+> 🔴 **`CI-06` *(novo — 16/10)*: o CI não roda desde 2026-09-10, e são QUATRO jobs sem
+> execução em runner, não três.** Medido na API pública do Actions: a última execução é a
+> **#131, de 10/09**, em `develop`, com sucesso — e o `ci.yml` que existia em `develop`
+> naquela data tinha **dois** jobs, `test` e `frontend`. O `ci.yml` da branch tem seis.
+> Nunca rodaram em runner: `ml`, `firmware`, `documentos` (30/09, validados localmente em
+> 16/10) **e `rls`**, que entrou em `d4011a1` em 28/09 — dezoito dias depois da última
+> execução. O quarto item é o que carrega a afirmação de segurança do trabalho (`SEC-05`).
+>
+> Sobre o `rls`, com a distinção que importa: **os 125 testes não são código nunca
+> executado** — a entrada de 28/09 do diário registra execução local contra Postgres de
+> verdade, com verificação por mutação, e `web-app/tests/rls/` não mudou desde então. O que
+> nunca aconteceu é **(a)** o *job* rodar, isto é, a guarda contra pulo silencioso ser
+> exercitada onde ela precisa funcionar, e **(b)** a perna da **Postgres 16**, já que o
+> harness foi verificado na 14. A matriz existe porque RLS e privilégio mudam entre majors;
+> a 16 é, hoje, hipótese. **Quando o push sair, a 16 é a primeira coisa a olhar** — antes
+> dos três jobs novos. Se reprovar, é achado de segurança e vale mais que o selo verde.
+>
+> ⚪ **O push está bloqueado por ambiente, não por decisão.** Autorizado em 16/10, tentado e
+> recusado: `could not read Username for 'https://github.com'` — o ambiente de execução lê o
+> repositório público anonimamente mas não tem credencial de escrita, e obtê-la exigiria
+> manipular credencial em texto claro. Os 6 commits existem só no clone local. O comando,
+> para rodar num terminal da máquina: `git push origin
+> chore/GIT-01-normalizar-fim-de-linha`. As conferências pré-push foram feitas e passaram
+> (remoto correto, branch inexistente no remoto, gatilho `chore/**` cobre, ações `@v6`
+> resolvem, nenhum segredo em commit nenhum, os 15 pendentes fora).
 
 ---
 

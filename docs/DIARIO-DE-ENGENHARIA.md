@@ -1132,6 +1132,100 @@ passam** em 22 arquivos, com `tsc --noEmit` e `vite build` limpos.
 
 ---
 
+# 2026-10-16 (ii) — `CI-06`: o push que não saiu, e o que a tentativa revelou sobre o Actions
+
+**O problema, como foi entendido no início.** A entrada anterior fechou os três jobs com um risco
+declarado: validados localmente, nenhum num runner. Com autorização para empurrar a branch, o
+enunciado era simples — `git push origin chore/GIT-01-normalizar-fim-de-linha`, sem merge e sem
+PR, para que o CI rodasse de verdade.
+
+**Hipótese de trabalho.** Que o push fosse o último passo e que o resto do trabalho fosse ler o
+resultado do Actions. Implícito nisso: que o ambiente que lê o repositório também pode escrever
+nele.
+
+**O que foi testado, e como.** Primeiro as conferências pré-push: `git remote -v`,
+`git ls-remote --heads origin`, o cruzamento entre os arquivos pendentes e os arquivos que a
+branch carrega, e varredura de segredos — por **nome** de arquivo e por **conteúdo**, nos 363
+blobs distintos de todos os 48 commits de `develop..HEAD`, não só nos 6 desta sessão. Depois,
+`git push --dry-run`.
+
+**Resultado medido.** As conferências passaram, e o push **não saiu**:
+
+```
+fatal: could not read Username for 'https://github.com': No such device or address
+```
+
+Não há credencial de escrita no ambiente — nenhum `credential.helper`, nenhum
+`~/.git-credentials`, nenhum `GH_TOKEN`, `gh` ausente. A leitura anônima do repositório público
+funciona (foi assim que o `ls-remote` respondeu); a escrita não, e **não há como obtê-la daqui**
+sem manipular credencial em texto claro, o que não se faz. A hipótese tácita estava errada: ler e
+escrever o remoto não são a mesma permissão.
+
+O que as conferências mediram, que fica registrado por ser verificação feita e não suposta:
+
+| Conferência | Resultado |
+|---|---|
+| Remoto | `https://github.com/vitormendes4072/DormioSmart.git`, o esperado |
+| A branch existe no remoto? | **Não.** Só `develop` (`f044fd2`) e `main` (`198b32e`), ambos idênticos aos refs locais — nada divergente, nada a reescrever |
+| O gatilho cobre a branch? | Sim: `chore/**` está em `on.push.branches` desde `ba9f31a` (21/08) |
+| As ações `@v6` resolvem? | Sim — `checkout`, `setup-python` e `setup-node` têm as tags v1…v7; o pin em v6 é de `a6c2315` (03/06), deliberado |
+| Os 15 pendentes estão fora dos commits? | Sim. E a contagem exata é **13 de frontend + 1 de firmware + 1 JSON do ml**, não 15 de frontend — o número herdado de 30/09 estava mal atribuído |
+| A branch carrega algum frontend? | Três arquivos, de `916e210` (UI-10, 29/09) — commit deliberado de outra sessão, **interseção vazia** com os 13 pendentes |
+| Segredos | Nada. Nenhum `.env`/`secrets.h`/`.pem` versionado em commit nenhum; nenhum JWT (`eyJ…`), chave AWS, token do GitHub ou PEM. Os únicos achados de alto sinal são placeholders: `sb_secret_abc123` (fixture que testa a *recusa* de chave secreta), `SUPABASE_JWT_SECRET='...'` e `'o-segredo-do-projeto'` (documentação) |
+
+**Adaptação — e é o achado que paga a tentativa frustrada.** Sem poder empurrar, fui ler o
+histórico do Actions pela API pública, e ele desmonta uma premissa que esta sessão vinha
+repetindo. **A última execução do CI é a #131, de 2026-09-10**, em `develop`, com sucesso. Não há
+nenhuma depois. E o `ci.yml` que existia em `develop` naquela data tinha **dois** jobs:
+
+```
+jobs em develop (o que a #131 rodou):  test, frontend
+jobs na branch hoje:                   test, rls, frontend, ml, firmware, documentos
+```
+
+Portanto **quatro dos seis jobs nunca rodaram num runner** — não três. O quarto é o `rls`, que
+entrou em `d4011a1` (28/09), dezoito dias depois da última execução. A categoria "escrito, não
+executado" sempre teve um item a mais do que o backlog contava, e o item a mais é justamente o
+que carrega a afirmação de segurança do trabalho (`SEC-05`, isolamento entre usuários).
+
+Com uma distinção que precisa ser feita com cuidado, porque é fácil exagerar na direção
+alarmante: **os 125 testes de RLS não são código nunca executado.** A entrada de 28/09 registra
+execução local contra Postgres de verdade, com verificação por mutação, e o código de
+`web-app/tests/rls/` não mudou desde `3e38c9f` (106 funções de teste, 125 casos coletados com
+parametrização). O que nunca aconteceu é outra coisa, mais estreita e ainda assim relevante:
+
+1. O **job** `rls` nunca rodou — ou seja, a guarda contra pulo silencioso, que é o que impede o
+   job de ficar verde sem verificar nada, nunca foi exercitada no lugar onde ela precisa
+   funcionar. Os três cenários dela foram exercitados à mão em 28/09, o que é bom e não é o
+   mesmo.
+2. O **Postgres 16 nunca foi exercitado.** O harness foi desenvolvido e verificado na 14. A
+   matriz `['14','16']` existe exatamente porque RLS e privilégio mudam entre majors — a 15
+   mudou dono e privilégios do schema `public` — e a perna da 16 é, hoje, uma hipótese.
+
+**Risco em aberto.**
+
+- **O push continua pendente, e é bloqueio de ambiente, não de decisão.** Os 6 commits estão no
+  clone local do Vitor e em nenhum outro lugar. Enquanto não saírem, o CI não roda e nada nesta
+  entrada ou na anterior pode ser chamado de "o CI passa".
+- **Nada do que a entrada anterior chamou de "validado localmente" mudou de status aqui.** Esta
+  entrada não acrescentou uma única execução de job; acrescentou o conhecimento de que a dívida
+  é maior do que se pensava.
+- **A perna da Postgres 16 é a próxima coisa a olhar quando o push sair**, antes dos três jobs
+  novos. Se a 16 reprovar, o achado é de segurança e vale mais que qualquer selo verde — e o
+  `fail-fast: false` foi posto ali justamente para que esse diagnóstico apareça inteiro.
+- **`DATA-03` segue aberto** e aparece de novo aqui por tabela: a `002_backfill_dono_dos_dados.sql`
+  está mergeada desde agosto e não foi rodada no Supabase. É a mesma classe de coisa — escrito,
+  mergeado, não executado — e é a terceira vez que ela aparece neste diário.
+
+**Procedência.** `git push --dry-run` (saída citada acima); `git ls-remote --heads origin`;
+API pública do GitHub, `/actions/runs` (`total_count: 131`, run `#131`,
+`head_sha f044fd2`, `created_at 2026-09-10`, `conclusion success`);
+`git show develop:.github/workflows/ci.yml` contra `.github/workflows/ci.yml`;
+`.github/workflows/ci.yml`, job `rls` (matriz, serviço e a etapa "Conferir que os testes de RLS
+não foram pulados"); entrada de 2026-09-28 (`SEC-05`) deste diário.
+
+---
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
