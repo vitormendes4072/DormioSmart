@@ -1363,6 +1363,19 @@ features**, pelo motivo do parágrafo anterior: o início da noite chegaria ao s
 É o argumento mais forte a favor de quantizar os picos, e está registrado como tal — não foi
 feito junto porque mexe na precisão **transmitida** (`ax/ay/az/total`) e na checagem de coerência
 da seção 5.1, e juntar as duas mudanças tornaria impossível dizer qual delas quebrou o quê.
+**Dívida assumida, com o motivo: `DATA-07e`.**
+
+⚠️ **E a saída de fundo já estava desenhada desde 29/09, sem nunca ter virado item.** O estudo
+do buffer (`docs/DECISAO-BUFFER-E-FEATURES.md`, Saída 1, item 3 da ordem de implementação)
+recomenda **flash como registro durável e RAM como cache de escrita**, com os números medidos:
+**1,5 MiB** na partição de dados do esquema padrão (não os 4 MiB do chip — ~1,2 MB vão para OTA),
+**39 321 épocas de 40 B = 327 h ≈ 13,7 dias** em resolução plena sem degradar uma vez; desgaste
+de **3 741 anos** com nivelamento (374 com endurance pessimista), e energia entre **0,0026 % e
+0,013 %** dos 23,9 mA do `CALC-01` Z.4.4 — contra 3,33 mA médios de **uma** transmissão por
+época, isto é, mais de mil vezes menos. A recomendação estava no corpo de um documento e em
+nenhuma lista de trabalho. **Virou `FW-08`.** Resolvido o `FW-08`, a degradação deixa de ser
+acionada numa noite de 8 h e a pressão sobre o `DATA-07e` cai — mas os dois continuam valendo,
+porque o `DATA-07e` também reduz o tráfego e o `FW-08` depende do `ARQ-01`.
 
 **Achado de RAM que o estudo do buffer não tinha como prever.** `sizeof(AcumuladorDeFeatures)` =
 **19 208 B (18,8 KiB)**, ou 59 % do orçamento de heap "conservador" de 32 KiB. O estudo
@@ -1400,18 +1413,40 @@ estourar a tolerância e reprovar firmware correto. A assimetria é inerente à 
 duas implementações só existe régua de tolerância, e uma tolerância derivada de um piso físico
 não pode ser mais fina que esse piso.
 
+**Este é um limite quantificado e inerente, não uma pendência** — não há trabalho que o feche, e
+retomá-lo como tarefa seria gastar esforço para piorar o instrumento. Registrado como tal em
+`docs/BACKLOG-COMPLETO.md` (`PARID-C2`, marcado ⛔ e fora da contagem de itens abertos) e, por
+ser material de defesa, em `docs/LIMITACOES-TCC.md` X.4, na forma do limite geral: **verificação
+por paridade entre duas implementações independentes tem piso de detecção, e esse piso é
+mensurável.**
+
 **Nenhuma tolerância foi afrouxada.** As duas que se mexeram foram apertadas ou alinhadas com a
 régua já existente do outro lado: o ganho DC foi de 1e−5 para 1e−12 (corrigindo o estimador), e
 a das angulares passou de igualdade exata para os 1e−5 grau que o Python já usava.
 
 **Risco em aberto.**
 
-- **A cadência atual é 0,1 Hz, e as features precisam de 32 Hz.**
-  `INTERVALO_AMOSTRA_MS = 10000` no `envio-continuo.ino` dá **3 amostras por época**. O contrato
-  mede 54 % de divergência em 8 amostras. Ou seja: **todo este item é código correto que o
-  dispositivo ainda não tem insumo para alimentar**, e `fechar()` recusa a época em vez de emitir
-  um vetor plausível e errado. Até o `FW-06` fixar a taxa, o caminho de features é inerte. Isso
-  não estava escrito em lugar nenhum antes desta entrada.
+- **A cadência atual é 0,1 Hz, e as features precisam de 32 Hz na grade do dourado — com
+  piso de amostragem de ≥ 42 Hz.** `INTERVALO_AMOSTRA_MS = 10000` no `envio-continuo.ino` dá
+  **3 amostras por época**. O contrato mede 54 % de divergência em 8 amostras. Ou seja: **todo
+  este item é código correto que o dispositivo ainda não tem insumo para alimentar**, e
+  `fechar()` recusa a época em vez de emitir um vetor plausível e errado. Até o `FW-05` fixar a
+  taxa, o caminho de features é inerte. Isso não estava escrito em lugar nenhum antes desta
+  entrada.
+  ⚠️ **E subir a taxa não é ajuste de parâmetro.** Os 42 Hz de Nyquist do filtro de 21 Hz
+  atravessam os **40 Hz** do modo de baixo consumo do MPU6050 — desigualdade estrita já
+  estabelecida no `CALC-01` Z.4.3 e na entrada de 10/09 deste diário —, o que obriga o modo
+  normal a 500 µA (**4,5×** na corrente do transdutor) e **elimina a arquitetura de despertar
+  por movimento**, porque o WoM exige baixo consumo e as épocas se sucedem sem janela ociosa em
+  que dormir. A cadência, portanto, **escolhe entre o vetor de features e o Deep Sleep com
+  WoM**. Virou item próprio: **`ARQ-01`**. As duas metades do problema existiam separadas desde
+  setembro e nada as ligava.
+- 🛑 **Consequência prática, e é a que custa caro se for ignorada: captar uma noite agora
+  produz dado que o modelo não consome.** Cadência de 0,1 Hz + acumulador que recusa a época +
+  `montar_payload` sem `f` = **noite registrada, zero features**. Não é perda silenciosa — a
+  época viaja honesta, com `total`/`status`, e `f` é opcional no contrato — mas é uma noite que
+  terá de ser recaptada. Registrado onde quem for captar lê: no aviso do `VAL-01` em
+  `docs/BACKLOG-COMPLETO.md`, no caminho crítico do mesmo arquivo e no `ROADMAP.md`.
 - **Nada disto rodou numa placa.** Os 18,8 KiB de janela, os ~29 000 MACs em `double` por época e
   o tempo de parede do fechamento são `sizeof` e aritmética no host. Os 8 pinos do MPU6050
   continuam sem solda.
@@ -1431,6 +1466,86 @@ a das angulares passou de igualdade exata para os 1e−5 grau que o Python já u
 `ml/testes/vetor_dourado.json` (tolerâncias lidas do arquivo, não copiadas);
 `ml/testes/test_vetor_dourado.py` (`features_estilo_firmware`, bloco de tolerâncias);
 `docs/DATA-CONTRACT.md` seção 2.6; `docs/DECISAO-BUFFER-E-FEATURES.md` ("O registro: 40 bytes").
+
+---
+
+# 2026-10-17 (ii) — `DOC-10`/`GIT-05`: auditoria de registro, e o eixo que faltava
+
+**O problema, como foi entendido no início.** Auditar se cinco achados já conhecidos estavam
+registrados de forma **acionável** — não se estavam escritos, mas se alguém sem contexto os
+encontraria e saberia o que fazer. Os cinco: o caminho de features inerte, a consequência disso
+para a captação, a autonomia de 5,25 h com a saída em flash já desenhada, o ponto cego
+permanente da paridade, e a dívida de não quantizar os picos.
+
+**Hipótese de trabalho.** O trabalho seria de conferência, e o grosso já estaria registrado — a
+entrada de 17/10 (i) é longa e cobre os cinco. Esperava-se achar uma ou duas lacunas de
+formulação.
+
+**O que foi testado, e como.** Leitura dos três arquivos de registro (`DIARIO`,
+`BACKLOG-COMPLETO`, `LIMITACOES-TCC`) contra `DECISAO-BUFFER-E-FEATURES.md` e
+`CALCULOS-TCC.md`, mais `grep` por cada termo-chave em `docs/`.
+
+**Resultado medido.** **Quatro dos cinco estavam no diário e nenhum dos cinco estava acionável
+no backlog**, que é a lista que alguém abre para decidir o que fazer. O mais objetivo:
+
+> `grep -rniE 'flash|LittleFS' docs/BACKLOG-COMPLETO.md docs/DIARIO-DE-ENGENHARIA.md` → **vazio.**
+
+O estudo do buffer dimensionou flash em 29/09 — 1,5 MiB, 13,7 dias, desgaste de 3 741 anos,
+energia em centésimos de por cento — e a recomendação viveu **18 dias** no corpo de um documento
+sem nunca virar item. O `FW-05` pedia "≥ 42 Hz" como requisito simples, sem dizer que atravessar
+os 40 Hz custa uma arquitetura. O `VAL-01` convidava a captar uma noite sem avisar que ela
+sairia sem feature nenhuma. O `DATA-07c` dizia "1 ponto cego registrado", e era o do lado
+Python, não o `C2`.
+
+**Adaptação.** Cinco itens novos (`ARQ-01`, `FW-08`, `DATA-07e`, `PARID-C2` — este ⛔, fora da
+contagem — e `GIT-05`), o aviso de captação em quatro lugares, e o limite de paridade escrito
+como material de defesa em `LIMITACOES-TCC.md` X.4.
+
+**E um achado que não estava sendo procurado, que é o próprio objeto do item `GIT-05`.** Ao
+escrever o aviso de captação no `ROADMAP.md`, `git status` não o acusou: **o `ROADMAP.md` está
+no `.gitignore`.** Um aviso ali não chega a um clone. A varredura completa — todo arquivo
+rastreado contra `git check-ignore` — achou **oito** arquivos ignorados que arquivos rastreados
+mandam ler, e o `ROADMAP.md` é citado por **8 deles**, inclusive `frontend/src/lib/metricas.ts`.
+O aviso foi para o `README.md`, que é versionado.
+
+O `CI-05` **não acusa isso, e não por defeito**: sua verificação (2) trata *ignorado como
+decisão, não esquecimento*, e a distinção está certa. O que faltava é que ignorar é decisão
+sobre **distribuição** e não diz nada sobre o **ponteiro** que ficou no texto. Entrou a
+verificação **(3)** em `scripts/conferir_docs_versionados.py`, validada por controle positivo
+nas duas direções (ponteiro novo → reprova; árvore limpa → OK, inclusive com `CI=true`).
+⚠️ **Ela nasceu com os oito dentro da isenção `PONTEIROS_ACEITOS`, cada um com motivo escrito e
+impresso a cada execução** — então **hoje não cobre nenhum dos oito; pega o nono.** Está dito
+assim no script, no `ci.yml` e no backlog, porque uma verificação que estreia com todas as
+violações atuais isentas é exatamente §1 de novo se não se disser isso.
+
+**O documento que saiu da auditoria.** O padrão de todos os cinco achados é o mesmo, e já tinha
+nome: análise correta que não chega onde a decisão é tomada. Daí `docs/LICOES-APRENDIDAS.md`
+(`DOC-10`) — o mesmo material deste diário pelo outro eixo, **por padrão de falha**. Oito
+padrões, regra de entrada explícita (duas ocorrências reais, ou uma com custo medido), cada um
+com prevenção em forma verificável, e um checklist de sete perguntas. O diário responde *o que
+aconteceu*; o novo responde *já pisamos nessa pedra?*, que é a pergunta que se faz antes.
+
+**Risco em aberto.**
+
+- **Nada do que esta entrada registra foi executado.** `ARQ-01` depende de medição em placa,
+  `FW-08` e `DATA-07e` dependem dele. O repositório passou a descrever corretamente um problema
+  que continua inteiro.
+- **A (3) é catraca, não cobertura**, e o trabalho do `GIT-05` é reduzir os oito — arquivo por
+  arquivo, versionando ou parando de citar. Só o `HISTORICO.md` é ponteiro legítimo: o diário o
+  cita justamente para dizer que ele não serve de procedência.
+- ✏️ **Uma afirmação minha desta sessão saiu sem conferência e foi corrigida no mesmo dia:** eu
+  escrevi que o `README.md` "manda ler" `METODOLOGIA.md`, `HARDWARE.md` e `DATASET.md`;
+  conferido, ele os lista **pelo nome, sem caminho**, na árvore de "Estrutura". O efeito sobre
+  quem clona é o mesmo, a afirmação não era. É §3 do próprio documento novo, cometido enquanto
+  ele era escrito, e fica registrado por isso.
+- **O `CI-06` continua valendo:** nenhum destes jobs rodou em runner, e agora são quatro mais
+  uma verificação nova.
+
+**Procedência.** `docs/LICOES-APRENDIDAS.md`; `docs/BACKLOG-COMPLETO.md` (`ARQ-01`, `FW-08`,
+`DATA-07e`, `PARID-C2`, `GIT-05`, `DOC-10`); `docs/LIMITACOES-TCC.md` X.4 e a nota "O que entrou
+em 2026-10-17"; `scripts/conferir_docs_versionados.py` (cabeçalho, `PONTEIROS_ACEITOS`,
+`conferir_ponteiros`); `.github/workflows/ci.yml`, job `documentos`; `README.md`, seção
+"Status".
 
 ---
 

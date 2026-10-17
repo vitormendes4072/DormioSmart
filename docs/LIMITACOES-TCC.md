@@ -284,6 +284,48 @@ esperada entre coortes.
 insuficiente para inferência estatística sobre população. Prestam-se à demonstração de
 viabilidade técnica e à calibração de parâmetros, não à validação do método.
 
+**Limite de detecção da verificação por paridade entre implementações.** O cálculo das
+características é realizado em duas implementações independentes — a de referência, em
+linguagem interpretada, empregada na análise, e a embarcada, em linguagem compilada, executada
+no dispositivo — e a equivalência entre ambas é verificada por confronto contra um conjunto de
+casos de referência com tolerâncias declaradas. Registra-se que esse procedimento possui
+**limite de detecção inerente**, e que esse limite foi quantificado em vez de presumido.
+
+A razão é estrutural. Entre duas implementações do mesmo cálculo não existe critério de
+igualdade exata, apenas critério de tolerância, e a tolerância não pode ser estabelecida abaixo
+do piso de divergência legítima entre elas — sob pena de reprovar implementação correta. Em
+consequência, qualquer discrepância cuja magnitude seja inferior a esse piso é, por construção,
+indetectável pelo procedimento.
+
+Verificou-se experimentalmente, por injeção deliberada de defeito, um caso em que essa condição
+se realiza: a substituição do estimador da direção da gravidade da época pela média das direções
+instantâneas, em lugar da direção da média. Mediu-se, em função da amplitude do movimento, a
+divergência produzida pelo defeito e o piso de divergência legítima, decorrente do tratamento de
+borda do filtro de fase zero:
+
+| Amplitude do movimento | Piso de divergência legítima | Divergência produzida pelo defeito |
+|---:|---:|---:|
+| 0,02 g | 0,0213° | 0,0004° |
+| 0,20 g | 0,1857° | 0,0400° |
+| 0,40 g | 0,3683° | 0,1406° |
+| 0,60 g | 0,5507° | 0,2793° |
+| 1,20 g | 1,0963° | 0,8184° |
+
+Em toda a faixa avaliada o piso legítimo é de aproximadamente **o dobro** da divergência
+produzida pelo defeito, e ambos crescem conjuntamente, por serem governados pela mesma grandeza
+física — a variação do módulo do vetor gravidade filtrado ao longo da época. Registra-se, em
+particular, que **a ampliação do conjunto de casos de referência não corrige a limitação**:
+casos de movimento de maior amplitude elevariam o piso legítimo acima da tolerância, reprovando
+implementação correta. Trata-se, portanto, de limitação do método de verificação, e não de
+insuficiência do conjunto de casos empregado.
+
+Declara-se, por conseguinte, que a equivalência entre as duas implementações está estabelecida
+**acima do piso medido**, e não de forma absoluta, e que a mitigação adotada consiste na
+inspeção do código e na manutenção do confronto por igualdade exata do lado da implementação de
+referência, onde ele é possível. Registra-se igualmente que toda a verificação descrita foi
+conduzida em ambiente de desenvolvimento, não no dispositivo físico, conforme a seção X.4,
+parágrafo "Amostra própria".
+
 **Sobre a métrica de acurácia.** Registra-se, por rigor metodológico, que a acurácia global
 não constitui métrica informativa neste domínio. Dado que a proporção de épocas de sono em
 um registro noturno é elevada, um classificador trivial que atribuísse a totalidade das
@@ -366,6 +408,28 @@ derivadas. O sistema não substitui polissonografia nem avaliação por profissi
       especialmente resumo, introdução e considerações finais.
 - [ ] Verificar a coerência com o `README.md` público e com a nota de escopo exibida
       permanentemente na interface (`WEB-03`).
+
+## O que entrou em 2026-10-17
+
+Nota para você, não para o texto. **Um parágrafo novo em X.4: "Limite de detecção da
+verificação por paridade entre implementações."**
+
+É a primeira limitação deste arquivo que **não é sobre o modelo nem sobre o dado** — é sobre o
+*instrumento de verificação*. Entrou porque é material de defesa de um tipo que a banca
+pergunta: *"como vocês sabem que o firmware calcula a mesma coisa que a análise?"*. A resposta
+honesta é "até um piso medido, e aqui está o piso".
+
+- **Procedência:** `docs/DIARIO-DE-ENGENHARIA.md`, entrada de 2026-10-17 (`DATA-07b`), seção
+  "Dois pontos cegos do lado C++"; `firmware/nucleo/testes/verificar_paridade_por_mutacao.sh`.
+- **Reconferir:** `cd firmware/nucleo && make mutacao` (15 casos; 11 sabotadores detectados,
+  3 pontos cegos declarados confirmados cegos).
+- **A tabela de amplitudes é medição**, não estimativa, e os dois números de cada linha vêm da
+  mesma execução.
+- **Não é pendência** e não deve ser lida como tal — está marcada ⛔ em
+  `docs/BACKLOG-COMPLETO.md` (`PARID-C2`), fora da contagem de itens abertos, justamente para
+  não ser retomada como tarefa.
+- ⚠️ **O parágrafo remete a X.4 "Amostra própria"** ao dizer que a verificação rodou em
+  desenvolvimento e não no dispositivo. Se a numeração das seções mudar, conferir a remissão.
 
 ## O que entrou na medição de 2026-09-21
 
