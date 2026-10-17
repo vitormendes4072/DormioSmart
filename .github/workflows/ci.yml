@@ -221,8 +221,18 @@ jobs:
           tail -3 /tmp/coleta.txt
           N=$(grep -cE '^testes/.*::' /tmp/coleta.txt || true)
           echo "testes coletados: $N"
-          if [ "${N:-0}" -lt 70 ]; then
-            echo "::error::Coletados $N testes, menos que os 70 medidos em 2026-09-22. Import quebrado, pasta renomeada ou teste removido sem registro -- em qualquer dos casos a cobertura anunciada nao rodou."
+          # 107 e a contagem MEDIDA em 2026-10-16, na primeira execucao real
+          # deste job. O numero que estava aqui era 70, de 22/09, e ja estava
+          # 37 testes defasado: a guarda teria aceitado perder um terco da
+          # suite em silencio -- exatamente o modo de falha que ela existe para
+          # pegar, com o piso alto o bastante para parecer que pegava.
+          #
+          # Atualizar este numero quando a suite crescer e parte de escrever
+          # teste novo. Se ele ficar atras da suite, a guarda volta a nao
+          # guardar nada.
+          MINIMO=107
+          if [ "${N:-0}" -lt "$MINIMO" ]; then
+            echo "::error::Coletados $N testes, menos que os $MINIMO medidos em 2026-10-16. Import quebrado, pasta renomeada ou teste removido sem registro -- em qualquer dos casos a cobertura anunciada nao rodou."
             exit 1
           fi
 
