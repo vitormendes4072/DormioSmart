@@ -18,7 +18,7 @@ import { AvisoDeMistura, SeletorDeDispositivo } from "../components/SeletorDeDis
 import { useDispositivos } from "../hooks/useDispositivos";
 import { useHistorico } from "../hooks/useHistorico";
 import { LIMITE_DO_PAINEL } from "../lib/api";
-import { nomeDoDispositivo, serieMisturaInstrumentos } from "../lib/dispositivos";
+import { descreverRecorte, serieMisturaInstrumentos } from "../lib/dispositivos";
 import { agruparEmSessoes } from "../lib/cobertura";
 import {
   calcularMetricas,
@@ -211,13 +211,17 @@ export function Dashboard() {
               )}`
             : undefined
         }
+        // Nome E tipo (DASH-08): "Quarto" não diz se a série veio de um ESP32
+        // no travesseiro ou do celular no colchão.
         instrumento={
-          dispositivos.length > 1 ? nomeDoDispositivo(dispositivos, dispositivo) : undefined
+          dispositivos.length > 1 ? descreverRecorte(dispositivos, dispositivo) : undefined
         }
         acao={seletor}
       />
 
-      {serieMisturaInstrumentos(dispositivos, dispositivo) && <AvisoDeMistura />}
+      {serieMisturaInstrumentos(dispositivos, dispositivo) && (
+        <AvisoDeMistura dispositivos={dispositivos} selecionado={dispositivo} />
+      )}
 
       {/* A coleta teve buracos? Isso precisa aparecer ANTES dos números, e
           não depois — porque é o que decide se eles significam algo. */}
