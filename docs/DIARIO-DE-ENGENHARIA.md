@@ -1036,6 +1036,100 @@ o distinguiria de decoração.
 `.github/workflows/ci.yml`, jobs `ml`, `firmware` e `documentos`;
 `docs/BACKLOG-COMPLETO.md`, nota 🟠 ao final da seção "Infraestrutura e qualidade".
 
+> **Fechada em 2026-10-16.** O risco em aberto desta entrada — "nada disto foi
+> executado" — foi resolvido na entrada seguinte, e os três jobs reprovaram. A
+> análise acima estava certa; as três implementações dela, não.
+
+---
+
+# 2026-10-16 — `CI-03`/`CI-04`/`CI-05` executados: os três jobs reprovaram, cada um pelo seu motivo
+
+**O problema, como foi entendido no início.** A entrada anterior (30/09) deixou um risco
+declarado em aberto: três jobs de CI escritos sem uma única execução, porque o shell da sessão
+caiu com o disco cheio antes da validação. Além disso, dois commits ficaram por fazer com os
+arquivos já em disco. O enunciado desta sessão era, portanto, de dívida: commitar e validar.
+
+**Hipótese de trabalho.** A hipótese era explícita e está escrita na entrada de 30/09 — a
+análise que motivou os três jobs *é verificável por leitura*, em particular a do `CI-05`, que é
+consequência de o git enviar objetos commitados e nada mais. Donde se seguia, tacitamente, que a
+execução seria confirmação: rodar, ver verde, tirar o 🟠. Os arquivos tinham sido lidos e
+revisados em 30/09.
+
+**O que foi testado, e como.** Execução local dos três jobs, passo por passo, mais controle
+positivo em cada um — provocar de propósito o defeito que o job deve pegar e confirmar que
+acusa. Antes, `git log`, `git status` e os `mtime` dos arquivos, para conferir se duas semanas
+tinham mudado algo (não tinham: nada no repositório foi tocado desde 30/09 03:20).
+
+**Resultado medido. Os três reprovaram, e nenhum pelo motivo que se esperaria.**
+
+| Job | O que a execução achou |
+|---|---|
+| `documentos` (`CI-05`) | **O verificador se acusava a si mesmo.** Reprovou com três referências pendentes, e as três eram prosa: `docs/FOO.md` e `docs/sub/FOO.md` estão no comentário do próprio `PADRAO_REFERENCIA`, para explicar o que o regex casa, e `docs/ORFAO-DE-TESTE.md` está no backlog, dentro do procedimento de validação **deste mesmo script**. Job vermelho desde o primeiro push. |
+| `firmware` (`CI-03`) | **A lista tinha dois dos quatro sketches versionados**, e na primeira vez que os outros dois foram compilados os **dois** tinham string com quebra de linha literal no meio — o defeito exato que o alvo nasceu para pegar, o mesmo do `envio-continuo.ino` de 22/09. Mais dois no `diagnostico-i2c.ino`: chave sobrando fechando `setup()` no meio, e `%lu` para um `uint32_t` (no ESP32, `unsigned int`), que faz o `printf` ler 8 bytes de um argumento de 4. |
+| `ml` (`CI-04`) | **A suíte passou inteira** — 107 testes em 8,75 s, 12 de 12 sabotagens detectadas pelo verificador por mutação, ponto cego registrado confirmado. **A guarda é que estava quebrada:** o piso era 70, de 22/09, e a suíte tem 107 — ela toleraria perder 37 testes, um terço da cobertura, sem reprovar. |
+
+Quatro defeitos de firmware que nunca compilaram, um verificador que não podia passar e uma
+guarda que não guardava um terço do que anuncia. Nenhum deles é erro de digitação: cada um é um
+**alcance** menor do que o declarado.
+
+**Adaptação.** Em cada caso, a correção de superfície veio acompanhada de uma de fundo, porque a
+de superfície repetiria o defeito na próxima vez:
+
+1. `CI-05` — `EXEMPLOS_EM_PROSA`, isenção estreita e **impressa a cada execução**, porque
+   isenção silenciosa é como uma verificação deixa de verificar sem ninguém notar. Vale **só
+   para a verificação (2)**: na (1) o nome não tem isenção, senão o próprio procedimento de
+   validação (criar o órfão, confirmar que acusa) ficaria incapaz de falhar — que é o defeito
+   que o `DATA-07d` achou no vetor dourado, na mesma forma.
+2. `CI-03` — a lista de sketches **deixou de ser escrita à mão**: sai de `$(wildcard)`, com
+   guarda para o caso de não casar nada. Lista manual é alcance que silenciosamente para de
+   acompanhar a pasta, e foi assim que dois sketches ficaram semanas sem compilar.
+3. `CI-04` — piso em 107, com o motivo e a obrigação de atualizar escritos ao lado. A guarda é
+   necessária ali por um detalhe que vale registrar: o passo roda o pytest com `|| true`, então
+   o exit 2 da coleta sumiria — quem acusa é a contagem.
+
+A suíte completa foi rodada depois, e achou **um quinto defeito, fora do CI**: o backend
+declarava contrato `2.5.0` com o `DATA-CONTRACT.md` em `2.5.1` desde 30/09. O
+`test_informa_a_versao_do_contrato_de_dados` não fixa a versão num literal — lê do documento,
+exatamente para que a divergência não fosse possível em silêncio. Funcionou: acusou na primeira
+execução da suíte do backend depois de 30/09, que foi hoje. O teste estava certo e disponível
+por duas semanas sem ninguém rodar, o que é o argumento do CI em uma frase.
+
+Estado final das quatro suítes: núcleo C++ **341 verificações, 0 falhas**; `make sintaxe`
+**4/4**; `ml/` **107 passam**; backend **240 passam** (eram 239 + 1 falha); frontend **338
+passam** em 22 arquivos, com `tsc --noEmit` e `vite build` limpos.
+
+**Risco em aberto.**
+
+- **Nenhum destes jobs rodou num runner do GitHub.** Rodaram todos localmente, e o
+  `chore/GIT-01-normalizar-fim-de-linha` não foi enviado. O que o runner tem e o local não é
+  justamente o `actions/checkout` — o ponto central da análise do `CI-05` — além das versões de
+  `setup-python`/`setup-node` e do cache do pip. Enquanto isso não rodar lá, a frase honesta é
+  "validado localmente", não "o CI passa".
+- **`web-app/tests/rls/` não rodou: 125 testes pulados.** Exige um Postgres de verdade, e o
+  sandbox não tem root para instalar um (`apt-get` bloqueado). É o job `rls`, com matriz de
+  versão, e continua sem execução de referência — a mesma situação em que os três acima
+  estavam, e que esta entrada mostra não ser inofensiva.
+- **Os 15 arquivos de frontend de 29/09 continuam não commitados, e agora há um agravante:** os
+  338 testes do frontend e o `tsc` passaram **sobre a árvore de trabalho**, isto é, *com* essas
+  alterações. Não é medição do estado commitado, e o número não deve ser citado como se fosse.
+- **`caracterizacao.ino` entrou neste commit só pela metade, de propósito.** O arquivo tinha uma
+  edição de cabeçalho pendente de outra sessão (`FW-06`); só o hunk do `printf` foi commitado. A
+  edição da outra sessão continua em disco, sem commit.
+- **O `/tmp` não foi o culpado de 30/09.** A suspeita registrada era que a suíte do `ml/` teria
+  enchido o disco; medido, ela roda em 8,75 s e não escreve em `/tmp` (92 KB durante toda a
+  execução). O custo está em instalar `scipy` + `scikit-learn`, ~160 MB de build. A causa
+  provável do travamento de 30/09 é essa, não os testes — mas é inferência, não medição: o
+  ambiente daquela sessão não existe mais para conferir.
+- **O `.git/_lixo_sandbox/` cresceu** (88 → ~95 itens): locks órfãos que o sandbox não pode
+  apagar, mais os arquivos de teste desta sessão. Ainda é o `GIT-03`, ainda ⚪, ainda precisa de
+  um terminal na máquina.
+
+**Procedência.** Commits `7a96e6a` (diário), `6312267` (os três jobs como estavam),
+`7feeef9` (CI-03/CI-05 corrigidos), `6359912` (guarda do CI-04), `fa34897` (contrato 2.5.1);
+`docs/BACKLOG-COMPLETO.md`, nota ✅ ao final de "Infraestrutura e qualidade";
+`firmware/nucleo/Makefile`, comentário acima de `SKETCHES`;
+`scripts/conferir_docs_versionados.py`, `EXEMPLOS_EM_PROSA`.
+
 ---
 
 # O que este diário não cobre
@@ -1046,6 +1140,7 @@ Registrado para que a ausência não passe por completude.
 |---|---|
 | Tudo antes de 2026-04-29 | Anterior ao versionamento. Escolha do ESP32 + MPU6050, do travesseiro em vez do punho, e o enunciado inicial do problema não estão no git. |
 | Grande parte de junho a agosto | O `HISTORICO.md` cobre o período, mas **não é versionado** (está no `.gitignore`), então não pode ser citado como procedência num capítulo de TCC. As entradas desse intervalo aqui saem de reflog e de código, e por isso são poucas. |
-| As suítes do backend e do frontend | Os números de 10/09 (221 pytest, 315 vitest) são os últimos medidos; a revisão de 22/09 **não as reexecutou**. |
-| O frontend de 29/09 | Há 15 arquivos modificados e não commitados em `frontend/` de outra sessão de trabalho. Não estão neste diário porque não estão no histórico, e não foram lidos. |
+| ~~As suítes do backend e do frontend~~ | **Coberto em 16/10:** backend 240 passam, frontend 338 passam em 22 arquivos, `tsc --noEmit` e `vite build` limpos. Substitui os números de 10/09 (221 pytest, 315 vitest). Com duas ressalvas: `web-app/tests/rls/` **não rodou** (125 pulados — exige Postgres de verdade), e os 338 do frontend foram medidos **sobre a árvore de trabalho**, não sobre o estado commitado — ver a linha abaixo. |
+| O frontend de 29/09 | Há 15 arquivos modificados e não commitados em `frontend/` de outra sessão de trabalho. Não estão neste diário porque não estão no histórico, e não foram lidos. **16/10:** continuam sem commit, e é por isso que os 338 testes do frontend medem a árvore de trabalho *com* essas alterações, e não o que está versionado. O número é verdadeiro e **não é** o número do estado commitado. |
+| Execução em runner de verdade | Os jobs de CI validados em 16/10 rodaram **localmente**. Nenhum rodou num runner do GitHub, e o `chore/GIT-01-normalizar-fim-de-linha` não foi enviado. A diferença não é cosmética: o `actions/checkout` é o ponto central da análise do `CI-05`. |
 | Toda a camada L1 e L2 | Nada foi medido no dispositivo físico. Os 8 pinos do MPU6050 não estão soldados. Todo número de hardware neste arquivo é **calculado ou simulado**, com uma exceção — a leitura de 25/08, que é medição de um sensor mal conectado e serve só para dizer que não serve. |
