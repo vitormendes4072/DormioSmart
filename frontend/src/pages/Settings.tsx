@@ -104,16 +104,21 @@ function SecaoAparencia() {
  * contrário de excluir, que ganhou seção separada justamente para não ficar ao
  * alcance de um deslize.
  *
- * A leitura do nome saiu daqui para `nomeDaSessao`, em `lib/perfil.ts`: com a
- * leitura em dois lugares, a tela de exibição e a de edição podiam discordar
- * sobre de onde vem o nome.
+ * A leitura do nome saiu daqui para `lib/perfil.ts`: com a leitura em dois
+ * lugares, a tela de exibição e a de edição podiam discordar sobre de onde vem
+ * o nome.
+ *
+ * ✏️ **17/10, `PERFIL-01`:** a fonte passou a ser `public.profiles`, pela rota
+ * `/api/me/perfil`, e a idade entrou como campo opcional com finalidade
+ * declarada. O e-mail continua no serviço de autenticação, porque é
+ * credencial e não perfil — ver `components/EditarPerfil.tsx`.
  */
 function SecaoConta() {
   return (
     <Secao
       titulo="Conta"
       icone={User}
-      aviso="Nome e e-mail podem ser corrigidos a qualquer momento (LGPD, art. 18, III)."
+      aviso="Nome, idade e e-mail podem ser corrigidos ou retirados a qualquer momento (LGPD, art. 18, III e IV)."
     >
       <EditarPerfil />
     </Secao>
