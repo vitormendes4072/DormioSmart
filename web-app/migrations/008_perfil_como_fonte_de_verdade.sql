@@ -160,7 +160,7 @@ comment on column public.profiles.idade is
     'citadas no trabalho (ver frontend/src/lib/aplicabilidade.ts e a secao 3 '
     'da politica de privacidade). NAO entra em calculo nenhum: nao pondera '
     'metrica, nao estratifica serie, nao alimenta modelo. Usar para calculo e '
-    'FINALIDADE NOVA e exige declaracao nova antes (item ML-07).';
+    'FINALIDADE NOVA e exige declaracao nova antes (item LGPD-06).';
 
 comment on column public.profiles.updated_at is
     'Mantida pelo gatilho profiles_tocar_updated_at (migracao 008). Antes da '

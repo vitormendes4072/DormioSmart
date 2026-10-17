@@ -31,14 +31,20 @@ cada uma existe porque o projeto já pagou por não a ter feito.
 
 | § | Padrão | Ocorrências |
 |:-:|---|:-:|
-| 1 | Alcance declarado que não alcança | **6** |
+| 1 | Alcance declarado que não alcança | **8** |
+| 6 | Confirmação emitida antes da verificação | **6** |
+| 4 | O instrumento de medida mede errado — e nada mede o instrumento | **5** |
 | 2 | Análise correta que não chega onde a decisão é tomada | **4** |
 | 3 | Número herdado que ganha autoridade sem ter procedência | **4** |
-| 4 | O instrumento de medida mede errado — e nada mede o instrumento | **4** |
 | 5 | Premissa herdada da documentação, nunca conferida no artefato | **4** |
-| 6 | Confirmação emitida antes da verificação | **4** |
 | 7 | Degradação silenciosa é pior que falha ruidosa | **3** |
 | 8 | A média esconde o caso que importa | **2** |
+
+> ✏️ **17/10, tarde (`PERFIL-01`):** entraram três ocorrências, e o índice foi reordenado
+> por reincidência medida — o §6 passou o §4 e os dois passaram o §2 e o §3. O que o
+> reordenamento diz, e vale mais que os números: **os dois padrões que mais reincidem neste
+> projeto são os dois que só aparecem quando alguém vai rodar**. Nenhuma das três
+> ocorrências novas foi achada por leitura.
 
 ---
 
@@ -57,6 +63,8 @@ cobre é menor que o conjunto que seu nome anuncia; a diferença não aparece le
 | 4 | **`make sintaxe` tinha 2 dos 4 sketches**, e os dois de fora **não compilavam** — pelo mesmo defeito de string quebrada de 22/09. A lista era escrita à mão. | Diário 2026-10-16; commit `7feeef9` |
 | 5 | **A guarda de coleta do `CI-04` estava 37 testes defasada:** piso em 70, suíte com 107. Toleraria perder **um terço da cobertura** sem reprovar — e é o próprio modo de falha que ela existia para pegar. | Diário 2026-10-16; commit `6359912` |
 | 6 | **O aviso de captação foi escrito num arquivo gitignorado.** O `ROADMAP.md` não é versionado: o aviso não chegaria a um clone. | Backlog `GIT-05` (17/10) |
+| 7 | **O teste que barrava a criação de perfil alheio barrava pela CHAVE ESTRANGEIRA, não pela policy.** `test_ana_nao_cria_profile_para_o_bruno` inseria com um uuid **inventado**, para não colidir com a chave primária da linha que o gatilho cria — e uuid inventado não existe em `auth.users`, então o comando morria em `profiles_id_fkey` e **nunca chegava ao RLS**. Passava com `profiles_insert_own` escancarada (`with check (true)`): medido com o sabotador novo, só os dois testes **estruturais** caíam. O cenário que o teste queria montar — *"se o Bruno ainda não tivesse profile"* — era justamente o que ficou impossível de montar com um id falso. | Diário 2026-10-17 (iv); `tests/rls/conftest.py` (`CAROL`); sabotador `perfil_insert_permissivo` |
+| 8 | **Dois barramentos em série escondem um ao outro.** Um `upsert` (`insert ... on conflict do update`) contra uma vítima que **já tem** linha cai no ramo de `update`, então é a policy de `update` que recusa — e o teste passa **mesmo com a policy de `insert` escancarada**. O nome do teste ("a Ana não faz upsert no perfil do Bruno") anuncia cobertura das duas; ele cobre uma. Fechado com dois testes, um por estado da linha de destino. | Diário 2026-10-17 (iv); `tests/rls/test_rls_perfil.py` (cabeçalho) |
 
 **O que custou.** Nos casos 1, 4 e 5, **nada em produção — e só porque alguém foi rodar.** Os
 três jobs tinham sido lidos e revisados em 30/09 e **nenhum dos três passava como estava
@@ -65,6 +73,14 @@ escrito**; os defeitos apareceram na primeira execução, em 16/10, dezesseis di
 e isso durou de 22/09 a 16/10 porque nada no repositório tentava compilá-los. O caso 2 é o mais
 perigoso, porque um dourado que se regrava é indistinguível de um dourado que prende — até o dia
 em que uma definição muda em silêncio.
+
+Os casos 7 e 8 custaram, em dano, **zero** — e é o tipo de zero que merece desconfiança, porque
+o que eles mediram foi uma suíte de segurança afirmando mais do que cobria. O 7 é o mais grave
+dos dois em natureza: um teste cujo nome é *"a Ana não cria profile para o Bruno"* passava com a
+policy de `insert` **escancarada**, e o projeto o citava — pelo número agregado — como prova de
+isolamento numa política de privacidade e num diagrama de banca. Os dois foram achados por
+sabotagem; nenhum apareceria por leitura, porque o código dos dois testes está correto. O que
+estava errado era o **cenário**.
 
 **Como não repetir.**
 
@@ -85,8 +101,17 @@ em que uma definição muda em silêncio.
    verificação (3), criada em 17/10, entrou com os 8 ponteiros existentes isentos — e diz, no
    script, no `ci.yml` e no backlog, que **hoje não cobre nenhum deles; pega o nono.** É catraca,
    não cobertura, e confundir as duas é como o caso 5 acontece.
-6. ❓ **Pergunta de revisão:** *se eu quebrasse de propósito a coisa que este teste protege, ele
+6. ⚙️ **Negativa barrada por dois mecanismos é negativa não testada.** Quando um comando pode
+   ser recusado por mais de uma razão — chave estrangeira **e** policy, policy de `insert`
+   **e** de `update` —, o teste tem de montar o cenário em que **só o mecanismo sob teste
+   pode recusar.** Foi o que as ocorrências 7 e 8 custaram, e a correção das duas é a mesma:
+   um cenário por barramento (a usuária sem perfil para a policy de `insert`; a usuária com
+   perfil para a de `update`), e o sabotador de cada um nomeando o teste que deve cair.
+   *Um teste que passa por dois motivos passa por nenhum que você conheça.*
+7. ❓ **Pergunta de revisão:** *se eu quebrasse de propósito a coisa que este teste protege, ele
    ficaria vermelho? Em que máquina?* A segunda metade da pergunta é a que pegou o `CI-05`.
+   E a terceira, que as ocorrências 7 e 8 acrescentam: **por qual mecanismo ele ficaria
+   vermelho — o que eu quero testar, ou outro que estava no caminho?**
 
 ---
 
@@ -180,6 +205,7 @@ plausível — em geral um **verde** — e por isso ninguém o investiga.
 | 2 | **Teste de RLS que olhava só a primeira linha** do resultado passava por acidente. Foi corrigido **por causa de uma sabotagem da verificação por mutação**, não por revisão. | Diário 2026-09-28 |
 | 3 | **A tolerância do ENMO reprovaria firmware correto.** `rel = 1e−6` contra divergência medida de 1,10e−6 em float32 — cancelamento catastrófico em `‖a‖ − 1` com `‖a‖ ≈ 1`. Trocar o acumulador para double **não resolve** (1,101e−6 vs 1,097e−6): o erro entra no `sqrt` por amostra. | Diário 2026-09-30 (item b) |
 | 4 | **O harness de mutação do C++ tinha contaminação entre rodadas.** Restaurava só `caracteristicas.cpp`, deixando `filtro.cpp` sabotado da rodada anterior: uma sabotagem apareceu como **detectada**, e a detecção era resíduo da anterior. **Mesmo defeito que o `DATA-07c` achou no instrumento do Python, com outra roupa.** | Diário 2026-10-17 (item e); commit `7cddf66` |
+| 5 | **O sabotador novo nasceu apontando para um teste que não podia detectá-lo.** Ao criar `perfil_insert_permissivo`, o campo `exige` foi preenchido com `test_ana_nao_faz_upsert_no_perfil_do_bruno` — por leitura, parecia o teste certo. O verificador por mutação **reprovou**, dizendo que a sabotagem foi detectada mas por outros testes: aquele não pode detectá-la, porque na vítima que já tem perfil quem recusa é a policy de `update`. **O instrumento aqui é o `exige`**, e ele foi o que apontou que a hipótese sobre a própria suíte estava errada — é o campo que existe *"para que a suíte não acuse por acidente"*, funcionando contra quem o escreveu. | Diário 2026-10-17 (iv); `tests/rls/verificar_por_mutacao.py` (comentários de `perfil_insert_permissivo` e `perfil_update_sem_with_check`) |
 
 **O que custou.** Direto, pouco; em risco evitado, muito. O caso 1 é o mais grave em natureza: o
 trabalho afirma isolamento entre usuários, e a prova disso era um mock. Os casos 2 e 4 só
@@ -206,7 +232,12 @@ forte deste documento existir.
    Python) estão nomeados no código e confirmados cegos a cada execução do harness. Para o caso
    em que o cego é **inerente** e não há o que fazer, ver `LIMITACOES-TCC.md` X.4, "Limite de
    detecção da verificação por paridade entre implementações", e o item `PARID-C2`.
-6. ❓ **Pergunta de revisão:** *este teste já falhou alguma vez? Se nunca, eu sei fazê-lo falhar?*
+6. ⚙️ **O `exige` do sabotador é hipótese, não anotação — e é testável.** A ocorrência 5 é o
+   campo funcionando contra quem o escreveu: ele afirma *"esta sabotagem faz **este** teste
+   cair"*, e o verificador reprova quando a sabotagem é detectada **por outros**. Preencher o
+   `exige` por leitura é razoável e erra; o que corrige é rodar. *Sabotador que acusa por
+   outro teste que o esperado está dizendo que você não entendeu a própria suíte.*
+7. ❓ **Pergunta de revisão:** *este teste já falhou alguma vez? Se nunca, eu sei fazê-lo falhar?*
 
 ---
 
@@ -272,6 +303,8 @@ antigo do projeto e o primeiro a ter sido nomeado como padrão, na entrada de 20
 | 2 | **Exclusão de conta com desfecho parcial.** O `200` com `conta_de_acesso_removida: false` é um estado em que **dado pessoal do titular continua existindo**. Ganhou tela própria, com cor e ícone de alerta — e `interpretarRecibo` é pessimista de propósito: ausente, nulo ou `"true"` viram parcial. | Backlog `UI-10`; commit `916e210` |
 | 3 | **`pytest.skip` não falha o job.** Se a variável de ambiente sumisse, se o serviço não subisse, se o `psycopg2` deixasse de instalar, os testes de RLS seriam **pulados e o CI ficaria verde, anunciando cobertura de segurança que não rodou.** | Diário 2026-09-28; `.github/workflows/ci.yml`, job `rls` |
 | 4 | **A tela de exclusão de conta não existia, e três documentos diziam que existia.** `ExcluirConta.tsx` foi commitado em 29/09 com 23 testes e **nenhum arquivo versionado o importava** — as três linhas que o montam ficaram presas numa árvore de trabalho não commitada. Nesses dezoito dias o backlog dizia `UI-10 ✅`, o `LGPD-ELIMINACAO.md` dizia "a interface existe desde 29/09", e a **política de privacidade dizia ao titular onde clicar** para exercer o art. 18, VI. | Diário 2026-10-17; commits `916e210` (componente) e `22a9268` (montagem) |
+| 5 | **O `CLAUDE.md` dizia "ainda não há suíte de testes nem CI", e isso mudava o comportamento de quem lia.** As duas afirmações (testes e `/health`) eram falsas havia semanas. O que distingue esta ocorrência das anteriores: as outras enganavam **sobre** o sistema; esta **instruía a não verificá-lo** — é o arquivo que orienta cada sessão de trabalho dizendo que não há o que rodar. ⚠️ E a correção está num arquivo **gitignorado**, então ela mesma é uma ocorrência 6 do §1: não entra em commit, não chega a um clone, e nenhuma verificação a alcança (`GIT-05`, `DOC-11`). | Diário 2026-10-17 (iv); backlog `DOC-11` |
+| 6 | **A política de privacidade negava a tela que o `UI-11` acabara de entregar — e mandava o titular escrever para um canal de contato.** Mesmo dia, sinal invertido em relação à ocorrência 4: a §6.3 dizia *"não há tela para alterar nome e e-mail"* enquanto a tela existia, porque o commit do `UI-11` (`2316b06`) não tocou a política. Corrigido horas depois, ao fechar o `PERFIL-01`. **E o `DIAG-04` era o quarto documento com a afirmação desatualizada sobre a tela do `UI-10`** — a entrada (iii) daquele dia reporta três; a quarta estava em `docs/diagramas/` e foi achada por varredura própria. | Diário 2026-10-17 (iii) e (iv); `docs/POLITICA-DE-PRIVACIDADE.md` §6.3; `docs/diagramas/DIAG-04-modelo-de-dados-e-seguranca.md` |
 
 **O que custou.** O caso 1 produziu o sintoma clássico — dashboard vazio com tudo "funcionando"
 — e levou à hipótese errada (problema de leitura) antes de a causa aparecer. O caso 3 é o mesmo
@@ -305,9 +338,24 @@ teste, aqui o verde era de um `✅` num arquivo de texto, que não tem como fica
    removido ⇒ reprova nomeando o arquivo; import do `EditarPerfil` removido ⇒ reprova; e
    resolvedor sabotado ⇒ a guarda do próprio instrumento ("o grafo não é trivialmente pequeno")
    reprova, porque um resolvedor quebrado devolveria grafo de um nó e nenhum órfão.
-5. ❓ **Pergunta de revisão:** *este "sucesso" foi verificado, ou foi assumido? Como ele se
+5. ⚙️ **O commit que entrega o mecanismo atualiza o documento que fala dele, no mesmo
+   commit.** É a regra que as ocorrências 4 e 6 custaram, nas duas direções: o `UI-10`
+   deixou três documentos afirmando uma tela inexistente por dezoito dias, e o `UI-11`
+   deixou a política negando, por horas, a tela que acabara de entregar. **Não há mecanismo
+   para isso**, e isso está dito: nada no repositório liga uma afirmação da
+   `POLITICA-DE-PRIVACIDADE.md` a um teste. O que existe é a varredura à mão — a de 17/10
+   usou os termos *"ainda não existe"*, *"não há tela"* e *"existe como rota"* sobre `docs/`,
+   `*.md`, `frontend/src/` e `web-app/`, e achou três documentos que a varredura da manhã
+   havia deixado passar.
+6. ⚙️ **Documento que orienta o trabalho é código, para efeito de obsolescência.** A
+   ocorrência 5 é de outra natureza: um `CLAUDE.md` dizendo *"ainda não há suíte de testes"*
+   não engana sobre o sistema — ele **instrui a não verificá-lo**. Afirmação de estado em
+   arquivo de instrução tem de trazer o número e a data da medição (*"286 testes, medidos em
+   17/10"*), porque número com data envelhece **visivelmente** e adjetivo não.
+7. ❓ **Pergunta de revisão:** *este "sucesso" foi verificado, ou foi assumido? Como ele se
    pareceria se tivesse falhado?* E a metade que o caso 4 acrescenta: **quem escreveu o `✅`
-   abriu o artefato, ou abriu o item?**
+   abriu o artefato, ou abriu o item?** E a que os casos 5 e 6 acrescentam: **que documento
+   passa a estar errado por causa deste commit?**
 
 ---
 
@@ -383,7 +431,8 @@ agregado.**
 Sete perguntas, uma por padrão. Cada uma existe porque o projeto pagou por não a ter feito.
 
 - [ ] **§1** — Se eu quebrasse de propósito a coisa que esta verificação protege, ela ficaria
-      vermelha? **Em que máquina?**
+      vermelha? **Em que máquina?** E: **por qual mecanismo** ela ficaria vermelha — o que eu
+      quero testar, ou outro que estava no caminho?
 - [ ] **§2** — Quem precisa saber disto vai abrir o arquivo onde eu escrevi? Este achado virou
       **item**, ou ficou observação?
 - [ ] **§3** — De onde veio este número? Ele é *medição*, *especificação*, *cálculo* ou
@@ -392,7 +441,8 @@ Sete perguntas, uma por padrão. Cada uma existe porque o projeto pagou por não
 - [ ] **§5** — Eu abri o artefato, ou li sobre ele?
 - [ ] **§6** — Este "sucesso" foi verificado ou assumido? Como ele se pareceria se tivesse
       falhado? E, quando o "sucesso" é um `✅` num documento: **quem o escreveu abriu o
-      artefato, ou abriu o item?**
+      artefato, ou abriu o item?** E: **que documento passa a estar errado por causa deste
+      commit?**
 - [ ] **§7** — Se a premissa quebrar em campo, o dado fica **ausente** ou fica
       **errado-com-cara-de-certo**?
 

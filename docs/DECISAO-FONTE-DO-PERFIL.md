@@ -212,7 +212,7 @@ Essa distinção é o ponto. Declarar que a idade "estratifica a análise de son
 finalidade que soa melhor — e seria **finalidade declarada que o código não cumpre**, que é o
 §6 das lições na forma mais barata de cometê-lo: um parágrafo numa política de privacidade,
 que não tem como ficar vermelho. Se um dia a idade entrar em cálculo, isso é **finalidade
-nova** e exige declaração nova, antes e não depois. Está no backlog como `ML-07`.
+nova** e exige declaração nova, antes e não depois. Está no backlog como `LGPD-06`.
 
 **Por que não "apenas cadastral":** um dado pessoal coletado para existir no cadastro não
 sobrevive ao art. 6º, III — é literalmente o que o `LGPD-04` descreve. "Cadastral" seria a

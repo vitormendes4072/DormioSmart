@@ -1700,6 +1700,169 @@ e 169.
 
 ---
 
+---
+
+# 2026-10-17 (iv) — `profiles` vira fonte de verdade, e a suíte de segurança provou cobrir menos do que anunciava
+
+**O problema, como foi entendido no início.** O `PERFIL-01` tinha três saídas escritas e
+custo medido para cada uma, e a decisão foi tomada: **tornar `public.profiles` a fonte de
+verdade do perfil, e usar a coluna `idade`** em vez de removê-la. O enunciado chamou isso
+de "saída (B)"; no backlog, a saída que torna `profiles` canônica é a **(A)** — a (B) é a
+oposta, e nela `idade` sairia por migração. Seguiu-se a descrição em prosa, que é
+inequívoca e cujas duas metades só são consistentes entre si na (A). Registrado no
+backlog e em `docs/DECISAO-FONTE-DO-PERFIL.md` §0, porque "saída (B)" vai aparecer de novo
+numa releitura e não pode significar duas coisas.
+
+**Hipótese de trabalho.** Duas, e as duas eram razoáveis. A primeira, vinda do próprio
+item: que o maior custo da saída fosse o segundo modo de falha — *"gravou no Auth, falhou
+em `profiles`, e agora os dois divergem e nada diz qual vale"* —, de modo que o trabalho
+difícil seria escolher uma regra de sincronização. A segunda, implícita: que a suíte de
+RLS, com 125 testes e 25 sabotagens detectadas, já cobrisse `profiles` o suficiente, e que
+o trabalho de teste fosse só acrescentar o caminho novo.
+
+**O que foi testado, e como.** Antes de escrever código: o diff do que existia, lido
+arquivo por arquivo, e `grep` por `user_metadata`, por `profiles` e por `idade` em todo
+código de produção. A pasta `migrations/` aberta inteira, incluindo o que não é migração —
+e foi aí que o `DIAGNOSTICO-perfil-nao-criado.sql` apareceu, que é o arquivo que mudou o
+desenho. Depois: 46 testes de rota com dublê, 21 de RLS contra **Postgres real**, 32 de
+frontend, `tsc --noEmit`, `vite build`, o verificador por mutação do RLS a cada mudança de
+esquema, e `conferir_docs_versionados.py`. Oito controles positivos, cada um nomeando o
+teste que deveria cair.
+
+**Resultado medido. A duplicidade não precisava de regra de sincronização — precisava
+deixar de existir. E a suíte de segurança cobria menos do que o nome dos testes dizia.**
+
+| Achado | O que a conferência mostrou |
+|---|---|
+| **O modo de falha previsto pelo item é eliminável por desenho.** | Divergência entre duas cópias só é **ambiguidade** quando as duas são **lidas**. Com leitor único (`profiles`) e destino único por campo (nome e idade pela rota; e-mail pelo Auth, porque é credencial), nenhum campo tem dois destinos — e `nome` não pode divergir de si mesmo. Não há tie-break porque não há empate. O que sobra do metadado não é um segundo valor em disputa: é **resíduo**, e resíduo é problema de LGPD (art. 18, III e art. 6º, III), não de corretude. |
+| **`profiles` pode não ter linha para um usuário que existe.** | `migrations/DIAGNOSTICO-perfil-nao-criado.sql` existe porque **já aconteceu**: o gatilho `handle_new_user` não existia no projeto, e o arquivo tem um reparo manual embaixo de *"ZERO LINHAS AQUI = causa confirmada"*. Enquanto a tabela era inerte isso era detalhe de esquema. Com ela canônica, linha ausente passa a ser **nome em branco na tela de quem digitou o nome no cadastro**. |
+| **`create function` concede `EXECUTE` a `PUBLIC` por padrão no PostgreSQL.** | A migração `008`, ao criar `tocar_updated_at()`, **ampliava** o que o papel `dormio_ingestao` pode executar — o papel que a `005` existe para manter com `EXECUTE` em exatamente três funções e nenhum privilégio de tabela. Quem acusou foi `test_o_papel_executa_exatamente_tres_funcoes`, na primeira execução da migração, nomeando a função nova. É o teste cujo docstring diz *"enumera o que ele PODE, para que ampliar apareça no diff"*. |
+| **`test_ana_nao_cria_profile_para_o_bruno` barrava pela chave estrangeira, não pela policy.** | Ele inseria com um uuid **inventado** (`cccccccc-…`), para não colidir com a chave primária da linha que o gatilho cria. Uuid inventado não existe em `auth.users`: o comando morria em `profiles_id_fkey` e **nunca chegava ao RLS**. Medido: com `profiles_insert_own` escancarada (`with check (true)`), **ele continua passando** — só os dois testes estruturais caem. |
+| **Dois barramentos em série escondem um ao outro.** | O `upsert` que a rota emite, contra uma vítima que **já tem** linha, cai no ramo de `update`: quem recusa é a policy de `update`, e a de `insert` escancarada passa despercebida. Um teste chamado "a Ana não faz upsert no perfil do Bruno" anuncia cobertura das duas e cobre uma. |
+| **Policy de `UPDATE` sem `with check` não é mais frouxa no PostgreSQL.** | Sem `with check`, o `using` é usado **também** como verificação da linha resultante. Removê-lo não abre a transferência de linha para outro dono, e **nenhum teste de acesso pode cair** — quem detecta é o teste estrutural. Era premissa minha, não conferida, e o verificador por mutação a derrubou. |
+| **Três documentos afirmavam estado que o artefato contradiz, e um deles mudava comportamento.** | A §6.3 da política dizia *"não há tela para alterar nome e e-mail"* enquanto a tela do `UI-11` existia desde a manhã — o commit `2316b06` não tocou a política. O `DIAG-04` era o **quarto** documento com a afirmação desatualizada sobre a tela do `UI-10` (a entrada (iii) reporta três). E o `CLAUDE.md` dizia *"ainda não há suíte de testes nem CI"* e *"health check ainda não existe"*, as duas falsas havia semanas. |
+
+**Adaptação.** Três, e cada uma mudou o desenho em vez de só o código:
+
+1. **O `GET /api/me/perfil` escreve.** Quando falta a linha, ele a cria, semeada pelo nome
+   do metadado — a mesma semeadura que o gatilho faz, no único momento em que ela ainda faz
+   sentido. A alternativa (a tela cair para o metadado quando falta a linha) foi recusada:
+   criaria o segundo leitor de volta, **sob condição**, e invariante com cláusula de exceção
+   é o que apodrece primeiro. `GET` com efeito colateral é ruim; `GET` **idempotente** com
+   efeito colateral é aceitável, e está dito no docstring da rota, porque um `GET` que
+   escreve sem avisar é armadilha para quem ler depois.
+2. **A limpeza do resíduo acontece no navegador, e não pode transformar a correção em
+   erro.** `updateUser` age sobre a **sessão** de quem chama, e o cliente do Flask só
+   autentica o PostgREST — fazer isso no servidor exigiria a API de administração, isto é,
+   papel privilegiado, recusado pelo `SEC-06`. Então ela vai no cliente, **depois** de o
+   `PATCH` ter sucedido, e `residuoLimpo` é campo próprio do resultado: o que foi verificado
+   é afirmado, o que não foi não é. Dois testes afirmam que falha e exceção na limpeza
+   deixam o desfecho em "salvo", porque a correção **aconteceu**.
+3. **A finalidade da `idade` teve de ser implementada, não só declarada.** "Cadastral" seria
+   a finalidade mais fácil de escrever e a menos defensável: um dado coletado para existir
+   no cadastro não sobrevive ao art. 6º, III, e é literalmente o que o `LGPD-04` descrevia.
+   "Estratifica a análise do sono" soaria melhor e seria **finalidade declarada que o código
+   não cumpre** — o §6 na forma mais barata de cometê-lo, porque um parágrafo de política de
+   privacidade não tem como ficar vermelho. A finalidade escolhida é a que dá para cumprir
+   hoje: dizer ao titular se a idade dele está na faixa das coortes de validação que o
+   trabalho cita (`frontend/src/lib/aplicabilidade.ts`). Ela **não entra em cálculo nenhum**,
+   e isso está dito na política, no `comment on column` da migração e no cabeçalho do módulo
+   — nos três lugares de propósito.
+
+Quatro commits: `778ec27` (backend, migração, testes de rota e de RLS, documento de
+decisão), `ad3114a` (frontend), `fb2f18f` (política, `LGPD-ELIMINACAO`, `DIAG-04`) e o deste
+registro.
+
+**O que o método pegou, e que a leitura não pegaria.** Quatro coisas, as quatro porque
+alguma verificação foi feita em vez de assumida:
+
+- **O `exige` do sabotador novo apontava para um teste que não podia detectá-lo.** Preenchido
+  por leitura, parecia certo. O verificador reprovou dizendo que a sabotagem foi detectada
+  **por outros** testes — que é o campo existindo *"para que a suíte não acuse por
+  acidente"*, funcionando contra quem o escreveu. Foi esse `REGRESSAO: 2 de 30` que levou aos
+  achados 4, 5 e 6 da tabela acima. Sem o campo, as duas sabotagens apareceriam como
+  "detectadas" e os três defeitos continuariam lá.
+- **O `conferir_docs_versionados.py` reprovou por minha causa.** Escrevi
+  o caminho do `DIAG-04` abreviado com reticências no meio do nome do arquivo, no documento
+  de decisão: a verificação (2) lê isso como citação de arquivo que um clone não traz, e sai
+  != 0. **E eu repeti o mesmo erro ao escrever este parágrafo**, abreviando o caminho de novo
+  para descrevê-lo — o script reprovou a segunda vez também, e por isso esta frase não traz o
+  caminho abreviado. Pequeno, e é a verificação (2) fazendo exatamente o que ela existe para
+  fazer, duas vezes em dez minutos, contra a mesma pessoa.
+- **O `ID` do item novo colidia com um item fechado.** Criei `ML-07` para a finalidade futura
+  da idade; já existe `ML-07` ✅ ("infraestrutura de execução retomável"), e `ML-08` também
+  está tomado. Renomeado para `LGPD-06` em todos os lugares que já o citavam — backlog,
+  documento de decisão, migração e cabeçalho do módulo. Achado por `grep` de conferência
+  depois de escrever, não por lembrança.
+- **A suposição sobre `contar_afetadas` estava errada, e o banco disse qual.** O teste de "a
+  Ana não muda o próprio `id` para o do Bruno" foi escrito esperando **zero linhas
+  afetadas**, por analogia com os outros testes de negativa de `profiles`. Reprovou com
+  *"new row violates row-level security policy"*. A diferença é qual metade da policy barra:
+  `using` que esconde a linha afeta zero em silêncio; `with check` que reprova a linha
+  **resultante** levanta exceção. A asserção foi corrigida para o que o banco faz, e o
+  porquê ficou no docstring.
+
+**Risco em aberto.**
+
+- **A migração `008` não foi aplicada.** Virou `PERFIL-02`, L3, com as quatro verificações do
+  rodapé — inclusive a terceira, que testa o **gatilho** e não a existência dele. A rota
+  funciona sem ela; o que falta é `profiles.updated_at` parar de mentir sobre linhas
+  corrigidas hoje, e o teto de tamanho do nome para o caminho que **não passa pelo Flask**
+  (`authenticated` tem `GRANT` de `UPDATE` em `profiles`, e o navegador fala direto com o
+  PostgREST pela chave `anon`, que é pública por design). **Enquanto ela não rodar, nada no
+  repositório pode afirmar que o esquema de produção é o que o `DIAG-04` desenha.**
+- **Nada prova que o `<PerfilProvider>` está montado.** Medido por controle positivo:
+  removido o provider do `main.tsx`, o `alcance.test.ts` **passa** — o módulo continua no
+  grafo pelos imports de `Sidebar` e `EditarPerfil`. É a metade que falta do `UI-17`, e é a
+  mesma classe de defeito que deixou o `UI-10` inalcançável por dezoito dias. Mitigado, não
+  resolvido: `usePerfil` **levanta** em vez de devolver valor neutro, de modo que a ausência
+  quebre a primeira renderização de forma ruidosa em vez de subir o aplicativo mostrando
+  nome em branco para quem tem nome — §7, o desfecho pior dos dois.
+- **O ponto cego do `UI-11` continua aberto, e agora carrega uma afirmação a mais.** Os
+  dublês exercitam a orquestração do nosso código, não o Supabase: **não está provado que
+  `updateUser({data:{nome:null}})` apaga a chave** em projeto real. Se não apagar, o resíduo
+  fica — e o que o código garante é só que isso não contamina o relato da correção. Fecha com
+  o mesmo projeto Supabase de teste.
+- **O campo de idade e o aviso de aplicabilidade não têm teste de renderização.** A lógica
+  inteira está em `lib/`, com teste, exatamente porque o `vitest` roda em ambiente `node` e
+  não há testing-library (`UI-17`). Ninguém, nem teste nem pessoa, viu a tela nova.
+- **Os três blocos mermaid do `DIAG-04` foram validados por parser, nunca por renderização.**
+  Validados com `mermaid@11` + `jsdom` (os três parseiam); **ninguém olhou as figuras.**
+  Parser não acusa seta apontando para o nó errado.
+- **A correção do `CLAUDE.md` está num arquivo gitignorado.** Não entra em commit, não chega
+  a um clone, e nenhuma verificação a alcança. É o `GIT-05`, e é a ocorrência 6 do §1 das
+  lições acontecendo de novo — agora com o arquivo que governa as sessões de trabalho.
+  Registrado como `DOC-11`, fechado "pela metade" de propósito.
+- **Nada disto rodou em runner.** Continua valendo o `CI-06`. A branch segue sem push, sem
+  credencial de escrita no ambiente. **Mas uma ressalva antiga caiu:** os testes de RLS, que
+  o diário registrava como "não rodou (125 pulados — exige Postgres de verdade)", **rodaram**
+  — Postgres real levantado no ambiente desta sessão, 146 passando, 30/30 sabotagens
+  detectadas. É a primeira vez que este diário pode citar os números de RLS como **medidos na
+  mesma sessão** em que o esquema mudou.
+- **O `.git/_lixo_sandbox/` cresceu de novo** (`GIT-03`), e com um detalhe novo: além do
+  `index.lock`, cada `git add`/`git commit` deixou `.git/objects/*/tmp_obj_*` que o sandbox
+  não consegue remover. Os commits saíram; os avisos de `unable to unlink` são ruído, não
+  falha. Continua valendo a observação de método: **`GIT_OPTIONAL_LOCKS=0` serve para leitura
+  e faz `git add` não gravar nada em silêncio.**
+
+**Procedência.** Commits `778ec27`, `ad3114a`, `fb2f18f` e o deste registro;
+`docs/DECISAO-FONTE-DO-PERFIL.md` (a decisão inteira, incluindo a correção de rótulo da
+saída); `web-app/perfil.py`, `web-app/routes.py` (as duas rotas de perfil),
+`web-app/database.py` (`nome_do_metadado`), `web-app/migrations/008_perfil_como_fonte_de_verdade.sql`
+(o `revoke` e o porquê dele); `web-app/tests/test_perfil.py`,
+`web-app/tests/rls/test_rls_perfil.py`, `web-app/tests/rls/conftest.py` (a usuária `CAROL` e
+o motivo de ela existir), `web-app/tests/rls/test_rls_isolamento.py`,
+`web-app/tests/rls/verificar_por_mutacao.py` (cinco sabotadores novos e os comentários de
+`perfil_insert_permissivo` e `perfil_update_sem_with_check`);
+`frontend/src/lib/perfil.ts`, `frontend/src/lib/aplicabilidade.ts`,
+`frontend/src/contexts/PerfilContext.tsx`, `frontend/src/fonteDoNomeDoPerfil.test.ts`,
+`frontend/src/components/EditarPerfil.tsx`, `frontend/src/components/Sidebar.tsx`;
+`docs/POLITICA-DE-PRIVACIDADE.md` (§2.1, §2.4, §3, §6.3, §6.5, §9 e lacunas),
+`docs/LGPD-ELIMINACAO.md` (nota de 17/10), `docs/diagramas/DIAG-04-modelo-de-dados-e-seguranca.md`,
+`docs/BACKLOG-COMPLETO.md` (`PERFIL-01` ✅, `LGPD-04` ✅, `PERFIL-02`, `LGPD-05`, `LGPD-06`,
+`DOC-11`, `DIAG-04`, contagem), `docs/LICOES-APRENDIDAS.md` (§1 ocorrências 7 e 8, §4
+ocorrência 5, §6 ocorrências 5 e 6, índice reordenado, §9).
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

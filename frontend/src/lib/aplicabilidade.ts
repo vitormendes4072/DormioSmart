@@ -24,7 +24,7 @@
  * finalidade declarada que o código não cumpre — o §6 das lições na forma mais
  * barata de cometê-lo, porque um parágrafo de política de privacidade não tem
  * como ficar vermelho. Se um dia a idade entrar em cálculo, isso é
- * **finalidade nova** e exige declaração nova ANTES (item `ML-07`).
+ * **finalidade nova** e exige declaração nova ANTES (item `LGPD-06`).
  *
  * ── PROCEDÊNCIA DE CADA NÚMERO (§3 das lições) ───────────────────────────
  *
