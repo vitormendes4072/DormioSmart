@@ -257,6 +257,15 @@ digite uma frase de confirmação, e é **irreversível**. Ela apaga:
 - todos os seus dispositivos;
 - o seu perfil.
 
+> ✏️ **Correção de procedência, 2026-10-17.** O "✅ Implementado" acima está
+> escrito desde 29/09 e, **na versão versionada do aplicativo, a tela não
+> existia**: o componente `ExcluirConta` estava commitado e testado, e as três
+> linhas que o montam na tela de Configurações ficaram numa árvore de trabalho
+> não commitada por dezoito dias. Uma política de privacidade que indica ao
+> titular *onde* exercer um direito é a última afirmação do repositório que pode
+> estar à frente do código. Montado e versionado hoje (commit do `UI-10`); o
+> mecanismo que deveria ter pegado a ausência está no `UI-17` do backlog.
+
 ⚠️ **Pode haver remoção parcial, e o aplicativo diz quando há.** O cadastro de
 acesso — a linha que guarda o **seu e-mail** — pertence ao serviço de
 autenticação, e a permissão para removê-la pode não estar disponível na

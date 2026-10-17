@@ -5,11 +5,13 @@ import {
   LogOut,
   Palette,
   Shield,
+  Trash2,
   User,
 } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router";
 
+import { ExcluirConta } from "../components/ExcluirConta";
 import { MeusDispositivos } from "../components/MeusDispositivos";
 import { SeletorDeTema } from "../components/SeletorDeTema";
 import { LIMITE_DO_PAINEL, buscarHistorico } from "../lib/api";
@@ -41,6 +43,7 @@ export function Settings() {
       <SecaoDispositivos />
       <SecaoDados />
       <SecaoSair />
+      <SecaoExclusao />
     </div>
   );
 }
@@ -181,12 +184,34 @@ function SecaoDados() {
       ) : null}
       {erro ? <p className="text-xs text-destructive mt-3">{erro}</p> : null}
 
-      {/* "Política de privacidade (em elaboração)" e "Excluir conta"
-          desabilitado saíram daqui. Item morto não é funcionalidade futura
-          visível: é promessa não cumprida ocupando espaço — e, num app que
-          coleta dado corporal, uma política "em elaboração" anunciada na tela
-          chama atenção para a lacuna sem resolvê-la. Voltam quando existirem
-          (LGPD-01). */}
+      {/* "Política de privacidade (em elaboração)" ainda não volta: o rascunho
+          existe em docs/POLITICA-DE-PRIVACIDADE.md, mas não há página que o
+          sirva (LGPD-01). Anunciar um link que não abre seria repetir o defeito
+          que tirou o item daqui. */}
+    </Secao>
+  );
+}
+
+/**
+ * Eliminação da conta (UI-10 / SEC-07 / LGPD art. 18, V).
+ *
+ * Seção própria, e por último, de propósito. Ficar dentro de "Seus dados" a
+ * colocaria ao lado da exportação — duas ações de peso oposto no mesmo bloco,
+ * com o botão destrutivo a um deslize do botão que a pessoa realmente queria.
+ * Separada e no fim, ela é encontrada por quem a procura e não é esbarrada por
+ * quem não.
+ *
+ * O aviso da seção menciona a exportação porque esta é a última tela em que ela
+ * ainda é possível.
+ */
+function SecaoExclusao() {
+  return (
+    <Secao
+      titulo="Excluir conta"
+      icone={Trash2}
+      aviso="Encerra sua conta e apaga seus dados deste serviço. Se quiser guardar seu histórico, exporte o CSV acima antes."
+    >
+      <ExcluirConta />
     </Secao>
   );
 }
