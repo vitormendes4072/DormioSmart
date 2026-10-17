@@ -297,11 +297,19 @@ jobs:
     # arvore a partir do commit, entao arquivo nao rastreado nunca chega aqui e
     # o comando devolve vazio sempre. Era prevencao decorativa.
     #
-    # O que roda e reprova aqui e a outra verificacao do script: documento
-    # `docs/*.md` citado por arquivo versionado que nao esta no git nem no
-    # .gitignore. Essa e a forma pela qual o GIT-04 causava dano de verdade --
-    # o `ML-DATASETS-E-PLANO.md` era a fundamentacao que os READMEs mandavam
-    # ler, e um clone nao a trazia.
+    # O que roda e reprova aqui sao as outras DUAS verificacoes do script:
+    #
+    #   (2) documento `docs/*.md` citado por arquivo versionado que nao esta
+    #       no git nem no .gitignore. E a forma pela qual o GIT-04 causava
+    #       dano de verdade -- o `ML-DATASETS-E-PLANO.md` era a fundamentacao
+    #       que os READMEs mandavam ler, e um clone nao a trazia.
+    #
+    #   (3) ponteiro pendurado (acrescentada em 17/10, item GIT-05): arquivo
+    #       IGNORADO de proposito que arquivo versionado manda ler assim
+    #       mesmo, sem constar de PONTEIROS_ACEITOS. ATENCAO ao que ela NAO
+    #       faz: nasceu com os 8 casos existentes todos dentro da isencao,
+    #       entao hoje ela so pega o nono. E catraca, nao cobertura -- e isso
+    #       esta impresso na saida a cada execucao, de proposito.
     #
     # A metade local do script (orfao na arvore) continua valendo, e o lugar
     # dela e a maquina de quem edita, rodada a mao antes de commitar.
