@@ -189,6 +189,7 @@ diagrama** — que é o que a banca lê.
 | **DIAG-04** | Diagrama de sequência do fluxo autenticado + **modelo ER** com `devices` e `profiles`. Também é a parte pendente do `DOC-05`. | 🟡 |
 | **DOC-05** | READMEs e `CLAUDE.md` — falta só o `DIAG-04`. | 🟡 |
 | ~~**DOC-08**~~ ✅ | **Feito em 28/09.** `docs/RESULTADOS-TCC.md` — o capítulo de resultados em prosa, entre os mesmos marcadores do `LIMITACOES-TCC.md`, com nota de procedência que amarra cada número a um JSON e ao comando que o reproduz. Fechou junto o `ML-05` (teto interavaliador), que era a lacuna barata que faltava. | ✅ |
+| **DOC-09** 🟠 *(novo — 30/09, primeira versão escrita)* | **`docs/DIARIO-DE-ENGENHARIA.md` — o diário cronológico, reconstruído retroativamente.** Cada entrada traz data e item, o problema como foi entendido no início, a hipótese de trabalho, o que foi testado e como, o resultado medido, a adaptação quando o resultado contrariou a hipótese, o risco que ficou em aberto, e a procedência. Vira o **capítulo de desenvolvimento** do TCC. O valor está no que deu errado: o sketch que nunca compilou, o vetor dourado que gravava a própria referência, o limiar de 1,2 m/s² que corresponde a ~67 σ, a feature angular desmentida pela geometria esférica, a recuperação de 78% que valia para um par de posições, e o ganho de modelo que não atravessou coorte. **O que falta:** o intervalo de junho a agosto está esparso, porque o `HISTORICO.md` que o cobre não é versionado e não pode servir de procedência num capítulo de TCC; e a seção final lista as lacunas de propósito. Daqui para frente é registro corrente, não reconstrução. | 🟡 |
 | **DOC-06b** | **Ler os artigos antes de citá-los** (referência conferida ≠ artigo lido) e converter para o padrão de citação do TCC se não for autor-data. Herdado do `DOC-06`. | 🔴 |
 | **LGPD-01** | Política de privacidade e termos. **Rascunho escrito em 29/09** (`docs/POLITICA-DE-PRIVACIDADE.md`), a partir do código e não da intenção: cada direito do art. 18 vem marcado como implementado, parcial ou **sem mecanismo**. Falta: **(a)** decidir o controlador e a base legal — consentimento (art. 7º, I) ou pesquisa (art. 7º, IV), que muda a política inteira e **não dá para inferir do repositório**; **(b)** a rota e a página que sirvam o texto; **(c)** revisão jurídica. **Rascunho é L0; a revisão com o orientador é `LGPD-03`.** | 🟡 |
 | **LGPD-02** *(novo)* | **Não existe política de retenção.** Nenhum expurgo automático, nenhum prazo, nenhuma inatividade que dispare remoção: uma leitura enviada hoje fica indefinidamente até o titular apagar a conta. A política teve de declarar isso na seção 7. Decidir prazo e implementar, ou declarar formalmente que não haverá — as duas saídas são defensáveis; o silêncio não. | 🟡 |
@@ -317,6 +318,9 @@ Se só houver tempo para uma sequência, é esta:
 
 ## Fontes
 
+- `docs/DIARIO-DE-ENGENHARIA.md` — o registro cronológico do desenvolvimento, com a procedência
+  de cada número e o que caiu ao ser verificado. É a fonte versionada que substitui o
+  `HISTORICO.md` para efeito de citação.
 - `ROADMAP.md`, `HISTORICO.md`, `docs/METODOLOGIA.md`, `docs/HARDWARE.md`,
   `docs/DATA-CONTRACT.md`, `docs/ML-DATASETS-E-PLANO.md`, `docs/WEARANIZE-ACESSO.md` —
   documentação interna do projeto.
