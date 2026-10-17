@@ -226,13 +226,12 @@ void setup() {
     if (m.mag < MAGNITUDE_MINIMA_PLAUSIVEL || m.mag > MAGNITUDE_MAXIMA_PLAUSIVEL) {
       Serial.println();
       Serial.println("   ====================================================");
-      Serial.printf("   PARADO: |a| = %.3f e fisicamente impossivel.
-", m.mag);
+      Serial.printf("   PARADO: |a| = %.3f e fisicamente impossivel.\n", m.mag);
       Serial.println("   Em repouso, em qualquer pose, tem que dar ~9,81.");
       Serial.println();
       if (m.mag < 0.01) {
-        Serial.printf("   A temperatura marcou %.1f C. Se for 36,5, e o valor que a
-", m.temp);
+        Serial.printf("   A temperatura marcou %.1f C. Se for 36,5, e o valor que a\n",
+                      m.temp);
         Serial.println("   biblioteca produz com o registrador ZERADO (raw/340+36,53).");
         Serial.println("   Sensor respondendo no I2C mas sem medir = alimentacao solta.");
         Serial.println();

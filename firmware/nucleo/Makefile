@@ -68,11 +68,27 @@ bin/secrets-falso/secrets.h:
 	@printf '// `make sintaxe` rodar sem um secrets.h de verdade.\n' >> $@
 	@printf '#define WIFI_SSID "x"\n#define WIFI_PASSWORD "y"\n#define DEVICE_TOKEN "z"\n' >> $@
 
+# A LISTA E A PARTE FRAGIL DESTE ALVO, e ja falhou por isso.
+#
+# De 22/09 a 16/10 ela tinha dois dos quatro sketches versionados. Os outros
+# dois -- `caracterizacao.ino` e `diagnostico-i2c.ino` -- nao estavam aqui, e
+# na primeira vez que foram compilados (16/10) os DOIS tinham exatamente o
+# defeito que este alvo nasceu para pegar: string com quebra de linha literal
+# no meio. Ficaram semanas no repositorio sem compilar em maquina nenhuma.
+#
+# A licao nao e "conferir sintaxe": e que uma verificacao vale pelo seu
+# ALCANCE, e lista escrita a mao e alcance que silenciosamente para de
+# acompanhar a pasta. Por isso a lista agora sai de um `wildcard`: sketch novo
+# entra sozinho. Se o novo nao compilar com os stubs, o alvo reclama -- que e
+# o resultado certo, e e mais barato do que descobrir na placa.
+SKETCHES := $(wildcard ../*.ino) $(wildcard ../*/*.ino)
+
 sintaxe: bin/secrets-falso/secrets.h
 	@echo "verificando sintaxe dos sketches (stubs do Arduino, sem hardware)..."
-	@for s in ../envio-continuo/envio-continuo.ino ../sketch.ino; do \
+	@test -n "$(SKETCHES)" || { echo "  ERRO: nenhum .ino encontrado -- o wildcard parou de casar."; exit 1; }
+	@for s in $(SKETCHES); do \
 	  echo "  $$s"; \
 	  $(CXX) -std=c++11 -fsyntax-only -Wall -Wextra -x c++ \
 	    -I$(STUBS) -Ibin/secrets-falso -include Arduino.h "$$s" || exit 1; \
 	done
-	@echo "  ok -- os dois sketches compilam."
+	@echo "  ok -- os $(words $(SKETCHES)) sketches compilam."

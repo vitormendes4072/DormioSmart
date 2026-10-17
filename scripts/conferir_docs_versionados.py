@@ -79,6 +79,26 @@ PADRAO_REFERENCIA = re.compile(
         re.escape(e) for e in EXTENSOES) + r")\b"
 )
 
+#: Nomes que aparecem em prosa como EXEMPLO, nunca como citação de documento
+#: real. Achado na primeira execução do script (16/10): ele se acusava a si
+#: mesmo. `docs/FOO.md` e `docs/sub/FOO.md` estão no comentário do próprio
+#: `PADRAO_REFERENCIA`, para explicar o que o regex casa; `ORFAO-DE-TESTE.md`
+#: está no `BACKLOG-COMPLETO.md`, dentro do procedimento de validação **deste
+#: script** (`touch docs/ORFAO-DE-TESTE.md` e confirme que a (1) acusa).
+#:
+#: A isenção vale **só para a verificação (2)**, e por um motivo que não é de
+#: conveniência: a (2) pergunta "um clone traz o que o texto manda ler?", e
+#: texto que documenta um placeholder não manda ler nada. A (1) pergunta outra
+#: coisa — "existe arquivo no disco fora do git?" — e ali o nome não tem
+#: isenção nenhuma: se `docs/ORFAO-DE-TESTE.md` existir sem estar versionado,
+#: tem de ser acusado, porque é exatamente o que o procedimento de validação
+#: manda provocar. Isentar nas duas tornaria o procedimento incapaz de falhar.
+#:
+#: Comparado pelo nome do arquivo, para que `docs/sub/FOO.md` também entre.
+#: Toda isenção aplicada é IMPRESSA na saída — isenção silenciosa é como uma
+#: verificação deixa de verificar sem ninguém notar.
+EXEMPLOS_EM_PROSA = frozenset({"FOO.md", "ORFAO-DE-TESTE.md"})
+
 #: Extensões de arquivo rastreado onde se procura referência. Binário não
 #: entra; `.py`, `.ts` e `.yml` entram porque comentário também manda ler doc.
 FONTES_DE_REFERENCIA = (
@@ -148,7 +168,14 @@ def conferir_orfaos(raiz: Path) -> list[str]:
 # =========================================================================
 # (2) Referência pendente — roda e reprova no CI
 # =========================================================================
-def conferir_referencias(raiz: Path) -> list[tuple[str, str]]:
+def conferir_referencias(
+    raiz: Path,
+) -> tuple[list[tuple[str, str]], list[tuple[str, str]]]:
+    """Devolve (pendentes, isentas_por_exemplo).
+
+    A segunda lista existe para ser impressa: a isenção de `EXEMPLOS_EM_PROSA`
+    é estreita, mas tem de ficar visível a cada execução.
+    """
     trilha = rastreados(raiz)
     citadas: dict[str, str] = {}
 
@@ -165,9 +192,17 @@ def conferir_referencias(raiz: Path) -> list[tuple[str, str]]:
 
     faltando = [c for c in citadas if c not in trilha]
     deliberadas = ignorados(raiz, faltando)
-    return sorted(
-        (c, citadas[c]) for c in faltando if c not in deliberadas
-    )
+
+    pendentes: list[tuple[str, str]] = []
+    isentas: list[tuple[str, str]] = []
+    for c in faltando:
+        if c in deliberadas:
+            continue
+        if Path(c).name in EXEMPLOS_EM_PROSA:
+            isentas.append((c, citadas[c]))
+        else:
+            pendentes.append((c, citadas[c]))
+    return sorted(pendentes), sorted(isentas)
 
 
 def main() -> int:
@@ -206,7 +241,10 @@ def main() -> int:
 
     if args.apenas != "orfaos":
         print("(2) documento citado por arquivo versionado que não está no git")
-        pendentes = conferir_referencias(raiz)
+        pendentes, isentas = conferir_referencias(raiz)
+        for alvo, quem in isentas:
+            print(f"    ⓘ  isento (exemplo em prosa): {alvo}   "
+                  f"← em {quem}")
         if pendentes:
             falhou = True
             print("    ✗ REFERÊNCIAS PENDENTES — um clone não traz estes "

@@ -69,6 +69,8 @@ class String {
 inline uint32_t millis() { return 0; }
 inline void configTime(long, int, const char *, const char * = 0, const char * = 0) {}
 inline void delay(uint32_t) {}
+inline void delayMicroseconds(uint32_t) {}
+inline uint32_t micros() { return 0; }
 inline void pinMode(int, int) {}
 inline int digitalRead(int) { return 0; }
 
@@ -89,6 +91,12 @@ class SerialStub {
   void flush() {}
   operator bool() const { return true; }
 
+  // Usados pelos sketches interativos (`caracterizacao.ino` espera o Enter
+  // entre poses). Entraram em 16/10, quando esses sketches finalmente
+  // passaram pelo `make sintaxe`.
+  int available() { return 0; }
+  int read() { return -1; }
+
   // `__attribute__((format))` e o que faz o compilador conferir os %-
   // especificadores contra os argumentos. Num printf de diagnostico com
   // `unsigned long` e `%u` trocados o ESP32 imprime lixo silenciosamente.
@@ -105,9 +113,28 @@ extern SerialStub Serial;
 // o sketch.ino nao precisar de include que ele nao tem na placa.
 #include "esp_sleep.h"
 
+// A interface I2C crua. O `sketch.ino` e o `envio-continuo.ino` falam com o
+// sensor pela biblioteca da Adafruit e so precisavam de `begin`; o
+// `diagnostico-i2c.ino` fala no osso -- varredura de endereco, leitura de
+// registrador -- e e por isso que ele ficou fora do `make sintaxe` ate 16/10:
+// o stub nao tinha o que ele usa, e nao ter o stub foi o que escondeu que o
+// sketch nao compilava.
+//
+// As assinaturas seguem a TwoWire do core do ESP32. `endTransmission()`
+// devolve uint8_t (0 = ok), nao bool -- o sketch compara com 0, e trocar isso
+// por bool faria o stub aceitar codigo que a placa rejeita.
 class WireStub {
  public:
   void begin(int, int) {}
+  void setClock(uint32_t) {}
+  void beginTransmission(uint8_t) {}
+  uint8_t endTransmission() { return 0; }
+  uint8_t endTransmission(bool) { return 0; }
+  size_t write(uint8_t) { return 1; }
+  uint8_t requestFrom(uint8_t, size_t) { return 0; }
+  uint8_t requestFrom(uint8_t, size_t, bool) { return 0; }
+  int available() { return 0; }
+  int read() { return -1; }
 };
 extern WireStub Wire;
 
