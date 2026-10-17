@@ -24,7 +24,20 @@ logger = logging.getLogger(__name__)
 # O que ainda falta e o DATA-07b: aceitar, validar e persistir o vetor. Ate la
 # `f` cai na validacao como campo desconhecido, que e o comportamento desejado
 # -- aceita-lo sem ter coluna para grava-lo descartaria o dado em silencio.
-CONTRATO_DE_DADOS = "2.5.0"
+#
+# 2.5.1 (30/09, DATA-07c) e PATCH e nao mexeu em formato nenhum: acrescentou a
+# secao 2.6 dois fatos medidos -- epoca incompleta nao tem paridade entre
+# implementacoes, e o `‖g‖ = 1 ± 1e−3` e coerencia de um lado, nao orcamento de
+# discordancia. Nada de campo, faixa ou obrigatoriedade muda, entao a ingestao
+# continua conforme sem alterar uma linha de codigo.
+#
+# A declaracao, porem, FICOU ATRAS por duas semanas: o documento subiu em
+# 2026-09-30 e esta constante nao. O `test_informa_a_versao_do_contrato_de_dados`
+# acusou na primeira vez que a suite do backend rodou depois disso (16/10) --
+# a suite nao era executada desde 10/09. A deteccao funcionou; o intervalo entre
+# o bug e a deteccao e que foi de duas semanas, e e por isso que o backend
+# tambem precisa rodar em cada push, nao so quando alguem lembra.
+CONTRATO_DE_DADOS = "2.5.1"
 
 # Frase exigida no corpo de `DELETE /api/me` (SEC-07). Em portugues e em
 # maiusculas de proposito: tem de ser digitada, e nao pode ser o resultado de
