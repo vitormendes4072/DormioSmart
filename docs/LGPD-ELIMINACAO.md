@@ -91,7 +91,7 @@ Item de backlog: **SEC-07**. Implementação em
 
   | Citação | Confere? |
   |---|---|
-  | art. 6º, III — necessidade (minimização) | ✅ `LGPD-04`, seção 9 da política |
+  | art. 6º, III — necessidade (minimização) | ✅ `LGPD-04`, seção 9 da política — ✏️ **ver a nota de 17/10 ao fim deste arquivo: a base mudou** |
   | art. 7º, I — consentimento · art. 7º, IV — estudos por órgão de pesquisa | ✅ |
   | art. 12 — anonimizado fora do alcance da lei | ✅ |
   | art. 16 — eliminação após o término do tratamento | ✅ |
@@ -143,3 +143,53 @@ Item de backlog: **SEC-07**. Implementação em
   > o `UI-17`.
 - Falta a parte de interface: hoje a eliminação existe como rota, e só. Está
   registrado como **UI-10** no backlog.
+
+---
+
+## ✏️ Nota de 2026-10-17 — o que o `PERFIL-01` muda neste arquivo
+
+Três coisas, e a segunda é a que mais importa para a redação do TCC.
+
+**1. `perfil_apagado` passou a significar mais do que significava.** O texto
+acadêmico acima diz que a função remove "as leituras, os dispositivos, o perfil
+e o registro de autenticação". Era verdade e era **quase vazio**: até hoje a
+linha de `profiles` continha um `nome` que o aplicativo não lia e uma `idade`
+sempre nula, então `perfil_apagado: true` relatava a remoção de uma linha sem
+conteúdo em uso. Com `profiles` como fonte de verdade (`PERFIL-01`), aquela
+linha passa a conter **o nome exibido e a idade autodeclarada** — o recibo
+continua dizendo a mesma frase e ela passou a ser substantiva. Nada a corrigir
+no texto; vale registrar que o seu alcance aumentou.
+
+> E vale notar o inverso, porque era o risco da outra saída do `PERFIL-01`: se a
+> coluna `nome` tivesse sido **removida** (a saída que recomendava encolher a
+> tabela), `perfil_apagado` passaria a reportar a remoção de uma linha vazia, e
+> o recibo prometeria mais do que entrega. Era exatamente a ressalva registrada
+> no item, e ela deixou de ser necessária.
+
+**2. A minimização (art. 6º, III) mudou de fundamento, e o `LGPD-04` fechou por
+onde não se esperava.** A tabela de citações acima marca o art. 6º, III como
+conferido, apontando para o `LGPD-04` — cuja tese era que `profiles.idade` era
+coluna morta e devia **sair por migração**. A coluna não saiu: ela passou a ser
+coletada, com finalidade declarada, opcional e retirável pelo titular. O que
+sustenta a conformidade com aquele artigo, portanto, **não é mais a ausência do
+dado, e sim a existência de uma finalidade cumprida por código**
+(`frontend/src/lib/aplicabilidade.ts`) — ver a seção 3 da política de
+privacidade e `docs/DECISAO-FONTE-DO-PERFIL.md` §5.
+
+A diferença é material numa banca: "não coletamos" é uma defesa; "coletamos para
+isto, e isto acontece" é outra, e a segunda exige poder mostrar o que acontece.
+
+**3. Entrou uma lacuna nova, e é de produto.** Coletar idade autodeclarada pode
+revelar que o titular é criança ou adolescente, e o **art. 14** da Lei
+13.709/2018 impõe tratamento próprio — melhor interesse, e consentimento de um
+dos pais ou responsável no caso de criança. **O sistema não verifica idade e não
+trata de forma diferente a idade declarada de menor de 18 anos.** Está declarado
+como limitação na seção 2.1 da política e registrado como `LGPD-05`. Não é
+implementação pendente: é decisão a tomar (restringir o cadastro, exigir
+consentimento de responsável, ou manter a lacuna declarada enquanto o protótipo
+tiver um usuário).
+
+| Citação nova | Confere? |
+|---|---|
+| art. 14 — dado de criança e adolescente | ⚠️ citado como **lacuna declarada**, não como implementado (`LGPD-05`) |
+| art. 18, IV — retirada da idade pelo titular | ✅ seção 6.5 da política, campo em branco apaga o dado |

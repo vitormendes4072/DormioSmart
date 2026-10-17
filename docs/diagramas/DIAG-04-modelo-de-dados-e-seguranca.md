@@ -7,8 +7,22 @@
 > **Onde entra no TCC:** capítulo de Desenvolvimento, seção de persistência e segurança
 > (figuras A e B) e seção de autenticação (figura C). A figura B é o que sustenta a
 > seção de conformidade com a LGPD.
-> **Estado do código:** verificado em `2026-09-29`, após as migrações `001` a `007`.
-> A migração `002` (backfill do dono) **não foi executada no Supabase** — item `DATA-03`.
+> **Estado do código:** verificado em `2026-09-29` e **revisado em `2026-10-17`**, após
+> as migrações `001` a `008`.
+> **Migrações escritas e NÃO executadas no Supabase:** a `002` (backfill do dono, item
+> `DATA-03`) e a **`008`** (`PERFIL-01`). Os dois diagramas abaixo descrevem o esquema
+> **com a `008` aplicada** — ver a nota ao fim da figura A para o que muda enquanto ela
+> não rodar.
+
+> ✏️ **O que o `PERFIL-01` mudou aqui, e por que este diagrama era o motivo de decidir
+> antes.** O item dizia: *"decidir antes do `DIAG-04`: o modelo ER é material de banca, e
+> um diagrama que mostra `profiles` com `nome` e `idade` documenta como projeto uma
+> tabela cujas colunas nada lê."* Era isso. O ER de 29/09 desenhava `profiles.nome` e
+> `profiles.idade` como se fossem dado do sistema; `nome` era cópia escrita uma vez pelo
+> gatilho do signup e lida por nada, e `idade` estava vazia para todos os titulares. O
+> diagrama não estava errado sobre o **esquema** e estava errado sobre o **projeto** — e
+> a diferença só aparece para quem pergunta "quem lê esta coluna?", que é exatamente o
+> que uma banca pergunta. Agora as duas colunas são lidas, e a figura A diz por quem.
 
 Convenções de leitura: ver `DIAG-01`.
 
@@ -18,7 +32,7 @@ Convenções de leitura: ver `DIAG-01`.
 
 ```mermaid
 erDiagram
-    AUTH_USERS ||--|| PROFILES : "1:1 via handle_new_user()"
+    AUTH_USERS ||--|| PROFILES : "1:1 · semeada por handle_new_user()"
     AUTH_USERS ||--o{ DEVICES : "on delete cascade"
     AUTH_USERS ||--o{ SLEEP_DATA : "on delete cascade"
     DEVICES ||--|| DEVICE_TOKENS : "1:1 · on delete cascade"
@@ -26,14 +40,15 @@ erDiagram
 
     AUTH_USERS {
         uuid id PK "gerida pelo Supabase"
-        text email
+        text email "CREDENCIAL · troca por link de confirmacao"
+        jsonb raw_user_meta_data "nome: INSUMO DE CRIACAO · lido 1x, nunca exibido"
     }
     PROFILES {
         uuid id PK,FK "= auth.users.id"
-        text nome
-        integer idade "check 0..149"
+        text nome "FONTE DE VERDADE do nome exibido · check <= 200 (008)"
+        integer idade "OPCIONAL · check 0..149 · finalidade: aplicabilidade de coorte"
         timestamptz created_at
-        timestamptz updated_at
+        timestamptz updated_at "mantida por gatilho desde a 008"
     }
     DEVICES {
         uuid id PK
@@ -77,6 +92,31 @@ anuláveis porque as linhas coletadas antes da migração `001` não têm dono. 
 está escrito (`migrations/002_backfill_dono_dos_dados.sql`) e **não foi rodado** —
 enquanto isso, o painel de uma conta nova nasce vazio (`DATA-03`).
 
+**A decisão que o ER esconde se não for dita, nº 2: o nome existe em dois lugares, e só
+um deles é lido.** `profiles.nome` é a fonte de verdade; `raw_user_meta_data.nome` é o
+**insumo de criação** — o valor digitado no cadastro, lido uma vez pelo gatilho
+`handle_new_user` para semear a linha de `profiles`, e depois disso lido por **nada**. A
+duplicidade não é resolvida por sincronização: é resolvida por **leitor único** e
+**destino único por campo** (nome e idade pela rota `/api/me/perfil`; e-mail pelo Auth,
+porque é credencial). Um diagrama que mostrasse os dois campos de nome sem dizer qual
+manda documentaria uma ambiguidade que o sistema não tem. O raciocínio inteiro está em
+`docs/DECISAO-FONTE-DO-PERFIL.md`, e a regra do leitor único é catraca verificada em
+`frontend/src/fonteDoNomeDoPerfil.test.ts`.
+
+**A linha que falta no diagrama, e é de processo:** `profiles` pode **não ter linha** para
+um usuário existente. Não é hipótese — `migrations/DIAGNOSTICO-perfil-nao-criado.sql`
+existe porque já aconteceu (o gatilho não existia no projeto). Enquanto a tabela era
+inerte isso era invisível; com ela canônica, `GET /api/me/perfil` **repara** a ausência,
+semeando pelo metadado. Por isso o ER mostra a relação como `1:1` e o texto diz que ela é
+*semeada*: o esquema garante no máximo uma linha, não que ela exista.
+
+> ⚠️ **Enquanto a migração `008` não for aplicada:** o `check` de 200 em `nome` e o
+> gatilho de `updated_at` **não existem no banco**, e `profiles.updated_at` continua
+> congelado no instante da criação. A rota de perfil funciona sem a `008` — ela grava
+> `nome` e `idade` pelas policies que existem desde a `001`. O que falta é o teto do
+> caminho que não passa pelo Flask (o navegador fala direto com o PostgREST) e a
+> honestidade da coluna de data.
+
 ---
 
 ## B — Quem alcança o quê, e com qual privilégio
@@ -99,10 +139,11 @@ flowchart TB
         F4["parear_dispositivo(nome, tipo, token_hash)"]
         F5["apagar_minha_conta()<br/>sem parametro de usuario"]
         F6["sanidade()"]
+        F7["tocar_updated_at()<br/>gatilho da 008 · SEM security definer<br/>SEM execute para papel algum"]
     end
 
     subgraph TABS["TABELAS (RLS habilitado em todas)"]
-        T1["profiles<br/>select/insert/update/delete own"]
+        T1["profiles<br/>select/insert/update/delete own<br/>FONTE DE VERDADE do perfil"]
         T2["devices<br/>select/insert/update/delete own"]
         T3["sleep_data<br/>select own · delete own<br/>SEM policy de insert"]
         T4["device_tokens<br/>RLS + NENHUM GRANT<br/>inalcancavel pelo cliente"]
@@ -113,7 +154,8 @@ flowchart TB
     AUTHD -->|"GRANT EXECUTE"| F4
     AUTHD -->|"GRANT EXECUTE"| F5
     AUTHD -->|"GRANT EXECUTE"| F6
-    AUTHD -->|"select/update/delete filtrados pelo RLS"| T1
+    AUTHD -->|"select/insert/update/delete filtrados pelo RLS<br/>o upsert da rota de perfil passa por aqui"| T1
+    T1 -.->|"before update"| F7
     AUTHD --> T2
     AUTHD --> T3
     ING -->|"GRANT EXECUTE — e so"| F1
@@ -138,18 +180,46 @@ flowchart TB
     class SRV futuro;
 ```
 
-**Verificação, não afirmação.** O que o diagrama diz sobre RLS é coberto por 105 testes
+**Verificação, não afirmação.** O que o diagrama diz sobre RLS é coberto por **146 testes**
 contra um PostgreSQL real (`web-app/tests/rls/`), sem *mock*, incluindo invariantes de
 catálogo (tabela nova sem RLS, `using (true)`, policy para `anon`). A suíte foi verificada
-por mutação: 18 sabotadores introduzidos, todos detectados
-(`tests/rls/verificar_por_mutacao.py`).
+por mutação: **30 sabotadores** introduzidos, todos detectados
+(`tests/rls/verificar_por_mutacao.py`). *(Eram 105 testes e 18 sabotadores em 29/09.)*
+
+**Dois achados de 17/10 que mudam o que esta figura pode afirmar, e os dois vieram da
+verificação por mutação, não da leitura:**
+
+1. **`create function` concede `EXECUTE` a `PUBLIC` por padrão no PostgreSQL.** A
+   migração `008`, ao criar `tocar_updated_at()`, **ampliava** o que o papel
+   `dormio_ingestao` podia executar — o papel que a `005` existe para manter com
+   `EXECUTE` em exatamente três funções. Quem acusou foi
+   `test_o_papel_executa_exatamente_tres_funcoes`, na primeira execução da migração.
+   Daí o `revoke` na `008` e o `F7` do diagrama dizer *"sem execute para papel algum"*:
+   gatilho não precisa de `GRANT` para disparar, porque o privilégio é conferido na
+   criação do gatilho.
+2. **`test_ana_nao_cria_profile_para_o_bruno` barrava pela chave estrangeira, não pela
+   policy.** Ele usava um uuid inventado, que não existe em `auth.users`. Passava com
+   `profiles_insert_own` escancarada — medido. Corrigido com uma terceira usuária real
+   **sem perfil**, que é o único cenário em que a policy de `insert` fica sozinha no
+   caminho. E o par de `upsert` mostrou que **dois barramentos em série escondem um ao
+   outro**: o teste da vítima *com* perfil não detecta policy de `insert` larga, porque a
+   de `update` recusa primeiro.
 
 **O caso de borda honesto do `apagar_minha_conta()`:** `auth.users` pertence ao Supabase, e
 o `GRANT DELETE` nela pode não existir no projeto. Quando não existe, os dados de sono,
 dispositivos e perfil são apagados e a rota responde `conta_de_acesso_removida: false` com
 aviso. Isso é pendência de conformidade registrada em log como `WARNING`, não sucesso
-silencioso. **A tela que exerce esse direito ainda não existe** (`UI-10`): hoje só há a
-rota `DELETE /api/me`.
+silencioso.
+
+> ✏️ **Correção de 2026-10-17.** Esta linha dizia *"a tela que exerce esse direito ainda
+> não existe (`UI-10`): hoje só há a rota `DELETE /api/me`"*. A tela existe desde
+> 17/10 — e o componente desde 29/09, sem que nenhum arquivo versionado o importasse,
+> que é a história do `UI-10` e a ocorrência 4 do §6 das lições. **Este arquivo era o
+> quarto a carregar uma afirmação desatualizada sobre aquela tela** — a entrada de 17/10
+> (iii) do diário reporta três (backlog, `LGPD-ELIMINACAO.md` e a política), e esta
+> passou. Achada por varredura própria ao fechar o `PERFIL-01`, com os termos *"ainda não
+> existe"*, *"não há tela"* e *"existe como rota"* em `docs/`, `*.md`, `frontend/src/` e
+> `web-app/`. A mesma varredura achou outras duas, em `CLAUDE.md`.
 
 ---
 
@@ -202,13 +272,52 @@ sequenceDiagram
     FL-->>CEL: 201
 
     Note over CEL,PG: CAMINHO 3 — leitura pelo painel
+
     CEL->>FL: GET /api/sleep-history?device_id&desde&ate&limite<br/>Authorization: Bearer <JWT>
     FL->>FL: ler_parametros() — valida uuid, instante, limite (teto 2000)
     FL->>PG: select em sleep_data com o JWT do usuario
     PG->>PG: RLS filtra por auth.uid() — nao e codigo Python que filtra
     PG-->>FL: linhas do dono, mais recentes primeiro
     FL-->>CEL: 200 + JSON
+
+    Note over CEL,PG: CAMINHO 4 — perfil (PERFIL-01) · nome e idade
+    CEL->>FL: GET /api/me/perfil<br/>Authorization: Bearer <JWT>
+    FL->>PG: select nome, idade em profiles, pelo JWT do usuario
+    alt nao ha linha · gatilho ausente, ver DIAGNOSTICO-perfil-nao-criado.sql
+        FL->>FL: le nome de raw_user_meta_data — UNICA leitura, e so aqui
+        FL->>PG: upsert do perfil, semeado · log WARNING
+        FL-->>CEL: 200 + perfil_criado_agora: true
+    else leitura falhou — nao e o mesmo que "nao ha linha"
+        FL-->>CEL: 503 — nao repara por cima de banco fora do ar
+    else a linha existe
+        PG-->>FL: nome, idade, updated_at
+        FL-->>CEL: 200 + perfil_criado_agora: false
+    end
+
+    CEL->>FL: PATCH /api/me/perfil<br/>{nome?, idade?} — SO o que mudou
+    FL->>FL: valida tipo, faixa e tamanho · campo desconhecido (id, user_id) = 400
+    FL->>PG: upsert em profiles pelo JWT<br/>id = auth.uid() nas policies de insert E de update
+    PG->>PG: gatilho tocar_updated_at (008)
+    PG-->>FL: a linha COMO FICOU
+    alt nada persistiu
+        FL-->>CEL: 503 — nao responde 200 sem escrita confirmada (FIX-02)
+    else
+        FL-->>CEL: 200 + a linha do banco, nao o que foi pedido
+    end
+    CEL->>CEL: limpa o residuo: updateUser({data:{nome:null}})<br/>DEPOIS do PATCH · falha NAO desfaz a correcao
 ```
+
+**Por que o caminho 4 tem um `GET` que escreve, dito aqui porque é o que mais surpreende
+quem lê o diagrama:** `profiles` pode não ter linha para um usuário que existe, e isso já
+aconteceu neste projeto. Com a tabela canônica, linha ausente deixou de ser detalhe de
+esquema e passou a ser nome em branco na tela de quem digitou o nome no cadastro. O
+reparo é **idempotente**, que é a propriedade que de fato importa num `GET`.
+
+**E por que a limpeza do resíduo está no navegador, e não no Flask:** `updateUser` age
+sobre a **sessão** de quem chama, e o cliente do Flask só autentica o PostgREST. Fazer
+isso no servidor exigiria a API de administração — papel privilegiado, recusado pelo
+`SEC-06`. O navegador é o único lugar onde essa escrita acontece com a credencial do
+próprio titular.
 
 **O pareamento, que antecede tudo isso:** `POST /api/devices` gera um token aleatório,
 guarda apenas o SHA-256 em `device_tokens` via `parear_dispositivo()` e devolve o token em

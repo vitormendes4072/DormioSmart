@@ -252,7 +252,7 @@ finalidade mais fácil de escrever e a menos defensável das duas.
 | `frontend/src/fonteDoNomeDoPerfil.test.ts` | a Regra 1, como catraca |
 | `docs/POLITICA-DE-PRIVACIDADE.md` | §2.1, §2.4, §3, §6.3, §9 e lacunas |
 | `docs/LGPD-ELIMINACAO.md` | o `LGPD-04` e o que o recibo promete |
-| `docs/diagramas/DIAG-04-...md` | o modelo ER, que era o motivo de decidir antes |
+| `docs/diagramas/DIAG-04-modelo-de-dados-e-seguranca.md` | o modelo ER, que era o motivo de decidir antes |
 
 ---
 
