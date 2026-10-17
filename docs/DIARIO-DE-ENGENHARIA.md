@@ -1549,6 +1549,157 @@ em 2026-10-17"; `scripts/conferir_docs_versionados.py` (cabeçalho, `PONTEIROS_A
 
 ---
 
+# 2026-10-17 (iii) — os 15 arquivos pendentes, lidos: a tela que não existia e a premissa que não se sustentava
+
+**O problema, como foi entendido no início.** Havia 15 arquivos modificados e não commitados em
+disco desde 29/09 — 13 de frontend (`DASH-12`/`DASH-13` e adjacências), 1 de firmware e 1 JSON
+do `ml/`. Todas as sessões seguintes foram instruídas a não tocá-los, e este diário e o
+`docs/LICOES-APRENDIDAS.md` registram, nas respectivas seções de lacuna, que eles **não foram
+lidos**. O enunciado era: ler o diff inteiro, decidir o que completar e o que descartar, e não
+commitar trabalho alheio no escuro só para limpar a árvore. Em seguida, o `UI-11`.
+
+**Hipótese de trabalho.** Duas, e as duas eram razoáveis. A primeira: que fosse trabalho pela
+metade, de valor incerto, possivelmente em conflito com o que veio depois (contrato v2.5.1,
+migrações `006` e `007`, as features em C++ do `DATA-07b`) — daí a instrução de preferir relatar
+a commitar. A segunda, implícita no backlog: que o `UI-11` fosse barato *porque* a policy de
+`update` em `profiles` já existia desde a migração `001`, faltando só a interface.
+
+**O que foi testado, e como.** O diff inteiro, lido arquivo por arquivo, não por estatística.
+Depois, para cada afirmação que o diff fazia sobre o resto do repositório, a conferência no
+artefato: `grep` por `captured_at` em `web-app/`, por `profiles` em todo código de produção, por
+`\bidade\b`, e busca de uso de cada símbolo novo e de cada símbolo que ele substituía. `cmp`
+byte a byte do JSON contra `git show HEAD:`. `tsc --noEmit`, `vitest run` e `vite build` em cada
+estado intermediário, antes de cada um dos quatro commits. `make sintaxe` no firmware.
+
+**Resultado medido. O diff não era trabalho pela metade — era a metade que faltava de trabalho
+que o projeto dava por concluído.**
+
+| Achado | O que a conferência mostrou |
+|---|---|
+| **`DASH-12` e `DASH-13` estavam feitos só do lado do servidor.** | O backend está commitado e testado desde 10/09 (`captured_at` no `select` de `database.py`, `LIMITE_PADRAO = 20` e `LIMITE_MAXIMO = 2000` em `consulta.py`, cobertura em `test_leitura_por_dispositivo.py`). O cliente, não. Na árvore versionada, `LeituraSono` não tinha `captured_at`, `instanteDaLeitura` não existia, e nem o painel nem a exportação mandavam `limite`. **O `ROADMAP.md` declara os dois "✅ corrigido em 2026-09-10", com descrição detalhada do que mudou.** O painel versionado descrevia 20 linhas — dez minutos de celular — pela hora de chegada. |
+| **A tela de exclusão de conta estava inalcançável.** | `ExcluirConta.tsx` foi commitado em 29/09 (`916e210`) com 23 testes, e **nenhum arquivo versionado o importava.** As três linhas que o montam em `Settings.tsx` estavam entre os 15 pendentes, presas porque os *hunks* não se separavam do `DASH-13`. |
+| **Três documentos afirmavam que aquela tela existia.** | O backlog (`UI-10 ✅`), o `docs/LGPD-ELIMINACAO.md` ("a interface existe desde 29/09") e a `docs/POLITICA-DE-PRIVACIDADE.md` §6.4, que **dizia ao titular onde clicar** para exercer o art. 18, VI. |
+| **Havia trabalho do `DASH-08` que ninguém mencionou.** | `descreverDispositivo`, `descreverRecorte`, `tiposPresentes` e `serieMisturaTipos`. O `ROADMAP.md` lista o `DASH-08` como feito em 10/09 porque `MeusDispositivos` mostra o tipo na lista de aparelhos; o painel não mostrava. |
+| **`serieMisturaTipos` era decisão escrita e não aplicada.** | Documentada, com três testes, e **ligada em lugar nenhum**: o `AvisoDeMistura` reescrevia a condição inline e o `Dashboard` decidia tudo por `serieMisturaInstrumentos`. |
+| **A premissa do `UI-11` não se sustentava.** | **Nenhum código de produção toca `public.profiles`** — as únicas referências do repositório estão em `web-app/tests/rls/`. O nome que a tela exibe vem de `auth.users.raw_user_meta_data`; `profiles.nome` é cópia tirada uma vez pelo trigger `handle_new_user` (migração `001`, linha 125) e lida por nada. Não há rota de perfil no backend. |
+| **O 15º arquivo não era uma mudança.** | O JSON do `ml03b` tem 7 346 CR no disco e o histórico o guarda em LF; com o `text=auto` desta branch, o conteúdo normalizado é **idêntico** ao de `HEAD`. O que estava desatualizado era a **entrada de índice**, não o arquivo. Um `git add` a refrescou e ele saiu do `status` sozinho, sem entrar em commit nenhum, mantendo os CRLF no disco. |
+
+Dos "15 arquivos pendentes" citados aqui e nas lições desde 29/09, portanto, **14 eram trabalho
+e 1 era contabilidade do índice.** A contagem estava certa; a leitura dela, não.
+
+**Adaptação.** A hipótese de que seria trabalho duvidoso caiu na primeira leitura: o conteúdo
+estava correto, coerente com o que veio depois, e com os comentários mais cuidadosos do
+frontend. O que estava errado era o **registro de projeto**, não o código — e isso inverteu o
+risco do enunciado. Não commitar deixaria de ser prudência e passaria a ser manter três
+documentos mentindo sobre um direito do titular.
+
+Quatro commits, separados por item e com os *hunks* desembaraçados à mão (`Dashboard.tsx` e
+`Settings.tsx` carregavam pedaços de três itens cada): `a586b0b` (`DASH-12`/`DASH-13`),
+`fea1c48` (`DASH-08`), `22a9268` (montagem do `UI-10` e correção de duas das três afirmações) e
+`f58f52c` (`FW-06`). Em seguida `c80c2b8` (as duas ocorrências novas nas lições e a terceira
+afirmação falsa), `216fda7` (backlog) e o do `UI-11`.
+
+Três decisões que mudaram o trabalho original, cada uma declarada no commit:
+
+1. **`serieMisturaTipos` foi ligada, mas não como porta de entrada do aviso.** Quem decide se o
+   aviso *aparece* continua sendo `serieMisturaInstrumentos` (há mais de um aparelho); quem
+   decide se ele *nomeia as classes* passou a ser `serieMisturaTipos` (há mais de uma classe).
+   Trocar um pelo outro faria o aviso desaparecer com dois travesseiros, que é comportamento com
+   teste próprio afirmando-o. Apareceu na leitura uma assimetria que vale registrar: a
+   justificativa escrita de `serieMisturaInstrumentos` fala de *"um travesseiro e um celular"*,
+   mas a implementação é só `dispositivos.length > 1` — o alcance do código é mais largo que o
+   do comentário.
+2. **O `UI-11` foi feito pelo Supabase Auth, não por `profiles`.** Implementado conforme a
+   especificação, ele teria entregado uma tela em que a pessoa clica "salvar", recebe "dados
+   atualizados", e o nome continua o mesmo.
+3. **`profiles` não foi sincronizada de passagem.** Virou o `PERFIL-01`, com três saídas e o
+   custo de cada uma. O motivo é o mesmo que o `DATA-07e` registrou para não quantizar os picos
+   junto: duas mudanças de uma vez tornam impossível dizer qual quebrou o quê.
+
+E uma verificação nova, `frontend/src/alcance.test.ts`, que é a correção de fundo do achado do
+`UI-10`: percorre os `import` relativos a partir de `main.tsx` e reprova quando um módulo de
+`src/` fica fora do grafo. **Nada no repositório podia pegar aquele defeito** — `tsc` não
+reclama de módulo não importado, o `vite build` poda o que não entra no grafo e segue verde, e
+os 23 testes do item são de `lib/`, então passavam com o componente desmontado.
+
+**O que o método pegou, e que a leitura não pegaria.** Três coisas, as três porque alguma
+verificação foi feita em vez de assumida:
+
+- A **primeira tentativa de sabotar** o `perfil.ts` não casou (indentação errada no padrão de
+  busca) e a suíte passou — o que eu teria lido como "ponto cego detectado". É o §4 das lições
+  em miniatura, *"um sabotador morto se lê como ponto cego"*, e o mesmo defeito que o harness de
+  mutação do C++ teve nesta mesma data, pela manhã. Daí a conferência de que cada trecho
+  sabotado casa **exatamente uma vez** ter entrado no procedimento antes de qualquer conclusão.
+  Refeito: de 4 sabotagens, 3 detectadas e 1 **provadamente equivalente** (trocava
+  `nomeAlterado` por `true` num retorno alcançável só quando o nome mudou, onde ele já vale
+  `true`) — mutante equivalente, não cego.
+- Eu **reportei duas afirmações falsas e eram três.** Procurei no `docs/LGPD-ELIMINACAO.md` a
+  tabela de citações da Lei, cuja coluna é *"Confere?"* — ela afirma que a **citação** do artigo
+  está correta, não que o direito esteja implementado —, concluí que o arquivo estava certo e
+  segui. A afirmação falsa estava trinta linhas abaixo, na lista de notas: *"✅ A interface
+  existe desde 29/09"*. **Conferi o lugar errado do arquivo certo**, que é o §5 aplicado a mim
+  mesmo. Detalhe que vale guardar: logo abaixo dela estava a linha *"Falta a parte de interface:
+  hoje a eliminação existe como rota, e só"*, marcada como obsoleta e mantida "para o histórico
+  ficar legível" — **a linha dita obsoleta estava mais certa que a que a substituiu**, por
+  dezoito dias.
+- **Eu corrompi este arquivo e o `git status` foi quem disse.** Ao inserir esta entrada, o
+  heredoc que escrevia o texto num arquivo temporário falhou por permissão (`/tmp` deste
+  ambiente tem arquivo de outro dono), o script seguinte leu um `/tmp/entrada.md`
+  **pré-existente e alheio**, e 208 linhas de conteúdo não relacionado entraram no diário —
+  duplicando a entrada de `DATA-07b`. Apareceu em `git diff --numstat` como `208 0`, que é um
+  número impossível para uma inserção de entrada única. Revertido por
+  `git show HEAD:… > …` (o `git checkout --` não consegue, porque não pode desvincular arquivo
+  no diretório montado) e reescrito com ferramenta de arquivo. **A lição é de método e não de
+  conteúdo:** script que lê arquivo temporário precisa falhar quando o arquivo não é o que ele
+  acabou de escrever — `set -euo pipefail` no heredoc teria interrompido antes, e conferir o
+  `numstat` antes de commitar foi o que pegou.
+
+**Risco em aberto.**
+
+- **O ponto cego do `UI-11` é declarado e não está fechado.** O dublê de `updateUser` exercita a
+  orquestração do módulo — ordem das chamadas, propagação de `nomeAlterado`, leitura pessimista
+  da resposta —, e **não prova nada sobre o comportamento real do Supabase**: não prova que a
+  troca de e-mail exige confirmação, nem quantos e-mails ela dispara. A diferença em relação ao
+  §4 (a suíte de RLS contra Supabase mockado) é o que está sendo afirmado: ali o trabalho
+  afirmava isolamento entre usuários e a prova era um mock; aqui o que está sob teste é a
+  decisão do próprio arquivo sobre o que fazer com cada forma de resposta. Fecha com um projeto
+  Supabase de teste e uma troca ponta a ponta — registrado no `UI-11`.
+- **O `alcance.test.ts` é catraca, não cobertura.** Prova que existe caminho de `import`;
+  **não** prova que o componente é renderizado, nem que há rota que leve a ele. Componente
+  importado e nunca usado no JSX passa. A outra metade é o `UI-17`, e exige
+  `@testing-library/react`.
+- **Nada disto rodou em runner.** Vale o `CI-06`: agora são quatro jobs mais duas verificações
+  sem execução em runner, e a branch continua sem push — sem credencial de escrita no ambiente.
+- **`profiles` ficou com duas naturezas e nenhuma decidida.** As colunas são mortas, mas a
+  tabela **não é inerte**: carrega a policy de `delete`, o `delete from public.profiles` de
+  `apagar_minha_conta()`, o campo `perfil_apagado` do recibo, a frase "o perfil" que o `UI-10`
+  mostra ao titular, e parte dos 105 testes de RLS. Enquanto o `PERFIL-01` não decidir,
+  `profiles.nome` é cópia que pode divergir do nome real. Carrega o item; não é observação
+  solta.
+- **O `ROADMAP.md` continua declarando `DASH-12`, `DASH-13` e `DASH-08` como feitos em 10/09.**
+  Agora a afirmação é verdadeira, mas a data não: a do cliente é 17/10. O arquivo não é
+  versionado (`GIT-05`), então a correção dele não entra em commit — e é justamente por não ser
+  versionado que ele pôde carregar um `✅` errado por seis semanas sem que nenhuma verificação o
+  alcançasse.
+- **O `.git/_lixo_sandbox/` cresceu de novo.** Cada comando que escreve no índice deixa um
+  `index.lock` ou `HEAD.lock` que o sandbox não consegue remover, e o lock órfão quebra o
+  comando seguinte — foi preciso limpá-los antes de cada `git add` e cada `git commit`. Ainda é
+  o `GIT-03`, ainda ⚪, ainda precisa de um terminal na máquina. Observação de método que custou
+  duas tentativas: **`GIT_OPTIONAL_LOCKS=0` faz `git add` não gravar nada em silêncio** — serve
+  para leitura, e usá-lo em escrita produz um `git commit` que responde "no changes added to
+  commit".
+
+**Procedência.** Commits `a586b0b`, `fea1c48`, `22a9268`, `f58f52c`, `c80c2b8`, `216fda7` e o do
+`UI-11`; `frontend/src/lib/perfil.ts` (cabeçalho), `frontend/src/alcance.test.ts` (cabeçalho e
+isenções), `frontend/src/lib/perfil.test.ts` (ponto cego declarado); `docs/BACKLOG-COMPLETO.md`
+(`UI-11`, `PERFIL-01`, `UI-16`, `UI-17`, `LGPD-04`, item 6 do "Estado do projeto", procedência
+de execução); `docs/LICOES-APRENDIDAS.md` §5 ocorrência 4 e §6 ocorrência 4;
+`docs/LGPD-ELIMINACAO.md` e `docs/POLITICA-DE-PRIVACIDADE.md` §6.4, notas de correção de 17/10;
+`web-app/migrations/001_multiusuario.sql` linha 125 e `006_direito_de_eliminacao.sql` linhas 151
+e 169.
+
+---
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
@@ -1557,7 +1708,7 @@ Registrado para que a ausência não passe por completude.
 |---|---|
 | Tudo antes de 2026-04-29 | Anterior ao versionamento. Escolha do ESP32 + MPU6050, do travesseiro em vez do punho, e o enunciado inicial do problema não estão no git. |
 | Grande parte de junho a agosto | O `HISTORICO.md` cobre o período, mas **não é versionado** (está no `.gitignore`), então não pode ser citado como procedência num capítulo de TCC. As entradas desse intervalo aqui saem de reflog e de código, e por isso são poucas. |
-| ~~As suítes do backend e do frontend~~ | **Coberto em 16/10:** backend 240 passam, frontend 338 passam em 22 arquivos, `tsc --noEmit` e `vite build` limpos. Substitui os números de 10/09 (221 pytest, 315 vitest). Com duas ressalvas: `web-app/tests/rls/` **não rodou** (125 pulados — exige Postgres de verdade), e os 338 do frontend foram medidos **sobre a árvore de trabalho**, não sobre o estado commitado — ver a linha abaixo. |
-| O frontend de 29/09 | Há 15 arquivos modificados e não commitados em `frontend/` de outra sessão de trabalho. Não estão neste diário porque não estão no histórico, e não foram lidos. **16/10:** continuam sem commit, e é por isso que os 338 testes do frontend medem a árvore de trabalho *com* essas alterações, e não o que está versionado. O número é verdadeiro e **não é** o número do estado commitado. |
+| ~~As suítes do backend e do frontend~~ | **Coberto em 16/10:** backend 240 passam, frontend 338 passam em 22 arquivos, `tsc --noEmit` e `vite build` limpos. Substitui os números de 10/09 (221 pytest, 315 vitest). Com duas ressalvas: `web-app/tests/rls/` **não rodou** (125 pulados — exige Postgres de verdade), e os 338 do frontend foram medidos **sobre a árvore de trabalho**, não sobre o estado commitado — ver a linha abaixo. ✏️ **17/10:** a segunda ressalva caiu com os 15 arquivos commitados — o frontend passa a 376 testes em 24 arquivos, medidos sobre a árvore versionada, e os dois números coincidem porque não há mais pendência. A ressalva do `rls` continua valendo. O backend **não foi reexecutado em 17/10**: os 240 seguem sendo de 16/10, e nada do trabalho de 17/10 toca `web-app/` fora de documentação. |
+| ~~O frontend de 29/09~~ | ✏️ **Lacuna fechada em 17/10 — ver a entrada (iii) daquela data.** Os 15 arquivos foram lidos e commitados em quatro commits (`a586b0b`, `fea1c48`, `22a9268`, `f58f52c`). Eram a metade de cliente do `DASH-12`/`DASH-13`, trabalho não catalogado do `DASH-08`, a montagem do `UI-10` e uma correção de cabeçalho do `FW-06` — **14 de trabalho e 1 que não era mudança nenhuma**, só entrada de índice desatualizada. Os números do frontend passam a medir a árvore versionada: **376 testes**, `tsc` limpo. |
 | Execução em runner de verdade | Os jobs de CI validados em 16/10 rodaram **localmente**. Nenhum rodou num runner do GitHub, e o `chore/GIT-01-normalizar-fim-de-linha` não foi enviado. A diferença não é cosmética: o `actions/checkout` é o ponto central da análise do `CI-05`. |
 | Toda a camada L1 e L2 | Nada foi medido no dispositivo físico. Os 8 pinos do MPU6050 não estão soldados. Todo número de hardware neste arquivo é **calculado ou simulado**, com uma exceção — a leitura de 25/08, que é medição de um sensor mal conectado e serve só para dizer que não serve. |
