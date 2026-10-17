@@ -11,6 +11,7 @@ import {
 import { useState } from "react";
 import { useNavigate } from "react-router";
 
+import { EditarPerfil } from "../components/EditarPerfil";
 import { ExcluirConta } from "../components/ExcluirConta";
 import { MeusDispositivos } from "../components/MeusDispositivos";
 import { SeletorDeTema } from "../components/SeletorDeTema";
@@ -94,24 +95,27 @@ function SecaoAparencia() {
  * Campo vazio desabilitado não é funcionalidade futura visível: é promessa não
  * cumprida ocupando espaço. Ficou o que é verdade — quem está logado.
  */
+/**
+ * Conta — exibição e correção (UI-11 / LGPD art. 18, III).
+ *
+ * A seção só exibia nome e e-mail, e a política de privacidade §6.3 teve de
+ * declarar que não havia tela para corrigi-los. O `EditarPerfil` entra aqui, e
+ * não em seção própria, porque corrigir é a continuação natural de ver — ao
+ * contrário de excluir, que ganhou seção separada justamente para não ficar ao
+ * alcance de um deslize.
+ *
+ * A leitura do nome saiu daqui para `nomeDaSessao`, em `lib/perfil.ts`: com a
+ * leitura em dois lugares, a tela de exibição e a de edição podiam discordar
+ * sobre de onde vem o nome.
+ */
 function SecaoConta() {
-  const { usuario } = useAuth();
-  const nome = (usuario?.user_metadata?.nome as string | undefined)?.trim();
-
   return (
-    <Secao titulo="Conta" icone={User}>
-      <dl className="space-y-3 text-sm">
-        {nome && (
-          <div className="flex justify-between gap-4">
-            <dt className="text-muted-foreground">Nome</dt>
-            <dd className="text-foreground font-medium truncate">{nome}</dd>
-          </div>
-        )}
-        <div className="flex justify-between gap-4">
-          <dt className="text-muted-foreground">E-mail</dt>
-          <dd className="text-foreground font-medium truncate">{usuario?.email ?? "—"}</dd>
-        </div>
-      </dl>
+    <Secao
+      titulo="Conta"
+      icone={User}
+      aviso="Nome e e-mail podem ser corrigidos a qualquer momento (LGPD, art. 18, III)."
+    >
+      <EditarPerfil />
     </Secao>
   );
 }
