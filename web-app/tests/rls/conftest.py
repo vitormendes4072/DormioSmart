@@ -57,6 +57,12 @@ MIGRACOES_APLICADAS = (
     "005_papel_de_ingestao_minimo.sql",
     "006_direito_de_eliminacao.sql",
     "007_credencial_fora_da_tabela_exposta.sql",
+    # A 008 não cria policy — ela promove `profiles` a fonte de verdade
+    # (`PERFIL-01`): gatilho de `updated_at`, teto de tamanho do nome e os
+    # comentários que declaram o papel de cada coluna. Entra aqui porque os
+    # testes de `test_rls_perfil.py` exercitam justamente esses três, e porque
+    # uma migração fora desta lista é uma migração que nenhum teste vê.
+    "008_perfil_como_fonte_de_verdade.sql",
 )
 
 VARIAVEL = "DORMIO_RLS_DATABASE_URL"
@@ -71,6 +77,27 @@ MOTIVO_PULO = (
 
 ANA = "aaaaaaaa-0000-4000-8000-aaaaaaaaaaaa"    # usuário A — o atacante
 BRUNO = "bbbbbbbb-0000-4000-8000-bbbbbbbbbbbb"  # usuário B — a vítima
+
+# Usuário C — a vítima SEM PERFIL. Existe em `auth.users` e não tem linha em
+# `public.profiles` (o `cenario` apaga a que o gatilho cria).
+#
+# ── POR QUE ELE PRECISOU EXISTIR (17/10, PERFIL-01) ──────────────────────
+#
+# `test_ana_nao_cria_profile_para_o_bruno` tentava inserir perfil para um uuid
+# INVENTADO (`cccccccc-...`), para não colidir com a chave primária da linha
+# que o gatilho já criou. Mas uuid inventado não existe em `auth.users`, então
+# o comando morria na CHAVE ESTRANGEIRA `profiles_id_fkey`, e nunca chegava à
+# policy. **O teste passava com `profiles_insert_own` escancarada
+# (`with check (true)`)** — medido com o sabotador `perfil_insert_permissivo`:
+# só os dois testes estruturais caíam.
+#
+# É o §4 das lições — o instrumento acusando pelo mecanismo errado — e o
+# cenário que ele queria montar ("se o Bruno ainda não tivesse profile") é
+# justamente o que ficou impossível de montar com um id falso. Com `profiles`
+# virando fonte de verdade, plantar perfil na conta de quem ainda não tem um é
+# escrita em dado pessoal alheio antes do primeiro login dele, e precisa de
+# teste que barre pela policy.
+CAROL = "cccccccc-0000-4000-8000-cccccccccccc"
 
 DEVICE_ANA = "a1a1a1a1-0000-4000-8000-a1a1a1a1a1a1"
 DEVICE_BRUNO = "b1b1b1b1-0000-4000-8000-b1b1b1b1b1b1"
@@ -194,10 +221,18 @@ def cenario(_conexao_dona, esquema):
             """
             insert into auth.users (id, email, raw_user_meta_data) values
                 (%s, 'ana@exemplo.test',   '{"nome": "Ana"}'),
-                (%s, 'bruno@exemplo.test', '{"nome": "Bruno"}')
+                (%s, 'bruno@exemplo.test', '{"nome": "Bruno"}'),
+                (%s, 'carol@exemplo.test', '{"nome": "Carol"}')
             """,
-            (ANA, BRUNO),
+            (ANA, BRUNO, CAROL),
         )
+
+        # A Carol fica SEM perfil, de propósito: é o único jeito de testar a
+        # policy de insert de `profiles` pela policy, e não pela chave
+        # estrangeira — ver o comentário na definição de `CAROL`. Apagar aqui
+        # (pelo dono) simula a conta cujo gatilho não rodou, que é o caso do
+        # `migrations/DIAGNOSTICO-perfil-nao-criado.sql`.
+        cursor.execute("delete from public.profiles where id = %s", (CAROL,))
 
         # O trigger `on_auth_user_created` da 001 deve ter criado os profiles.
         cursor.execute(
@@ -248,6 +283,7 @@ def cenario(_conexao_dona, esquema):
     return {
         "ana": ANA,
         "bruno": BRUNO,
+        "sem_perfil": CAROL,
         "device_ana": DEVICE_ANA,
         "device_bruno": DEVICE_BRUNO,
         "leitura_ana": linhas["ana"],

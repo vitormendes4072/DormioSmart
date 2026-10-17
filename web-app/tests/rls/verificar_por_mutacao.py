@@ -85,6 +85,70 @@ SABOTADORES = {
         minimo=2,
         exige="test_ana_nao_fabrica_leitura_nem_no_proprio_nome",
     ),
+    # --- PERFIL-01: o caminho de escrita que a rota de perfil usa ---
+    #
+    # `profiles` deixou de ser tabela inerte: `PATCH /api/me/perfil` escreve
+    # nela por `upsert`, isto é, `insert ... on conflict do update`. Esse
+    # comando passa por DUAS policies, e os dois sabotadores abaixo afrouxam
+    # uma de cada vez — porque supor que basta uma barreira é precisamente o
+    # erro que eles existem para pegar.
+    # Este sabotador ACHOU DOIS DEFEITOS no primeiro uso, e os dois estão
+    # registrados onde aconteceram:
+    #
+    #   1. `test_ana_nao_cria_profile_para_o_bruno` barrava pela chave
+    #      estrangeira, não pela policy — corrigido, e virou
+    #      `test_ana_nao_cria_profile_para_quem_ainda_nao_tem` (§4 das lições).
+    #   2. O `exige` que este sabotador tinha ao nascer apontava para
+    #      `test_ana_nao_faz_upsert_no_perfil_do_bruno`, que **não pode**
+    #      detectá-lo: ali a linha da vítima existe, então o comando cai no
+    #      ramo de UPDATE e a policy de update barra — a de insert escancarada
+    #      passa despercebida. Dois barramentos em série fazem cada um
+    #      invisível a partir do outro, e é por isso que o teste que o `exige`
+    #      nomeia é o da vítima SEM perfil, onde não há segundo barramento.
+    "perfil_insert_permissivo": dict(
+        descricao="profiles_insert_own com with check (true)",
+        sql="""
+            drop policy profiles_insert_own on public.profiles;
+            create policy profiles_insert_own on public.profiles for insert
+                to authenticated with check (true);
+        """,
+        minimo=1,
+        exige="test_ana_nao_cria_profile_para_quem_ainda_nao_tem",
+    ),
+    # E este mostrou outra coisa que a documentação diz e ninguém havia
+    # conferido no artefato (§5): no PostgreSQL, policy de UPDATE **sem**
+    # `with check` usa o `using` também como verificação da linha resultante.
+    # Removê-lo, portanto, NÃO abre a transferência de linha para outro dono —
+    # o comportamento não muda, e nenhum teste de acesso pode cair. O que
+    # detecta é o teste estrutural, e é ele que o `exige` nomeia.
+    "perfil_update_sem_with_check": dict(
+        descricao="profiles_update_own sem with check",
+        sql="""
+            drop policy profiles_update_own on public.profiles;
+            create policy profiles_update_own on public.profiles for update
+                to authenticated using (id = (select auth.uid()));
+        """,
+        minimo=1,
+        exige="test_policies_de_update_tem_with_check",
+    ),
+    "perfil_sem_teto_de_nome": dict(
+        descricao="constraint de tamanho do nome removida (migracao 008)",
+        sql="alter table public.profiles drop constraint profiles_nome_tamanho;",
+        minimo=1,
+        exige="test_nome_gigante_e_recusado_pelo_banco",
+    ),
+    "perfil_sem_updated_at": dict(
+        descricao="gatilho de updated_at removido (migracao 008)",
+        sql="drop trigger profiles_tocar_updated_at on public.profiles;",
+        minimo=2,
+        exige="test_updated_at_se_move_na_escrita",
+    ),
+    "gatilho_de_updated_at_executavel": dict(
+        descricao="EXECUTE em tocar_updated_at devolvido a PUBLIC",
+        sql="grant execute on function public.tocar_updated_at() to public;",
+        minimo=1,
+        exige="test_o_gatilho_de_updated_at_nao_e_executavel_por_ninguem",
+    ),
     "tabela_nova_sem_rls": dict(
         descricao="tabela nova com user_id e sem RLS",
         sql="""

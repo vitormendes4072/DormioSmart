@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from flask import g, jsonify, request
 
 import dispositivos
+import perfil
 from auth import extrair_bearer, require_auth
 from database import db
 from consulta import ler_parametros
@@ -227,6 +228,103 @@ def init_routes(app):
         if device is None:
             return jsonify({"error": "dispositivo nao encontrado"}), 404
         return jsonify(device)
+
+    # --- Perfil do titular (PERFIL-01, LGPD art. 18, III) ---
+    #
+    # `public.profiles` é a FONTE DE VERDADE do nome e da idade desde o
+    # `PERFIL-01`. Antes dele a tabela era escrita uma vez pelo gatilho do
+    # signup e lida por nada, e o nome exibido vinha de
+    # `auth.users.raw_user_meta_data` — duas cópias, nenhuma declarada
+    # canônica. A decisão inteira, inclusive a parte que não é código, está em
+    # `docs/DECISAO-FONTE-DO-PERFIL.md`.
+    #
+    # As duas rotas vão pelo CLIENTE DO USUÁRIO, nunca por papel privilegiado:
+    # o RLS decide a posse no banco, e `tests/test_privilegio_minimo.py`
+    # reprova se alguém trocar isso por `cliente_de_ingestao`. O e-mail NÃO
+    # passa por aqui — é credencial de acesso, trocada pelo Supabase Auth com
+    # confirmação por link (ver `frontend/src/lib/perfil.ts`).
+
+    @app.route('/api/me/perfil')
+    @require_auth
+    def ler_meu_perfil():
+        """Nome e idade do titular, de `public.profiles`.
+
+        ⚠️ **ESTE `GET` ESCREVE, e é deliberado.** Quando não há linha para o
+        usuário, a rota a cria — semeada pelo nome do metadado do cadastro — e
+        devolve `perfil_criado_agora: true`.
+
+        O motivo não é hipótese: `migrations/DIAGNOSTICO-perfil-nao-criado.sql`
+        existe porque já houve usuário criado com `profiles` vazio (o gatilho
+        `handle_new_user` não existia no projeto), com reparo manual por SQL.
+        Enquanto a tabela era inerte, linha ausente era detalhe de esquema;
+        com ela canônica, linha ausente é **nome em branco na tela de quem
+        digitou o nome no cadastro**.
+
+        A alternativa — deixar a tela cair para o metadado quando a linha falta
+        — foi recusada: criaria um segundo leitor do metadado sob condição, e
+        invariante com cláusula de exceção é o que apodrece primeiro. Reparar
+        mantém "só `profiles` é lida" verdadeiro sem exceção.
+
+        A operação é **idempotente**, que é a propriedade que de fato importa
+        num `GET`: chamar dez vezes deixa o mesmo estado que chamar uma.
+        """
+        client = _cliente_do_usuario()
+        if client is None:
+            return jsonify({"error": "fonte de dados indisponivel"}), 503
+
+        dados = perfil.ler(client, g.usuario_id)
+        if dados is None:
+            return jsonify({"error": "fonte de dados indisponivel"}), 503
+
+        if dados:
+            return jsonify({**dados, "perfil_criado_agora": False})
+
+        # Linha ausente: reparo. A semente pode vir vazia (metadado sem nome,
+        # ou Auth fora do ar) — e aí o perfil nasce com nome nulo. Nulo é
+        # estado que a tela sabe mostrar; perfil inexistente, não.
+        semente = db.nome_do_metadado(g.jwt)
+        criado = perfil.gravar(client, g.usuario_id, {"nome": semente})
+        if criado is None:
+            # Não inventa sucesso nem devolve perfil vazio como se fosse lido:
+            # o titular precisa saber que a leitura não aconteceu (FIX-02).
+            return jsonify({"error": "fonte de dados indisponivel"}), 503
+
+        logger.warning(
+            "Perfil ausente reparado na leitura. O gatilho handle_new_user "
+            "pode nao existir no projeto -- ver "
+            "migrations/DIAGNOSTICO-perfil-nao-criado.sql."
+        )
+        return jsonify({**criado, "perfil_criado_agora": True})
+
+    @app.route('/api/me/perfil', methods=['PATCH'])
+    @require_auth
+    def corrigir_meu_perfil():
+        """Correção de nome e idade (LGPD art. 18, III).
+
+        `PATCH` parcial: só o que vem no corpo é alterado. Campo ausente e
+        campo `null` são coisas diferentes — ausente é "não mexa", `null` é
+        "apague", e é assim que o titular retira a idade sem apagar o nome.
+
+        Campo desconhecido responde **400**, e isso inclui `id` e `user_id`: o
+        dono sai do JWT e não existe por onde informá-lo. Aceitar e descartar
+        em silêncio responderia sucesso a um pedido que não foi atendido.
+
+        Devolve a linha **como ficou no banco**, não como foi pedida: é a
+        diferença entre confirmar a escrita e confirmar a intenção (FIX-02).
+        """
+        campos, erro = perfil.ler_alteracao(request.get_json(silent=True))
+        if erro:
+            return jsonify({"error": erro}), 400
+
+        client = _cliente_do_usuario()
+        if client is None:
+            return jsonify({"error": "fonte de dados indisponivel"}), 503
+
+        gravado = perfil.gravar(client, g.usuario_id, campos)
+        if gravado is None:
+            return jsonify({"error": "perfil nao atualizado (fonte indisponivel)"}), 503
+
+        return jsonify(gravado), 200
 
     # --- Direito de eliminação (SEC-07, LGPD art. 18, VI) ---
 

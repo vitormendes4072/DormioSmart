@@ -115,6 +115,39 @@ class Database:
             logger.info("Token de usuario rejeitado.")
             return None
 
+    def nome_do_metadado(self, jwt):
+        """Nome gravado em `raw_user_meta_data` no cadastro. None se não houver.
+
+        ── A ÚNICA LEITURA LEGÍTIMA DESTE METADADO NO SERVIDOR ──────────────
+
+        Desde o `PERFIL-01`, `public.profiles` é a fonte de verdade do nome, e
+        `user_metadata.nome` é **insumo de criação**: existe para semear a
+        linha de `profiles`, uma vez. O gatilho `handle_new_user` faz isso no
+        signup; este método existe para o caso em que o gatilho NÃO rodou —
+        que não é hipótese, é o que
+        `migrations/DIAGNOSTICO-perfil-nao-criado.sql` documenta.
+
+        Chamado SÓ pelo reparo de `GET /api/me/perfil`, e só quando a linha
+        falta. Usar isto para exibir nome seria reintroduzir o segundo leitor
+        que a decisão eliminou — ver `docs/DECISAO-FONTE-DO-PERFIL.md`, Regra 1.
+
+        Devolve None (e não levanta) em qualquer falha: o reparo sem semente
+        cria o perfil com nome nulo, que é pior que o nome certo e melhor que
+        não ter perfil.
+        """
+        try:
+            client = self._get_client_anon()
+            if client is None:
+                return None
+            resposta = client.auth.get_user(jwt)
+            usuario = getattr(resposta, "user", None)
+            metadado = getattr(usuario, "user_metadata", None) or {}
+            nome = metadado.get("nome")
+            return nome if isinstance(nome, str) and nome.strip() else None
+        except Exception:
+            logger.info("Nao foi possivel ler o metadado do usuario.")
+            return None
+
     def cliente_do_usuario(self, jwt):
         """Cliente que carrega o JWT do usuario — o RLS enxerga `auth.uid()`.
 

@@ -357,13 +357,44 @@ def test_ana_nao_altera_o_profile_do_bruno(como, cenario):
     assert afetadas == 0
 
 
-def test_ana_nao_cria_profile_para_o_bruno(como, cenario):
-    """Se o Bruno ainda não tivesse profile, criá-lo seria plantar dado na
-    conta dele antes do primeiro login."""
+def test_ana_nao_cria_profile_para_quem_ainda_nao_tem(como, cenario):
+    """Plantar dado na conta de alguém antes do primeiro login dele.
+
+    ✏️ **Corrigido em 17/10 (`PERFIL-01`), e a correção é uma ocorrência do §4
+    das lições.** Este teste usava um uuid INVENTADO, para não colidir com a
+    chave primária da linha que o gatilho cria. Uuid inventado não existe em
+    `auth.users`: o comando morria na chave estrangeira `profiles_id_fkey` e
+    **nunca chegava à policy**. Medido com o sabotador
+    `perfil_insert_permissivo`: com `profiles_insert_own` escancarada
+    (`with check (true)`), este teste **continuava passando** — só os dois
+    testes estruturais acusavam.
+
+    Agora a vítima é a Carol, que existe em `auth.users` e não tem perfil (ver
+    `CAROL` no `conftest`). Com a chave estrangeira satisfeita e sem conflito
+    de chave primária, o único mecanismo que pode recusar é a policy — que é o
+    que este teste afirma.
+    """
     with como(cenario["ana"]) as ana:
         ana.negado(
             "insert into public.profiles (id, nome) values (%s, 'Plantado')",
-            ("cccccccc-0000-4000-8000-cccccccccccc",),
+            (cenario["sem_perfil"],),
+        )
+
+
+def test_ana_nao_faz_upsert_no_perfil_de_quem_ainda_nao_tem(como, cenario):
+    """O mesmo ataque pelo comando que a rota de perfil realmente emite.
+
+    `PATCH /api/me/perfil` manda `insert ... on conflict do update`. Quando a
+    linha da vítima **não existe**, o `on conflict` não se aplica e sobra o
+    insert puro — logo é a policy de INSERT, sozinha, que precisa barrar.
+    """
+    with como(cenario["ana"]) as ana:
+        ana.negado(
+            """
+            insert into public.profiles (id, nome) values (%s, 'Plantado')
+            on conflict (id) do update set nome = excluded.nome
+            """,
+            (cenario["sem_perfil"],),
         )
 
 
