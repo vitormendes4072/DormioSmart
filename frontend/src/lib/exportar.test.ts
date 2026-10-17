@@ -46,7 +46,26 @@ describe("gerarCsv", () => {
     const csv = gerarCsv([leitura({ movimento_total: null, temp: null, status: null })]);
     const linha = csv.split("\r\n")[1];
     expect(linha).not.toContain("null");
-    expect(linha).toBe("2026-08-19T03:00:00.000Z,,,,,0");
+    // A primeira celula e `captured_at`, ausente nesta leitura.
+    expect(linha).toBe(",2026-08-19T03:00:00.000Z,,,,,0");
+  });
+
+  // ── DASH-12 ────────────────────────────────────────────────────────────
+
+  it("exporta o instante da medicao e o da chegada em colunas separadas", () => {
+    const csv = gerarCsv([
+      leitura({ captured_at: "2026-08-19T02:59:57.000Z" }),
+    ]);
+    const linha = csv.split("\r\n")[1];
+    expect(linha.startsWith("2026-08-19T02:59:57.000Z,2026-08-19T03:00:00.000Z")).toBe(true);
+  });
+
+  it("deixa `captured_at` vazio na linha antiga, sem copiar a hora de chegada", () => {
+    // Copiar `created_at` para a coluna da medicao afirmaria que o
+    // dispositivo declarou um instante que ele nunca declarou. Vazio e o
+    // registro honesto de "nao foi declarado".
+    const linha = gerarCsv([leitura()]).split("\r\n")[1];
+    expect(linha.startsWith(",2026-08-19T03:00:00.000Z")).toBe(true);
   });
 
   it("escapa campo com virgula para nao desalinhar as colunas", () => {

@@ -1,4 +1,4 @@
-import type { LeituraSono } from "../types/sleep";
+import { instanteDaLeitura, type LeituraSono } from "../types/sleep";
 
 /**
  * Onde houve medicao, e onde o aparelho parou (DASH-09, refeito no DASH-11).
@@ -76,14 +76,14 @@ import type { LeituraSono } from "../types/sleep";
  * Quando o wake-on-motion existir, isto precisa ser revisto junto com o
  * `DATA-02` (modelo de amostragem), que segue em aberto.
  *
- * ── E UMA QUE ELE ESCONDE ───────────────────────────────────────────────
+ * ── UMA QUE ELE ESCONDIA, E NAO ESCONDE MAIS ────────────────────────────
  *
- * Tudo aqui usa `created_at`, que o banco gera na CHEGADA. O dispositivo
- * tambem manda o instante em que mediu (`captured_at`), e esse e que descreve
- * a captacao — mas ele nao vem no `select` do painel hoje. Enquanto for assim,
- * latencia de rede aparece como irregularidade de cadencia, e o buffer offline
- * do `HW-05` chegara todo empilhado em poucos segundos. Trocar a base de tempo
- * e o `DASH-12`.
+ * Ate o `DASH-12` tudo aqui usava `created_at`, que o banco gera na CHEGADA,
+ * e nao `captured_at`, que o dispositivo declara como o instante da MEDICAO.
+ * Latencia de rede aparecia como irregularidade de cadencia — foi a raiz do
+ * primeiro dos tres defeitos acima. A base de tempo agora e
+ * `instanteDaLeitura`, que prefere a medicao e cai para a chegada nas linhas
+ * antigas. Ver a nota daquela funcao em `types/sleep.ts`.
  */
 
 /** Um intervalo continuo, em milissegundos desde a epoca. */
@@ -123,8 +123,12 @@ type Datada = { leitura: LeituraSono; t: number };
 
 function datadas(leituras: LeituraSono[]): Datada[] {
   return leituras
-    .filter((leitura) => typeof leitura.created_at === "string" && leitura.created_at !== "")
-    .map((leitura) => ({ leitura, t: new Date(leitura.created_at).getTime() }))
+    // `instanteDaLeitura` prefere `captured_at` (a medicao) e cai para
+    // `created_at` (a chegada) — ver DASH-12 no cabecalho. Devolve string
+    // vazia quando nao ha nenhum dos dois, e o filtro abaixo descarta.
+    .map((leitura) => ({ leitura, quando: instanteDaLeitura(leitura) }))
+    .filter(({ quando }) => quando !== "")
+    .map(({ leitura, quando }) => ({ leitura, t: new Date(quando).getTime() }))
     // `new Date("lixo")` produz Invalid Date, cujo getTime() e NaN. O filtro
     // acima cuida de `null`/`undefined`/vazio, que NAO produzem NaN — viram
     // 1970 e arrastariam a janela por decadas.

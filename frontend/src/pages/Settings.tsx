@@ -12,7 +12,7 @@ import { useNavigate } from "react-router";
 
 import { MeusDispositivos } from "../components/MeusDispositivos";
 import { SeletorDeTema } from "../components/SeletorDeTema";
-import { buscarHistorico } from "../lib/api";
+import { LIMITE_DO_PAINEL, buscarHistorico } from "../lib/api";
 import { baixarCsv } from "../lib/exportar";
 import { useAuth } from "../contexts/AuthContext";
 
@@ -135,7 +135,11 @@ function SecaoDados() {
     setErro(null);
     setVazio(false);
     try {
-      const leituras = await buscarHistorico();
+      // Sem `limite` explicito o backend devolve 20 linhas (DASH-13), e a
+      // exportacao que a secao promete como "seus dados" entregava dez
+      // minutos de captacao. Numa tela cuja justificativa e o direito de
+      // portabilidade da LGPD, isso nao e um recorte: e um arquivo errado.
+      const leituras = await buscarHistorico({ limite: LIMITE_DO_PAINEL });
       if (leituras.length === 0) {
         // Baixar um CSV so com cabecalho pareceria sucesso e nao seria util.
         setVazio(true);

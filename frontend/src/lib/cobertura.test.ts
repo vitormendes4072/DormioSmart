@@ -484,3 +484,62 @@ describe("guardas que a versao anterior nao tinha", () => {
     expect(c.janelaMs).toBeLessThan(10 * MIN);
   });
 });
+
+describe("DASH-12 — a base de tempo e a medicao, nao a chegada", () => {
+  /** Leitura que declara medicao e chegada separadas. */
+  function comLatencia(minuto: number, atrasoMs: number, epoca = 60): LeituraSono {
+    return {
+      captured_at: new Date(BASE + minuto * MIN).toISOString(),
+      created_at: new Date(BASE + minuto * MIN + atrasoMs).toISOString(),
+      movimento_total: GRAVIDADE + 0.2,
+      temp: null,
+      status: "Repouso",
+      epoca_segundos: epoca,
+    };
+  }
+
+  it("latencia de rede nao vira irregularidade de cadencia", () => {
+    // Cadencia perfeita de 60 s na MEDICAO, com atraso de rede variando de 0
+    // a 9 s na chegada. Pela chegada, os intervalos iam de 51 s a 69 s; pela
+    // medicao sao exatamente 60 s, que e o que o dispositivo de fato fez.
+    const atrasos = [0, 9_000, 1_000, 7_000, 2_000, 8_000];
+    const leituras = atrasos.map((atraso, i) => comLatencia(i, atraso));
+    expect(cadenciaMedianaMs(leituras)).toBe(60_000);
+  });
+
+  it("o buffer offline do HW-05 nao vira uma sessao de dois segundos", () => {
+    // O cenario que o DASH-12 existia para impedir: oito horas medidas
+    // offline, enviadas de uma vez ao reconectar. Pela hora de CHEGADA isso
+    // e uma sessao de segundos com a noite inteira como lacuna.
+    const chegadaEmMassa = BASE + 8 * 60 * MIN;
+    const leituras: LeituraSono[] = [];
+    for (let i = 0; i < 480; i++) {
+      leituras.push({
+        captured_at: new Date(BASE + i * MIN).toISOString(),
+        // Todas chegam dentro de dois segundos, uma a cada ~4 ms.
+        created_at: new Date(chegadaEmMassa + i * 4).toISOString(),
+        movimento_total: GRAVIDADE + 0.2,
+        temp: null,
+        status: "Repouso",
+        epoca_segundos: 60,
+      });
+    }
+
+    const c = calcularCobertura(leituras);
+    expect(agruparEmSessoes(leituras)).toHaveLength(1);
+    // 480 epocas de 60 s = 8 h de cobertura, e nao dois segundos.
+    expect(c.tempoCobertoMs).toBe(480 * MIN);
+    expect(c.janelaMs).toBe(480 * MIN);
+    expect(avaliarCobertura(c)).toBeNull();
+  });
+
+  it("serie mista de linha antiga e nova nao se desordena", () => {
+    // Linhas anteriores ao campo nao tem `captured_at` e caem para a chegada.
+    // O fallback tem que manter a ordem, nao empurra-las para o fim.
+    const antiga = leitura(0, { epoca: 60 });
+    const nova = comLatencia(1, 3_000);
+    const c = calcularCobertura([nova, antiga]);
+    expect(c.trechos[0].inicio).toBe(BASE - 60_000);
+    expect(agruparEmSessoes([nova, antiga])).toHaveLength(1);
+  });
+});

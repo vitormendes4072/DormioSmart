@@ -17,6 +17,7 @@ import { NotaDeEscopo } from "../components/NotaDeEscopo";
 import { AvisoDeMistura, SeletorDeDispositivo } from "../components/SeletorDeDispositivo";
 import { useDispositivos } from "../hooks/useDispositivos";
 import { useHistorico } from "../hooks/useHistorico";
+import { LIMITE_DO_PAINEL } from "../lib/api";
 import { nomeDoDispositivo, serieMisturaInstrumentos } from "../lib/dispositivos";
 import { agruparEmSessoes } from "../lib/cobertura";
 import {
@@ -26,7 +27,13 @@ import {
   prepararSerie,
   type PontoDaSerie,
 } from "../lib/metricas";
-import { LIMIAR_DE_MOVIMENTO, ehMovimento, intensidade } from "../types/sleep";
+import {
+  LIMIAR_DE_MOVIMENTO,
+  ehMovimento,
+  instanteDaLeitura,
+  intensidade,
+  type LeituraSono,
+} from "../types/sleep";
 import { AvisoDeLacuna, NotaDeInferencia } from "../components/AvisoDeLacuna";
 import { SeletorDeSessao } from "../components/SeletorDeSessao";
 
@@ -90,7 +97,13 @@ export function Dashboard() {
   const [dispositivo, setDispositivo] = useState<string | null>(null);
   const [verTudo, setVerTudo] = useState(false);
   const dispositivos = useDispositivos();
-  const { leituras, carregando, erro, recarregar } = useHistorico({ dispositivo });
+  // `limite` explicito (DASH-13): sem ele o backend devolve 20 linhas — dez
+  // minutos de celular —, e todo o recorte por sessao operava sobre isso
+  // enquanto a tela dizia descrever a captação inteira.
+  const { leituras, carregando, erro, recarregar } = useHistorico({
+    dispositivo,
+    limite: LIMITE_DO_PAINEL,
+  });
 
   const seletor = (
     <SeletorDeDispositivo
@@ -171,10 +184,13 @@ export function Dashboard() {
   // modo padrão a tabela mostrava as MAIS ANTIGAS sob o rótulo contrário, e a
   // ordem virava sozinha ao clicar "Ver todas" (DASH-11). Ordenar aqui deixa a
   // promessa valer nos dois modos.
-  const instanteDe = (l: { created_at: string }) =>
-    typeof l.created_at === "string" && l.created_at !== ""
-      ? new Date(l.created_at).getTime()
-      : NaN;
+  // Instante da MEDICAO, com fallback para o da chegada (DASH-12) — a mesma
+  // base do resto da tela. Com bases diferentes, a tabela podia listar numa
+  // ordem e o gráfico ao lado desenhar noutra.
+  const instanteDe = (l: LeituraSono) => {
+    const quando = instanteDaLeitura(l);
+    return quando === "" ? NaN : new Date(quando).getTime();
+  };
   const maisRecentes = [...leiturasVisiveis]
     .filter((l) => !Number.isNaN(instanteDe(l)))
     .sort((a, b) => instanteDe(b) - instanteDe(a))
@@ -447,7 +463,7 @@ export function Dashboard() {
                 {maisRecentes.map((leitura, i) => {
                   const valor = intensidade(leitura);
                   const movimento = ehMovimento(leitura.status);
-                  const instante = new Date(leitura.created_at);
+                  const instante = new Date(instanteDaLeitura(leitura));
                   return (
                     <tr key={i} className="border-t border-border">
                       <td className="py-2.5 text-foreground">
