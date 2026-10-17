@@ -131,5 +131,15 @@ Item de backlog: **SEC-07**. Implementação em
 - ✅ **A interface existe desde 29/09** (`UI-10`): *Configurações → Excluir
   conta*, com confirmação por frase e tela própria para o desfecho parcial. A
   linha abaixo ficou obsoleta e está mantida só para o histórico ficar legível.
+  > ✏️ **Correção de 2026-10-17.** "Existe desde 29/09" estava errado, e a
+  > linha obsoleta abaixo estava **mais certa que esta** por dezoito dias. O
+  > componente `ExcluirConta` foi commitado em 29/09 (`916e210`) e **nenhum
+  > arquivo versionado o importava**: a eliminação continuou existindo "como
+  > rota, e só" até a montagem em 17/10 (`22a9268`), porque as três linhas que
+  > a põem na tela ficaram numa árvore de trabalho não commitada. Os 23 testes
+  > do item são de `lib/` e passavam com o componente inalcançável. A data
+  > honesta da interface é **17/10**; a de 29/09 é a do componente. Ocorrência
+  > registrada no §6 de `docs/LICOES-APRENDIDAS.md`; o mecanismo que faltava é
+  > o `UI-17`.
 - Falta a parte de interface: hoje a eliminação existe como rota, e só. Está
   registrado como **UI-10** no backlog.

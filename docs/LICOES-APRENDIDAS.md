@@ -35,8 +35,8 @@ cada uma existe porque o projeto já pagou por não a ter feito.
 | 2 | Análise correta que não chega onde a decisão é tomada | **4** |
 | 3 | Número herdado que ganha autoridade sem ter procedência | **4** |
 | 4 | O instrumento de medida mede errado — e nada mede o instrumento | **4** |
-| 5 | Premissa herdada da documentação, nunca conferida no artefato | **3** |
-| 6 | Confirmação emitida antes da verificação | **3** |
+| 5 | Premissa herdada da documentação, nunca conferida no artefato | **4** |
+| 6 | Confirmação emitida antes da verificação | **4** |
 | 7 | Degradação silenciosa é pior que falha ruidosa | **3** |
 | 8 | A média esconde o caso que importa | **2** |
 
@@ -223,12 +223,23 @@ falsa, e ninguém a conferiu.
 | 1 | **Dez armadilhas de formato** entre o declarado e o gravado, nas duas bases. A pior: o Empatica em **`g/64`** onde a documentação v1.0 declara `g/16` — **fator 4 de erro**, silencioso, no braço "treina" do `ML-03`. Outra: `PSG_Manual_scor1` no `.tsv` contra `PSG_Manual_Scor1` no EDF — casamento sensível a maiúscula acha o acelerômetro e **perde o rótulo**, e o sintoma não é exceção, é **zero época**. | Diário 2026-09-14; commit `5c2720c` (é o que introduz o tratamento de `g/64`, conferido por `git log -S'g/64'`); `ml/testes/test_wearanize.py` |
 | 2 | **"O item virou transcrever" estava errado.** O `DATA-07` afirmava que as features só faltavam passar para C++. Um `grep -rniE "enmo\|zcr\|p_frac\|…" firmware/` devolveu **vazio**: existiam só em Python, e o "lado C++" era uma referência escrita em Python dentro de um teste. **O item de maior peso do projeto foi subestimado por seis dias porque ninguém rodou o grep.** | Diário 2026-09-29; backlog `DATA-07b` |
 | 3 | **Três documentos passaram semanas fora do git**, entre eles a fundamentação que os READMEs mandavam ler. Achado ao comparar `git ls-files docs/` com o disco — não estava sendo procurado. | Diário 2026-09-22 (`GIT-04`) |
+| 4 | **"A policy de `update` em `profiles` já existe; falta a interface."** Era a especificação do `UI-11`, e a conclusão prática dela — *é barato* — estava certa por acidente e pelo motivo errado. **Nenhum código de produção toca `public.profiles`:** as únicas referências do repositório estão em `web-app/tests/rls/`. O nome que a tela exibe vem de `auth.users.raw_user_meta_data`, e `profiles.nome` é cópia tirada **uma vez** pelo trigger `handle_new_user` no signup e **lida por nada**. Escrever pela policy existente não mudaria uma letra em tela nenhuma. | Diário 2026-10-17; migração `001` linha 125; backlog `PERFIL-01` |
 
 **O que custou.** O caso 1 é o de maior potencial: o fator 4 teria contaminado em silêncio o
 braço "treina" da matriz de transferência, que é **o resultado original do trabalho**. Foi
 pego por auditoria dos arquivos reais, não por leitura da documentação. O caso 2 custou seis
 dias de planejamento sobre uma premissa falsa, e o custo real foi de classificação: o item
 figurava como pequeno.
+
+O caso 4 é o irmão invertido do caso 2, e por isso vale mais do que parece. No caso 2 a premissa
+falsa fazia um item **grande parecer pequeno**; no caso 4 ela fazia um item pequeno parecer
+pequeno — **pelo motivo errado**. Se o `UI-11` tivesse sido implementado conforme a
+especificação, ele teria entregado uma tela que grava num lugar que ninguém lê: o titular
+clicaria "salvar", receberia "dados atualizados", e o nome na tela continuaria o mesmo. Teria
+sido uma confirmação falsa (§6) **produzida por uma premissa não conferida** (§5) — os dois
+padrões em série, cada um invisível a partir do outro. O que o impediu foi um `grep` por
+`profiles` no código de produção, que custou um minuto, e é exatamente o movimento que o caso 2
+estabeleceu como regra.
 
 **Como não repetir.**
 
@@ -260,21 +271,43 @@ antigo do projeto e o primeiro a ter sido nomeado como padrão, na entrada de 20
 | 1 | **`POST /api/data` respondia `201 Created` sem conferir a escrita.** A falha do Supabase não virava erro HTTP: **o dispositivo recebia confirmação de um dado que não existia.** | Diário 2026-06-03 (`FIX-02`) |
 | 2 | **Exclusão de conta com desfecho parcial.** O `200` com `conta_de_acesso_removida: false` é um estado em que **dado pessoal do titular continua existindo**. Ganhou tela própria, com cor e ícone de alerta — e `interpretarRecibo` é pessimista de propósito: ausente, nulo ou `"true"` viram parcial. | Backlog `UI-10`; commit `916e210` |
 | 3 | **`pytest.skip` não falha o job.** Se a variável de ambiente sumisse, se o serviço não subisse, se o `psycopg2` deixasse de instalar, os testes de RLS seriam **pulados e o CI ficaria verde, anunciando cobertura de segurança que não rodou.** | Diário 2026-09-28; `.github/workflows/ci.yml`, job `rls` |
+| 4 | **A tela de exclusão de conta não existia, e três documentos diziam que existia.** `ExcluirConta.tsx` foi commitado em 29/09 com 23 testes e **nenhum arquivo versionado o importava** — as três linhas que o montam ficaram presas numa árvore de trabalho não commitada. Nesses dezoito dias o backlog dizia `UI-10 ✅`, o `LGPD-ELIMINACAO.md` dizia "a interface existe desde 29/09", e a **política de privacidade dizia ao titular onde clicar** para exercer o art. 18, VI. | Diário 2026-10-17; commits `916e210` (componente) e `22a9268` (montagem) |
 
 **O que custou.** O caso 1 produziu o sintoma clássico — dashboard vazio com tudo "funcionando"
 — e levou à hipótese errada (problema de leitura) antes de a causa aparecer. O caso 3 é o mesmo
 padrão num nível acima: **o verde é a confirmação, e ninguém investiga o verde.**
 
+O caso 4 é o mais grave dos quatro em natureza, e o único em que a confirmação falsa **saiu do
+repositório e chegou ao titular do dado**: não foi o sistema dizendo "feito" a si mesmo, foi o
+registro de projeto dizendo "feito" a si mesmo e a política de privacidade repetindo aquilo como
+instrução de uso. Em dano direto, zero — ninguém tentou excluir a conta. O que ele mostra é que
+este padrão não precisa de código para acontecer: **precisa só de uma afirmação de estado que
+nada verifica.** E mostra uma variante que os casos 1 a 3 não tinham: ali o verde era de um
+teste, aqui o verde era de um `✅` num arquivo de texto, que não tem como ficar vermelho.
+
 **Como não repetir.**
 
 1. ⚙️ **A resposta depende do resultado da operação.** Regra do caso 1, aplicada desde então.
 2. ⚙️ **Interpretação de recibo é pessimista por omissão.** Campo ausente ou ambíguo ⇒ o pior
-   desfecho, não o melhor.
+   desfecho, não o melhor. Aplicada de novo no `UI-11` (17/10): a troca de e-mail só é anunciada
+   como feita quando a resposta do servidor **traz** o endereço novo; qualquer outra forma de
+   resposta conta como pendente.
 3. ⚙️ **`--ignore` em vez de deixar pular.** Pulo aparece como "s" no relatório e vira ruído que
    se aprende a ignorar; e há etapa explícita *"Conferir que os testes de RLS não foram
    pulados"*, com os três cenários exercitados à mão.
-4. ❓ **Pergunta de revisão:** *este "sucesso" foi verificado, ou foi assumido? Como ele se
-   pareceria se tivesse falhado?*
+4. ⚙️ **Órfão de grafo de imports reprova.** `frontend/src/alcance.test.ts` (17/10) percorre os
+   `import` relativos a partir de `main.tsx` e reprova quando um módulo de `src/` fica fora. É a
+   correção do caso 4, e é **catraca**: nasceu com a árvore limpa e pega o próximo. ⚠️ **O que
+   ela não cobre, dito aqui e no próprio arquivo:** prova que existe caminho de import, **não**
+   que o componente é renderizado nem que há rota que leve a ele. Um componente importado e
+   nunca usado no JSX passa. Fechar isso exige teste de componente, que o projeto não tem — ver
+   `UI-17`. Validada por controle positivo nas três direções: import do `ExcluirConta`
+   removido ⇒ reprova nomeando o arquivo; import do `EditarPerfil` removido ⇒ reprova; e
+   resolvedor sabotado ⇒ a guarda do próprio instrumento ("o grafo não é trivialmente pequeno")
+   reprova, porque um resolvedor quebrado devolveria grafo de um nó e nenhum órfão.
+5. ❓ **Pergunta de revisão:** *este "sucesso" foi verificado, ou foi assumido? Como ele se
+   pareceria se tivesse falhado?* E a metade que o caso 4 acrescenta: **quem escreveu o `✅`
+   abriu o artefato, ou abriu o item?**
 
 ---
 
@@ -358,7 +391,8 @@ Sete perguntas, uma por padrão. Cada uma existe porque o projeto pagou por não
 - [ ] **§4** — Este teste já falhou alguma vez? Eu sei fazê-lo falhar?
 - [ ] **§5** — Eu abri o artefato, ou li sobre ele?
 - [ ] **§6** — Este "sucesso" foi verificado ou assumido? Como ele se pareceria se tivesse
-      falhado?
+      falhado? E, quando o "sucesso" é um `✅` num documento: **quem o escreveu abriu o
+      artefato, ou abriu o item?**
 - [ ] **§7** — Se a premissa quebrar em campo, o dado fica **ausente** ou fica
       **errado-com-cara-de-certo**?
 
@@ -372,7 +406,7 @@ Registrado para que a ausência não passe por completude.
 |---|---|
 | Padrões anteriores a 2026-04-29 | Mesmo motivo do diário: anterior ao versionamento. |
 | Qualquer padrão de hardware | Nada foi medido no dispositivo físico. Os 8 pinos do MPU6050 não estão soldados, e **não há uma só lição deste documento que venha de bancada.** Quando houver, é provável que esta seja a seção mais cara do arquivo. |
-| Padrões de frontend | Os 15 arquivos modificados e não commitados em `frontend/` são de outra sessão de trabalho, não foram lidos, e não estão no histórico. O que há de frontend aqui (`UI-10`) entrou pelo lado do backend. |
+| ~~Padrões de frontend~~ | ✏️ **Lacuna fechada em 17/10.** Os 15 arquivos pendentes foram lidos e commitados (`a586b0b`, `fea1c48`, `22a9268`, `f58f52c`), e o frontend entrou neste documento por conta própria: a ocorrência 4 do §6 (tela inalcançável) e a 4 do §5 (a premissa do `UI-11` sobre `profiles`) são as duas primeiras lições deste arquivo que **nasceram de frontend**. Dos 15, **14 eram trabalho e 1 era entrada de índice desatualizada** — ver a entrada de 17/10 do diário. |
 | Frequência real dos padrões | A contagem de ocorrências do índice é sobre **o que está registrado**, não sobre o que aconteceu. Os padrões §1 e §4 são provavelmente subcontados, porque só se descobre instrumento defeituoso quem procura. |
 
 ---
