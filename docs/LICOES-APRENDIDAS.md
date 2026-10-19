@@ -36,7 +36,7 @@ cada uma existe porque o projeto já pagou por não a ter feito.
 | 4 | O instrumento de medida mede errado — e nada mede o instrumento | **5** |
 | 2 | Análise correta que não chega onde a decisão é tomada | **4** |
 | 3 | Número herdado que ganha autoridade sem ter procedência | **4** |
-| 5 | Premissa herdada da documentação, nunca conferida no artefato | **4** |
+| 5 | Premissa herdada da documentação, nunca conferida no artefato | **5** |
 | 7 | Degradação silenciosa é pior que falha ruidosa | **3** |
 | 8 | A média esconde o caso que importa | **2** |
 
@@ -255,12 +255,22 @@ falsa, e ninguém a conferiu.
 | 2 | **"O item virou transcrever" estava errado.** O `DATA-07` afirmava que as features só faltavam passar para C++. Um `grep -rniE "enmo\|zcr\|p_frac\|…" firmware/` devolveu **vazio**: existiam só em Python, e o "lado C++" era uma referência escrita em Python dentro de um teste. **O item de maior peso do projeto foi subestimado por seis dias porque ninguém rodou o grep.** | Diário 2026-09-29; backlog `DATA-07b` |
 | 3 | **Três documentos passaram semanas fora do git**, entre eles a fundamentação que os READMEs mandavam ler. Achado ao comparar `git ls-files docs/` com o disco — não estava sendo procurado. | Diário 2026-09-22 (`GIT-04`) |
 | 4 | **"A policy de `update` em `profiles` já existe; falta a interface."** Era a especificação do `UI-11`, e a conclusão prática dela — *é barato* — estava certa por acidente e pelo motivo errado. **Nenhum código de produção toca `public.profiles`:** as únicas referências do repositório estão em `web-app/tests/rls/`. O nome que a tela exibe vem de `auth.users.raw_user_meta_data`, e `profiles.nome` é cópia tirada **uma vez** pelo trigger `handle_new_user` no signup e **lida por nada**. Escrever pela policy existente não mudaria uma letra em tela nenhuma. | Diário 2026-10-17; migração `001` linha 125; backlog `PERFIL-01` |
+| 5 | **A docstring da biblioteca descrevia outra coisa, e quase encerrou a análise de um defeito de perda de dado.** `profiles` virando fonte de verdade, a gravação foi escrita com o `upsert` do PostgREST — e a pergunta *"o que acontece com as colunas que o corpo não traz?"* foi respondida lendo o cliente Python, cuja docstring diz que o comportamento de campo ausente *"só se aplica a upsert em lote"*. Tranquilizador e **sobre outro parâmetro**. A especificação do **servidor** diz o contrário, literal: *"any missing columns in the payload will be inserted as `null` value by default"* — e upsert é um `POST`. Consequência, se tivesse ficado: `PATCH {"idade": 30}` **apagaria o nome do titular**, em silêncio, com `200`, na tela que existe para cumprir o art. 18, III. **Variante nova do padrão:** não é documentação velha nem premissa não conferida — é **a documentação da camada errada**, lida com atenção e respondendo a uma pergunta que não era a feita. | Diário 2026-10-19; docs do PostgREST v12.2 (*Prefer Header → Missing*); `postgrest.base_request_builder.pre_upsert`; `web-app/perfil.py` (cabeçalho de `gravar`) |
 
 **O que custou.** O caso 1 é o de maior potencial: o fator 4 teria contaminado em silêncio o
 braço "treina" da matriz de transferência, que é **o resultado original do trabalho**. Foi
 pego por auditoria dos arquivos reais, não por leitura da documentação. O caso 2 custou seis
 dias de planejamento sobre uma premissa falsa, e o custo real foi de classificação: o item
 figurava como pequeno.
+
+**O caso 5 é o único deste documento que foi pego antes de chegar a produção, e o mais caro
+se tivesse passado.** Os outros quatro custaram planejamento, dias ou credibilidade de
+registro; este apagaria o **nome do titular** na tela que existe para corrigi-lo, em silêncio,
+com `200` na resposta — perda de dado pessoal produzida pelo mecanismo de exercer um direito
+sobre dado pessoal. O que o pegou não foi teste nem revisão: foi recusar-se a aceitar uma
+resposta tranquilizadora sobre um comportamento que **nenhum teste deste repositório poderia
+alcançar**, porque o PostgREST roda no Supabase. E a correção não foi conferir melhor: foi
+trocar o desenho por um que não depende da resposta.
 
 O caso 4 é o irmão invertido do caso 2, e por isso vale mais do que parece. No caso 2 a premissa
 falsa fazia um item **grande parecer pequeno**; no caso 4 ela fazia um item pequeno parecer
@@ -284,9 +294,21 @@ estabeleceu como regra.
    até rodar.* Está no backlog, no próprio item, com o ⚠️.
 5. ⚙️ **`conferir_docs_versionados.py`**, três verificações, para o caso 3 — e ele mesmo é
    exemplo de §1: a primeira especificação não podia reprovar.
-6. ❓ **Pergunta de revisão:** *eu abri o artefato, ou li sobre ele?* Vale para dataset, folha de
+6. ⚙️ **Comportamento de serviço se confere na especificação do SERVIÇO, não na biblioteca que
+   fala com ele.** Regra da ocorrência 5: quando o que está em jogo é o que o servidor faz
+   com a requisição — colunas ausentes, conflito, transação, ordem —, o cliente só é fonte
+   para **o que ele envia**. As duas leituras são necessárias e respondem perguntas
+   diferentes: no caso do `upsert`, `pre_upsert` disse *qual header vai* e a doc do PostgREST
+   disse *o que o servidor faz sem ele*. A conclusão só existe juntando as duas.
+7. ⚙️ **Onde não der para conferir, prefira o desenho que não precisa da resposta.** O
+   PostgREST não roda neste repositório, então nenhum teste local poderia prender o
+   comportamento do `upsert`. Trocar por `update` + `insert` eliminou a pergunta em vez de
+   respondê-la — e aí o teste local passa a valer, porque a semântica é de SQL. *Dependência
+   que você não consegue testar é dependência que você deveria evitar, não documentar.*
+8. ❓ **Pergunta de revisão:** *eu abri o artefato, ou li sobre ele?* Vale para dataset, folha de
    dados, artigo (`DOC-06b`: **referência conferida ≠ artigo lido**) e código do próprio
-   repositório.
+   repositório. E a metade que a ocorrência 5 acrescenta: **o artefato que eu abri é o que
+   decide a resposta, ou é o vizinho dele?**
 
 ---
 

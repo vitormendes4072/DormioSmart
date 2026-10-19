@@ -187,34 +187,112 @@ def ler(client, usuario_id):
         return None
 
 
+def _projetar(linha):
+    """Só os campos que o cliente vê. Mesma lista do `select`."""
+    return {campo: linha.get(campo) for campo in ("nome", "idade", "updated_at")}
+
+
 def gravar(client, usuario_id, campos):
     """Grava `campos` no perfil do usuário e devolve a linha, ou None.
 
-    `upsert` e não `update`, por um motivo medido e não por simetria: se a
-    linha faltar (gatilho ausente — ver o diagnóstico), um `update` afetaria
-    zero linhas e a correção do titular falharia em silêncio, com 200 na cara
-    dele. O `upsert` cria.
+    **`update`, e `insert` só se não houver linha — e NÃO `upsert`.** A
+    diferença parece estilística e não é; é a diferença entre uma suposição e
+    uma garantia, e vale escrever por quê.
 
-    **O `id` vem de `usuario_id`, que vem do JWT validado — nunca do corpo.**
-    E não é este argumento que protege: a policy `profiles_insert_own` exige
-    `id = auth.uid()` no insert e a `profiles_update_own` no update, então
-    mesmo um `id` alheio escrito aqui seria recusado pelo banco. Os dois
-    existem de propósito — se um falhar, o outro segura (a mesma dupla proteção
-    de `get_leituras_do_usuario`).
+    O `upsert` do PostgREST manda `insert ... on conflict do update set <...>`,
+    e a pergunta que decide se ele serve aqui é: **o que acontece com as
+    colunas que o corpo NÃO traz?**
+
+    ⚠️ **A resposta foi conferida na especificação, e o `upsert` teria apagado
+    dado do titular.** A documentação do PostgREST (v12.2, seção *Prefer
+    Header → Missing*) diz, literalmente:
+
+        "When doing POST and PATCH requests, any missing columns in the
+         payload will be inserted as null value by default. To use the DEFAULT
+         column value instead, use the Prefer: missing=default header."
+
+    Upsert é um `POST`. E `postgrest.base_request_builder.pre_upsert` só
+    acrescenta `missing=default` quando `default_to_null=False` — e o padrão do
+    cliente é `default_to_null=True`, isto é, **o header não vai**. Logo, a
+    cadeia inteira:
+
+        upsert({"id": ..., "idade": 30})
+          -> POST /profiles  Prefer: resolution=merge-duplicates   (sem missing)
+          -> coluna ausente no corpo = null
+          -> `nome` do titular APAGADO, com 200 na resposta
+
+    Um `PATCH` de idade apagaria o nome. Silenciosamente, no caminho de uma
+    tela de **correção** de dado pessoal, e **nenhum teste com dublê pegaria**,
+    porque o dublê é o nosso cliente e não o PostgREST — que roda no Supabase e
+    não neste repositório. É o §7 das lições (*degradação silenciosa*) com o §6
+    em cima (*confirmação emitida antes da verificação*).
+
+    Com `update` e `insert` separados não há o que supor: as duas instruções
+    são SQL cujas semânticas são conhecidas, levam exatamente as colunas do
+    corpo, e as duas estão exercitadas contra Postgres real em
+    `tests/rls/test_rls_perfil.py` — inclusive o caso que importa, *"alterar só
+    a idade não apaga o nome"*, e o simétrico.
+
+    (Alternativa descartada: manter o `upsert` passando
+    `default_to_null=False`. Faria a coluna ausente cair no `DEFAULT` em vez de
+    `null` — que para `profiles.nome`, cujo default é nulo, **dá no mesmo**. O
+    header resolve o caso de coluna com default útil, e não o nosso.)
+
+    **Ordem: `update` primeiro.** O caso comum é a linha existir (o gatilho a
+    cria no signup). `insert` primeiro erraria por chave duplicada em toda
+    correção e dependeria do tratamento da exceção para funcionar.
+
+    **E por que não `update` sozinho:** se a linha faltar — gatilho ausente,
+    ver `migrations/DIAGNOSTICO-perfil-nao-criado.sql` — um `update` afeta zero
+    linhas, e a correção do titular falharia **em silêncio, com 200 na cara
+    dele**. Zero linhas afetadas não é erro para o Postgres; é aqui que ele
+    precisa deixar de ser silêncio.
+
+    **O `id` vem de `usuario_id`, que vem do JWT validado — nunca do corpo.** E
+    não é este argumento que protege: `profiles_update_own` exige
+    `id = auth.uid()` no update e `profiles_insert_own` no insert, então mesmo
+    um `id` alheio escrito aqui seria recusado pelo banco. Os dois existem de
+    propósito — se um falhar, o outro segura (a mesma dupla proteção de
+    `get_leituras_do_usuario`).
     """
     try:
         resposta = (
             client.table("profiles")
-            .upsert({"id": usuario_id, **campos})
+            .update(campos)
+            .eq("id", usuario_id)
+            .execute()
+        )
+        linhas = resposta.data or []
+        if linhas:
+            return _projetar(linhas[0])
+    except Exception:
+        logger.exception("Falha ao atualizar profiles.")
+        return None
+
+    # Zero linhas: não há perfil para este usuário. Cria.
+    #
+    # Nota de alcance, porque a distinção não é observável daqui: zero linhas
+    # também é o que o RLS devolve se a linha existisse e **não** fosse deste
+    # usuário — e nesse caso o `insert` abaixo é recusado pela policy, que é o
+    # desfecho correto. Em nenhum dos dois casos esta função decide posse.
+    try:
+        resposta = (
+            client.table("profiles")
+            .insert({"id": usuario_id, **campos})
             .execute()
         )
         linhas = resposta.data or []
         if not linhas:
-            # Upsert que não devolve linha é escrita não confirmada. Responder
-            # sucesso aqui seria o FIX-02 outra vez, em outra rota.
-            logger.error("Upsert em profiles nao devolveu linha.")
+            # Escrita não confirmada. Responder sucesso aqui seria o FIX-02
+            # outra vez, em outra rota.
+            logger.error("Insert em profiles nao devolveu linha.")
             return None
-        return {campo: linhas[0].get(campo) for campo in ("nome", "idade", "updated_at")}
+        logger.warning(
+            "Perfil criado na gravacao: nao havia linha para o usuario. O "
+            "gatilho handle_new_user pode nao existir no projeto -- ver "
+            "migrations/DIAGNOSTICO-perfil-nao-criado.sql."
+        )
+        return _projetar(linhas[0])
     except Exception:
-        logger.exception("Falha ao gravar profiles.")
+        logger.exception("Falha ao criar profiles.")
         return None

@@ -66,6 +66,79 @@ def test_ana_faz_upsert_do_proprio_perfil(como, cenario):
     assert linhas == [("Ana Maria", 22)]
 
 
+def test_alterar_so_a_idade_nao_apaga_o_nome(como, cenario):
+    """**O teste que existe para eliminar uma suposição**, e vale dizer qual.
+
+    A rota grava com `update` + `insert` separados, e **não** com `upsert`,
+    porque o `upsert` do PostgREST manda `insert ... on conflict do update set
+    <...>` e a pergunta decisiva é *quais colunas entram no `set`*. Se fossem
+    todas as da tabela, um `PATCH {"idade": 30}` **apagaria o nome do titular**
+    — em silêncio, com 200 na resposta, e nenhum teste com dublê pegaria,
+    porque o dublê é o nosso cliente e não o PostgREST (que roda no Supabase e
+    não neste repositório).
+
+    Com `update`, não há o que supor: a instrução leva as colunas do corpo e
+    mais nenhuma. Este teste prende isso em SQL, contra Postgres real.
+    """
+    with como(cenario["ana"]) as ana:
+        ana.executar(
+            "update public.profiles set nome = %s where id = %s",
+            ("Ana Maria", cenario["ana"]),
+        )
+        ana.executar(
+            "update public.profiles set idade = 30 where id = %s", (cenario["ana"],)
+        )
+        linhas = ana.executar(
+            "select nome, idade from public.profiles where id = %s", (cenario["ana"],)
+        )
+    assert linhas == [("Ana Maria", 30)]
+
+
+def test_alterar_so_o_nome_nao_apaga_a_idade(como, cenario):
+    """O simétrico. Separado porque um defeito que zera uma coluna não precisa
+    zerar as duas, e um teste só esconderia metade."""
+    with como(cenario["ana"]) as ana:
+        ana.executar(
+            "update public.profiles set idade = 30 where id = %s", (cenario["ana"],)
+        )
+        ana.executar(
+            "update public.profiles set nome = %s where id = %s",
+            ("Ana Maria", cenario["ana"]),
+        )
+        linhas = ana.executar(
+            "select nome, idade from public.profiles where id = %s", (cenario["ana"],)
+        )
+    assert linhas == [("Ana Maria", 30)]
+
+
+def test_o_insert_do_caminho_de_reparo_cria_a_linha(como, cenario):
+    """A segunda metade de `perfil.gravar`: quando o `update` afeta zero
+    linhas, o `insert` cria. Aqui pela própria titular sem perfil.
+
+    Zero linhas afetadas não é erro para o Postgres — é exatamente por isso que
+    a função não pode parar no `update`: a correção responderia 200 sem ter
+    gravado nada.
+    """
+    with como(cenario["sem_perfil"]) as carol:
+        afetadas = carol.contar_afetadas(
+            "update public.profiles set nome = 'Carol' where id = %s",
+            (cenario["sem_perfil"],),
+        )
+        assert afetadas == 0, "a Carol nao deveria ter perfil neste cenario"
+
+        criadas = carol.contar_afetadas(
+            "insert into public.profiles (id, nome) values (%s, 'Carol')",
+            (cenario["sem_perfil"],),
+        )
+        assert criadas == 1
+
+        linhas = carol.executar(
+            "select nome, idade from public.profiles where id = %s",
+            (cenario["sem_perfil"],),
+        )
+    assert linhas == [("Carol", None)]
+
+
 def test_ana_nao_faz_upsert_no_perfil_do_bruno(como, cenario):
     """O ataque pelo comando que a rota emite, contra quem JÁ tem perfil.
 

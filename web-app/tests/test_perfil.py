@@ -343,6 +343,113 @@ def test_nome_e_normalizado_como_no_cliente():
     assert perfil.validar_nome("  Ana   Maria  ") == ("Ana Maria", None)
 
 
+# =====================================================================
+# `perfil.gravar` — update primeiro, insert só se não houver linha
+# =====================================================================
+#
+# Estes testes usam um cliente FALSO que registra as chamadas. O que eles
+# provam é a ORDEM e a CONDIÇÃO — não o SQL, que está em
+# `tests/rls/test_rls_perfil.py` contra Postgres real. A ordem é o ponto: é
+# ela que faz um `PATCH` de um campo não tocar os outros, e é ela que impede a
+# correção de falhar em silêncio quando a linha não existe.
+
+
+class _ClienteFalso:
+    """Registra `update`/`insert` e devolve o que o teste mandar."""
+
+    def __init__(self, linhas_do_update, linhas_do_insert=None):
+        self._update = linhas_do_update
+        self._insert = linhas_do_insert or []
+        self.chamadas = []
+
+    # o encadeamento do supabase-py: .table().update().eq().execute()
+    def table(self, nome):
+        self.chamadas.append(("table", nome))
+        return self
+
+    def update(self, campos):
+        self.chamadas.append(("update", campos))
+        self._resultado = self._update
+        return self
+
+    def insert(self, campos):
+        self.chamadas.append(("insert", campos))
+        self._resultado = self._insert
+        return self
+
+    def eq(self, coluna, valor):
+        self.chamadas.append(("eq", coluna, valor))
+        return self
+
+    def execute(self):
+        return type("Resposta", (), {"data": self._resultado})()
+
+    @property
+    def verbos(self):
+        return [c[0] for c in self.chamadas if c[0] in ("update", "insert")]
+
+
+def test_gravar_atualiza_e_nao_insere_quando_a_linha_existe():
+    cliente = _ClienteFalso(linhas_do_update=[dict(PERFIL_DA_ANA)])
+    assert perfil.gravar(cliente, ID_ANA, {"idade": 30}) == PERFIL_DA_ANA
+    assert cliente.verbos == ["update"]
+
+
+def test_gravar_manda_so_os_campos_pedidos():
+    """O que impede um PATCH de idade de tocar o nome.
+
+    Com `upsert`, as colunas que entram no `set` do `on conflict` dependem do
+    PostgREST, que não roda neste repositório — suposição que este desenho
+    elimina. Aqui o `update` leva exatamente o que veio no corpo.
+    """
+    cliente = _ClienteFalso(linhas_do_update=[dict(PERFIL_DA_ANA)])
+    perfil.gravar(cliente, ID_ANA, {"idade": 30})
+    assert ("update", {"idade": 30}) in cliente.chamadas
+
+
+def test_gravar_filtra_pelo_id_do_jwt():
+    cliente = _ClienteFalso(linhas_do_update=[dict(PERFIL_DA_ANA)])
+    perfil.gravar(cliente, ID_ANA, {"nome": "Ana"})
+    assert ("eq", "id", ID_ANA) in cliente.chamadas
+
+
+def test_gravar_insere_quando_o_update_nao_afeta_linha():
+    """Zero linhas afetadas não é erro para o Postgres, e aqui tem de deixar
+    de ser silêncio: sem o insert, a correção do titular responderia 200 sem
+    ter gravado nada."""
+    criado = {"nome": "Ana", "idade": None, "updated_at": "2026-10-17T12:00:00Z"}
+    cliente = _ClienteFalso(linhas_do_update=[], linhas_do_insert=[criado])
+    assert perfil.gravar(cliente, ID_ANA, {"nome": "Ana"}) == criado
+    assert cliente.verbos == ["update", "insert"]
+    assert ("insert", {"id": ID_ANA, "nome": "Ana"}) in cliente.chamadas
+
+
+def test_gravar_devolve_none_quando_nem_o_insert_grava():
+    cliente = _ClienteFalso(linhas_do_update=[], linhas_do_insert=[])
+    assert perfil.gravar(cliente, ID_ANA, {"nome": "Ana"}) is None
+
+
+def test_gravar_devolve_none_quando_o_banco_levanta():
+    class _Explode(_ClienteFalso):
+        def execute(self):
+            raise RuntimeError("conexao caiu")
+
+    assert perfil.gravar(_Explode([]), ID_ANA, {"nome": "Ana"}) is None
+
+
+def test_gravar_devolve_so_os_campos_da_interface():
+    """`id` não volta — e não por recato: devolvê-lo convidaria alguém a
+    mandá-lo de volta num corpo, que é o que a rota recusa."""
+    cliente = _ClienteFalso(
+        linhas_do_update=[{**PERFIL_DA_ANA, "id": ID_ANA, "created_at": "x"}]
+    )
+    assert set(perfil.gravar(cliente, ID_ANA, {"nome": "Ana"})) == {
+        "nome",
+        "idade",
+        "updated_at",
+    }
+
+
 def test_a_faixa_de_idade_espelha_a_constraint_da_migracao_001():
     """Divergir daqui trocaria um 400 com mensagem útil por um erro de
     constraint do Postgres. O par é `idade >= 0 and idade < 150`."""

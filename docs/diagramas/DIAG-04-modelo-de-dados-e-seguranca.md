@@ -154,7 +154,7 @@ flowchart TB
     AUTHD -->|"GRANT EXECUTE"| F4
     AUTHD -->|"GRANT EXECUTE"| F5
     AUTHD -->|"GRANT EXECUTE"| F6
-    AUTHD -->|"select/insert/update/delete filtrados pelo RLS<br/>o upsert da rota de perfil passa por aqui"| T1
+    AUTHD -->|"select/insert/update/delete filtrados pelo RLS<br/>a rota de perfil escreve por aqui"| T1
     T1 -.->|"before update"| F7
     AUTHD --> T2
     AUTHD --> T3
@@ -285,7 +285,7 @@ sequenceDiagram
     FL->>PG: select nome, idade em profiles, pelo JWT do usuario
     alt nao ha linha · gatilho ausente, ver DIAGNOSTICO-perfil-nao-criado.sql
         FL->>FL: le nome de raw_user_meta_data — UNICA leitura, e so aqui
-        FL->>PG: upsert do perfil, semeado · log WARNING
+        FL->>PG: insert do perfil, semeado · log WARNING
         FL-->>CEL: 200 + perfil_criado_agora: true
     else leitura falhou — nao e o mesmo que "nao ha linha"
         FL-->>CEL: 503 — nao repara por cima de banco fora do ar
@@ -296,7 +296,7 @@ sequenceDiagram
 
     CEL->>FL: PATCH /api/me/perfil<br/>{nome?, idade?} — SO o que mudou
     FL->>FL: valida tipo, faixa e tamanho · campo desconhecido (id, user_id) = 400
-    FL->>PG: upsert em profiles pelo JWT<br/>id = auth.uid() nas policies de insert E de update
+    FL->>PG: update em profiles pelo JWT · SO as colunas do corpo<br/>zero linhas afetadas -> insert (reparo)<br/>id = auth.uid() nas duas policies
     PG->>PG: gatilho tocar_updated_at (008)
     PG-->>FL: a linha COMO FICOU
     alt nada persistiu
@@ -306,6 +306,18 @@ sequenceDiagram
     end
     CEL->>CEL: limpa o residuo: updateUser({data:{nome:null}})<br/>DEPOIS do PATCH · falha NAO desfaz a correcao
 ```
+
+⚠️ **Por que o `PATCH` são duas instruções e não um `upsert` — e é a correção de um defeito
+de perda de dado, não preferência de estilo.** A documentação do PostgREST (v12.2, *Prefer
+Header → Missing*) diz que, em `POST` e `PATCH`, **coluna ausente do corpo é gravada como
+`null`** salvo com `Prefer: missing=default`; upsert é um `POST`, e o cliente Python só manda
+esse header quando `default_to_null=False`, que não é o padrão. Logo, um `PATCH {"idade": 30}`
+feito por `upsert` **apagaria o nome do titular**, em silêncio e com `200` — na tela que
+existe para cumprir o art. 18, III. Com `update` + `insert` separados cada instrução leva
+exatamente as colunas do corpo, e os dois casos estão presos em SQL contra Postgres real:
+*"alterar só a idade não apaga o nome"* e o simétrico. Os testes de `upsert` do arquivo de RLS
+continuam, porque o comando **alheio** é o que um atacante pode mandar direto ao PostgREST — e
+ali o que se afirma é que ele é recusado.
 
 **Por que o caminho 4 tem um `GET` que escreve, dito aqui porque é o que mais surpreende
 quem lê o diagrama:** `profiles` pode não ter linha para um usuário que existe, e isso já

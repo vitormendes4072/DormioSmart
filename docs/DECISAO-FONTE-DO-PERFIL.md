@@ -242,9 +242,43 @@ finalidade mais fácil de escrever e a menos defensável das duas.
 | Onde | O que mudou |
 |---|---|
 | `web-app/migrations/008_perfil_como_fonte_de_verdade.sql` | ⚠️ **a aplicar no Supabase** — `updated_at` que se mantém, teto de tamanho do nome, e os comentários que declaram o papel de cada coluna |
-| `web-app/perfil.py` | validação e acesso, pelo cliente do usuário |
+| `web-app/perfil.py` | validação e acesso, pelo cliente do usuário. **`update` + `insert`, e não `upsert`** — ver a nota abaixo |
 | `web-app/routes.py` | `GET`/`PATCH /api/me/perfil` |
-| `web-app/database.py` | `ler_perfil`, `gravar_perfil` — ambos por `cliente_do_usuario` |
+| `web-app/database.py` | `nome_do_metadado` — a única leitura do metadado no servidor, e só no reparo |
+
+> ⚠️ **A nota do `update` + `insert`, porque não é escolha de estilo: é um defeito de perda
+> de dado que foi medido na especificação antes de chegar a produção.**
+>
+> O `upsert` do PostgREST manda `insert ... on conflict do update set <...>`, e a pergunta
+> decisiva é **o que acontece com as colunas que o corpo não traz**. A resposta está na
+> documentação do PostgREST (v12.2, *Prefer Header → Missing*), literal:
+>
+> > *"When doing POST and PATCH requests, **any missing columns in the payload will be
+> > inserted as `null` value by default**. To use the `DEFAULT` column value instead, use the
+> > `Prefer: missing=default` header."*
+>
+> Upsert é um `POST`. E `postgrest.base_request_builder.pre_upsert` só manda
+> `missing=default` quando `default_to_null=False` — e o padrão do cliente é `True`, ou seja,
+> **o header não vai**. A cadeia fecha: `PATCH {"idade": 30}` → `upsert({id, idade})` →
+> coluna ausente tratada como `null` → **`nome` do titular apagado, com `200` na resposta.**
+>
+> Na tela de **correção** de dado pessoal, que existe para cumprir o art. 18, III. É o §7 das
+> lições (degradação silenciosa) com o §6 em cima (confirmação antes da verificação), e
+> **nenhum teste com dublê pegaria**: o dublê é o nosso cliente, não o PostgREST — que roda
+> no Supabase e não neste repositório.
+>
+> Com duas instruções separadas não há o que supor: cada uma leva exatamente as colunas do
+> corpo, e os dois casos ficaram presos em SQL contra Postgres real — *"alterar só a idade
+> não apaga o nome"* e o simétrico. Os testes de `upsert` **alheio** continuam, porque aquele
+> é o comando que um atacante pode mandar direto ao PostgREST, e o que se afirma ali é que
+> ele é recusado.
+>
+> **O que isto custou de aprendizado, e é o motivo de estar escrito aqui e não só no código:**
+> a docstring do cliente Python diz que o comportamento de campo ausente *"só se aplica a
+> upsert em lote"*, e foi ela que quase encerrou a análise — tranquilizadora e sobre outra
+> coisa (ela descreve o `columns`, não o `missing`). A especificação do **servidor** diz o
+> oposto. Ler a biblioteca e concluir sobre o serviço é o §5 das lições numa variante nova:
+> não é documentação velha, é **a documentação da camada errada**.
 | `frontend/src/lib/perfil.ts` | nome e idade saem do Auth e vão para a rota; e-mail fica |
 | `frontend/src/lib/aplicabilidade.ts` | a finalidade da seção 5, implementada |
 | `frontend/src/contexts/PerfilContext.tsx` | um leitor, compartilhado entre a saudação e a tela de edição |

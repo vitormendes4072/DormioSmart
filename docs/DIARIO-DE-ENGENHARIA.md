@@ -1863,6 +1863,123 @@ o motivo de ela existir), `web-app/tests/rls/test_rls_isolamento.py`,
 `DOC-11`, `DIAG-04`, contagem), `docs/LICOES-APRENDIDAS.md` (§1 ocorrências 7 e 8, §4
 ocorrência 5, §6 ocorrências 5 e 6, índice reordenado, §9).
 
+---
+
+# 2026-10-19 — a gravação do perfil apagaria o nome do titular, e foi a especificação que disse
+
+> **Continuação direta da entrada de 17/10 (iv).** O `PERFIL-01` estava fechado, com suíte
+> verde e quatro commits. Esta entrada existe porque a revisão final de uma suposição que
+> havia ficado declarada **confirmou o defeito** em vez de dissipá-lo.
+
+**O problema, como foi entendido no início.** A gravação do perfil (`PATCH /api/me/perfil`)
+usava `upsert` do cliente Supabase, e o `PATCH` é **parcial** de propósito: `{"idade": 30}`
+deve mexer na idade e não tocar no nome. A pergunta ficou registrada como suposição ao fechar
+o item: *o `upsert` do PostgREST, com um corpo que não traz `nome`, mexe no nome?*
+
+**Hipótese de trabalho.** Que não mexia. E ela tinha apoio: a docstring do método no cliente
+Python diz que o comportamento de campo ausente *"só se aplica a upsert em lote"*. Lida com
+atenção, ela encerra a análise.
+
+**O que foi testado, e como.** A docstring **não é a fonte** desse comportamento, e foi isso
+que mudou o resultado. Duas leituras, em duas camadas:
+
+1. `postgrest.base_request_builder.pre_upsert`, no pacote instalado — para saber **o que o
+   cliente envia**.
+2. A documentação do PostgREST v12.2, seções *Tables and Views → Upsert* e *Prefer Header →
+   Missing* — para saber **o que o servidor faz com aquilo**.
+
+**Resultado medido. O risco estava confirmado, e o defeito era perda silenciosa de dado
+pessoal.** A especificação do PostgREST, literal:
+
+> *"When doing `POST` and `PATCH` requests, **any missing columns in the payload will be
+> inserted as `null` value by default**. To use the `DEFAULT` column value instead, use the
+> `Prefer: missing=default` header."*
+
+E o upsert é um `POST`. Do lado do cliente, `pre_upsert` só acrescenta `missing=default`
+quando `default_to_null=False` — e o padrão é `True`, isto é, **o header não vai**. A cadeia
+fecha inteira:
+
+| Elo | O que acontece |
+|---|---|
+| A tela manda | `PATCH /api/me/perfil` com `{"idade": 30}` |
+| A rota chama | `client.table("profiles").upsert({"id": <jwt>, "idade": 30})` |
+| O cliente envia | `POST /profiles`, `Prefer: return=representation,resolution=merge-duplicates` — **sem** `missing=default` |
+| O PostgREST aplica | coluna ausente do corpo = `null` |
+| O banco grava | **`nome` do titular apagado** |
+| A pessoa vê | `200`, e a mensagem *"Dados atualizados."* |
+
+Corrigir a idade apagaria o nome. **Na tela que existe para cumprir o art. 18, III** — o
+direito de corrigir dado inexato —, o mecanismo de correção destruiria o dado vizinho. É o §7
+das lições (degradação silenciosa: o dado fica errado-com-cara-de-certo) com o §6 em cima
+(confirmação emitida antes da verificação), e **nenhum teste deste repositório poderia
+pegá-lo**: os testes de rota usam dublê do nosso cliente, e o PostgREST roda no Supabase.
+
+**Adaptação.** A correção **não** foi passar `default_to_null=False`. Isso faria a coluna
+ausente cair no `DEFAULT` em vez de `null` — e o default de `profiles.nome` é nulo, então
+**daria no mesmo**. O header resolve o caso de coluna com default útil; não é o nosso.
+
+A gravação passou a ser **duas instruções**, `update` e, só se ele afetar zero linhas,
+`insert`:
+
+- `update` leva **exatamente** as colunas do corpo. Semântica de SQL, não de serviço de
+  terceiro.
+- `insert` cobre a linha ausente, que é o caso do `DIAGNOSTICO-perfil-nao-criado.sql`. Sem
+  ele, zero linhas afetadas — que não é erro para o Postgres — faria a correção do titular
+  responder `200` sem ter gravado nada.
+- Ordem: `update` primeiro, porque o caso comum é a linha existir. `insert` primeiro erraria
+  por chave duplicada em toda correção.
+
+**E o ganho maior é de testabilidade, não de corretude:** com `upsert`, a propriedade "um
+`PATCH` de um campo não toca os outros" **não tinha onde ser testada** neste repositório. Com
+SQL, tem — e agora está presa contra Postgres real, nos dois sentidos
+(`test_alterar_so_a_idade_nao_apaga_o_nome` e o simétrico), mais seis testes de unidade da
+ordem das duas instruções.
+
+Os testes de `upsert` **alheio** continuam no arquivo de RLS, e por outro motivo: aquele é o
+comando que um atacante pode mandar direto ao PostgREST com a chave `anon`, e o que se afirma
+ali é que ele é **recusado**.
+
+**O que o método pegou, e que a leitura não pegaria.** Um só achado, e é sobre leitura:
+
+- **Eu li o artefato certo e respondi a pergunta errada.** A docstring do cliente descreve o
+  parâmetro `columns` (que o `pre_upsert` só preenche para lote); a pergunta era sobre
+  `missing`, que é do servidor. Não foi descuido de não conferir — foi conferir **a camada
+  errada**, com a atenção toda. Virou a ocorrência 5 do §5 das lições, e as duas regras que
+  saíram dela são: *comportamento de serviço se confere na especificação do serviço, não na
+  biblioteca que fala com ele*; e *onde não der para conferir, prefira o desenho que não
+  precisa da resposta*.
+
+**Risco em aberto.**
+
+- **A versão do PostgREST do projeto não foi conferida.** A especificação lida é a **v12.2**;
+  o Supabase roda uma versão própria, que varia por projeto. A preferência `missing` existe
+  desde a v11, e o comportamento padrão (`null`) é o antigo — então o defeito valeria para
+  qualquer versão plausível. **Mas isso deixou de importar**, e é o ponto do desenho novo: o
+  código não depende mais da resposta.
+- **O desfecho de concorrência mudou de forma, não de tamanho.** Duas correções simultâneas
+  sobre uma linha ausente podem ambas cair no `insert`, e uma falha por chave duplicada →
+  `503`. Antes, com `upsert`, a segunda venceria em silêncio. Para um protótipo de um usuário
+  é teórico; está registrado porque *"teórico"* não é o mesmo que *"tratado"*.
+- **Tudo o que a entrada de 17/10 (iv) deixou aberto continua aberto**, com uma linha a
+  menos: o ponto cego do `UI-11` (o dublê de `updateUser` não prova o comportamento do
+  Supabase) **cresceu** — agora ele é a única parte do caminho de escrita cujo comportamento
+  de serviço de terceiro ainda não foi conferido em especificação nenhuma. A limpeza de
+  resíduo (`data: { nome: null }`) depende de como o GoTrue trata um valor nulo em
+  `raw_user_meta_data`, e isso não foi lido. **Diferença importante:** ali a falha é inerte —
+  o resíduo fica, ninguém lê, e `residuoLimpo` já relata o desfecho sem mentir.
+- **A migração `008` continua não aplicada** (`PERFIL-02`).
+- **Nada rodou em runner** (`CI-06`), e a branch segue sem push.
+
+**Procedência.** Documentação do PostgREST v12.2 — *Tables and Views → Upsert* e *Prefer
+Header → Missing* (`https://docs.postgrest.org/en/v12/references/api/preferences.html`);
+`postgrest.base_request_builder.pre_upsert` do pacote instalado;
+`web-app/perfil.py` (cabeçalho de `gravar`, com a cadeia inteira e a alternativa descartada);
+`web-app/tests/test_perfil.py` (seis testes da ordem `update`/`insert`);
+`web-app/tests/rls/test_rls_perfil.py` (`test_alterar_so_a_idade_nao_apaga_o_nome`, o
+simétrico, e o insert do caminho de reparo); `docs/DECISAO-FONTE-DO-PERFIL.md` §6;
+`docs/diagramas/DIAG-04-modelo-de-dados-e-seguranca.md` (caminho 4 e a nota do `PATCH`);
+`docs/LICOES-APRENDIDAS.md` §5 ocorrência 5 e as regras 6 e 7.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
