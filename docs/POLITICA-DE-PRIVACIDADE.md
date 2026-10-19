@@ -333,6 +333,14 @@ digite uma frase de confirmação, e é **irreversível**. Ela apaga:
 > titular *onde* exercer um direito é a última afirmação do repositório que pode
 > estar à frente do código. Montado e versionado hoje (commit do `UI-10`); o
 > mecanismo que deveria ter pegado a ausência está no `UI-17` do backlog.
+>
+> ✏️ **Atualização de 2026-10-19: esse mecanismo existe.** Há agora uma
+> verificação automática que **reprova** se a tela de exclusão de conta sair da
+> tela de Configurações — não só se o arquivo dela desaparecer do projeto, que
+> era o alcance da verificação anterior. Em termos práticos para quem lê esta
+> política: a afirmação de que existe um lugar para exercer o art. 18, VI
+> passou a ser conferida a cada execução da suíte de testes, e não apenas na
+> leitura de quem escreveu o parágrafo.
 
 ⚠️ **Pode haver remoção parcial, e o aplicativo diz quando há.** O cadastro de
 acesso — a linha que guarda o **seu e-mail** — pertence ao serviço de

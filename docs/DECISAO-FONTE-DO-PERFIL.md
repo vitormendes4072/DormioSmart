@@ -312,10 +312,17 @@ Registrado para que a ausência não passe por completude.
   **não está provado que `updateUser({data:{nome:null}})` apaga a chave** em projeto real —
   só que o nosso código a chama depois do `PATCH` e não deixa a falha dela contaminar o
   relato. Fecha com projeto Supabase de teste, junto com o resto do `UI-11`.
-- **Não há teste de componente** (`UI-17`). `EditarPerfil` ganhou um campo e um aviso novos, e
-  nenhum teste prova que eles aparecem na tela. O `alcance.test.ts` prova caminho de
-  `import`, não renderização — e é por isso que o campo de idade tem a lógica inteira em
-  `lib/`.
+- ~~**Não há teste de componente** (`UI-17`). `EditarPerfil` ganhou um campo e um aviso novos,
+  e nenhum teste prova que eles aparecem na tela.~~ ✏️ **Fechado em 19/10 — `UI-17` completo.**
+  `frontend/src/montagem.test.ts` monta o aplicativo pelo `import("./main.tsx")` em `jsdom` e
+  prova que o campo de idade e o aviso de aplicabilidade **aparecem na tela**, com o par
+  negativo (sem idade, o aviso não existe) e com o texto comparado ao que
+  `lib/aplicabilidade.ts` devolve, não a uma cópia. Medido por controle positivo: cinco
+  sabotagens no JSX deste componente, cinco detectadas, e o `alcance.test.ts` verde em todas —
+  que é exatamente a lacuna que esta linha descrevia. A lógica continua em `lib/` pelo motivo
+  original (função pura é mais barata de prender que tela), não por falta de alternativa. **O
+  que segue aberto:** `jsdom` não é navegador — sem layout e sem CSS, elemento renderizado e
+  invisível por estilo passa.
 - **A migração `008` não foi aplicada.** Até ela rodar no Supabase, `updated_at` de
   `profiles` continua congelado na criação e o teto de tamanho do nome não existe no banco.
   A rota funciona sem ela; o que falta é o que está escrito aqui.

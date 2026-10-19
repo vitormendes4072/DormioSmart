@@ -1980,6 +1980,182 @@ simétrico, e o insert do caminho de reparo); `docs/DECISAO-FONTE-DO-PERFIL.md` 
 `docs/diagramas/DIAG-04-modelo-de-dados-e-seguranca.md` (caminho 4 e a nota do `PATCH`);
 `docs/LICOES-APRENDIDAS.md` §5 ocorrência 5 e as regras 6 e 7.
 
+---
+
+# 2026-10-19 (ii) — `UI-17`: a catraca de alcance pegava metade, e a metade que faltava era a que a pessoa vê
+
+> **Reincidência declarada do §1 das lições**, e é a nona ocorrência. A diferença
+> em relação às oito anteriores é que esta foi **prevista e medida antes de custar
+> algo**: o alcance insuficiente do `alcance.test.ts` estava escrito no próprio
+> arquivo, no backlog e no `PerfilContext.tsx` desde 17/10, com o número — removido
+> o `<PerfilProvider>` do `main.tsx`, a suíte passa.
+
+**O problema, como foi entendido no início.** O `alcance.test.ts`, criado em 17/10, percorre
+os `import` relativos a partir de `main.tsx` e reprova quando um módulo de `src/` fica fora do
+grafo. Fecha o defeito do `UI-10` — arquivo versionado que ninguém importa, inalcançável por
+dezoito dias enquanto o backlog o dava por concluído e o `docs/LGPD-ELIMINACAO.md` afirmava
+que o direito de eliminação estava implementado. O enunciado desta sessão: provar que os
+componentes estão **montados e renderizados**, não só importados — e cobrir ao menos o
+`ExcluirConta`, o `EditarPerfil`, o `PerfilProvider` e o campo de idade com o aviso de
+aplicabilidade, este último nunca visto renderizado por teste nem por pessoa.
+
+**Hipótese de trabalho.** Que a escolha fosse entre renderizar a árvore de verdade (caro,
+exige `jsdom` e testing-library) e inspecionar o JSX estaticamente (barato, pega a tag
+ausente). E que, pelo critério de menor custo de manutenção, a segunda vencesse para os três
+componentes e só o aviso de idade exigisse render.
+
+**O que foi testado, e como.** Primeiro o alcance de cada abordagem, contra os quatro alvos:
+
+| Abordagem | Pega | Deixa passar | Custo de manutenção |
+|---|---|---|---|
+| **Inspeção estática do JSX** (`<ExcluirConta` aparece em `Settings.tsx`?) | tag apagada | tag dentro de ramo nunca alcançado; componente num arquivo que nada renderiza; rota ausente; **texto condicional que nunca aparece** | lista de pares (arquivo, tag) **escrita à mão** — a ocorrência 4 do §1 em forma nova |
+| **Render da árvore de verdade** (`jsdom` + `@testing-library/react`) | tudo acima, mais provedor fora do JSX, rota ausente, condicional que nunca rende | integração real com Supabase e Flask (dublada); CSS e layout; comportamento de navegador | dublês de fronteira + 3 dependências; asserção por coisa afirmada |
+| **AST com avaliação de condicionais** | em teoria tudo | o que depender de estado em tempo de execução | alto, e reimplementa um renderizador |
+| **Ponta a ponta em navegador** (Playwright) | o que a pessoa de fato alcança | nada relevante | exige Supabase e Flask de pé |
+
+**Resultado medido. A hipótese caiu no quarto alvo, e ele decidiu sozinho.** O aviso de
+aplicabilidade da idade é `{aplicabilidade ? <p>…{aplicabilidade.aviso}</p> : null}`, com
+`aplicabilidade = aplicabilidadeDaIdade(idadeDoPerfil(perfil))`. *"Nunca foi visto
+renderizado"* não é uma afirmação que inspeção estática possa fechar — **ela não vê nada
+renderizado, por construção.** E, fechado esse alvo com render, a inspeção estática dos outros
+três passa a ser trabalho duplicado: o render os cobre, e com margem. Uma abordagem, não duas.
+
+A decisão de desenho que faz a verificação valer algo, e a armadilha de que ela escapou por
+pouco: o caminho idiomático com testing-library é
+`render(<AuthProvider><PerfilProvider><App /></PerfilProvider></AuthProvider>)`. **Esse teste
+reproduziria o defeito que existe para pegar** — a composição sob teste seria a escrita no
+arquivo de teste, e remover o `<PerfilProvider>` do `main.tsx` deixaria tudo verde. Seria o §1
+em forma de teste de componente, e com o agravante de o arquivo *parecer* cobertura. Então a
+montagem é `await import("./main.tsx")`: o ponto de entrada de produção, executando o
+`createRoot(...).render(...)` que ele tem, sobre a árvore que ele compõe. **Não há composição
+duplicada, logo não há composição que possa divergir.**
+
+Entregue: `frontend/src/montagem.test.ts`, **16 testes** — 8 de asserção nomeada em
+`/configuracoes` e 8 da varredura de rotas (7 rotas + a guarda de contagem). Três dependências
+de desenvolvimento (`jsdom`, `@testing-library/react`, `@testing-library/dom`), ambiente
+`jsdom` por diretiva no arquivo, e **nenhuma mudança no `vitest.config.ts`** — o `include` é
+`src/**/*.test.ts` e o arquivo novo não precisa de JSX, porque quem monta é o `main.tsx`.
+
+**Controle positivo: 11 sabotagens, 11 detectadas.** Cada uma remove de fato a coisa afirmada
+do JSX de produção; o arranjo confere que o trecho casa **exatamente uma vez** antes de
+sabotar (um sabotador morto se lê como ponto cego — §4) e compara o arquivo byte a byte depois
+de restaurar.
+
+| # | Sabotagem | Testes que caíram | `alcance.test.ts` |
+|:-:|---|---|:-:|
+| 1 | `<PerfilProvider>` fora do `main.tsx` | **8 de 8** (o `usePerfil` levanta, e a `Sidebar` o chama) | **passa** |
+| 2 | `<ExcluirConta />` fora do `Settings.tsx` | 1 — o do `ExcluirConta` | **passa** |
+| 3 | `<EditarPerfil />` fora do `Settings.tsx` | 4 | **passa** |
+| 4 | `<label for="perfil-idade">` fora do JSX | 1 | — |
+| 5 | `id` do campo de idade trocado | 1 | — |
+| 6 | o `<p>` do aviso de aplicabilidade fora do JSX | 1 | **passa** |
+| 7 | aviso com idade fixa em 70 (sempre visível) | 1 — o **par negativo** | — |
+| 8 | `<Route path="/configuracoes">` fora do `App.tsx` | 7 | **passa** |
+| 9 | página de rota passa a render `null` | 1 — a varredura | — |
+| 10 | guarda do instrumento: `#root` com outro id | **8 de 8** | — |
+| 11 | guarda do instrumento: padrão de rota que não casa | 1 — a guarda de contagem | — |
+
+A coluna da direita é o resultado que importa, e é o §1 inteiro numa célula: **em cinco das
+cinco sabotagens em que foi medido, o `alcance.test.ts` continuou verde.** A catraca de 17/10
+não estava errada; estava afirmando exatamente o que dizia afirmar, e o que ela dizia era
+menos do que se precisava. É a diferença entre um alcance insuficiente **declarado** e um
+alcance insuficiente **suposto**, e é a única razão pela qual esta ocorrência do §1 custou
+zero.
+
+**Adaptação.** Três coisas mudaram em relação ao plano:
+
+1. **O prazo dos testes subiu para 60 s, e o motivo é um defeito que a primeira execução
+   produziu.** A primeira montagem paga a transformação de todo o grafo de `src/` pelo Vite
+   (~13 s); com o prazo padrão de 5 s o primeiro teste estourava, o `import("./main.tsx")` em
+   curso resolvia **depois** do `afterEach`, e o `createRoot` da montagem abandonada caía no
+   `#root` do teste seguinte. O sintoma foi oito falhas de
+   `useAuth precisa estar dentro de <AuthProvider>` **numa árvore em que o provedor estava
+   lá** — um erro que manda procurar o defeito no lugar errado. Está escrito no arquivo, ao
+   lado da constante.
+2. **A lista de rotas não é escrita no teste: sai do `App.tsx`, lido do disco.** A ocorrência 4
+   do §1 é um alvo de `make` com dois dos quatro sketches porque a lista era manual. Uma lista
+   de rotas à mão teria o mesmo destino. Com a lista derivada, rota nova é coberta sozinha; e a
+   guarda de contagem reprova se o padrão deixar de casar, em vez de aprovar conjunto vazio
+   (sabotagem 11).
+3. **A varredura cobre rota nova, não rota removida** — e isso está dito no arquivo. Apagar um
+   `<Route>` encurta a lista, e lista curta passa. Quem pega a remoção é a asserção nomeada da
+   rota, e hoje existe uma só (`/configuracoes`, medida na sabotagem 8). As outras seis ficam no
+   `UI-18`.
+
+**O que o método pegou, e que a leitura não pegaria.** Quatro achados, e três deles são sobre
+instrumentos:
+
+- **O `UI-16` quase ganhou uma correção falsa.** Uma varredura de exports por frequência de
+  identificador disse que `nomeDoDispositivo` **é** usado em produção (duas ocorrências em
+  `pages/Coletar.tsx`) — o que contradiria a premissa do item. As duas ocorrências são uma
+  `useState` local **com o mesmo nome**, e o `Coletar.tsx` não importa a função. O instrumento
+  colidia com identificadores locais e **sub-relatava** código morto. Refeito por nome
+  importado em vez de por frequência: a premissa do `UI-16` está correta.
+- **E a varredura refeita achou um segundo export morto, com peso.**
+  `lib/autenticacao.ts :: pareceContaExistente` não é importada por nenhum arquivo de
+  produção, e tem **7 testes**. A docstring dela descreve uma decisão de segurança — *não
+  dizer ao usuário que a conta já existe, para não permitir enumeração.* A proteção **existe**
+  no comportamento, e justamente porque `cadastrar` **não ramifica**: e-mail existente e
+  e-mail novo recebem a mesma resposta. Então não há vazamento. O que há é uma suíte de 7
+  testes afirmando uma decisão de segurança **cujo caminho de produção não a exercita** —
+  §1 num terceiro nível de alcance (o símbolo), que nem a catraca de arquivo nem o render
+  alcançam. Virou `UI-19`, com o `UI-16` como instância.
+- **Nenhum componente está hoje importado-e-não-renderizado.** Conferido símbolo a símbolo nos
+  37 componentes exportados: todos aparecem como tag em algum lugar. O defeito do `UI-10` não
+  tem instância aberta — e é a terceira vez que uma conferência deste tipo responde "não há",
+  o que é informação e não ausência de informação.
+- **`vite build` reprova neste ambiente por motivo que não é do código.** `EPERM` ao
+  esvaziar `frontend/dist/` — o sandbox não consegue desvincular arquivo na pasta montada,
+  mesma limitação do `GIT-03`. Os 2 328 módulos transformam; com `--outDir` fora da montagem,
+  o build fecha em 23 s. Registrado para que uma sessão futura não leia isso como regressão.
+
+**Resultado da suíte completa**, medido nesta ordem:
+
+| Camada | Antes | Depois |
+|---|---|---|
+| Frontend (`vitest run`) | 408 em 26 arquivos | **424 em 27 arquivos** |
+| `tsc --noEmit` | limpo | limpo |
+| `vite build` | limpo | limpo (com `--outDir` fora da montagem — ver acima) |
+| Backend (`pytest --ignore=tests/rls`) | — | **293** |
+
+O número do backend corrige de passagem uma afirmação do `CLAUDE.md`, que diz 286 — medidos
+em 17/10, antes dos testes de rota do `PERFIL-01`. O arquivo está no `.gitignore` (`GIT-05`),
+então a correção não entra em commit; é o `DOC-11` acontecendo de novo, pelo mesmo motivo.
+
+**Risco em aberto.**
+
+- **O que esta suíte dubla, ela não afirma.** Três dublês, todos na fronteira externa:
+  `createClient` do `@supabase/supabase-js`, o `fetch` global, e `matchMedia`/`ResizeObserver`
+  que o jsdom não implementa. `lib/supabase.ts`, `lib/chaveSupabase.ts`, o `AuthContext` e o
+  `PerfilContext` ficam **reais**. Logo o que está provado é montagem e renderização, **não**
+  integração com o Supabase nem com o Flask. O ponto cego de integração herdado do `UI-11` (o
+  `updateUser({data:{nome:null}})` em projeto real) **não** é fechado nem agravado por isto.
+- **jsdom não é navegador.** Não há layout, não há CSS aplicado, não há foco real. Um elemento
+  renderizado e invisível por CSS passa aqui. Fechar isso é ponta a ponta, e não está pedido.
+- **As afirmações condicionais do painel continuam sem prova de que aparecem.** O
+  `AvisoDeLacuna`, a `NotaDeInferencia` e a `NotaDeEscopo` são texto de honestidade científica
+  que o trabalho afirma mostrar; estão renderizados *no arquivo*, e nenhuma condição deles foi
+  exercitada. É o `UI-18`, e é a mesma classe do aviso de idade — que esta entrada fechou.
+- **Nada disto rodou em runner** (`CI-06`), e a branch `chore/GIT-01-normalizar-fim-de-linha`
+  segue sem push. O arquivo novo **não está no `ci.yml`**: ele roda junto por
+  `vitest run`, mas nenhum job do CI roda `vitest` hoje — os jobs são `documentos`, `rls` e os
+  do firmware. Registrado no `UI-18`.
+- **Resíduo de ambiente, pela terceira sessão seguida.** `frontend/` acumulou **57** arquivos
+  `vitest.config.ts.timestamp-*.mjs`, que o sandbox não apaga. Estão cobertos pelo
+  `.gitignore` (linha 33), então não há risco de versionamento; é a mesma causa do `GIT-03`,
+  e continua precisando de um terminal na máquina.
+- **A suíte de RLS não rodou** (exige Postgres real), e o firmware não foi reexecutado —
+  nada neste trabalho toca `firmware/` nem `web-app/`.
+
+**Procedência.** `frontend/src/montagem.test.ts` (cabeçalho, com a abordagem descartada e os
+dublês declarados; a nota do prazo de 60 s; a assimetria rota-nova/rota-removida);
+`frontend/src/alcance.test.ts` e `frontend/src/contexts/PerfilContext.tsx` (notas de 19/10
+apontando para a metade fechada); `frontend/src/components/EditarPerfil.tsx` (cabeçalho, nota
+de 19/10); `frontend/package.json` (as três dependências novas);
+`docs/BACKLOG-COMPLETO.md` (`UI-17` fechado, `UI-16` com a premissa reconferida, `UI-18` e
+`UI-19` novos); `docs/LICOES-APRENDIDAS.md` §1 ocorrência 9, a regra 7 (*verificação não recompõe o que ela
+verifica*) e a pergunta do §1 no checklist da §9.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

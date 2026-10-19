@@ -141,6 +141,18 @@ Item de backlog: **SEC-07**. Implementação em
   > honesta da interface é **17/10**; a de 29/09 é a do componente. Ocorrência
   > registrada no §6 de `docs/LICOES-APRENDIDAS.md`; o mecanismo que faltava é
   > o `UI-17`.
+  >
+  > ✏️ **19/10: o mecanismo existe agora, nas duas metades.** O
+  > `frontend/src/alcance.test.ts` (17/10) reprova quando um módulo de `src/`
+  > sai do grafo de `import`; o `frontend/src/montagem.test.ts` (19/10) monta o
+  > aplicativo pelo ponto de entrada de produção e **reprova quando o
+  > `<ExcluirConta />` sai do JSX das Configurações** — inclusive quando o
+  > `import` fica no lugar, que é o caso em que a catraca de alcance passa.
+  > Medido: removida a tag, cai o teste que a nomeia, e o `alcance.test.ts`
+  > continua verde. Também está presa a **barreira de duas etapas**, não só o
+  > botão: o campo de confirmação não existe antes do clique e existe depois.
+  > A frase acima — *"o mecanismo que faltava"* — podia ficar verdadeira para
+  > sempre sem que ninguém notasse, e é por isso que esta nota tem data.
 - Falta a parte de interface: hoje a eliminação existe como rota, e só. Está
   registrado como **UI-10** no backlog.
 

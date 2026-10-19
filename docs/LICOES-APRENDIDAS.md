@@ -31,7 +31,7 @@ cada uma existe porque o projeto já pagou por não a ter feito.
 
 | § | Padrão | Ocorrências |
 |:-:|---|:-:|
-| 1 | Alcance declarado que não alcança | **8** |
+| 1 | Alcance declarado que não alcança | **9** |
 | 6 | Confirmação emitida antes da verificação | **6** |
 | 4 | O instrumento de medida mede errado — e nada mede o instrumento | **5** |
 | 2 | Análise correta que não chega onde a decisão é tomada | **4** |
@@ -65,6 +65,7 @@ cobre é menor que o conjunto que seu nome anuncia; a diferença não aparece le
 | 6 | **O aviso de captação foi escrito num arquivo gitignorado.** O `ROADMAP.md` não é versionado: o aviso não chegaria a um clone. | Backlog `GIT-05` (17/10) |
 | 7 | **O teste que barrava a criação de perfil alheio barrava pela CHAVE ESTRANGEIRA, não pela policy.** `test_ana_nao_cria_profile_para_o_bruno` inseria com um uuid **inventado**, para não colidir com a chave primária da linha que o gatilho cria — e uuid inventado não existe em `auth.users`, então o comando morria em `profiles_id_fkey` e **nunca chegava ao RLS**. Passava com `profiles_insert_own` escancarada (`with check (true)`): medido com o sabotador novo, só os dois testes **estruturais** caíam. O cenário que o teste queria montar — *"se o Bruno ainda não tivesse profile"* — era justamente o que ficou impossível de montar com um id falso. | Diário 2026-10-17 (iv); `tests/rls/conftest.py` (`CAROL`); sabotador `perfil_insert_permissivo` |
 | 8 | **Dois barramentos em série escondem um ao outro.** Um `upsert` (`insert ... on conflict do update`) contra uma vítima que **já tem** linha cai no ramo de `update`, então é a policy de `update` que recusa — e o teste passa **mesmo com a policy de `insert` escancarada**. O nome do teste ("a Ana não faz upsert no perfil do Bruno") anuncia cobertura das duas; ele cobre uma. Fechado com dois testes, um por estado da linha de destino. | Diário 2026-10-17 (iv); `tests/rls/test_rls_perfil.py` (cabeçalho) |
+| 9 | **A catraca de alcance provava `import`, e o nome dela dizia "alcance".** O `alcance.test.ts` nasceu em 17/10 para fechar o caso do `UI-10` — arquivo versionado que ninguém importava. Prova que existe caminho de `import` de `main.tsx` até cada módulo, e **para aí**: componente importado e nunca usado no JSX passa, provedor fora da composição passa, rota ausente passa. Medido por 5 sabotagens em 19/10, e em **5 de 5** a catraca ficou verde — inclusive com o `<PerfilProvider>` fora do `main.tsx` e com o `<ExcluirConta />` fora do `Settings.tsx`, que é literalmente o defeito do `UI-10` refeito um nível acima. Fechado com `montagem.test.ts`, que monta pelo `import("./main.tsx")` em vez de recompor a árvore no teste. | Diário 2026-10-19 (ii); `frontend/src/montagem.test.ts`; backlog `UI-17` |
 
 **O que custou.** Nos casos 1, 4 e 5, **nada em produção — e só porque alguém foi rodar.** Os
 três jobs tinham sido lidos e revisados em 30/09 e **nenhum dos três passava como estava
@@ -81,6 +82,14 @@ policy de `insert` **escancarada**, e o projeto o citava — pelo número agrega
 isolamento numa política de privacidade e num diagrama de banca. Os dois foram achados por
 sabotagem; nenhum apareceria por leitura, porque o código dos dois testes está correto. O que
 estava errado era o **cenário**.
+
+A ocorrência 9 é a primeira deste padrão que **custou zero e não por sorte.** O alcance
+insuficiente do `alcance.test.ts` estava escrito em três lugares desde o dia em que ele
+nasceu — no cabeçalho do próprio arquivo, no `UI-17` e no `PerfilContext.tsx` —, **com o
+número**: removido o `<PerfilProvider>`, a suíte passa. Dezoito dias foi o preço da ocorrência
+que ninguém tinha declarado; dois dias foi o prazo da que estava declarada ao lado da
+verificação. **É a mesma distância que separa catraca de cobertura, e ela só é visível quando
+alguém escreve qual das duas tem na mão.**
 
 **Como não repetir.**
 
@@ -108,7 +117,17 @@ estava errado era o **cenário**.
    um cenário por barramento (a usuária sem perfil para a policy de `insert`; a usuária com
    perfil para a de `update`), e o sabotador de cada um nomeando o teste que deve cair.
    *Um teste que passa por dois motivos passa por nenhum que você conheça.*
-7. ❓ **Pergunta de revisão:** *se eu quebrasse de propósito a coisa que este teste protege, ele
+7. ⚙️ **Verificação não recompõe o que ela verifica.** A ocorrência 9 escapou por pouco da
+   forma mais elegante de cometer este padrão: um teste de montagem que monta
+   `<AuthProvider><PerfilProvider><App /></…>` escrito **no arquivo de teste** estaria
+   verificando a composição do teste, não a de produção — e deixaria verde exatamente o
+   defeito medido (provedor fora do `main.tsx`). Daí a regra: **a verificação importa o ponto
+   de entrada de produção e observa o que ele faz; não reconstrói a árvore, a lista, a
+   configuração nem o cenário que diz estar conferindo.** É a mesma raiz da ocorrência 2 (o
+   dourado que gravava a própria referência) aplicada a interface: *referência que o código
+   produz não é referência.* Vale igualmente para a lista de rotas do `montagem.test.ts`, que
+   é lida do `App.tsx`, e para `SKETCHES` no `Makefile` (regra 2).
+8. ❓ **Pergunta de revisão:** *se eu quebrasse de propósito a coisa que este teste protege, ele
    ficaria vermelho? Em que máquina?* A segunda metade da pergunta é a que pegou o `CI-05`.
    E a terceira, que as ocorrências 7 e 8 acrescentam: **por qual mecanismo ele ficaria
    vermelho — o que eu quero testar, ou outro que estava no caminho?**
@@ -454,7 +473,9 @@ Sete perguntas, uma por padrão. Cada uma existe porque o projeto pagou por não
 
 - [ ] **§1** — Se eu quebrasse de propósito a coisa que esta verificação protege, ela ficaria
       vermelha? **Em que máquina?** E: **por qual mecanismo** ela ficaria vermelha — o que eu
-      quero testar, ou outro que estava no caminho?
+      quero testar, ou outro que estava no caminho? E, desde 19/10: **esta verificação
+      recompõe no teste alguma coisa que existe em produção** — a árvore, a lista, o cenário?
+      Se recompõe, ela verifica a cópia.
 - [ ] **§2** — Quem precisa saber disto vai abrir o arquivo onde eu escrevi? Este achado virou
       **item**, ou ficou observação?
 - [ ] **§3** — De onde veio este número? Ele é *medição*, *especificação*, *cálculo* ou
@@ -479,7 +500,7 @@ Registrado para que a ausência não passe por completude.
 | Padrões anteriores a 2026-04-29 | Mesmo motivo do diário: anterior ao versionamento. |
 | Qualquer padrão de hardware | Nada foi medido no dispositivo físico. Os 8 pinos do MPU6050 não estão soldados, e **não há uma só lição deste documento que venha de bancada.** Quando houver, é provável que esta seja a seção mais cara do arquivo. |
 | ~~Padrões de frontend~~ | ✏️ **Lacuna fechada em 17/10.** Os 15 arquivos pendentes foram lidos e commitados (`a586b0b`, `fea1c48`, `22a9268`, `f58f52c`), e o frontend entrou neste documento por conta própria: a ocorrência 4 do §6 (tela inalcançável) e a 4 do §5 (a premissa do `UI-11` sobre `profiles`) são as duas primeiras lições deste arquivo que **nasceram de frontend**. Dos 15, **14 eram trabalho e 1 era entrada de índice desatualizada** — ver a entrada de 17/10 do diário. |
-| Frequência real dos padrões | A contagem de ocorrências do índice é sobre **o que está registrado**, não sobre o que aconteceu. Os padrões §1 e §4 são provavelmente subcontados, porque só se descobre instrumento defeituoso quem procura. |
+| Frequência real dos padrões | A contagem de ocorrências do índice é sobre **o que está registrado**, não sobre o que aconteceu. Os padrões §1 e §4 são provavelmente subcontados, porque só se descobre instrumento defeituoso quem procura. ✏️ **19/10:** a ocorrência 9 do §1 é a prova disso pelo avesso — ela existe no índice **porque estava declarada**, com o número medido, no arquivo que ela acusa. Padrão declarado conta; padrão suposto não aparece aqui. |
 
 ---
 
