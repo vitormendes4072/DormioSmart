@@ -433,8 +433,11 @@ export async function atualizarPerfil(
  * A frase que a tela mostra para cada desfecho.
  *
  * Separada do componente para poder ser testada: a diferença entre "salvo" e
- * "e-mail pendente" é exatamente o que não pode ser dito errado, e um texto
- * dentro de JSX não tem teste neste projeto (ver `UI-17`).
+ * "e-mail pendente" é exatamente o que não pode ser dito errado, e texto
+ * dentro de JSX é mais caro de prender que função pura. ✏️ **19/10:** a frase
+ * aqui dizia *"não tem teste neste projeto"*, e isso caiu com o `UI-17`
+ * (`src/montagem.test.ts`). A separação continua certa pelo motivo acima — o
+ * que mudou é que agora existe o segundo nível, não que este deixou de valer.
  *
  * **`residuoLimpo` não aparece no texto, e é decisão e não esquecimento.** O
  * titular pediu correção de nome e idade; a correção aconteceu. A limpeza de

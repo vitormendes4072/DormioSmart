@@ -3,14 +3,25 @@
  *
  * A lógica inteira está em `lib/perfil.ts` e `lib/aplicabilidade.ts`, com
  * teste. Aqui ficam só o estado do formulário e o texto — pela mesma razão
- * pela qual o `UI-10` ficou assim: neste projeto não há teste de componente (o
- * `vitest` roda em ambiente `node` e não há testing-library, ver `UI-17`),
- * então tudo que puder ser decidido fora do JSX é decidido fora do JSX.
+ * pela qual o `UI-10` ficou assim: tudo que puder ser decidido fora do JSX é
+ * decidido fora do JSX, porque função pura é mais barata de testar que tela.
  *
- * ⚠️ **E isso é limite, não virtude.** O campo de idade e o aviso de
- * aplicabilidade abaixo **não têm teste que prove que aparecem na tela**. O
- * `alcance.test.ts` prova que este arquivo está no grafo de imports, e nada
- * mais. É o `UI-17`, e está dito aqui para não ser confundido com cobertura.
+ * ✏️ **19/10 (`UI-17`): o campo de idade e o aviso de aplicabilidade passaram
+ * a ter prova de que aparecem na tela.** Até aqui este cabeçalho dizia que
+ * *não tinham*, e que o projeto não tinha teste de componente — as duas
+ * afirmações eram verdadeiras e deixaram de ser. O `montagem.test.ts` monta o
+ * aplicativo pelo `import("./main.tsx")` em `jsdom` e tem quatro asserções
+ * sobre este arquivo: o botão *Editar dados* existe, o campo `perfil-idade`
+ * aparece **depois** de abrir a edição e com `inputMode` numérico, o aviso de
+ * aplicabilidade aparece com idade de 70 anos (comparado ao texto que
+ * `lib/aplicabilidade.ts` devolve, não a uma cópia), e **não** aparece sem
+ * idade. As cinco sabotagens correspondentes foram medidas, e cada uma reprova
+ * o teste que a nomeia.
+ *
+ * ⚠️ **O que continua sem prova:** o `jsdom` não é navegador. Não há layout
+ * nem CSS aplicado, então elemento renderizado e invisível por estilo passa. E
+ * a gravação ponta a ponta contra o Supabase continua dublada — ponto cego
+ * herdado do `UI-11`, não fechado por isto.
  *
  * ── A ASSIMETRIA QUE A TELA TEM DE MOSTRAR ──────────────────────────────
  *

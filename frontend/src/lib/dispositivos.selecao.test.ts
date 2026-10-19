@@ -158,10 +158,15 @@ describe("serieMisturaTipos", () => {
   });
 
   // O contrato que o `AvisoDeMistura` consome: um predicado decide se o aviso
-  // APARECE, o outro se ele NOMEIA AS CLASSES. Preso aqui porque o componente
-  // nao tem teste — `vitest` roda em ambiente `node` e o projeto nao tem
-  // testing-library (ver `UI-17` no backlog). Se alguem trocar um predicado
+  // APARECE, o outro se ele NOMEIA AS CLASSES. Se alguem trocar um predicado
   // pelo outro na tela, este teste e o unico lugar que explica a diferenca.
+  //
+  // ✏️ 19/10: o comentario anterior dizia que o componente "nao tem teste"
+  // porque o projeto nao tinha testing-library. Isso mudou (`UI-17`,
+  // `src/montagem.test.ts`), mas o AvisoDeMistura continua sem assercao de
+  // render: ele e condicional, e exercitar as condicoes dele exige serie de
+  // leitura construida — e o `UI-18`. Ou seja, o motivo da frase caiu e a
+  // conclusao dela segue valendo, por outra razao.
   it("os dois predicados nao sao substituiveis um pelo outro", () => {
     const doisTravesseiros: Dispositivo[] = [ESP, dispositivo("d", "Sala", false, "travesseiro")];
     // Aparece o aviso, mas sem nomear classes: nomear diria "Travesseiro e

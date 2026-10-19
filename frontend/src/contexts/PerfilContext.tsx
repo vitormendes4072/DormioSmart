@@ -87,6 +87,19 @@ export function PerfilProvider({ children }: { children: ReactNode }) {
  * ⚠️ **Levanta, e não devolve um valor neutro — e isso é a mitigação de um
  * ponto cego real.**
  *
+ * ✏️ **19/10: a ausência de verificação descrita abaixo foi fechada** — o
+ * `montagem.test.ts` tem a asserção `o <PerfilProvider> está montado na árvore
+ * de produção`, por duas provas independentes (o pedido a `/api/me/perfil`
+ * acontece, e o nome que ele carregou chega à tela). Medida por controle
+ * positivo: removido o provedor do `main.tsx`, caem **8 de 8** testes de
+ * montagem — e o `alcance.test.ts` continua passando, que era o ponto. O
+ * `throw` abaixo **continua sendo a escolha certa**, por um motivo que não era
+ * o original: ele é a defesa em tempo de execução, e o teste é a defesa em
+ * tempo de commit; nenhum dos dois substitui o outro, e o `jsdom` não é
+ * navegador.
+ *
+ * O que o parágrafo abaixo descrevia, mantido para o histórico ficar legível:
+ *
  * Nada neste repositório verifica que `<PerfilProvider>` está **montado** em
  * `main.tsx`. O `alcance.test.ts` prova que este módulo está no grafo de
  * imports, e ele continua no grafo mesmo se o provider sair do JSX — medido

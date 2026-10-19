@@ -24,14 +24,29 @@
  *
  * **Não** prova que o componente é renderizado, nem que há rota que leve a
  * ele, nem que o botão aparece. Um componente importado e nunca usado no JSX
- * passa aqui. Fechar essa diferença exige teste de componente, que este
- * projeto não tem — o `vitest` roda em ambiente `node` e não há
- * testing-library. Está declarado no `UI-17`, e é de propósito que esta
- * limitação esteja escrita aqui e não só lá: alcance de verificação que não
- * está escrito ao lado da verificação é como o §1 das lições acontece.
+ * passa aqui. É de propósito que esta limitação esteja escrita aqui e não só
+ * no backlog: alcance de verificação que não está escrito ao lado da
+ * verificação é como o §1 das lições acontece.
  *
  * É **catraca**, não cobertura: nasce com a árvore limpa e pega o próximo
  * órfão.
+ *
+ * ✏️ **19/10 — a outra metade existe agora: `montagem.test.ts`.** O parágrafo
+ * acima dizia que fechar a diferença exigia teste de componente *"que este
+ * projeto não tem"*, e isso deixou de ser verdade. O arquivo novo monta o
+ * aplicativo pelo `import("./main.tsx")` em `jsdom` e prova renderização. A
+ * divisão de trabalho entre os dois ficou assim, e vale saber qual é qual
+ * antes de depender de um deles:
+ *
+ *   este arquivo    -> o módulo está no grafo de `import`  (nível: arquivo)
+ *   montagem.test.ts -> o componente chega à tela           (nível: render)
+ *   nada ainda       -> o export é usado por alguém         (nível: símbolo, `UI-19`)
+ *
+ * E o número que mediu a fronteira entre os dois primeiros: em **5 de 5**
+ * sabotagens de JSX — provedor fora do `main.tsx`, `<ExcluirConta />` fora do
+ * `Settings.tsx`, `<EditarPerfil />` fora dele, o aviso de idade fora do JSX,
+ * a rota `/configuracoes` fora do `App.tsx` — **esta suíte continuou verde** e
+ * a de montagem reprovou. Ver a entrada de 19/10 (ii) do diário.
  */
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
