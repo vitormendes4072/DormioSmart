@@ -31,12 +31,12 @@ cada uma existe porque o projeto já pagou por não a ter feito.
 
 | § | Padrão | Ocorrências |
 |:-:|---|:-:|
-| 1 | Alcance declarado que não alcança | **9** |
+| 1 | Alcance declarado que não alcança | **10** |
+| 5 | Premissa herdada da documentação, nunca conferida no artefato | **7** |
 | 6 | Confirmação emitida antes da verificação | **6** |
 | 4 | O instrumento de medida mede errado — e nada mede o instrumento | **5** |
 | 2 | Análise correta que não chega onde a decisão é tomada | **4** |
 | 3 | Número herdado que ganha autoridade sem ter procedência | **4** |
-| 5 | Premissa herdada da documentação, nunca conferida no artefato | **6** |
 | 7 | Degradação silenciosa é pior que falha ruidosa | **3** |
 | 8 | A média esconde o caso que importa | **2** |
 
@@ -45,6 +45,18 @@ cada uma existe porque o projeto já pagou por não a ter feito.
 > reordenamento diz, e vale mais que os números: **os dois padrões que mais reincidem neste
 > projeto são os dois que só aparecem quando alguém vai rodar**. Nenhuma das três
 > ocorrências novas foi achada por leitura.
+>
+> ✏️ **20/10, segunda sessão (`SEC-08`):** entraram duas, **e as duas são da mesma análise** —
+> a ocorrência **10 do §1** (conclusão certa no veredito e errada na parte acionável) e a **7 do
+> §5** (a documentação ressalvava e a leitura leu afirmação). O §5 subiu para o segundo lugar e
+> **o índice ficou com os três primeiros lugares ocupados pelos padrões que só aparecem quando
+> alguém confere fora do próprio raciocínio.** E há uma coisa nova no formato: **estas duas
+> ocorrências não foram achadas por execução, e também não por leitura de código — foram achadas
+> investigando a recomendação de uma sessão anterior deste projeto contra fonte primária.** É um
+> terceiro instrumento, e ele existe porque o enunciado da sessão pediu a conclusão **testada, não
+> repetida**. Vale registrar como método: *pedir que a sessão seguinte conteste a anterior pegou o
+> que nem a execução nem a revisão pegariam, porque o defeito estava na recomendação e a
+> recomendação ainda não tinha sido executada.*
 
 ---
 
@@ -66,6 +78,7 @@ cobre é menor que o conjunto que seu nome anuncia; a diferença não aparece le
 | 7 | **O teste que barrava a criação de perfil alheio barrava pela CHAVE ESTRANGEIRA, não pela policy.** `test_ana_nao_cria_profile_para_o_bruno` inseria com um uuid **inventado**, para não colidir com a chave primária da linha que o gatilho cria — e uuid inventado não existe em `auth.users`, então o comando morria em `profiles_id_fkey` e **nunca chegava ao RLS**. Passava com `profiles_insert_own` escancarada (`with check (true)`): medido com o sabotador novo, só os dois testes **estruturais** caíam. O cenário que o teste queria montar — *"se o Bruno ainda não tivesse profile"* — era justamente o que ficou impossível de montar com um id falso. | Diário 2026-10-17 (iv); `tests/rls/conftest.py` (`CAROL`); sabotador `perfil_insert_permissivo` |
 | 8 | **Dois barramentos em série escondem um ao outro.** Um `upsert` (`insert ... on conflict do update`) contra uma vítima que **já tem** linha cai no ramo de `update`, então é a policy de `update` que recusa — e o teste passa **mesmo com a policy de `insert` escancarada**. O nome do teste ("a Ana não faz upsert no perfil do Bruno") anuncia cobertura das duas; ele cobre uma. Fechado com dois testes, um por estado da linha de destino. | Diário 2026-10-17 (iv); `tests/rls/test_rls_perfil.py` (cabeçalho) |
 | 9 | **A catraca de alcance provava `import`, e o nome dela dizia "alcance".** O `alcance.test.ts` nasceu em 17/10 para fechar o caso do `UI-10` — arquivo versionado que ninguém importava. Prova que existe caminho de `import` de `main.tsx` até cada módulo, e **para aí**: componente importado e nunca usado no JSX passa, provedor fora da composição passa, rota ausente passa. Medido por 5 sabotagens em 19/10, e em **5 de 5** a catraca ficou verde — inclusive com o `<PerfilProvider>` fora do `main.tsx` e com o `<ExcluirConta />` fora do `Settings.tsx`, que é literalmente o defeito do `UI-10` refeito um nível acima. Fechado com `montagem.test.ts`, que monta pelo `import("./main.tsx")` em vez de recompor a árvore no teste. | Diário 2026-10-19 (ii); `frontend/src/montagem.test.ts`; backlog `UI-17` |
+| 10 | **A conclusão estava certa no veredito e errada na parte acionável — e a parte acionável é a única que alguém executa.** A análise de enumeração de e-mails de 20/10 concluiu, corretamente e com cinco observações do próprio sistema, que *não dá para fechar com a confirmação de e-mail desligada*. E recomendou, **em negrito e em três lugares**, a saída que *"é a única que torna os caminhos genuinamente idênticos"* — ligar a confirmação. **Falso:** sob confirmação ligada o `signUp` devolve `identities` **vazio** para endereço existente e **populado** para novo, o que mantém o oráculo dentro de um 200; e ligar a confirmação **abre** retenção de credencial em conta não confirmada (`SEC-10`), que é acesso indevido e não divulgação. **O veredito vinha de medição; a recomendação, de uma frase de documentação de terceiro sobre um regime que o projeto nunca rodou** — mesmo parágrafo, mesmo negrito, procedência incomparável. Custou zero só porque a execução foi precedida de investigação. | Diário 2026-10-20 (ii) e (iii); backlog `SEC-08`, `SEC-10`; `frontend/src/lib/autenticacao.ts` (cabeçalho de `temSessaoImediata`, corrigido) |
 
 **O que custou.** Nos casos 1, 4 e 5, **nada em produção — e só porque alguém foi rodar.** Os
 três jobs tinham sido lidos e revisados em 30/09 e **nenhum dos três passava como estava
@@ -90,6 +103,24 @@ número**: removido o `<PerfilProvider>`, a suíte passa. Dezoito dias foi o pre
 que ninguém tinha declarado; dois dias foi o prazo da que estava declarada ao lado da
 verificação. **É a mesma distância que separa catraca de cobertura, e ela só é visível quando
 alguém escreve qual das duas tem na mão.**
+
+A ocorrência 10 é **variante nova do padrão, e a mais incômoda dele até aqui**, porque o que não
+alcançou não foi um teste nem uma catraca: foi **uma conclusão de análise**. Ela estava certa no
+veredito e errada na parte acionável, e vale separar as duas metades porque a lição está na
+assimetria. O veredito — *"não dá para fechar a enumeração com a confirmação de e-mail
+desligada"* — era e segue sendo verdadeiro, e estava bem demonstrado: cinco divergências
+observáveis, o oráculo localizado na API e não na tela, duas razões independentes. A parte
+acionável — *"ligar a confirmação é a **única** saída que torna os caminhos genuinamente
+idênticos"* — era falsa, e foi escrita **em negrito, como recomendação, em três lugares**: no
+backlog como saída (A), no cabeçalho de `temSessaoImediata` e na entrada do diário. **E a parte
+acionável é a única metade que alguém executa.** Ninguém implementa um veredito; implementa-se
+uma recomendação. Investigá-la em vez de executá-la mostrou que a saída recomendada (a) **não
+fecha** o canal do cadastro — troca `422` por `identities` vazio, isto é, muda o custo de
+exploração — e (b) **abre** uma via de acesso indevido a conta que não existe hoje (`SEC-10`,
+pré-sequestro por retenção de credencial). Executá-la teria piorado a postura de segurança do
+projeto **acreditando melhorá-la**, com a análise anterior como autoridade. Custou zero porque
+a execução foi precedida de investigação; o custo potencial era a troca de uma divulgação de
+informação por um acesso indevido.
 
 **Como não repetir.**
 
@@ -131,6 +162,24 @@ alguém escreve qual das duas tem na mão.**
    ficaria vermelho? Em que máquina?* A segunda metade da pergunta é a que pegou o `CI-05`.
    E a terceira, que as ocorrências 7 e 8 acrescentam: **por qual mecanismo ele ficaria
    vermelho — o que eu quero testar, ou outro que estava no caminho?**
+9. ⚙️ **Veredito e recomendação verificam-se separado, e a recomendação primeiro.** Da ocorrência
+   10: uma análise produz duas coisas de natureza diferente — um **veredito** (*isto vaza*) e uma
+   **recomendação** (*faça X*) —, e a segunda carrega premissas que o veredito não precisou. O
+   veredito ali vinha de cinco observações do nosso próprio sistema; a recomendação vinha de uma
+   frase de documentação de terceiro sobre um regime **que o projeto nunca rodou**. Mesmo
+   parágrafo, mesmo negrito, **procedência incomparável** — e nada no formato do registro
+   distinguia as duas. Daí a regra: **toda recomendação é marcada com a sua própria procedência,
+   e quando ela depende de comportamento não medido, isso vai escrito nela e não numa ressalva
+   adiante.** Corolário prático, porque é a parte acionável desta própria regra: **quando a
+   recomendação for executar uma mudança de configuração, medir o regime de destino ANTES**, não
+   depois — confirmação de e-mail, `disable_signup`, qualquer chave de painel. O regime que não
+   se rodou é exatamente o lugar onde a documentação do fornecedor é a única fonte, e o §5 inteiro
+   é sobre isso.
+10. ❓ **Pergunta de revisão:** *qual é a parte desta análise que alguém vai EXECUTAR, e ela está
+    apoiada em medição ou em leitura?* Se a resposta for leitura, a recomendação é hipótese com
+    aparência de conclusão. E a segunda metade, que a ocorrência 10 acrescenta: **a mudança que
+    eu recomendo fecha o canal que motivou a análise, ou abre outro?** Trocar divulgação de
+    informação por acesso indevido é regressão disfarçada de correção.
 
 ---
 
@@ -276,6 +325,7 @@ falsa, e ninguém a conferiu.
 | 4 | **"A policy de `update` em `profiles` já existe; falta a interface."** Era a especificação do `UI-11`, e a conclusão prática dela — *é barato* — estava certa por acidente e pelo motivo errado. **Nenhum código de produção toca `public.profiles`:** as únicas referências do repositório estão em `web-app/tests/rls/`. O nome que a tela exibe vem de `auth.users.raw_user_meta_data`, e `profiles.nome` é cópia tirada **uma vez** pelo trigger `handle_new_user` no signup e **lida por nada**. Escrever pela policy existente não mudaria uma letra em tela nenhuma. | Diário 2026-10-17; migração `001` linha 125; backlog `PERFIL-01` |
 | 5 | **A docstring da biblioteca descrevia outra coisa, e quase encerrou a análise de um defeito de perda de dado.** `profiles` virando fonte de verdade, a gravação foi escrita com o `upsert` do PostgREST — e a pergunta *"o que acontece com as colunas que o corpo não traz?"* foi respondida lendo o cliente Python, cuja docstring diz que o comportamento de campo ausente *"só se aplica a upsert em lote"*. Tranquilizador e **sobre outro parâmetro**. A especificação do **servidor** diz o contrário, literal: *"any missing columns in the payload will be inserted as `null` value by default"* — e upsert é um `POST`. Consequência, se tivesse ficado: `PATCH {"idade": 30}` **apagaria o nome do titular**, em silêncio, com `200`, na tela que existe para cumprir o art. 18, III. **Variante nova do padrão:** não é documentação velha nem premissa não conferida — é **a documentação da camada errada**, lida com atenção e respondendo a uma pergunta que não era a feita. | Diário 2026-10-19; docs do PostgREST v12.2 (*Prefer Header → Missing*); `postgrest.base_request_builder.pre_upsert`; `web-app/perfil.py` (cabeçalho de `gravar`) |
 | 6 | **A premissa não conferida era a CONFIGURAÇÃO, e ela desmentiu uma conclusão de segurança escrita no backlog.** O `UI-19` concluiu em 19/10, lendo o código, que não havia vazamento de enumeração de e-mails: `cadastrar` não ramifica, logo e-mail novo e e-mail existente recebem a mesma resposta. O raciocínio está **correto sobre o código** e **falso sobre este projeto** — a resposta idêntica é o que o Supabase faz com a confirmação de e-mail **ligada**, e neste projeto ela está **desligada**. Com ela desligada o `signUp` devolve `422 user_already_exists`, a ramificação acontece dentro de `traduzirErroDeAuth` (onde a leitura não foi) e a tela dizia *"Já existe uma conta com este e-mail."* **Confirmado cadastrando um e-mail existente**, em 20/10. | Diário 2026-10-20; backlog `SEC-08` e `UI-19`; `frontend/src/lib/autenticacao.ts` |
+| 7 | **A documentação ressalvava, e a leitura leu afirmação.** Fechada a ocorrência 6, a saída recomendada foi *ligar a confirmação de e-mail*, sob a premissa de que nesse regime o Supabase responde igual para endereço novo e existente. A documentação oficial do `signUp` diz, literalmente: *"you may get back an error message that **attempts to** hide this information from the user"* — **"tenta ocultar"**, não "oculta". A qualificação é o fornecedor declarando que não garante, e ela foi lida como garantia. O que a ocultação deixa passar é concreto e está publicado como método de detecção: `identities` **vazio** para conta existente, **populado** para endereço novo, dentro de um 200. **Variante nova do padrão:** não é documentação velha, nem premissa não conferida, nem documentação da camada errada (ocorrência 5) — é **a documentação certa, lida com atenção ao que ela afirma e sem atenção ao que ela ressalva.** E a conclusão viajou três documentos com a ressalva perdida no caminho. | Diário 2026-10-20 (ii); doc de referência de `supabase.auth.signUp`; backlog `SEC-08`; `frontend/src/lib/autenticacao.ts` (cabeçalho de `temSessaoImediata`, que agora cita a frase inteira) |
 
 **O que custou.** O caso 1 é o de maior potencial: o fator 4 teria contaminado em silêncio o
 braço "treina" da matriz de transferência, que é **o resultado original do trabalho**. Foi
@@ -346,10 +396,18 @@ estabeleceu como regra.
    que falta é a que estava em uso.
 9. ❓ **Pergunta de revisão:** *de que configuração esta conclusão depende, e eu conferi o valor
    dela neste projeto?* É o irmão da pergunta 10, para o artefato que não está no repositório.
-10. ❓ **Pergunta de revisão:** *eu abri o artefato, ou li sobre ele?* Vale para dataset, folha de
+10. ⚙️ **A qualificação da documentação é parte da documentação.** Regra da ocorrência 7: quando a
+   fonte diz *"tenta"*, *"na maioria dos casos"*, *"deve"*, *"em geral"*, a palavra não é estilo —
+   **é o fornecedor declarando que não garante.** A conclusão derivada dali herda a qualificação,
+   e escrevê-la sem ela é fabricar uma garantia que a fonte recusou dar. Forma verificável:
+   **citar a frase da fonte, inteira, ao lado da conclusão** — foi o que tornou o erro visível
+   nesta ocorrência, e é o que o cabeçalho de `temSessaoImediata` faz agora.
+11. ❓ **Pergunta de revisão:** *eu abri o artefato, ou li sobre ele?* Vale para dataset, folha de
    dados, artigo (`DOC-06b`: **referência conferida ≠ artigo lido**) e código do próprio
    repositório. E a metade que a ocorrência 5 acrescenta: **o artefato que eu abri é o que
    decide a resposta, ou é o vizinho dele?**
+12. ❓ **Pergunta de revisão:** *a fonte afirma ou ressalva?* Ler a frase citada, não a paráfrase
+   que ficou na memória — inclusive quando a paráfrase é a de uma sessão anterior deste projeto.
 
 ---
 
@@ -497,7 +555,10 @@ Sete perguntas, uma por padrão. Cada uma existe porque o projeto pagou por não
       vermelha? **Em que máquina?** E: **por qual mecanismo** ela ficaria vermelha — o que eu
       quero testar, ou outro que estava no caminho? E, desde 19/10: **esta verificação
       recompõe no teste alguma coisa que existe em produção** — a árvore, a lista, o cenário?
-      Se recompõe, ela verifica a cópia.
+      Se recompõe, ela verifica a cópia. E, desde 20/10 (ii), para análise e não para teste:
+      **qual é a parte desta análise que alguém vai EXECUTAR, e ela está apoiada em medição ou
+      em leitura?** E: **a mudança que eu recomendo fecha o canal que motivou a análise, ou abre
+      outro?**
 - [ ] **§2** — Quem precisa saber disto vai abrir o arquivo onde eu escrevi? Este achado virou
       **item**, ou ficou observação?
 - [ ] **§3** — De onde veio este número? Ele é *medição*, *especificação*, *cálculo* ou
@@ -506,7 +567,9 @@ Sete perguntas, uma por padrão. Cada uma existe porque o projeto pagou por não
 - [ ] **§5** — Eu abri o artefato, ou li sobre ele? E, desde 20/10: **de que configuração
       esta conclusão depende, e eu conferi o valor dela neste projeto?** Se a resposta muda
       conforme uma chave que não está no repositório, a conclusão só vale com o regime
-      nomeado ao lado dela.
+      nomeado ao lado dela. E, desde 20/10 (ii): **a fonte afirma ou ressalva?** Ler a frase
+      citada, não a paráfrase — *"tenta ocultar"* não é *"oculta"*, e a qualificação é o
+      fornecedor declarando que não garante.
 - [ ] **§6** — Este "sucesso" foi verificado ou assumido? Como ele se pareceria se tivesse
       falhado? E, quando o "sucesso" é um `✅` num documento: **quem o escreveu abriu o
       artefato, ou abriu o item?** E: **que documento passa a estar errado por causa deste

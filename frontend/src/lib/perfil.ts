@@ -67,6 +67,29 @@
  * confirmação, nem que `data: { nome: null }` apaga a chave. Fecha com um
  * projeto Supabase de teste — registrado no `UI-11`.
  *
+ * ── CANAL DE ENUMERAÇÃO QUE ESTE ARQUIVO ABRIU (`SEC-09`) ────────────────
+ *
+ * ⚠️ `updateUser({ email })` para um endereço que **já pertence a outra
+ * conta** devolve `422 email_exists` (`supabase/supabase` #35844, aberta e
+ * movida para discussão como pedido de recurso; o Supabase declara enumeração
+ * fora do escopo do programa de divulgação). `traduzirErroDeAuth` não tem ramo
+ * para esse código, então a frase é genérica — **mas o desfecho não é**:
+ * `atualizarPerfil` devolve `tipo: "erro"` para endereço tomado e
+ * `tipo: "email-pendente"` para endereço livre, e `descreverResultado`
+ * imprime frases diferentes para os dois. **Dois desfechos distinguíveis na
+ * tela, verificados por leitura deste código.**
+ *
+ * Exige sessão, e isso **não é barreira**: uma sessão só — a do atacante —
+ * varre a base inteira. É custo de entrada de uma conta, não controle.
+ *
+ * **Não é corrigível aqui**, e é por isso que fica declarado em vez de
+ * "arrumado": igualar os desfechos exigiria mentir para o titular legítimo
+ * (dizer "link enviado" quando nada foi enviado) e o oráculo continuaria na
+ * resposta do Supabase, alcançável por `curl` com a chave `anon`. Entrou
+ * **junto com a funcionalidade, em 17/10, e não foi percebido na revisão**.
+ * Ver `SEC-09`, a seção X.7 de `docs/LIMITACOES-TCC.md` e o diário de
+ * 2026-10-20 (ii).
+ *
  * Raciocínio completo: `docs/DECISAO-FONTE-DO-PERFIL.md`.
  */
 import type { User } from "@supabase/supabase-js";

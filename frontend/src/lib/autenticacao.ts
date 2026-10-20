@@ -154,17 +154,43 @@ export async function cadastrar(
  * 3 testes afirmando uma decisao que nenhum caminho de producao exercitava —
  * `UI-19`), e a informacao fica aqui porque e insumo da decisao do `SEC-08`:
  *
- * - **Confirmacao LIGADA** (protecao contra enumeracao, padrao do Supabase):
- *   cadastrar e-mail existente responde **SUCESSO**, com `user` preenchido
- *   mas `identities` **vazio**, e **sem sessao** — exatamente como um e-mail
- *   novo. Os dois caminhos ficam indistinguiveis pelo cliente: mesma
- *   resposta, mesma tela ("confira seu e-mail"), nenhuma sessao. Quem ja tem
- *   conta recebe um e-mail avisando da tentativa, que e o caminho seguro.
- * - **Confirmacao DESLIGADA** (configuracao atual): cadastrar e-mail
- *   existente responde **erro 422 `user_already_exists`**, e e-mail novo
- *   responde 200 **com sessao**. A divergencia e por construcao, nao por
- *   redacao — ver o comentario do `user_already_exists` em
- *   `traduzirErroDeAuth`.
+ * - **Confirmacao LIGADA** (chamada de protecao contra enumeracao, e padrao
+ *   do Supabase): cadastrar e-mail existente responde **SUCESSO**, com `user`
+ *   preenchido mas `identities` **vazio**, e **sem sessao**. A tela e a mesma
+ *   ("confira seu e-mail") e nao ha sessao em nenhum dos dois casos.
+ *
+ *   ⚠️ **E este paragrafo afirmava que os dois caminhos ficam
+ *   "indistinguiveis pelo cliente". ERA FALSO, e o erro importa porque esta
+ *   frase era o insumo da decisao do `SEC-08`.** `identities` **vazio**
+ *   contra `identities` **populado** e justamente a diferenca, dentro de um
+ *   200, em JSON, sem timing e sem ferramenta — e esta publicado como
+ *   *metodo de deteccao* (`data.user.identities?.length === 0`). A propria
+ *   documentacao oficial do `signUp` e hedged e deveria ter sido lida com
+ *   atencao a qualificacao: *"you may get back an error message that
+ *   **attempts to** hide this information from the user"*.
+ *
+ *   Consequencia pratica: ligar a confirmacao **nao fecha** a enumeracao no
+ *   cadastro — troca o canal de status HTTP (422 vs 200) por um canal em
+ *   campo do corpo. Muda o **custo de exploracao**, nao o fato.
+ *
+ *   ⚠️ **E abre dois canais que nao existem hoje:** (i) `email_not_confirmed`
+ *   passa a existir no login, e a frase "Confirme seu e-mail antes de entrar"
+ *   (tratada acima, em `traduzirErroDeAuth`) so aparece para **quem tem
+ *   conta**; (ii) re-cadastro em endereco **nao confirmado** **nao
+ *   sobrescreve a senha original**, o que e pre-sequestro de conta e nao
+ *   enumeracao — e o `SEC-10` do backlog.
+ *
+ *   ⚠️ **Nada deste bloco foi medido contra o Supabase.** E fonte: doc
+ *   oficial do `signUp` e relatos de comunidade. O que fecharia: projeto
+ *   Supabase de teste com a confirmacao ligada, dois `signUp` por `curl`,
+ *   comparar `identities`. E o mesmo instrumento que o `UI-11` ja deve.
+ * - **Confirmacao DESLIGADA** (configuracao atual, e a decidida em 20/10 —
+ *   saida (B′) do `SEC-08`): cadastrar e-mail existente responde **erro 422
+ *   `user_already_exists`**, e e-mail novo responde 200 **com sessao**. A
+ *   divergencia e por construcao, nao por redacao — ver o comentario do
+ *   `user_already_exists` em `traduzirErroDeAuth`. **Confirmado
+ *   empiricamente em 20/10**, e e o unico dos dois regimes que este projeto
+ *   mediu.
  */
 function temSessaoImediata(data: { session: unknown | null }): boolean {
   return data.session !== null && data.session !== undefined;

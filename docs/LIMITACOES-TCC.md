@@ -34,6 +34,14 @@
 >    não pode ser decomposta entre perda do método e diferença de concordância da rotulagem.
 >    Este é o único acréscimo de conteúdo, e ele *acrescenta* uma limitação.
 >
+> ⚠️ **Seção nova em 2026-10-20: X.7, "Limitações de segurança da camada de autenticação".** É a
+> primeira limitação deste arquivo que **não é sobre medição** — é sobre o sistema como software
+> em uso. Declara que o sistema não atende ao requisito de não-dedutibilidade de usuários válidos
+> (ASVS 5.0 § 6.3.8, **Nível 3**), em quatro canais, **dos quais dois não foram medidos neste
+> trabalho e dizem isso no próprio texto**. **Leia "O que entrou em 2026-10-20", ao final, antes
+> de colar:** há três ressalvas de citação obrigatórias, uma delas sobre citar uma norma **por
+> ausência**. Referências novas da seção **não vêm do §0** — a lista está naquela nota.
+>
 > **Sugestão de posição:** seção própria ao final do desenvolvimento, antes das
 > Considerações Finais. Declarar limitação num lugar só, de forma organizada, é sinal de
 > maturidade metodológica — espalhá-las pelo texto parece tentativa de diluí-las.
@@ -380,6 +388,145 @@ acompanhamento clínico de distúrbios do sono. Não foi submetido a validação
 informações que apresenta ao usuário limitam-se ao registro de movimento e a métricas dele
 derivadas. O sistema não substitui polissonografia nem avaliação por profissional de saúde.
 
+### X.7 Limitações de segurança da camada de autenticação
+
+A autenticação do sistema é delegada a um serviço gerenciado de identidade (Supabase Auth),
+decisão registrada no desenvolvimento e motivada por não reimplementar armazenamento de
+credenciais, emissão de token e gestão de sessão em um trabalho cujo objeto é a medição do
+repouso. Dessa delegação decorre a limitação descrita nesta seção, que se declara por ser
+verificável por terceiros e por ter sido parcialmente medida durante o desenvolvimento.
+
+**A limitação, enunciada.** Os fluxos de autenticação do sistema permitem a um visitante não
+autenticado determinar se um endereço de correio eletrônico possui conta cadastrada. A falha é
+conhecida na literatura de segurança de aplicações como *enumeração de usuários* (OWASP, 2025a)
+e consiste na existência de um oráculo: um ponto de acesso que responde de forma distinguível
+conforme a conta exista ou não. Seu impacto direto é a divulgação de informação, e não o acesso
+indevido; sua relevância decorre do que ela viabiliza, a saber, a conversão de uma lista
+arbitrária de endereços em uma lista de usuários efetivos do serviço, insumo de ataques de
+reutilização de credenciais e de mensagens fraudulentas direcionadas.
+
+**Os quatro canais identificados.** Foram levantados quatro pontos distinguíveis, classificados
+abaixo quanto à natureza da evidência que os sustenta, por ser essa distinção condição para
+avaliar a extensão da limitação.
+
+1. **Cadastro de endereço já existente — verificado por execução.** Na configuração adotada, a
+   tentativa de cadastro com endereço já registrado resulta em resposta de erro
+   (`422 user_already_exists`), enquanto um endereço novo resulta em resposta de sucesso com
+   sessão autenticada. A divergência é observável em cinco atributos simultâneos — código de
+   estado, corpo da resposta, existência de sessão, navegação subsequente e estado da interface.
+   Este canal foi **reproduzido no sistema em execução**, não inferido da leitura do código.
+2. **Cadastro sob confirmação de endereço habilitada — não verificado neste trabalho.** O serviço
+   oferece, como mecanismo declarado de mitigação, a habilitação da confirmação de endereço, sob
+   a qual a tentativa de cadastro com endereço existente passa a retornar sucesso aparente. A
+   documentação do serviço descreve esse comportamento de forma qualificada, afirmando que a
+   resposta *"tenta ocultar"* a informação (SUPABASE, 2026a). Relatos técnicos reproduzíveis
+   indicam que a ocultação é incompleta: o objeto de usuário retornado apresenta a coleção de
+   identidades **vazia** quando o endereço já pertence a conta confirmada, e populada quando o
+   endereço é novo, o que restabelece o oráculo no interior de uma resposta de sucesso. Este
+   canal **não foi medido neste trabalho** e é declarado com base em documentação do fornecedor e
+   em relato de terceiros.
+3. **Alteração de endereço de correio eletrônico — verificado por leitura de código, com fonte
+   externa.** A funcionalidade de correção de dados cadastrais, implementada em atendimento ao
+   art. 18, III da Lei n.º 13.709/2018, solicita ao serviço de identidade a alteração do endereço
+   de acesso. Quando o endereço solicitado pertence a outra conta, o serviço responde
+   `422 email_exists`, comportamento registrado como pendência em aberto no repositório público
+   do fornecedor (SUPABASE, 2026b). Em consequência, a interface do sistema apresenta desfechos
+   distintos para endereço disponível e endereço já utilizado. Registra-se que este canal exige
+   sessão autenticada, o que **não constitui controle efetivo**: uma única conta é suficiente para
+   consultar um número arbitrário de endereços.
+4. **Recuperação de senha — não verificado neste trabalho.** O fluxo de recuperação foi
+   deliberadamente projetado para responder de modo idêntico na interface, independentemente da
+   existência da conta, conforme recomendação específica para esse fluxo (OWASP, 2025b). Relato
+   em aberto no repositório do fornecedor indica, contudo, que o serviço retorna erro de validação
+   para endereços existentes e sucesso para endereços inexistentes em determinadas condições,
+   porque a validação do domínio é executada após a consulta ao banco de dados (SUPABASE, 2026c).
+   O relato foi reproduzido pelo autor daquele registro com domínio reservado para documentação,
+   e **não se verificou se o comportamento se mantém para domínios de uso corrente**. Observa-se
+   adicionalmente que a recomendação referida exige uniformidade também no **tempo de resposta**,
+   requisito que não é atendido nem verificável no âmbito deste trabalho, por depender da
+   implementação interna do serviço delegado.
+
+**Enquadramento normativo da limitação.** A qualificação da severidade requer situar a exigência
+violada no corpo normativo pertinente, e esse exercício produz três constatações.
+
+Primeiro, a exigência de que usuários válidos não possam ser deduzidos a partir de mensagens de
+erro, códigos de estado ou tempos de resposta, **com menção explícita aos fluxos de cadastro e de
+recuperação de senha**, consta do Application Security Verification Standard em seu requisito
+6.3.8, classificado como **Nível 3** (OWASP, 2025c). O Nível 3 é o mais alto da norma, destinado
+a aplicações que demandem o maior rigor de verificação; nenhum requisito dos Níveis 1 e 2 exige
+uniformidade de resposta entre os desfechos. A limitação aqui declarada configura, portanto,
+não-atendimento de requisito de nível máximo, e não de requisito de linha de base.
+
+Segundo, o NIST Special Publication 800-63B-4, referência normativa para autenticação e gestão
+de ciclo de vida de autenticadores, **não estabelece requisito de não-enumeração**: a busca pelo
+termo no capítulo que define as obrigações do verificador não retorna ocorrências, e os controles
+que a publicação impõe para o mesmo espaço de ameaça são a limitação de taxa de tentativas e a
+notificação do titular em eventos de conta (NIST, 2025). A ausência é informativa: ela indica que
+a não-enumeração não integra o conjunto mínimo de obrigações de um verificador segundo aquela
+norma, o que é coerente com o fato de o fornecedor do serviço delegado declarar a enumeração como
+matéria fora do escopo de seu programa de divulgação de vulnerabilidades.
+
+Terceiro, e com consequência para a classificação da limitação, **o acoplamento entre a proteção
+contra enumeração e o fluxo de confirmação de endereço é escolha de implementação do serviço
+adotado, e não necessidade técnica**. Serviço concorrente do mesmo segmento oferece a resposta
+genérica no cadastro como opção de configuração independente, habilitada por padrão em instâncias
+novas, sem vinculá-la a qualquer fluxo de confirmação (AUTH0, 2026); outro serviço oferece a
+supressão apenas no fluxo de autenticação, mantendo-a ausente no cadastro (AMAZON, 2020).
+Conclui-se que a limitação decorre da escolha do serviço de identidade — decisão de projeto
+revisável — e não de uma impossibilidade do modelo de cadastro com endereço como identificador.
+
+**Mitigação adotada e o que ela não alcança.** Adotou-se proteção contra automação (*captcha*) nos
+pontos de acesso de cadastro, autenticação e recuperação. Essa medida reduz a **taxa** de
+exploração, tornando economicamente desinteressante a varredura em massa, e **não elimina o
+oráculo**: a consulta sobre um endereço determinado permanece possível ao custo de um desafio, e
+é precisamente essa consulta individual que sustenta os usos de maior gravidade da enumeração. A
+própria referência adotada classifica o *captcha* como medida de defesa em profundidade, e não
+como controle preventivo (OWASP, 2025a). Registra-se, pelo mesmo motivo, que as mensagens
+apresentadas na interface foram redigidas de forma condicional, não nomeando a existência da
+conta, o que fecha o canal diretamente visível ao usuário sem fechar os canais descritos nos itens
+1 a 4, que residem nas respostas do serviço e não na interface.
+
+**O que seria necessário para eliminar a limitação.** A correção, distinta das mitigações, exige
+três propriedades simultâneas: resposta idêntica em conteúdo, código de estado e tempo nos dois
+desfechos; cadastro que não autentique o usuário no mesmo ato, respondendo invariavelmente com o
+envio de mensagem de ativação; e tratamento do caso de endereço já cadastrado **pelo canal de
+correio eletrônico**, informando ao titular legítimo a tentativa e orientando-o à autenticação ou
+à recuperação de senha. Essa é a conduta recomendada para o fluxo de criação de conta, que
+classifica como incorretas tanto a mensagem que informa a existência da conta quanto a que
+confirma o cadastro bem-sucedido, e como correta apenas a que informa o envio de mensagem de
+ativação (OWASP, 2025a). Verificou-se que nenhuma configuração do serviço adotado implementa esse
+conjunto, e que interpor um serviço próprio entre o cliente e o serviço de identidade não seria
+suficiente, dado que o ponto de acesso original permanece publicamente alcançável com a chave
+pública que, por projeto, acompanha a aplicação cliente. A eliminação da limitação demandaria
+desabilitar o cadastro público no serviço de identidade e implementar a criação de contas em
+camada própria — alteração de arquitetura que extrapola o escopo delimitado e que foi, por essa
+razão, declarada e não executada.
+
+**Limitação correlata, registrada por decorrência.** Avaliou-se a habilitação da confirmação de
+endereço como possível mitigação e verificou-se que ela introduz exposição de natureza distinta e
+mais grave que a enumeração. Sob confirmação habilitada, uma nova tentativa de cadastro em
+endereço com registro pendente de confirmação não substitui a credencial originalmente
+estabelecida; em consequência, quem registre endereço de terceiro e não o confirme pode conservar
+a credencial de acesso à conta que o titular legítimo venha a confirmar e utilizar posteriormente.
+Trata-se da classe de ataque denominada *pré-sequestro de conta*, cuja causa raiz é descrita como
+a permissão de uso da conta antes da verificação de que o usuário controla o identificador
+fornecido, documentada empiricamente em 56 ocorrências sobre 35 de 75 serviços examinados
+(SUDHODANAN; PAVERD, 2022); a documentação do serviço adotado emprega o mesmo termo ao descrever
+as proteções do fluxo de vinculação de identidades (SUPABASE, 2026d). Registra-se que **a
+exposição não se verifica na configuração adotada**, na qual a conta é confirmada no ato do
+cadastro e, portanto, não existe estado pendente a ser ocupado. Ela é declarada por constituir
+condição a ser satisfeita previamente a qualquer adoção futura da confirmação de endereço, sob
+pena de substituir uma divulgação de informação por uma via de acesso indevido.
+
+**Síntese.** O sistema não atende ao requisito de não-dedutibilidade de usuários válidos.
+O não-atendimento é de requisito de nível máximo de verificação, decorre da escolha do serviço de
+identidade delegado e não do princípio de medição do trabalho, e permanece em quatro pontos
+identificados, dos quais um foi reproduzido em execução, um por leitura de código com fonte
+externa e dois declarados a partir de registros públicos do fornecedor não reproduzidos neste
+trabalho. O impacto é de divulgação de informação, sobre base de usuários de dimensão
+experimental, sem finalidade comercial. Não se afirma, em nenhuma hipótese, ausência de
+enumeração.
+
 ── FIM DO TEXTO ─────────────────────────────────────────────────────────────
 
 ---
@@ -408,6 +555,85 @@ derivadas. O sistema não substitui polissonografia nem avaliação por profissi
       especialmente resumo, introdução e considerações finais.
 - [ ] Verificar a coerência com o `README.md` público e com a nota de escopo exibida
       permanentemente na interface (`WEB-03`).
+- [ ] 🔧 **X.7 — ler as três ressalvas de citação** em "O que entrou em 2026-10-20". Em especial:
+      **delimitar ou reconferir a citação do NIST, que é feita por ausência**, e **ler o artigo de
+      Sudhodanan & Paverd antes de citá-lo** — é a única fonte acadêmica da seção.
+- [ ] **X.7 — reconferir as duas *issues* em aberto (#35844 e #2702) na semana da entrega** e
+      registrar a data de consulta. Se tiverem sido corrigidas, a seção passa a afirmar falha
+      inexistente, que é o defeito do `DOC-11` ao contrário.
+- [ ] **X.7 — conferir que nenhum outro trecho do TCC afirma segurança que esta seção nega.**
+      Mesma varredura que o `DOC-11` fez por "ainda não existe": procurar afirmações de
+      conformidade, de "dados protegidos" e de anti-enumeração no resumo, na introdução, no
+      capítulo de desenvolvimento e na política de privacidade.
+
+## O que entrou em 2026-10-20
+
+Nota para você, não para o texto. **Uma seção nova inteira: X.7, "Limitações de segurança da
+camada de autenticação."** É a primeira limitação deste arquivo que **não é sobre medição** — não
+é sobre o modelo, nem sobre o dado, nem sobre o instrumento de verificação. É sobre o sistema
+como software em uso, e entrou porque o `SEC-08` foi decidido como saída **(B′)**: declarar em vez
+de fechar, por fechar não ser alcançável. Raciocínio completo no diário de **2026-10-20 (ii)**.
+
+**⚠️ Leia isto antes de colar.** Três coisas desta seção precisam de atenção, e duas são
+diferentes de tudo o mais no arquivo:
+
+1. **Dois dos quatro canais NÃO foram medidos neste trabalho**, e o texto diz isso em cada um,
+   com a palavra "não verificado" no próprio título do item. **Não apague essas marcas para
+   enxugar o texto.** A diferença entre "medimos" e "consta de registro público do fornecedor" é
+   a única coisa que separa esta seção de uma alegação; e o arquivo inteiro existe para não
+   fazer alegação. Se a banca perguntar "vocês testaram?", a resposta está escrita: o canal 1
+   sim, o 3 por leitura de código com fonte, o 2 e o 4 não.
+2. **A seção declara uma falha de segurança do próprio sistema, em texto que vai ao documento
+   final.** Isso é deliberado e é o ponto forte: a alternativa — ligar uma chave e afirmar que
+   fechou — seria afirmação falsa, porque a chave não fecha (ver canal 2). Declarar
+   não-atendimento de requisito **de Nível 3**, com o custo de fechá-lo precificado, é postura
+   defensável; afirmar conformidade que não existe não é.
+3. **Se o captcha (`SEC-11`) for ligado, NADA nesta seção muda** além de já estar escrito no
+   parágrafo "Mitigação adotada". O texto afirma que a medida reduz taxa e não elimina o oráculo.
+   Trocar "limitação declarada" por "mitigado" depois de ligar a chave seria o §1 das lições.
+
+**Referências novas desta seção, a montar na lista final.** Nenhuma delas estava no arquivo antes,
+e **nenhuma vem de `ML-DATASETS-E-PLANO.md` §0** — a procedência delas é esta lista, e não aquele
+§0, porque não são fontes de actigrafia. Todas foram lidas na fonte em 20/10:
+
+| Marcador no texto | Fonte | Natureza |
+|---|---|---|
+| (OWASP, 2025a) | *Authentication Cheat Sheet*, OWASP Cheat Sheet Series — §*Authentication and Error Messages*, com a subseção *Account creation* | normativo-orientativa; é a que lista *"Welcome! You have signed up successfully."* como resposta **incorreta** |
+| (OWASP, 2025b) | *Forgot Password Cheat Sheet*, OWASP Cheat Sheet Series | idem; é a que exige uniformidade de **tempo** |
+| (OWASP, 2025c) | *Application Security Verification Standard* 5.0, V6 *Authentication*, requisito **6.3.8 (Nível 3)** | **normativa** — é a exigência violada, e o nível é o argumento |
+| (NIST, 2025) | *NIST SP 800-63B-4, Digital Identity Guidelines: Authentication and Lifecycle Management* | **normativa, citada por ausência** — ver a ressalva abaixo |
+| (SUDHODANAN; PAVERD, 2022) | *Pre-hijacked accounts: An Empirical Study of Security Failures in User Account Creation on the Web*, arXiv:2205.10174 | **acadêmica, e a única desta seção que é** — 56 vulnerabilidades em 35 de 75 serviços |
+| (SUPABASE, 2026a) | Documentação de referência de `auth.signUp` | documentação de fornecedor |
+| (SUPABASE, 2026b) | `supabase/supabase`, *issue* #35844 — `email_exists` na troca de e-mail | registro público, **em aberto** |
+| (SUPABASE, 2026c) | `supabase/auth`, *issue* #2702 — `/recover` distinguível | registro público, **em aberto**, com PR proposto |
+| (SUPABASE, 2026d) | Guia *Identity Linking* — usa o termo *pre-account takeover* | documentação de fornecedor |
+| (AUTH0, 2026) | Configuração de *tenant* para resposta genérica no cadastro público | documentação/comunidade de fornecedor concorrente |
+| (AMAZON, 2020) | *Prevent user existence errors*, Amazon Cognito — e `UsernameExistsException` no `SignUp` | idem |
+
+**🔧 Três ressalvas de citação, e as três são obrigatórias.**
+
+- **(NIST, 2025) é citada por AUSÊNCIA, e citar ausência exige cuidado redobrado.** A afirmação do
+  texto é que a busca pelo termo *enumeration* no **capítulo de autenticadores** — o que contém as
+  obrigações `SHALL` do verificador — não retorna ocorrências. Isso foi conferido em 20/10 sobre
+  aquele capítulo, **e não sobre as quatro partes da publicação inteira** (63, 63A, 63B, 63C).
+  Antes de submeter: ou reconferir nas quatro partes, ou estreitar a frase do texto para dizer
+  exatamente onde se procurou. **Afirmação de ausência mal delimitada é o pior tipo de citação**,
+  porque não há como o leitor a verificar sem repetir a busca.
+- **O artigo de SUDHODANAN & PAVERD foi citado pela referência conferida, NÃO por leitura
+  integral.** Vale aqui o item do checklist que já está neste arquivo, e com mais força, porque é a
+  única fonte acadêmica da seção: **ler antes de citar.** O texto atribui a eles a causa raiz e os
+  números (56/35/75); confira as duas coisas no artigo. A **variante exata** de pré-sequestro
+  aplicável ao caso foi deliberadamente **não nomeada** no texto — o artigo cataloga cinco, e
+  atribuir a errada seria pior que descrever o mecanismo em prosa, que é o que o texto faz.
+- **As fontes de fornecedor são registros em aberto e podem fechar.** Os canais 3 e 4 dependem de
+  *issues* não resolvidas; se forem corrigidas antes da submissão, **a seção fica desatualizada
+  afirmando falha que não existe mais** — o que é o espelho exato do defeito que o `DOC-11`
+  descreve. Reconferir #35844 e #2702 na semana da entrega, e registrar a data da consulta no
+  texto final, como se faz com fonte eletrônica.
+
+**O que esta seção NÃO diz, de propósito:** não quantifica risco, não estima número de contas
+expostas e não compara com outros sistemas. Base de dimensão experimental e sem valor comercial
+está dito; qualquer número além disso seria inventado.
 
 ## O que entrou em 2026-10-17
 

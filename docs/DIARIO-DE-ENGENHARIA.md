@@ -2501,6 +2501,142 @@ rate-limiting em §3.2.2); doc oficial do `supabase.auth.signUp`; issues `supaba
 o caso não-confirmado e a senha retida (via discussão `supabase` #29327); comunidade Auth0 sobre a
 flag de tenant; `aws-amplify/amplify-js` #6238 sobre `UsernameExistsException` no `SignUp`.
 
+# 2026-10-20 (iii) — `SEC-08` executado: a saída (B′), os comentários que prometiam segurança, e o achado que estava escondido num custo
+
+**O problema, como foi entendido no início.** Executar a decisão da entrada anterior — o Vitor
+aprovou a saída **(B′)** — e fechar o que ficou pendente: os dois comentários falsos no código, os
+quatro canais em `LIMITACOES-TCC.md`, o captcha como item dele, e os dois canais novos catalogados.
+Trabalho de registro, com uma pergunta aberta de verdade no meio: **a retenção de credencial em
+conta não confirmada merece item próprio, ou é nota de rodapé do custo da saída (A)?**
+
+**Hipótese de trabalho.** Que fosse nota de rodapé. Era como estava escrita na entrada (ii) — um
+marcador dentro do parágrafo (b), ao lado do oráculo parcial. **Caiu**, e a correção é de
+classificação e não de fato: o que estava registrado como *custo de uma alternativa* é uma **classe
+de ataque com nome, literatura e causa raiz própria**, e de severidade **acima** de tudo o que o
+`SEC-08` cataloga.
+
+**O que foi testado, e como.** Esta entrada também não roda nada contra o Supabase — e isso é o
+risco em aberto nº 1, repetido pela terceira sessão seguida.
+
+| # | O que | Como | Natureza |
+|:-:|---|---|---|
+| 1 | A retenção de credencial é real e é classe conhecida? | `supabase` #14994 (2023) e #29327 (2024), independentes e em versões distintas; guia oficial *Identity Linking*; SUDHODANAN & PAVERD, arXiv:2205.10174 | fonte |
+| 2 | Ela é explorável **nesta** configuração? | Raciocínio sobre o regime medido em 20/10 (i) | **inferência, e está marcada como tal** |
+| 3 | As duas afirmações falsas do código estavam onde eu disse? | `Login.tsx` e cabeçalho de `temSessaoImediata`, abertos e corrigidos | código |
+| 4 | A suíte aceita as mudanças? | `vitest run`, `tsc --noEmit`, `pytest` do backend | execução |
+
+**Resultado medido.**
+
+**(a) A retenção de credencial virou `SEC-10`, e a justificativa de promovê-la é de natureza, não
+de gravidade percebida.** O mecanismo: alguém cadastra endereço de terceiro e **não confirma**; o
+dono real se cadastra depois, e o Supabase **reenvia o link em vez de criar conta nova — e não
+sobrescreve a senha**. O dono confirma, entra, usa; **a credencial viva é a do primeiro.** Dois
+relatos independentes, de 2023 e 2024, descrevem o mesmo comportamento em versões diferentes — o
+que é o mais próximo de reprodução que se consegue sem medir. E tem nome: é *account
+pre-hijacking*, com a causa raiz enunciada pelos autores do artigo como **permitir uso da conta
+antes de verificar que o usuário controla o identificador**, documentada em **56 vulnerabilidades
+sobre 35 de 75 serviços populares**. A própria documentação do Supabase usa o termo — *"would
+enable pre-account takeover attacks"* — e descreve a proteção **para o fluxo de vinculação de
+identidades**, não para o re-cadastro simples.
+
+**Por que não é nota de rodapé:** enumeração é **divulgação de informação**; isto é **acesso
+indevido a conta**, com os dados de sono do titular dentro. São classes diferentes de dano, e
+enterrar a segunda num parágrafo sobre a primeira é o §2 das lições — análise que não chega onde
+a decisão é tomada. Mais: ela **muda o sinal da decisão.** A saída (A) não é só "ganho parcial por
+custo alto"; é **trocar um vazamento de informação por uma via de acesso indevido**. Quem leia só
+a coluna de custo não vê isso; quem leia um item 🟠 com título próprio, vê.
+
+**(b) E ela NÃO é explorável na configuração atual — o que é o resultado mais útil da entrada.**
+Com a confirmação **desligada**, a conta nasce confirmada no primeiro `signUp`, e o segundo recebe
+`422`: **não existe estado "não confirmado" para ser ocupado.** Logo `SEC-10` não é risco corrente,
+é **pré-condição** de qualquer adoção futura da saída (A). Está escrito assim no item, com a
+obrigação explícita: se (A) for adotada algum dia, `SEC-10` se resolve **antes ou junto, nunca
+depois**. ⚠️ Isto é **inferência** a partir do regime medido em (i), não medição própria — e está
+marcado no item.
+
+**(c) Os dois comentários falsos foram corrigidos dizendo o que acontece, com a fonte dentro do
+comentário.** O de `Login.tsx` afirmava *"Resposta identica com ou sem conta"*; agora enumera os
+dois eixos em que isso é falso (conteúdo, por #2702; tempo, por exigência da cheat sheet que nada
+aqui mede), **com a ressalva de que a issue reproduz em domínio reservado e que não foi medido
+aqui.** O de `temSessaoImediata` afirmava *"os dois caminhos ficam indistinguiveis pelo cliente"*;
+agora cita a frase oficial **inteira** — *"an error message that **attempts to** hide this
+information"* — porque foi exatamente a qualificação perdida que produziu o erro, e deixar a frase
+no comentário é a forma verificável da lição. Nenhuma linha de lógica mudou nos dois arquivos: o
+código já era o melhor alcançável do lado do cliente. **O que mudou foi a afirmação** — e isso é o
+ponto, porque comentário que promete segurança inexistente **encerra a análise de quem revisa**,
+que é pior que comentário nenhum. O canal do `UI-11` ganhou cabeçalho próprio em `perfil.ts`,
+inclusive a parte que não é técnica: ele **entrou junto com a funcionalidade e passou pela
+revisão**.
+
+**(d) `LIMITACOES-TCC.md` ganhou a seção X.7, e é a primeira do arquivo que não é sobre medição.**
+Quatro canais, cada um **classificado pela natureza da evidência** — e dois deles com "não
+verificado neste trabalho" **no próprio título do item**, para que enxugar o texto não apague a
+distinção. O enquadramento, que é o produto: a exigência violada é **ASVS 5.0 § 6.3.8, Nível 3** —
+o nível máximo, e nenhum requisito de Nível 1 ou 2 exige uniformidade de resposta; o **NIST
+SP 800-63B-4 não tem requisito de anti-enumeração** (busca por `enumerat` no capítulo de
+autenticadores = zero, e o que ele impõe é rate-limiting e notificação); e o **acoplamento do
+Supabase é escolha de implementação** — o Auth0 tem flag própria, ligada por padrão em tenants
+novos, sem vincular à confirmação. Isso transforma *"temos uma falha"* em *"não atendemos a um
+requisito de nível máximo, sabemos em quais quatro pontos, sabemos quanto custa fechar, e a causa
+é uma decisão de projeto revisável"*. E a nota fora dos marcadores traz **três ressalvas de citação
+obrigatórias**, a mais séria sendo que **a citação do NIST é feita por ausência** e está delimitada
+a um capítulo — afirmação de ausência mal delimitada é a pior forma de citação, porque o leitor não
+a verifica sem repetir a busca.
+
+**(e) O captcha ficou como `SEC-11` e com o parágrafo do que ele não faz colado no do que faz.** É
+painel, ~5 min, zero código, cobre `signup`/`token`/`recover`. **Reduz taxa; não elimina o
+oráculo** — quem quer saber de **um** endereço resolve um desafio e recebe a resposta, e é a
+consulta individual que sustenta os usos graves (phishing direcionado, extorsão). E a frase que o
+item existe para carregar: **ligar isto não autoriza mudar uma palavra da X.7.** Trocar "limitação
+declarada" por "mitigado" depois de ligar a chave seria o §1 das lições com a chave na mão.
+
+**(f) A suíte.** Frontend **418 testes em 27 arquivos**, inalterados — as mudanças de hoje são
+comentário e documentação, e nenhum teste do repositório afirma nada sobre os canais novos, o que
+é verdade registrada e não lacuna nova: `createClient` é dublê desde o `UI-17`. `tsc --noEmit`
+limpo. Backend **293**, reexecutado e inalterado. RLS fora da conta (exige Postgres real).
+
+**Adaptação.** Duas, e as duas são de classificação.
+
+1. **A retenção de credencial foi promovida de nota a item (`SEC-10`)** — justificativa em (a).
+2. **O `SEC-08` saiu do L3 e o `SEC-11` entrou nele.** Parece contabilidade e não é: o `SEC-08`
+   estava em L3 porque *"a saída é decisão sua"*, e a decisão foi tomada. O que resta dele é
+   declaração, que é L0. O que precisa do Vitor agora é **uma chave de painel**, e ela tem item
+   próprio justamente para não ficar pendurada num item de 🟠 que ninguém mais precisa abrir.
+   *Pendência que depende de outra pessoa não mora dentro de um item já decidido.*
+
+**Risco em aberto.**
+
+- **Terceira sessão seguida em que o instrumento que falta é o mesmo, e ele agora deve a quatro
+  itens.** Um projeto Supabase de teste fecharia: o ponto cego do `UI-11` (confirmação de troca de
+  e-mail, `nome: null` apagando a chave), o canal 2 do `SEC-08` (`identities`), o canal 4 /
+  `SEC-09` (`/recover` em domínio real) e o `SEC-10` inteiro. **Quatro itens esperando o mesmo
+  objeto, e ele não tem item.** Isto é candidato a ser o próximo item criado, e esta linha existe
+  para que ele não seja esquecido de novo.
+- **A X.7 depende de duas *issues* em aberto.** Se #35844 e #2702 forem corrigidas antes da
+  entrega, a seção passa a **afirmar falha que não existe** — espelho exato do `DOC-11`. Entrou no
+  checklist do arquivo, com a obrigação de reconferir na semana da entrega e registrar a data de
+  consulta.
+- **`SEC-10` é o item de maior severidade declarada do projeto e tem a evidência mais fraca.** Dois
+  relatos de comunidade e um termo em doc oficial, mais um relato **conflitante** sobre metadado
+  (`supabase-js` #298). Nada medido. A classificação 🟠 é da **classe**, não da confirmação — e
+  está dito no item.
+- **Nada disto rodou em runner** (`CI-06`); o `vitest` segue fora do `ci.yml` (`UI-18` (c)), e a
+  branch `chore/GIT-01-normalizar-fim-de-linha` segue sem push.
+
+**Procedência.** **Código:** `frontend/src/pages/Login.tsx` (comentário de `aoRecuperarSenha`,
+corrigido); `frontend/src/lib/autenticacao.ts` (cabeçalho de `temSessaoImediata`, corrigido e com
+a frase oficial citada inteira); `frontend/src/lib/perfil.ts` (cabeçalho novo do canal `SEC-09`).
+**Documentos:** `docs/LIMITACOES-TCC.md` (seção **X.7** nova, dentro dos marcadores; nota *"O que
+entrou em 2026-10-20"* com a tabela de 11 referências e as três ressalvas; 3 itens novos no
+checklist; aviso no cabeçalho); `docs/BACKLOG-COMPLETO.md` (`SEC-08` decidido e movido para L0;
+`SEC-09`, `SEC-10` e `SEC-11` novos; contagem 73 → **76**, L0 46, L3 8; mapa de camadas);
+`docs/LICOES-APRENDIDAS.md` (§1 ocorrência **10** + regras 9 e 10; §5 ocorrência **7** + regras 10
+e 12; índice reordenado — o §5 passou ao segundo lugar — e a nota de 20/10 (ii) sobre o terceiro
+instrumento; §9 com as duas perguntas novas). **Fontes externas:** OWASP *Authentication* e
+*Forgot Password Cheat Sheets*; **ASVS 5.0 V6.3.8 (L3)**; NIST SP 800-63B-4; doc de
+`supabase.auth.signUp` e guia *Identity Linking*; `supabase/auth` #2702, #2674; `supabase/supabase`
+#35844; `supabase` #14994 e #29327; `supabase-js` #298; SUDHODANAN & PAVERD, arXiv:2205.10174.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
