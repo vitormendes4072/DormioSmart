@@ -2295,6 +2295,212 @@ migrado para `descreverRecorte`); `docs/BACKLOG-COMPLETO.md` (`SEC-08` novo, `UI
 `docs/LICOES-APRENDIDAS.md` §5 ocorrência 6, a regra 8 (*conclusão condicionada a configuração
 não fecha por leitura*) e a pergunta nova do §5 no checklist da §9.
 
+# 2026-10-20 (ii) — `SEC-08` revisitado: a saída recomendada não fecha o que o backlog dizia que ela fechava
+
+**O problema, como foi entendido no início.** A entrada anterior concluiu que a anti-enumeração do
+Supabase vem acoplada à confirmação de e-mail, e que a saída **(A)** — ligar a confirmação — é a
+*"única que torna os caminhos genuinamente idênticos"*. Esta entrada existe para **testar essa
+conclusão em vez de repeti-la**: dá para ficar seguro contra enumeração nos dois regimes? Se não,
+por que exatamente? E como o mercado resolve o cadastro, que é o fluxo difícil — porque criar conta
+e não criar conta têm desfechos naturalmente diferentes.
+
+**Hipótese de trabalho.** Três, e as três caíram ou foram qualificadas.
+
+1. A saída (A) fecha o cadastro. *(Caiu.)*
+2. `recuperarSenha` não vaza, porque a resposta é uniformizada na tela. *(Caiu em dois eixos.)*
+3. O cadastro pelo backend Flask uniformizaria a resposta e fecharia o canal. *(Caiu: o endpoint
+   do Supabase continua público.)*
+
+**O que foi testado, e como.** Esta entrada **não roda nada contra o Supabase** — é leitura de
+código deste repositório mais leitura de fonte primária. O que é inferência está marcado.
+
+| # | O que | Como | Natureza |
+|:-:|---|---|---|
+| 1 | O padrão de mercado trata o cadastro? | Texto integral da *Authentication Cheat Sheet* da OWASP, seção *Account creation* | fonte |
+| 2 | Qual é a exigência normativa, e em que nível? | ASVS 5.0 V6, requisito a requisito | fonte |
+| 3 | O NIST exige anti-enumeração? | Busca por `enumerat` no capítulo de autenticadores do SP 800-63B-4 | fonte, **resultado negativo** |
+| 4 | A saída (A) é indistinguível? | Doc oficial do `signUp` + método de detecção publicado | fonte (uma de terceiros) |
+| 5 | Os outros fluxos vazam? | Issues do `supabase/auth` e do `supabase/supabase` + leitura de `autenticacao.ts`, `perfil.ts`, `Login.tsx` | fonte + código |
+| 6 | O proxy no Flask é viável? | `web-app/routes.py` (11 rotas), `web-app/database.py`, `web-app/auth.py` | **código deste repositório** |
+
+**Resultado medido.**
+
+**(a) A saída (A) NÃO torna os caminhos idênticos, e este é o achado da entrada.** Com a
+confirmação **ligada**, `signUp` de e-mail existente devolve 200 com um usuário obfuscado cujo
+`identities` é **array vazio**; e-mail novo devolve 200 com `identities` **populado**. É um oráculo
+de **um bit, dentro de um 200, em JSON, sem timing e sem ferramenta** — e está publicado como
+*método de detecção* (`data.user.identities?.length === 0`). A própria documentação oficial é
+hedged e deveria ter sido lida com atenção à qualificação: *"you may get back an error message that
+**attempts to** hide this information from the user"*. **Logo: nenhum dos dois regimes do Supabase
+é livre de enumeração no cadastro.** A diferença entre eles não é "fecha / não fecha", é **custo de
+exploração**: desligada, o sinal é o status HTTP (422 vs 200); ligada, é um campo dentro do corpo.
+
+⚠️ **Isto é fonte, não medição deste projeto.** O que fecharia: projeto Supabase de teste com a
+confirmação ligada, dois `signUp` por `curl`, comparar `identities`. Não foi feito — é o mesmo
+ponto cego do `UI-11`, e fecha com o mesmo instrumento.
+
+**(b) E o oráculo do regime (A) é parcial, o que piora o desenho em vez de melhorar.** O
+`identities` vazio vale para conta **confirmada**; endereço cadastrado e **não confirmado** ainda
+devolve identity, então o segundo `signUp` nele parece o primeiro. E aí mora um defeito **pior que
+enumeração**: re-cadastrar em endereço não confirmado **não sobrescreve a senha original**. Quem
+registra `vitima@dominio.com` primeiro e nunca confirma retém a credencial; se o dono real se
+cadastrar e confirmar sem notar, **a senha viva é a do atacante**. Isso é consequência de **ligar**
+a confirmação, e não estava na coluna de custo da saída (A).
+
+**(c) O padrão de mercado trata o cadastro, é literal, e recusa a premissa de produto do registro
+anterior.** A *Authentication Cheat Sheet* da OWASP, em *Account creation*, lista como respostas
+**incorretas** duas — não uma:
+
+> ❌ *"This user ID is already in use."*  ❌ *"Welcome! You have signed up successfully."*
+> ✅ *"A link to activate your account has been emailed to the address provided."*
+
+**O desfecho bem-sucedido é metade do vazamento.** O §(d)(1) da entrada anterior argumentou que
+igualar os caminhos exigiria *"parar de autenticar quem acabou de se cadastrar"*, e tratou isso
+como absurdo — *"é o produto"*. O padrão diz que é exatamente isso que se deve fazer: **cadastro
+nunca autentica na hora.** A objeção era premissa de produto, não restrição técnica, e o
+mercado a rejeita explicitamente.
+
+**(d) Calibração normativa — e é o achado que vai para a defesa.** A exigência de
+não-dedutibilidade **com registro nomeado** é **ASVS 5.0 § 6.3.8**, e é **Nível 3**:
+
+> *"Verify that valid users cannot be deduced from failed authentication challenges, such as by
+> basing on error messages, HTTP response codes, or different response times. **Registration and
+> forgot password functionality must also have this protection.**"* — ASVS 5.0, V6.3.8, **L3**
+
+Nível 3 é a faixa reservada às aplicações mais críticas; nada em V6.1/6.2/6.3 nos níveis 1 e 2
+exige uniformidade de resposta. E **o NIST não exige anti-enumeração**: a busca por `enumerat` no
+capítulo de autenticadores do SP 800-63B-4 — o que contém os `SHALL` de verificador — devolve
+**zero ocorrências**. O que o NIST manda ali é *rate-limiting* (`SHALL`) e notificação de evento de
+conta. **Portanto a enumeração é falha reconhecida, de severidade baixa e exigência de nível
+alto** — e é por isso que o Supabase a declara **fora do escopo** do programa de divulgação,
+afirmado nas duas issues abaixo.
+
+**(e) Como os grandes resolvem — e nenhum dos três fecha o cadastro inteiro.**
+
+| Provedor | Mecanismo no cadastro | Fecha? |
+|---|---|---|
+| **Auth0** | Flag **de tenant** (`Advanced → Use a generic response in public signup`), **ligada por padrão em tenants novos**, opt-in nos antigos → `invalid_signup` genérico | Sim no conteúdo — **e a chave é própria**, não amarrada à confirmação de e-mail |
+| **Cognito** | *Prevent user existence errors* no app client — **cobre o sign-in, não o `SignUp`**, que segue devolvendo `UsernameExistsException` | **Não** no cadastro |
+| **Supabase** | Acoplado à confirmação de e-mail, sem chave própria | **Não** — resta `identities` (ver (a)) |
+
+A lição de desenho: **Auth0 prova que o acoplamento do Supabase é escolha de implementação, não
+necessidade.** Uma flag de resposta genérica no cadastro pode existir sem obrigar fluxo de
+confirmação — ela só não existe aqui.
+
+**(f) Os outros fluxos, e aqui há dois achados novos neste repositório.**
+
+- 🐞 **`recuperarSenha` vaza, e a afirmação escrita em `Login.tsx` — *"Resposta identica com ou sem
+  conta"* — não se sustenta em nenhum dos dois eixos.** **(i) Conteúdo:** `supabase/auth` **#2702**
+  (aberta, com PR proposto) relata, em projeto hospedado, `400 email_address_invalid` para usuário
+  **existente** e **sucesso** para endereço inexistente — a validação de domínio roda *depois* da
+  busca no banco. No código daqui, `traduzirErroDeAuth` **não tem ramo para `email_address_invalid`**
+  (o ramo que existe casa `validation_failed` / `"unable to validate email"`), então cai no genérico
+  com `ok: false`, e `Login.aoRecuperarSenha` mostra `resultado.mensagem` em vez de *"Se houver uma
+  conta com este e-mail…"*. **A divergência atravessa a tela inteira.** ⚠️ Ressalva honesta: a
+  reprodução da issue usa domínio reservado (`@example.com`); **não está provado para domínio real
+  e não foi medido aqui.** **(ii) Tempo:** a *Forgot Password Cheat Sheet* exige resposta em tempo
+  uniforme, e o caminho que manda e-mail não tem a latência do caminho que não faz nada. Isso
+  depende de trabalho assíncrono **dentro** do Supabase — não é configurável daqui, e nada neste
+  projeto mede.
+- 🐞 **Sim, o `UI-11` abriu um canal novo, e é o mais limpo dos quatro.** `updateUser({ email })`
+  com endereço de outra conta devolve **`422 email_exists`** — `supabase/supabase` **#35844**,
+  reconhecida e **movida para discussão como pedido de recurso**, com enumeração declarada fora do
+  escopo do bounty. No código daqui: `traduzirErroDeAuth` **também não tem ramo para `email_exists`**
+  → frase genérica; **mas** `atualizarPerfil` devolve `tipo: "erro"` para endereço tomado e
+  `tipo: "email-pendente"` para endereço livre, e `descreverResultado` imprime **frases diferentes**.
+  Dois desfechos distinguíveis na tela — **verificado por leitura de código deste repositório.**
+  Agravante: exige sessão, mas **uma** sessão basta para varrer a base; autenticação aqui não é
+  barreira, é custo de entrada de uma conta.
+- **Login:** o conteúdo está certo — `invalid_credentials` nos dois casos, e `traduzirErroDeAuth` o
+  traduz para uma frase só. **O tempo não está:** `supabase/auth` **#2674** mede, contra projeto
+  hospedado, **+74,4 / +79,7 / +78,9 / +77,0 ms** (piso de 4 execuções; controle entre dois
+  endereços inexistentes = **+1,9 ms**), porque o bcrypt só roda quando o usuário existe. Fora do
+  nosso alcance: é `internal/api/token.go` do Supabase.
+- ⚠️ **E um custo da saída (A) que não estava no backlog:** com a confirmação ligada,
+  `email_not_confirmed` passa a existir no login — e *"Confirme seu e-mail antes de entrar"* só
+  aparece para **quem tem conta**. Ligar a confirmação fecha parcialmente o cadastro e **abre um
+  discriminador novo no login**, que `traduzirErroDeAuth` já traduz para frase própria (linha 38).
+
+**(g) O proxy no Flask é viável e é teatro de fronteira.** O que verifiquei no código:
+`web-app/routes.py` tem **11 rotas e nenhuma de cadastro ou login** — autenticação é toda
+cliente→Supabase, e `web-app/auth.py` só valida JWT de entrada; `web-app/database.py` já guarda
+`SUPABASE_ANON_KEY` e cria cliente por chamada (`cliente_do_usuario`). Então escrever a rota é
+barato e sem dependência nova. **E não fecha nada**, por duas razões:
+
+1. **A senha passaria a transitar pelo nosso serviço, e hoje não transita.** Isso cria superfície
+   de log acidental e obriga declaração na política de privacidade — o inverso do que o `SEC-06`
+   conquistou ao expulsar a `service_role` da ingestão.
+2. **O endpoint do Supabase continua público.** `POST https://<proj>.supabase.co/auth/v1/signup`
+   com a chave `anon`, que **está no bundle por design**. A #2702 diz a frase exata: *"wrapping the
+   call in an application server action does not close it."* Uniformizar a nossa resposta deixa o
+   oráculo original a um `curl` de distância.
+
+Fechar de verdade por esse caminho exigiria **desligar o signup público** (`disable_signup`) e criar
+contas pelo backend com papel privilegiado — reintroduzir exatamente o que o `SEC-06` expulsou,
+mais a API de administração, mais rate-limiting próprio. **É saída, mas é arquitetural, não um
+endpoint.**
+
+**(h) Mitigação e correção, nomeadas — porque o enunciado pediu a distinção.**
+
+| Medida | O que faz | O que é |
+|---|---|---|
+| Resposta única em conteúdo, status **e tempo** + cadastro que não autentica + aviso pelo canal de e-mail | elimina o bit | **correção** — e **nenhuma configuração do Supabase entrega isso hoje** |
+| `disable_signup` + criação pelo backend uniformizada | elimina o bit | **correção**, ao preço do `SEC-06` |
+| Ligar a confirmação (saída A) | troca o canal de status HTTP por canal em campo JSON | **mitigação**, e não a chamem de correção |
+| Captcha (hCaptcha/Turnstile, nativo no painel) | encarece a consulta | **mitigação** |
+| Rate limiting / atraso artificial | encarece a consulta | **mitigação** — e atraso **fixo** não corrige timing, só desloca a média |
+
+**O teto, dito com precisão:** mesmo com (A) + captcha + limite, restam **`identities`**,
+**`email_exists` do `UI-11`** e **o timing de #2674** — três canais fora do nosso controle. **Logo o
+trabalho não pode afirmar ausência de enumeração em regime nenhum.** Pode afirmar que o canal
+óbvio está fechado e que os residuais estão catalogados com fonte, o que é afirmação diferente e
+verdadeira.
+
+**Adaptação.** A recomendação mudou, e não é nenhuma das três saídas do backlog como estavam
+escritas. É **(B′)**: manter a confirmação **desligada** até a banca, ligar **captcha** no painel, **não**
+fazer o proxy, e declarar os **quatro** canais em `LIMITACOES-TCC.md` com a fonte de cada um. O
+motivo de não ser (A): ela não entrega o que o backlog prometia, abre o discriminador
+`email_not_confirmed` no login, traz o problema da senha retida em endereço não confirmado, depende
+do remetente limitado do plano gratuito e quebra o roteiro *"cadastre e entre"* — **custo alto,
+ganho parcial, e um custo novo.** O motivo de não ser (B) pura: (B) declara a limitação sem o
+atenuante grátis que existe no painel.
+
+E a frase de defesa, que é o produto desta entrada: **a exigência violada é ASVS 6.3.8, Nível 3**;
+o projeto é de nível 1 declarado; o canal está catalogado, com fonte, com severidade calibrada e
+com a saída conhecida e precificada. Isso é postura defensável diante de uma banca — e é melhor
+que ligar uma chave e afirmar que fechou, que é o que a entrada anterior recomendava.
+
+**Risco em aberto.**
+
+- **Duas afirmações do repositório sobre comportamento do Supabase estão falsas, e nenhuma foi
+  conferida contra o serviço.** O cabeçalho de `temSessaoImediata` diz que com a confirmação ligada
+  *"os dois caminhos ficam indistinguíveis pelo cliente"* — e `identities` os distingue. O
+  comentário de `Login.tsx` diz que `recuperarSenha` *"responde idêntico com ou sem conta"* — e a
+  #2702 diz que não. **Mesma classe do §5 das lições, agora em duas instâncias novas**, e nenhuma
+  delas é corrigível por teste deste repositório, porque o `createClient` é dublê. Não foram
+  tocadas nesta sessão: é investigação, e corrigir comentário é mudança de código.
+- **(a), (b), (f-i) e o timing do (f-login) são fonte de terceiros, não medição deste projeto.** O
+  instrumento que fecharia os quatro é o mesmo e já está devendo desde o `UI-11`: um projeto
+  Supabase de teste e um punhado de `curl`.
+- **O canal do `UI-11` (`email_exists`) está aberto e era desconhecido** até esta entrada. O
+  `SEC-08` catalogava um canal; são **quatro**.
+- **Nada disto rodou em runner** (`CI-06`), e a branch `chore/GIT-01-normalizar-fim-de-linha`
+  segue sem push.
+
+**Procedência.** **Código deste repositório, lido:** `frontend/src/lib/autenticacao.ts` (ausência de
+ramo para `email_address_invalid` e `email_exists`; `email_not_confirmed` na linha 38);
+`frontend/src/lib/perfil.ts` (`atualizarPerfil` → `erro` vs `email-pendente`; `descreverResultado`);
+`frontend/src/pages/Login.tsx` (`aoRecuperarSenha`, e o comentário falso); `web-app/routes.py`
+(11 rotas, nenhuma de auth); `web-app/auth.py`; `web-app/database.py` (`SUPABASE_ANON_KEY`,
+`cliente_do_usuario`). **Fonte primária:** OWASP *Authentication Cheat Sheet*, §*Authentication and
+Error Messages* → *Account creation*; OWASP *Forgot Password Cheat Sheet*; **OWASP ASVS 5.0 V6.3.8
+(L3)**; NIST SP 800-63B-4, cap. *Authenticators* (busca por `enumerat` = 0 ocorrências; `SHALL` de
+rate-limiting em §3.2.2); doc oficial do `supabase.auth.signUp`; issues `supabase/auth` **#2702**,
+**#2674** e `supabase/supabase` **#35844**. **Fonte de terceiros, usada como tal:** GuardLayer,
+*"Supabase signup with an existing email: why no error"* (07/09/2026) — método `identities.length === 0`,
+o caso não-confirmado e a senha retida (via discussão `supabase` #29327); comunidade Auth0 sobre a
+flag de tenant; `aws-amplify/amplify-js` #6238 sobre `UsernameExistsException` no `SignUp`.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
