@@ -36,7 +36,7 @@ cada uma existe porque o projeto já pagou por não a ter feito.
 | 4 | O instrumento de medida mede errado — e nada mede o instrumento | **5** |
 | 2 | Análise correta que não chega onde a decisão é tomada | **4** |
 | 3 | Número herdado que ganha autoridade sem ter procedência | **4** |
-| 5 | Premissa herdada da documentação, nunca conferida no artefato | **5** |
+| 5 | Premissa herdada da documentação, nunca conferida no artefato | **6** |
 | 7 | Degradação silenciosa é pior que falha ruidosa | **3** |
 | 8 | A média esconde o caso que importa | **2** |
 
@@ -275,6 +275,7 @@ falsa, e ninguém a conferiu.
 | 3 | **Três documentos passaram semanas fora do git**, entre eles a fundamentação que os READMEs mandavam ler. Achado ao comparar `git ls-files docs/` com o disco — não estava sendo procurado. | Diário 2026-09-22 (`GIT-04`) |
 | 4 | **"A policy de `update` em `profiles` já existe; falta a interface."** Era a especificação do `UI-11`, e a conclusão prática dela — *é barato* — estava certa por acidente e pelo motivo errado. **Nenhum código de produção toca `public.profiles`:** as únicas referências do repositório estão em `web-app/tests/rls/`. O nome que a tela exibe vem de `auth.users.raw_user_meta_data`, e `profiles.nome` é cópia tirada **uma vez** pelo trigger `handle_new_user` no signup e **lida por nada**. Escrever pela policy existente não mudaria uma letra em tela nenhuma. | Diário 2026-10-17; migração `001` linha 125; backlog `PERFIL-01` |
 | 5 | **A docstring da biblioteca descrevia outra coisa, e quase encerrou a análise de um defeito de perda de dado.** `profiles` virando fonte de verdade, a gravação foi escrita com o `upsert` do PostgREST — e a pergunta *"o que acontece com as colunas que o corpo não traz?"* foi respondida lendo o cliente Python, cuja docstring diz que o comportamento de campo ausente *"só se aplica a upsert em lote"*. Tranquilizador e **sobre outro parâmetro**. A especificação do **servidor** diz o contrário, literal: *"any missing columns in the payload will be inserted as `null` value by default"* — e upsert é um `POST`. Consequência, se tivesse ficado: `PATCH {"idade": 30}` **apagaria o nome do titular**, em silêncio, com `200`, na tela que existe para cumprir o art. 18, III. **Variante nova do padrão:** não é documentação velha nem premissa não conferida — é **a documentação da camada errada**, lida com atenção e respondendo a uma pergunta que não era a feita. | Diário 2026-10-19; docs do PostgREST v12.2 (*Prefer Header → Missing*); `postgrest.base_request_builder.pre_upsert`; `web-app/perfil.py` (cabeçalho de `gravar`) |
+| 6 | **A premissa não conferida era a CONFIGURAÇÃO, e ela desmentiu uma conclusão de segurança escrita no backlog.** O `UI-19` concluiu em 19/10, lendo o código, que não havia vazamento de enumeração de e-mails: `cadastrar` não ramifica, logo e-mail novo e e-mail existente recebem a mesma resposta. O raciocínio está **correto sobre o código** e **falso sobre este projeto** — a resposta idêntica é o que o Supabase faz com a confirmação de e-mail **ligada**, e neste projeto ela está **desligada**. Com ela desligada o `signUp` devolve `422 user_already_exists`, a ramificação acontece dentro de `traduzirErroDeAuth` (onde a leitura não foi) e a tela dizia *"Já existe uma conta com este e-mail."* **Confirmado cadastrando um e-mail existente**, em 20/10. | Diário 2026-10-20; backlog `SEC-08` e `UI-19`; `frontend/src/lib/autenticacao.ts` |
 
 **O que custou.** O caso 1 é o de maior potencial: o fator 4 teria contaminado em silêncio o
 braço "treina" da matriz de transferência, que é **o resultado original do trabalho**. Foi
@@ -290,6 +291,16 @@ sobre dado pessoal. O que o pegou não foi teste nem revisão: foi recusar-se a 
 resposta tranquilizadora sobre um comportamento que **nenhum teste deste repositório poderia
 alcançar**, porque o PostgREST roda no Supabase. E a correção não foi conferir melhor: foi
 trocar o desenho por um que não depende da resposta.
+
+**O caso 6 é o primeiro deste documento que chegou a produção e lá ficou**, e o que ele custou
+não é código: é um registro de segurança **afirmando o contrário do comportamento**, por 24 h e
+com a conclusão em negrito. A diferença entre ele e o caso 5 é inteira de método — o caso 5 foi
+pego porque alguém desconfiou de uma resposta tranquilizadora; o caso 6 **produziu** a resposta
+tranquilizadora, e só caiu quando alguém preencheu o formulário. E o detalhe que o torna §5 e
+não §1: a verificação que faltava não era um teste. Nenhum teste deste repositório poderia pegar
+isso, porque a premissa falsa era **o valor de uma chave no painel do Supabase** — artefato que
+não está no repositório, não aparece em `grep` e não tem como ser dublado. O item foi fechado
+como "proteção existe" sem que ninguém tivesse aberto a configuração de que a proteção depende.
 
 O caso 4 é o irmão invertido do caso 2, e por isso vale mais do que parece. No caso 2 a premissa
 falsa fazia um item **grande parecer pequeno**; no caso 4 ela fazia um item pequeno parecer
@@ -324,7 +335,18 @@ estabeleceu como regra.
    comportamento do `upsert`. Trocar por `update` + `insert` eliminou a pergunta em vez de
    respondê-la — e aí o teste local passa a valer, porque a semântica é de SQL. *Dependência
    que você não consegue testar é dependência que você deveria evitar, não documentar.*
-8. ❓ **Pergunta de revisão:** *eu abri o artefato, ou li sobre ele?* Vale para dataset, folha de
+8. ⚙️ **Conclusão sobre comportamento condicionado a configuração não fecha por leitura — fecha
+   exercitando, ou não fecha.** Regra da ocorrência 6: quando a resposta a *"isto vaza?"*,
+   *"isto autoriza?"*, *"isto valida?"* depende de uma chave que vive **fora** do repositório
+   (painel do Supabase, variável de ambiente, plano do provedor), o código é fonte apenas para
+   *o que ele faz com cada resposta possível* — **nunca** para qual resposta vem. Duas saídas, e
+   as duas valem: **exercitar** (preencher o formulário, que foi o que pegou este caso) ou
+   **escrever a conclusão por regime**, nomeando a chave e dizendo o que vale ligada e o que
+   vale desligada. Uma conclusão de segurança sem o regime nomeado é meia conclusão, e a metade
+   que falta é a que estava em uso.
+9. ❓ **Pergunta de revisão:** *de que configuração esta conclusão depende, e eu conferi o valor
+   dela neste projeto?* É o irmão da pergunta 10, para o artefato que não está no repositório.
+10. ❓ **Pergunta de revisão:** *eu abri o artefato, ou li sobre ele?* Vale para dataset, folha de
    dados, artigo (`DOC-06b`: **referência conferida ≠ artigo lido**) e código do próprio
    repositório. E a metade que a ocorrência 5 acrescenta: **o artefato que eu abri é o que
    decide a resposta, ou é o vizinho dele?**
@@ -481,7 +503,10 @@ Sete perguntas, uma por padrão. Cada uma existe porque o projeto pagou por não
 - [ ] **§3** — De onde veio este número? Ele é *medição*, *especificação*, *cálculo* ou
       *estimativa* — e isso está escrito ao lado dele?
 - [ ] **§4** — Este teste já falhou alguma vez? Eu sei fazê-lo falhar?
-- [ ] **§5** — Eu abri o artefato, ou li sobre ele?
+- [ ] **§5** — Eu abri o artefato, ou li sobre ele? E, desde 20/10: **de que configuração
+      esta conclusão depende, e eu conferi o valor dela neste projeto?** Se a resposta muda
+      conforme uma chave que não está no repositório, a conclusão só vale com o regime
+      nomeado ao lado dela.
 - [ ] **§6** — Este "sucesso" foi verificado ou assumido? Como ele se pareceria se tivesse
       falhado? E, quando o "sucesso" é um `✅` num documento: **quem o escreveu abriu o
       artefato, ou abriu o item?** E: **que documento passa a estar errado por causa deste

@@ -2156,6 +2156,145 @@ de 19/10); `frontend/package.json` (as três dependências novas);
 `UI-19` novos); `docs/LICOES-APRENDIDAS.md` §1 ocorrência 9, a regra 7 (*verificação não recompõe o que ela
 verifica*) e a pergunta do §1 no checklist da §9.
 
+# 2026-10-20 — `SEC-08`: o backlog dizia que não havia vazamento, e havia — o teste empírico contra a leitura
+
+**O problema, como foi entendido no início.** Fechar duas instâncias de export morto
+catalogadas no `UI-19`: `lib/dispositivos.ts :: nomeDoDispositivo` (3 testes, o `UI-16`) e
+`lib/autenticacao.ts :: pareceContaExistente` (3 testes, cujo assunto declarado é uma decisão
+de segurança). Trabalho de limpeza, peso baixo, decisão já tomada. **E o enunciado estava
+errado na parte que importava:** o `UI-19` havia concluído em 19/10, em negrito, que *"a
+proteção existe e não há vazamento"*. O Vitor foi cadastrar um e-mail já existente. A tela
+respondeu **"Já existe uma conta com este e-mail."**
+
+**Hipótese de trabalho.** Duas, e a segunda é a da sessão.
+
+1. A primeira, herdada do diagnóstico: trocar a frase pela forma não-comprometedora, no
+   modelo do `recuperarSenha` (*"Se houver uma conta com este e-mail, o link foi enviado"*),
+   fecha o vazamento.
+2. A segunda, levantada antes de executar a primeira e que é a razão desta entrada existir:
+   **com a confirmação de e-mail desligada, os dois caminhos divergem por construção, e a
+   frase é só o canal mais visível.** Se for assim, trocar a mensagem é cosmético — fecha o
+   que se lê na tela e deixa o que se lê na resposta.
+
+**O que foi testado, e como.**
+
+| # | O que | Como |
+|:-:|---|---|
+| 1 | O vazamento existe? | **Cadastro real de e-mail existente, na tela.** Não é leitura: é o formulário preenchido. |
+| 2 | De onde vem a frase? | `grep` por `"Já existe uma conta"` em `frontend/src/`. Dois caminhos até ela, não um. |
+| 3 | O que mais difere entre os dois cadastros? | Leitura dos quatro pontos do caminho: `signUp` → `cadastrar` → `Register.aoEnviar` → tela. |
+| 4 | Os testes novos prendem? | **Controle positivo:** a frase antiga devolvida ao código, suíte reexecutada. |
+| 5 | A premissa de código morto se sustenta? | `grep` por **nome importado** (não por frequência de identificador — o erro medido em 19/10). |
+
+**Resultado medido.**
+
+**(a) O vazamento é real, e tinha dois caminhos, não um.** A frase sai de
+`traduzirErroDeAuth`, e a função decide por `codigo === c || texto.includes(t)`: há a rota por
+`code` (`user_already_exists`) e a rota por `message` (`"already registered"`), que existe
+porque o `code` nem sempre vem. **Fechar uma só deixaria a outra vazando** — e é por isso que
+eram dois os testes a reescrever, e não um.
+
+**(b) Por que a conclusão de 19/10 estava errada, que é o achado de método.** O raciocínio
+era: *`cadastrar` não ramifica, logo e-mail novo e e-mail existente recebem a mesma resposta.*
+Isso é **verdade sobre o código** e **falso sobre este projeto**. A resposta idêntica é o que o
+Supabase faz com a confirmação de e-mail **ligada** — 200, `identities` vazio, sem sessão.
+Neste projeto ela está **desligada**, e aí o `signUp` devolve **erro**; a ramificação acontece
+dentro de `traduzirErroDeAuth`, uma chamada abaixo de onde a leitura parou. A premissa não
+conferida não era código: **era o valor de uma chave no painel do Supabase** — artefato que não
+está no repositório, não aparece em `grep` e não dá para dublar. Virou a **ocorrência 6 do §5**
+das lições, e é a primeira daquele parágrafo que chegou a produção e lá ficou.
+
+**(c) O que difere entre os dois cadastros além da mensagem** — a pergunta de fundo, respondida
+com o código na mão:
+
+| Observável pelo cliente | E-mail novo | E-mail já cadastrado |
+|---|---|---|
+| Resposta do `signUp` | **200**, `user` + `session` | **422 `user_already_exists`** |
+| `ResultadoDeAuth` | `{ ok: true, precisaConfirmarEmail: false }` | `{ ok: false, mensagem }` |
+| Sessão | **criada** | nenhuma |
+| Navegação | `navigate("/dashboard")` | **nenhuma** — fica em `/register` |
+| Estado da tela | painel autenticado | `<p role="alert">` vermelho no formulário |
+
+São **cinco** divergências, e a mensagem é **uma**. Quatro sobrevivem a qualquer redação.
+
+**(d) É possível tornar os dois indistinguíveis mantendo a confirmação desligada? Não, e é
+categórico.** Duas razões independentes, e cada uma bastaria:
+
+1. **O desfecho de um dos caminhos é funcional, não cosmético.** E-mail novo tem de entrar no
+   app — é o produto. E-mail existente **não pode** receber sessão: o app não tem a senha
+   daquela conta. Igualar os dois exigiria **parar de autenticar quem acabou de se cadastrar** e
+   mandar todo mundo para uma tela de "confira seu e-mail" — que, com a confirmação desligada,
+   é uma tela esperando um e-mail que **ninguém envia**. Indistinguível e quebrado.
+2. **O oráculo está na API, não na tela, e o frontend não é a fronteira de confiança.** Mesmo
+   com UI idêntica, `422` ≠ `200` na resposta do `signUp`. Qualquer `curl` enumera, e nenhuma
+   linha de TypeScript muda a resposta do servidor. **A anti-enumeração do Supabase não é uma
+   chave própria: ela vem junto da confirmação de e-mail.** Então o canal estrutural é
+   fechado lá, ou não é fechado.
+
+**(e) Controle positivo, que é o que dá valor aos dois testes novos.** Frase antiga devolvida ao
+código: **os dois reprovam**, um por caminho de tradução (`× pelo codigo`, `× pelo texto`).
+Restaurada: **17 de 17** no arquivo. Os testes acusam o defeito que existiam para acusar — o que
+os dois testes antigos, por serem o avesso disto, acusavam era a correção.
+
+**(f) A suíte, depois de tudo.** Frontend **424 → 418 testes em 27 arquivos**, e a conta fecha:
+**−3** de `pareceContaExistente`, **−3** de `nomeDoDispositivo`, **−2** linhas de `it.each`
+(as que exigiam a frase), **+2** novos. Saldo −6, e o número de **arquivos** não muda — nenhum
+ficou vazio. `tsc --noEmit` limpo. Backend **293**, reexecutado e inalterado: nada desta sessão
+toca `web-app/`. O `web-app/tests/rls/` continua fora da conta (exige Postgres de verdade).
+
+**Adaptação.** Três coisas mudaram em relação ao plano recebido.
+
+1. **A ordem de apagar `pareceContaExistente` foi invertida de propósito, e o motivo virou
+   regra.** O cabeçalho dela era o **único registro no repositório** de como o Supabase se
+   comporta com a confirmação **ligada** — e essa informação é **insumo da decisão** do
+   `SEC-08`, porque é ela que diz que a saída (A) funciona. Apagar a função primeiro teria
+   destruído a evidência de que a opção existe, no mesmo commit que criou a necessidade de
+   decidir. Foi preservada no cabeçalho de `temSessaoImediata`, onde o regime **oposto** já
+   estava descrito — então os dois regimes ficam lado a lado, que é a forma em que a informação
+   serve para decidir. *Export morto que afirma algo não se apaga: primeiro se lê o que ele
+   afirma, depois se confere, e só então se apaga.* Neste caso a conferência derrubou a
+   conclusão do item.
+2. **O `UI-19` não foi fechado, e as duas instâncias dele fecharam.** Parece contradição e não
+   é: o item mudou de enunciado em 19/10, de *"decidir as duas instâncias"* para *"tornar a
+   classe verificável"*, e a classe segue sem instrumento. As duas instâncias foram resolvidas
+   **à mão**, nada impede a terceira, e o `SEC-08` é a prova de por que a ferramenta importa —
+   a instância morta carregava a única cópia de uma informação de que uma decisão de segurança
+   dependia.
+3. **A correção ficou parcial por construção, então foi registrada onde se decide e não só
+   aqui.** O `SEC-08` entrou no backlog como 🔴 ⚠️ **L3 — decisão sua**, com as três saídas,
+   ganho e custo de cada uma, e com o vazamento marcado como **confirmado empiricamente**. É o
+   §2 das lições aplicado antes de ele reincidir: análise que não chega onde a decisão é tomada
+   é análise que não aconteceu. A mesma informação está no comentário de
+   `traduzirErroDeAuth` — porque quem for mexer na frase precisa saber que ela não é o
+   problema inteiro.
+
+**Risco em aberto.**
+
+- **O canal estrutural está aberto e agora está aberto COM CONHECIMENTO.** Isso é melhor que
+  ontem em honestidade e **idêntico em risco**: qualquer um com devtools enumera e-mails deste
+  projeto. O que mudou é que a tela não entrega mais de graça, e que a limitação deixou de ser
+  **suposta** para ser **declarada** — a distinção que é o §1 inteiro das lições. **A decisão de
+  fechá-lo é do Vitor** e tem custo de experiência real: a saída (A) quebra o roteiro de
+  demonstração da banca ("cadastre e entre") e depende de um remetente de e-mail que o plano
+  gratuito do Supabase limita por hora.
+- **Nenhum teste deste repositório pode pegar a reincidência deste defeito**, e vale dizer com
+  precisão: os dois testes novos prendem **a frase**. A divergência de desfecho mora na resposta
+  do Supabase, que a suíte **dubla** (`createClient` é mock desde o `UI-17`). O que pegaria é
+  ponta a ponta contra um projeto real, e não existe aqui.
+- **A classe do `UI-19` continua sem instrumento.** Export morto novo entra sem que nada acuse.
+- **Nada disto rodou em runner** (`CI-06`), e a branch `chore/GIT-01-normalizar-fim-de-linha`
+  segue sem push.
+
+**Procedência.** `frontend/src/lib/autenticacao.ts` (o comentário do `user_already_exists`, com
+a confirmação empírica datada; e o cabeçalho de `temSessaoImediata`, com os dois regimes do
+Supabase lado a lado); `frontend/src/lib/autenticacao.test.ts` (os dois testes novos e o que
+eles declaram **não** cobrir); `frontend/src/lib/dispositivos.ts` e
+`frontend/src/lib/dispositivos.selecao.test.ts` (`nomeDoDispositivo` fora, comentário do rótulo
+migrado para `descreverRecorte`); `docs/BACKLOG-COMPLETO.md` (`SEC-08` novo, `UI-16` fechado,
+`UI-19` com a conclusão de 19/10 **riscada e marcada como falsa**);
+`docs/LICOES-APRENDIDAS.md` §5 ocorrência 6, a regra 8 (*conclusão condicionada a configuração
+não fecha por leitura*) e a pergunta nova do §5 no checklist da §9.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
