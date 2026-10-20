@@ -135,12 +135,6 @@ export function serieMisturaInstrumentos(
   return !selecionado && dispositivos.length > 1;
 }
 
-/** Nome do dispositivo, ou um rotulo neutro se ele nao estiver na lista. */
-export function nomeDoDispositivo(dispositivos: Dispositivo[], id: string | null): string {
-  if (!id) return "Todos os dispositivos";
-  return dispositivos.find((d) => d.id === id)?.nome ?? "Dispositivo desconhecido";
-}
-
 /** Nome legivel do tipo, para exibir na lista de dispositivos. */
 export function rotuloDoTipo(tipo: TipoDeDispositivo | undefined): string {
   // Ausente nas respostas anteriores ao DATA-05. Ali, todo dispositivo era um

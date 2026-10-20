@@ -6,7 +6,6 @@ import {
   type TipoDeDispositivo,
   descreverDispositivo,
   descreverRecorte,
-  nomeDoDispositivo,
   precisaEscolherDispositivo,
   serieMisturaInstrumentos,
   serieMisturaTipos,
@@ -67,21 +66,6 @@ describe("serieMisturaInstrumentos", () => {
   });
 });
 
-describe("nomeDoDispositivo", () => {
-  it("nomeia o dispositivo recortado", () => {
-    expect(nomeDoDispositivo([TRAVESSEIRO, CELULAR], "b")).toBe("Celular");
-  });
-
-  it("sem recorte, diz que sao todos", () => {
-    expect(nomeDoDispositivo([TRAVESSEIRO, CELULAR], null)).toBe("Todos os dispositivos");
-  });
-
-  it("id fora da lista nao quebra a tela", () => {
-    // Acontece se o dispositivo for apagado noutra aba com o painel aberto.
-    expect(nomeDoDispositivo([TRAVESSEIRO], "sumiu")).toBe("Dispositivo desconhecido");
-  });
-});
-
 // ── DASH-08 ──────────────────────────────────────────────────────────────
 
 const ESP = dispositivo("a", "Quarto", false, "travesseiro");
@@ -113,6 +97,10 @@ describe("descreverRecorte", () => {
   });
 
   it("id fora da lista nao quebra a tela", () => {
+    // Acontece se o dispositivo for apagado noutra aba com o painel aberto.
+    // (Comentario herdado dos testes de `nomeDoDispositivo`, apagada em 20/10
+    // com o `UI-16`: era a justificativa do rotulo, e o rotulo sobreviveu
+    // aqui.)
     expect(descreverRecorte([ESP], "sumiu")).toBe("Dispositivo desconhecido");
   });
 });
