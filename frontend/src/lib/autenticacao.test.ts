@@ -1,7 +1,7 @@
 import type { AuthError } from "@supabase/supabase-js";
 import { describe, expect, it } from "vitest";
 
-import { MINIMO_DA_SENHA, pareceContaExistente, traduzirErroDeAuth } from "./autenticacao";
+import { MINIMO_DA_SENHA, traduzirErroDeAuth } from "./autenticacao";
 
 /** Erro no formato do supabase-js. `code` e o campo estavel; `message` muda. */
 function erro(opcoes: { code?: string; message?: string; status?: number }): AuthError {
@@ -17,7 +17,6 @@ describe("traduzirErroDeAuth — pelo codigo", () => {
   it.each([
     ["invalid_credentials", "E-mail ou senha incorretos."],
     ["email_not_confirmed", "Confirme seu e-mail"],
-    ["user_already_exists", "Já existe uma conta"],
     ["validation_failed", "E-mail inválido."],
     ["over_email_send_rate_limit", "Muitas tentativas"],
   ])("%s vira mensagem util", (codigo, trecho) => {
@@ -35,7 +34,6 @@ describe("traduzirErroDeAuth — pelo texto, quando nao vem codigo", () => {
   it.each([
     ["Invalid login credentials", "E-mail ou senha incorretos."],
     ["Email not confirmed", "Confirme seu e-mail"],
-    ["User already registered", "Já existe uma conta"],
     ["Password should be at least 6 characters", "pelo menos"],
     ["Unable to validate email address: invalid format", "E-mail inválido."],
   ])("%s", (mensagem, trecho) => {
@@ -87,21 +85,35 @@ describe("as mensagens dizem o que fazer", () => {
   });
 });
 
-describe("pareceContaExistente — protecao contra enumeracao", () => {
-  it("identities vazio indica e-mail ja cadastrado", () => {
-    // Com protecao contra enumeracao, o Supabase responde SUCESSO para
-    // e-mail existente, mas sem identidades. A UI usa isto apenas para
-    // registro interno — a tela mostra a mesma mensagem nos dois casos.
-    expect(pareceContaExistente({ user: { identities: [] } })).toBe(true);
+// ── SEC-08: a tela nao diz quem tem cadastro ─────────────────────────────
+//
+// Estes dois testes substituem dois que exigiam a frase
+// "Já existe uma conta com este e-mail." — e afirmam o oposto dela. Havia
+// dois porque ha dois caminhos de traducao, por `code` e por `message`, e
+// fechar um deles so deixaria o outro vazando.
+//
+// O que eles cobrem e o que NAO cobrem: eles provam que a FRASE nao nomeia o
+// fato. Nao provam ausencia de enumeracao — com confirmacao de e-mail
+// desligada o desfecho dos dois cadastros difere (sessao, redirecionamento,
+// estado da tela), e isso e invisivel a um teste de unidade de string. A
+// decisao que fecharia o canal estrutural esta no `SEC-08` do backlog.
+describe("conta existente — a mensagem nao nomeia o fato (SEC-08)", () => {
+  /** Qualquer redacao que CONFIRME a existencia da conta ao visitante. */
+  const NOMEIA_O_FATO = /já existe|existe uma conta|já está cadastrad|já registrad|em uso/i;
+
+  it("pelo codigo: user_already_exists nao confirma que a conta existe", () => {
+    const m = traduzirErroDeAuth(erro({ code: "user_already_exists" }));
+    expect(m).not.toMatch(NOMEIA_O_FATO);
+    // E condicional, no modelo do `recuperarSenha`: serve igual a quem ja tem
+    // conta e a quem errou outra coisa, entao nao distingue os dois.
+    expect(m).toMatch(/\bSe você já tem/);
   });
 
-  it("identities preenchido indica conta nova", () => {
-    expect(pareceContaExistente({ user: { identities: [{ id: "x" }] } })).toBe(false);
-  });
-
-  it("nao quebra quando o campo nao vem", () => {
-    expect(pareceContaExistente({ user: null })).toBe(false);
-    expect(pareceContaExistente({ user: {} })).toBe(false);
-    expect(pareceContaExistente({ user: { identities: null } })).toBe(false);
+  it("pelo texto: 'User already registered' tambem nao confirma", () => {
+    // O caminho por texto existe porque o `code` nem sempre vem. Ele vazava
+    // pela mesma frase, e tinha de ser fechado junto.
+    const m = traduzirErroDeAuth(erro({ message: "User already registered" }));
+    expect(m).not.toMatch(NOMEIA_O_FATO);
+    expect(m).toMatch(/\bSe você já tem/);
   });
 });
