@@ -5,7 +5,9 @@
 *.key
 secrets.h
 arduino_secrets.h
-CLAUDE.md
+# CLAUDE.md e versionado desde 2026-10-27 (DOC-11/GIT-05); a parte pessoal
+# das instrucoes fica no CLAUDE.local.md, que nao e.
+CLAUDE.local.md
 ROADMAP.md
 HISTORICO.md
 DOCUMENTO-TCC.md

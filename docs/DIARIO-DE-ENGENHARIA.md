@@ -2637,6 +2637,197 @@ instrumento; §9 com as duas perguntas novas). **Fontes externas:** OWASP *Authe
 `supabase.auth.signUp` e guia *Identity Linking*; `supabase/auth` #2702, #2674; `supabase/supabase`
 #35844; `supabase` #14994 e #29327; `supabase-js` #298; SUDHODANAN & PAVERD, arXiv:2205.10174.
 
+---
+
+# 2026-10-27 — `DOC-11`, segunda passagem: a correção de 17/10 envelheceu em dez dias, e a suíte inteira rodou nesta máquina pela primeira vez
+
+**O problema, como foi entendido no início.** Migração de ferramenta. O enunciado da sessão:
+*"o `CLAUDE.md` está desatualizado e gitignorado, e afirma que não há suíte de testes quando há
+mais de mil"*. Corrigir, e avaliar se ele deve sair do `.gitignore`. Antes disso, dizer o que
+ficou sem commit da sessão anterior, interrompida no meio de uma consolidação.
+
+**Hipótese de trabalho.** Que o `CLAUDE.md` do repositório ainda dissesse "não há suíte". **Caiu
+na primeira leitura:** o arquivo do repositório já tinha sido corrigido em 17/10 e diz "há suíte
+e há CI". Quem ainda diz *"Testes: ainda não existem"* é a **cópia** na
+pasta `backup-interno`, fora do repositório (28/08). A premissa do enunciado era verdadeira sobre uma cópia e
+falsa sobre o arquivo — que é exatamente o risco de um arquivo gitignorado: ele tem cópias, e
+nada as compara. A segunda hipótese — *então o arquivo está em dia* — **também caiu**, e é o
+resultado desta entrada.
+
+**O que foi testado, e como.** Tudo executado em Windows 11, branch
+`chore/GIT-01-normalizar-fim-de-linha` (`2fcb0f5`), árvore com os 3 arquivos não rastreados
+abaixo.
+
+| # | O que | Como | Natureza |
+|:-:|---|---|---|
+| 1 | O que ficou sem commit | `git status` | execução |
+| 2 | A consolidação interrompida está coerente? | `python scripts/consolidar_registro.py --conferir` | execução |
+| 3 | Backend | `pytest --ignore=tests/rls` | execução |
+| 4 | Frontend | `npx vitest run`; `npx tsc --noEmit` | execução |
+| 5 | RLS e mutação | `postgres:16` em Docker; `pytest tests/rls`; `verificar_por_mutacao.py` com `PYTHONUTF8=1` | execução |
+| 6 | ML | `ml/.venv` (3.11.9, versões do `requirements.txt`); `pytest testes` | execução |
+| 7 | Firmware | contêiner `gcc:13`, `firmware/` e `ml/testes/` copiados; `make`, `sintaxe`, `capacidade`, `mutacao` | execução |
+| 8 | Verificador de documentos | no Windows, e num clone limpo em `python:3.11` (Linux) | execução + controle |
+| 9 | Jobs do CI | `ci.yml` aberto; `git log -S"npm test"` | inventário |
+
+**Resultado medido.**
+
+**(a) Sem commit: três arquivos não rastreados, e nada modificado.** `docs/CORRECOES-APLICADAS.md`,
+`docs/PENDENCIAS-ABERTAS.md` e `scripts/consolidar_registro.py`, todos de 20/10 02:23 — a
+consolidação. O `--conferir` passa (*105 defeitos, 87 pendências*; os dois documentos batem com as
+tabelas do script). **Mas o `conferir_docs_versionados.py` reprova os dois como órfãos em `docs/`**,
+e o `PENDENCIAS-ABERTAS.md` diz que se mitiga o §2 *"com uma linha no `BACKLOG-COMPLETO.md`
+apontando para cá"* — **a linha não existe** (`grep` vazio). O script também não está no `ci.yml`.
+A consolidação parou antes de três passos: versionar, ligar ao backlog e ao CI. **Não commitado
+nesta sessão** — não li as 2 897 linhas do script, e não se dá por verificado o que não foi
+rodado nem lido.
+
+**(b) A suíte, executada:** backend **293**; frontend **418 em 27 arquivos**, `tsc` limpo; RLS
+**149** contra Postgres real, mutação **30/30**; firmware **341 + 157 verificações, 0 falhas**,
+**4/4** sketches compilam, mutação **15/15**; ML **104 passam e 3 falham**. São **967 testes** de
+pytest/vitest e **498 verificações** do núcleo C++. *"Mais de mil"* depende de somar as duas
+unidades — está escrito assim no `CLAUDE.md`, com as duas separadas.
+
+**(c) O `CLAUDE.md` de 17/10 estava errado em três pontos, e um já tinha contaminado o backlog.**
+Os números eram de 17/10 (286/408/146); a suíte de **ML não aparecia**; e a lista de jobs dizia
+*"`documentos`, `rls` e os do firmware"*. O `ci.yml` tem **seis** (`test`, `rls`, `frontend`, `ml`,
+`firmware`, `documentos`), e o `frontend` roda `npm test` = `vitest run` desde `01a7faa` (19/08).
+**O `UI-18` (c) do backlog afirmava que *"nem o `vitest` está"* no CI, com a mesma lista de jobs** —
+afirmação falsa, corrigida hoje. Não dá para provar que ela veio do `CLAUDE.md`; a coincidência do
+enunciado é a evidência, e é **inferência**.
+
+**(d) Dois defeitos novos, os dois só no Windows, os dois achados porque rodou.**
+- **`DOCS-WIN-01`.** No Windows, `ignorados()` manda `\r\n` ao `git check-ignore` (pipe em modo
+  texto), e só o último caminho casa. **Controle:** mesma árvore, clone limpo em Linux — a (3) acha
+  os **8** ponteiros aceitos e dá OK; no Windows acha **0**, e a (2) reprova os três arquivos de
+  fundamentação como não ignorados. Reproduzido isolado em três linhas de Python. A verificação (3),
+  que existe para pegar o nono ponteiro pendurado, **não pode reprovar nada nesta máquina**. O CI
+  (Ubuntu) não é afetado.
+- **`ML-WIN-01`.** Os dois testes de vetor dourado comparam JSON por **igualdade exata** e diferem
+  no **último dígito** (1 valor num arquivo, 70 no outro) — referência gravada em Linux/3.10. O
+  terceiro, de retomada, leva 5 chamadas onde espera 7; **hipótese não confirmada**: resolução de
+  ~15,6 ms do relógio do Windows com `orcamento_s=0.0`.
+- E as quebras de codificação: dois scripts morrem em `cp1252` sem `PYTHONUTF8=1`.
+
+**Adaptação.**
+
+1. **O `CLAUDE.md` foi reescrito com o que rodou**, não com o que estava escrito: tabela com
+   resultado e data, a linha de ML, os seis jobs, as armadilhas do Windows, a ordem de leitura
+   (backlog → diário → lições → documentos gerados) no lugar de *"ler o `ROADMAP.md` no início de
+   toda sessão"*, a estrutura real (`frontend/`, `scripts/`; `hardware/` vazia) e as práticas não
+   negociáveis do enunciado. Mantido: Gitflow, regras de commit e a regra que o põe no `.gitignore`,
+   agora com a nota de que está em reavaliação.
+2. **A recomendação do `GIT-05` sobre o `CLAUDE.md` foi invertida**, de *"parar de ser citado"* para
+   *versionar*, com a parte pessoal num `CLAUDE.local.md` gitignorado. Motivo medido: a correção
+   envelheceu em dez dias sem que nada a alcançasse, a lista de jobs errada passou para o backlog, e
+   existem cópias divergentes. **Não executada:** revoga uma decisão explícita do autor e resulta em
+   publicação num repositório público. A decisão é do Vitor.
+
+**Risco em aberto.**
+
+- **O `DOC-11` continua meio-feito, e pelo mesmo motivo de 17/10.** Esta reescrita também está só no
+  disco; nada a confere. Item: `GIT-05`.
+- **O `CLAUDE.md` envelhece de novo** a cada teste novo. Versionado, uma conferência no
+  `documentos` poderia comparar os números com a coleta (como o piso do `CI-04`). Ainda não é item,
+  porque depende da decisão do `GIT-05`.
+- **A consolidação de 20/10 segue sem commit** (a). Pendente de ler o script e decidir o caminho.
+- **Os 3 testes de ML que falham no Windows** (`ML-WIN-01`) e o verificador que mede errado no
+  Windows (`DOCS-WIN-01`).
+- **`vite build` não rodou hoje**; e nada disso rodou em runner (`CI-06`).
+- **Esta entrada não pode ser commitada sozinha.** Ela cita `docs/CORRECOES-APLICADAS.md` e
+  `docs/PENDENCIAS-ABERTAS.md`, que não estão no git, e a verificação (2) do
+  `conferir_docs_versionados.py` **reprova** por isso — medido em Linux sobre a árvore editada. Na
+  mesma execução a (3) acusou um ponteiro novo que esta própria entrada criava (o caminho da cópia
+  de backup, que casa a regra `CLAUDE.md` do `.gitignore`); corrigido trocando o caminho por
+  descrição. Commitar junto com a consolidação, ou depois dela.
+
+**Procedência.** `CLAUDE.md` (gitignorado; seções "Contexto", "Práticas não negociáveis",
+"Testes"); `docs/BACKLOG-COMPLETO.md` (`DOC-11`, `GIT-05`, `UI-18` (c) corrigido, `DOCS-WIN-01` e
+`ML-WIN-01` novos, contagem 76 → **78**, L0 48); `.github/workflows/ci.yml`; commit `01a7faa`;
+`scripts/conferir_docs_versionados.py` (`ignorados`); `ml/testes/test_vetor_dourado.py`
+(`_confere_ou_regrava`); `ml/testes/test_retomada.py`; `ml/experimentos/_retomada.py` (linha 127);
+a cópia na pasta `backup-interno` (fora do repositório).
+
+---
+
+# 2026-10-27 (ii) — `DOC-11` fechado: o `CLAUDE.md` passa a ser versionado, e a lista de ponteiros não encolheu
+
+**O problema, como foi entendido no início.** O Vitor decidiu pela recomendação da entrada
+anterior: versionar o `CLAUDE.md` e mover a parte pessoal (devlog, mídia, caminhos da máquina)
+para um `CLAUDE.local.md` gitignorado. Mostrar o diff antes de commitar.
+
+**Hipótese de trabalho.** Duas. (1) Que bastasse tirar uma linha do `.gitignore` e mover três
+seções. (2) A que eu tinha escrito no `GIT-05`: *"fazendo, a lista do `PONTEIROS_ACEITOS` cai de
+8 para 7"*. **A (2) caiu**, e a (1) também, por causa de um lock.
+
+**O que foi testado, e como.**
+
+| # | O que | Como | Natureza |
+|:-:|---|---|---|
+| 1 | O conteúdo pode ir a público? | `grep` por chave, senha, e-mail, nome e caminho de usuário; `git log --all -- CLAUDE.md`; URL de produção contra o `README.md` | inventário |
+| 2 | As regras de ignore ficaram certas? | `git check-ignore -v CLAUDE.md CLAUDE.local.md` | execução |
+| 3 | A verificação (3) aceita o desenho novo? | cópia da árvore em `python:3.11`, `CLAUDE.md` posto no índice, `conferir_docs_versionados.py` | execução |
+| 4 | Ela acusaria um ponteiro novo? | mesma cópia, com o `CLAUDE.local.md` removido de `PONTEIROS_ACEITOS` | **controle positivo** |
+
+**Resultado medido.**
+
+**(a) Nada sensível.** Nenhuma chave, senha, e-mail, nome de pessoa ou caminho de usuário no
+`CLAUDE.md`; a URL de produção já está no `README.md` versionado; e o arquivo **nunca** esteve no
+histórico (`git log --all` vazio), então versioná-lo não expõe nenhuma versão antiga.
+
+**(b) O `.gitignore` responde certo:** `CLAUDE.local.md` casa a linha 10; `CLAUDE.md` não casa
+nada.
+
+**(c) A lista de ponteiros aceitos continua com 8, não 7.** O `CLAUDE.md` saiu e o
+`CLAUDE.local.md` entrou: o arquivo versionado precisa dizer onde está o que ficou de fora, e
+dizer isso **é** um ponteiro para arquivo ignorado. E o `CLAUDE.md`, agora rastreado, passou a
+citar também os outros seis ignorados — a (3) os lista com *"ex.: `CLAUDE.md`"*. **A lista mudou
+de natureza, não de tamanho.** A previsão estava errada por leitura; a execução a corrigiu antes
+de ela virar número no backlog.
+
+**(d) Controle positivo:** com o `CLAUDE.local.md` fora da lista, a (3) reprova e nomeia
+*"`CLAUDE.local.md` ← citado em `CLAUDE.md`"*. Sem a sabotagem, *"nenhum ponteiro novo"*.
+
+**(e) O que segue reprovando é o que já reprovava**, e agora por dois citadores: a (1) e a (2)
+acusam os dois documentos da consolidação, citados pelo diário e pelo `CLAUDE.md`. Virou `GIT-06`.
+
+**(f) A primeira execução da (3) foi inválida, e quase passou por boa.** A cópia da árvore levou
+junto um `.git/index.lock` de 20/10 01:22, o `git add` da cópia falhou, e o `grep` da saída
+escondeu o erro — o resultado parecia "OK" e tinha sido medido **sem** o `CLAUDE.md` no índice.
+Notado porque o `git ls-files` de conferência veio vazio. Refeito com o lock removido **só na
+cópia**. O mesmo lock está no repositório real, sem processo git rodando: é sobra da sessão
+interrompida, e **bloqueia commit**. Registrado no `GIT-03`.
+
+**Adaptação.**
+
+1. **`CLAUDE.md` versionado**, com cabeçalho dizendo desde quando e por quê, e o aviso de que o
+   repositório é público. Mídia, devlog, regras de gravação, caminho da memória persistente e o
+   ambiente desta máquina foram para o `CLAUDE.local.md`. A nota de 17/10 que citava o caminho da
+   cópia de backup virou descrição — caminho de máquina não vai a público.
+2. **`.gitignore`:** sai `CLAUDE.md`, entra `CLAUDE.local.md`, com comentário. **`PONTEIROS_ACEITOS`:**
+   a entrada do `CLAUDE.md` vira a do `CLAUDE.local.md`, com o motivo.
+3. **`DOC-11` fechado; `GIT-06` aberto.** Contagem 78 → 78.
+
+**Risco em aberto.**
+
+- **O `documentos` fica vermelho até o `GIT-06`.** Commitar isto antes da consolidação deixa o CI
+  reprovando por um motivo conhecido e declarado.
+- **O `CLAUDE.md` continua podendo envelhecer.** Versionado, o envelhecimento aparece em diff, mas
+  nada o reprova. Uma conferência que compare os números da seção "Testes" com a coleta seria o
+  passo seguinte; **ainda não é item** — fica aqui até alguém decidir se vale o custo.
+- ~~O lock precisa sair antes do commit~~ — **eram dois.** Removido o `index.lock`, o commit
+  falhou num `HEAD.lock` da mesma hora (20/10 01:22:28). Os dois foram removidos, cada um com
+  aprovação própria, depois de conferir 0 bytes e nenhum `git.exe` rodando; o
+  `objects/maintenance.lock` (16/10) ficou, por decisão do Vitor. **Erro de método meu:** a
+  varredura `find .git -name "*.lock"` devia ter vindo antes da primeira remoção, não depois da
+  falha (`GIT-03`).
+
+**Procedência.** `CLAUDE.md` (versionado); `CLAUDE.local.md` (gitignorado); `.gitignore`;
+`scripts/conferir_docs_versionados.py` (`PONTEIROS_ACEITOS`); `docs/BACKLOG-COMPLETO.md`
+(`DOC-11`, `GIT-03`, `GIT-05`, `GIT-06`); `.git/index.lock` (20/10 01:22, 0 bytes).
+
+---
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

@@ -152,10 +152,11 @@ PONTEIROS_ACEITOS: dict[str, str] = {
         "na seção 'O que este diário não cobre', que o HISTORICO.md não é "
         "versionado e por isso NÃO pode servir de procedência num capítulo "
         "de TCC. A citação existe para dizer isso. Ponteiro legítimo.",
-    "CLAUDE.md":
-        "Instruções de ferramenta, não fundamentação. Citado por "
-        "web-app/device_auth.py e pelo backlog. Candidato a parar de ser "
-        "citado, não a ser versionado.",
+    "CLAUDE.local.md":
+        "Instruções pessoais (mídia, devlog, caminhos da máquina), separadas "
+        "do CLAUDE.md em 27/10, quando este passou a ser versionado (DOC-11). "
+        "O CLAUDE.md o cita para dizer onde está o que ficou de fora; um "
+        "clone não precisa dele para trabalhar.",
     "DOCUMENTO-TCC.md":
         "A monografia em redação. Fora do git por decisão de escopo do "
         "repositório de engenharia. Citado só pelo backlog.",
