@@ -52,6 +52,7 @@ nova). **Se tem um fim de semana:** solde. **Se tem um mês sem ferro de solda:*
 `CALC-*` e `DIAG-*`, que são o que a banca lê.
 
 **Contagem:** 78 itens abertos · **L0: 48** · L1: 12 · L2: 10 · L3: 8.
+> **Por natureza do desbloqueio** (o que é software, o que é decisão sua, o que espera hardware ou terceiro): `docs/PENDENCIAS-ABERTAS.md`, gerado por `scripts/consolidar_registro.py`. Contagem em outra unidade — itens partidos —, então não se compara a esta.
 *(27/10, segunda parte: fechou `DOC-11` (L0) com o `CLAUDE.md` versionado, por decisão do Vitor; entrou `GIT-06` (L0, a consolidação de 20/10 fora do git, que deixa o `documentos` vermelho). Saldo −1 +1; L0 48−1+1 = 48, e 48+12+10+8 = 78.)*
 *(27/10, migração de ferramenta: entraram `DOCS-WIN-01` e `ML-WIN-01` (L0), os dois achados ao **executar** a suíte inteira nesta máquina para reescrever o `CLAUDE.md` (`DOC-11`, que segue meio-feito). Saldo +2; L0 46+2 = 48, e 48+12+10+8 = 78. Corrigido também o `UI-18` (c), que afirmava falsamente que o `vitest` não está no CI.)*
 *(20/10, segunda sessão: **o `SEC-08` foi decidido — saída (B′)** — e sai do L3 para o L0, porque

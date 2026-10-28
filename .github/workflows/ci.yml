@@ -313,15 +313,29 @@ jobs:
     #
     # A metade local do script (orfao na arvore) continua valendo, e o lugar
     # dela e a maquina de quem edita, rodada a mao antes de commitar.
+    #
+    # GIT-06 (28/10): o mesmo job confere a consolidacao do registro
+    # (`docs/CORRECOES-APLICADAS.md` e `docs/PENDENCIAS-ABERTAS.md`, gerados).
     name: Documentos de fundamentação versionados
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v6
         with:
-          # `git ls-files` e `check-ignore` nao precisam de historico, mas o
-          # checkout raso padrao ja basta: o script le indice e arvore, nao log.
-          fetch-depth: 1
+          # HISTORICO INTEIRO, de proposito (GIT-06). O `conferir_docs` nao
+          # precisa de log, mas o `consolidar_registro.py --conferir` confere
+          # que todo commit citado como procedencia existe -- e com checkout
+          # raso nenhum hash antigo existiria. Se alguem voltar isto para 1, o
+          # script REPROVA ("historico raso"), em vez de passar sem conferir.
+          fetch-depth: 0
 
       - name: Conferir
         run: python scripts/conferir_docs_versionados.py
+
+      # Documento gerado e editado a mao mente sobre a propria procedencia: o
+      # `--conferir` regenera em memoria e reprova se o disco divergir. Confere
+      # tambem que todo hash citado existe (nasceu do `846966a`, que nao existe
+      # -- o commit real e `846986a`) e que a prosa que nomeia casos ainda bate
+      # com a tabela.
+      - name: Consolidacao do registro
+        run: python scripts/consolidar_registro.py --conferir
