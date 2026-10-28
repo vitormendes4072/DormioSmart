@@ -6,7 +6,10 @@
 > **Onde entra no TCC:** capítulo de Desenvolvimento, seção de firmware (figuras A e B)
 > e seção de tratamento do dado (figura C). A figura C também serve ao capítulo de
 > Metodologia, como ponte para os resultados de ML.
-> **Estado do código:** verificado em `2026-09-29`. As figuras A e B descrevem
+> **Estado do código:** verificado em `2026-09-29`. ✏️ **Reconferido em `2026-10-28`** (`DIAG-03`):
+> os identificadores de código das três figuras existem no firmware e no `ml/`. A figura C
+> ganhou o que surgiu em 17/10 — as features em C++, que existem e **não rodam** — e o rótulo do
+> payload passou a dizer de que versão do contrato ele é a forma. As figuras A e B descrevem
 > `firmware/envio-continuo/envio-continuo.ino` sobre `firmware/nucleo/`, que é o que
 > roda hoje. `firmware/sketch.ino` **não** é descrito aqui: ele tira uma amostra por
 > boot e a reescrita é o item aberto `FW-07`.
@@ -110,7 +113,7 @@ flowchart TB
     A["AMOSTRA INSTANTANEA<br/>ax, ay, az em m/s2, gx/gy/gz, temp<br/>MPU6050 a 0,1 Hz hoje (10 s)<br/>FW-05 pede >= 42 Hz"]
     B["EPOCA DE 30 s — 32 bytes<br/>firmware/nucleo/epoca.h<br/>metodo: pico-da-magnitude<br/>guarda ax/ay/az DA AMOSTRA DE PICO<br/>flags: INCOMPLETA · VAZIA · DEGRADADA<br/>COM_AMOSTRA_INVALIDA"]
     C["ROTULO status<br/>firmware/nucleo/payload.h<br/>|total - 9,81| > 1,2 m/s2 -> movimento<br/>LIMIAR PROVISORIO — recalibrar em CAL-01/VIA-01"]
-    D["PAYLOAD JSON v2.4.0<br/>firmware/nucleo/payload.cpp<br/>ax ay az total status<br/>+ ts epoca_s metodo amostras"]
+    D["PAYLOAD JSON — forma da v2.4.0<br/>firmware/nucleo/payload.cpp<br/>ax ay az total status<br/>+ ts epoca_s metodo amostras<br/>contrato em 2.5.1: o campo f, opcional<br/>desde a 2.5.0, nenhum firmware emite"]
     E["LINHA EM public.sleep_data<br/>web-app/routes.py traduz as chaves<br/>curtas para os nomes de coluna<br/>captured_at = medicao<br/>created_at = recebimento"]
     F["SERIE DO PAINEL<br/>frontend/src/lib/metricas.ts<br/>lib/cobertura.ts: sessoes, lacunas,<br/>cadencia mediana, fracao em movimento"]
     G["EXPORTACAO CSV<br/>frontend/src/lib/exportar.ts"]
@@ -130,9 +133,11 @@ flowchart TB
     J -->|"reamostragem para 32 Hz com<br/>anti-aliasing a 12,8 Hz — ml/src/sinal.py"| K["EPOCAS DE 30 s<br/>ml/src/epocas.py · empilhar_contexto()"]
     K --> H --> I
 
+    FC["(NAO EXERCITADO) 6 FEATURES EM C++<br/>firmware/nucleo/filtro.cpp · caracteristicas.cpp<br/>paridade com o dourado: 157 verificacoes no host<br/>o envio-continuo.ino NAO as chama:<br/>a 0,1 Hz a epoca tem 3 amostras e e recusada — ARQ-01"]
     L["(FUTURO) DATA-07: as 8 features<br/>viajam no contrato, nao so o veredito"]
     M["(FUTURO) ML-INF: o modelo classifica<br/>o dado do Dormio"]
-    B -.-> L -.-> H
+    A -.->|"(FUTURO) cadencia >= 42 Hz — ARQ-01 / FW-05"| FC
+    FC -.-> L -.-> H
     E -.-> M
     I -.-> M
 
@@ -150,6 +155,9 @@ Há **duas cadeias de transformação distintas**, e hoje elas não se tocam:
   classificador, e termina em JSON de experimento. Não há dado do Dormio nela.
 
 As duas setas tracejadas (`DATA-07`, `ML-INF`) são exatamente o que falta para juntá-las,
-e estão abertas no backlog. Afirmar na banca que "o Dormio usa aprendizado de máquina para
+e estão abertas no backlog. ✏️ **Desde 17/10 há uma peça entre as duas**, e ela não muda a
+conclusão: as features em C++ existem e reproduzem o dourado no host, mas **nenhuma época real
+chega a elas** — a 0,1 Hz cada época tem 3 amostras e o acumulador a recusa. Juntar as cadeias
+continua dependendo do `ARQ-01`. Afirmar na banca que "o Dormio usa aprendizado de máquina para
 classificar sono" seria falso hoje; o que é verdade é que o pipeline de ML mediu o custo da
 decisão de posicionamento do sensor que o Dormio adota.

@@ -1549,7 +1549,7 @@ Registrado para que a ausência não passe por completude.
 
 | Lacuna | Por quê |
 |---|---|
-| Defeitos anteriores a 2026-02-18 | Anteriores ao primeiro commit (`d74aa01`). Não há procedência. ✏️ **Até 28/10 esta linha dizia 29/04**, que é a data do clone no reflog, não do início do histórico — a mesma premissa está no diário e nas lições, e corrigi-la lá é o `DOC-12`. |
+| Defeitos anteriores a 2026-02-18 | Anteriores ao primeiro commit (`d74aa01`). Não há procedência. ✏️ **Até 28/10 esta linha dizia 29/04**, que é a data do clone no reflog, não do início do histórico — a mesma premissa estava no diário e nas lições, e foi corrigida lá no `DOC-12`. Entre 20/02 e 30/05 não há commit nenhum. |
 | Grande parte de junho a agosto | O `HISTORICO.md` cobre o período e **não é versionado**, então não serve de procedência num capítulo de TCC. Os defeitos desse intervalo aqui saem de mensagem de commit, e por isso vários estão marcados `parcial`. |
 | Todo defeito de hardware | **Nada foi medido no dispositivo físico.** Os 8 pinos do MPU6050 não estão soldados. A única medição de hardware do projeto é a de 25/08, que é a medição de um sensor mal conectado e serve só para dizer que não serve. Quando a bancada existir, é provável que esta seja a área mais cara do arquivo. |
 | Defeitos que ninguém achou | Óbvio e precisa estar escrito, porque é o que invalida qualquer leitura das três derivações como taxa. |

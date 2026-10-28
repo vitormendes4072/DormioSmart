@@ -5,6 +5,10 @@
 > **Onde entra no TCC:** capítulo de Desenvolvimento, primeira figura — é o mapa que
 > todas as seções seguintes referenciam.
 > **Estado do código:** verificado em `2026-09-29`, na branch `chore/GIT-01-normalizar-fim-de-linha`.
+> ✏️ **Reconferido em `2026-10-28`** (`DIAG-01`): as 55 afirmações de arquivo, rota, função,
+> tabela com RLS, pino e constante batem com o código. Entraram o que surgiu depois de 29/09 —
+> as features em C++ (`filtro.h`, `caracteristicas.h`, **não exercitadas**), a rota
+> `/api/me/perfil` (`PERFIL-01`) e o `/health` — e o `ML-04` da seta futura virou `ML-09`.
 
 ## Convenções de leitura (valem para os quatro diagramas)
 
@@ -28,10 +32,12 @@ flowchart TB
         direction TB
         MPU["MPU6050 / GY-521<br/>I2C 0x68 · SDA=21 · SCL=22<br/>+/-8 g · filtro 21 Hz"]
         NUC["firmware/nucleo/ (C++ puro)<br/>cadencia.h · epoca.h · buffer.h<br/>reconexao.h · payload.h · relogio.h<br/>341 verificacoes no host"]
+        FEAT["(NAO EXERCITADO) filtro.h · caracteristicas.h<br/>6 features por epoca em C++<br/>paridade com o dourado: 157 verificacoes<br/>o envio-continuo.ino NAO as chama — ARQ-01"]
         ENV["firmware/envio-continuo/<br/>envio-continuo.ino<br/>INSTRUMENTO DE BANCADA<br/>buffer de 1024 epocas = 8,53 h"]
         SKT["(FUTURO) firmware/sketch.ino<br/>reescrita FW-07: Deep Sleep +<br/>buffer em RTC_DATA_ATTR (128 epocas)<br/>hoje: 1 amostra por boot"]
         MPU -->|"ax, ay, az, gx, gy, gz, temp"| NUC
         NUC --> ENV
+        FEAT -.->|"(FUTURO) vetor f no payload — DATA-07b"| ENV
         NUC -.-> SKT
     end
 
@@ -45,7 +51,7 @@ flowchart TB
 
     subgraph API["BACKEND — Flask em Vercel (dormio-smart.vercel.app)"]
         direction TB
-        RT["web-app/routes.py<br/>POST /api/data · GET /api/sleep-history<br/>/api/devices · DELETE /api/me"]
+        RT["web-app/routes.py<br/>POST /api/data · GET /api/sleep-history<br/>/api/devices · /api/me/perfil · DELETE /api/me<br/>GET /health"]
         ING["ingestao.py — qual caminho de credencial<br/>device_auth.py — hash SHA-256 do token<br/>auth.py — Bearer JWT"]
         VAL["validacao.py — SEC-03<br/>faixa fisica, coerencia ax/ay/az x total,<br/>epoca_s <= 3600 exige metodo"]
         DB["database.py<br/>cliente_de_ingestao() / cliente_do_usuario()"]
@@ -83,7 +89,7 @@ flowchart TB
     end
 
     RES -.->|"(FUTURO) modelo embarcado ou servido — ML-INF"| RT
-    TB -.->|"(FUTURO) noite propria como coorte — VAL-02 / ML-04"| PIPE
+    TB -.->|"(FUTURO) noite propria como coorte — VAL-02 / ML-09"| PIPE
 
     classDef futuro stroke-dasharray: 6 4;
     class SKT futuro;

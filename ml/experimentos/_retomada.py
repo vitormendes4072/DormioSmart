@@ -124,7 +124,13 @@ def loso_com_retomada(
     for s in sujeitos:
         if s in feitos:
             continue
-        if novas > 0 and (time.time() - t0) > orcamento_s:
+        # `>=`, não `>` (ML-WIN-01, 28/10). O relógio do Windows anda em degraus
+        # de ~15,6 ms: com orçamento zero, duas leituras no mesmo degrau dão
+        # 0 s, `0 > 0` é falso e a chamada fazia mais de uma dobra. Com `>=`, o
+        # orçamento zero é "uma dobra por chamada" em qualquer relógio — que é
+        # o que `test_retomada_por_partes_da_o_mesmo_que_de_uma_vez` supõe.
+        # Reproduzido em Linux com um relógio em degraus: reprovava 3 de 3.
+        if novas > 0 and (time.time() - t0) >= orcamento_s:
             break
         mask_te = ids == s
         mask_tr = ~mask_te

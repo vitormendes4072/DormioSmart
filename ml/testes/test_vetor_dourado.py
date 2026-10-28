@@ -801,6 +801,52 @@ def _monta_dourado_sequencias() -> dict:
     }
 
 
+# A REFERÊNCIA FIXA E A PLATAFORMA (ML-WIN-01, 28/10)
+#
+# Até 28/10 a comparação era `gravado == montado`, exata. O dourado foi gravado
+# em Linux (Python 3.10), e no Windows (3.11, mesmas versões pinadas de numpy e
+# scipy) 71 de 14 952 floats divergem **no último dígito**: medido, o pior caso
+# é 8,0e-13 relativo (`sequencias[4].esperado.g_ref[0]`) e 4,7e-14 absoluto. Não
+# é mudança de definição: é a ordem de soma e a libm de cada plataforma. A
+# igualdade exata prendia o dourado à máquina que o gravou, e a saída errada —
+# regravar no Windows — só trocaria a dependência de lado.
+#
+# Daí a régua, derivada como as outras deste arquivo, entre um piso e um teto:
+#   piso  — 8,0e-13 relativo, a divergência entre plataformas medida;
+#   teto  — o que o dourado existe para pegar: as sabotagens do
+#           `verificar_vetor_dourado_por_mutacao.py` cujo `exige` é um destes
+#           dois testes (`filtro_liga_do_zero`, `g_ref_so_do_comeco`). Têm de
+#           continuar caindo, em Linux e no Windows — conferido em 28/10.
+# 1e-9 relativo fica três ordens acima do piso. O piso absoluto (1e-15) existe só
+# para valores que deveriam ser zero, e fica abaixo do menor valor não nulo do
+# arquivo (1e-12). **A estrutura continua exata:** chaves, comprimentos, tipos e
+# todo valor que não é float — uma feature a mais ou a menos reprova como antes.
+TOL_DOURADO_REL = 1e-9
+TOL_DOURADO_ABS = 1e-15
+
+
+def _divergencias(gravado, montado, caminho="") -> list[str]:
+    """Onde `montado` deixa de bater com `gravado`. Vazio quando bate."""
+    if isinstance(gravado, float) or isinstance(montado, float):
+        if not (isinstance(gravado, (int, float)) and isinstance(montado, (int, float))):
+            return [f"{caminho}: tipo {type(gravado).__name__} vs {type(montado).__name__}"]
+        if math.isclose(gravado, montado, rel_tol=TOL_DOURADO_REL, abs_tol=TOL_DOURADO_ABS):
+            return []
+        return [f"{caminho}: {gravado!r} vs {montado!r}"]
+    if type(gravado) is not type(montado):
+        return [f"{caminho}: tipo {type(gravado).__name__} vs {type(montado).__name__}"]
+    if isinstance(gravado, dict):
+        if set(gravado) != set(montado):
+            return [f"{caminho}: chaves {sorted(set(gravado) ^ set(montado))}"]
+        return [d for k in gravado for d in _divergencias(gravado[k], montado[k], f"{caminho}.{k}")]
+    if isinstance(gravado, list):
+        if len(gravado) != len(montado):
+            return [f"{caminho}: comprimento {len(gravado)} vs {len(montado)}"]
+        return [d for i, (a, b) in enumerate(zip(gravado, montado))
+                for d in _divergencias(a, b, f"{caminho}[{i}]")]
+    return [] if gravado == montado else [f"{caminho}: {gravado!r} vs {montado!r}"]
+
+
 def _confere_ou_regrava(caminho: Path, montado: dict, rotulo: str):
     texto = json.dumps(montado, indent=2)
     if REGRAVAR or not caminho.exists():
@@ -809,8 +855,11 @@ def _confere_ou_regrava(caminho: Path, montado: dict, rotulo: str):
             pytest.skip(f"{rotulo} regravado (DORMIO_REGRAVAR_DOURADO=1)")
         return
     gravado = json.loads(caminho.read_text(encoding="utf-8"))
-    assert gravado == montado, (
-        f"o {rotulo} no disco NÃO bate com o que o código produz agora.\n"
+    # `json` ida e volta para comparar o que seria gravado, não o objeto vivo.
+    divergencias = _divergencias(gravado, json.loads(texto))
+    assert not divergencias, (
+        f"o {rotulo} no disco NÃO bate com o que o código produz agora "
+        f"({len(divergencias)} valor(es); o primeiro: {divergencias[0]}).\n"
         f"  Se a mudança foi INTENCIONAL, regrave de propósito:\n"
         f"      DORMIO_REGRAVAR_DOURADO=1 pytest testes/test_vetor_dourado.py\n"
         f"      e explique no commit o que mudou de definição.\n"

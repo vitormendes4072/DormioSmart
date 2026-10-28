@@ -591,7 +591,7 @@ Registrado para que a ausência não passe por completude.
 
 | Lacuna | Por quê |
 |---|---|
-| Padrões anteriores a 2026-04-29 | Mesmo motivo do diário: anterior ao versionamento. |
+| Padrões anteriores a 2026-02-18 | Mesmo motivo do diário: anterior ao versionamento. ✏️ *Até 28/10 dizia 2026-04-29, a data do clone — ver a ocorrência 8 do §5 e o `DOC-12`.* |
 | Qualquer padrão de hardware | Nada foi medido no dispositivo físico. Os 8 pinos do MPU6050 não estão soldados, e **não há uma só lição deste documento que venha de bancada.** Quando houver, é provável que esta seja a seção mais cara do arquivo. |
 | ~~Padrões de frontend~~ | ✏️ **Lacuna fechada em 17/10.** Os 15 arquivos pendentes foram lidos e commitados (`a586b0b`, `fea1c48`, `22a9268`, `f58f52c`), e o frontend entrou neste documento por conta própria: a ocorrência 4 do §6 (tela inalcançável) e a 4 do §5 (a premissa do `UI-11` sobre `profiles`) são as duas primeiras lições deste arquivo que **nasceram de frontend**. Dos 15, **14 eram trabalho e 1 era entrada de índice desatualizada** — ver a entrada de 17/10 do diário. |
 | Frequência real dos padrões | A contagem de ocorrências do índice é sobre **o que está registrado**, não sobre o que aconteceu. Os padrões §1 e §4 são provavelmente subcontados, porque só se descobre instrumento defeituoso quem procura. ✏️ **19/10:** a ocorrência 9 do §1 é a prova disso pelo avesso — ela existe no índice **porque estava declarada**, com o número medido, no arquivo que ela acusa. Padrão declarado conta; padrão suposto não aparece aqui. |

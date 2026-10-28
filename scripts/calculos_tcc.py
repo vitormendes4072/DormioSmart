@@ -499,6 +499,11 @@ def conferir() -> int:
 
 
 def main() -> int:
+    # A saída usa ✓, ĝ, σ e outros fora do cp1252: no console do Windows o
+    # `print` morria com UnicodeEncodeError — no `--conferir`, DEPOIS de as
+    # asserções baterem, e o exit 1 parecia reprovação (DOCS-WIN-02).
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8")
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--conferir", action="store_true",
                     help="só as asserções contra os documentos")

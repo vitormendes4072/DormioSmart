@@ -44,12 +44,46 @@ Onde as três divergem, a entrada diz qual foi usada.
 
 ---
 
-# 2026-04-29 — abertura do repositório
+# 2026-02-18 e 2026-02-19 — abertura do repositório: o primeiro produto, simulado
 
-**PARCIAL.** O clone inicial está no reflog (`a5a3307`, 2026-04-29), mas o trabalho anterior a
-ele não está no repositório. Falta: o levantamento do problema, a escolha do ESP32 + MPU6050 e
-a decisão de usar travesseiro em vez de punho — todos anteriores ao versionamento. Reconstruir
-isso depende de material fora do git.
+> ✏️ **Reescrita em 2026-10-28 (`DOC-12`).** Até aqui esta entrada se chamava *"2026-04-29 —
+> abertura do repositório"* e dizia que **o trabalho anterior ao clone não estava no
+> repositório**. Estava: 29/04 é a data em que o repositório entrou **neste clone** (reflog:
+> `clone: from …DormioSmart.git`), e o commit clonado, `a5a3307`, é o **último de sete** feitos em
+> 18 e 19/02. A seção "Sobre as datas" já avisava que o reflog registra a entrada no clone; a
+> entrada não seguiu o próprio aviso. É a ocorrência 8 do §5 das lições.
+
+**PARCIAL**, e agora com o que falta delimitado.
+
+**O que os sete commits mostram** (`git log --before=2026-04-30`, todos do mesmo autor):
+
+| Commit | Data | O que entrou |
+|---|---|---|
+| `d74aa01` | 18/02 | Monorepo inteiro: `firmware/sketch.ino` + `diagram.json` do **Wokwi** (ESP32 DevKit C v4, `wokwi-mpu6050`, botão, resistor); `web-app/` em Flask com `database.py` (Supabase), `routes.py`, painel Jinja (`templates/dashboard.html`, `static/js/`), `fake_sensor.py` e `teste_conexao.py`; `vercel.json` |
+| `ac1a29e`, `374e254`, `16448e1` | 18/02 | Três correções do deploy no Vercel: `requirements.txt` fora de UTF-8 e o `ModuleNotFoundError` do `routes` |
+| `739f24e`, `5d2c513` | 19/02 | Conflito de versão do cliente Supabase (erro de proxy) e *lazy loading* que era simulado |
+| `a5a3307` | 19/02 | O sketch passa a enviar por **HTTPS para o Vercel** (`/api/data`) e a ler o MPU6050 |
+
+**O que eles permitem reconstruir, e não estava em lugar nenhum deste diário:**
+
+- **A escolha do ESP32 + MPU6050 já estava feita em 18/02**, com o I2C em `SDA=21 / SCL=22` — os
+  mesmos pinos de hoje. O README da `web-app/` a apresenta pronta, **sem a justificativa**.
+- **O desenho de partida era Deep Sleep com despertar por botão**, no GPIO 27 (domínio RTC), com
+  pull-down físico de 10 kΩ para evitar despertar por pino flutuante — e o README dedica uma
+  seção ao *"crash no Deep Sleep"* no Wokwi. É a origem do andaime que o `HW-03` ainda carrega (o
+  despertar é por **botão**, não pelo INT do MPU6050).
+- **A pilha Flask + Supabase + Vercel e o domínio `dormio-smart.vercel.app` são de 18–19/02.**
+- **O README de 18/02 exibia um selo "Status: Validado"** com tudo em simulação. É a primeira
+  instância registrável do que o §6 das lições chama de confirmação antes da verificação — aqui,
+  um selo num README.
+
+**O que continua faltando** — e agora com o intervalo certo: **nenhum commit entre 20/02 e
+30/05.** O levantamento do problema, a **justificativa** do ESP32 + MPU6050 e a decisão de usar
+**travesseiro em vez de punho** não aparecem em commit nenhum antes de 31/05 (`e0d3f12`, o
+primeiro a citar "travesseiro"). Reconstruí-los depende de material fora do git.
+
+**Procedência.** `git log --all --reverse --before=2026-04-30`; `git show d74aa01:web-app/README.md`;
+`git show d74aa01:firmware/diagram.json`; `git reflog` (a linha `clone`); `git log -S travesseiro`.
 
 ---
 
@@ -2973,7 +3007,7 @@ Registrado para que a ausência não passe por completude.
 
 | Lacuna | Por quê |
 |---|---|
-| Tudo antes de 2026-04-29 | Anterior ao versionamento. Escolha do ESP32 + MPU6050, do travesseiro em vez do punho, e o enunciado inicial do problema não estão no git. |
+| Tudo antes de 2026-02-18 — e de 20/02 a 30/05, sem commit nenhum | ✏️ *Corrigido em 28/10 (`DOC-12`): dizia "antes de 2026-04-29", que é a data do clone, não do primeiro commit.* Anterior ao versionamento, ou fora dele. A escolha do ESP32 + MPU6050 aparece **feita** no README de 18/02, sem justificativa; a do travesseiro em vez do punho, e o enunciado inicial do problema não estão no git. |
 | Grande parte de junho a agosto | O `HISTORICO.md` cobre o período, mas **não é versionado** (está no `.gitignore`), então não pode ser citado como procedência num capítulo de TCC. As entradas desse intervalo aqui saem de reflog e de código, e por isso são poucas. |
 | ~~As suítes do backend e do frontend~~ | **Coberto em 16/10:** backend 240 passam, frontend 338 passam em 22 arquivos, `tsc --noEmit` e `vite build` limpos. Substitui os números de 10/09 (221 pytest, 315 vitest). Com duas ressalvas: `web-app/tests/rls/` **não rodou** (125 pulados — exige Postgres de verdade), e os 338 do frontend foram medidos **sobre a árvore de trabalho**, não sobre o estado commitado — ver a linha abaixo. ✏️ **17/10:** a segunda ressalva caiu com os 15 arquivos commitados — o frontend passa a 376 testes em 24 arquivos, medidos sobre a árvore versionada, e os dois números coincidem porque não há mais pendência. A ressalva do `rls` continua valendo. O backend **não foi reexecutado em 17/10**: os 240 seguem sendo de 16/10, e nada do trabalho de 17/10 toca `web-app/` fora de documentação. |
 | ~~O frontend de 29/09~~ | ✏️ **Lacuna fechada em 17/10 — ver a entrada (iii) daquela data.** Os 15 arquivos foram lidos e commitados em quatro commits (`a586b0b`, `fea1c48`, `22a9268`, `f58f52c`). Eram a metade de cliente do `DASH-12`/`DASH-13`, trabalho não catalogado do `DASH-08`, a montagem do `UI-10` e uma correção de cabeçalho do `FW-06` — **14 de trabalho e 1 que não era mudança nenhuma**, só entrada de índice desatualizada. Os números do frontend passam a medir a árvore versionada: **376 testes**, `tsc` limpo. |
