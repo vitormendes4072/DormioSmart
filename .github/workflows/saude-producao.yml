@@ -1,0 +1,52 @@
+name: Saúde da produção
+
+# INFRA-03 — a produção fica no ar, e quando cair alguém fica sabendo.
+#
+# Em 2026-10-28 o /health de produção respondia 503 havia tempo indeterminado:
+# o Supabase do plano gratuito pausa o projeto depois de uma semana sem uso, e
+# nada no repositório olhava a produção. Este job chama o /health, que faz uma
+# consulta REAL ao banco: a consulta conta como uso (mantém o projeto ativo) e,
+# se falhar, o job reprova e o GitHub avisa por e-mail. A lógica está em
+# `scripts/conferir_producao.py`, onde foi testada com sabotagens.
+#
+# ⚠️ O QUE ESTE ARQUIVO NÃO GARANTE, dito aqui para não ser descoberto depois:
+#   - `schedule` e `workflow_dispatch` só rodam a partir da branch padrão do
+#     repositório, que é `main`. Enquanto este arquivo estiver só em `develop`,
+#     o agendamento NÃO roda. Vale a partir do release para `main`.
+#   - Em repositório público, o GitHub desativa workflows agendados depois de
+#     60 dias sem atividade no repositório. Execução de workflow não conta como
+#     atividade. Se o projeto ficar parado dois meses, este job pode parar
+#     sozinho — e aí o primeiro sintoma volta a ser a produção fora.
+#   - Que uma consulta a cada 3 dias impede a pausa do Supabase é HIPÓTESE, não
+#     medição: supõe que uma requisição ao banco conta como atividade para o
+#     critério de inatividade do plano gratuito. Confirmar exige ver o projeto
+#     passar de uma semana sem outro uso e não pausar.
+
+on:
+  schedule:
+    # A cada 3 dias, às 09:17 UTC (06:17 em Brasília). Minuto quebrado de
+    # propósito: o GitHub atrasa os agendamentos em hora cheia, que são os mais
+    # concorridos. 3 dias deixa folga dentro da semana do plano gratuito.
+    - cron: '17 9 */3 * *'
+  workflow_dispatch:
+  # Roda também quando este arquivo ou o script mudam, para que uma mudança no
+  # próprio monitor seja exercitada num runner antes de chegar a `main`.
+  push:
+    paths:
+      - '.github/workflows/saude-producao.yml'
+      - 'scripts/conferir_producao.py'
+
+jobs:
+  producao:
+    name: /health de produção responde com o banco
+    # Imagem fixa, como os jobs do ci.yml (CI-07).
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+
+      - name: Conferir a produção
+        run: python scripts/conferir_producao.py
