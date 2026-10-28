@@ -257,8 +257,8 @@ Windows sem ajuste (`DOCS-WIN-01`, `DOCS-WIN-02`, `ML-WIN-01`). Resta uma difere
 **CI:** `.github/workflows/ci.yml`, seis jobs: `test` (backend), `rls` (matriz Postgres 14 e
 16, mais mutação na 16), `frontend` (vitest, tsc, vite), `ml`, `firmware` e `documentos`.
 **Rodou num runner em 2026-10-28** (execução `40639232458`, `ubuntu-24.04`): os sete jobs
-passaram, inclusive a perna Postgres 16, que até ali era hipótese. ⚠️ O `ubuntu-latest` está
-migrando para o Ubuntu 26 — ver `CI-07`.
+passaram, inclusive a perna Postgres 16, que até ali era hipótese. A imagem é **fixa**
+(`runs-on: ubuntu-24.04`, `CI-07`): migrar para outra é decisão, nas seis linhas de uma vez.
 
 Convenções por camada:
 - **Web-app (Flask):** lógica de rotas e funções puras com `pytest`; isolar chamadas ao Supabase (mock). **Exceção deliberada:** `tests/rls/` **não** mocka nada e fala com um Postgres real — mock não exercita policy nenhuma (§4 das lições).

@@ -2354,13 +2354,6 @@ PENDENCIAS: list[Pendencia] = [
                       "dependência) ou script próprio (mais código nosso, e o "
                       "instrumento é a parte difícil — a primeira tentativa "
                       "sub-relatou código morto)?"),
-    Pendencia("CI-07", DECISAO, "Os seis jobs rodam em `ubuntu-latest`, que está "
-              "trocando de major (aviso do runner: migra para o Ubuntu 26 a partir "
-              "de 19/10).", "🟡", camada_backlog="L0",
-              decisao="Fixar `runs-on: ubuntu-24.04` — a imagem em que os sete jobs "
-                      "passaram em 28/10 — e migrar para a 26 como decisão, ou "
-                      "seguir no `latest`. O próprio `ci.yml` já escolheu, para o "
-                      "Postgres: 'nunca `latest`'."),
     Pendencia("CI-02 (configuração)", DECISAO, "Linter.", "⚪",
               camada_backlog="L0",
               decisao="Qual configuração de ESLint/Ruff adotar, e quantos "

@@ -50,11 +50,11 @@ linha, não um resumo: resumo é a cópia que diverge.
 | Grupo | Itens |
 |---|---:|
 | A — Depende só de software: dá para fazer a qualquer momento | **37** |
-| B — Depende de decisão do Vitor | **11** |
+| B — Depende de decisão do Vitor | **10** |
 | C — Depende de ação do Vitor que não é decisão | **8** |
 | D — Bloqueado por hardware ou coleta | **23** |
 | E — Bloqueado por terceiro | **4** |
-| **Total** | **83** |
+| **Total** | **82** |
 
 ⚠️ **Este total não é comparável à contagem do backlog, e a diferença não é
 erro de nenhum dos dois.** São unidades de contagem diferentes: o backlog
@@ -333,7 +333,7 @@ O CI **não roda linter** — não há ESLint nem Ruff/flake8. Pressupõe uma de
 
 ## B — Depende de decisão do Vitor
 
-**11 itens.**
+**10 itens.**
 
 Cada linha traz a decisão em uma frase. Nenhum destes itens anda
 sem uma resposta sua — e nenhum deles exige que você escreva
@@ -384,14 +384,6 @@ Persistência em flash.
 Verificação de alcance no nível do símbolo.
 
 **A decisão.** Ferramenta pronta (`knip` / `ts-prune`, mais uma dependência) ou script próprio (mais código nosso, e o instrumento é a parte difícil — a primeira tentativa sub-relatou código morto)?
-
-*Camada no backlog: L0.*
-
-### `CI-07` 🟡
-
-Os seis jobs rodam em `ubuntu-latest`, que está trocando de major (aviso do runner: migra para o Ubuntu 26 a partir de 19/10).
-
-**A decisão.** Fixar `runs-on: ubuntu-24.04` — a imagem em que os sete jobs passaram em 28/10 — e migrar para a 26 como decisão, ou seguir no `latest`. O próprio `ci.yml` já escolheu, para o Postgres: 'nunca `latest`'.
 
 *Camada no backlog: L0.*
 

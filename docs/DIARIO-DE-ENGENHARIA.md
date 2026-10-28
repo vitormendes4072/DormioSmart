@@ -3131,6 +3131,35 @@ de abertura deste diário); `docs/BACKLOG-COMPLETO.md` (75 = 42/12/9/12, reconta
 `scripts/consolidar_registro.py` (116 correções, 83 pendências); `CLAUDE.md` (seção "Testes");
 `docs/LICOES-APRENDIDAS.md` (§6 ocorrência 7).
 
+---
+
+# 2026-10-28 (iii) — `CI-07`: a imagem do runner fica fixa
+
+**O problema, como foi entendido no início.** O runner avisou que o `ubuntu-latest` migra para o
+Ubuntu 26, e os seis jobs usavam `ubuntu-latest`. O Vitor decidiu fixar.
+
+**Hipótese de trabalho.** Que fixar `runs-on: ubuntu-24.04` mantivesse os sete jobs verdes e fizesse
+o aviso sumir.
+
+**O que foi testado, e como.** As seis linhas trocadas e conferidas pelo YAML carregado
+(`{job: runs-on}` dos seis); o commit `78998d8` enviado **sozinho**, antes do registro, para que o
+registro dissesse o que o CI mostrou e não o que se esperava; a execução `40750204890` comparada
+com a anterior.
+
+**Resultado medido.** Sete jobs verdes, todos em `ubuntu-24.04`. O aviso de migração está nas
+**anotações** da execução, não no log dos jobs — a primeira busca, no log, deu 0 nas duas execuções
+e não provava nada. Nas anotações: **7 na execução anterior (`40746683981`), 0 nesta.**
+
+**Adaptação.** O registro saiu num commit separado, depois do CI, porque a primeira versão do
+texto do `CI-07` dizia *"conferido no log da execução seguinte"* antes de a execução existir.
+Reescrito antes de commitar.
+
+**Risco em aberto.** Nenhum novo. A 24.04 também terá fim de suporte; migrar é trocar as seis
+linhas de uma vez, com o CI verde lá — está no comentário do `ci.yml`.
+
+**Procedência.** `.github/workflows/ci.yml` (`runs-on` dos seis jobs e o comentário do primeiro);
+execuções `40746683981` e `40750204890`; `docs/BACKLOG-COMPLETO.md` (`CI-07`, 74 = 41/12/9/12).
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
