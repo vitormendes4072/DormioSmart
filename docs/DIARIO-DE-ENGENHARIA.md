@@ -3087,6 +3087,27 @@ fechados. Todas as suítes foram rodadas de novo antes de escrever qualquer núm
 frontend 418 e `vite build` ok, ML 107, RLS 149 e 30/30, firmware igual, os quatro `--conferir`
 passando — no Windows, sem nenhuma variável de ambiente.
 
+**(h) E o CI reprovou o meu próprio conserto.** A segunda execução (`40745254169`, sobre
+`474176e`) deu seis jobs verdes e o `ml` vermelho: no runner, dois valores de `d_angulo`
+divergiram **5,7e-9 relativo** (0,008016267455 contra 0,008016267410 grau), acima da régua de
+1e-9. **A régua tinha sido derivada de um único par de plataformas** — Windows contra o arquivo
+gravado em Linux —, e eu escrevi "piso medido" sobre ela. A primeira execução no runner tinha
+passado até com igualdade exata, o que mostra que a máquina do runner muda entre execuções.
+**A causa é numérica e está no arquivo:** `inclinacao_rel` e `d_angulo` são
+`degrees(arccos(c))`, e `arccos` perto de 1 é mal-condicionado — o erro **absoluto** fica pequeno
+(4,5e-11° no runner) e o **relativo** cresce como 1/θ². Os ângulos passaram a ter régua absoluta
+de **1e-4°**, derivada: com o ruído a montante medido (~1e-12), o menor ângulo do arquivo (0,003°)
+erra ~1,1e-6°, e o limite de vetores paralelos dá ~8e-5°. Conferido contra os números exatos do
+runner (passam), contra a mesma diferença num campo não angular (reprova) e contra 1° de erro num
+ângulo (reprova); **12/12 no verificador por mutação, em Linux e no Windows** (`58ae504`).
+
+**Uma detecção sumiu, e eu fui ver qual.** A sabotagem de radianos era pega por 9 testes e passou
+a ser por 8: saiu o dourado **do dispositivo**. O caso 3 dele tem `inclinacao_rel = 8,5e-7°` numa
+época **única**, em que o ângulo é zero por definição — é ruído de arredondamento do `arccos`
+(√(2ε) ≈ 1,2e-6°). O teste "pegava" a sabotagem através de um número que é ruído: a mesma
+fragilidade que reprovou no runner, a favor. A cobertura de ângulo está no dourado das
+sequências, que continua pegando. Registrado como ocorrência 6 do §4.
+
 **Adaptação.**
 
 1. **Hipótese confirmada antes de corrigir.** O `>=` teria passado no Windows de qualquer jeito;
@@ -3097,6 +3118,9 @@ passando — no Windows, sem nenhuma variável de ambiente.
 **Risco em aberto.**
 
 - **`CI-07`**: a próxima execução pode cair no Ubuntu 26. Decisão do Vitor.
+- **O piso entre plataformas é amostra, não medida.** Dois runners e um Windows; uma quarta
+  máquina pode errar mais. A régua dos ângulos é derivada da condição do `arccos`, que não
+  depende da máquina; a de 1e-9 dos demais floats ainda é empírica.
 - **`ventregaz-redis`** — um contêiner de outro projeto do Vitor estava rodando; não foi tocado.
 - A lacuna de 20/02 a 30/05 e a justificativa do travesseiro dependem de material fora do git.
 

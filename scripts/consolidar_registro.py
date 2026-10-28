@@ -1680,6 +1680,24 @@ DEFEITOS: list[Defeito] = [
     ),
     Defeito(
         data="2026-10-28", area=ML, item="ML-WIN-01",
+        defeito="A régua de 1e-9 relativo que substituiu a igualdade exata do "
+                "dourado reprovou no runner: `d_angulo` divergiu 5,7e-9.",
+        achado_por=EXECUCAO,
+        causa="O piso tinha sido medido num único par de plataformas, e régua "
+              "relativa é a forma errada para `degrees(arccos(c))`, cujo erro "
+              "relativo cresce como 1/θ² perto de 1.",
+        correcao="Ângulos com régua absoluta de 1e-4°, derivada da condição do "
+                 "`arccos`; 12/12 no verificador por mutação em Linux e no "
+                 "Windows.",
+        commit="58ae504",
+        instrumento=True,
+        premissa="Uma régua medida entre duas plataformas vale para as outras. O "
+                 "runner do Actions muda de máquina entre execuções: a primeira "
+                 "passou até com igualdade exata, a segunda reprovou.",
+        premissa_curta="Que o piso medido em duas plataformas valia para todas.",
+    ),
+    Defeito(
+        data="2026-10-28", area=ML, item="ML-WIN-01",
         defeito="O teste de retomada fazia mais de uma dobra por chamada no "
                 "Windows com orçamento zero.",
         achado_por=EXECUCAO,

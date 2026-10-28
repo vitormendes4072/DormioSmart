@@ -34,7 +34,7 @@ cada uma existe porque o projeto já pagou por não a ter feito.
 | 1 | Alcance declarado que não alcança | **11** |
 | 5 | Premissa herdada da documentação, nunca conferida no artefato | **8** |
 | 6 | Confirmação emitida antes da verificação | **7** |
-| 4 | O instrumento de medida mede errado — e nada mede o instrumento | **5** |
+| 4 | O instrumento de medida mede errado — e nada mede o instrumento | **6** |
 | 2 | Análise correta que não chega onde a decisão é tomada | **5** |
 | 3 | Número herdado que ganha autoridade sem ter procedência | **5** |
 | 7 | Degradação silenciosa é pior que falha ruidosa | **3** |
@@ -279,6 +279,7 @@ plausível — em geral um **verde** — e por isso ninguém o investiga.
 | 3 | **A tolerância do ENMO reprovaria firmware correto.** `rel = 1e−6` contra divergência medida de 1,10e−6 em float32 — cancelamento catastrófico em `‖a‖ − 1` com `‖a‖ ≈ 1`. Trocar o acumulador para double **não resolve** (1,101e−6 vs 1,097e−6): o erro entra no `sqrt` por amostra. | Diário 2026-09-30 (item b) |
 | 4 | **O harness de mutação do C++ tinha contaminação entre rodadas.** Restaurava só `caracteristicas.cpp`, deixando `filtro.cpp` sabotado da rodada anterior: uma sabotagem apareceu como **detectada**, e a detecção era resíduo da anterior. **Mesmo defeito que o `DATA-07c` achou no instrumento do Python, com outra roupa.** | Diário 2026-10-17 (item e); commit `7cddf66` |
 | 5 | **O sabotador novo nasceu apontando para um teste que não podia detectá-lo.** Ao criar `perfil_insert_permissivo`, o campo `exige` foi preenchido com `test_ana_nao_faz_upsert_no_perfil_do_bruno` — por leitura, parecia o teste certo. O verificador por mutação **reprovou**, dizendo que a sabotagem foi detectada mas por outros testes: aquele não pode detectá-la, porque na vítima que já tem perfil quem recusa é a policy de `update`. **O instrumento aqui é o `exige`**, e ele foi o que apontou que a hipótese sobre a própria suíte estava errada — é o campo que existe *"para que a suíte não acuse por acidente"*, funcionando contra quem o escreveu. | Diário 2026-10-17 (iv); `tests/rls/verificar_por_mutacao.py` (comentários de `perfil_insert_permissivo` e `perfil_update_sem_with_check`) |
+| 6 | **A régua do dourado foi derivada de um único par de plataformas, e chamada de piso medido.** Em 28/10 a comparação exata do vetor dourado virou tolerância de 1e-9 relativo, com o piso medido entre Windows e o arquivo gravado em Linux (8,0e-13). O runner do Actions, na segunda execução, divergiu 5,7e-9 em `d_angulo` e reprovou. O defeito era duplo: a amostra de plataformas era de tamanho um, **e a régua relativa era a forma errada para ângulo** — `arccos` perto de 1 tem erro relativo que cresce como 1/θ². E a correção revelou uma detecção falsa: o dourado do dispositivo pegava uma sabotagem através de um valor que é ruído de arredondamento (8,5e-7° num ângulo que é zero por definição). | Diário 2026-10-28 (ii), item (h); commit `58ae504`; `ml/testes/test_vetor_dourado.py` (`TOL_DOURADO_ANGULO_GRAUS`) |
 
 **O que custou.** Direto, pouco; em risco evitado, muito. O caso 1 é o mais grave em natureza: o
 trabalho afirma isolamento entre usuários, e a prova disso era um mock. Os casos 2 e 4 só

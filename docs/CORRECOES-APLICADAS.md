@@ -19,15 +19,15 @@ a única coisa aqui que sustenta uma afirmação de método.
 
 ## Resumo quantitativo
 
-**116 correções registradas**, todas sustentadas no repositório.
+**117 correções registradas**, todas sustentadas no repositório.
 
 **A unidade de contagem, dita antes dos números, porque ela decide como
 lê-los.** Uma linha deste arquivo é **uma correção**: um defeito, uma
 causa, uma correção. Em 3 linhas, porém, a causa e a correção foram
 uma só e os defeitos foram vários — `DADOS-02` (10), `REF-01` (4), `GIT-06` (14) —, e agrupá-las foi deliberado,
 porque separá-las contaria a mesma correção várias vezes. **Contando
-defeito em vez de correção, o total seria 141.** Este
-arquivo usa **116**, que é o número menor e o mais defensável.
+defeito em vez de correção, o total seria 142.** Este
+arquivo usa **117**, que é o número menor e o mais defensável.
 
 **Fora da contagem, e visível:** 1 linha(s) — `ML-04b` —,
 em que a hipótese se confirmou e o que se corrigiu foi a afirmação
@@ -41,10 +41,10 @@ que se podia extrair do resultado, não um defeito. Estão na seção da
 | Segurança | 15 |
 | Interface | 23 |
 | Firmware | 18 |
-| Dados e ML | 22 |
+| Dados e ML | 23 |
 | Documentação | 17 |
 | Infraestrutura | 21 |
-| **Total** | **116** |
+| **Total** | **117** |
 
 ### Por instrumento — o campo que dá valor a este arquivo
 
@@ -52,13 +52,13 @@ que se podia extrair do resultado, não um defeito. Estão na seção da
 |---|---:|---|
 | **leitura** | 20 | Inspeção do código ou do documento, raciocinando sobre ele. Nada roda, nada se confere contra terceiro. |
 | **cálculo** | 4 | Aritmética sobre os próprios números do projeto. O mais barato de todos, e derrubou premissas grandes. |
-| **execução** | 48 | Rodar código do projeto — suíte, job, compilador, script — e a **saída** acusar. O defeito não estava escondido: estava não exercitado. |
+| **execução** | 49 | Rodar código do projeto — suíte, job, compilador, script — e a **saída** acusar. O defeito não estava escondido: estava não exercitado. |
 | **controle positivo** | 10 | Provocar o defeito de propósito e exigir que a verificação acuse. Inclui verificação por mutação. **É o único instrumento que mede o alcance de uma verificação.** |
 | **inventário** | 20 | Conferir estado declarado contra estado real: `grep` por símbolo, `git ls-files` contra o disco, varredura de afirmações em documentos. |
 | **terceiro** | 10 | Especificação, documentação oficial, artigo, issue ou API de terceiro. O artefato que decide a resposta está **fora** do repositório. |
 | **dado real** | 3 | Só apareceu com o arquivo ou a medição real em mãos. |
 | **uso real** | 1 | Alguém usou o produto como usuário. |
-| **Total** | **116** | |
+| **Total** | **117** | |
 
 ### As três derivações que os números sustentam
 
@@ -72,8 +72,8 @@ que se podia extrair do resultado, não um defeito. Estão na seção da
 > do projeto; são proporções do que foi achado.**
 
 **(1) Exercitar achou mais do que ler, por mais de duas vezes.**
-Execução, controle positivo e uso real somam **59 de 116**
-registros (50%). Leitura e cálculo — os dois
+Execução, controle positivo e uso real somam **60 de 117**
+registros (51%). Leitura e cálculo — os dois
 instrumentos que não precisam rodar nada — somam **24** (20%). A razão é de **2,5 para 1**.
 
 Com a ressalva que impede a leitura fácil: isto **não** diz que ler é
@@ -84,7 +84,7 @@ e a execução achou **alcance** insuficiente. Alcance não se vê lendo, e é
 por isso que a razão é essa e não o contrário.
 
 **(2) 13 correções tinham a causa fora do repositório.**
-Fonte de terceiro e dado real somam **13 de 116** (11%) — defeitos cuja causa não está em nenhuma
+Fonte de terceiro e dado real somam **13 de 117** (11%) — defeitos cuja causa não está em nenhuma
 linha deste projeto, e que **nenhum teste daqui poderia pegar**: a
 especificação do PostgREST, a unidade do Empatica em `g/64`, o valor de
 uma chave num painel do Supabase, a API do Actions, os coeficientes do
@@ -96,15 +96,15 @@ Supabase de teste**, que deve a quatro itens e desde 28/10 tem item próprio
 (`INFRA-02`).
 
 **(3) As próprias verificações do projeto estavam defeituosas
-23 vezes — e 21 dessas 23 só apareceram
+24 vezes — e 22 dessas 24 só apareceram
 rodando ou sabotando.**
-São **23 de 116** registros (19%) em que a coisa errada era um teste, uma
+São **24 de 117** registros (20%) em que a coisa errada era um teste, uma
 guarda de CI, um harness de mutação ou um vetor de referência — não o
 código. A distribuição:
 
 | Instrumento que achou | Verificações defeituosas |
 |---|---:|
-| execução | 11 |
+| execução | 12 |
 | controle positivo | 10 |
 | terceiro | 1 |
 | leitura | 1 |
@@ -119,17 +119,17 @@ teste reprovar código correto até serem conferidos contra o `scipy`.
 **Então a regra honesta não é *não confie em leitura*.** É que leitura
 pega alcance quando se faz a pergunta certa — *em que máquina isto
 ficaria vermelho?* —, e essa pergunta funcionou exatamente uma vez em
-23. Nas outras 22, o alcance só apareceu quando
+24. Nas outras 23, o alcance só apareceu quando
 alguém tentou fazer a verificação falhar.
 
 ### Procedência
 
 | Procedência | Correções | O que significa |
 |---|---:|---|
-| `completa` | 112 | Commit **e** artefato reabrível — teste, script, seção de documento. Dá para reconferir sem acreditar em ninguém. |
+| `completa` | 113 | Commit **e** artefato reabrível — teste, script, seção de documento. Dá para reconferir sem acreditar em ninguém. |
 | `parcial` | 4 | Só a mensagem de commit, só a entrada de diário, ou correção em arquivo não versionado. Entra porque omitir seria pior, e entra **marcada**. |
 
-**46 dos 116 defeitos revelaram que a premissa estava
+**47 dos 117 defeitos revelaram que a premissa estava
 errada** — não que o código estava errado. É a seção mais instrutiva deste
 arquivo e tem lugar próprio no fim.
 
@@ -795,9 +795,9 @@ só de código filtra pela coluna de área.
 
 ---
 
-## Dados e ML — 22 defeitos
+## Dados e ML — 23 defeitos
 
-*14 execução · 2 dado real · 2 cálculo · 2 controle positivo · 1 terceiro · 1 inventário*
+*15 execução · 2 dado real · 2 cálculo · 2 controle positivo · 1 terceiro · 1 inventário*
 
 ### 2026-09-14 · `ML-01` 🔄
 
@@ -1048,6 +1048,18 @@ só de código filtra pela coluna de área.
 **A correção.** Estrutura exata e floats com tolerância derivada (1e-9 relativo) entre o piso medido e o teto do verificador por mutação, 12/12 em Linux e no Windows.
 
 **Commit.** `7016c81` · procedência **completa**
+
+### 2026-10-28 · `ML-WIN-01` 🔄
+
+**O defeito.** A régua de 1e-9 relativo que substituiu a igualdade exata do dourado reprovou no runner: `d_angulo` divergiu 5,7e-9.
+
+**Como foi encontrado.** *execução* — O piso tinha sido medido num único par de plataformas, e régua relativa é a forma errada para `degrees(arccos(c))`, cujo erro relativo cresce como 1/θ² perto de 1.
+
+**A correção.** Ângulos com régua absoluta de 1e-4°, derivada da condição do `arccos`; 12/12 no verificador por mutação em Linux e no Windows.
+
+**🔄 A premissa estava errada.** Uma régua medida entre duas plataformas vale para as outras. O runner do Actions muda de máquina entre execuções: a primeira passou até com igualdade exata, a segunda reprovou.
+
+**Commit.** `58ae504` · procedência **completa**
 
 ### 2026-10-28 · `ML-WIN-01` 🔄
 
@@ -1553,6 +1565,7 @@ com competência teria produzido a coisa errada bem feita.
 | 2026-10-17 | `DOC-11` | Que o arquivo de instruções descrevia o estado do projeto. |
 | 2026-10-28 | `GIT-06` | Que uma conferência escrita chega ao backlog. |
 | 2026-10-28 | `DOCS-WIN-01` | Que uma verificação que passa no CI vale em qualquer máquina. |
+| 2026-10-28 | `ML-WIN-01` | Que o piso medido em duas plataformas valia para todas. |
 | 2026-10-28 | `ML-WIN-01` | Que o relógio tinha resolução para um orçamento zero. |
 | 2026-10-28 | `DOC-12` | Que 29/04 marcava o início do versionamento. |
 | 2026-06-02 | `FIX-02` | Que o dado estava gravado e o problema era de leitura. |
@@ -1563,12 +1576,12 @@ com competência teria produzido a coisa errada bem feita.
 | 2026-10-16 | `CI-06` | Que eram três, e não quatro, os jobs nunca rodados num runner. |
 | 2026-10-17 | `GIT-05` | Que um aviso escrito no `ROADMAP.md` chega a quem clona. |
 
-**46 de 116.** E a distribuição por instrumento dentro
+**47 de 117.** E a distribuição por instrumento dentro
 deste subconjunto é a parte que vale registrar:
 
 | Instrumento | Premissas derrubadas |
 |---|---:|
-| execução | 14 |
+| execução | 15 |
 | inventário | 10 |
 | controle positivo | 8 |
 | terceiro | 4 |
@@ -1577,7 +1590,7 @@ deste subconjunto é a parte que vale registrar:
 | uso real | 1 |
 | dado real | 1 |
 
-**38 das 46 premissas caíram quando alguém saiu
+**39 das 47 premissas caíram quando alguém saiu
 do próprio raciocínio** — rodando, sabotando, conferindo o artefato,
 abrindo a especificação do fornecedor, ou preenchendo o formulário como
 usuário. As outras 8 caíram lendo e calculando, e vale
