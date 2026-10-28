@@ -824,13 +824,39 @@ def _monta_dourado_sequencias() -> dict:
 TOL_DOURADO_REL = 1e-9
 TOL_DOURADO_ABS = 1e-15
 
+# OS ÂNGULOS TÊM RÉGUA PRÓPRIA, ABSOLUTA E EM GRAUS (28/10, depois do runner).
+#
+# A régua acima foi derivada de UM par de plataformas (Windows contra o arquivo
+# gravado em Linux). O runner do Actions, na segunda execução, divergiu em
+# `d_angulo` por 5,7e-9 relativo — 0,008016267455 contra 0,008016267410 grau — e
+# reprovou. Não é defeito: `inclinacao_rel` e `d_angulo` são `degrees(arccos(c))`
+# com `c` o produto escalar de dois unitários, e arccos é mal-condicionado perto
+# de 1. Um erro δ em `c` vira δ/sen θ no ângulo: o erro ABSOLUTO fica pequeno, e o
+# RELATIVO cresce como 1/θ². Régua relativa é a régua errada para ângulo.
+#   piso  — com o ruído a montante medido (~1e-12 no `g_ref`), o menor ângulo do
+#           arquivo (0,003°, 5,3e-5 rad) erra ~2e-8 rad ≈ 1,1e-6°; no limite de
+#           vetores paralelos, √(2·1e-12) rad ≈ 8e-5°. O runner errou 4,5e-11°.
+#   teto  — as sabotagens do verificador por mutação mexem em graus inteiros
+#           (radianos no lugar de graus, filtro, g_ref), e a paridade com o C++
+#           tolera 0,25°.
+TOL_DOURADO_ANGULO_GRAUS = 1e-4
+_CAMPOS_ANGULARES = ("inclinacao_rel", "d_angulo")
+
+
+def _e_angulo(caminho: str) -> bool:
+    folha = caminho.rsplit(".", 1)[-1].split("[", 1)[0]
+    return folha in _CAMPOS_ANGULARES
+
 
 def _divergencias(gravado, montado, caminho="") -> list[str]:
     """Onde `montado` deixa de bater com `gravado`. Vazio quando bate."""
     if isinstance(gravado, float) or isinstance(montado, float):
         if not (isinstance(gravado, (int, float)) and isinstance(montado, (int, float))):
             return [f"{caminho}: tipo {type(gravado).__name__} vs {type(montado).__name__}"]
-        if math.isclose(gravado, montado, rel_tol=TOL_DOURADO_REL, abs_tol=TOL_DOURADO_ABS):
+        if _e_angulo(caminho):
+            if abs(gravado - montado) <= TOL_DOURADO_ANGULO_GRAUS:
+                return []
+        elif math.isclose(gravado, montado, rel_tol=TOL_DOURADO_REL, abs_tol=TOL_DOURADO_ABS):
             return []
         return [f"{caminho}: {gravado!r} vs {montado!r}"]
     if type(gravado) is not type(montado):
