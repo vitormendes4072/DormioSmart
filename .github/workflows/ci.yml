@@ -20,7 +20,13 @@ on:
 jobs:
   test:
     name: Testes da web-app (pytest, Supabase mockado)
-    runs-on: ubuntu-latest
+    # Imagem FIXA nos seis jobs (CI-07, 28/10). O runner avisou que o
+    # `ubuntu-latest` migra para o Ubuntu 26, com outro g++ e outro Python do
+    # sistema -- e o job `documentos` usa o Python do sistema. Mesma regra do
+    # Postgres no job `rls`: mudanca de major e decisao, nao surpresa. A 24.04 e
+    # a imagem em que os sete jobs passaram em 28/10; migrar e trocar as seis
+    # linhas de uma vez, com o CI verde la.
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -54,7 +60,7 @@ jobs:
     # na 14; a 16 e a que se usaria hoje. Rodar nas duas faz a diferenca
     # aparecer aqui, com o diff na mao, e nao meses depois num banco real.
     name: RLS contra Postgres ${{ matrix.postgres }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     strategy:
       # Uma versao falhando nao cancela a outra: saber que passa na 14 e falha
@@ -145,7 +151,7 @@ jobs:
 
   frontend:
     name: Frontend (vitest + tsc + vite)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -188,7 +194,7 @@ jobs:
     # repositorio, e a suite gera sinal sintetico. O que ela verifica e a
     # DEFINICAO das features e das metricas, nao a medicao.
     name: Suíte do ml/ (pipeline, features, vetor dourado)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -268,7 +274,7 @@ jobs:
     # tentava compilar. O alvo `sintaxe` nasceu desse achado; faltava alguem
     # chama-lo sem ser a mao.
     name: Firmware (núcleo em g++ e sintaxe dos .ino)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -317,7 +323,7 @@ jobs:
     # GIT-06 (28/10): o mesmo job confere a consolidacao do registro
     # (`docs/CORRECOES-APLICADAS.md` e `docs/PENDENCIAS-ABERTAS.md`, gerados).
     name: Documentos de fundamentação versionados
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout
         uses: actions/checkout@v6
