@@ -13,7 +13,12 @@ import {
   trechosDeMovimento,
   type Cobertura,
 } from "./cobertura";
-import { ehMovimento, intensidade, type LeituraSono } from "../types/sleep";
+import {
+  ehMovimento,
+  instanteDaLeitura,
+  intensidade,
+  type LeituraSono,
+} from "../types/sleep";
 
 export type Janela = { inicio: Date; fim: Date };
 
@@ -74,10 +79,15 @@ type LeituraDatada = { leitura: LeituraSono; instante: Date };
 
 function comInstanteValido(leituras: LeituraSono[]): LeituraDatada[] {
   return leituras
+    // Instante da MEDICAO, com fallback para o da chegada (DASH-12). Tem que
+    // ser a mesma base de `cobertura.ts`: as metricas desta tela sao lidas ao
+    // lado das de la, e duas bases de tempo diferentes fariam os dois blocos
+    // discordarem sobre a mesma captacao.
+    .map((leitura) => ({ leitura, quando: instanteDaLeitura(leitura) }))
     // `new Date(null)` NAO da NaN: da 1970, e uma linha assim arrastaria a
     // janela por decadas passando ilesa pelo filtro de NaN abaixo.
-    .filter((leitura) => typeof leitura.created_at === "string" && leitura.created_at !== "")
-    .map((leitura) => ({ leitura, instante: new Date(leitura.created_at) }))
+    .filter(({ quando }) => quando !== "")
+    .map(({ leitura, quando }) => ({ leitura, instante: new Date(quando) }))
     // `new Date("lixo")` produz Invalid Date, cujo getTime() e NaN. Descartar
     // aqui evita que uma linha corrompida envenene todas as contas abaixo.
     .filter(({ instante }) => !Number.isNaN(instante.getTime()))

@@ -7,7 +7,21 @@
  */
 import { ehMovimento, intensidade, type LeituraSono } from "../types/sleep";
 
+/**
+ * `captured_at` vem antes de `created_at` de proposito (DASH-12).
+ *
+ * Sao coisas diferentes: `captured_at` e o instante em que o dispositivo
+ * MEDIU, `created_at` e o instante em que a linha CHEGOU ao banco. Quem for
+ * analisar a serie no R ou no Python precisa da primeira — a segunda carrega
+ * latencia de rede, e vai carregar o atraso inteiro do buffer offline quando
+ * o `HW-05` existir. As duas vao no arquivo porque a diferenca entre elas e
+ * ela propria um dado sobre a captacao.
+ *
+ * `captured_at` fica vazio nas linhas gravadas antes do campo entrar no
+ * `select` — vazio e o registro honesto de "nao foi declarado".
+ */
 export const COLUNAS = [
+  "captured_at",
   "created_at",
   "movimento_total",
   "intensidade",
@@ -39,6 +53,7 @@ export function gerarCsv(leituras: LeituraSono[]): string {
     const valor = intensidade(leitura);
     linhas.push(
       [
+        escapar(leitura.captured_at ?? null),
         escapar(leitura.created_at),
         escapar(leitura.movimento_total),
         // Intensidade e derivada, nao vem do banco. Vai junto por conveniencia

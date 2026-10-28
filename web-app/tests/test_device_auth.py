@@ -28,8 +28,9 @@ def _client():
     return app.test_client()
 
 
-class _ResultadoOk:
-    data = [{"id": 1}]
+# `registrar_leitura` devolve o id da linha criada (SEC-06), nao mais o objeto
+# de resposta do PostgREST: a gravacao virou uma chamada de funcao no banco.
+ID_GRAVADO = 4242
 
 
 # --- hashing -------------------------------------------------------------
@@ -47,34 +48,34 @@ def test_hash_e_deterministico_e_nao_devolve_o_token():
 # --- rejeição ------------------------------------------------------------
 
 def test_sem_token_responde_401_e_nao_persiste():
-    with patch.object(database.db, "insert_sleep_data") as insert:
+    with patch.object(database.db, "registrar_leitura") as gravar:
         resp = _client().post("/api/data", json=LEITURA)
     assert resp.status_code == 401
-    insert.assert_not_called()
+    gravar.assert_not_called()
 
 
 def test_token_vazio_responde_401():
-    with patch.object(database.db, "insert_sleep_data") as insert:
+    with patch.object(database.db, "registrar_leitura") as gravar:
         resp = _client().post("/api/data", json=LEITURA, headers={TOKEN_HEADER: "   "})
     assert resp.status_code == 401
-    insert.assert_not_called()
+    gravar.assert_not_called()
 
 
 def test_token_desconhecido_responde_401_e_nao_persiste():
     with patch.object(database.db, "get_device_by_token_hash", return_value=None), \
-         patch.object(database.db, "insert_sleep_data") as insert:
+         patch.object(database.db, "registrar_leitura") as gravar:
         resp = _client().post("/api/data", json=LEITURA, headers={TOKEN_HEADER: "invalido"})
     assert resp.status_code == 401
-    insert.assert_not_called()
+    gravar.assert_not_called()
 
 
 def test_token_revogado_responde_401():
     """A camada de banco devolve None para device revogado (soft delete)."""
     with patch.object(database.db, "get_device_by_token_hash", return_value=None), \
-         patch.object(database.db, "insert_sleep_data") as insert:
+         patch.object(database.db, "registrar_leitura") as gravar:
         resp = _client().post("/api/data", json=LEITURA, headers={TOKEN_HEADER: TOKEN})
     assert resp.status_code == 401
-    insert.assert_not_called()
+    gravar.assert_not_called()
 
 
 def test_resposta_401_nao_revela_qual_e_o_caso():
@@ -91,47 +92,69 @@ def test_resposta_401_nao_revela_qual_e_o_caso():
 
 def test_token_valido_persiste_e_responde_201():
     with patch.object(database.db, "get_device_by_token_hash", return_value=DEVICE), \
-         patch.object(database.db, "insert_sleep_data", return_value=_ResultadoOk()), \
-         patch.object(database.db, "touch_device"):
+         patch.object(database.db, "registrar_leitura", return_value=ID_GRAVADO):
         resp = _client().post("/api/data", json=LEITURA, headers={TOKEN_HEADER: TOKEN})
     assert resp.status_code == 201
 
 
-def test_linha_recebe_dono_resolvido_pelo_token():
+def test_a_gravacao_recebe_o_hash_do_token_e_nao_o_dono():
+    """O dono deixou de ser carimbado em Python (SEC-06).
+
+    Antes, a rota montava `"user_id": device["user_id"]` no payload. Estava
+    correto, mas era uma linha de Python entre uma chave vazada e a posse de
+    dado alheio. Agora a rota passa o HASH DO TOKEN, e quem resolve o dono é
+    `registrar_leitura` dentro do banco — onde não existe parâmetro para
+    escolhê-lo. Ver `migrations/005` e `tests/rls/test_rls_ingestao.py`.
+    """
     with patch.object(database.db, "get_device_by_token_hash", return_value=DEVICE), \
-         patch.object(database.db, "insert_sleep_data", return_value=_ResultadoOk()) as insert, \
-         patch.object(database.db, "touch_device"):
+         patch.object(database.db, "registrar_leitura", return_value=ID_GRAVADO) as gravar:
         _client().post("/api/data", json=LEITURA, headers={TOKEN_HEADER: TOKEN})
 
-    gravado = insert.call_args[0][0]
-    assert gravado["user_id"] == DEVICE["user_id"]
-    assert gravado["device_id"] == DEVICE["id"]
+    token_hash, gravado = gravar.call_args[0]
+    assert token_hash == hash_token(TOKEN), "a gravacao nao recebeu o hash do token"
+    assert "user_id" not in gravado, (
+        "o dono voltou a ser montado em Python — isso desfaz a SEC-06"
+    )
+    assert "device_id" not in gravado
 
 
 def test_corpo_nao_consegue_forjar_o_dono():
-    """user_id enviado pelo device é ignorado — quem manda é o token."""
+    """user_id enviado pelo device é ignorado — quem manda é o token.
+
+    Duas barreiras agora, e esta cobre a primeira: a rota não repassa `user_id`
+    nem `device_id` do corpo. A segunda é a própria função no banco, que extrai
+    coluna por coluna — coberta por
+    `tests/rls/test_rls_ingestao.py::test_a_ingestao_nao_escolhe_o_dono_pelo_json`.
+    """
     intruso = dict(LEITURA, user_id="user-de-outra-pessoa", device_id="dev-falso")
     with patch.object(database.db, "get_device_by_token_hash", return_value=DEVICE), \
-         patch.object(database.db, "insert_sleep_data", return_value=_ResultadoOk()) as insert, \
-         patch.object(database.db, "touch_device"):
+         patch.object(database.db, "registrar_leitura", return_value=ID_GRAVADO) as gravar:
         _client().post("/api/data", json=intruso, headers={TOKEN_HEADER: TOKEN})
 
-    gravado = insert.call_args[0][0]
-    assert gravado["user_id"] == DEVICE["user_id"]
-    assert gravado["device_id"] == DEVICE["id"]
+    _, gravado = gravar.call_args[0]
+    assert "user_id" not in gravado
+    assert "device_id" not in gravado
+    assert "user-de-outra-pessoa" not in str(gravado)
 
 
-def test_last_seen_atualizado_apos_persistir():
-    with patch.object(database.db, "get_device_by_token_hash", return_value=DEVICE), \
-         patch.object(database.db, "insert_sleep_data", return_value=_ResultadoOk()), \
-         patch.object(database.db, "touch_device") as touch:
-        _client().post("/api/data", json=LEITURA, headers={TOKEN_HEADER: TOKEN})
-    touch.assert_called_once_with(DEVICE["id"])
+def test_last_seen_atualiza_na_mesma_chamada_da_gravacao():
+    """`touch_device` deixou de existir como chamada separada (SEC-06).
+
+    O `last_seen_at` passou a ser atualizado dentro de `registrar_leitura`, na
+    mesma transação. Era uma segunda ida ao banco com a chave privilegiada, e
+    cada uma dessas era superfície a eliminar. O efeito em si é verificado
+    contra o Postgres real em `tests/rls/test_rls_ingestao.py::
+    test_registrar_leitura_atualiza_o_ultimo_contato`.
+    """
+    assert not hasattr(database.db, "touch_device"), (
+        "`touch_device` reapareceu: o ultimo contato pertence a "
+        "`registrar_leitura`, para nao haver segunda chamada privilegiada"
+    )
 
 
 def test_falha_de_persistencia_ainda_responde_503():
     """SEC-02 não pode ter quebrado o FIX-02: autenticado mas sem gravar = 503."""
     with patch.object(database.db, "get_device_by_token_hash", return_value=DEVICE), \
-         patch.object(database.db, "insert_sleep_data", return_value=None):
+         patch.object(database.db, "registrar_leitura", return_value=None):
         resp = _client().post("/api/data", json=LEITURA, headers={TOKEN_HEADER: TOKEN})
     assert resp.status_code == 503

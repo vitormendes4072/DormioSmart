@@ -103,6 +103,32 @@ async function extrairMensagemDeErro(resposta: Response): Promise<string> {
  * O backend garante array — nunca 500 (FIX-01). Ainda assim conferimos o tipo:
  * a UI quebraria feio se viesse outra coisa, e o custo da checagem e zero.
  */
+/**
+ * Quantas leituras o painel pede (DASH-13).
+ *
+ * ── O DEFEITO QUE ISTO CONSERTA ─────────────────────────────────────────
+ *
+ * O frontend nunca mandava `limite`, e o backend assume 20 (`LIMITE_PADRAO`
+ * em `consulta.py`). Toda a maquina de cobertura, lacuna e sessao operava
+ * sobre, no maximo, as 20 linhas mais recentes — **dez minutos de celular**.
+ *
+ * Nao era erro de matematica: era a tela nao ter os dados para os quais ela
+ * foi feita. O card "Medido · N% de <janela>" e o seletor "Ver todas (N
+ * sessoes)" descreviam esse recorte de dez minutos como se fosse a captacao
+ * inteira, e nenhuma captura de tela de uma noite real era possivel.
+ *
+ * ── POR QUE 2000 ────────────────────────────────────────────────────────
+ *
+ * E o teto do backend (`LIMITE_MAXIMO`), e a conta fecha: uma noite de 8 h
+ * agregada em epocas de 60 s da ~480 linhas; em epocas de 30 s, ~960. 2000
+ * cobre a noite mais recente com folga para a anterior, que e o que o
+ * seletor de sessao precisa para existir.
+ *
+ * Pedir mais exigiria paginacao — e paginar antes de haver uma noite real
+ * gravada seria resolver um problema que ainda nao aconteceu.
+ */
+export const LIMITE_DO_PAINEL = 2000;
+
 export type FiltroDeHistorico = {
   /** Recorta por instrumento. Ausente = todos os dispositivos do usuario. */
   dispositivo?: string | null;

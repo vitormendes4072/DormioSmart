@@ -19,8 +19,14 @@ on:
 
 jobs:
   test:
-    name: Testes da web-app (pytest)
-    runs-on: ubuntu-latest
+    name: Testes da web-app (pytest, Supabase mockado)
+    # Imagem FIXA nos seis jobs (CI-07, 28/10). O runner avisou que o
+    # `ubuntu-latest` migra para o Ubuntu 26, com outro g++ e outro Python do
+    # sistema -- e o job `documentos` usa o Python do sistema. Mesma regra do
+    # Postgres no job `rls`: mudanca de major e decisao, nao surpresa. A 24.04 e
+    # a imagem em que os sete jobs passaram em 28/10; migrar e trocar as seis
+    # linhas de uma vez, com o CI verde la.
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -36,14 +42,116 @@ jobs:
           pip install -r web-app/requirements.txt
           pip install pytest
 
+      # Sem Postgres, entao `tests/rls/` e pulada aqui de proposito -- ela nao
+      # cai para mock, porque mock nao exercita policy nenhuma. Quem roda RLS e
+      # o job `rls` abaixo. `--ignore` em vez de deixar pular: pulo aparece como
+      # "s" no relatorio e vira ruido que se aprende a ignorar.
       - name: Rodar testes
         run: |
           cd web-app
-          python -m pytest tests/ -v
+          python -m pytest tests/ -v --ignore=tests/rls
+
+  rls:
+    # Isolamento entre usuarios (SEC-05), contra Postgres de verdade.
+    #
+    # MATRIZ DE VERSAO de proposito. RLS e privilegio sao area onde o Postgres
+    # muda de comportamento entre majors -- a 15 mudou o dono e os privilegios
+    # do schema `public`, por exemplo. O harness foi desenvolvido e verificado
+    # na 14; a 16 e a que se usaria hoje. Rodar nas duas faz a diferenca
+    # aparecer aqui, com o diff na mao, e nao meses depois num banco real.
+    name: RLS contra Postgres ${{ matrix.postgres }}
+    runs-on: ubuntu-24.04
+
+    strategy:
+      # Uma versao falhando nao cancela a outra: saber que passa na 14 e falha
+      # na 16 e metade do diagnostico.
+      fail-fast: false
+      matrix:
+        postgres: ['14', '16']
+
+    services:
+      postgres:
+        # Versao da matriz, nunca `latest`: mudanca de major tem de ser uma
+        # decisao, nao uma surpresa numa terca-feira.
+        image: postgres:${{ matrix.postgres }}
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: dormio_rls_teste
+        ports:
+          - 5432:5432
+        # Sem healthcheck, o pytest conecta antes de o banco aceitar conexao e
+        # o job falha de forma intermitente.
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      # Banco descartavel do runner. NUNCA aponta para o Supabase: o setup roda
+      # `drop schema cascade`, e o conftest se recusa a rodar contra host remoto
+      # ou *.supabase.co. Nenhum segredo do projeto entra aqui -- este job nao
+      # toca a instancia real, e nao precisa tocar.
+      DORMIO_RLS_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/dormio_rls_teste
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Configurar Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+
+      - name: Instalar dependências
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest psycopg2-binary
+
+      - name: Rodar testes de RLS
+        run: |
+          cd web-app
+          python -m pytest tests/rls -v
+
+      # A ETAPA QUE TORNA O SERVICO POSTGRES UTIL DE VERDADE.
+      #
+      # `pytest.skip` nao falha o job. Se a variavel de ambiente sumisse, se o
+      # servico nao subisse, se o psycopg2 deixasse de instalar -- em qualquer
+      # desses casos os testes de RLS seriam PULADOS e o CI ficaria VERDE,
+      # anunciando uma cobertura de seguranca que nao rodou. Pulo silencioso e
+      # pior que falha, porque ninguem investiga o verde.
+      #
+      # Os tres cenarios foram exercitados a mao: banco de pe (passa), variavel
+      # ausente (falha), psycopg2 ausente (falha).
+      - name: Conferir que os testes de RLS não foram pulados
+        run: |
+          cd web-app
+          python -m pytest tests/rls -q --no-header -rs > /tmp/rls.txt 2>&1 || true
+          cat /tmp/rls.txt
+          if grep -qE '[0-9]+ skipped' /tmp/rls.txt; then
+            echo "::error::Os testes de RLS foram PULADOS. O servico Postgres ou a variavel DORMIO_RLS_DATABASE_URL nao estao de pe -- o isolamento entre usuarios NAO foi verificado nesta execucao."
+            exit 1
+          fi
+          if ! grep -qE '[0-9]+ passed' /tmp/rls.txt; then
+            echo "::error::Nenhum teste de RLS foi coletado -- provavelmente psycopg2 ausente."
+            exit 1
+          fi
+
+      # Verificacao por mutacao: sabota o esquema de 25 maneiras e confere que a
+      # suite acusa cada uma. E o que impede o conjunto de virar decoracao --
+      # uma suite de seguranca que nunca falhou nao provou nada.
+      #
+      # So numa versao: ela sobe o esquema 26 vezes, e o que se verifica aqui e
+      # a suite, nao o Postgres. A 16 por ser a que se usaria hoje.
+      - name: Verificação por mutação da suíte
+        if: matrix.postgres == '16'
+        run: |
+          cd web-app
+          python tests/rls/verificar_por_mutacao.py
 
   frontend:
     name: Frontend (vitest + tsc + vite)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -72,3 +180,168 @@ jobs:
       - name: Type-check e build
         working-directory: frontend
         run: npm run build
+
+  ml:
+    # CI-04 — a suite do `ml/` passa a rodar sozinha.
+    #
+    # Sao os testes que protegem os invariantes caros do pipeline: nao-vazamento
+    # entre sujeitos, anti-aliasing na reamostragem, as dez armadilhas de formato
+    # dos dois datasets, reprodutibilidade do LOSO retomavel e a paridade do
+    # vetor dourado. Nenhum deles rodava automaticamente -- e o `ml/` e onde
+    # estao os resultados que o TCC afirma.
+    #
+    # Nada aqui precisa dos ~46 GB de dado: `ml/dados/` so tem `.gitkeep` no
+    # repositorio, e a suite gera sinal sintetico. O que ela verifica e a
+    # DEFINICAO das features e das metricas, nao a medicao.
+    name: Suíte do ml/ (pipeline, features, vetor dourado)
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Configurar Python
+        uses: actions/setup-python@v6
+        with:
+          # 3.10 porque e a versao em que `ml/requirements.txt` foi verificado
+          # (cabecalho do arquivo, 2026-09-10). Ambiente pinado e requisito de
+          # reprodutibilidade, nao sugestao -- entao a versao do interprete
+          # tambem e escolha, e nao "a mais nova".
+          python-version: '3.10'
+          cache: 'pip'
+          cache-dependency-path: ml/requirements.txt
+
+      - name: Instalar dependências
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r ml/requirements.txt
+
+      # MESMA LOGICA DA GUARDA DO JOB `rls`: pulo silencioso e pior que falha.
+      # Aqui o modo de falha nao e `pytest.skip`, e COLETA VAZIA -- se um import
+      # quebrar, se o `pythonpath` do pytest.ini deixar de resolver, se alguem
+      # renomear `testes/`, o pytest reporta "no tests ran" e devolve exit 5 ou,
+      # pior, coleta 3 de 70 e passa. Contar antes de rodar torna isso visivel.
+      - name: Conferir que a suíte é coletada por inteiro
+        working-directory: ml
+        run: |
+          python -m pytest testes --collect-only -q > /tmp/coleta.txt 2>&1 || true
+          tail -3 /tmp/coleta.txt
+          N=$(grep -cE '^testes/.*::' /tmp/coleta.txt || true)
+          echo "testes coletados: $N"
+          # 107 e a contagem MEDIDA em 2026-10-16, na primeira execucao real
+          # deste job. O numero que estava aqui era 70, de 22/09, e ja estava
+          # 37 testes defasado: a guarda teria aceitado perder um terco da
+          # suite em silencio -- exatamente o modo de falha que ela existe para
+          # pegar, com o piso alto o bastante para parecer que pegava.
+          #
+          # Atualizar este numero quando a suite crescer e parte de escrever
+          # teste novo. Se ele ficar atras da suite, a guarda volta a nao
+          # guardar nada.
+          MINIMO=107
+          if [ "${N:-0}" -lt "$MINIMO" ]; then
+            echo "::error::Coletados $N testes, menos que os $MINIMO medidos em 2026-10-16. Import quebrado, pasta renomeada ou teste removido sem registro -- em qualquer dos casos a cobertura anunciada nao rodou."
+            exit 1
+          fi
+
+      - name: Rodar a suíte
+        working-directory: ml
+        timeout-minutes: 25
+        run: python -m pytest testes -q --no-header -rs
+
+      # O QUE IMPEDE O VETOR DOURADO DE VIRAR DECORACAO.
+      #
+      # Um teste de paridade que nunca reprovou nao provou nada, e este ja
+      # esteve nesse estado: `test_gravar_vetor_dourado` gravava o arquivo de
+      # referencia e conferia que ele existia -- nunca podia falhar. O
+      # verificador sabota `features.py` de doze maneiras e exige que a suite
+      # acuse cada uma.
+      - name: Verificação por mutação do vetor dourado
+        working-directory: ml
+        timeout-minutes: 20
+        run: python testes/verificar_vetor_dourado_por_mutacao.py
+
+  firmware:
+    # CI-03 — o firmware passa a ser compilado.
+    #
+    # O item pedia `arduino-cli compile`. Nao e preciso: o `firmware/nucleo/` e
+    # C++ puro (zero `Arduino.h`) e ja tem um Makefile de host, e o alvo
+    # `sintaxe` abre os `.ino` com stubs minimos do Arduino e confere sintaxe,
+    # tipos e formatos de printf com `g++ -fsyntax-only`. E g++, que o runner ja
+    # tem, em vez de uma toolchain de 300 MB.
+    #
+    # O QUE ISTO PEGA, LITERALMENTE: ate 2026-09-22 o `envio-continuo.ino`
+    # versionado tinha duas strings com quebra de linha literal no meio. Nao
+    # compilava em maquina nenhuma, e ficou assim porque nada no repositorio
+    # tentava compilar. O alvo `sintaxe` nasceu desse achado; faltava alguem
+    # chama-lo sem ser a mao.
+    name: Firmware (núcleo em g++ e sintaxe dos .ino)
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Suíte do núcleo
+        working-directory: firmware/nucleo
+        run: make
+
+      - name: Sintaxe dos sketches
+        working-directory: firmware/nucleo
+        run: make sintaxe
+
+      # Nao e teste: e a medicao de quantas horas cabem no buffer, que o
+      # `firmware/nucleo/README.md` e o backlog citam como numero medido. Rodar
+      # junto garante que o numero citado continua sendo o que o codigo produz.
+      - name: Capacidade do buffer (a medição que o texto cita)
+        working-directory: firmware/nucleo
+        run: make capacidade
+
+  documentos:
+    # CI-05 — documento de fundamentação não fica fora do versionamento.
+    #
+    # LEIA O CABECALHO DE `scripts/conferir_docs_versionados.py` ANTES DE MEXER.
+    # A especificacao original do CI-05 ("um job que falhe quando ha arquivo nao
+    # rastreado em docs/") NAO FUNCIONA num runner: `actions/checkout` monta a
+    # arvore a partir do commit, entao arquivo nao rastreado nunca chega aqui e
+    # o comando devolve vazio sempre. Era prevencao decorativa.
+    #
+    # O que roda e reprova aqui sao as outras DUAS verificacoes do script:
+    #
+    #   (2) documento `docs/*.md` citado por arquivo versionado que nao esta
+    #       no git nem no .gitignore. E a forma pela qual o GIT-04 causava
+    #       dano de verdade -- o `ML-DATASETS-E-PLANO.md` era a fundamentacao
+    #       que os READMEs mandavam ler, e um clone nao a trazia.
+    #
+    #   (3) ponteiro pendurado (acrescentada em 17/10, item GIT-05): arquivo
+    #       IGNORADO de proposito que arquivo versionado manda ler assim
+    #       mesmo, sem constar de PONTEIROS_ACEITOS. ATENCAO ao que ela NAO
+    #       faz: nasceu com os 8 casos existentes todos dentro da isencao,
+    #       entao hoje ela so pega o nono. E catraca, nao cobertura -- e isso
+    #       esta impresso na saida a cada execucao, de proposito.
+    #
+    # A metade local do script (orfao na arvore) continua valendo, e o lugar
+    # dela e a maquina de quem edita, rodada a mao antes de commitar.
+    #
+    # GIT-06 (28/10): o mesmo job confere a consolidacao do registro
+    # (`docs/CORRECOES-APLICADAS.md` e `docs/PENDENCIAS-ABERTAS.md`, gerados).
+    name: Documentos de fundamentação versionados
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          # HISTORICO INTEIRO, de proposito (GIT-06). O `conferir_docs` nao
+          # precisa de log, mas o `consolidar_registro.py --conferir` confere
+          # que todo commit citado como procedencia existe -- e com checkout
+          # raso nenhum hash antigo existiria. Se alguem voltar isto para 1, o
+          # script REPROVA ("historico raso"), em vez de passar sem conferir.
+          fetch-depth: 0
+
+      - name: Conferir
+        run: python scripts/conferir_docs_versionados.py
+
+      # Documento gerado e editado a mao mente sobre a propria procedencia: o
+      # `--conferir` regenera em memoria e reprova se o disco divergir. Confere
+      # tambem que todo hash citado existe (nasceu do `846966a`, que nao existe
+      # -- o commit real e `846986a`) e que a prosa que nomeia casos ainda bate
+      # com a tabela.
+      - name: Consolidacao do registro
+        run: python scripts/consolidar_registro.py --conferir

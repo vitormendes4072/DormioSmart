@@ -10,13 +10,29 @@ existe uma única vez, na resposta do pareamento. Não há como recuperá-lo
 depois — só gerar outro. É o mesmo comportamento de token de API do GitHub e
 do próprio Supabase, e é o que impede que um vazamento do banco entregue as
 credenciais dos dispositivos.
+
+Desde a SEC-08 o hash NÃO fica em `devices`: fica em `public.device_tokens`,
+tabela sem GRANT para `anon`/`authenticated` e portanto não exposta pelo
+PostgREST. Ver o cabeçalho de `migrations/007` para o porquê — em resumo, a
+lista de campos abaixo é apresentação, não proteção, e por um tempo o
+comentário dela dizia o contrário.
 """
 import logging
 
 logger = logging.getLogger(__name__)
 
-# Campos devolvidos ao cliente. `token_hash` NUNCA entra nesta lista: ele não
-# tem utilidade para a interface e é material sensível.
+# Campos devolvidos ao cliente.
+#
+# ESTA LISTA NÃO É UM CONTROLE DE ACESSO. Ela é o que a interface precisa, e
+# nada mais. Quem impede o cliente de ler o que não deve é o GRANT e o RLS no
+# banco — o navegador fala direto com o PostgREST usando a chave `anon` (que é
+# pública por design) e não passa por este arquivo.
+#
+# O comentário que estava aqui antes afirmava que `token_hash` ficava de fora
+# "porque é material sensível", como se a omissão protegesse a coluna. Não
+# protegia: `select=token_hash` via PostgREST devolvia. O conserto de verdade
+# foi tirar a coluna desta tabela (SEC-08 / migrations/007), e é por isso que
+# ela não aparece mais nem como omissão deliberada — ela não existe aqui.
 CAMPOS = "id, nome, tipo, created_at, last_seen_at, revoked_at"
 
 # Classes de instrumento (DATA-05). Nao e o nome — nome e escolha do usuario.
@@ -72,19 +88,23 @@ def validar_tipo(valor):
     return valor, None
 
 
-def criar(client, usuario_id, nome, token_hash, tipo=TIPO_PADRAO):
-    """Cria o dispositivo. Devolve a linha criada ou None."""
+def criar(client, nome, token_hash, tipo=TIPO_PADRAO):
+    """Cria o dispositivo e a credencial dele. Devolve a linha criada ou None.
+
+    Vai por `parear_dispositivo()` no banco (SEC-08): a credencial vive em
+    `device_tokens`, tabela sem GRANT para `authenticated`, então o cliente do
+    usuário não consegue — e não deve — escrever nela direto.
+
+    NÃO RECEBE `usuario_id`, e a ausência é o ponto: a função no banco deriva o
+    dono de `auth.uid()`. Antes, o `user_id` era informado aqui e conferido pelo
+    RLS no insert; agora não há por onde informá-lo errado. Uma linha de código
+    a menos entre uma sessão válida e a conta de outra pessoa.
+    """
     try:
-        resposta = (
-            client.table("devices")
-            .insert({
-                "user_id": usuario_id,
-                "nome": nome,
-                "token_hash": token_hash,
-                "tipo": tipo,
-            })
-            .execute()
-        )
+        resposta = client.rpc(
+            "parear_dispositivo",
+            {"p_nome": nome, "p_tipo": tipo, "p_token_hash": token_hash},
+        ).execute()
         linhas = resposta.data or []
         return linhas[0] if linhas else None
     except Exception:

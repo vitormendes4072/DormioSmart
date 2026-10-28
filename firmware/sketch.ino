@@ -20,6 +20,22 @@ const char* ssid = WIFI_SSID;
 const char* password = WIFI_PASSWORD;
 String serverName = "https://dormio-smart.vercel.app/api/data"; // Endereço Oficial
 
+// --- LARGURA DE BANDA DO FILTRO: 21 Hz (FW-06) ---
+//
+// Ate 2026-09 este sketch nao chamava setFilterBandwidth e rodava no padrao
+// da biblioteca, 260 Hz. Os sketches de caracterizacao e de envio-continuo
+// medem em 21 Hz -- e medir num filtro para usar outro no produto invalida a
+// transferencia do resultado: o LIMIAR_MOVIMENTO abaixo e definido sobre o
+// ruido de base, e o ruido de base depende da largura de banda.
+//
+// 21 Hz e a escolha certa para os tres. Movimento de corpo em cama e fenomeno
+// de poucos Hz (Nyquist: amostrar acima de ~40 Hz ja basta); largura maior so
+// deixa entrar vibracao de movel, passo no comodo e ruido do proprio MEMS.
+//
+// E uma linha de codigo, mas muda o ruido de base. Qualquer limiar calibrado
+// antes desta mudanca precisa ser refeito -- o que nao e perda: o de hoje
+// e provisorio e sera recalibrado no VIA-01, depois da solda (Etapa 0).
+
 // --- CRITERIO DE MOVIMENTO (docs/DATA-CONTRACT.md v1.1.0) ---
 // Fonte unica da verdade da classificacao: quem decide "movimento" e o
 // dispositivo. O dashboard apenas exibe o rotulo, nunca reclassifica.
@@ -52,20 +68,57 @@ void setup() {
     Serial.println("Sensor MPU6050: Online.");
     mpu.setAccelerometerRange(MPU6050_RANGE_8_G);
     mpu.setGyroRange(MPU6050_RANGE_500_DEG);
+    // FW-06: mesma largura de banda dos sketches de caracterizacao e de
+    // envio-continuo. Sem esta linha o sensor rodava no padrao de 260 Hz --
+    // ver a nota no cabecalho deste arquivo.
+    mpu.setFilterBandwidth(MPU6050_BAND_21_HZ);
   }
 
-  // 2. Conecta ao Wi-Fi
+  // 2. MEDE. Antes da rede, sempre.
+  //
+  // ── POR QUE A ORDEM MUDOU (HW-05, 2026-09-22) ─────────────────────────
+  //
+  // Ate hoje a medicao vinha DEPOIS do bloco de Wi-Fi, e o bloco de Wi-Fi era
+  // um `while` sem saida. Somados, isso queria dizer: sem rede, o sensor nunca
+  // era lido. O aparelho ficava horas com o acelerometro na mao e nao media
+  // nada -- nao por falta de sensor, por falta de roteador.
+  //
+  // Medir primeiro nao custa nada e desacopla as duas coisas. A rede pode
+  // falhar; a medida ja aconteceu.
+  //
+  // Isto e correcao defensiva, nao conserto. Este sketch continua tirando UMA
+  // amostra por boot, sem amostragem periodica: ele nao registraria uma noite
+  // nem com rede perfeita, e nao tem buffer. A reescrita e o item FW-07, e ate
+  // la quem capta de verdade e o `envio-continuo`.
+  sensors_event_t a, g, temp;
+  mpu.getEvent(&a, &g, &temp);
+
+  // 3. Conecta ao Wi-Fi, COM PRAZO.
+  //
+  // O `while (WiFi.status() != WL_CONNECTED)` sem saida que estava aqui era o
+  // bug HW-05: rede fora do ar, roteador reiniciando ou senha errada em
+  // secrets.h deixavam a placa presa para sempre, muda, sem dizer por que.
+  // Num aparelho que passa a noite no travesseiro, isso e a noite inteira
+  // perdida por um evento de trinta segundos.
+  const unsigned long TIMEOUT_WIFI_MS = 20000;
   Serial.print("Conectando ao WiFi...");
   WiFi.begin(ssid, password);
-  while (WiFi.status() != WL_CONNECTED) {
+  unsigned long inicio_wifi = millis();
+  while (WiFi.status() != WL_CONNECTED && millis() - inicio_wifi < TIMEOUT_WIFI_MS) {
     delay(500);
     Serial.print(".");
   }
-  Serial.println("\nWiFi Conectado! IP: " + WiFi.localIP().toString());
+  Serial.println();
 
-  // 3. Coleta os Dados (Mesmo se for simulado, mandamos os dados do Wokwi)
-  sensors_event_t a, g, temp;
-  mpu.getEvent(&a, &g, &temp);
+  bool com_rede = (WiFi.status() == WL_CONNECTED);
+  if (com_rede) {
+    Serial.println("WiFi Conectado! IP: " + WiFi.localIP().toString());
+  } else {
+    Serial.println("FALHA: Wi-Fi nao subiu em 20 s. Confira SSID e senha em secrets.h.");
+    Serial.println("       Redes de 5 GHz nao funcionam: o ESP32 so fala 2,4 GHz.");
+    Serial.println("       A leitura ja foi feita, mas SERA PERDIDA: este sketch");
+    Serial.println("       ainda nao tem buffer (FW-07). Dormindo assim mesmo.");
+  }
 
   // Magnitude do vetor de aceleracao (inclui a gravidade: ~9,81 m/s^2 em repouso).
   float total_mov = sqrt(pow(a.acceleration.x, 2) + pow(a.acceleration.y, 2) + pow(a.acceleration.z, 2));
@@ -90,39 +143,67 @@ void setup() {
   jsonPayload += "\"status\":\"" + status_sono + "\"";
   jsonPayload += "}";
 
-  // 5. Envia para a Vercel via HTTPS
-  WiFiClientSecure client;
-  client.setInsecure(); // Isso é a "Mágica" para o ESP32 ignorar a burocracia do SSL
-  HTTPClient http;
-  
-  Serial.println("Enviando dados para a Nuvem...");
-  http.begin(client, serverName);
-  http.addHeader("Content-Type", "application/json");
-  // Autenticacao do dispositivo (SEC-02). Sem este header a API responde 401
-  // e a leitura e descartada -- ver docs/DATA-CONTRACT.md secao 3.
-  http.addHeader("X-Device-Token", DEVICE_TOKEN);
-  
-  int httpResponseCode = http.POST(jsonPayload);
-  
-  if (httpResponseCode == 201) {
-    Serial.println("✅ [SUCESSO] Dados salvos no Supabase!");
-  } else if (httpResponseCode == 401) {
-    Serial.println("🔒 [401] Dispositivo nao autorizado. Confira DEVICE_TOKEN em secrets.h");
-    Serial.println("        (token ausente, revogado ou de outro dispositivo)");
-  } else if (httpResponseCode == 400) {
-    Serial.println("⚠️  [400] Leitura rejeitada pela validacao: " + http.getString());
-  } else if (httpResponseCode > 0) {
-    Serial.println("❌ [ERRO] Resposta inesperada da API: " + String(httpResponseCode));
+  // 5. Envia para a Vercel via HTTPS -- se houver rede.
+  //
+  // Sem rede nao ha o que tentar: `http.POST` sem conexao gasta segundos para
+  // devolver erro. Antes essa situacao era impossivel de alcancar, porque o
+  // `while` acima nunca deixava chegar aqui sem Wi-Fi.
+  if (!com_rede) {
+    Serial.println("Sem rede: envio pulado. Indo dormir.");
   } else {
-    Serial.println("❌ [ERRO] Falha de conexao com a Vercel: " + String(httpResponseCode));
+    WiFiClientSecure client;
+    client.setInsecure(); // Isso é a "Mágica" para o ESP32 ignorar a burocracia do SSL
+    HTTPClient http;
+
+    Serial.println("Enviando dados para a Nuvem...");
+    http.begin(client, serverName);
+    http.addHeader("Content-Type", "application/json");
+    // Autenticacao do dispositivo (SEC-02). Sem este header a API responde 401
+    // e a leitura e descartada -- ver docs/DATA-CONTRACT.md secao 3.
+    http.addHeader("X-Device-Token", DEVICE_TOKEN);
+  
+    int httpResponseCode = http.POST(jsonPayload);
+  
+    if (httpResponseCode == 201) {
+      Serial.println("✅ [SUCESSO] Dados salvos no Supabase!");
+    } else if (httpResponseCode == 401) {
+      Serial.println("🔒 [401] Dispositivo nao autorizado. Confira DEVICE_TOKEN em secrets.h");
+      Serial.println("        (token ausente, revogado ou de outro dispositivo)");
+    } else if (httpResponseCode == 400) {
+      Serial.println("⚠️  [400] Leitura rejeitada pela validacao: " + http.getString());
+    } else if (httpResponseCode > 0) {
+      Serial.println("❌ [ERRO] Resposta inesperada da API: " + String(httpResponseCode));
+    } else {
+      Serial.println("❌ [ERRO] Falha de conexao com a Vercel: " + String(httpResponseCode));
+    }
+    http.end();
   }
-  http.end();
 
   // 6. Preparação para Dormir
   delay(100);
+  //
+  // ── O SEGUNDO TRAVAMENTO (HW-05) ──────────────────────────────────────
+  //
+  // `while(digitalRead(PINO_WAKEUP) == HIGH) delay(10);` tambem nao tinha
+  // saida. E o pino nem precisa de um dedo em cima para ficar em HIGH: a
+  // ligacao de bancada atual nao tem o pull-down de 10k, entao o pino
+  // FLUTUA -- e um pino flutuante em HIGH prendia a placa para sempre.
+  //
+  // Agora espera no maximo 5 s e dorme de qualquer jeito. Se o pino estiver
+  // mesmo em HIGH na hora do `esp_deep_sleep_start`, a placa acorda na hora;
+  // isso e um ciclo desperdicado, nao uma noite perdida.
+  const unsigned long TIMEOUT_BOTAO_MS = 5000;
   if (digitalRead(PINO_WAKEUP) == HIGH) {
-    Serial.println("ALERTA: Botao ainda pressionado! Solte o botao.");
-    while(digitalRead(PINO_WAKEUP) == HIGH) delay(10);
+    Serial.println("ALERTA: Botao ainda pressionado (ou pino flutuando). Solte o botao.");
+    unsigned long inicio_botao = millis();
+    while (digitalRead(PINO_WAKEUP) == HIGH && millis() - inicio_botao < TIMEOUT_BOTAO_MS) {
+      delay(10);
+    }
+    if (digitalRead(PINO_WAKEUP) == HIGH) {
+      Serial.println("       Pino continua em HIGH apos 5 s -- provavelmente FLUTUANDO.");
+      Serial.println("       Sem o resistor de pull-down de 10k para o GND, esse pino");
+      Serial.println("       nao tem valor definido. Dormindo assim mesmo.");
+    }
   }
 
   Serial.println("Zzz... Entrando em MODO SLEEP.");

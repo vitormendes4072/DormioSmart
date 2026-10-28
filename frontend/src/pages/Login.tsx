@@ -43,8 +43,30 @@ export function Login() {
     }
     setErro(null);
     const resultado = await recuperarSenha(email);
-    // Resposta identica com ou sem conta: dizer "e-mail nao encontrado"
-    // permitiria descobrir quem tem cadastro.
+    // A frase do caminho `ok` e condicional de proposito: dizer "e-mail nao
+    // encontrado" entregaria quem tem cadastro.
+    //
+    // ⚠️ MAS ISTO NAO UNIFORMIZA A RESPOSTA, e o comentario que estava aqui
+    // afirmava que uniformizava. A afirmacao era "resposta identica com ou
+    // sem conta", escrita sem conferir, e ela e FALSA nos dois eixos que a
+    // Forgot Password Cheat Sheet da OWASP exige:
+    //
+    //  (1) CONTEUDO. `supabase/auth` #2702 (aberta) relata, em projeto
+    //      hospedado, `400 email_address_invalid` para usuario EXISTENTE e
+    //      sucesso para endereco inexistente -- a validacao de dominio roda
+    //      depois da busca no banco. Esse codigo nao tem ramo em
+    //      `traduzirErroDeAuth`, entao cai na frase generica, com `ok: false`,
+    //      e a linha abaixo mostra `resultado.mensagem` em vez do "Se houver
+    //      uma conta...". A divergencia atravessa a tela.
+    //      Ressalva: a issue reproduz com dominio reservado (`@example.com`);
+    //      nao esta provado para dominio real e nao foi medido aqui.
+    //  (2) TEMPO. O caminho que manda e-mail nao tem a latencia do caminho
+    //      que nao faz nada, e uniformizar exigiria trabalho assincrono
+    //      DENTRO do Supabase. Nada aqui mede, e nada aqui pode fechar.
+    //
+    // O codigo abaixo fica como esta: e o melhor alcancavel do lado do
+    // cliente. O que mudou e a afirmacao. Ver `SEC-08` no backlog, o canal 4
+    // da secao X.7 de `docs/LIMITACOES-TCC.md`, e o diario de 2026-10-20 (ii).
     setAviso(
       resultado.ok
         ? "Se houver uma conta com este e-mail, o link de recuperação foi enviado."

@@ -5,7 +5,9 @@
 *.key
 secrets.h
 arduino_secrets.h
-CLAUDE.md
+# CLAUDE.md e versionado desde 2026-10-27 (DOC-11/GIT-05); a parte pessoal
+# das instrucoes fica no CLAUDE.local.md, que nao e.
+CLAUDE.local.md
 ROADMAP.md
 HISTORICO.md
 DOCUMENTO-TCC.md
@@ -24,9 +26,18 @@ models/
 *.pkl
 *.joblib
 node_modules/
+
+# Arquivo de trabalho que o vitest gera ao carregar o vitest.config.ts e
+# normalmente apaga sozinho. Quatro sobraram em frontend/ (tres de 29/09, um de
+# 16/10), porque num ambiente onde o apagar falha eles acumulam -- e ficavam
+# aparecendo como arquivo nao rastreado, que e exatamente o ruido que faz o
+# `git status` deixar de ser lido.
+vitest.config.ts.timestamp-*.mjs
+
 .vercel
 .pio/
 build/
+firmware/nucleo/bin/
 .vscode/
 .idea/
 .DS_Store

@@ -42,10 +42,12 @@ def test_excecao_no_banco_nao_propaga_para_a_resposta():
     e um monitor externo nao saberia distinguir app fora de banco fora."""
 
     class ClienteRuim:
-        def table(self, *args, **kwargs):
+        # `sanidade()` por RPC substituiu o `select from sleep_data` na SEC-06:
+        # o health check nao exige mais privilegio de leitura em tabela.
+        def rpc(self, *args, **kwargs):
             raise RuntimeError("falha simulada")
 
-    with patch.object(database.db, "get_client", return_value=ClienteRuim()), \
+    with patch.object(database.db, "cliente_de_ingestao", return_value=ClienteRuim()), \
          patch.object(database.db, "url", "https://exemplo.supabase.co"), \
          patch.object(database.db, "key", "chave-de-teste"):
         ok, motivo = database.db.verificar_conexao()

@@ -36,7 +36,18 @@ export const ROTULOS_MOVIMENTO = ["Movimento", "Movimento Detectado!"];
 /** Uma leitura como devolvida por `GET /api/sleep-history`. Os campos sao
  *  anulaveis porque o banco aceita nulo — a UI precisa lidar com isso. */
 export type LeituraSono = {
+  /** Instante em que a linha CHEGOU ao banco (`default now()`). Sempre
+   *  presente — e o que o Postgres garante, nao o dispositivo. */
   created_at: string;
+  /**
+   * Instante em que a leitura foi MEDIDA, declarado pelo dispositivo (DASH-12).
+   *
+   * Nulo nas linhas gravadas antes de o campo entrar no `select`, e em
+   * qualquer envio que nao o declare. Use `instanteDaLeitura` — nunca este
+   * campo direto — para que o fallback para `created_at` seja o mesmo em
+   * todo lugar.
+   */
+  captured_at?: string | null;
   movimento_total: number | null;
   temp: number | null;
   status: string | null;
@@ -55,6 +66,41 @@ export type LeituraSono = {
    */
   epoca_segundos?: number | null;
 };
+
+/**
+ * O instante que descreve a leitura (DASH-12).
+ *
+ * ── POR QUE `captured_at` VEM PRIMEIRO ──────────────────────────────────
+ *
+ * `created_at` e a hora de CHEGADA, gerada pelo banco. `captured_at` e a hora
+ * da MEDICAO, declarada pelo dispositivo. Toda a maquina de cobertura, lacuna
+ * e sessao descreve uma captacao — logo tem que usar o instante da captacao.
+ *
+ * Usar a chegada era incoerente com o resto do modulo: o painel ja aceita a
+ * DURACAO declarada pelo dispositivo (`epoca_segundos`) como verdade, e
+ * ignorava o INSTANTE declarado pelo mesmo dispositivo.
+ *
+ * **Consequencia hoje:** latencia de rede aparecia como irregularidade de
+ * cadencia — foi a raiz de um dos defeitos do DASH-11.
+ *
+ * **Consequencia amanha:** o buffer offline do `HW-05` vai chegar todo
+ * empilhado em poucos segundos de `created_at`, e o painel veria uma "sessao
+ * de 2 segundos" com o resto da noite como lacuna. Precisava estar resolvido
+ * antes do `HW-05`, e agora esta.
+ *
+ * O fallback para `created_at` nao e cortesia: linhas gravadas antes deste
+ * campo entrar no `select` nao tem `captured_at`, e reescreve-las para casar
+ * com o campo novo seria adulterar medicao ja coletada — a mesma razao pela
+ * qual `ROTULOS_MOVIMENTO` ainda reconhece o rotulo legado.
+ *
+ * Devolve string vazia quando nao ha instante utilizavel; quem consome filtra.
+ */
+export function instanteDaLeitura(leitura: LeituraSono): string {
+  const medido = leitura.captured_at;
+  if (typeof medido === "string" && medido !== "") return medido;
+  const chegada = leitura.created_at;
+  return typeof chegada === "string" ? chegada : "";
+}
 
 /**
  * Intensidade do movimento: desvio absoluto em relacao ao repouso.

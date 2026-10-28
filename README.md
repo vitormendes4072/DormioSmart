@@ -68,6 +68,21 @@ O firmware é aberto em **firmware/** no [Wokwi](https://wokwi.com) (Fase 1). Ve
 - 🔜 **Fase 2:** protótipo físico no travesseiro (energia, Wake-on-Motion real, validação noturna)
 - ⚠️ Não validado clinicamente — projeto acadêmico em desenvolvimento
 
+> 🛑 **Antes de captar uma noite com o dispositivo, leia isto (17/10/2026).**
+> O firmware **sabe calcular** as 8 características do modelo — o código C++ existe e passa
+> contra o vetor dourado — mas **o caminho está inerte**: a cadência de campo é **0,1 Hz**
+> (3 amostras por época de 30 s), o acumulador recusa a época e o payload não emite `f`.
+> **Captar hoje produz noite registrada com zero características**, num formato que o
+> pipeline de `ml/` não consome — e a noite terá de ser recaptada.
+> Subir a cadência para ≥ 42 Hz **não é ajuste de parâmetro**: atravessa os 40 Hz do modo de
+> baixo consumo do MPU6050, custa 4,5× na corrente do transdutor e **elimina a arquitetura de
+> despertar por movimento**. É decisão de arquitetura (item `ARQ-01`) e **depende de medição
+> com sensor real**.
+> **Ordem:** `ARQ-01` → `FW-05` → `DATA-07b` (d, e) + payload com `f` → **só então** captar.
+> Detalhe, números e procedência: [`docs/BACKLOG-COMPLETO.md`](docs/BACKLOG-COMPLETO.md)
+> (`ARQ-01`, `VAL-01`, `FW-08`, `DATA-07e`) e a entrada de 2026-10-17 em
+> [`docs/DIARIO-DE-ENGENHARIA.md`](docs/DIARIO-DE-ENGENHARIA.md).
+
 ## 📄 Licença
 Projeto acadêmico (Trabalho de Conclusão de Curso). Uso e distribuição conforme as normas do Centro Universitário Senac — para reutilização, consulte os autores.
 

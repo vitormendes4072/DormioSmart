@@ -102,7 +102,7 @@ def _com_sessao(usuario_id=ID_ANA, device=None):
 
 
 def test_sem_credencial_nenhuma_responde_401_e_nao_grava():
-    with patch.object(database.db, "insert_sleep_data") as gravar:
+    with patch.object(database.db, "registrar_leitura_da_sessao") as gravar:
         resp = _client().post("/api/data", json=LEITURA)
     assert resp.status_code == 401
     gravar.assert_not_called()
@@ -110,23 +110,27 @@ def test_sem_credencial_nenhuma_responde_401_e_nao_grava():
 
 def test_sessao_valida_com_dispositivo_proprio_grava():
     a, b, c = _com_sessao(device={"id": DEV_ANA, "nome": "Meu celular"})
-    resultado = MagicMock()
-    resultado.data = [{"id": 1}]
     with a, b, c, \
-         patch.object(database.db, "insert_sleep_data", return_value=resultado) as gravar, \
-         patch.object(database.db, "touch_device"):
+         patch.object(
+             database.db, "registrar_leitura_da_sessao", return_value=99
+         ) as gravar:
         resp = _client().post(
             "/api/data", json=dict(LEITURA, device_id=DEV_ANA), headers=_sessao()
         )
     assert resp.status_code == 201
-    # O dono carimbado na linha vem do JWT.
-    assert gravar.call_args[0][0]["user_id"] == ID_ANA
+    # O dono nao e mais carimbado aqui: a gravacao vai pelo cliente do USUARIO
+    # e a funcao no banco deriva o dono de `auth.uid()` (SEC-06). O que a rota
+    # repassa e o jwt e o device_id — nada de user_id.
+    jwt, device_id, leitura = gravar.call_args[0]
+    assert jwt == JWT_ANA
+    assert device_id == DEV_ANA
+    assert "user_id" not in leitura
 
 
 def test_nao_da_para_gravar_no_dispositivo_de_outro():
     """O risco central do caminho novo. `buscar_do_dono` filtra por dono."""
     a, b, c = _com_sessao(device=None)  # o dispositivo de Bruno nao e da Ana
-    with a, b, c, patch.object(database.db, "insert_sleep_data") as gravar:
+    with a, b, c, patch.object(database.db, "registrar_leitura_da_sessao") as gravar:
         resp = _client().post(
             "/api/data", json=dict(LEITURA, device_id=DEV_BRUNO), headers=_sessao()
         )
@@ -136,22 +140,26 @@ def test_nao_da_para_gravar_no_dispositivo_de_outro():
 
 def test_o_user_id_do_corpo_e_ignorado():
     a, b, c = _com_sessao(device={"id": DEV_ANA})
-    resultado = MagicMock()
-    resultado.data = [{"id": 1}]
     with a, b, c, \
-         patch.object(database.db, "insert_sleep_data", return_value=resultado) as gravar, \
-         patch.object(database.db, "touch_device"):
+         patch.object(
+             database.db, "registrar_leitura_da_sessao", return_value=99
+         ) as gravar:
         _client().post(
             "/api/data",
             json=dict(LEITURA, device_id=DEV_ANA, user_id=ID_BRUNO),
             headers=_sessao(),
         )
-    assert gravar.call_args[0][0]["user_id"] == ID_ANA
+    # Duas barreiras. Esta e a primeira: a rota nao repassa `user_id` do corpo.
+    # A segunda e a funcao no banco, que deriva o dono de `auth.uid()` — ver
+    # `tests/rls/test_rls_ingestao.py::test_a_sessao_nao_escolhe_o_dono_pelo_json`.
+    leitura = gravar.call_args[0][2]
+    assert "user_id" not in leitura
+    assert ID_BRUNO not in str(leitura)
 
 
 def test_sessao_invalida_responde_401_e_nao_grava():
     with patch.object(database.db, "validar_token_de_usuario", return_value=None), \
-         patch.object(database.db, "insert_sleep_data") as gravar:
+         patch.object(database.db, "registrar_leitura_da_sessao") as gravar:
         resp = _client().post(
             "/api/data", json=dict(LEITURA, device_id=DEV_ANA), headers=_sessao("expirado")
         )
@@ -161,7 +169,7 @@ def test_sessao_invalida_responde_401_e_nao_grava():
 
 def test_sessao_sem_device_id_responde_400():
     with patch.object(database.db, "validar_token_de_usuario", return_value=ID_ANA), \
-         patch.object(database.db, "insert_sleep_data") as gravar:
+         patch.object(database.db, "registrar_leitura_da_sessao") as gravar:
         resp = _client().post("/api/data", json=LEITURA, headers=_sessao())
     assert resp.status_code == 400
     gravar.assert_not_called()
@@ -170,7 +178,7 @@ def test_sessao_sem_device_id_responde_400():
 def test_a_leitura_continua_sendo_validada_no_caminho_novo():
     """Sessao valida nao dispensa validacao de conteudo (SEC-03)."""
     a, b, c = _com_sessao(device={"id": DEV_ANA})
-    with a, b, c, patch.object(database.db, "insert_sleep_data") as gravar:
+    with a, b, c, patch.object(database.db, "registrar_leitura_da_sessao") as gravar:
         resp = _client().post(
             "/api/data",
             # Fora da faixa fisica (SEC-03). Deliberadamente independente do
@@ -185,11 +193,8 @@ def test_a_leitura_continua_sendo_validada_no_caminho_novo():
 def test_o_caminho_por_token_continua_funcionando():
     """Regressao: o ESP32 nao pode ter sido afetado."""
     from device_auth import TOKEN_HEADER
-    resultado = MagicMock()
-    resultado.data = [{"id": 1}]
     device = {"id": DEV_ANA, "user_id": ID_ANA}
     with patch.object(database.db, "get_device_by_token_hash", return_value=device), \
-         patch.object(database.db, "insert_sleep_data", return_value=resultado), \
-         patch.object(database.db, "touch_device"):
+         patch.object(database.db, "registrar_leitura", return_value=99):
         resp = _client().post("/api/data", json=LEITURA, headers={TOKEN_HEADER: "tok"})
     assert resp.status_code == 201

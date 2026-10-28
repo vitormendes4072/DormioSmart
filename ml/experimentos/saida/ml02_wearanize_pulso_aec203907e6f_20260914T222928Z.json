@@ -1,0 +1,182 @@
+{
+  "experimento": "ML-02 baselines",
+  "dataset": "wearanize",
+  "posicao": "pulso",
+  "pontuador": 1,
+  "AVISO": "dado real",
+  "hash_config": "aec203907e6f",
+  "seed": 20260910,
+  "utc": "20260914T222928Z",
+  "n_epocas": 6958,
+  "n_sujeitos": 7,
+  "prevalencia_sono": 0.8981029031330843,
+  "validacao": {
+    "estrategia": "leave_one_subject_out"
+  },
+  "resultados": {
+    "0_sempre_dormindo": {
+      "n": 6958,
+      "n_sono": 6249,
+      "n_vigilia": 709,
+      "prevalencia_sono": 0.8981029031330843,
+      "acuracia": 0.8981029031330843,
+      "sensibilidade": 1.0,
+      "especificidade": 0.0,
+      "kappa": 0.0,
+      "f1_sono": 0.9463163473915348,
+      "f1_vigilia": NaN,
+      "vp": 6249,
+      "vn": 0,
+      "fp": 709,
+      "fn": 0
+    },
+    "1a_cole_kripke_escala_arbitraria": {
+      "n": 6958,
+      "n_sono": 6249,
+      "n_vigilia": 709,
+      "prevalencia_sono": 0.8981029031330843,
+      "acuracia": 0.8981029031330843,
+      "sensibilidade": 1.0,
+      "especificidade": 0.0,
+      "kappa": 0.0,
+      "f1_sono": 0.9463163473915348,
+      "f1_vigilia": NaN,
+      "vp": 6249,
+      "vn": 0,
+      "fp": 709,
+      "fn": 0
+    },
+    "1b_sadeh_escala_arbitraria": {
+      "n": 6958,
+      "n_sono": 6249,
+      "n_vigilia": 709,
+      "prevalencia_sono": 0.8981029031330843,
+      "acuracia": 0.8981029031330843,
+      "sensibilidade": 1.0,
+      "especificidade": 0.0,
+      "kappa": 0.0,
+      "f1_sono": 0.9463163473915348,
+      "f1_vigilia": NaN,
+      "vp": 6249,
+      "vn": 0,
+      "fp": 709,
+      "fn": 0
+    },
+    "1c_cole_kripke_calibrado_loso": {
+      "n": 6958,
+      "n_sono": 6249,
+      "n_vigilia": 709,
+      "prevalencia_sono": 0.8981029031330843,
+      "acuracia": 0.8988215004311584,
+      "sensibilidade": 0.947031525044007,
+      "especificidade": 0.47390691114245415,
+      "kappa": 0.43228977972978067,
+      "f1_sono": 0.943859649122807,
+      "f1_vigilia": 0.48837209302325574,
+      "vp": 5918,
+      "vn": 336,
+      "fp": 373,
+      "fn": 331
+    },
+    "1d_sadeh_calibrado_loso": {
+      "n": 6958,
+      "n_sono": 6249,
+      "n_vigilia": 709,
+      "prevalencia_sono": 0.8981029031330843,
+      "acuracia": 0.8988215004311584,
+      "sensibilidade": 0.947991678668587,
+      "especificidade": 0.46544428772919605,
+      "kappa": 0.4278817302937355,
+      "f1_sono": 0.9439133205863608,
+      "f1_vigilia": 0.48387096774193544,
+      "vp": 5924,
+      "vn": 330,
+      "fp": 379,
+      "fn": 325
+    },
+    "2_regressao_logistica_loso": {
+      "n": 6958,
+      "n_sono": 6249,
+      "n_vigilia": 709,
+      "prevalencia_sono": 0.8981029031330843,
+      "acuracia": 0.8378844495544697,
+      "sensibilidade": 0.8646183389342295,
+      "especificidade": 0.6022566995768688,
+      "kappa": 0.3451644893114613,
+      "f1_sono": 0.9054801407742584,
+      "f1_vigilia": 0.43087790110998986,
+      "vp": 5403,
+      "vn": 427,
+      "fp": 282,
+      "fn": 846
+    },
+    "4_logistica_mais_suavizacao": {
+      "n": 6958,
+      "n_sono": 6249,
+      "n_vigilia": 709,
+      "prevalencia_sono": 0.8981029031330843,
+      "acuracia": 0.8483759701063524,
+      "sensibilidade": 0.8753400544087054,
+      "especificidade": 0.610719322990127,
+      "kappa": 0.36977353987936834,
+      "f1_sono": 0.9120466861192164,
+      "f1_vigilia": 0.45080687142113485,
+      "vp": 5470,
+      "vn": 433,
+      "fp": 276,
+      "fn": 779
+    }
+  },
+  "escalas_de_contagem_por_dobra": {
+    "cole_kripke": [
+      63.09573444801933,
+      63.09573444801933,
+      63.09573444801933,
+      50.11872336272725,
+      63.09573444801933,
+      63.09573444801933,
+      63.09573444801933
+    ],
+    "sadeh": [
+      79.43282347242817,
+      79.43282347242817,
+      79.43282347242817,
+      79.43282347242817,
+      63.09573444801933,
+      100.0,
+      100.0
+    ]
+  },
+  "nota_escala": "Escala do substituto de contagem calibrada por dobra, SOMENTE nos sujeitos de treino (1 parâmetro). Limiares de Cole-Kripke e Sadeh nos valores publicados. Ver DECISÃO TÉCNICA 4 em src/baseline.py.",
+  "config": {
+    "versao_config": 1,
+    "seed": 20260910,
+    "taxa_comum_hz": 32.0,
+    "corte_antialiasing_frac_nyquist": 0.8,
+    "epoca_s": 30.0,
+    "contexto_epocas": 2,
+    "g_ms2": 9.80665,
+    "classes": {
+      "vigilia": 0,
+      "sono": 1
+    },
+    "baseline": {
+      "banda_contagem_hz": [
+        0.25,
+        3.0
+      ],
+      "escala_contagem": 100.0
+    },
+    "validacao": {
+      "estrategia": "leave_one_subject_out"
+    },
+    "sintetico": {
+      "n_sujeitos": 12,
+      "horas_por_noite": 7.5,
+      "taxa_origem_hz": 85.7,
+      "fracao_sono": 0.87,
+      "fracao_vigilia_quieta": 0.55,
+      "ruido_mg": 3.0
+    }
+  }
+}

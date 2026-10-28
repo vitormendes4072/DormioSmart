@@ -5,14 +5,17 @@ import {
   LogOut,
   Palette,
   Shield,
+  Trash2,
   User,
 } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router";
 
+import { EditarPerfil } from "../components/EditarPerfil";
+import { ExcluirConta } from "../components/ExcluirConta";
 import { MeusDispositivos } from "../components/MeusDispositivos";
 import { SeletorDeTema } from "../components/SeletorDeTema";
-import { buscarHistorico } from "../lib/api";
+import { LIMITE_DO_PAINEL, buscarHistorico } from "../lib/api";
 import { baixarCsv } from "../lib/exportar";
 import { useAuth } from "../contexts/AuthContext";
 
@@ -41,6 +44,7 @@ export function Settings() {
       <SecaoDispositivos />
       <SecaoDados />
       <SecaoSair />
+      <SecaoExclusao />
     </div>
   );
 }
@@ -91,24 +95,32 @@ function SecaoAparencia() {
  * Campo vazio desabilitado não é funcionalidade futura visível: é promessa não
  * cumprida ocupando espaço. Ficou o que é verdade — quem está logado.
  */
+/**
+ * Conta — exibição e correção (UI-11 / LGPD art. 18, III).
+ *
+ * A seção só exibia nome e e-mail, e a política de privacidade §6.3 teve de
+ * declarar que não havia tela para corrigi-los. O `EditarPerfil` entra aqui, e
+ * não em seção própria, porque corrigir é a continuação natural de ver — ao
+ * contrário de excluir, que ganhou seção separada justamente para não ficar ao
+ * alcance de um deslize.
+ *
+ * A leitura do nome saiu daqui para `lib/perfil.ts`: com a leitura em dois
+ * lugares, a tela de exibição e a de edição podiam discordar sobre de onde vem
+ * o nome.
+ *
+ * ✏️ **17/10, `PERFIL-01`:** a fonte passou a ser `public.profiles`, pela rota
+ * `/api/me/perfil`, e a idade entrou como campo opcional com finalidade
+ * declarada. O e-mail continua no serviço de autenticação, porque é
+ * credencial e não perfil — ver `components/EditarPerfil.tsx`.
+ */
 function SecaoConta() {
-  const { usuario } = useAuth();
-  const nome = (usuario?.user_metadata?.nome as string | undefined)?.trim();
-
   return (
-    <Secao titulo="Conta" icone={User}>
-      <dl className="space-y-3 text-sm">
-        {nome && (
-          <div className="flex justify-between gap-4">
-            <dt className="text-muted-foreground">Nome</dt>
-            <dd className="text-foreground font-medium truncate">{nome}</dd>
-          </div>
-        )}
-        <div className="flex justify-between gap-4">
-          <dt className="text-muted-foreground">E-mail</dt>
-          <dd className="text-foreground font-medium truncate">{usuario?.email ?? "—"}</dd>
-        </div>
-      </dl>
+    <Secao
+      titulo="Conta"
+      icone={User}
+      aviso="Nome, idade e e-mail podem ser corrigidos ou retirados a qualquer momento (LGPD, art. 18, III e IV)."
+    >
+      <EditarPerfil />
     </Secao>
   );
 }
@@ -135,7 +147,11 @@ function SecaoDados() {
     setErro(null);
     setVazio(false);
     try {
-      const leituras = await buscarHistorico();
+      // Sem `limite` explicito o backend devolve 20 linhas (DASH-13), e a
+      // exportacao que a secao promete como "seus dados" entregava dez
+      // minutos de captacao. Numa tela cuja justificativa e o direito de
+      // portabilidade da LGPD, isso nao e um recorte: e um arquivo errado.
+      const leituras = await buscarHistorico({ limite: LIMITE_DO_PAINEL });
       if (leituras.length === 0) {
         // Baixar um CSV so com cabecalho pareceria sucesso e nao seria util.
         setVazio(true);
@@ -177,12 +193,34 @@ function SecaoDados() {
       ) : null}
       {erro ? <p className="text-xs text-destructive mt-3">{erro}</p> : null}
 
-      {/* "Política de privacidade (em elaboração)" e "Excluir conta"
-          desabilitado saíram daqui. Item morto não é funcionalidade futura
-          visível: é promessa não cumprida ocupando espaço — e, num app que
-          coleta dado corporal, uma política "em elaboração" anunciada na tela
-          chama atenção para a lacuna sem resolvê-la. Voltam quando existirem
-          (LGPD-01). */}
+      {/* "Política de privacidade (em elaboração)" ainda não volta: o rascunho
+          existe em docs/POLITICA-DE-PRIVACIDADE.md, mas não há página que o
+          sirva (LGPD-01). Anunciar um link que não abre seria repetir o defeito
+          que tirou o item daqui. */}
+    </Secao>
+  );
+}
+
+/**
+ * Eliminação da conta (UI-10 / SEC-07 / LGPD art. 18, V).
+ *
+ * Seção própria, e por último, de propósito. Ficar dentro de "Seus dados" a
+ * colocaria ao lado da exportação — duas ações de peso oposto no mesmo bloco,
+ * com o botão destrutivo a um deslize do botão que a pessoa realmente queria.
+ * Separada e no fim, ela é encontrada por quem a procura e não é esbarrada por
+ * quem não.
+ *
+ * O aviso da seção menciona a exportação porque esta é a última tela em que ela
+ * ainda é possível.
+ */
+function SecaoExclusao() {
+  return (
+    <Secao
+      titulo="Excluir conta"
+      icone={Trash2}
+      aviso="Encerra sua conta e apaga seus dados deste serviço. Se quiser guardar seu histórico, exporte o CSV acima antes."
+    >
+      <ExcluirConta />
     </Secao>
   );
 }

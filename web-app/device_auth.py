@@ -4,9 +4,11 @@ O ESP32 não tem sessão de usuário e não pode carregar segredo de alto
 privilégio (ver Decisões técnicas no CLAUDE.md). Ele se identifica com um
 **token opaco de device**, enviado no header `X-Device-Token`.
 
-O banco guarda apenas o SHA-256 do token (`devices.token_hash`). O valor em
-claro existe uma única vez — no momento do pareamento, exibido ao usuário — e
-não é recuperável depois. Vazamento do banco não entrega os tokens.
+O banco guarda apenas o SHA-256 do token, em `public.device_tokens` — tabela
+sem GRANT para `anon`/`authenticated`, logo não exposta pelo PostgREST (SEC-08;
+até a migration 007 o hash ficava em `devices.token_hash`, que É exposta). O
+valor em claro existe uma única vez — no momento do pareamento, exibido ao
+usuário — e não é recuperável depois. Vazamento do banco não entrega os tokens.
 
 Contrato: docs/DATA-CONTRACT.md v1.1.0, seção 3.
 """
