@@ -183,11 +183,15 @@ FONTES_DE_REFERENCIA = (
 
 
 def git(*args: str, raiz: Path) -> str:
-    """Roda git em modo leitura, sem tocar no `index.lock`."""
+    """Roda git em modo leitura, sem tocar no `index.lock`.
+
+    `encoding` explícito: o git escreve UTF-8, e sem isto o Python decodifica
+    pela página de código do sistema (cp1252 no Windows) — ver `ignorados`.
+    """
     ambiente = dict(os.environ, GIT_OPTIONAL_LOCKS="0")
     r = subprocess.run(
         ("git", *args), cwd=raiz, env=ambiente,
-        capture_output=True, text=True,
+        capture_output=True, encoding="utf-8",
     )
     if r.returncode != 0 and not r.stdout:
         raise RuntimeError(f"git {' '.join(args)}: {r.stderr.strip()}")
@@ -216,16 +220,23 @@ def ignorados(raiz: Path, caminhos: list[str]) -> set[str]:
     `check-ignore --no-index` responde pela regra, e não pelo estado do
     índice: um arquivo que casa uma regra de ignore continua respondendo
     "ignorado" mesmo que alguém já o tenha commitado com `git add -f`.
+
+    ⚠️ A entrada vai em BYTES, de propósito (`DOCS-WIN-01`, 27/10). Em modo
+    texto, o Windows traduz `\\n` em `\\r\\n` no pipe: todo caminho menos o
+    último chegava ao git com `\\r` no fim e não casava regra nenhuma. A (3)
+    não enxergava ponteiro algum e a (2) acusava ignorados como pendentes —
+    só nesta plataforma, e com o CI (Ubuntu) verde.
     """
     if not caminhos:
         return set()
     ambiente = dict(os.environ, GIT_OPTIONAL_LOCKS="0")
     r = subprocess.run(
         ("git", "check-ignore", "--no-index", "--stdin"),
-        cwd=raiz, env=ambiente, input="\n".join(caminhos),
-        capture_output=True, text=True,
+        cwd=raiz, env=ambiente,
+        input=("\n".join(caminhos) + "\n").encode("utf-8"),
+        capture_output=True,
     )
-    return {l for l in r.stdout.splitlines() if l}
+    return {l for l in r.stdout.decode("utf-8").splitlines() if l}
 
 
 # =========================================================================
@@ -328,6 +339,11 @@ def main() -> int:
                     choices=("orfaos", "referencias", "ponteiros"),
                     help="rodar só uma das três verificações")
     args = ap.parse_args()
+
+    # A saída usa ✓ ✗ ⓘ. No console do Windows (cp1252) o `print` morria com
+    # UnicodeEncodeError no primeiro ✗ — exatamente quando havia o que dizer.
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8")
 
     raiz = raiz_do_repo()
     no_ci = bool(os.environ.get("CI"))

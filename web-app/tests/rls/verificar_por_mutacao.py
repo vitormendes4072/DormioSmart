@@ -412,9 +412,11 @@ def rodar(nome, sabotador, url):
         processo = subprocess.run(
             [sys.executable, "-m", "pytest", "tests/rls", "-q", "--no-header", "-p", "no:cacheprovider"],
             cwd=arvore,
-            env={**__import__("os").environ, "DORMIO_RLS_DATABASE_URL": url},
+            env={**__import__("os").environ, "DORMIO_RLS_DATABASE_URL": url,
+                 "PYTHONIOENCODING": "utf-8"},
             capture_output=True,
-            text=True,
+            encoding="utf-8",
+            errors="replace",
         )
         saida = processo.stdout + processo.stderr
 
@@ -458,6 +460,8 @@ def rodar(nome, sabotador, url):
 
 
 def principal():
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8")
     analisador = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     analisador.add_argument("--apenas", help="roda um sabotador só, pelo nome")
     argumentos = analisador.parse_args()
@@ -487,12 +491,18 @@ def principal():
     # Confere primeiro que a suíte passa SEM sabotagem. Sem isso, um "todos os
     # sabotadores detectados" poderia significar apenas que tudo está quebrado.
     print("Referencia (sem sabotagem): ", end="", flush=True)
+    # Filho e pai combinam UTF-8 (DOCS-WIN-01). Sem isto, no Windows, o filho
+    # escrevia numa página de código e o pai decodificava noutra: a primeira
+    # saída com acento derrubava o verificador com UnicodeDecodeError, e o
+    # `stdout` virava None.
     processo = subprocess.run(
         [sys.executable, "-m", "pytest", "tests/rls", "-q", "--no-header", "-p", "no:cacheprovider"],
         cwd=WEB_APP,
-        env={**os.environ, "DORMIO_RLS_DATABASE_URL": url},
+        env={**os.environ, "DORMIO_RLS_DATABASE_URL": url,
+             "PYTHONIOENCODING": "utf-8"},
         capture_output=True,
-        text=True,
+        encoding="utf-8",
+        errors="replace",
     )
     if processo.returncode != 0:
         print("FALHOU")
