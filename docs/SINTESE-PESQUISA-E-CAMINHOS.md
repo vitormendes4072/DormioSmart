@@ -487,8 +487,8 @@ produzem de uma vez a calibração, a viabilidade demonstrada e o limiar do celu
 |---|---|---|:---:|---|
 | **`DASH-04`** — noite completa na tela | `VAL-01` | Linha do tempo e lacunas como indicador de repouso. **O gráfico já está preparado; falta o dado** | 🟢 | ~1–2 dias |
 | **`VAL-02`** — validação quantitativa | `VAL-01` | F1, matriz de confusão, curva de corrente×tempo **medida** (o `CALC-01` é predição; este é medição) | 🟡 | ~2–3 dias |
-| **`ML-04`** — calibrar o modelo com dado próprio | `VAL-01` + C1 | **Ajuste de limiar, não re-treino.** n=1 não treina nada | 🟡 O risco é a tentação de chamar isso de validação | ~2 dias |
-| **`ML-05`** — o que o modelo devolve ao usuário | `ML-04` | Início/fim do repouso, despertares longos, fragmentação, latência **aparente** até a quietude, regularidade entre noites, comparação com a própria linha de base | 🔴 **É onde o escopo vaza.** Ver a lista do "não devolver" abaixo | ~3–4 dias |
+| **`ML-04`** — calibrar o modelo com dado próprio *(no backlog: `ML-09`, desde 28/10 — o `ML-04` de lá é a validação externa)* | `VAL-01` + C1 | **Ajuste de limiar, não re-treino.** n=1 não treina nada | 🟡 O risco é a tentação de chamar isso de validação | ~2 dias |
+| **`ML-05`** — o que o modelo devolve ao usuário *(no backlog: `ML-10`)* | `ML-04` | Início/fim do repouso, despertares longos, fragmentação, latência **aparente** até a quietude, regularidade entre noites, comparação com a própria linha de base | 🔴 **É onde o escopo vaza.** Ver a lista do "não devolver" abaixo | ~3–4 dias |
 | **`HW-07`** — fusão de 2 acelerômetros | `VIA-01` mostrar subcaptação | 2º MPU6050 sob o colchão, endereços `0x68`/`0x69` no mesmo I2C. **Gatilho, não plano** | 🟡 **Implica rever a redação da RQ** com o orientador: travesseiro → cama/travesseiro | +1 peça barata + ~1 semana |
 
 > ### A régua do `ML-05`, que vem do `DASH-09`/`DASH-11`

@@ -1560,6 +1560,97 @@ DEFEITOS: list[Defeito] = [
                  "adjetivo não.",
     ),
     Defeito(
+        data="2026-10-27", area=DOC, item="UI-18",
+        defeito="A parte (c) do item afirmava que o `vitest` não estava em "
+                "nenhum job do `ci.yml` — e o job `frontend` o roda desde 19/08.",
+        achado_por=INVENTARIO,
+        causa="A frase repetia a lista de jobs do `CLAUDE.md` gitignorado, que "
+              "estava errada (*'`documentos`, `rls` e os do firmware'*; são seis).",
+        correcao="Riscada no backlog, com o commit de origem do job (`01a7faa`).",
+        commit="4014798",
+        nota="A conferência de 20/10 já tinha achado isto, e o achado ficou oito "
+             "dias num arquivo sem commit; a correção de 27/10 foi redescoberta "
+             "do zero. É o §2 das lições acontecendo com o próprio registro.",
+    ),
+    Defeito(
+        data="2026-10-27", area=DOC, item="GIT-05",
+        defeito="A previsão escrita no item — *'versionando o `CLAUDE.md`, a "
+                "lista de ponteiros aceitos cai de 8 para 7'* — estava errada.",
+        achado_por=EXECUCAO,
+        causa="O arquivo versionado precisa apontar para o `CLAUDE.local.md`, e "
+              "isso é ponteiro para arquivo ignorado: sai um, entra outro.",
+        correcao="Medido com o `CLAUDE.md` no índice, num clone em Linux: continuam "
+                 "8. Corrigido no backlog antes do commit.",
+        commit="4014798",
+    ),
+    Defeito(
+        data="2026-10-28", area=DOC, item="GIT-06",
+        defeito="Cinco linhas deste registro, de procedência 'completa', citavam o "
+                "commit `846966a`, que não existe.",
+        achado_por=INVENTARIO,
+        causa="Erro de digitação do hash `846986a` (o núcleo do firmware, 22/09), "
+              "e nada conferia que um hash citado existe.",
+        correcao="Hash corrigido, uma das linhas passou a citar também o "
+                 "`c0725ca`, e o `--conferir` passou a reprovar hash inexistente e "
+                 "histórico raso — com `fetch-depth: 0` no job `documentos`.",
+        commit="16552bd",
+        nota="Não é `instrumento`: o defeituoso era o registro, não uma "
+             "verificação. Na primeira execução marcou-se `instrumento=True`, e a "
+             "guarda de prosa do gerador reprovou — o texto da derivação (3) só "
+             "admite duas verificações defeituosas achadas sem rodar.",
+    ),
+    Defeito(
+        data="2026-10-28", area=DOC, item="GIT-06",
+        defeito="A tabela 'A premissa que caiu' mostrava, em cerca de metade das "
+                "linhas, uma frase que não era a premissa.",
+        achado_por=LEITURA,
+        causa="O gerador pegava a primeira frase do campo `premissa`, que muitas "
+              "vezes é comentário (*'A tentação era afrouxar a tolerância'*).",
+        correcao="Campo próprio `premissa_curta`, obrigatório quando há premissa.",
+        commit="16552bd",
+    ),
+    Defeito(
+        data="2026-10-28", area=DOC, item="GIT-06", familia=14,
+        defeito="Catorze afirmações do backlog contrariadas pela conferência de "
+                "20/10 continuavam no backlog oito dias depois: `DIAG-01` e "
+                "`DIAG-03` como não começados, a frase velha do `CALC-03`, o "
+                "`LGPD-02` contado duas vezes, `PWA-01` e `PERFIL-02` na camada "
+                "errada, o item sem ID, `ML-04`/`ML-05` com ID repetido, os "
+                "números do `GIT-03` e do `CI-06`, e três pendências sem item (o "
+                "push, o projeto Supabase de teste, o conceito de noite).",
+        achado_por=INVENTARIO,
+        causa="A conferência foi escrita num documento gerado que nunca entrou no "
+              "git, e o backlog não foi tocado.",
+        correcao="Reconferidas em 28/10 e aplicadas. Os dois DIAG ficaram abertos, "
+                 "com o que falta escrito; a contagem foi refeita linha a linha.",
+        commit="(o commit que introduz esta linha: um commit não cita o próprio "
+               "hash — ver a entrada de 28/10 do diário)", procedencia="parcial",
+        premissa="A conferência de 20/10 dizia que o desenho estava pago: *'mitigado "
+                 "com uma linha no `BACKLOG-COMPLETO.md`'*. A linha não existia, e a "
+                 "conferência inteira não chegou a quem decide — o §2 das lições.",
+        premissa_curta="Que uma conferência escrita chega ao backlog.",
+    ),
+    Defeito(
+        data="2026-10-28", area=INFRA, item="DOCS-WIN-01",
+        defeito="`conferir_docs_versionados.py` dava resultado errado no Windows: a "
+                "verificação (3) não enxergava ponteiro nenhum, e a (2) acusava "
+                "arquivos ignorados como pendentes.",
+        achado_por=EXECUCAO,
+        causa="O pipe em modo texto traduz `\\n` em `\\r\\n` no Windows; todo "
+              "caminho menos o último chegava ao `git check-ignore` com `\\r` no "
+              "fim e não casava regra nenhuma.",
+        correcao="Entrada em bytes e `encoding` explícito — também no "
+                 "`verificar_por_mutacao.py`, que morria em `cp1252`. Controle "
+                 "positivo: a mesma árvore dá 8 ponteiros em Linux e 0 no Windows "
+                 "antes; 8 nos dois depois.",
+        commit="ca01355",
+        instrumento=True,
+        premissa="Uma verificação que passa no CI vale em qualquer máquina. O CI "
+                 "(Ubuntu) estava verde e certo; a máquina de quem edita, que é "
+                 "onde a (1) existe para rodar, media errado em silêncio.",
+        premissa_curta="Que uma verificação que passa no CI vale em qualquer máquina.",
+    ),
+    Defeito(
         data="2026-10-17", area=DOC, item="(ii)",
         defeito="Uma afirmação da própria sessão saiu sem conferência: 'o "
                 "`README.md` manda ler `METODOLOGIA.md`, `HARDWARE.md` e "
@@ -1923,7 +2014,8 @@ PENDENCIAS: list[Pendencia] = [
               nota="O backlog ainda diz 'boa parte já está resolvida pelo `ML-01`' "
                    "e 'o item virou transpor, não decidir' — frase que o próprio "
                    "`CALC-03` de 29/09 desmentiu. O texto do item não foi "
-                   "atualizado depois do achado dos 67 σ."),
+                   "atualizado depois do achado dos 67 σ. ✏️ **28/10:** riscada no "
+                   "backlog."),
     Pendencia("CALC-04", SOFTWARE, "Análise elétrica: pull-down, pull-ups do I2C, "
               "níveis 3,3 V, fonte de despertar.", "🟡", camada_backlog="L0"),
     Pendencia("DIAG-01", SOFTWARE, "Diagrama de blocos da arquitetura.", "🔴",
@@ -1933,7 +2025,10 @@ PENDENCIAS: list[Pendencia] = [
                    "quadro do backlog ('DIAG-01..04'), mas o commit `3536582` "
                    "(29/09) entregou DIAG-01, 03, 04 e 05 como Mermaid "
                    "versionado e conferido contra o código. Só o **DIAG-02** não "
-                   "tem arquivo."),
+                   "tem arquivo. ✏️ **28/10:** levado ao backlog **sem fechar**: o "
+                   "arquivo cumpre o pedido na forma, mas se declara conferido em "
+                   "29/09 e o firmware mudou depois; falta conferir contra o código "
+                   "de hoje e renderizar."),
     Pendencia("DIAG-02", SOFTWARE, "Esquemático do circuito; v1 (1 sensor) e v2 "
               "(2, endereços I2C).", "🟡", camada_backlog="L0",
               nota="Confirmado aberto: não há `DIAG-02-*.md` em "
@@ -1941,13 +2036,16 @@ PENDENCIAS: list[Pendencia] = [
     Pendencia("DIAG-03", SOFTWARE, "Fluxograma do firmware / máquina de estados.",
               "🔴", camada_backlog="L0",
               nota="⚠️ `DIAG-03-firmware-e-fluxo-do-dado.md` **existe e está "
-                   "versionado** (`3536582`). Mesma situação do DIAG-01."),
+                   "versionado** (`3536582`). Mesma situação do DIAG-01. ✏️ **28/10:** "
+                   "aberto no backlog com dois pontos: a figura C não mostra as "
+                   "features em C++ (17/10, inertes) e rotula o payload `v2.4.0` "
+                   "com o contrato em 2.5.1."),
     Pendencia("DIAG-04", SOFTWARE, "Sequência do fluxo autenticado + modelo ER. "
               "Escrito e revisado em 17/10. **Falta só uma coisa:** os três blocos "
               "mermaid foram validados por **parser**, nunca por **renderização** "
               "— ninguém olhou as figuras.", "🟡", camada_backlog="L0"),
-    Pendencia("DOC-05", SOFTWARE, "READMEs e `CLAUDE.md`. Falta só o `DIAG-04`, e "
-              "o `CLAUDE.md` está gitignorado (`DOC-11`/`GIT-05`).", "🟡",
+    Pendencia("DOC-05", SOFTWARE, "READMEs e `CLAUDE.md`. Falta só o `DIAG-04`. O "
+              "`CLAUDE.md` é versionado desde 27/10 (`DOC-11`).", "🟡",
               camada_backlog="L0"),
     Pendencia("DOC-06b", SOFTWARE, "**Ler os artigos antes de citá-los** "
               "(referência conferida ≠ artigo lido) e converter para o padrão de "
@@ -1971,7 +2069,10 @@ PENDENCIAS: list[Pendencia] = [
                    "L2 como ⚪ 'bloqueante da distribuição, não do "
                    "desenvolvimento'. É um item, e a contagem de 76 só fecha se "
                    "ele for contado uma vez. A **decisão** do prazo está no "
-                   "grupo B."),
+                   "grupo B. ✏️ **28/10:** **a contagem não fechava**: a recontagem "
+                   "linha a linha mostrou que ele **estava** contado duas vezes. A "
+                   "linha de L2 virou ponteiro, e o bloqueio de distribuição foi "
+                   "para a de L0."),
     Pendencia("REQ-01", SOFTWARE, "Documentar requisitos: dimensões, conforto, "
               "autonomia, aquecimento, custo, segurança.", "🟡",
               camada_backlog="L0"),
@@ -2052,12 +2153,6 @@ PENDENCIAS: list[Pendencia] = [
               "nova e precisa de declaração nova **antes**. Hoje ela decide um "
               "texto e não entra em conta nenhuma. ⚠️ Ordem obrigatória: política "
               "primeiro, código depois.", "⚪", camada_backlog="L0"),
-    Pendencia("DOC-11", SOFTWARE, "Fechado 'pela metade' de propósito: a correção "
-              "do `CLAUDE.md` existe só no disco, porque o arquivo está "
-              "gitignorado. **Fechar de verdade é decidir o `GIT-05`.**", "⚪",
-              camada_backlog="L0",
-              nota="Marcado ✅ no backlog e contado como aberto. Mesma observação "
-                   "do `SEC-08`."),
     Pendencia("UI-18", SOFTWARE, "Duas partes, não três: **(a)** asserção nomeada "
               "por rota — hoje só `/configuracoes` tem, e por isso a varredura "
               "cobre rota nova mas **não rota removida**; **(b)** as três "
@@ -2075,7 +2170,9 @@ PENDENCIAS: list[Pendencia] = [
                    "27 arquivos**, incluindo `src/montagem.test.ts` (16 testes). "
                    "O que é verdade é mais estreito e já é o `CI-06`: nenhum job "
                    "rodou em runner desde 10/09, e o `montagem.test.ts` é "
-                   "posterior a essa data."),
+                   "posterior a essa data. ✏️ **Esta nota ficou oito dias num "
+                   "arquivo sem commit**, e a parte (c) só foi riscada do backlog "
+                   "em 27/10, por quem a redescobriu do zero sem saber desta."),
     Pendencia("UI-19 (classe)", SOFTWARE, "As duas instâncias fecharam em 20/10; "
               "**a classe não.** Não há verificação de alcance no nível do "
               "**símbolo** — export que ninguém importa, dentro de arquivo que "
@@ -2110,12 +2207,12 @@ PENDENCIAS: list[Pendencia] = [
               "build. Code splitting por rota resolve.", "⚪", camada_backlog="L0",
               nota="Confirmado aberto: `vite.config.ts` não tem `manualChunks` "
                    "nem `rollupOptions`."),
-    Pendencia("UI — blueprint no app", SOFTWARE, "Aplicar a linguagem de "
+    Pendencia("UI-20", SOFTWARE, "Aplicar a linguagem de "
               "blueprint também no app autenticado (hoje vive só na landing).",
               "⚪", camada_backlog="L0",
               nota="⚠️ **Item sem ID**, listado com '—' no backlog. Entra na "
                    "contagem de 46 para a soma fechar, e um item sem ID não dá "
-                   "para citar, fechar nem rastrear."),
+                   "para citar, fechar nem rastrear. ✏️ **28/10:** ganhou o ID `UI-20`."),
     Pendencia("GIT-05", SOFTWARE, "Reduzir a lista de **8 ponteiros pendurados** "
               "— arquivo por arquivo: versionar, ou parar de citar. O "
               "`ROADMAP.md` é o primeiro a decidir (8 arquivos rastreados o "
@@ -2124,6 +2221,23 @@ PENDENCIAS: list[Pendencia] = [
               nota="Confirmado por execução: `conferir_docs_versionados.py` sai 0 "
                    "e imprime os 8 isentos. A verificação (3) **não cobre nenhum "
                    "dos oito; pega o nono.**"),
+    Pendencia("ML-WIN-01", SOFTWARE, "3 dos 107 testes de ML falham no Windows: os "
+              "dois de vetor dourado comparam JSON por **igualdade exata** e "
+              "divergem no último dígito; o de retomada depende da resolução do "
+              "relógio (hipótese, não confirmada). **Não regravar o dourado no "
+              "Windows** — trocaria a dependência de plataforma de lado.", "🟡",
+              camada_backlog="L0"),
+    Pendencia("DOCS-WIN-02", SOFTWARE, "`calculos_tcc.py --conferir` quebra no "
+              "console do Windows ao imprimir o `✓` final — depois de as "
+              "asserções baterem, então o exit 1 parece reprovação dos cálculos. "
+              "Mesma classe do `DOCS-WIN-01`.", "🟡", camada_backlog="L0"),
+    Pendencia("DOC-12", SOFTWARE, "O histórico começa em **18/02** (`d74aa01`), "
+              "não em 29/04: diário, lições e este gerador tomaram a data do clone "
+              "no reflog pelo início do versionamento. Ler os 70 dias entre as "
+              "duas datas e dizer o que eles permitem reconstruir nas entradas "
+              "**PARCIAL**.", "🟡", camada_backlog="L0",
+              nota="A frase deste gerador já foi corrigida em 28/10; as do diário "
+                   "e das lições, não."),
     Pendencia("CI-02", SOFTWARE, "O CI **não roda linter** — não há ESLint nem "
               "Ruff/flake8. Pressupõe uma decisão de configuração que ninguém "
               "tomou, porque ligar linter sem configuração produz um job vermelho "
@@ -2184,13 +2298,14 @@ PENDENCIAS: list[Pendencia] = [
               "consumo.", "🟡", camada_backlog="L3",
               decisao="O DevKit V1 fica (e a autonomia do trabalho é a dele) ou "
                       "sai (e há compra)? **Pode exigir compra.**"),
-    Pendencia("Escopo — 'o conceito de noite'", DECISAO, "A decisão de escopo que "
+    Pendencia("ESC-01 — 'o conceito de noite'", DECISAO, "A decisão de escopo que "
               "atravessa o trabalho inteiro.", "🔴", camada_backlog="L3",
               decisao="O trabalho pode afirmar *'a noite de 27/08'* sem afirmar "
                       "que o dado é sono? Hoje o painel diz 'sessão de captação', "
                       "que é o teto honesto. É sua **e do orientador**.",
               nota="Está num parágrafo solto do backlog, não numa linha de item — "
-                   "é a maior decisão em aberto sem ID próprio."),
+                   "é a maior decisão em aberto sem ID próprio. ✏️ **28/10:** virou "
+                   "o item `ESC-01`."),
     Pendencia("APP-04", DECISAO, "iOS: **investigação, não implementação.** Rota "
               "A (áudio em background) muda o escopo declarado e a conversa de "
               "LGPD; rota B (`CMSensorRecorder`) é coerente e **não "
@@ -2200,9 +2315,10 @@ PENDENCIAS: list[Pendencia] = [
 
     # ───────── C — AÇÃO DO VITOR QUE NÃO É DECISÃO ───────────────────────
     Pendencia("GIT-07 — o push", ACAO, "`git push origin "
-              "chore/GIT-01-normalizar-fim-de-linha`. **76 commits** existem só "
-              "no clone local. Enquanto não saírem, o CI não roda e nada pode ser "
-              "chamado de 'o CI passa'.", "🔴", camada_backlog="(sem item)",
+              "chore/GIT-01-normalizar-fim-de-linha`. Os commits existem só "
+              "no clone local (**76** em 20/10, **77** em 28/10). Enquanto não "
+              "saírem, o CI não roda e nada pode ser chamado de 'o CI passa'.",
+              "🔴", camada_backlog="L3",
               nota="⚠️ **Não tem item próprio no backlog.** Vive como um "
                    "parágrafo ⚪ dentro da nota do `CI-06`, que é um item 🔴. "
                    "Medido aqui: `git ls-remote` confirma que a branch **não "
@@ -2211,7 +2327,9 @@ PENDENCIAS: list[Pendencia] = [
                    "nada a reescrever. O backlog fala de '6 commits'; são **76** "
                    "contra `origin/main` e contra `origin/develop`. É bloqueio de "
                    "**ambiente**, não de decisão: não há credencial de escrita no "
-                   "ambiente de execução."),
+                   "ambiente de execução. ✏️ **28/10:** virou o item `GIT-07` no "
+                   "backlog. Até ali este arquivo o chamava de `GIT-06`, e o "
+                   "`GIT-06` do backlog é a consolidação — dois itens, um ID."),
     Pendencia("Etapa 0 — soldar", ACAO, "**Soldar os 8 pinos do MPU6050.** Teste "
               "de aceitação: pose Z+ com ruído ~0,02. **Trava as camadas L1 e L2 "
               "inteiras.**", "🔴", camada_backlog="L3",
@@ -2234,29 +2352,30 @@ PENDENCIAS: list[Pendencia] = [
               "**testa o gatilho e não a existência dele**. A rota funciona sem "
               "ela; o que falta é `profiles.updated_at` parar de mentir e o teto "
               "de tamanho do nome para o caminho que **não passa pelo Flask**.",
-              "🟡", camada_backlog="L0 (tabela) / L3 (título do item)",
+              "🟡", camada_backlog="L3",
               nota="⚠️ **Camada contraditória no backlog:** o título do item diz "
                    "'L3: é por você', ele está na tabela da seção L0, e o quadro "
                    "o anota como L3. A soma de 76 só fecha se for contado em L0. "
                    "Arquivo confirmado em disco; **aplicação não verificável "
-                   "daqui.**"),
+                   "daqui.** ✏️ **28/10:** **confirmado por recontagem**: o 78 de "
+                   "27/10 só fechava com ele em L0. Passa a contar em L3."),
     Pendencia("SEC-11", ACAO, "Ligar captcha no painel do Supabase "
               "(`Authentication → Settings → Bot and Abuse Protection`). ~5 min, "
               "zero código, cobre `signup`/`token`/`recover`. ⚠️ **É mitigação: "
               "reduz a taxa, não elimina o oráculo** — e ligar isto **não "
               "autoriza mudar uma palavra da X.7**.", "⚠️", camada_backlog="L3"),
-    Pendencia("Projeto Supabase de teste", ACAO, "Criar um projeto Supabase de "
+    Pendencia("INFRA-02 — projeto Supabase de teste", ACAO, "Criar um projeto Supabase de "
               "teste e rodar um punhado de `curl`. **Fecharia quatro itens de uma "
               "vez:** o ponto cego do `UI-11` (a troca de e-mail exige "
               "confirmação? `updateUser({data:{nome:null}})` apaga a chave?), o "
               "canal 2 do `SEC-08` (`identities`), o canal 4 / `SEC-09` "
               "(`/recover` em domínio real) e o `SEC-10` inteiro.", "🔴",
-              camada_backlog="(sem item)",
+              camada_backlog="L3",
               nota="⚠️ **Não tem item próprio**, e o diário de 20/10 (iii) "
                    "registra isso textualmente: 'quatro itens esperando o mesmo "
                    "objeto, e ele não tem item'. É a terceira sessão seguida em "
                    "que o instrumento que falta é o mesmo. **Candidato número 1 a "
-                   "item novo.**"),
+                   "item novo.** ✏️ **28/10:** virou o item `INFRA-02`."),
     Pendencia("GIT-03", ACAO, "Apagar o resíduo de sandbox no `.git`. Nada quebra "
               "enquanto ficar: `git fsck` dá exit 0 e os commits funcionam. "
               "**Exige um terminal na máquina.**", "⚪", camada_backlog="L0",
@@ -2265,7 +2384,9 @@ PENDENCIAS: list[Pendencia] = [
                    "'`.git/_locks_orfaos/` (vazia)'. Medido agora: "
                    "`_lixo_sandbox/` tem **148 itens** e `_locks_orfaos/` tem "
                    "**9**. O item não mudou de natureza; o número citado como "
-                   "medido envelheceu — é o §3 das lições no próprio backlog."),
+                   "medido envelheceu — é o §3 das lições no próprio backlog. "
+                   "✏️ **28/10:** medido de novo (148 itens, 330 KB; 9) e corrigido "
+                   "no backlog."),
     Pendencia("ML-06a", ACAO, "Baixar o Walch et al. 2019 (PhysioNet "
               "`sleep-accel`, 31 sujeitos). **Não é alcançável do ambiente de "
               "execução** — precisa ser baixado da sua máquina. Sem ela, a "
@@ -2331,19 +2452,21 @@ PENDENCIAS: list[Pendencia] = [
     Pendencia("DASH-04", HARDWARE, "Visualização de **noite completa**: linha do "
               "tempo e lacunas como indicador de repouso. O gráfico já está "
               "preparado; falta o dado.", "🔴", camada_backlog="L2"),
-    Pendencia("ML-04 (calibração)", HARDWARE, "Calibração do modelo para o Dormio "
+    Pendencia("ML-09 (calibração)", HARDWARE, "Calibração do modelo para o Dormio "
               "com dado próprio. **Ajuste de limiar, não re-treino** — n=1 não "
               "treina nada.", "🟡", camada_backlog="L2",
               nota="⚠️ **Colisão de ID:** `ML-04` também é o item de validação "
                    "externa, **fechado em 18/09**. Dois itens com o mesmo ID, um "
                    "fechado e um aberto, nas seções 'Concluído' e L2. O mesmo "
-                   "vale para `ML-05`."),
-    Pendencia("ML-05 (devolução)", HARDWARE, "O que o modelo devolve ao usuário — "
+                   "vale para `ML-05`. ✏️ **28/10:** o aberto virou `ML-09`; os "
+                   "documentos de plano, que numeram assim, ganharam a "
+                   "correspondência ao lado."),
+    Pendencia("ML-10 (devolução)", HARDWARE, "O que o modelo devolve ao usuário — "
               "e o que **não** devolver. **A especificidade externa de 0,507 é o "
               "que o produto deve assumir, não os 0,802 internos.**", "🟡",
               camada_backlog="L2",
               nota="⚠️ Mesma colisão de ID do `ML-04`: `ML-05` fechado é o teto "
-                   "interavaliador (28/09)."),
+                   "interavaliador (28/09). ✏️ **28/10:** virou `ML-10`."),
     Pendencia("ML-INF", HARDWARE, "Onde a inferência roda. Proposta: job em lote "
               "no backend Python ao fim de uma sessão, **não no ESP32**.", "🟡",
               camada_backlog="L2"),
@@ -2363,12 +2486,12 @@ PENDENCIAS: list[Pendencia] = [
               "service worker não registra em desenvolvimento, então 'Adicionar à "
               "tela inicial' só aparece em produção — e ninguém testou. O "
               "comportamento do iOS com `display: standalone` também não foi "
-              "verificado.", "🟡", camada_backlog="L0",
+              "verificado.", "🟡", camada_backlog="L3",
               nota="⚠️ **Reclassificado.** O backlog o põe em L0, e ele não é "
                    "software que dá para fazer hoje: exige um dispositivo e um "
                    "deploy de produção para exercitar. `public/sw.js` e "
                    "`lib/instalacao.ts` existem; o que falta é o teste em "
-                   "aparelho."),
+                   "aparelho. ✏️ **28/10:** movido para a seção L3 do backlog."),
 
     # ───────── E — BLOQUEADO POR TERCEIRO ────────────────────────────────
     Pendencia("RQ-01", TERCEIRO_G, "Confirmar RQ e hipótese com o **orientador "
@@ -2576,7 +2699,8 @@ def gerar_correcoes() -> str:
     A("(*comportamento de serviço se confere na especificação do serviço*;")
     A("*conclusão condicionada a configuração não fecha por leitura*) — e o")
     A("motivo pelo qual o item mais repetido deste projeto é **um projeto")
-    A("Supabase de teste**, que hoje deve a quatro itens e não tem item próprio.")
+    A("Supabase de teste**, que deve a quatro itens e desde 28/10 tem item próprio")
+    A("(`INFRA-02`).")
     A("")
     rodando = inst_instr[EXECUCAO] + inst_instr[CONTROLE]
     A(f"**(3) As próprias verificações do projeto estavam defeituosas")
@@ -2770,6 +2894,10 @@ def gerar_pendencias() -> str:
     A("> `chore/GIT-01-normalizar-fim-de-linha`, árvore limpa. O que a")
     A("> conferência mediu está no campo **Conferência** de cada item, e só")
     A("> aparece quando ela **discordou** do backlog ou acrescentou um número.")
+    A(">")
+    A("> **Em 2026-10-28** as discordâncias foram reconferidas e aplicadas ao")
+    A("> backlog (`GIT-06`). Cada uma traz, no fim da nota, o que foi feito —")
+    A("> inclusive as duas que **não** fecharam (`DIAG-01`, `DIAG-03`).")
     A("")
     A("## Por que em documento próprio, e não no topo do backlog")
     A("")
@@ -2822,10 +2950,11 @@ def gerar_pendencias() -> str:
     A("(prazo decisão · implementação software), `FW-08` (escolhas decisão ·")
     A("implementação software), `UI-19` (ferramenta decisão · classe software),")
     A("`CI-02` (configuração decisão · execução software), `DATA-07b`,")
-    A("`DATA-06`, `ML-04` e `ML-05`. E entraram **três itens que o backlog não")
-    A("tem**: o push, o projeto Supabase de teste e a decisão de escopo do")
-    A("'conceito de noite' — os três existem hoje como parágrafo solto dentro de")
-    A("outro item, que é o §2 das lições esperando para acontecer.")
+    A("`DATA-06`, `ML-09` e `ML-10`. E entraram **três itens que o backlog não")
+    A("tinha em 20/10**: o push, o projeto Supabase de teste e a decisão de")
+    A("escopo do 'conceito de noite' — os três eram parágrafo solto dentro de")
+    A("outro item. **Desde 28/10 têm ID no backlog:** `GIT-07`, `INFRA-02` e")
+    A("`ESC-01`.")
     A("")
     A("---")
     A("")

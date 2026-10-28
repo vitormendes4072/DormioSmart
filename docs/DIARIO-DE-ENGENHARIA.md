@@ -2828,6 +2828,145 @@ interrompida, e **bloqueia commit**. Registrado no `GIT-03`.
 
 ---
 
+# 2026-10-28 — `GIT-06` e `DOCS-WIN-01`: a consolidação de 20/10 entra no git, e o que ela tinha achado chega, enfim, ao backlog
+
+**O problema, como foi entendido no início.** Versionar os três arquivos da consolidação
+interrompida em 20/10 (`scripts/consolidar_registro.py` e os dois documentos que ele gera), que
+deixavam o job `documentos` vermelho desde que o diário e o `CLAUDE.md` passaram a citá-los. Plano
+aprovado pelo Vitor com sete escolhas: a linha `ML-04b` fora da contagem e visível; o push como
+`GIT-07`; dois commits de conteúdo (consertar e versionar; levar as discordâncias ao backlog), com
+a data do versionamento virando item próprio; todas as discordâncias reconferidas, e nada fechado
+sem abrir o artefato; números puros derivados e frases que nomeiam casos travadas por guarda;
+`fetch-depth: 0` no CI com guarda para histórico raso; e o `DOCS-WIN-01` no mesmo lote.
+
+**Hipótese de trabalho.** Que fosse trabalho de transcrição sobre uma auditoria já feita. **Caiu
+três vezes**, e as três quedas estão abaixo: a contagem do backlog não podia ser corrigida por
+delta, uma classificação minha foi reprovada pela guarda que eu acabara de escrever, e medir o
+impacto achou uma terceira instância do defeito do Windows.
+
+**O que foi testado, e como.** Windows 11 e contêiner `python:3.11` (Linux), sobre a árvore de
+trabalho de `4014798` mais este lote.
+
+| # | O que | Como | Natureza |
+|:-:|---|---|---|
+| 1 | Os hashes citados existem? | `git cat-file` em cada um | inventário |
+| 2 | As discordâncias de 20/10 ainda valem? | cada artefato aberto de novo (DIAG-01, DIAG-03, `firmware/`, `DATA-CONTRACT.md`, as duas linhas `LGPD-02`) | inventário |
+| 3 | A contagem do backlog está certa? | recontagem linha a linha por script, na versão commitada e na editada | execução |
+| 4 | A correção do `DOCS-WIN-01` funciona? | Windows sem `PYTHONUTF8`: execução normal, ponteiro plantado, versão anterior | **controle positivo** |
+| 5 | As verificações novas acusam? | seis sabotagens num clone em Linux, cada uma numa cópia nova | **controle positivo** |
+| 6 | Algo mais mudou de comportamento? | todas as suítes, os três `--conferir`, RLS com mutação, YAML do CI | execução |
+
+**Resultado medido.**
+
+**(a) O hash `846966a` não existe**, e estava em cinco linhas de procedência "completa". O commit
+é `846986a` (núcleo do firmware, 22/09). Uma das linhas, a das strings quebradas do
+`envio-continuo.ino`, citava só ele, e a correção do sketch está no `c0725ca`: passou a citar os
+dois. O `--conferir` agora confere todo hash e **reprova com histórico raso**. O job `documentos`
+passou a `fetch-depth: 0` e a rodar o `--conferir`.
+
+**(b) A "divergência" 146 × 149 do RLS não era divergência.** Coleta em cada commit: **146** em
+`778ec27` e `73c213f` (17/10), **149** desde `275665a` (19/10). Os dois documentos estavam certos
+para as suas datas.
+
+**(c) Das catorze discordâncias de 20/10, doze fecharam e duas não.** `DIAG-01` e `DIAG-03` estão
+escritos desde 29/09, e o backlog os dava como não começados. Abertos de novo, cumprem o pedido
+na forma, mas se declaram conferidos em 29/09. O `DIAG-03` tem dois pontos que pedem decisão: a
+figura C omite as features em C++ de 17/10 (inertes: o sketch não as chama) e rotula o payload
+`v2.4.0` com o contrato em 2.5.1. **Ficaram abertos, com o que falta escrito.** Os outros doze
+foram aplicados: `LGPD-02` contado duas vezes; `PWA-01` e `PERFIL-02` na camada errada; item sem
+ID (`UI-20`); `ML-04`/`ML-05` abertos com ID de itens fechados (`ML-09`/`ML-10`, com a
+correspondência anotada nos dois documentos de plano que numeram assim); números do `GIT-03` (148
+itens, 330 KB, e 9) e do `CI-06`; a frase velha do `CALC-03`; e três pendências sem item, que viraram
+`GIT-07` (o push), `INFRA-02` (o projeto Supabase de teste) e `ESC-01` (o conceito de noite).
+
+**(d) A contagem não podia ser corrigida por delta, porque dois registros discordavam.** O delta
+de 17/10 punha o `PERFIL-02` em L3; a conferência de 20/10 dizia que o 76 só fechava com ele em L0.
+**Recontado linha a linha:** a versão commitada tem exatamente 78, e a divisão declarada
+(48/12/10/8) só fecha com o `PERFIL-02` em L0. **A conferência estava certa e o delta, errado.** E
+eu tinha repetido o erro do delta neste mesmo trabalho, ao escrever no item *"conta em L3 desde
+17/10"*, antes de recontar. Saída: **80 = 46/12/9/13**, recontado, sem duplicados. O recontador
+também errou duas vezes antes de valer: não aceitava ID com dois hífens e marcava como fechado o
+que tem ✅ na segunda célula, inclusive o `DATA-07b` parcial e o `SEC-08` decidido com resíduo.
+
+**(e) `DOCS-WIN-01`, controle positivo no Windows, sem nenhuma variável de ambiente:** a (3) acha os
+**8** ponteiros aceitos; um ponteiro plantado no `README.md` reprova nomeando o arquivo; a versão
+anterior do script, na mesma máquina, acha **0**. E o `verificar_por_mutacao.py`, que morria em
+`cp1252`, roda: **149 testes de RLS e 30/30 sabotagens** contra `postgres:16`.
+
+**(f) As seis sabotagens em Linux, cada uma reprovando pelo motivo certo:** documento gerado editado
+à mão → `DIVERGE`; hash `846966a` de volta → *"commit inexistente: 846966a (em HW-05)"*; clone com
+`--depth 1` → *"histórico raso"*; linha falsa de cálculo com premissa → a guarda nomeia o parágrafo;
+premissa sem resumo → `ValueError` na carga; procedência "completa" sem hash → `ValueError`. Sem
+sabotagem, os dois verificadores dão OK.
+
+**(g) A guarda de prosa reprovou na primeira execução real, contra quem a escreveu.** Marquei a
+linha do hash inexistente como `instrumento=True`, e o gerador parou: o texto da derivação (3) só
+admite duas verificações defeituosas achadas sem rodar, e passavam a ser três. **A guarda estava
+certa:** o defeituoso era o registro, não uma verificação do projeto. Corrigi a classificação, não
+a guarda. É a cena da ocorrência 5 do §4 das lições, com outro instrumento.
+
+**(h) Impacto medido.** Backend **293**; frontend **418 em 27 arquivos**, `tsc` limpo; RLS **149** e
+mutação **30/30**; `estudo_buffer --conferir` 0; consolidação OK (**110 correções + 1 fora da
+contagem, 89 pendências**); YAML do CI válido, seis jobs. ML **105 passam e 2 falham**: o de
+retomada passou desta vez, sem mudança de código, o que é o que a hipótese do relógio prevê (anotado
+no `ML-WIN-01`). **E `calculos_tcc.py --conferir` sai 1 no Windows**: as asserções batem e o `print`
+do `✓` final quebra em `cp1252`. Arquivo não tocado por este lote, terceira instância da classe do
+`DOCS-WIN-01`, e não estava registrada: virou **`DOCS-WIN-02`**. O verificador de documentos segue
+reprovando no Windows **só** pelos dois documentos ainda fora do git; em Linux, com eles no índice,
+dá OK.
+
+**(i) A revisão antes do commit achou três coisas, e uma delas era minha afirmação.** O Vitor
+pediu que eu revisasse os patches e só commitasse sem divergência. (1) **A linha do `DOCS-WIN-01`
+no backlog estava partida em seis desde o commit `4014798`, de ontem**: o texto cita `\n`, `\r\n`
+e `\r` como exemplo, e o script de 27/10 os gravou como caracteres de controle — inclusive um CR
+solto dentro da linha, que uma leitura com conversão de fim de linha mostra como quebra e a
+leitura binária mostra como CR. A tabela renderizava errado. Reconstruída lendo em binário, com as
+quatro trocas conferidas uma a uma; agora não há linha de tabela sem `|` final nem CR solto, e a
+recontagem segue 80. (2) **O resumo da premissa do `DATA-07b` dizia mais que a linha** —
+*"e que a reprovação pedia afrouxar a tolerância"*, quando o texto fala de uma **tentação**
+recusada, não de uma premissa sustentada. Ficou *"que coeficientes do filtro em `float32`
+bastavam"*. Os outros 41 conferem com o texto de cada linha. (3) **Eu apontei um defeito na
+checagem de hashes que não existia.** Supus que prefixo ambíguo voltaria como `ambiguous` e
+passaria; medido no git 2.47 (Linux) e 2.50 (Windows) com um prefixo que casa dois commits
+(`3b6`), volta `missing` — a primeira versão já reprovava. Mantive a regra mais estrita (só
+`commit` passa, e o número de respostas tem de bater), porque ela não custa nada e cobre formato
+que esta versão não produz, mas **o comentário que eu tinha escrito afirmava uma brecha falsa**, e
+foi reescrito com a medição. É o §1, regra 9, contra mim: a recomendação veio de leitura.
+
+**Adaptação.**
+
+1. **Contar refazendo, não somando.** Quando dois registros discordam sobre uma contagem, o delta
+   herda o erro de quem o escreveu. A recontagem por script é o único número deste lote que não
+   depende de eu ter lido certo.
+2. **Seis erros meus de execução, registrados porque o formato pede:** indentação errada nas
+   trocas (as asserções pegaram e nada foi gravado); um nome literal `PEND` no lugar do valor; um
+   comando que rodou um script sem a correção, porque não estava encadeado com `&&` (inseriu uma
+   linha em branco numa citação das lições; o diff mostrou que o dano parou ali); um `git stash`
+   num script de sabotagem que esvaziou a cópia do contêiner (o repositório real estava montado
+   só para leitura); um script regravado em CRLF pelo Python do Windows; e a classificação do
+   item (g). Nenhum chegou ao commit.
+
+**Risco em aberto.**
+
+- **Nada disto rodou em runner** (`CI-06`, `GIT-07`). O `fetch-depth: 0` e o passo novo foram
+  exercitados num clone em Linux, não no Actions. Também não está confirmado que o runner tem
+  `python` no PATH sem `setup-python`: o passo anterior do mesmo job já supunha isso, e nunca rodou.
+- **Quatro linhas da tabela de correções** citam commits deste lote, que não existiam quando foram
+  escritas. Três (as do `DOCS-WIN-01` e as duas do C1) ganham o hash antes do commit do registro.
+  A quarta, a das discordâncias, é corrigida **pelo próprio commit que a introduz**, e um commit não
+  cita o próprio hash: fica `parcial`, dizendo isso, com esta entrada como procedência.
+- `DIAG-01`/`DIAG-03` abertos; `DOC-12`, `ML-WIN-01` e `DOCS-WIN-02` abertos.
+
+**Procedência.** `scripts/consolidar_registro.py` (`_conferir_prosa`, `_conferir_commits`,
+`premissa_curta`, `conta`); `docs/CORRECOES-APLICADAS.md` e `docs/PENDENCIAS-ABERTAS.md` (gerados);
+`scripts/conferir_docs_versionados.py` (`git`, `ignorados`, `main`);
+`web-app/tests/rls/verificar_por_mutacao.py`; `.github/workflows/ci.yml` (job `documentos`);
+`docs/BACKLOG-COMPLETO.md` (contagem recontada; `GIT-06` e `DOCS-WIN-01` fechados; `GIT-07`,
+`INFRA-02`, `ESC-01`, `DOC-12`, `DOCS-WIN-02` novos; `UI-20`, `ML-09`, `ML-10` renomeados);
+`docs/LICOES-APRENDIDAS.md` (§1 ocorrência 11, §2 ocorrência 5, §3 ocorrência 5, §5 ocorrência 8);
+`docs/ML-DATASETS-E-PLANO.md` e `docs/SINTESE-PESQUISA-E-CAMINHOS.md` (correspondência de IDs);
+commits `846986a`, `c0725ca`, `d74aa01`, `778ec27`, `275665a`.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

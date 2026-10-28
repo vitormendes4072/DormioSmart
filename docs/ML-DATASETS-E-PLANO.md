@@ -1005,8 +1005,8 @@ AGORA (L0, sem hardware)          DEPOIS DA SOLDA (L1/L2)
 1. Baixar Newcastle (CC-BY)       6. CAL-01 + CAL-02 (calibrar pós-FW-06)
 2. ml/ reprodutível (Fase 0)      7. VIA-01 + VIA-02
 3. ML-02: baselines medidos       8. FW-05 em placa
-4. ML-01: modelo simples          9. ML-04: calibrar com dado próprio
-5. Pedir o DUA do Wearanize+     10. ML-05: entra no produto
+4. ML-01: modelo simples          9. ML-04: calibrar com dado próprio (backlog: ML-09)
+5. Pedir o DUA do Wearanize+     10. ML-05: entra no produto (backlog: ML-10)
    └─► ML-03 quando chegar
 ```
 

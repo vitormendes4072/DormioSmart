@@ -6,6 +6,10 @@
 > `chore/GIT-01-normalizar-fim-de-linha`, árvore limpa. O que a
 > conferência mediu está no campo **Conferência** de cada item, e só
 > aparece quando ela **discordou** do backlog ou acrescentou um número.
+>
+> **Em 2026-10-28** as discordâncias foram reconferidas e aplicadas ao
+> backlog (`GIT-06`). Cada uma traz, no fim da nota, o que foi feito —
+> inclusive as duas que **não** fecharam (`DIAG-01`, `DIAG-03`).
 
 ## Por que em documento próprio, e não no topo do backlog
 
@@ -45,12 +49,12 @@ linha, não um resumo: resumo é a cópia que diverge.
 
 | Grupo | Itens |
 |---|---:|
-| A — Depende só de software: dá para fazer a qualquer momento | **40** |
+| A — Depende só de software: dá para fazer a qualquer momento | **42** |
 | B — Depende de decisão do Vitor | **10** |
 | C — Depende de ação do Vitor que não é decisão | **9** |
 | D — Bloqueado por hardware ou coleta | **23** |
 | E — Bloqueado por terceiro | **5** |
-| **Total** | **87** |
+| **Total** | **89** |
 
 ⚠️ **Este total não é comparável à contagem do backlog, e a diferença não é
 erro de nenhum dos dois.** São unidades de contagem diferentes: o backlog
@@ -61,16 +65,17 @@ bancada), `LGPD-01` (a decisão · b software · c terceiro), `LGPD-02`
 (prazo decisão · implementação software), `FW-08` (escolhas decisão ·
 implementação software), `UI-19` (ferramenta decisão · classe software),
 `CI-02` (configuração decisão · execução software), `DATA-07b`,
-`DATA-06`, `ML-04` e `ML-05`. E entraram **três itens que o backlog não
-tem**: o push, o projeto Supabase de teste e a decisão de escopo do
-'conceito de noite' — os três existem hoje como parágrafo solto dentro de
-outro item, que é o §2 das lições esperando para acontecer.
+`DATA-06`, `ML-09` e `ML-10`. E entraram **três itens que o backlog não
+tinha em 20/10**: o push, o projeto Supabase de teste e a decisão de
+escopo do 'conceito de noite' — os três eram parágrafo solto dentro de
+outro item. **Desde 28/10 têm ID no backlog:** `GIT-07`, `INFRA-02` e
+`ESC-01`.
 
 ---
 
 ## A — Depende só de software: dá para fazer a qualquer momento
 
-**40 itens.**
+**42 itens.**
 
 ### `CALC-01` 🔴
 
@@ -90,7 +95,7 @@ Física do acelerômetro: força específica, resolução, ruído, Nyquist — e
 
 *Camada no backlog: L0.*
 
-**Conferência.** O backlog ainda diz 'boa parte já está resolvida pelo `ML-01`' e 'o item virou transpor, não decidir' — frase que o próprio `CALC-03` de 29/09 desmentiu. O texto do item não foi atualizado depois do achado dos 67 σ.
+**Conferência.** O backlog ainda diz 'boa parte já está resolvida pelo `ML-01`' e 'o item virou transpor, não decidir' — frase que o próprio `CALC-03` de 29/09 desmentiu. O texto do item não foi atualizado depois do achado dos 67 σ. ✏️ **28/10:** riscada no backlog.
 
 ### `CALC-04` 🟡
 
@@ -104,7 +109,7 @@ Diagrama de blocos da arquitetura.
 
 *Camada no backlog: L0.*
 
-**Conferência.** ⚠️ `docs/diagramas/DIAG-01-arquitetura.md` **existe no repositório** e está versionado. O item consta como aberto no quadro do backlog ('DIAG-01..04'), mas o commit `3536582` (29/09) entregou DIAG-01, 03, 04 e 05 como Mermaid versionado e conferido contra o código. Só o **DIAG-02** não tem arquivo.
+**Conferência.** ⚠️ `docs/diagramas/DIAG-01-arquitetura.md` **existe no repositório** e está versionado. O item consta como aberto no quadro do backlog ('DIAG-01..04'), mas o commit `3536582` (29/09) entregou DIAG-01, 03, 04 e 05 como Mermaid versionado e conferido contra o código. Só o **DIAG-02** não tem arquivo. ✏️ **28/10:** levado ao backlog **sem fechar**: o arquivo cumpre o pedido na forma, mas se declara conferido em 29/09 e o firmware mudou depois; falta conferir contra o código de hoje e renderizar.
 
 ### `DIAG-02` 🟡
 
@@ -120,7 +125,7 @@ Fluxograma do firmware / máquina de estados.
 
 *Camada no backlog: L0.*
 
-**Conferência.** ⚠️ `DIAG-03-firmware-e-fluxo-do-dado.md` **existe e está versionado** (`3536582`). Mesma situação do DIAG-01.
+**Conferência.** ⚠️ `DIAG-03-firmware-e-fluxo-do-dado.md` **existe e está versionado** (`3536582`). Mesma situação do DIAG-01. ✏️ **28/10:** aberto no backlog com dois pontos: a figura C não mostra as features em C++ (17/10, inertes) e rotula o payload `v2.4.0` com o contrato em 2.5.1.
 
 ### `DIAG-04` 🟡
 
@@ -130,7 +135,7 @@ Sequência do fluxo autenticado + modelo ER. Escrito e revisado em 17/10. **Falt
 
 ### `DOC-05` 🟡
 
-READMEs e `CLAUDE.md`. Falta só o `DIAG-04`, e o `CLAUDE.md` está gitignorado (`DOC-11`/`GIT-05`).
+READMEs e `CLAUDE.md`. Falta só o `DIAG-04`. O `CLAUDE.md` é versionado desde 27/10 (`DOC-11`).
 
 *Camada no backlog: L0.*
 
@@ -160,7 +165,7 @@ Não existe política de retenção: nenhum expurgo, nenhum prazo. Implementar u
 
 *Camada no backlog: L0 e L2.*
 
-**Conferência.** ⚠️ **Item listado duas vezes no backlog**, em camadas diferentes: na seção de documentação como L0 🟡, e na seção L2 como ⚪ 'bloqueante da distribuição, não do desenvolvimento'. É um item, e a contagem de 76 só fecha se ele for contado uma vez. A **decisão** do prazo está no grupo B.
+**Conferência.** ⚠️ **Item listado duas vezes no backlog**, em camadas diferentes: na seção de documentação como L0 🟡, e na seção L2 como ⚪ 'bloqueante da distribuição, não do desenvolvimento'. É um item, e a contagem de 76 só fecha se ele for contado uma vez. A **decisão** do prazo está no grupo B. ✏️ **28/10:** **a contagem não fechava**: a recontagem linha a linha mostrou que ele **estava** contado duas vezes. A linha de L2 virou ponteiro, e o bloqueio de distribuição foi para a de L0.
 
 ### `REQ-01` 🟡
 
@@ -252,21 +257,13 @@ Se a idade for usar em cálculo, é finalidade nova e precisa de declaração no
 
 *Camada no backlog: L0.*
 
-### `DOC-11` ⚪
-
-Fechado 'pela metade' de propósito: a correção do `CLAUDE.md` existe só no disco, porque o arquivo está gitignorado. **Fechar de verdade é decidir o `GIT-05`.**
-
-*Camada no backlog: L0.*
-
-**Conferência.** Marcado ✅ no backlog e contado como aberto. Mesma observação do `SEC-08`.
-
 ### `UI-18` 🟡
 
 Duas partes, não três: **(a)** asserção nomeada por rota — hoje só `/configuracoes` tem, e por isso a varredura cobre rota nova mas **não rota removida**; **(b)** as três afirmações condicionais de honestidade científica (`AvisoDeLacuna`, `NotaDeInferencia`, `NotaDeEscopo`), uma asserção por condição com o par negativo de cada.
 
 *Camada no backlog: L0.*
 
-**Conferência.** ⚠️ **A parte (c) do item é falsa e caiu nesta conferência.** Ela afirma que 'o `montagem.test.ts` não está em nenhum job do `ci.yml` — e nem o `vitest` está: os jobs são `documentos`, `rls` e os do firmware'. O `ci.yml` tem **seis** jobs, e o `frontend` roda `npm test` → `vitest run` desde o commit `01a7faa` (19/08), dois meses antes de a afirmação ser escrita. Medido aqui: `npx vitest run` coleta **418 testes em 27 arquivos**, incluindo `src/montagem.test.ts` (16 testes). O que é verdade é mais estreito e já é o `CI-06`: nenhum job rodou em runner desde 10/09, e o `montagem.test.ts` é posterior a essa data.
+**Conferência.** ⚠️ **A parte (c) do item é falsa e caiu nesta conferência.** Ela afirma que 'o `montagem.test.ts` não está em nenhum job do `ci.yml` — e nem o `vitest` está: os jobs são `documentos`, `rls` e os do firmware'. O `ci.yml` tem **seis** jobs, e o `frontend` roda `npm test` → `vitest run` desde o commit `01a7faa` (19/08), dois meses antes de a afirmação ser escrita. Medido aqui: `npx vitest run` coleta **418 testes em 27 arquivos**, incluindo `src/montagem.test.ts` (16 testes). O que é verdade é mais estreito e já é o `CI-06`: nenhum job rodou em runner desde 10/09, e o `montagem.test.ts` é posterior a essa data. ✏️ **Esta nota ficou oito dias num arquivo sem commit**, e a parte (c) só foi riscada do backlog em 27/10, por quem a redescobriu do zero sem saber desta.
 
 ### `UI-19 (classe)` 🟡
 
@@ -324,13 +321,13 @@ Bundle num único chunk; o Vite avisa a cada build. Code splitting por rota reso
 
 **Conferência.** Confirmado aberto: `vite.config.ts` não tem `manualChunks` nem `rollupOptions`.
 
-### `UI — blueprint no app` ⚪
+### `UI-20` ⚪
 
 Aplicar a linguagem de blueprint também no app autenticado (hoje vive só na landing).
 
 *Camada no backlog: L0.*
 
-**Conferência.** ⚠️ **Item sem ID**, listado com '—' no backlog. Entra na contagem de 46 para a soma fechar, e um item sem ID não dá para citar, fechar nem rastrear.
+**Conferência.** ⚠️ **Item sem ID**, listado com '—' no backlog. Entra na contagem de 46 para a soma fechar, e um item sem ID não dá para citar, fechar nem rastrear. ✏️ **28/10:** ganhou o ID `UI-20`.
 
 ### `GIT-05` 🟡
 
@@ -339,6 +336,26 @@ Reduzir a lista de **8 ponteiros pendurados** — arquivo por arquivo: versionar
 *Camada no backlog: L0.*
 
 **Conferência.** Confirmado por execução: `conferir_docs_versionados.py` sai 0 e imprime os 8 isentos. A verificação (3) **não cobre nenhum dos oito; pega o nono.**
+
+### `ML-WIN-01` 🟡
+
+3 dos 107 testes de ML falham no Windows: os dois de vetor dourado comparam JSON por **igualdade exata** e divergem no último dígito; o de retomada depende da resolução do relógio (hipótese, não confirmada). **Não regravar o dourado no Windows** — trocaria a dependência de plataforma de lado.
+
+*Camada no backlog: L0.*
+
+### `DOCS-WIN-02` 🟡
+
+`calculos_tcc.py --conferir` quebra no console do Windows ao imprimir o `✓` final — depois de as asserções baterem, então o exit 1 parece reprovação dos cálculos. Mesma classe do `DOCS-WIN-01`.
+
+*Camada no backlog: L0.*
+
+### `DOC-12` 🟡
+
+O histórico começa em **18/02** (`d74aa01`), não em 29/04: diário, lições e este gerador tomaram a data do clone no reflog pelo início do versionamento. Ler os 70 dias entre as duas datas e dizer o que eles permitem reconstruir nas entradas **PARCIAL**.
+
+*Camada no backlog: L0.*
+
+**Conferência.** A frase deste gerador já foi corrigida em 28/10; as do diário e das lições, não.
 
 ### `CI-02` ⚪
 
@@ -422,7 +439,7 @@ Energia: LiPo + TP4056, e se o DevKit V1 fica ou sai. O DevKit **não atinge µA
 
 *Camada no backlog: L3.*
 
-### `Escopo — 'o conceito de noite'` 🔴
+### `ESC-01 — 'o conceito de noite'` 🔴
 
 A decisão de escopo que atravessa o trabalho inteiro.
 
@@ -430,7 +447,7 @@ A decisão de escopo que atravessa o trabalho inteiro.
 
 *Camada no backlog: L3.*
 
-**Conferência.** Está num parágrafo solto do backlog, não numa linha de item — é a maior decisão em aberto sem ID próprio.
+**Conferência.** Está num parágrafo solto do backlog, não numa linha de item — é a maior decisão em aberto sem ID próprio. ✏️ **28/10:** virou o item `ESC-01`.
 
 ### `APP-04` ⚪
 
@@ -452,11 +469,11 @@ terminal na máquina, ferro de solda ou uma conta num serviço.
 
 ### `GIT-07 — o push` 🔴
 
-`git push origin chore/GIT-01-normalizar-fim-de-linha`. **76 commits** existem só no clone local. Enquanto não saírem, o CI não roda e nada pode ser chamado de 'o CI passa'.
+`git push origin chore/GIT-01-normalizar-fim-de-linha`. Os commits existem só no clone local (**76** em 20/10, **77** em 28/10). Enquanto não saírem, o CI não roda e nada pode ser chamado de 'o CI passa'.
 
-*Camada no backlog: (sem item).*
+*Camada no backlog: L3.*
 
-**Conferência.** ⚠️ **Não tem item próprio no backlog.** Vive como um parágrafo ⚪ dentro da nota do `CI-06`, que é um item 🔴. Medido aqui: `git ls-remote` confirma que a branch **não existe no remoto**, e que `develop` (f044fd2) e `main` (198b32e) estão idênticos aos refs locais — nada divergente, nada a reescrever. O backlog fala de '6 commits'; são **76** contra `origin/main` e contra `origin/develop`. É bloqueio de **ambiente**, não de decisão: não há credencial de escrita no ambiente de execução.
+**Conferência.** ⚠️ **Não tem item próprio no backlog.** Vive como um parágrafo ⚪ dentro da nota do `CI-06`, que é um item 🔴. Medido aqui: `git ls-remote` confirma que a branch **não existe no remoto**, e que `develop` (f044fd2) e `main` (198b32e) estão idênticos aos refs locais — nada divergente, nada a reescrever. O backlog fala de '6 commits'; são **76** contra `origin/main` e contra `origin/develop`. É bloqueio de **ambiente**, não de decisão: não há credencial de escrita no ambiente de execução. ✏️ **28/10:** virou o item `GIT-07` no backlog. Até ali este arquivo o chamava de `GIT-06`, e o `GIT-06` do backlog é a consolidação — dois itens, um ID.
 
 ### `Etapa 0 — soldar` 🔴
 
@@ -478,9 +495,9 @@ Rodar `web-app/migrations/002_backfill_dono_dos_dados.sql` no Supabase. Escrito 
 
 Aplicar `008_perfil_como_fonte_de_verdade.sql` no Supabase. Idempotente, com quatro verificações no rodapé — inclusive a terceira, que **testa o gatilho e não a existência dele**. A rota funciona sem ela; o que falta é `profiles.updated_at` parar de mentir e o teto de tamanho do nome para o caminho que **não passa pelo Flask**.
 
-*Camada no backlog: L0 (tabela) / L3 (título do item).*
+*Camada no backlog: L3.*
 
-**Conferência.** ⚠️ **Camada contraditória no backlog:** o título do item diz 'L3: é por você', ele está na tabela da seção L0, e o quadro o anota como L3. A soma de 76 só fecha se for contado em L0. Arquivo confirmado em disco; **aplicação não verificável daqui.**
+**Conferência.** ⚠️ **Camada contraditória no backlog:** o título do item diz 'L3: é por você', ele está na tabela da seção L0, e o quadro o anota como L3. A soma de 76 só fecha se for contado em L0. Arquivo confirmado em disco; **aplicação não verificável daqui.** ✏️ **28/10:** **confirmado por recontagem**: o 78 de 27/10 só fechava com ele em L0. Passa a contar em L3.
 
 ### `SEC-11` ⚠️
 
@@ -488,13 +505,13 @@ Ligar captcha no painel do Supabase (`Authentication → Settings → Bot and Ab
 
 *Camada no backlog: L3.*
 
-### `Projeto Supabase de teste` 🔴
+### `INFRA-02 — projeto Supabase de teste` 🔴
 
 Criar um projeto Supabase de teste e rodar um punhado de `curl`. **Fecharia quatro itens de uma vez:** o ponto cego do `UI-11` (a troca de e-mail exige confirmação? `updateUser({data:{nome:null}})` apaga a chave?), o canal 2 do `SEC-08` (`identities`), o canal 4 / `SEC-09` (`/recover` em domínio real) e o `SEC-10` inteiro.
 
-*Camada no backlog: (sem item).*
+*Camada no backlog: L3.*
 
-**Conferência.** ⚠️ **Não tem item próprio**, e o diário de 20/10 (iii) registra isso textualmente: 'quatro itens esperando o mesmo objeto, e ele não tem item'. É a terceira sessão seguida em que o instrumento que falta é o mesmo. **Candidato número 1 a item novo.**
+**Conferência.** ⚠️ **Não tem item próprio**, e o diário de 20/10 (iii) registra isso textualmente: 'quatro itens esperando o mesmo objeto, e ele não tem item'. É a terceira sessão seguida em que o instrumento que falta é o mesmo. **Candidato número 1 a item novo.** ✏️ **28/10:** virou o item `INFRA-02`.
 
 ### `GIT-03` ⚪
 
@@ -502,7 +519,7 @@ Apagar o resíduo de sandbox no `.git`. Nada quebra enquanto ficar: `git fsck` d
 
 *Camada no backlog: L0.*
 
-**Conferência.** ⚠️ **Número do backlog defasado.** Ele diz '`.git/_lixo_sandbox/` (57 itens, 240 KB)' e '`.git/_locks_orfaos/` (vazia)'. Medido agora: `_lixo_sandbox/` tem **148 itens** e `_locks_orfaos/` tem **9**. O item não mudou de natureza; o número citado como medido envelheceu — é o §3 das lições no próprio backlog.
+**Conferência.** ⚠️ **Número do backlog defasado.** Ele diz '`.git/_lixo_sandbox/` (57 itens, 240 KB)' e '`.git/_locks_orfaos/` (vazia)'. Medido agora: `_lixo_sandbox/` tem **148 itens** e `_locks_orfaos/` tem **9**. O item não mudou de natureza; o número citado como medido envelheceu — é o §3 das lições no próprio backlog. ✏️ **28/10:** medido de novo (148 itens, 330 KB; 9) e corrigido no backlog.
 
 ### `ML-06a` 🟡
 
@@ -616,21 +633,21 @@ Visualização de **noite completa**: linha do tempo e lacunas como indicador de
 
 *Camada no backlog: L2.*
 
-### `ML-04 (calibração)` 🟡
+### `ML-09 (calibração)` 🟡
 
 Calibração do modelo para o Dormio com dado próprio. **Ajuste de limiar, não re-treino** — n=1 não treina nada.
 
 *Camada no backlog: L2.*
 
-**Conferência.** ⚠️ **Colisão de ID:** `ML-04` também é o item de validação externa, **fechado em 18/09**. Dois itens com o mesmo ID, um fechado e um aberto, nas seções 'Concluído' e L2. O mesmo vale para `ML-05`.
+**Conferência.** ⚠️ **Colisão de ID:** `ML-04` também é o item de validação externa, **fechado em 18/09**. Dois itens com o mesmo ID, um fechado e um aberto, nas seções 'Concluído' e L2. O mesmo vale para `ML-05`. ✏️ **28/10:** o aberto virou `ML-09`; os documentos de plano, que numeram assim, ganharam a correspondência ao lado.
 
-### `ML-05 (devolução)` 🟡
+### `ML-10 (devolução)` 🟡
 
 O que o modelo devolve ao usuário — e o que **não** devolver. **A especificidade externa de 0,507 é o que o produto deve assumir, não os 0,802 internos.**
 
 *Camada no backlog: L2.*
 
-**Conferência.** ⚠️ Mesma colisão de ID do `ML-04`: `ML-05` fechado é o teto interavaliador (28/09).
+**Conferência.** ⚠️ Mesma colisão de ID do `ML-04`: `ML-05` fechado é o teto interavaliador (28/09). ✏️ **28/10:** virou `ML-10`.
 
 ### `ML-INF` 🟡
 
@@ -666,9 +683,9 @@ Distribuição (loja ou APK). Depende de `LGPD-02` e `APP-04`.
 
 **Exercitar a instalação de verdade.** O service worker não registra em desenvolvimento, então 'Adicionar à tela inicial' só aparece em produção — e ninguém testou. O comportamento do iOS com `display: standalone` também não foi verificado.
 
-*Camada no backlog: L0.*
+*Camada no backlog: L3.*
 
-**Conferência.** ⚠️ **Reclassificado.** O backlog o põe em L0, e ele não é software que dá para fazer hoje: exige um dispositivo e um deploy de produção para exercitar. `public/sw.js` e `lib/instalacao.ts` existem; o que falta é o teste em aparelho.
+**Conferência.** ⚠️ **Reclassificado.** O backlog o põe em L0, e ele não é software que dá para fazer hoje: exige um dispositivo e um deploy de produção para exercitar. `public/sw.js` e `lib/instalacao.ts` existem; o que falta é o teste em aparelho. ✏️ **28/10:** movido para a seção L3 do backlog.
 
 ---
 
