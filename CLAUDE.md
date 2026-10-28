@@ -284,4 +284,5 @@ Convenções por camada:
 
 - **Produção:** Vercel — https://dormio-smart.vercel.app
 - **Health check:** ✏️ **existe desde o `WEB-04`** — `GET /health`, sem autenticação, respondendo `200` quando o banco está alcançável e `503` quando o app está de pé e o banco não. A linha anterior ("ainda não existe — criar um endpoint simples é item de roadmap") foi corrigida em 17/10 pelo `DOC-11`, junto com a da seção "Testes".
+- **Monitor da produção** (`INFRA-03`, 28/10): `.github/workflows/saude-producao.yml` chama o `/health` a cada 3 dias por `scripts/conferir_producao.py` e reprova se o banco não responder. ⚠️ O Supabase é do **plano gratuito e pausa depois de uma semana sem uso** — foi o que derrubou a produção até 28/10; se o job reprovar, a primeira coisa a olhar é o painel do Supabase. O agendamento só roda a partir de `main`.
 - **Observações:** funções serverless no Vercel têm cold start; o `app` precisa estar disponível no import (ver Decisões técnicas).
