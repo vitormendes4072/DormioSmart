@@ -3001,6 +3001,112 @@ foi reescrito com a medição. É o §1, regra 9, contra mim: a recomendação v
 `docs/ML-DATASETS-E-PLANO.md` e `docs/SINTESE-PESQUISA-E-CAMINHOS.md` (correspondência de IDs);
 commits `846986a`, `c0725ca`, `d74aa01`, `778ec27`, `275665a`.
 
+---
+
+# 2026-10-28 (ii) — o primeiro push desde setembro, o CI num runner, e os quatro itens que ele deixou
+
+**O problema, como foi entendido no início.** Fechar o que a entrada anterior deixou aberto: o
+push (`GIT-07`), os dois testes de ML e o script que falhavam no Windows (`ML-WIN-01`,
+`DOCS-WIN-02`), os dois diagramas que não fecharam (`DIAG-01`, `DIAG-03`) e a data de início do
+versionamento (`DOC-12`). O Vitor autorizou o push pela conta dele e aprovou de antemão o que
+precisasse de aprovação. A sessão foi interrompida por um desligamento do computador no meio do
+registro; nada se perdeu, e está conferido abaixo.
+
+**Hipótese de trabalho.** Três, e duas caíram. (1) Que o CI pudesse reprovar no runner — a perna
+Postgres 16 era hipótese desde 28/09, e o job `documentos` usa o Python do sistema sem
+`setup-python`. **Não reprovou.** (2) Que o `DOCS-WIN-02` fosse um script. **Eram dois.** (3) Que
+o teste de retomada falhasse pela resolução do relógio do Windows. **Confirmada, antes de
+corrigir.**
+
+**O que foi testado, e como.**
+
+| # | O que | Como | Natureza |
+|:-:|---|---|---|
+| 1 | Há credencial de escrita? | `gh auth status`, `git config credential.helper` | inventário |
+| 2 | Há segredo nos 80 commits novos? | varredura de arquivos e padrões de chave em `git log -p origin/develop..HEAD` | inventário + **controle positivo** |
+| 3 | O CI passa num runner? | push; `gh run watch`; o log de cada job | execução |
+| 4 | Os scripts quebram no Windows? | os dois, nos dois modos, sem `PYTHONUTF8` | execução |
+| 5 | A tolerância do dourado é segura? | piso: divergência medida entre plataformas; teto: o verificador por mutação, nos dois sistemas | execução + **controle positivo** |
+| 6 | É o relógio? | o teste de retomada com um relógio em degraus de 15,6 ms, em Linux | **controle positivo** |
+| 7 | Os diagramas ainda batem com o código? | 55 afirmações por script; identificadores das figuras; `mermaid-cli` | inventário + execução |
+| 8 | O que os commits de fevereiro contêm? | `git log --before=2026-04-30`, `git show`, `git reflog` | inventário |
+
+**Resultado medido.**
+
+**(a) O push saiu, e o CI rodou num runner pela primeira vez desde 10/09.** O `gh` está
+autenticado na conta `vitormendes4072`, com escopos `repo` e `workflow`, e o git usa o gerenciador
+de credenciais do Windows. A varredura não achou segredo nos 80 commits, e o mesmo filtro acusou 2
+de 2 chaves falsas. A execução `40639232458` (`ubuntu-24.04`) deu **sete jobs verdes**: backend
+293, frontend 418, ML 107, firmware 341 + 157 e 4/4 sketches, documentos (com a consolidação
+conferida e o histórico inteiro), e **RLS 149 na Postgres 14 e na 16, com mutação 30/30**. O
+`skipped` que aparece no log é o texto da própria guarda, não teste pulado. O Python do runner
+existe sem `setup-python` (3.11.17). Fecham `GIT-07` e `CI-06`.
+
+**(b) E o runner avisou de uma coisa que o projeto não sabia:** o `ubuntu-latest` está migrando
+para o Ubuntu 26. Os seis jobs usam `ubuntu-latest`, e a próxima execução pode pegar outro `g++` e
+outro Python. O `ci.yml` já tem a regra, para o Postgres: *"nunca `latest`"*. Virou o `CI-07`,
+**decisão do Vitor**.
+
+**(c) `DOCS-WIN-02` era maior do que eu tinha registrado.** Ontem medi só o `--conferir` do
+`estudo_buffer`, que passa; o modo relatório quebrava no `ĝ`. Os dois scripts, nos dois modos: 3 de
+4 combinações quebravam. Corrigido nos dois. **Controle positivo:** com um valor sabotado, o
+`--conferir` novo sai 1 e imprime *"obtido 0.244…, documento diz 0.3"*; o anterior também saía 1,
+mas por `UnicodeEncodeError` — uma reprovação de verdade e uma quebra eram indistinguíveis.
+
+**(d) `ML-WIN-01`, as duas metades.** **(a)** O dourado comparava por igualdade exata. Medido:
+71 de 14 952 floats divergem, **pior caso 8,0e-13 relativo**. Régua nova: estrutura exata e
+floats a 1e-9 relativo. O teto foi o verificador por mutação do dourado, que tem duas sabotagens
+pegas justamente por esses testes: **12/12 em Linux (107 testes) e no Windows**, com o ponto cego
+registrado ainda cego. **(b)** Antes de corrigir, a hipótese do relógio foi **reproduzida em
+Linux**: com um relógio que só anda em degraus de 15,6 ms, o teste reprova **3 de 3**, com a mesma
+mensagem do Windows. Causa: `elapsed > orcamento_s` com orçamento zero e 0 s medido. `>` virou
+`>=`; com o relógio em degraus, passa. **A suíte de ML passa 107/107 no Windows pela primeira
+vez.**
+
+**(e) `DIAG-01` e `DIAG-03`.** As 55 afirmações verificáveis do `DIAG-01` (arquivo, rota, função
+do banco, tabela com RLS, pino, constante) batem com o código; os identificadores das três figuras
+do `DIAG-03` existem. Faltava o que veio depois de 29/09: as features em C++, `/api/me/perfil` e
+`/health`. **Os dois "pontos a decidir" do `DIAG-03` não precisavam de decisão** — a convenção do
+`DIAG-01` já tinha a forma: código que existe e não roda leva `(NÃO EXERCITADO)`. Antes de escrever
+que *"a 0,1 Hz a época é recusada"*, conferi no código (`fechar()` devolve `false` abaixo de
+`AMOSTRAS_MINIMAS_PARA_PARIDADE`); e o "6 features" do commit `6d328bb` contra o comentário que
+diz "sete quantidades" — são seis features mais o `ĝ`. Renderizados os quatro arquivos (10
+figuras) pela imagem `minlag/mermaid-cli:11.4.2`, baixada para isso; **controle:** um diagrama com
+sintaxe quebrada reprova com *"Parse error on line 5"*. Olhei os PNGs: legíveis.
+
+**(f) `DOC-12`.** Sete commits em 18–19/02, todos do mesmo autor; o clonado em 29/04 é o último
+deles. Eles mostram que a escolha do ESP32 + MPU6050, o desenho com Deep Sleep e despertar por
+botão no GPIO 27, e a pilha Flask + Supabase + Vercel são de fevereiro — e que o README de
+18/02 já exibia um selo **"Status: Validado"** com tudo em simulação. O que continua faltando ficou
+delimitado: **nenhum commit entre 20/02 e 30/05**, e a decisão do travesseiro só aparece em
+31/05.
+
+**(g) Depois do desligamento**, conferido antes de continuar: as 9 edições estavam no disco, o
+`HEAD` igual ao remoto, nenhum lock novo, os scripts compilando, os blocos dos diagramas
+fechados. Todas as suítes foram rodadas de novo antes de escrever qualquer número: backend 293,
+frontend 418 e `vite build` ok, ML 107, RLS 149 e 30/30, firmware igual, os quatro `--conferir`
+passando — no Windows, sem nenhuma variável de ambiente.
+
+**Adaptação.**
+
+1. **Hipótese confirmada antes de corrigir.** O `>=` teria passado no Windows de qualquer jeito;
+   sem a reprodução em Linux não haveria como dizer que a causa era a que eu supunha.
+2. **Medir as duas metades de um script antes de registrar.** O `DOCS-WIN-02` nasceu com metade do
+   alcance porque eu medi um modo e escrevi sobre o script.
+
+**Risco em aberto.**
+
+- **`CI-07`**: a próxima execução pode cair no Ubuntu 26. Decisão do Vitor.
+- **`ventregaz-redis`** — um contêiner de outro projeto do Vitor estava rodando; não foi tocado.
+- A lacuna de 20/02 a 30/05 e a justificativa do travesseiro dependem de material fora do git.
+
+**Procedência.** Execução `40639232458` do Actions; commit `7016c81` (`scripts/calculos_tcc.py`,
+`scripts/estudo_buffer.py`, `ml/testes/test_vetor_dourado.py` — `TOL_DOURADO_REL`,
+`_divergencias` —, `ml/experimentos/_retomada.py`, `docs/diagramas/DIAG-01` e `DIAG-03`, a entrada
+de abertura deste diário); `docs/BACKLOG-COMPLETO.md` (75 = 42/12/9/12, recontado);
+`scripts/consolidar_registro.py` (116 correções, 83 pendências); `CLAUDE.md` (seção "Testes");
+`docs/LICOES-APRENDIDAS.md` (§6 ocorrência 7).
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

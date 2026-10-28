@@ -229,34 +229,36 @@ Worktrees legítimas: a da feature/bugfix em andamento e a da sessão atual (`cl
 > Uma cópia de backup fora do repositório, de 28/08, ainda dizia *"Testes: ainda não existem"*
 > — arquivo gitignorado tem cópias, e as cópias divergem em silêncio. Foi o que levou a versioná-lo.
 
-**Há suíte e há CI.** Números **executados em 2026-10-27**, Windows 11, na branch
-`chore/GIT-01-normalizar-fim-de-linha` (`2fcb0f5`), nesta ordem de custo para rodar:
+**Há suíte e há CI.** Números **executados em 2026-10-28**, Windows 11, na branch
+`chore/GIT-01-normalizar-fim-de-linha`, **sem nenhuma variável de ambiente**, nesta ordem de
+custo para rodar:
 
-| Onde | Como rodar | Resultado em 27/10 |
+| Onde | Como rodar | Resultado em 28/10 |
 |---|---|---|
 | Backend (Flask) | `cd web-app && pytest --ignore=tests/rls` | **293 passam** |
 | Frontend | `cd frontend && npx vitest run` | **418 passam, 27 arquivos** |
-| Tipos e build | `cd frontend && npm run build` (`tsc --noEmit && vite build`) | `tsc` limpo; `vite build` não rodado em 27/10 |
+| Tipos e build | `cd frontend && npm run build` (`tsc --noEmit && vite build`) | `tsc` limpo; `vite build` ok (avisa do chunk único — `UI-15`) |
 | RLS (Postgres real) | `DORMIO_RLS_DATABASE_URL=... pytest tests/rls` | **149 passam** contra `postgres:16` em Docker — **pulam** sem a variável, de propósito |
-| Mutação do RLS | `PYTHONUTF8=1 python web-app/tests/rls/verificar_por_mutacao.py` | **30/30 sabotagens detectadas** |
-| ML | `cd ml && .venv/Scripts/python -m pytest testes` | ⚠️ **104 passam, 3 falham — só no Windows** (`ML-WIN-01` no backlog) |
+| Mutação do RLS | `python web-app/tests/rls/verificar_por_mutacao.py` | **30/30 sabotagens detectadas** |
+| ML | `cd ml && .venv/Scripts/python -m pytest testes` | **107 passam** |
+| Mutação do dourado | `cd ml && .venv/Scripts/python testes/verificar_vetor_dourado_por_mutacao.py` | **12/12**, e o ponto cego registrado segue cego |
 | Firmware | `cd firmware/nucleo && make && make sintaxe capacidade mutacao` | **341 + 157 verificações, 0 falhas; 4/4 sketches compilam; mutação 15/15** (em contêiner `gcc:13`) |
+| Conferências de documento | `python scripts/<nome>.py --conferir` para `calculos_tcc`, `estudo_buffer`, `conferir_docs_versionados`, `consolidar_registro` | todas passam |
 
 Total: **967 testes** de pytest/vitest + **498 verificações** do núcleo C++.
 
-**Rodando no Windows** — o CI é Ubuntu, e o Windows quebra três coisas:
+**Rodando no Windows** — o CI é Ubuntu. Desde 28/10 os scripts e a suíte de ML funcionam no
+Windows sem ajuste (`DOCS-WIN-01`, `DOCS-WIN-02`, `ML-WIN-01`). Resta uma diferença:
 - Não há `g++` nem `make`: rodar o firmware em contêiner, montando `firmware/` **e**
   `ml/testes/` (o alvo `dourado` lê `ml/testes/vetor_dourado.json`).
-- Use `PYTHONUTF8=1` nos scripts: sem ele, `verificar_por_mutacao.py` e
-  `conferir_docs_versionados.py` quebram no `cp1252`.
-- ⚠️ `scripts/conferir_docs_versionados.py` **dá resultado errado no Windows mesmo com UTF-8**:
-  as verificações (2) e (3) leem `\r\n` no `git check-ignore`, a (3) não enxerga nenhum ponteiro
-  e a (2) reprova por engano. **Confiar só na execução em Linux** (`DOCS-WIN-01`).
+- Script novo que imprima símbolo fora do `cp1252` (✓ ✗ ⓘ ĝ σ) precisa de
+  `sys.stdout.reconfigure(encoding="utf-8")` — é o que os quatro já corrigidos fazem.
 
 **CI:** `.github/workflows/ci.yml`, seis jobs: `test` (backend), `rls` (matriz Postgres 14 e
 16, mais mutação na 16), `frontend` (vitest, tsc, vite), `ml`, `firmware` e `documentos`.
-⚠️ Ressalva que continua valendo (`CI-06`): **nenhum desses jobs rodou num runner do
-GitHub.** A branch de trabalho está 76 commits à frente de `origin/develop` e não tem push.
+**Rodou num runner em 2026-10-28** (execução `40639232458`, `ubuntu-24.04`): os sete jobs
+passaram, inclusive a perna Postgres 16, que até ali era hipótese. ⚠️ O `ubuntu-latest` está
+migrando para o Ubuntu 26 — ver `CI-07`.
 
 Convenções por camada:
 - **Web-app (Flask):** lógica de rotas e funções puras com `pytest`; isolar chamadas ao Supabase (mock). **Exceção deliberada:** `tests/rls/` **não** mocka nada e fala com um Postgres real — mock não exercita policy nenhuma (§4 das lições).

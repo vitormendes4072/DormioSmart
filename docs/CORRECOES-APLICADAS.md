@@ -19,15 +19,15 @@ a única coisa aqui que sustenta uma afirmação de método.
 
 ## Resumo quantitativo
 
-**110 correções registradas**, todas sustentadas no repositório.
+**116 correções registradas**, todas sustentadas no repositório.
 
 **A unidade de contagem, dita antes dos números, porque ela decide como
 lê-los.** Uma linha deste arquivo é **uma correção**: um defeito, uma
 causa, uma correção. Em 3 linhas, porém, a causa e a correção foram
 uma só e os defeitos foram vários — `DADOS-02` (10), `REF-01` (4), `GIT-06` (14) —, e agrupá-las foi deliberado,
 porque separá-las contaria a mesma correção várias vezes. **Contando
-defeito em vez de correção, o total seria 135.** Este
-arquivo usa **110**, que é o número menor e o mais defensável.
+defeito em vez de correção, o total seria 141.** Este
+arquivo usa **116**, que é o número menor e o mais defensável.
 
 **Fora da contagem, e visível:** 1 linha(s) — `ML-04b` —,
 em que a hipótese se confirmou e o que se corrigiu foi a afirmação
@@ -41,24 +41,24 @@ que se podia extrair do resultado, não um defeito. Estão na seção da
 | Segurança | 15 |
 | Interface | 23 |
 | Firmware | 18 |
-| Dados e ML | 20 |
-| Documentação | 14 |
-| Infraestrutura | 20 |
-| **Total** | **110** |
+| Dados e ML | 22 |
+| Documentação | 17 |
+| Infraestrutura | 21 |
+| **Total** | **116** |
 
 ### Por instrumento — o campo que dá valor a este arquivo
 
 | Como foi encontrado | Correções | O que o instrumento é |
 |---|---:|---|
-| **leitura** | 19 | Inspeção do código ou do documento, raciocinando sobre ele. Nada roda, nada se confere contra terceiro. |
+| **leitura** | 20 | Inspeção do código ou do documento, raciocinando sobre ele. Nada roda, nada se confere contra terceiro. |
 | **cálculo** | 4 | Aritmética sobre os próprios números do projeto. O mais barato de todos, e derrubou premissas grandes. |
-| **execução** | 45 | Rodar código do projeto — suíte, job, compilador, script — e a **saída** acusar. O defeito não estava escondido: estava não exercitado. |
+| **execução** | 48 | Rodar código do projeto — suíte, job, compilador, script — e a **saída** acusar. O defeito não estava escondido: estava não exercitado. |
 | **controle positivo** | 10 | Provocar o defeito de propósito e exigir que a verificação acuse. Inclui verificação por mutação. **É o único instrumento que mede o alcance de uma verificação.** |
-| **inventário** | 18 | Conferir estado declarado contra estado real: `grep` por símbolo, `git ls-files` contra o disco, varredura de afirmações em documentos. |
+| **inventário** | 20 | Conferir estado declarado contra estado real: `grep` por símbolo, `git ls-files` contra o disco, varredura de afirmações em documentos. |
 | **terceiro** | 10 | Especificação, documentação oficial, artigo, issue ou API de terceiro. O artefato que decide a resposta está **fora** do repositório. |
 | **dado real** | 3 | Só apareceu com o arquivo ou a medição real em mãos. |
 | **uso real** | 1 | Alguém usou o produto como usuário. |
-| **Total** | **110** | |
+| **Total** | **116** | |
 
 ### As três derivações que os números sustentam
 
@@ -72,9 +72,9 @@ que se podia extrair do resultado, não um defeito. Estão na seção da
 > do projeto; são proporções do que foi achado.**
 
 **(1) Exercitar achou mais do que ler, por mais de duas vezes.**
-Execução, controle positivo e uso real somam **56 de 110**
+Execução, controle positivo e uso real somam **59 de 116**
 registros (50%). Leitura e cálculo — os dois
-instrumentos que não precisam rodar nada — somam **23** (20%). A razão é de **2,4 para 1**.
+instrumentos que não precisam rodar nada — somam **24** (20%). A razão é de **2,5 para 1**.
 
 Com a ressalva que impede a leitura fácil: isto **não** diz que ler é
 pouco útil. Diz que, neste projeto, leitura e execução acharam classes
@@ -84,7 +84,7 @@ e a execução achou **alcance** insuficiente. Alcance não se vê lendo, e é
 por isso que a razão é essa e não o contrário.
 
 **(2) 13 correções tinham a causa fora do repositório.**
-Fonte de terceiro e dado real somam **13 de 110** (11%) — defeitos cuja causa não está em nenhuma
+Fonte de terceiro e dado real somam **13 de 116** (11%) — defeitos cuja causa não está em nenhuma
 linha deste projeto, e que **nenhum teste daqui poderia pegar**: a
 especificação do PostgREST, a unidade do Empatica em `g/64`, o valor de
 uma chave num painel do Supabase, a API do Actions, os coeficientes do
@@ -96,16 +96,16 @@ Supabase de teste**, que deve a quatro itens e desde 28/10 tem item próprio
 (`INFRA-02`).
 
 **(3) As próprias verificações do projeto estavam defeituosas
-21 vezes — e 19 dessas 21 só apareceram
+23 vezes — e 21 dessas 23 só apareceram
 rodando ou sabotando.**
-São **21 de 110** registros (19%) em que a coisa errada era um teste, uma
+São **23 de 116** registros (19%) em que a coisa errada era um teste, uma
 guarda de CI, um harness de mutação ou um vetor de referência — não o
 código. A distribuição:
 
 | Instrumento que achou | Verificações defeituosas |
 |---|---:|
+| execução | 11 |
 | controle positivo | 10 |
-| execução | 9 |
 | terceiro | 1 |
 | leitura | 1 |
 
@@ -119,17 +119,17 @@ teste reprovar código correto até serem conferidos contra o `scipy`.
 **Então a regra honesta não é *não confie em leitura*.** É que leitura
 pega alcance quando se faz a pergunta certa — *em que máquina isto
 ficaria vermelho?* —, e essa pergunta funcionou exatamente uma vez em
-21. Nas outras 20, o alcance só apareceu quando
+23. Nas outras 22, o alcance só apareceu quando
 alguém tentou fazer a verificação falhar.
 
 ### Procedência
 
 | Procedência | Correções | O que significa |
 |---|---:|---|
-| `completa` | 106 | Commit **e** artefato reabrível — teste, script, seção de documento. Dá para reconferir sem acreditar em ninguém. |
+| `completa` | 112 | Commit **e** artefato reabrível — teste, script, seção de documento. Dá para reconferir sem acreditar em ninguém. |
 | `parcial` | 4 | Só a mensagem de commit, só a entrada de diário, ou correção em arquivo não versionado. Entra porque omitir seria pior, e entra **marcada**. |
 
-**44 dos 110 defeitos revelaram que a premissa estava
+**46 dos 116 defeitos revelaram que a premissa estava
 errada** — não que o código estava errado. É a seção mais instrutiva deste
 arquivo e tem lugar próprio no fim.
 
@@ -795,9 +795,9 @@ só de código filtra pela coluna de área.
 
 ---
 
-## Dados e ML — 20 defeitos
+## Dados e ML — 22 defeitos
 
-*12 execução · 2 dado real · 2 cálculo · 2 controle positivo · 1 terceiro · 1 inventário*
+*14 execução · 2 dado real · 2 cálculo · 2 controle positivo · 1 terceiro · 1 inventário*
 
 ### 2026-09-14 · `ML-01` 🔄
 
@@ -1039,11 +1039,33 @@ só de código filtra pela coluna de área.
 
 **Commit.** `fa34897` · procedência **completa**
 
+### 2026-10-28 · `ML-WIN-01`
+
+**O defeito.** Os dois testes de vetor dourado reprovavam no Windows por divergência no último dígito de 71 de 14 952 floats.
+
+**Como foi encontrado.** *execução* — Comparação por igualdade exata de um JSON gravado em Linux: ordem de soma e libm diferem entre plataformas (pior caso medido: 8,0e-13 relativo).
+
+**A correção.** Estrutura exata e floats com tolerância derivada (1e-9 relativo) entre o piso medido e o teto do verificador por mutação, 12/12 em Linux e no Windows.
+
+**Commit.** `7016c81` · procedência **completa**
+
+### 2026-10-28 · `ML-WIN-01` 🔄
+
+**O defeito.** O teste de retomada fazia mais de uma dobra por chamada no Windows com orçamento zero.
+
+**Como foi encontrado.** *execução* — `elapsed > orcamento_s` com o relógio do Windows em degraus de ~15,6 ms: duas leituras no mesmo degrau dão 0 s, e `0 > 0` é falso.
+
+**A correção.** `>=`. Hipótese confirmada antes de corrigir: com um relógio em degraus, o teste reprova 3 de 3 em Linux.
+
+**🔄 A premissa estava errada.** O relógio de parede mede tempo decorrido com resolução suficiente para um orçamento zero. Em Linux mede; no Windows, não — e a falha alternava entre execuções, o que a fazia parecer acaso.
+
+**Commit.** `7016c81` · procedência **completa**
+
 ---
 
-## Documentação — 14 defeitos
+## Documentação — 17 defeitos
 
-*8 inventário · 3 terceiro · 2 leitura · 1 execução*
+*10 inventário · 3 leitura · 3 terceiro · 1 execução*
 
 ### 2026-06-03 · `(README)`
 
@@ -1183,6 +1205,40 @@ só de código filtra pela coluna de área.
 
 **Commit.** `(o commit que introduz esta linha: um commit não cita o próprio hash — ver a entrada de 28/10 do diário)` · procedência **parcial**
 
+### 2026-10-28 · `DIAG-03`
+
+**O defeito.** Os diagramas de 29/09 omitiam as features em C++ de 17/10, a rota `/api/me/perfil` e o `/health`, e o `DIAG-03` rotulava o payload como `v2.4.0` sem dizer que o contrato estava em 2.5.1.
+
+**Como foi encontrado.** *inventário* — Diagrama datado que ninguém reconferiu depois que o código mudou.
+
+**A correção.** Conferidos contra o código (55 afirmações do `DIAG-01` batem) e atualizados pela convenção do próprio diagrama — `(NÃO EXERCITADO)` para código que existe e não roda.
+
+**Commit.** `7016c81` · procedência **completa**
+
+### 2026-10-28 · `DOC-12` 🔄
+
+**O defeito.** O diário dizia que o trabalho anterior a 29/04 não estava no repositório; estavam lá sete commits de 18–19/02.
+
+**Como foi encontrado.** *inventário* — 29/04 é a data do clone no reflog, e a entrada de abertura a tomou pelo início do histórico — contra o aviso da própria seção 'Sobre as datas'.
+
+**A correção.** Entrada reconstruída a partir dos sete commits; a lacuna real ficou delimitada (nenhum commit de 20/02 a 30/05).
+
+**🔄 A premissa estava errada.** O registro do projeto é fonte confiável sobre o próprio projeto. Tem a mesma autoridade de um documento de terceiro e a mesma chance de estar errado — e um `git log --reverse` custava um segundo.
+
+**Commit.** `7016c81` · procedência **completa**
+
+### 2026-10-28 · `DOCS-WIN-01`
+
+**O defeito.** A linha do `DOCS-WIN-01` no backlog estava partida em seis desde o commit `4014798`, com um CR solto no meio.
+
+**Como foi encontrado.** *leitura* — O texto citava `\n`, `\r\n` e `\r` como exemplo, e o script que o gravou os converteu em caracteres de controle.
+
+**A correção.** Linha reconstruída a partir dos bytes; conferido que nenhuma linha de tabela ficou sem `|` final.
+
+**Nota.** Achado na revisão dos patches pedida pelo Vitor antes do commit.
+
+**Commit.** `2254934` · procedência **completa**
+
 ### 2026-10-17 · `(ii)`
 
 **O defeito.** Uma afirmação da própria sessão saiu sem conferência: 'o `README.md` manda ler `METODOLOGIA.md`, `HARDWARE.md` e `DATASET.md`'.
@@ -1209,9 +1265,9 @@ só de código filtra pela coluna de área.
 
 ---
 
-## Infraestrutura — 20 defeitos
+## Infraestrutura — 21 defeitos
 
-*12 execução · 4 leitura · 3 inventário · 1 terceiro*
+*13 execução · 4 leitura · 3 inventário · 1 terceiro*
 
 ### 2026-10-28 · `DOCS-WIN-01` 🔄
 
@@ -1224,6 +1280,16 @@ só de código filtra pela coluna de área.
 **🔄 A premissa estava errada.** Uma verificação que passa no CI vale em qualquer máquina. O CI (Ubuntu) estava verde e certo; a máquina de quem edita, que é onde a (1) existe para rodar, media errado em silêncio.
 
 **Commit.** `ca01355` · procedência **completa**
+
+### 2026-10-28 · `DOCS-WIN-02`
+
+**O defeito.** `calculos_tcc.py` e `estudo_buffer.py` quebravam no console do Windows — o primeiro no `--conferir`, depois de as asserções baterem, de modo que o exit 1 parecia reprovação dos cálculos.
+
+**Como foi encontrado.** *execução* — Saída com símbolos fora do `cp1252` (✓, ĝ, σ). Registrado em 28/10 só para o `calculos_tcc`; medir os dois scripts nos dois modos mostrou que o relatório do `estudo_buffer` também quebrava.
+
+**A correção.** `sys.stdout.reconfigure(encoding='utf-8')` nos dois. Controle: com um valor sabotado, o `--conferir` sai 1 e diz o que falhou.
+
+**Commit.** `7016c81` · procedência **completa**
 
 ### 2026-02-18 · `(bootstrap)`
 
@@ -1487,6 +1553,8 @@ com competência teria produzido a coisa errada bem feita.
 | 2026-10-17 | `DOC-11` | Que o arquivo de instruções descrevia o estado do projeto. |
 | 2026-10-28 | `GIT-06` | Que uma conferência escrita chega ao backlog. |
 | 2026-10-28 | `DOCS-WIN-01` | Que uma verificação que passa no CI vale em qualquer máquina. |
+| 2026-10-28 | `ML-WIN-01` | Que o relógio tinha resolução para um orçamento zero. |
+| 2026-10-28 | `DOC-12` | Que 29/04 marcava o início do versionamento. |
 | 2026-06-02 | `FIX-02` | Que o dado estava gravado e o problema era de leitura. |
 | 2026-09-18 | `GIT-01` | Que alguma ferramenta havia reformatado o repositório. |
 | 2026-09-22 | `GIT-04` | Que o que está em `docs/` está versionado, salvo o que o `.gitignore` exclui. |
@@ -1495,13 +1563,13 @@ com competência teria produzido a coisa errada bem feita.
 | 2026-10-16 | `CI-06` | Que eram três, e não quatro, os jobs nunca rodados num runner. |
 | 2026-10-17 | `GIT-05` | Que um aviso escrito no `ROADMAP.md` chega a quem clona. |
 
-**44 de 110.** E a distribuição por instrumento dentro
+**46 de 116.** E a distribuição por instrumento dentro
 deste subconjunto é a parte que vale registrar:
 
 | Instrumento | Premissas derrubadas |
 |---|---:|
-| execução | 13 |
-| inventário | 9 |
+| execução | 14 |
+| inventário | 10 |
 | controle positivo | 8 |
 | terceiro | 4 |
 | cálculo | 4 |
@@ -1509,7 +1577,7 @@ deste subconjunto é a parte que vale registrar:
 | uso real | 1 |
 | dado real | 1 |
 
-**36 das 44 premissas caíram quando alguém saiu
+**38 das 46 premissas caíram quando alguém saiu
 do próprio raciocínio** — rodando, sabotando, conferindo o artefato,
 abrindo a especificação do fornecedor, ou preenchendo o formulário como
 usuário. As outras 8 caíram lendo e calculando, e vale

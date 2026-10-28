@@ -33,7 +33,7 @@ cada uma existe porque o projeto já pagou por não a ter feito.
 |:-:|---|:-:|
 | 1 | Alcance declarado que não alcança | **11** |
 | 5 | Premissa herdada da documentação, nunca conferida no artefato | **8** |
-| 6 | Confirmação emitida antes da verificação | **6** |
+| 6 | Confirmação emitida antes da verificação | **7** |
 | 4 | O instrumento de medida mede errado — e nada mede o instrumento | **5** |
 | 2 | Análise correta que não chega onde a decisão é tomada | **5** |
 | 3 | Número herdado que ganha autoridade sem ter procedência | **5** |
@@ -432,6 +432,7 @@ antigo do projeto e o primeiro a ter sido nomeado como padrão, na entrada de 20
 | 4 | **A tela de exclusão de conta não existia, e três documentos diziam que existia.** `ExcluirConta.tsx` foi commitado em 29/09 com 23 testes e **nenhum arquivo versionado o importava** — as três linhas que o montam ficaram presas numa árvore de trabalho não commitada. Nesses dezoito dias o backlog dizia `UI-10 ✅`, o `LGPD-ELIMINACAO.md` dizia "a interface existe desde 29/09", e a **política de privacidade dizia ao titular onde clicar** para exercer o art. 18, VI. | Diário 2026-10-17; commits `916e210` (componente) e `22a9268` (montagem) |
 | 5 | **O `CLAUDE.md` dizia "ainda não há suíte de testes nem CI", e isso mudava o comportamento de quem lia.** As duas afirmações (testes e `/health`) eram falsas havia semanas. O que distingue esta ocorrência das anteriores: as outras enganavam **sobre** o sistema; esta **instruía a não verificá-lo** — é o arquivo que orienta cada sessão de trabalho dizendo que não há o que rodar. ⚠️ E a correção está num arquivo **gitignorado**, então ela mesma é uma ocorrência 6 do §1: não entra em commit, não chega a um clone, e nenhuma verificação a alcança (`GIT-05`, `DOC-11`). | Diário 2026-10-17 (iv); backlog `DOC-11` |
 | 6 | **A política de privacidade negava a tela que o `UI-11` acabara de entregar — e mandava o titular escrever para um canal de contato.** Mesmo dia, sinal invertido em relação à ocorrência 4: a §6.3 dizia *"não há tela para alterar nome e e-mail"* enquanto a tela existia, porque o commit do `UI-11` (`2316b06`) não tocou a política. Corrigido horas depois, ao fechar o `PERFIL-01`. **E o `DIAG-04` era o quarto documento com a afirmação desatualizada sobre a tela do `UI-10`** — a entrada (iii) daquele dia reporta três; a quarta estava em `docs/diagramas/` e foi achada por varredura própria. | Diário 2026-10-17 (iii) e (iv); `docs/POLITICA-DE-PRIVACIDADE.md` §6.3; `docs/diagramas/DIAG-04-modelo-de-dados-e-seguranca.md` |
+| 7 | **O primeiro README do projeto já exibia "Status: Validado".** Em 18/02 (`d74aa01`), o `web-app/README.md` abria com um selo verde de *validado* — com o firmware em simulação no Wokwi, o despertar por botão, e nenhum dado medido. É a ocorrência mais antiga deste padrão no repositório, e a mais pura: não havia teste nem `✅` de item, só um selo. Achada ao reconstruir a abertura do diário (`DOC-12`), oito meses depois. | Diário 2026-02-18 (reescrita em 28/10); `git show d74aa01:web-app/README.md` |
 
 **O que custou.** O caso 1 produziu o sintoma clássico — dashboard vazio com tudo "funcionando"
 — e levou à hipótese errada (problema de leitura) antes de a causa aparecer. O caso 3 é o mesmo

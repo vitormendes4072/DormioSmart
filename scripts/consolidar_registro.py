@@ -1651,6 +1651,90 @@ DEFEITOS: list[Defeito] = [
         premissa_curta="Que uma verificação que passa no CI vale em qualquer máquina.",
     ),
     Defeito(
+        data="2026-10-28", area=INFRA, item="DOCS-WIN-02",
+        defeito="`calculos_tcc.py` e `estudo_buffer.py` quebravam no console do "
+                "Windows — o primeiro no `--conferir`, depois de as asserções "
+                "baterem, de modo que o exit 1 parecia reprovação dos cálculos.",
+        achado_por=EXECUCAO,
+        causa="Saída com símbolos fora do `cp1252` (✓, ĝ, σ). Registrado em 28/10 "
+              "só para o `calculos_tcc`; medir os dois scripts nos dois modos "
+              "mostrou que o relatório do `estudo_buffer` também quebrava.",
+        correcao="`sys.stdout.reconfigure(encoding='utf-8')` nos dois. Controle: "
+                 "com um valor sabotado, o `--conferir` sai 1 e diz o que falhou.",
+        commit="7016c81",
+        instrumento=True,
+    ),
+    Defeito(
+        data="2026-10-28", area=ML, item="ML-WIN-01",
+        defeito="Os dois testes de vetor dourado reprovavam no Windows por "
+                "divergência no último dígito de 71 de 14 952 floats.",
+        achado_por=EXECUCAO,
+        causa="Comparação por igualdade exata de um JSON gravado em Linux: ordem "
+              "de soma e libm diferem entre plataformas (pior caso medido: "
+              "8,0e-13 relativo).",
+        correcao="Estrutura exata e floats com tolerância derivada (1e-9 relativo) "
+                 "entre o piso medido e o teto do verificador por mutação, 12/12 "
+                 "em Linux e no Windows.",
+        commit="7016c81",
+        instrumento=True,
+    ),
+    Defeito(
+        data="2026-10-28", area=ML, item="ML-WIN-01",
+        defeito="O teste de retomada fazia mais de uma dobra por chamada no "
+                "Windows com orçamento zero.",
+        achado_por=EXECUCAO,
+        causa="`elapsed > orcamento_s` com o relógio do Windows em degraus de "
+              "~15,6 ms: duas leituras no mesmo degrau dão 0 s, e `0 > 0` é falso.",
+        correcao="`>=`. Hipótese confirmada antes de corrigir: com um relógio em "
+                 "degraus, o teste reprova 3 de 3 em Linux.",
+        commit="7016c81",
+        premissa="O relógio de parede mede tempo decorrido com resolução suficiente "
+                 "para um orçamento zero. Em Linux mede; no Windows, não — e a "
+                 "falha alternava entre execuções, o que a fazia parecer acaso.",
+        premissa_curta="Que o relógio tinha resolução para um orçamento zero.",
+    ),
+    Defeito(
+        data="2026-10-28", area=DOC, item="DIAG-03",
+        defeito="Os diagramas de 29/09 omitiam as features em C++ de 17/10, a rota "
+                "`/api/me/perfil` e o `/health`, e o `DIAG-03` rotulava o payload "
+                "como `v2.4.0` sem dizer que o contrato estava em 2.5.1.",
+        achado_por=INVENTARIO,
+        causa="Diagrama datado que ninguém reconferiu depois que o código mudou.",
+        correcao="Conferidos contra o código (55 afirmações do `DIAG-01` batem) e "
+                 "atualizados pela convenção do próprio diagrama — `(NÃO "
+                 "EXERCITADO)` para código que existe e não roda.",
+        commit="7016c81",
+    ),
+    Defeito(
+        data="2026-10-28", area=DOC, item="DOC-12",
+        defeito="O diário dizia que o trabalho anterior a 29/04 não estava no "
+                "repositório; estavam lá sete commits de 18–19/02.",
+        achado_por=INVENTARIO,
+        causa="29/04 é a data do clone no reflog, e a entrada de abertura a tomou "
+              "pelo início do histórico — contra o aviso da própria seção 'Sobre "
+              "as datas'.",
+        correcao="Entrada reconstruída a partir dos sete commits; a lacuna real "
+                 "ficou delimitada (nenhum commit de 20/02 a 30/05).",
+        commit="7016c81",
+        premissa="O registro do projeto é fonte confiável sobre o próprio "
+                 "projeto. Tem a mesma autoridade de um documento de terceiro e a "
+                 "mesma chance de estar errado — e um `git log --reverse` custava "
+                 "um segundo.",
+        premissa_curta="Que 29/04 marcava o início do versionamento.",
+    ),
+    Defeito(
+        data="2026-10-28", area=DOC, item="DOCS-WIN-01",
+        defeito="A linha do `DOCS-WIN-01` no backlog estava partida em seis desde "
+                "o commit `4014798`, com um CR solto no meio.",
+        achado_por=LEITURA,
+        causa="O texto citava `\\n`, `\\r\\n` e `\\r` como exemplo, e o script que o "
+              "gravou os converteu em caracteres de controle.",
+        correcao="Linha reconstruída a partir dos bytes; conferido que nenhuma "
+                 "linha de tabela ficou sem `|` final.",
+        commit="2254934",
+        nota="Achado na revisão dos patches pedida pelo Vitor antes do commit.",
+    ),
+    Defeito(
         data="2026-10-17", area=DOC, item="(ii)",
         defeito="Uma afirmação da própria sessão saiu sem conferência: 'o "
                 "`README.md` manda ler `METODOLOGIA.md`, `HARDWARE.md` e "
@@ -2018,28 +2102,10 @@ PENDENCIAS: list[Pendencia] = [
                    "backlog."),
     Pendencia("CALC-04", SOFTWARE, "Análise elétrica: pull-down, pull-ups do I2C, "
               "níveis 3,3 V, fonte de despertar.", "🟡", camada_backlog="L0"),
-    Pendencia("DIAG-01", SOFTWARE, "Diagrama de blocos da arquitetura.", "🔴",
-              camada_backlog="L0",
-              nota="⚠️ `docs/diagramas/DIAG-01-arquitetura.md` **existe no "
-                   "repositório** e está versionado. O item consta como aberto no "
-                   "quadro do backlog ('DIAG-01..04'), mas o commit `3536582` "
-                   "(29/09) entregou DIAG-01, 03, 04 e 05 como Mermaid "
-                   "versionado e conferido contra o código. Só o **DIAG-02** não "
-                   "tem arquivo. ✏️ **28/10:** levado ao backlog **sem fechar**: o "
-                   "arquivo cumpre o pedido na forma, mas se declara conferido em "
-                   "29/09 e o firmware mudou depois; falta conferir contra o código "
-                   "de hoje e renderizar."),
     Pendencia("DIAG-02", SOFTWARE, "Esquemático do circuito; v1 (1 sensor) e v2 "
               "(2, endereços I2C).", "🟡", camada_backlog="L0",
               nota="Confirmado aberto: não há `DIAG-02-*.md` em "
                    "`docs/diagramas/`."),
-    Pendencia("DIAG-03", SOFTWARE, "Fluxograma do firmware / máquina de estados.",
-              "🔴", camada_backlog="L0",
-              nota="⚠️ `DIAG-03-firmware-e-fluxo-do-dado.md` **existe e está "
-                   "versionado** (`3536582`). Mesma situação do DIAG-01. ✏️ **28/10:** "
-                   "aberto no backlog com dois pontos: a figura C não mostra as "
-                   "features em C++ (17/10, inertes) e rotula o payload `v2.4.0` "
-                   "com o contrato em 2.5.1."),
     Pendencia("DIAG-04", SOFTWARE, "Sequência do fluxo autenticado + modelo ER. "
               "Escrito e revisado em 17/10. **Falta só uma coisa:** os três blocos "
               "mermaid foram validados por **parser**, nunca por **renderização** "
@@ -2221,23 +2287,6 @@ PENDENCIAS: list[Pendencia] = [
               nota="Confirmado por execução: `conferir_docs_versionados.py` sai 0 "
                    "e imprime os 8 isentos. A verificação (3) **não cobre nenhum "
                    "dos oito; pega o nono.**"),
-    Pendencia("ML-WIN-01", SOFTWARE, "3 dos 107 testes de ML falham no Windows: os "
-              "dois de vetor dourado comparam JSON por **igualdade exata** e "
-              "divergem no último dígito; o de retomada depende da resolução do "
-              "relógio (hipótese, não confirmada). **Não regravar o dourado no "
-              "Windows** — trocaria a dependência de plataforma de lado.", "🟡",
-              camada_backlog="L0"),
-    Pendencia("DOCS-WIN-02", SOFTWARE, "`calculos_tcc.py --conferir` quebra no "
-              "console do Windows ao imprimir o `✓` final — depois de as "
-              "asserções baterem, então o exit 1 parece reprovação dos cálculos. "
-              "Mesma classe do `DOCS-WIN-01`.", "🟡", camada_backlog="L0"),
-    Pendencia("DOC-12", SOFTWARE, "O histórico começa em **18/02** (`d74aa01`), "
-              "não em 29/04: diário, lições e este gerador tomaram a data do clone "
-              "no reflog pelo início do versionamento. Ler os 70 dias entre as "
-              "duas datas e dizer o que eles permitem reconstruir nas entradas "
-              "**PARCIAL**.", "🟡", camada_backlog="L0",
-              nota="A frase deste gerador já foi corrigida em 28/10; as do diário "
-                   "e das lições, não."),
     Pendencia("CI-02", SOFTWARE, "O CI **não roda linter** — não há ESLint nem "
               "Ruff/flake8. Pressupõe uma decisão de configuração que ninguém "
               "tomou, porque ligar linter sem configuração produz um job vermelho "
@@ -2287,6 +2336,13 @@ PENDENCIAS: list[Pendencia] = [
                       "dependência) ou script próprio (mais código nosso, e o "
                       "instrumento é a parte difícil — a primeira tentativa "
                       "sub-relatou código morto)?"),
+    Pendencia("CI-07", DECISAO, "Os seis jobs rodam em `ubuntu-latest`, que está "
+              "trocando de major (aviso do runner: migra para o Ubuntu 26 a partir "
+              "de 19/10).", "🟡", camada_backlog="L0",
+              decisao="Fixar `runs-on: ubuntu-24.04` — a imagem em que os sete jobs "
+                      "passaram em 28/10 — e migrar para a 26 como decisão, ou "
+                      "seguir no `latest`. O próprio `ci.yml` já escolheu, para o "
+                      "Postgres: 'nunca `latest`'."),
     Pendencia("CI-02 (configuração)", DECISAO, "Linter.", "⚪",
               camada_backlog="L0",
               decisao="Qual configuração de ESLint/Ruff adotar, e quantos "
@@ -2314,22 +2370,6 @@ PENDENCIAS: list[Pendencia] = [
                       "rota A muda o escopo declarado do trabalho?"),
 
     # ───────── C — AÇÃO DO VITOR QUE NÃO É DECISÃO ───────────────────────
-    Pendencia("GIT-07 — o push", ACAO, "`git push origin "
-              "chore/GIT-01-normalizar-fim-de-linha`. Os commits existem só "
-              "no clone local (**76** em 20/10, **77** em 28/10). Enquanto não "
-              "saírem, o CI não roda e nada pode ser chamado de 'o CI passa'.",
-              "🔴", camada_backlog="L3",
-              nota="⚠️ **Não tem item próprio no backlog.** Vive como um "
-                   "parágrafo ⚪ dentro da nota do `CI-06`, que é um item 🔴. "
-                   "Medido aqui: `git ls-remote` confirma que a branch **não "
-                   "existe no remoto**, e que `develop` (f044fd2) e `main` "
-                   "(198b32e) estão idênticos aos refs locais — nada divergente, "
-                   "nada a reescrever. O backlog fala de '6 commits'; são **76** "
-                   "contra `origin/main` e contra `origin/develop`. É bloqueio de "
-                   "**ambiente**, não de decisão: não há credencial de escrita no "
-                   "ambiente de execução. ✏️ **28/10:** virou o item `GIT-07` no "
-                   "backlog. Até ali este arquivo o chamava de `GIT-06`, e o "
-                   "`GIT-06` do backlog é a consolidação — dois itens, um ID."),
     Pendencia("Etapa 0 — soldar", ACAO, "**Soldar os 8 pinos do MPU6050.** Teste "
               "de aceitação: pose Z+ com ruído ~0,02. **Trava as camadas L1 e L2 "
               "inteiras.**", "🔴", camada_backlog="L3",
@@ -2504,19 +2544,6 @@ PENDENCIAS: list[Pendencia] = [
               "não hipotético — o modelo existe.", "🔴", camada_backlog="L3"),
     Pendencia("LGPD-01 (c)", TERCEIRO_G, "Revisão jurídica da política de "
               "privacidade.", "🟡", camada_backlog="L0"),
-    Pendencia("CI-06 — execução em runner", TERCEIRO_G, "**Quatro jobs nunca "
-              "rodaram num runner** (`rls`, `ml`, `firmware`, `documentos`) mais "
-              "duas verificações novas. Depende do GitHub Actions, e o gatilho "
-              "para o push. **Quando o push sair, a perna da Postgres 16 é a "
-              "primeira coisa a olhar** — o harness foi verificado na 14, e RLS e "
-              "privilégio mudam entre majors. Se reprovar, é achado de segurança "
-              "e vale mais que o selo verde.", "🔴", camada_backlog="L0",
-              nota="Confirmado por `git show develop:.github/workflows/ci.yml`: "
-                   "`develop` tem **dois** jobs (`test`, `frontend`); a branch "
-                   "tem **seis**. Os quatro que faltam são os nomeados. O "
-                   "`frontend` **já rodou** em runner (na #131, 10/09) — mas com "
-                   "os arquivos de teste daquela data, e o `montagem.test.ts` é "
-                   "de 19/10."),
     Pendencia("SEC-09 / X.7 — issues de terceiro", TERCEIRO_G, "A seção X.7 "
               "depende de **duas issues em aberto** (`supabase/supabase` #35844 e "
               "`supabase/auth` #2702). **Se forem corrigidas antes da entrega, a "

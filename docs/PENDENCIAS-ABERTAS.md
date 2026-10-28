@@ -49,12 +49,12 @@ linha, não um resumo: resumo é a cópia que diverge.
 
 | Grupo | Itens |
 |---|---:|
-| A — Depende só de software: dá para fazer a qualquer momento | **42** |
-| B — Depende de decisão do Vitor | **10** |
-| C — Depende de ação do Vitor que não é decisão | **9** |
+| A — Depende só de software: dá para fazer a qualquer momento | **37** |
+| B — Depende de decisão do Vitor | **11** |
+| C — Depende de ação do Vitor que não é decisão | **8** |
 | D — Bloqueado por hardware ou coleta | **23** |
-| E — Bloqueado por terceiro | **5** |
-| **Total** | **89** |
+| E — Bloqueado por terceiro | **4** |
+| **Total** | **83** |
 
 ⚠️ **Este total não é comparável à contagem do backlog, e a diferença não é
 erro de nenhum dos dois.** São unidades de contagem diferentes: o backlog
@@ -75,7 +75,7 @@ outro item. **Desde 28/10 têm ID no backlog:** `GIT-07`, `INFRA-02` e
 
 ## A — Depende só de software: dá para fazer a qualquer momento
 
-**42 itens.**
+**37 itens.**
 
 ### `CALC-01` 🔴
 
@@ -103,14 +103,6 @@ Análise elétrica: pull-down, pull-ups do I2C, níveis 3,3 V, fonte de desperta
 
 *Camada no backlog: L0.*
 
-### `DIAG-01` 🔴
-
-Diagrama de blocos da arquitetura.
-
-*Camada no backlog: L0.*
-
-**Conferência.** ⚠️ `docs/diagramas/DIAG-01-arquitetura.md` **existe no repositório** e está versionado. O item consta como aberto no quadro do backlog ('DIAG-01..04'), mas o commit `3536582` (29/09) entregou DIAG-01, 03, 04 e 05 como Mermaid versionado e conferido contra o código. Só o **DIAG-02** não tem arquivo. ✏️ **28/10:** levado ao backlog **sem fechar**: o arquivo cumpre o pedido na forma, mas se declara conferido em 29/09 e o firmware mudou depois; falta conferir contra o código de hoje e renderizar.
-
 ### `DIAG-02` 🟡
 
 Esquemático do circuito; v1 (1 sensor) e v2 (2, endereços I2C).
@@ -118,14 +110,6 @@ Esquemático do circuito; v1 (1 sensor) e v2 (2, endereços I2C).
 *Camada no backlog: L0.*
 
 **Conferência.** Confirmado aberto: não há `DIAG-02-*.md` em `docs/diagramas/`.
-
-### `DIAG-03` 🔴
-
-Fluxograma do firmware / máquina de estados.
-
-*Camada no backlog: L0.*
-
-**Conferência.** ⚠️ `DIAG-03-firmware-e-fluxo-do-dado.md` **existe e está versionado** (`3536582`). Mesma situação do DIAG-01. ✏️ **28/10:** aberto no backlog com dois pontos: a figura C não mostra as features em C++ (17/10, inertes) e rotula o payload `v2.4.0` com o contrato em 2.5.1.
 
 ### `DIAG-04` 🟡
 
@@ -337,26 +321,6 @@ Reduzir a lista de **8 ponteiros pendurados** — arquivo por arquivo: versionar
 
 **Conferência.** Confirmado por execução: `conferir_docs_versionados.py` sai 0 e imprime os 8 isentos. A verificação (3) **não cobre nenhum dos oito; pega o nono.**
 
-### `ML-WIN-01` 🟡
-
-3 dos 107 testes de ML falham no Windows: os dois de vetor dourado comparam JSON por **igualdade exata** e divergem no último dígito; o de retomada depende da resolução do relógio (hipótese, não confirmada). **Não regravar o dourado no Windows** — trocaria a dependência de plataforma de lado.
-
-*Camada no backlog: L0.*
-
-### `DOCS-WIN-02` 🟡
-
-`calculos_tcc.py --conferir` quebra no console do Windows ao imprimir o `✓` final — depois de as asserções baterem, então o exit 1 parece reprovação dos cálculos. Mesma classe do `DOCS-WIN-01`.
-
-*Camada no backlog: L0.*
-
-### `DOC-12` 🟡
-
-O histórico começa em **18/02** (`d74aa01`), não em 29/04: diário, lições e este gerador tomaram a data do clone no reflog pelo início do versionamento. Ler os 70 dias entre as duas datas e dizer o que eles permitem reconstruir nas entradas **PARCIAL**.
-
-*Camada no backlog: L0.*
-
-**Conferência.** A frase deste gerador já foi corrigida em 28/10; as do diário e das lições, não.
-
 ### `CI-02` ⚪
 
 O CI **não roda linter** — não há ESLint nem Ruff/flake8. Pressupõe uma decisão de configuração que ninguém tomou, porque ligar linter sem configuração produz um job vermelho permanente.
@@ -369,7 +333,7 @@ O CI **não roda linter** — não há ESLint nem Ruff/flake8. Pressupõe uma de
 
 ## B — Depende de decisão do Vitor
 
-**10 itens.**
+**11 itens.**
 
 Cada linha traz a decisão em uma frase. Nenhum destes itens anda
 sem uma resposta sua — e nenhum deles exige que você escreva
@@ -423,6 +387,14 @@ Verificação de alcance no nível do símbolo.
 
 *Camada no backlog: L0.*
 
+### `CI-07` 🟡
+
+Os seis jobs rodam em `ubuntu-latest`, que está trocando de major (aviso do runner: migra para o Ubuntu 26 a partir de 19/10).
+
+**A decisão.** Fixar `runs-on: ubuntu-24.04` — a imagem em que os sete jobs passaram em 28/10 — e migrar para a 26 como decisão, ou seguir no `latest`. O próprio `ci.yml` já escolheu, para o Postgres: 'nunca `latest`'.
+
+*Camada no backlog: L0.*
+
 ### `CI-02 (configuração)` ⚪
 
 Linter.
@@ -461,19 +433,11 @@ iOS: **investigação, não implementação.** Rota A (áudio em background) mud
 
 ## C — Depende de ação do Vitor que não é decisão
 
-**9 itens.**
+**8 itens.**
 
 Nada aqui é decisão: a decisão já foi tomada, ou nunca houve uma.
 São ações que só você pode executar, porque exigem credencial,
 terminal na máquina, ferro de solda ou uma conta num serviço.
-
-### `GIT-07 — o push` 🔴
-
-`git push origin chore/GIT-01-normalizar-fim-de-linha`. Os commits existem só no clone local (**76** em 20/10, **77** em 28/10). Enquanto não saírem, o CI não roda e nada pode ser chamado de 'o CI passa'.
-
-*Camada no backlog: L3.*
-
-**Conferência.** ⚠️ **Não tem item próprio no backlog.** Vive como um parágrafo ⚪ dentro da nota do `CI-06`, que é um item 🔴. Medido aqui: `git ls-remote` confirma que a branch **não existe no remoto**, e que `develop` (f044fd2) e `main` (198b32e) estão idênticos aos refs locais — nada divergente, nada a reescrever. O backlog fala de '6 commits'; são **76** contra `origin/main` e contra `origin/develop`. É bloqueio de **ambiente**, não de decisão: não há credencial de escrita no ambiente de execução. ✏️ **28/10:** virou o item `GIT-07` no backlog. Até ali este arquivo o chamava de `GIT-06`, e o `GIT-06` do backlog é a consolidação — dois itens, um ID.
 
 ### `Etapa 0 — soldar` 🔴
 
@@ -691,7 +655,7 @@ Distribuição (loja ou APK). Depende de `LGPD-02` e `APP-04`.
 
 ## E — Bloqueado por terceiro
 
-**5 itens.**
+**4 itens.**
 
 ### `RQ-01` 🔴
 
@@ -710,14 +674,6 @@ Confirmar RQ e hipótese com o **orientador metodológico**.
 Revisão jurídica da política de privacidade.
 
 *Camada no backlog: L0.*
-
-### `CI-06 — execução em runner` 🔴
-
-**Quatro jobs nunca rodaram num runner** (`rls`, `ml`, `firmware`, `documentos`) mais duas verificações novas. Depende do GitHub Actions, e o gatilho para o push. **Quando o push sair, a perna da Postgres 16 é a primeira coisa a olhar** — o harness foi verificado na 14, e RLS e privilégio mudam entre majors. Se reprovar, é achado de segurança e vale mais que o selo verde.
-
-*Camada no backlog: L0.*
-
-**Conferência.** Confirmado por `git show develop:.github/workflows/ci.yml`: `develop` tem **dois** jobs (`test`, `frontend`); a branch tem **seis**. Os quatro que faltam são os nomeados. O `frontend` **já rodou** em runner (na #131, 10/09) — mas com os arquivos de teste daquela data, e o `montagem.test.ts` é de 19/10.
 
 ### `SEC-09 / X.7 — issues de terceiro` 🟡
 
