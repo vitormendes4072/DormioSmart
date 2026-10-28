@@ -3160,6 +3160,51 @@ linhas de uma vez, com o CI verde lá — está no comentário do `ci.yml`.
 **Procedência.** `.github/workflows/ci.yml` (`runs-on` dos seis jobs e o comentário do primeiro);
 execuções `40746683981` e `40750204890`; `docs/BACKLOG-COMPLETO.md` (`CI-07`, 74 = 41/12/9/12).
 
+---
+
+# 2026-10-28 (iv) — `INFRA-03`: a produção estava fora do ar, e nada no repositório sabia
+
+**O problema, como foi entendido no início.** Ao avaliar o merge para `develop`, o `/health` de
+produção respondeu **503**, com `"banco": "consulta falhou"`. A produção vem de `main`, de 10/09;
+não era efeito de nada desta semana.
+
+**Hipótese de trabalho.** Projeto Supabase pausado por inatividade. **Confirmada pelo Vitor**:
+plano gratuito, pausa depois de uma semana sem uso; ele reativou o projeto.
+
+**O que foi testado, e como.**
+
+| # | O que | Como | Natureza |
+|:-:|---|---|---|
+| 1 | O banco existe? | `nslookup` do domínio do projeto (tirado do JavaScript público do site) no Google e na Cloudflare; `supabase.com` como controle de rede | inventário |
+| 2 | Voltou? | o mesmo DNS, `rest/v1` sem chave, e o `/health` três vezes | execução |
+| 3 | O monitor acusa? | `scripts/conferir_producao.py` contra um servidor local que imita cada falha, e contra a produção | **controle positivo** |
+
+**Resultado medido.** **(a)** Antes: o domínio do projeto **não existia** nos dois resolvedores
+(`Non-existent domain`), com `supabase.com` respondendo 200 pela mesma rede — não era a minha
+conexão. **(b)** Depois da reativação: o domínio resolve, o Supabase responde 401 sem chave
+(serviço ativo), e o `/health` deu **200 com `"banco": "ok"` três vezes**. **(c)** O monitor: reprova
+503 degradado (o estado de hoje), 200 com outro valor em `banco`, 200 com HTML no lugar de JSON e
+domínio inexistente; passa num servidor que responde certo e na produção real — **6 de 6**.
+
+**Adaptação.** A prevenção é um job agendado, `.github/workflows/saude-producao.yml`, que chama o
+`/health` a cada 3 dias. O `/health` faz uma consulta real ao banco, então o mesmo job serve para
+manter o projeto ativo e para avisar quando cair. A verificação ficou num script, e não solta no
+YAML, para poder ser sabotada aqui.
+
+**Risco em aberto** — escrito também no cabeçalho do workflow:
+
+- **`schedule` só roda a partir da branch padrão (`main`).** Até o release de `develop`, o
+  agendamento não existe. O workflow também roda num push que mude ele próprio ou o script, para
+  ser exercitado num runner antes disso.
+- **O GitHub desativa agendamentos depois de 60 dias sem atividade** num repositório público.
+- **Que a consulta impeça a pausa é hipótese**: supõe que uma requisição ao banco conta como
+  atividade para o Supabase. Não foi medido.
+- **Por quanto tempo a produção ficou fora não se sabe**: nada registrava. A última produção
+  publicada é de 10/09.
+
+**Procedência.** `scripts/conferir_producao.py`; `.github/workflows/saude-producao.yml`;
+`docs/BACKLOG-COMPLETO.md` (`INFRA-03`, 75 = 41/12/9/13); `CLAUDE.md` (seção "Deploy").
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

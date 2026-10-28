@@ -51,10 +51,10 @@ linha, não um resumo: resumo é a cópia que diverge.
 |---|---:|
 | A — Depende só de software: dá para fazer a qualquer momento | **37** |
 | B — Depende de decisão do Vitor | **10** |
-| C — Depende de ação do Vitor que não é decisão | **8** |
+| C — Depende de ação do Vitor que não é decisão | **9** |
 | D — Bloqueado por hardware ou coleta | **23** |
 | E — Bloqueado por terceiro | **4** |
-| **Total** | **82** |
+| **Total** | **83** |
 
 ⚠️ **Este total não é comparável à contagem do backlog, e a diferença não é
 erro de nenhum dos dois.** São unidades de contagem diferentes: o backlog
@@ -425,7 +425,7 @@ iOS: **investigação, não implementação.** Rota A (áudio em background) mud
 
 ## C — Depende de ação do Vitor que não é decisão
 
-**8 itens.**
+**9 itens.**
 
 Nada aqui é decisão: a decisão já foi tomada, ou nunca houve uma.
 São ações que só você pode executar, porque exigem credencial,
@@ -460,6 +460,14 @@ Aplicar `008_perfil_como_fonte_de_verdade.sql` no Supabase. Idempotente, com qua
 Ligar captcha no painel do Supabase (`Authentication → Settings → Bot and Abuse Protection`). ~5 min, zero código, cobre `signup`/`token`/`recover`. ⚠️ **É mitigação: reduz a taxa, não elimina o oráculo** — e ligar isto **não autoriza mudar uma palavra da X.7**.
 
 *Camada no backlog: L3.*
+
+### `INFRA-03 — monitor da produção` 🟡
+
+O job que chama o `/health` de produção a cada 3 dias está escrito e testado, e só roda agendado a partir de `main`: falta o release. Antes dele, conferir no Supabase as migrações 005–008 e o backfill 002.
+
+*Camada no backlog: L3.*
+
+**Conferência.** A produção esteve fora do ar até 28/10 sem ninguém saber: o projeto Supabase do plano gratuito pausa depois de uma semana sem uso. Reativado pelo Vitor no mesmo dia.
 
 ### `INFRA-02 — projeto Supabase de teste` 🔴
 

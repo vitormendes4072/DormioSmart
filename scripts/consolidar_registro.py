@@ -2415,6 +2415,14 @@ PENDENCIAS: list[Pendencia] = [
               "zero código, cobre `signup`/`token`/`recover`. ⚠️ **É mitigação: "
               "reduz a taxa, não elimina o oráculo** — e ligar isto **não "
               "autoriza mudar uma palavra da X.7**.", "⚠️", camada_backlog="L3"),
+    Pendencia("INFRA-03 — monitor da produção", ACAO, "O job que chama o "
+              "`/health` de produção a cada 3 dias está escrito e testado, e só "
+              "roda agendado a partir de `main`: falta o release. Antes dele, "
+              "conferir no Supabase as migrações 005–008 e o backfill 002.", "🟡",
+              camada_backlog="L3",
+              nota="A produção esteve fora do ar até 28/10 sem ninguém saber: o "
+                   "projeto Supabase do plano gratuito pausa depois de uma semana "
+                   "sem uso. Reativado pelo Vitor no mesmo dia."),
     Pendencia("INFRA-02 — projeto Supabase de teste", ACAO, "Criar um projeto Supabase de "
               "teste e rodar um punhado de `curl`. **Fecharia quatro itens de uma "
               "vez:** o ponto cego do `UI-11` (a troca de e-mail exige "
