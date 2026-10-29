@@ -3280,6 +3280,47 @@ tabela aberta.
 `verificar_por_mutacao.py`; `web-app/tests/migracoes/verificar_migracoes.py`; `pg_default_acl` e
 `has_function_privilege` da produção (resultados colados pelo Vitor); backlog `SEC-12`, `SEC-13`.
 
+---
+
+# 2026-10-29 — `SEC-12` aplicada na produção, e o que o release precisa
+
+**O problema, como foi entendido no início.** Aplicar a 009 na produção e preparar o release de
+`develop` para `main`, com a 007 — a única migração que falta — entrando junto.
+
+**Hipótese de trabalho.** Que a 009 tirasse de `anon` todas as funções sem tocar no que o código
+da produção usa. Confirmada.
+
+**O que foi testado, e como.** O Vitor aplicou a 009 no SQL Editor e colou dois resultados: a
+consulta de privilégios por função e o diagnóstico de migrações. O `/health` foi conferido daqui
+depois da aplicação. Para o release: `git diff` de `main` para `develop` (arquivos, variáveis de
+ambiente, `vercel.json`) e todas as chamadas que o código de `develop` faz ao banco.
+
+**Resultado medido.**
+
+- **A 009 na produção:** `anon = false` nas sete funções; `authenticated = true` só em
+  `sanidade`, `registrar_leitura_da_sessao` e `apagar_minha_conta`; `registrar_leitura` e
+  `resolver_dispositivo` fechadas também para `authenticated`. Diagnóstico: 009 com 4 de 4 marcas,
+  007 com 0 de 4 (o esperado). `/health` 200 duas vezes. Fecha `SEC-12`.
+- **O release:** `main` não tem conteúdo próprio — os 25 commits que ela tem a mais são merges de
+  release, e o conteúdo dela é idêntico à base comum (`f044fd2`); o merge não tem como dar
+  conflito. `vercel.json` e as variáveis do frontend não mudam; a única variável nova do backend é
+  `SUPABASE_INGESTAO_KEY`, opcional. Todo acesso ao banco passa pelo backend, e **a única coisa
+  que só existe depois da 007 é `parear_dispositivo`** — usada no pareamento de dispositivo novo
+  (`POST /api/devices` e `/api/devices/celular`). É a janela do release: entre o deploy e a 007,
+  parear falha; ler, gravar, perfil e exclusão de conta não.
+
+**Adaptação.** Nenhuma.
+
+**Risco em aberto.**
+
+- **Não medido:** que `service_role` executa as funções de ingestão na produção. Sem
+  `SUPABASE_INGESTAO_KEY`, é por ela que o backend novo grava leitura. A 009 não mexe nesse papel, e
+  o padrão do Supabase lhe dá EXECUTE — mas isso é leitura; a conferência entrou no roteiro do
+  release, antes do merge.
+
+**Procedência.** Resultados da produção colados pelo Vitor em 29/10; `git diff origin/main
+origin/develop`; `web-app/database.py`, `web-app/dispositivos.py`; backlog `SEC-12`.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

@@ -51,10 +51,10 @@ linha, não um resumo: resumo é a cópia que diverge.
 |---|---:|
 | A — Depende só de software: dá para fazer a qualquer momento | **38** |
 | B — Depende de decisão do Vitor | **10** |
-| C — Depende de ação do Vitor que não é decisão | **8** |
+| C — Depende de ação do Vitor que não é decisão | **7** |
 | D — Bloqueado por hardware ou coleta | **23** |
 | E — Bloqueado por terceiro | **4** |
-| **Total** | **83** |
+| **Total** | **82** |
 
 ⚠️ **Este total não é comparável à contagem do backlog, e a diferença não é
 erro de nenhum dos dois.** São unidades de contagem diferentes: o backlog
@@ -431,7 +431,7 @@ iOS: **investigação, não implementação.** Rota A (áudio em background) mud
 
 ## C — Depende de ação do Vitor que não é decisão
 
-**8 itens.**
+**7 itens.**
 
 Nada aqui é decisão: a decisão já foi tomada, ou nunca houve uma.
 São ações que só você pode executar, porque exigem credencial,
@@ -458,14 +458,6 @@ O job que chama o `/health` de produção a cada 3 dias está escrito e testado,
 *Camada no backlog: L3.*
 
 **Conferência.** A produção esteve fora do ar até 28/10 sem ninguém saber: o projeto Supabase do plano gratuito pausa depois de uma semana sem uso. Reativado pelo Vitor no mesmo dia.
-
-### `SEC-12 — aplicar a 009` 🔴
-
-Aplicar `009_privilegios_padrao_do_supabase.sql` no SQL Editor e conferir `anon = false` em todas as funções. Pode ser antes da 007.
-
-*Camada no backlog: L3.*
-
-**Conferência.** Confirmado na produção em 28/10: as sete funções aplicadas eram executáveis pela chave pública, pelos privilégios padrão do Supabase. Impacto medido localmente: nenhum.
 
 ### `INFRA-02 — projeto Supabase de teste` 🔴
 

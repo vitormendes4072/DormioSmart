@@ -2463,13 +2463,6 @@ PENDENCIAS: list[Pendencia] = [
               nota="A produção esteve fora do ar até 28/10 sem ninguém saber: o "
                    "projeto Supabase do plano gratuito pausa depois de uma semana "
                    "sem uso. Reativado pelo Vitor no mesmo dia."),
-    Pendencia("SEC-12 — aplicar a 009", ACAO, "Aplicar "
-              "`009_privilegios_padrao_do_supabase.sql` no SQL Editor e conferir "
-              "`anon = false` em todas as funções. Pode ser antes da 007.", "🔴",
-              camada_backlog="L3",
-              nota="Confirmado na produção em 28/10: as sete funções aplicadas eram "
-                   "executáveis pela chave pública, pelos privilégios padrão do "
-                   "Supabase. Impacto medido localmente: nenhum."),
     Pendencia("INFRA-02 — projeto Supabase de teste", ACAO, "Criar um projeto Supabase de "
               "teste e rodar um punhado de `curl`. **Fecharia quatro itens de uma "
               "vez:** o ponto cego do `UI-11` (a troca de e-mail exige "
