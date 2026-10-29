@@ -1811,6 +1811,19 @@ DEFEITOS: list[Defeito] = [
         commit="040fe4b",
     ),
     Defeito(
+        data="2026-10-29", area=DOC, item="DOC-05",
+        defeito="A linha do `DOC-05` no backlog dizia que o `CLAUDE.md` está no "
+                "`.gitignore` e que toda correção nele fica fora do git — ele é "
+                "versionado desde 27/10.",
+        achado_por=LEITURA,
+        causa="Fechar o `DOC-11` atualizou a pendência gerada do `DOC-05` e não "
+              "a linha do item no backlog.",
+        correcao="Linha corrigida, com a marca ✏️; o `DOC-13` ganhou a ressalva de "
+                 "que a guarda proposta não pegaria este caso.",
+        commit="(o commit que introduz esta linha: um commit não cita o próprio "
+               "hash — ver a entrada de 29/10 (iv) do diário)", procedencia="parcial",
+    ),
+    Defeito(
         data="2026-10-29", area=DOC, item="DATA-03",
         defeito="O resumo, o quadro e o caminho crítico do backlog citavam como "
                 "pendentes seis itens fechados — e o primeiro conselho do arquivo "
