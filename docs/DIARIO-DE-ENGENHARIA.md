@@ -3205,6 +3205,81 @@ YAML, para poder ser sabotada aqui.
 **Procedência.** `scripts/conferir_producao.py`; `.github/workflows/saude-producao.yml`;
 `docs/BACKLOG-COMPLETO.md` (`INFRA-03`, 75 = 41/12/9/13); `CLAUDE.md` (seção "Deploy").
 
+---
+
+# 2026-10-28 (v) — `SEC-12`: a chave pública executava as funções do banco, e a suíte de segurança passava no vazio
+
+**O problema, como foi entendido no início.** Conferir quais migrações estavam aplicadas na
+produção e quais precisavam ser — pergunta do Vitor. Não havia como saber: as migrações são
+aplicadas à mão, e nada registra quais rodaram.
+
+**Hipótese de trabalho.** Que bastasse procurar no catálogo as marcas de cada migração. Isso
+funcionou. **A hipótese que caiu foi outra, e ninguém a tinha escrito como hipótese:** que um
+objeto novo nasce sem privilégio para o cliente.
+
+**O que foi testado, e como.**
+
+| # | O que | Como | Natureza |
+|:-:|---|---|---|
+| 1 | Quais migrações estão aplicadas | `DIAGNOSTICO-migracoes-aplicadas.sql`, rodado pelo Vitor na produção | inventário |
+| 2 | O diagnóstico acerta? | aplicando 001→009 num Postgres local, e na ordem real da produção | execução |
+| 3 | A ordem segura de aplicar | as operações do código de `main` antes e depois de cada grupo de migrações | execução |
+| 4 | O verificador acusa? | três sabotagens: marca errada, critério frouxo, migração que tira privilégio | **controle positivo** |
+| 5 | Por que a sabotagem 3 passava | `pg_default_acl` e `has_function_privilege` na produção | inventário |
+| 6 | O que `anon` consegue fazer | as oito funções chamadas como `anon`, contagens antes e depois | execução |
+| 7 | A correção | suíte de RLS com e sem a 009; a 007 isolada; mutação | **controle positivo** |
+
+**Resultado medido.**
+
+**(a) O estado da produção:** 001, 003, 004 aplicadas; 002 desnecessária (0 leituras sem dono);
+005–008 não. A 005, 006 e 008 podem entrar antes do release — as 10 operações do código de
+`main` dão o mesmo resultado com elas; a 007 quebra exatamente as 2 que usam `devices.token_hash`
+e por isso só entra com o release. O Vitor aplicou a 005, 006 e 008; o diagnóstico confirmou.
+Fecham `PERFIL-02` e `DATA-03`.
+
+**(b) A sabotagem que não foi acusada, e o que ela escondia.** Das três sabotagens do verificador,
+a que acrescentava à 006 a retirada da leitura de `sleep_data` passou. Causa no instrumento: ele
+reaplicava os GRANTs das tabelas **depois** das migrações, desfazendo o `revoke`. Indo atrás disso,
+apareceu que a 007 cria `device_tokens` dizendo *"sem GRANT para anon"* e não revoga nada — o que só
+vale se o banco não der privilégio sozinho. **Na produção, dá:** `pg_default_acl` mostra ALL em
+tabela e EXECUTE em função, nominais, para `anon` e `authenticated`. E `revoke ... from public`,
+que as 005–008 usavam, não alcança grant nominal. Conferido pelo Vitor: **as sete funções
+aplicadas eram executáveis por `anon`**.
+
+**(c) O impacto, medido antes de corrigir:** chamando as oito funções como `anon`, nada mudou —
+as do usuário têm guarda para `auth.uid()` nulo, as de gatilho não são chamáveis, as de ingestão
+exigem o hash de um token de 256 bits. Contagens idênticas antes e depois. Com uma exceção pequena,
+registrada no `SEC-12`: até a 007, o dono de um dispositivo lê o próprio hash e pode gravar
+leituras pela API sem a validação de faixa do backend.
+
+**(d) Por que nenhum teste tinha visto:** a suíte de RLS tinha os testes certos —
+`test_anon_nao_executa_funcao_de_ingestao` e outros 13 — e eles passavam porque a base de teste
+não reproduzia os privilégios padrão. Com a base reproduzindo-os: **14 reprovam sem a 009**, **151
+passam com ela**, e a 007 corrigida sozinha leva as falhas a 9 (as dela passam). Um teste novo
+cobre o padrão de funções **futuras**, e falhou na primeira escrita por um motivo que eu não
+previa: o próprio Postgres dá EXECUTE a `PUBLIC` em toda função, e isso não se revoga por esquema
+— o `revoke from public` de cada migração continua necessário, e está escrito no teste. Dois
+sabotadores novos: mutação **32/32**.
+
+**Adaptação.** A 009 revoga nominalmente, devolve a `authenticated` só as quatro funções do
+próprio usuário e muda o padrão de funções futuras. Não editei as 005, 006 e 008: já aplicadas,
+editar o arquivo não muda a produção. O verificador de migrações entrou no job `rls` do CI, com a
+ordem real da produção (009 antes da 007) — que tem controle próprio: com a 007 antiga, acusa a
+tabela aberta.
+
+**Risco em aberto.**
+
+- **`SEC-12`: a 009 precisa ser aplicada na produção.** Até lá, o estado medido em (b) continua.
+- **`SEC-13`: a suíte de RLS ainda reaplica GRANTs por cima das migrações.** Não mexi porque o
+  verificador por mutação injeta as sabotagens nesse mesmo arquivo.
+- A suíte imita o Supabase em Postgres puro; o PostgREST não está na frente.
+
+**Procedência.** Commit `040fe4b`; `web-app/migrations/009_privilegios_padrao_do_supabase.sql`,
+`007_…` (revogações), `DIAGNOSTICO-migracoes-aplicadas.sql`, `README.md`;
+`web-app/tests/rls/esquema_base.sql` (bloco 1b), `test_rls_privilegios.py`,
+`verificar_por_mutacao.py`; `web-app/tests/migracoes/verificar_migracoes.py`; `pg_default_acl` e
+`has_function_privilege` da produção (resultados colados pelo Vitor); backlog `SEC-12`, `SEC-13`.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

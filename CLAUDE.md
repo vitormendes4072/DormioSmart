@@ -238,8 +238,9 @@ custo para rodar:
 | Backend (Flask) | `cd web-app && pytest --ignore=tests/rls` | **293 passam** |
 | Frontend | `cd frontend && npx vitest run` | **418 passam, 27 arquivos** |
 | Tipos e build | `cd frontend && npm run build` (`tsc --noEmit && vite build`) | `tsc` limpo; `vite build` ok (avisa do chunk único — `UI-15`) |
-| RLS (Postgres real) | `DORMIO_RLS_DATABASE_URL=... pytest tests/rls` | **149 passam** contra `postgres:16` em Docker — **pulam** sem a variável, de propósito |
-| Mutação do RLS | `python web-app/tests/rls/verificar_por_mutacao.py` | **30/30 sabotagens detectadas** |
+| RLS (Postgres real) | `DORMIO_RLS_DATABASE_URL=... pytest tests/rls` | **151 passam** contra `postgres:16` em Docker (28/10, com a base imitando os privilégios padrão do Supabase — `SEC-12`) — **pulam** sem a variável, de propósito |
+| Mutação do RLS | `python web-app/tests/rls/verificar_por_mutacao.py` | **32/32 sabotagens detectadas** |
+| Diagnóstico e ordem das migrações | `DORMIO_RLS_DATABASE_URL=... python web-app/tests/migracoes/verificar_migracoes.py` | os 9 estados e a ordem real da produção; 3/3 sabotagens acusadas |
 | ML | `cd ml && .venv/Scripts/python -m pytest testes` | **107 passam** |
 | Mutação do dourado | `cd ml && .venv/Scripts/python testes/verificar_vetor_dourado_por_mutacao.py` | **12/12**, e o ponto cego registrado segue cego |
 | Firmware | `cd firmware/nucleo && make && make sintaxe capacidade mutacao` | **341 + 157 verificações, 0 falhas; 4/4 sketches compilam; mutação 15/15** (em contêiner `gcc:13`) |

@@ -282,6 +282,23 @@ SABOTADORES = {
         minimo=1,
         exige="test_anon_nao_alcanca_a_funcao",
     ),
+    # SEC-12 (28/10). Os dois abaixo cobrem o que nenhum sabotador alcançava:
+    # o PADRÃO de privilégio, que decide como nasce o objeto da próxima
+    # migração. O primeiro desfaz a parte 4 da 009; o segundo desfaz a
+    # reprodução do Supabase na base de teste — que é como, até 28/10, os
+    # testes de `anon` passavam no vazio.
+    "padrao_de_funcao_volta_a_anon": dict(
+        descricao="funcao nova volta a nascer executavel por anon",
+        sql="alter default privileges in schema public grant execute on functions to anon;",
+        minimo=1,
+        exige="test_funcao_nova_nao_nasce_executavel_por_anon",
+    ),
+    "base_sem_padrao_de_tabela_do_supabase": dict(
+        descricao="a base de teste deixa de dar a anon o privilegio padrao em tabela nova",
+        sql="alter default privileges in schema public revoke all on tables from anon;",
+        minimo=1,
+        exige="test_a_base_reproduz_os_padroes_do_supabase_para_tabela",
+    ),
     "update_liberado_em_sleep_data": dict(
         descricao="sleep_data ganha policy de update (reescrever medicao)",
         sql="""

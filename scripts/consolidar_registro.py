@@ -1753,6 +1753,64 @@ DEFEITOS: list[Defeito] = [
         nota="Achado na revisão dos patches pedida pelo Vitor antes do commit.",
     ),
     Defeito(
+        data="2026-10-28", area=SEG, item="SEC-12", familia=2,
+        defeito="A chave pública (`anon`) executava as sete funções aplicadas na "
+                "produção, e a `device_tokens` da 007 nasceria com todos os "
+                "privilégios para o cliente.",
+        achado_por=CONTROLE,
+        causa="No Supabase, objeto criado pelo `postgres` em `public` nasce com "
+              "privilégio NOMINAL para `anon` e `authenticated`; as migrações "
+              "faziam `revoke ... from public`, que não alcança grant nominal.",
+        correcao="Migração 009 (revoga nominalmente e muda o padrão de funções "
+                 "futuras) e a 007 revogando a própria tabela e função. Impacto "
+                 "medido localmente antes de corrigir: nenhum.",
+        commit="040fe4b",
+        premissa="Que objeto novo nasce sem privilégio. Verdade no Postgres puro, "
+                 "falsa no Supabase — e a configuração que decidia isso "
+                 "(`pg_default_acl`) não está no repositório.",
+        premissa_curta="Que objeto novo nasce sem privilégio para o cliente.",
+        nota="Achado porque uma sabotagem do verificador de migrações não foi "
+             "acusada; a causa da cegueira levou à configuração da produção.",
+    ),
+    Defeito(
+        data="2026-10-28", area=SEG, item="SEC-12",
+        defeito="Catorze testes da suíte de RLS — os que afirmam o que `anon` e "
+                "`authenticated` NÃO alcançam — passavam no vazio.",
+        achado_por=CONTROLE,
+        causa="A base de teste não reproduzia os privilégios padrão do "
+              "Supabase: sem grant nominal para revogar, todo `revoke from "
+              "public` parecia bastar.",
+        correcao="`esquema_base.sql` passa a declarar os padrões medidos na "
+                 "produção; sem a 009 os 14 reprovam, com ela os 151 passam. "
+                 "Teste e dois sabotadores novos para o padrão: mutação 32/32.",
+        commit="040fe4b",
+        instrumento=True,
+    ),
+    Defeito(
+        data="2026-10-28", area=INFRA, item="SEC-13",
+        defeito="O verificador de migrações reaplicava os GRANTs depois das "
+                "migrações e não via uma migração que tirasse privilégio do "
+                "código de main.",
+        achado_por=CONTROLE,
+        causa="O mesmo desenho do `conftest.py` da suíte de RLS, copiado.",
+        correcao="GRANTs aplicados uma vez, logo depois da 001; a sabotagem "
+                 "passou a ser acusada ('permission denied for table "
+                 "sleep_data'). Na suíte de RLS ficou como item (`SEC-13`).",
+        commit="040fe4b",
+        instrumento=True,
+    ),
+    Defeito(
+        data="2026-10-28", area=DOC, item="PERFIL-02",
+        defeito="O README das migrações não listava a 008, e a tabela estava fora "
+                "de ordem (007, 006, 005, 004).",
+        achado_por=LEITURA,
+        causa="A 008 foi escrita depois do README, e nada confere um contra o "
+              "outro.",
+        correcao="Tabela em ordem, com a 008 e a 009, a seção de diagnóstico e a "
+                 "armadilha dos privilégios padrão.",
+        commit="040fe4b",
+    ),
+    Defeito(
         data="2026-10-17", area=DOC, item="(ii)",
         defeito="Uma afirmação da própria sessão saiu sem conferência: 'o "
                 "`README.md` manda ler `METODOLOGIA.md`, `HARDWARE.md` e "
@@ -2305,6 +2363,10 @@ PENDENCIAS: list[Pendencia] = [
               nota="Confirmado por execução: `conferir_docs_versionados.py` sai 0 "
                    "e imprime os 8 isentos. A verificação (3) **não cobre nenhum "
                    "dos oito; pega o nono.**"),
+    Pendencia("SEC-13", SOFTWARE, "A suíte de RLS reaplica os GRANTs das tabelas "
+              "depois de todas as migrações, o que desfaz qualquer `revoke` que uma "
+              "delas faça. Separar o arquivo das sabotagens do de GRANTs, e rodar "
+              "estes logo depois da 001.", "🟡", camada_backlog="L0"),
     Pendencia("CI-02", SOFTWARE, "O CI **não roda linter** — não há ESLint nem "
               "Ruff/flake8. Pressupõe uma decisão de configuração que ninguém "
               "tomou, porque ligar linter sem configuração produz um job vermelho "
@@ -2388,28 +2450,6 @@ PENDENCIAS: list[Pendencia] = [
                    "zerados, `‖a‖ = 56,5 m/s²` com a placa parada, `−11,6 °C` e "
                    "ruído 30× o normal. O viés de Z, `−1,06 m/s²`, é **89% do "
                    "limiar de movimento inteiro.**"),
-    Pendencia("DATA-03", ACAO, "Rodar "
-              "`web-app/migrations/002_backfill_dono_dos_dados.sql` no Supabase. "
-              "Escrito e mergeado **desde agosto**; sem ele o dashboard de uma "
-              "conta nova nasce vazio. **Um comando.**", "🔴",
-              camada_backlog="L3",
-              nota="Arquivo confirmado em disco. **Não há como verificar daqui se "
-                   "já rodou** — exige acesso ao Supabase. É a terceira vez que "
-                   "esta pendência aparece no diário, e é a coisa mais barata com "
-                   "consequência real que sobrou."),
-    Pendencia("PERFIL-02", ACAO, "Aplicar "
-              "`008_perfil_como_fonte_de_verdade.sql` no Supabase. Idempotente, "
-              "com quatro verificações no rodapé — inclusive a terceira, que "
-              "**testa o gatilho e não a existência dele**. A rota funciona sem "
-              "ela; o que falta é `profiles.updated_at` parar de mentir e o teto "
-              "de tamanho do nome para o caminho que **não passa pelo Flask**.",
-              "🟡", camada_backlog="L3",
-              nota="⚠️ **Camada contraditória no backlog:** o título do item diz "
-                   "'L3: é por você', ele está na tabela da seção L0, e o quadro "
-                   "o anota como L3. A soma de 76 só fecha se for contado em L0. "
-                   "Arquivo confirmado em disco; **aplicação não verificável "
-                   "daqui.** ✏️ **28/10:** **confirmado por recontagem**: o 78 de "
-                   "27/10 só fechava com ele em L0. Passa a contar em L3."),
     Pendencia("SEC-11", ACAO, "Ligar captcha no painel do Supabase "
               "(`Authentication → Settings → Bot and Abuse Protection`). ~5 min, "
               "zero código, cobre `signup`/`token`/`recover`. ⚠️ **É mitigação: "
@@ -2423,6 +2463,13 @@ PENDENCIAS: list[Pendencia] = [
               nota="A produção esteve fora do ar até 28/10 sem ninguém saber: o "
                    "projeto Supabase do plano gratuito pausa depois de uma semana "
                    "sem uso. Reativado pelo Vitor no mesmo dia."),
+    Pendencia("SEC-12 — aplicar a 009", ACAO, "Aplicar "
+              "`009_privilegios_padrao_do_supabase.sql` no SQL Editor e conferir "
+              "`anon = false` em todas as funções. Pode ser antes da 007.", "🔴",
+              camada_backlog="L3",
+              nota="Confirmado na produção em 28/10: as sete funções aplicadas eram "
+                   "executáveis pela chave pública, pelos privilégios padrão do "
+                   "Supabase. Impacto medido localmente: nenhum."),
     Pendencia("INFRA-02 — projeto Supabase de teste", ACAO, "Criar um projeto Supabase de "
               "teste e rodar um punhado de `curl`. **Fecharia quatro itens de uma "
               "vez:** o ponto cego do `UI-11` (a troca de e-mail exige "

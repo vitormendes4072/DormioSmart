@@ -76,6 +76,33 @@ end $$;
 grant anon, authenticated, service_role to authenticator;
 
 -- ---------------------------------------------------------------------
+-- 1b. Os privilégios PADRÃO do Supabase (SEC-12, 28/10)
+--
+--     No Supabase, todo objeto que o `postgres` cria em `public` nasce com
+--     privilégio para `anon` e `authenticated`: ALL em tabela, EXECUTE em
+--     função, uso em sequência. Medido na produção em 2026-10-28
+--     (`pg_default_acl`, dono `postgres`, tipos r, f e S).
+--
+--     Até 28/10 esta base NÃO reproduzia isso, e três testes passavam no vazio:
+--     `test_anon_nao_executa_funcao_de_ingestao`,
+--     `test_authenticated_nao_executa_o_caminho_por_token` e
+--     `test_nem_anon_nem_authenticated_tem_privilegio_na_tabela`. As migrações
+--     faziam `revoke ... from public`, que não alcança um GRANT nominal a
+--     `anon` — e no banco de teste não havia grant nominal nenhum para revogar.
+--     Na produção havia, e `anon` executava as funções de ingestão.
+--
+--     `grants_pos_migracao.sql` continua existindo para as tabelas que a 001
+--     cria SOBRE a `sleep_data` pré-existente; o que nasce depois daqui herda
+--     estes padrões, como no Supabase.
+-- ---------------------------------------------------------------------
+alter default privileges in schema public
+    grant all on tables to anon, authenticated, service_role;
+alter default privileges in schema public
+    grant execute on functions to anon, authenticated, service_role;
+alter default privileges in schema public
+    grant usage, select, update on sequences to anon, authenticated, service_role;
+
+-- ---------------------------------------------------------------------
 -- 2. Schema auth e auth.users
 -- ---------------------------------------------------------------------
 create schema if not exists auth;

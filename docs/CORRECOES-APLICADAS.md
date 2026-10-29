@@ -19,15 +19,15 @@ a única coisa aqui que sustenta uma afirmação de método.
 
 ## Resumo quantitativo
 
-**117 correções registradas**, todas sustentadas no repositório.
+**121 correções registradas**, todas sustentadas no repositório.
 
 **A unidade de contagem, dita antes dos números, porque ela decide como
 lê-los.** Uma linha deste arquivo é **uma correção**: um defeito, uma
-causa, uma correção. Em 3 linhas, porém, a causa e a correção foram
-uma só e os defeitos foram vários — `DADOS-02` (10), `REF-01` (4), `GIT-06` (14) —, e agrupá-las foi deliberado,
+causa, uma correção. Em 4 linhas, porém, a causa e a correção foram
+uma só e os defeitos foram vários — `DADOS-02` (10), `REF-01` (4), `GIT-06` (14), `SEC-12` (2) —, e agrupá-las foi deliberado,
 porque separá-las contaria a mesma correção várias vezes. **Contando
-defeito em vez de correção, o total seria 142.** Este
-arquivo usa **117**, que é o número menor e o mais defensável.
+defeito em vez de correção, o total seria 147.** Este
+arquivo usa **121**, que é o número menor e o mais defensável.
 
 **Fora da contagem, e visível:** 1 linha(s) — `ML-04b` —,
 em que a hipótese se confirmou e o que se corrigiu foi a afirmação
@@ -38,27 +38,27 @@ que se podia extrair do resultado, não um defeito. Estão na seção da
 
 | Área | Correções |
 |---|---:|
-| Segurança | 15 |
+| Segurança | 17 |
 | Interface | 23 |
 | Firmware | 18 |
 | Dados e ML | 23 |
-| Documentação | 17 |
-| Infraestrutura | 21 |
-| **Total** | **117** |
+| Documentação | 18 |
+| Infraestrutura | 22 |
+| **Total** | **121** |
 
 ### Por instrumento — o campo que dá valor a este arquivo
 
 | Como foi encontrado | Correções | O que o instrumento é |
 |---|---:|---|
-| **leitura** | 20 | Inspeção do código ou do documento, raciocinando sobre ele. Nada roda, nada se confere contra terceiro. |
+| **leitura** | 21 | Inspeção do código ou do documento, raciocinando sobre ele. Nada roda, nada se confere contra terceiro. |
 | **cálculo** | 4 | Aritmética sobre os próprios números do projeto. O mais barato de todos, e derrubou premissas grandes. |
 | **execução** | 49 | Rodar código do projeto — suíte, job, compilador, script — e a **saída** acusar. O defeito não estava escondido: estava não exercitado. |
-| **controle positivo** | 10 | Provocar o defeito de propósito e exigir que a verificação acuse. Inclui verificação por mutação. **É o único instrumento que mede o alcance de uma verificação.** |
+| **controle positivo** | 13 | Provocar o defeito de propósito e exigir que a verificação acuse. Inclui verificação por mutação. **É o único instrumento que mede o alcance de uma verificação.** |
 | **inventário** | 20 | Conferir estado declarado contra estado real: `grep` por símbolo, `git ls-files` contra o disco, varredura de afirmações em documentos. |
 | **terceiro** | 10 | Especificação, documentação oficial, artigo, issue ou API de terceiro. O artefato que decide a resposta está **fora** do repositório. |
 | **dado real** | 3 | Só apareceu com o arquivo ou a medição real em mãos. |
 | **uso real** | 1 | Alguém usou o produto como usuário. |
-| **Total** | **117** | |
+| **Total** | **121** | |
 
 ### As três derivações que os números sustentam
 
@@ -72,9 +72,9 @@ que se podia extrair do resultado, não um defeito. Estão na seção da
 > do projeto; são proporções do que foi achado.**
 
 **(1) Exercitar achou mais do que ler, por mais de duas vezes.**
-Execução, controle positivo e uso real somam **60 de 117**
-registros (51%). Leitura e cálculo — os dois
-instrumentos que não precisam rodar nada — somam **24** (20%). A razão é de **2,5 para 1**.
+Execução, controle positivo e uso real somam **63 de 121**
+registros (52%). Leitura e cálculo — os dois
+instrumentos que não precisam rodar nada — somam **25** (20%). A razão é de **2,5 para 1**.
 
 Com a ressalva que impede a leitura fácil: isto **não** diz que ler é
 pouco útil. Diz que, neste projeto, leitura e execução acharam classes
@@ -84,7 +84,7 @@ e a execução achou **alcance** insuficiente. Alcance não se vê lendo, e é
 por isso que a razão é essa e não o contrário.
 
 **(2) 13 correções tinham a causa fora do repositório.**
-Fonte de terceiro e dado real somam **13 de 117** (11%) — defeitos cuja causa não está em nenhuma
+Fonte de terceiro e dado real somam **13 de 121** (10%) — defeitos cuja causa não está em nenhuma
 linha deste projeto, e que **nenhum teste daqui poderia pegar**: a
 especificação do PostgREST, a unidade do Empatica em `g/64`, o valor de
 uma chave num painel do Supabase, a API do Actions, os coeficientes do
@@ -96,16 +96,16 @@ Supabase de teste**, que deve a quatro itens e desde 28/10 tem item próprio
 (`INFRA-02`).
 
 **(3) As próprias verificações do projeto estavam defeituosas
-24 vezes — e 22 dessas 24 só apareceram
+26 vezes — e 24 dessas 26 só apareceram
 rodando ou sabotando.**
-São **24 de 117** registros (20%) em que a coisa errada era um teste, uma
+São **26 de 121** registros (21%) em que a coisa errada era um teste, uma
 guarda de CI, um harness de mutação ou um vetor de referência — não o
 código. A distribuição:
 
 | Instrumento que achou | Verificações defeituosas |
 |---|---:|
+| controle positivo | 12 |
 | execução | 12 |
-| controle positivo | 10 |
 | terceiro | 1 |
 | leitura | 1 |
 
@@ -119,17 +119,17 @@ teste reprovar código correto até serem conferidos contra o `scipy`.
 **Então a regra honesta não é *não confie em leitura*.** É que leitura
 pega alcance quando se faz a pergunta certa — *em que máquina isto
 ficaria vermelho?* —, e essa pergunta funcionou exatamente uma vez em
-24. Nas outras 23, o alcance só apareceu quando
+26. Nas outras 25, o alcance só apareceu quando
 alguém tentou fazer a verificação falhar.
 
 ### Procedência
 
 | Procedência | Correções | O que significa |
 |---|---:|---|
-| `completa` | 113 | Commit **e** artefato reabrível — teste, script, seção de documento. Dá para reconferir sem acreditar em ninguém. |
+| `completa` | 117 | Commit **e** artefato reabrível — teste, script, seção de documento. Dá para reconferir sem acreditar em ninguém. |
 | `parcial` | 4 | Só a mensagem de commit, só a entrada de diário, ou correção em arquivo não versionado. Entra porque omitir seria pior, e entra **marcada**. |
 
-**47 dos 117 defeitos revelaram que a premissa estava
+**48 dos 121 defeitos revelaram que a premissa estava
 errada** — não que o código estava errado. É a seção mais instrutiva deste
 arquivo e tem lugar próprio no fim.
 
@@ -151,9 +151,9 @@ só de código filtra pela coluna de área.
 
 ---
 
-## Segurança — 15 defeitos
+## Segurança — 17 defeitos
 
-*5 controle positivo · 4 terceiro · 3 leitura · 1 dado real · 1 execução · 1 uso real*
+*7 controle positivo · 4 terceiro · 3 leitura · 1 dado real · 1 execução · 1 uso real*
 
 ### 2026-08-20 · `AUTH-03`
 
@@ -326,6 +326,30 @@ só de código filtra pela coluna de área.
 **Nota.** Severidade declarada mais alta do projeto e evidência mais fraca: dois relatos de comunidade, um termo em doc oficial, um artigo para a classe, e **nada medido aqui**. A classificação 🟠 é da classe, não da confirmação, e está dito assim no item.
 
 **Commit.** `2fcb0f5` · procedência **parcial**
+
+### 2026-10-28 · `SEC-12` 🔄
+
+**O defeito.** A chave pública (`anon`) executava as sete funções aplicadas na produção, e a `device_tokens` da 007 nasceria com todos os privilégios para o cliente.
+
+**Como foi encontrado.** *controle positivo* — No Supabase, objeto criado pelo `postgres` em `public` nasce com privilégio NOMINAL para `anon` e `authenticated`; as migrações faziam `revoke ... from public`, que não alcança grant nominal.
+
+**A correção.** Migração 009 (revoga nominalmente e muda o padrão de funções futuras) e a 007 revogando a própria tabela e função. Impacto medido localmente antes de corrigir: nenhum.
+
+**🔄 A premissa estava errada.** Que objeto novo nasce sem privilégio. Verdade no Postgres puro, falsa no Supabase — e a configuração que decidia isso (`pg_default_acl`) não está no repositório.
+
+**Nota.** Achado porque uma sabotagem do verificador de migrações não foi acusada; a causa da cegueira levou à configuração da produção.
+
+**Commit.** `040fe4b` · procedência **completa**
+
+### 2026-10-28 · `SEC-12`
+
+**O defeito.** Catorze testes da suíte de RLS — os que afirmam o que `anon` e `authenticated` NÃO alcançam — passavam no vazio.
+
+**Como foi encontrado.** *controle positivo* — A base de teste não reproduzia os privilégios padrão do Supabase: sem grant nominal para revogar, todo `revoke from public` parecia bastar.
+
+**A correção.** `esquema_base.sql` passa a declarar os padrões medidos na produção; sem a 009 os 14 reprovam, com ela os 151 passam. Teste e dois sabotadores novos para o padrão: mutação 32/32.
+
+**Commit.** `040fe4b` · procedência **completa**
 
 ---
 
@@ -1075,9 +1099,9 @@ só de código filtra pela coluna de área.
 
 ---
 
-## Documentação — 17 defeitos
+## Documentação — 18 defeitos
 
-*10 inventário · 3 leitura · 3 terceiro · 1 execução*
+*10 inventário · 4 leitura · 3 terceiro · 1 execução*
 
 ### 2026-06-03 · `(README)`
 
@@ -1251,6 +1275,16 @@ só de código filtra pela coluna de área.
 
 **Commit.** `2254934` · procedência **completa**
 
+### 2026-10-28 · `PERFIL-02`
+
+**O defeito.** O README das migrações não listava a 008, e a tabela estava fora de ordem (007, 006, 005, 004).
+
+**Como foi encontrado.** *leitura* — A 008 foi escrita depois do README, e nada confere um contra o outro.
+
+**A correção.** Tabela em ordem, com a 008 e a 009, a seção de diagnóstico e a armadilha dos privilégios padrão.
+
+**Commit.** `040fe4b` · procedência **completa**
+
 ### 2026-10-17 · `(ii)`
 
 **O defeito.** Uma afirmação da própria sessão saiu sem conferência: 'o `README.md` manda ler `METODOLOGIA.md`, `HARDWARE.md` e `DATASET.md`'.
@@ -1277,9 +1311,9 @@ só de código filtra pela coluna de área.
 
 ---
 
-## Infraestrutura — 21 defeitos
+## Infraestrutura — 22 defeitos
 
-*13 execução · 4 leitura · 3 inventário · 1 terceiro*
+*13 execução · 4 leitura · 3 inventário · 1 controle positivo · 1 terceiro*
 
 ### 2026-10-28 · `DOCS-WIN-01` 🔄
 
@@ -1302,6 +1336,16 @@ só de código filtra pela coluna de área.
 **A correção.** `sys.stdout.reconfigure(encoding='utf-8')` nos dois. Controle: com um valor sabotado, o `--conferir` sai 1 e diz o que falhou.
 
 **Commit.** `7016c81` · procedência **completa**
+
+### 2026-10-28 · `SEC-13`
+
+**O defeito.** O verificador de migrações reaplicava os GRANTs depois das migrações e não via uma migração que tirasse privilégio do código de main.
+
+**Como foi encontrado.** *controle positivo* — O mesmo desenho do `conftest.py` da suíte de RLS, copiado.
+
+**A correção.** GRANTs aplicados uma vez, logo depois da 001; a sabotagem passou a ser acusada ('permission denied for table sleep_data'). Na suíte de RLS ficou como item (`SEC-13`).
+
+**Commit.** `040fe4b` · procedência **completa**
 
 ### 2026-02-18 · `(bootstrap)`
 
@@ -1568,6 +1612,7 @@ com competência teria produzido a coisa errada bem feita.
 | 2026-10-28 | `ML-WIN-01` | Que o piso medido em duas plataformas valia para todas. |
 | 2026-10-28 | `ML-WIN-01` | Que o relógio tinha resolução para um orçamento zero. |
 | 2026-10-28 | `DOC-12` | Que 29/04 marcava o início do versionamento. |
+| 2026-10-28 | `SEC-12` | Que objeto novo nasce sem privilégio para o cliente. |
 | 2026-06-02 | `FIX-02` | Que o dado estava gravado e o problema era de leitura. |
 | 2026-09-18 | `GIT-01` | Que alguma ferramenta havia reformatado o repositório. |
 | 2026-09-22 | `GIT-04` | Que o que está em `docs/` está versionado, salvo o que o `.gitignore` exclui. |
@@ -1576,21 +1621,21 @@ com competência teria produzido a coisa errada bem feita.
 | 2026-10-16 | `CI-06` | Que eram três, e não quatro, os jobs nunca rodados num runner. |
 | 2026-10-17 | `GIT-05` | Que um aviso escrito no `ROADMAP.md` chega a quem clona. |
 
-**47 de 117.** E a distribuição por instrumento dentro
+**48 de 121.** E a distribuição por instrumento dentro
 deste subconjunto é a parte que vale registrar:
 
 | Instrumento | Premissas derrubadas |
 |---|---:|
 | execução | 15 |
 | inventário | 10 |
-| controle positivo | 8 |
+| controle positivo | 9 |
 | terceiro | 4 |
 | cálculo | 4 |
 | leitura | 4 |
 | uso real | 1 |
 | dado real | 1 |
 
-**39 das 47 premissas caíram quando alguém saiu
+**40 das 48 premissas caíram quando alguém saiu
 do próprio raciocínio** — rodando, sabotando, conferindo o artefato,
 abrindo a especificação do fornecedor, ou preenchendo o formulário como
 usuário. As outras 8 caíram lendo e calculando, e vale

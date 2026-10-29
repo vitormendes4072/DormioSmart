@@ -49,9 +49,9 @@ linha, não um resumo: resumo é a cópia que diverge.
 
 | Grupo | Itens |
 |---|---:|
-| A — Depende só de software: dá para fazer a qualquer momento | **37** |
+| A — Depende só de software: dá para fazer a qualquer momento | **38** |
 | B — Depende de decisão do Vitor | **10** |
-| C — Depende de ação do Vitor que não é decisão | **9** |
+| C — Depende de ação do Vitor que não é decisão | **8** |
 | D — Bloqueado por hardware ou coleta | **23** |
 | E — Bloqueado por terceiro | **4** |
 | **Total** | **83** |
@@ -75,7 +75,7 @@ outro item. **Desde 28/10 têm ID no backlog:** `GIT-07`, `INFRA-02` e
 
 ## A — Depende só de software: dá para fazer a qualquer momento
 
-**37 itens.**
+**38 itens.**
 
 ### `CALC-01` 🔴
 
@@ -321,6 +321,12 @@ Reduzir a lista de **8 ponteiros pendurados** — arquivo por arquivo: versionar
 
 **Conferência.** Confirmado por execução: `conferir_docs_versionados.py` sai 0 e imprime os 8 isentos. A verificação (3) **não cobre nenhum dos oito; pega o nono.**
 
+### `SEC-13` 🟡
+
+A suíte de RLS reaplica os GRANTs das tabelas depois de todas as migrações, o que desfaz qualquer `revoke` que uma delas faça. Separar o arquivo das sabotagens do de GRANTs, e rodar estes logo depois da 001.
+
+*Camada no backlog: L0.*
+
 ### `CI-02` ⚪
 
 O CI **não roda linter** — não há ESLint nem Ruff/flake8. Pressupõe uma decisão de configuração que ninguém tomou, porque ligar linter sem configuração produz um job vermelho permanente.
@@ -425,7 +431,7 @@ iOS: **investigação, não implementação.** Rota A (áudio em background) mud
 
 ## C — Depende de ação do Vitor que não é decisão
 
-**9 itens.**
+**8 itens.**
 
 Nada aqui é decisão: a decisão já foi tomada, ou nunca houve uma.
 São ações que só você pode executar, porque exigem credencial,
@@ -438,22 +444,6 @@ terminal na máquina, ferro de solda ou uma conta num serviço.
 *Camada no backlog: L3.*
 
 **Conferência.** O contato por jumper produziu, em 25/08, registradores zerados, `‖a‖ = 56,5 m/s²` com a placa parada, `−11,6 °C` e ruído 30× o normal. O viés de Z, `−1,06 m/s²`, é **89% do limiar de movimento inteiro.**
-
-### `DATA-03` 🔴
-
-Rodar `web-app/migrations/002_backfill_dono_dos_dados.sql` no Supabase. Escrito e mergeado **desde agosto**; sem ele o dashboard de uma conta nova nasce vazio. **Um comando.**
-
-*Camada no backlog: L3.*
-
-**Conferência.** Arquivo confirmado em disco. **Não há como verificar daqui se já rodou** — exige acesso ao Supabase. É a terceira vez que esta pendência aparece no diário, e é a coisa mais barata com consequência real que sobrou.
-
-### `PERFIL-02` 🟡
-
-Aplicar `008_perfil_como_fonte_de_verdade.sql` no Supabase. Idempotente, com quatro verificações no rodapé — inclusive a terceira, que **testa o gatilho e não a existência dele**. A rota funciona sem ela; o que falta é `profiles.updated_at` parar de mentir e o teto de tamanho do nome para o caminho que **não passa pelo Flask**.
-
-*Camada no backlog: L3.*
-
-**Conferência.** ⚠️ **Camada contraditória no backlog:** o título do item diz 'L3: é por você', ele está na tabela da seção L0, e o quadro o anota como L3. A soma de 76 só fecha se for contado em L0. Arquivo confirmado em disco; **aplicação não verificável daqui.** ✏️ **28/10:** **confirmado por recontagem**: o 78 de 27/10 só fechava com ele em L0. Passa a contar em L3.
 
 ### `SEC-11` ⚠️
 
@@ -468,6 +458,14 @@ O job que chama o `/health` de produção a cada 3 dias está escrito e testado,
 *Camada no backlog: L3.*
 
 **Conferência.** A produção esteve fora do ar até 28/10 sem ninguém saber: o projeto Supabase do plano gratuito pausa depois de uma semana sem uso. Reativado pelo Vitor no mesmo dia.
+
+### `SEC-12 — aplicar a 009` 🔴
+
+Aplicar `009_privilegios_padrao_do_supabase.sql` no SQL Editor e conferir `anon = false` em todas as funções. Pode ser antes da 007.
+
+*Camada no backlog: L3.*
+
+**Conferência.** Confirmado na produção em 28/10: as sete funções aplicadas eram executáveis pela chave pública, pelos privilégios padrão do Supabase. Impacto medido localmente: nenhum.
 
 ### `INFRA-02 — projeto Supabase de teste` 🔴
 

@@ -149,6 +149,17 @@ jobs:
           cd web-app
           python tests/rls/verificar_por_mutacao.py
 
+      # SEC-12 / PERFIL-02 (28/10): a consulta que diz quais migrações estão no
+      # banco de produção decide o que se aplica lá -- e ela pode afirmar
+      # "aplicada" sem estar. Aqui ela é conferida migração a migração, na ordem
+      # numérica e na ordem real da produção (009 antes da 007), e a ordem
+      # segura de aplicar é conferida contra as operações do código de `main`.
+      # Roda nas duas versões: privilégio é onde o Postgres muda entre majors.
+      - name: Diagnóstico e ordem das migrações
+        run: |
+          cd web-app
+          python tests/migracoes/verificar_migracoes.py
+
   frontend:
     name: Frontend (vitest + tsc + vite)
     runs-on: ubuntu-24.04
