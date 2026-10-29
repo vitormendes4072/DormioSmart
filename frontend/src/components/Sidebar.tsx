@@ -2,6 +2,8 @@ import { LogOut, User } from "lucide-react";
 import { NavLink, useNavigate } from "react-router";
 
 import { useAuth } from "../contexts/AuthContext";
+import { usePerfil } from "../contexts/PerfilContext";
+import { nomeDoPerfil } from "../lib/perfil";
 
 import { ITENS_NAV } from "./nav";
 import { MarcaDoProduto } from "./MarcaDoProduto";
@@ -11,9 +13,16 @@ import { MarcaDoProduto } from "./MarcaDoProduto";
 export function Sidebar() {
   const navigate = useNavigate();
   const { usuario, carregando, sair } = useAuth();
+  const { perfil, carregando: carregandoPerfil } = usePerfil();
 
-  // `nome` vem do metadado gravado no cadastro; o e-mail e sempre garantido.
-  const nome = (usuario?.user_metadata?.nome as string | undefined)?.trim();
+  // O nome vem de `public.profiles`, pela rota — NAO do metadado do Auth
+  // (PERFIL-01, Regra 1: leitor unico). `fonteDoNomeDoPerfil.test.ts` reprova
+  // se alguem voltar a ler `user_metadata` aqui.
+  //
+  // Sem fallback para o metadado quando a leitura falha, de proposito: seria o
+  // segundo leitor de volta, sob condicao. O que aparece nesse caso e "Conta" e
+  // o e-mail, que e verdadeiro e sempre disponivel.
+  const nome = nomeDoPerfil(perfil);
 
   return (
     <aside className="hidden md:flex w-56 flex-shrink-0 bg-card border-r border-border flex-col h-screen sticky top-0">
@@ -49,7 +58,7 @@ export function Sidebar() {
           </div>
           <div className="min-w-0">
             <p className="text-sm font-medium text-foreground truncate">
-              {carregando ? "..." : (nome || "Conta")}
+              {carregando || carregandoPerfil ? "..." : (nome || "Conta")}
             </p>
             <p className="text-xs text-muted-foreground truncate">
               {carregando ? "" : (usuario?.email ?? "não autenticada")}

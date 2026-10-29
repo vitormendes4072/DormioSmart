@@ -1,0 +1,77 @@
+# Smart Dormio — configuração do pipeline de ML
+# Versionado JUNTO com o resultado. Se este arquivo mudar, o hash muda, e o
+# diretório dados/processado/ correspondente é outro.
+#
+# Regra do METODOLOGIA.md: resultado que não roda igual de novo não tem validade
+# científica. Tudo que sorteia lê a seed daqui.
+
+versao_config: 1
+
+# --- Reprodutibilidade ---------------------------------------------------
+seed: 20260910
+
+# --- Grade temporal comum ------------------------------------------------
+# Todas as bases E o Dormio são reamostrados para esta taxa antes de extrair
+# feature. Sem grade comum, a mesma feature significa coisas diferentes em cada
+# base. 32 Hz é o menor denominador viável (é a taxa do Empatica E4).
+#
+# Do lado do Dormio isso obriga o firmware a amostrar a >= 42 Hz (Nyquist do
+# filtro de 21 Hz do FW-06) e decimar aqui.
+taxa_comum_hz: 32.0
+
+# Fração da Nyquist da grade comum onde fica o corte do passa-baixa
+# anti-aliasing. 0.8 * (32/2) = 12.8 Hz.
+corte_antialiasing_frac_nyquist: 0.8
+
+# --- Época ---------------------------------------------------------------
+# 30 s, não 60, não livre: é a resolução dos rótulos de PSG em TODAS as bases.
+# Época diferente exige reamostrar rótulo, e reamostrar rótulo inventa informação.
+epoca_s: 30.0
+
+# Cada época carrega também as features das +-N épocas vizinhas.
+# A literatura de actigrafia é unânime: a vizinhança importa.
+contexto_epocas: 2
+
+# --- Física --------------------------------------------------------------
+g_ms2: 9.80665
+
+# --- Rótulo --------------------------------------------------------------
+# Tarefa: sono x vigília por época. NADA de estadiamento (ver §1 e §0.4 do
+# ML-DATASETS-E-PLANO.md: é limite físico, não algorítmico).
+# Convenção interna: 0 = vigília, 1 = sono.
+classes:
+  vigilia: 0
+  sono: 1
+
+# --- Baselines (ML-02) ---------------------------------------------------
+baseline:
+  # Cole-Kripke e Sadeh nasceram sobre *activity counts* de Actiwatch. Não há
+  # função pública que converta aceleração de MPU6050 em counts. Usamos um
+  # SUBSTITUTO documentado (ver src/baseline.py). Isto NÃO é "Cole-Kripke":
+  # é "Cole-Kripke aplicado a um substituto de contagem".
+  banda_contagem_hz: [0.25, 3.0]
+  # Escala do substituto de contagem. Arbitrária por construção; calibrada para
+  # pôr os valores na mesma ordem de grandeza dos counts de Actiwatch, porque os
+  # limiares publicados dos dois algoritmos dependem dessa escala.
+  escala_contagem: 100.0
+
+# --- Validação -----------------------------------------------------------
+validacao:
+  # Por SUJEITO, nunca por época. Épocas da mesma noite são altamente
+  # correlacionadas; embaralhar por época infla a acurácia de forma
+  # espetacular e falsa. É o erro mais comum da literatura de wearables.
+  estrategia: leave_one_subject_out
+
+# --- Dados sintéticos ----------------------------------------------------
+# Usados APENAS para exercitar o pipeline enquanto o Newcastle não está em
+# disco. Resultado sobre dado sintético NÃO é achado — ver ml/README.md.
+sintetico:
+  n_sujeitos: 12
+  horas_por_noite: 7.5
+  taxa_origem_hz: 85.7        # imita o GENEActiv do Newcastle
+  fracao_sono: 0.87           # ~ a fração típica de uma noite de PSG
+  # Fração das épocas de vigília que são "vigília quieta" — deitado, imóvel,
+  # acordado. É o caso que o acelerômetro NÃO distingue de sono, e é a razão
+  # física de a especificidade ser baixa em toda a literatura.
+  fracao_vigilia_quieta: 0.55
+  ruido_mg: 3.0

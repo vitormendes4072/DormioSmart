@@ -164,7 +164,7 @@ def test_arredondamento_do_firmware_nao_e_rejeitado():
 
 def test_payload_invalido_responde_400_e_nao_persiste():
     with patch.object(database.db, "get_device_by_token_hash", return_value=_DEVICE), \
-         patch.object(database.db, "insert_sleep_data") as insert:
+         patch.object(database.db, "registrar_leitura") as insert:
         resp = _client().post("/api/data", json=dict(VALIDA, ax=999.0), headers=_AUTH)
     assert resp.status_code == 400
     assert "faixa" in resp.get_json()["error"]

@@ -68,8 +68,63 @@ python fake_sensor.py
 | | |
 |---|---|
 | `SUPABASE_URL` | URL do projeto |
-| `SUPABASE_SERVICE_ROLE_KEY` | chave secreta — ignora RLS, **só no servidor** |
+| `SUPABASE_INGESTAO_KEY` | chave da ingestão — papel `dormio_ingestao`, **privilégio mínimo** |
+| `SUPABASE_SERVICE_ROLE_KEY` | *fallback* — ignora RLS, acesso total. Só até a de cima existir |
 | `SUPABASE_ANON_KEY` | chave publicável — valida o JWT e monta o cliente do usuário |
+
+---
+
+## Rotação da chave de ingestão
+
+O caminho de ingestão (`POST /api/data`) usa o papel `dormio_ingestao`, criado
+pela migração `005`. Ele tem `EXECUTE` em três funções e **nenhum privilégio de
+tabela**: se a chave vazar, o pior caso é inserir leitura em nome de um
+dispositivo cujo token o atacante já tenha. Não há leitura de dado de usuário.
+
+A chave não sai do painel do Supabase — o painel só emite para `anon` e
+`service_role`. É um JWT assinado com o **JWT secret do projeto**, carregando
+`{"role": "dormio_ingestao"}`; o PostgREST faz `SET ROLE` a partir dessa claim.
+
+### Emitir (ou rotacionar)
+
+```bash
+# 1. Supabase > Settings > API > JWT Settings > JWT Secret
+export SUPABASE_JWT_SECRET='...'
+
+# 2. Emitir. O segredo vai por variável de ambiente, nunca por argumento:
+#    argumento fica no histórico do shell e na lista de processos.
+python scripts/emitir_chave_de_ingestao.py --anos 1
+
+# 3. Copiar a linha SUPABASE_INGESTAO_KEY=... para:
+#    · web-app/.env            (local)
+#    · Vercel > Settings > Environment Variables  (produção)
+
+# 4. Redeploy, e conferir:
+python web-app/teste_conexao.py     # deve dizer "papel dormio_ingestao"
+curl -s https://SEU-APP/health      # deve responder 200
+```
+
+### Se a chave vazou
+
+1. **Não precisa rotacionar o JWT secret do projeto** — isso invalidaria
+   também todas as sessões de usuário. Em vez disso:
+2. `revoke dormio_ingestao from authenticator;` no SQL Editor. O token vazado
+   para de funcionar na hora, porque o PostgREST não consegue mais assumir o
+   papel. **A ingestão para junto** — é uma parada controlada, e é o que se
+   quer: melhor o ESP32 acumular no buffer (`HW-05`) do que aceitar escrita de
+   terceiro.
+3. Emitir chave nova com `--anos` curto, configurar, e
+   `grant dormio_ingestao to authenticator;` de volta.
+4. Auditar o que foi inserido na janela:
+   `select device_id, count(*), min(created_at), max(created_at) from sleep_data
+    where created_at > '<data do vazamento>' group by device_id;`
+   Leitura fabricada aparece como volume anômalo por dispositivo — o dado
+   plantado é identificável porque o atacante não controla `created_at`.
+5. Revogar os tokens dos dispositivos cujos hashes ele possa ter obtido
+   (`POST /api/devices/<id>/revogar`) e parear de novo.
+
+Se o que vazou foi a `service_role`, aí sim é rotação no painel do Supabase e
+revisão de tudo: aquela chave ignora o RLS.
 
 ---
 

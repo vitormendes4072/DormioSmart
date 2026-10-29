@@ -1,8 +1,10 @@
+import logging
 from datetime import datetime, timezone
 
 from flask import g, jsonify, request
 
 import dispositivos
+import perfil
 from auth import extrair_bearer, require_auth
 from database import db
 from consulta import ler_parametros
@@ -10,8 +12,38 @@ from ingestao import CAMINHO_SESSAO, CAMINHO_TOKEN, extrair_device_id, identific
 from device_auth import extrair_token, gerar_token, hash_token
 from validacao import validar_captacao, validar_leitura
 
+logger = logging.getLogger(__name__)
+
 # Versao do contrato que este backend implementa (docs/DATA-CONTRACT.md).
-CONTRATO_DE_DADOS = "2.2.0"
+#
+# 2.5.0 acrescentou `f`/`g`/`fs` -- o vetor de caracteristicas por epoca
+# (DATA-07a) -- e esta declaracao subiu junto. Isso NAO significa que a
+# ingestao processe esses campos: significa que ela e conforme a 2.5.0, e ela
+# e, porque os tres sao OPCIONAIS e nada obrigatorio mudou. Um payload sem eles
+# continua sendo o payload correto, e e o unico que existe hoje.
+#
+# O que ainda falta e o DATA-07b: aceitar, validar e persistir o vetor. Ate la
+# `f` cai na validacao como campo desconhecido, que e o comportamento desejado
+# -- aceita-lo sem ter coluna para grava-lo descartaria o dado em silencio.
+#
+# 2.5.1 (30/09, DATA-07c) e PATCH e nao mexeu em formato nenhum: acrescentou a
+# secao 2.6 dois fatos medidos -- epoca incompleta nao tem paridade entre
+# implementacoes, e o `‖g‖ = 1 ± 1e−3` e coerencia de um lado, nao orcamento de
+# discordancia. Nada de campo, faixa ou obrigatoriedade muda, entao a ingestao
+# continua conforme sem alterar uma linha de codigo.
+#
+# A declaracao, porem, FICOU ATRAS por duas semanas: o documento subiu em
+# 2026-09-30 e esta constante nao. O `test_informa_a_versao_do_contrato_de_dados`
+# acusou na primeira vez que a suite do backend rodou depois disso (16/10) --
+# a suite nao era executada desde 10/09. A deteccao funcionou; o intervalo entre
+# o bug e a deteccao e que foi de duas semanas, e e por isso que o backend
+# tambem precisa rodar em cada push, nao so quando alguem lembra.
+CONTRATO_DE_DADOS = "2.5.1"
+
+# Frase exigida no corpo de `DELETE /api/me` (SEC-07). Em portugues e em
+# maiusculas de proposito: tem de ser digitada, e nao pode ser o resultado de
+# um retry automatico ou de um clique duplo.
+CONFIRMACAO_EXCLUSAO = "APAGAR MINHA CONTA"
 
 def init_routes(app):
     """Rotas da API.
@@ -115,7 +147,7 @@ def init_routes(app):
             return jsonify({"error": "fonte de dados indisponivel"}), 503
 
         token = gerar_token()
-        device = dispositivos.criar(client, g.usuario_id, nome, hash_token(token), tipo)
+        device = dispositivos.criar(client, nome, hash_token(token), tipo)
         if device is None:
             return jsonify({"error": "nao foi possivel parear o dispositivo"}), 503
 
@@ -141,10 +173,11 @@ def init_routes(app):
         de escrita precisa existir no navegador.
 
         O `token_hash` da linha é gerado e o valor em claro é **descartado**:
-        a coluna é obrigatória e única no esquema, e um segredo que ninguém
-        conhece é mais seguro do que abrir exceção de nulo para esta classe
-        de dispositivo. O caminho por token simplesmente não é utilizável
-        neste registro — o que é exatamente o desejado.
+        a credencial é obrigatória e única no esquema (agora em
+        `device_tokens`, SEC-08), e um segredo que ninguém conhece é mais
+        seguro do que abrir exceção de nulo para esta classe de dispositivo. O
+        caminho por token simplesmente não é utilizável neste registro — o que
+        é exatamente o desejado.
         """
         client = _cliente_do_usuario()
         if client is None:
@@ -155,8 +188,7 @@ def init_routes(app):
             return jsonify(device), 200
 
         device = dispositivos.criar(
-            client, g.usuario_id, dispositivos.NOME_CELULAR,
-            hash_token(gerar_token()), "celular",
+            client, dispositivos.NOME_CELULAR, hash_token(gerar_token()), "celular",
         )
         if device is None:
             return jsonify({"error": "nao foi possivel preparar o dispositivo"}), 503
@@ -197,19 +229,168 @@ def init_routes(app):
             return jsonify({"error": "dispositivo nao encontrado"}), 404
         return jsonify(device)
 
+    # --- Perfil do titular (PERFIL-01, LGPD art. 18, III) ---
+    #
+    # `public.profiles` é a FONTE DE VERDADE do nome e da idade desde o
+    # `PERFIL-01`. Antes dele a tabela era escrita uma vez pelo gatilho do
+    # signup e lida por nada, e o nome exibido vinha de
+    # `auth.users.raw_user_meta_data` — duas cópias, nenhuma declarada
+    # canônica. A decisão inteira, inclusive a parte que não é código, está em
+    # `docs/DECISAO-FONTE-DO-PERFIL.md`.
+    #
+    # As duas rotas vão pelo CLIENTE DO USUÁRIO, nunca por papel privilegiado:
+    # o RLS decide a posse no banco, e `tests/test_privilegio_minimo.py`
+    # reprova se alguém trocar isso por `cliente_de_ingestao`. O e-mail NÃO
+    # passa por aqui — é credencial de acesso, trocada pelo Supabase Auth com
+    # confirmação por link (ver `frontend/src/lib/perfil.ts`).
+
+    @app.route('/api/me/perfil')
+    @require_auth
+    def ler_meu_perfil():
+        """Nome e idade do titular, de `public.profiles`.
+
+        ⚠️ **ESTE `GET` ESCREVE, e é deliberado.** Quando não há linha para o
+        usuário, a rota a cria — semeada pelo nome do metadado do cadastro — e
+        devolve `perfil_criado_agora: true`.
+
+        O motivo não é hipótese: `migrations/DIAGNOSTICO-perfil-nao-criado.sql`
+        existe porque já houve usuário criado com `profiles` vazio (o gatilho
+        `handle_new_user` não existia no projeto), com reparo manual por SQL.
+        Enquanto a tabela era inerte, linha ausente era detalhe de esquema;
+        com ela canônica, linha ausente é **nome em branco na tela de quem
+        digitou o nome no cadastro**.
+
+        A alternativa — deixar a tela cair para o metadado quando a linha falta
+        — foi recusada: criaria um segundo leitor do metadado sob condição, e
+        invariante com cláusula de exceção é o que apodrece primeiro. Reparar
+        mantém "só `profiles` é lida" verdadeiro sem exceção.
+
+        A operação é **idempotente**, que é a propriedade que de fato importa
+        num `GET`: chamar dez vezes deixa o mesmo estado que chamar uma.
+        """
+        client = _cliente_do_usuario()
+        if client is None:
+            return jsonify({"error": "fonte de dados indisponivel"}), 503
+
+        dados = perfil.ler(client, g.usuario_id)
+        if dados is None:
+            return jsonify({"error": "fonte de dados indisponivel"}), 503
+
+        if dados:
+            return jsonify({**dados, "perfil_criado_agora": False})
+
+        # Linha ausente: reparo. A semente pode vir vazia (metadado sem nome,
+        # ou Auth fora do ar) — e aí o perfil nasce com nome nulo. Nulo é
+        # estado que a tela sabe mostrar; perfil inexistente, não.
+        semente = db.nome_do_metadado(g.jwt)
+        criado = perfil.gravar(client, g.usuario_id, {"nome": semente})
+        if criado is None:
+            # Não inventa sucesso nem devolve perfil vazio como se fosse lido:
+            # o titular precisa saber que a leitura não aconteceu (FIX-02).
+            return jsonify({"error": "fonte de dados indisponivel"}), 503
+
+        logger.warning(
+            "Perfil ausente reparado na leitura. O gatilho handle_new_user "
+            "pode nao existir no projeto -- ver "
+            "migrations/DIAGNOSTICO-perfil-nao-criado.sql."
+        )
+        return jsonify({**criado, "perfil_criado_agora": True})
+
+    @app.route('/api/me/perfil', methods=['PATCH'])
+    @require_auth
+    def corrigir_meu_perfil():
+        """Correção de nome e idade (LGPD art. 18, III).
+
+        `PATCH` parcial: só o que vem no corpo é alterado. Campo ausente e
+        campo `null` são coisas diferentes — ausente é "não mexa", `null` é
+        "apague", e é assim que o titular retira a idade sem apagar o nome.
+
+        Campo desconhecido responde **400**, e isso inclui `id` e `user_id`: o
+        dono sai do JWT e não existe por onde informá-lo. Aceitar e descartar
+        em silêncio responderia sucesso a um pedido que não foi atendido.
+
+        Devolve a linha **como ficou no banco**, não como foi pedida: é a
+        diferença entre confirmar a escrita e confirmar a intenção (FIX-02).
+        """
+        campos, erro = perfil.ler_alteracao(request.get_json(silent=True))
+        if erro:
+            return jsonify({"error": erro}), 400
+
+        client = _cliente_do_usuario()
+        if client is None:
+            return jsonify({"error": "fonte de dados indisponivel"}), 503
+
+        gravado = perfil.gravar(client, g.usuario_id, campos)
+        if gravado is None:
+            return jsonify({"error": "perfil nao atualizado (fonte indisponivel)"}), 503
+
+        return jsonify(gravado), 200
+
+    # --- Direito de eliminação (SEC-07, LGPD art. 18, VI) ---
+
+    @app.route('/api/me', methods=['DELETE'])
+    @require_auth
+    def apagar_minha_conta():
+        """Elimina todo o dado pessoal do titular. Irreversível.
+
+        A confirmação explícita no corpo não é cerimônia: é a única barreira
+        entre um `DELETE` disparado por engano — um fetch repetido, um botão
+        clicado duas vezes, um cliente HTTP com retry automático — e a perda
+        definitiva de todo o histórico de sono. A frase tem de ser digitada,
+        então não sai de retry nenhum.
+
+        O dono NUNCA vem daqui: a função no banco usa `auth.uid()` e não aceita
+        parâmetro de usuário. Ver migrations/006.
+        """
+        corpo = request.get_json(silent=True) or {}
+        if corpo.get("confirmacao") != CONFIRMACAO_EXCLUSAO:
+            return jsonify({
+                "error": "confirmacao necessaria",
+                "envie": {"confirmacao": CONFIRMACAO_EXCLUSAO},
+            }), 400
+
+        recibo = db.apagar_minha_conta(g.jwt)
+        if recibo is None:
+            return jsonify({"error": "fonte de dados indisponivel"}), 503
+
+        # A eliminação pode ser parcial: o dado de `public` sai, mas a linha de
+        # `auth.users` (que guarda o e-mail) depende de privilégio que não
+        # existe em todo projeto. Dizer isso ao titular é obrigação — uma
+        # resposta de sucesso limpa esconderia dado pessoal remanescente.
+        if not recibo.get("conta_de_acesso_removida"):
+            recibo["aviso"] = (
+                "Seus dados de sono, dispositivos e perfil foram apagados. "
+                "O cadastro de acesso (e-mail) ainda existe e precisa ser "
+                "removido pelo administrador."
+            )
+            # WARNING, nao INFO: e uma pendencia de conformidade, nao um evento
+            # de rotina. Sem id de usuario no log — seria guardar justamente o
+            # dado que se acabou de apagar.
+            logger.warning(
+                "Exclusao de conta incompleta: auth.users nao removida. "
+                "Ver migrations/006 e o README."
+            )
+
+        return jsonify(recibo), 200
+
     def _device_por_token():
-        """Caminho do dispositivo em campo (SEC-02). Inalterado."""
+        """Caminho do dispositivo em campo (SEC-02).
+
+        Devolve o dispositivo já com o hash do token: a gravação o repassa ao
+        banco para que o DONO seja resolvido lá dentro, e não aqui (SEC-06).
+        """
         token = extrair_token(request.headers)
         if token is None:
             return None, "X-Device-Token ausente", 401
 
-        device = db.get_device_by_token_hash(hash_token(token))
+        token_hash = hash_token(token)
+        device = db.get_device_by_token_hash(token_hash)
         if device is None:
             # Ausente, revogado ou desconhecido: a mesma resposta para os
             # três. Não informamos qual é o caso — isso só ajudaria quem
             # estivesse sondando tokens.
             return None, "device nao autorizado", 401
-        return device, None, 200
+        return dict(device, token_hash=token_hash), None, 200
 
     def _device_por_sessao():
         """Caminho do celular (APP-08): a sessão já identifica o dono.
@@ -237,9 +418,11 @@ def init_routes(app):
             # distinguir permitiria descobrir ids de dispositivos alheios.
             return None, "dispositivo nao encontrado", 404
 
-        # `buscar_do_dono` não devolve `user_id` (não está em CAMPOS), e o
-        # resto da rota carimba a linha com ele. Vem do JWT, não do corpo.
-        return dict(device, user_id=usuario_id), None, 200
+        # `buscar_do_dono` não devolve `user_id` (não está em CAMPOS). O `jwt`
+        # segue junto porque a gravação deste caminho vai pelo cliente do
+        # USUÁRIO, não por chave privilegiada: a função no banco deriva o dono
+        # de `auth.uid()` (SEC-06).
+        return dict(device, user_id=usuario_id, jwt=jwt), None, 200
 
     @app.route('/api/data', methods=['POST'])
     def receive_data():
@@ -296,20 +479,34 @@ def init_routes(app):
                 "epoca_segundos":   content.get("epoca_s"),
                 "metodo_agregacao": content.get("metodo"),
                 "amostras":         content.get("amostras"),
-                # Carimbo do dono, resolvido pelo token — nunca vem do corpo
-                # da requisição. O device não escolhe de quem é o dado.
-                "user_id":   device["user_id"],
-                "device_id": device["id"],
+                # `user_id` e `device_id` NÃO entram aqui (SEC-06). Quem carimba
+                # o dono é a função no banco, a partir do token ou do
+                # `auth.uid()` do JWT. Antes eram estas duas linhas de Python
+                # que separavam uma chave vazada da posse de dado alheio; agora
+                # não existe parâmetro por onde escolher o dono.
             }
-            
+
             # Persiste e confirma: só responde 201 se o dado foi realmente
             # gravado. Se nada persistiu (fonte indisponível), responde 503 em
             # vez de mentir sucesso e enganar o firmware (FIX-02).
-            result = db.insert_sleep_data(payload)
-            if not result or not getattr(result, "data", None):
+            #
+            # Dois caminhos, duas credenciais — e nenhum dos dois manda o dono:
+            #
+            #   token   -> chave de ingestão (privilégio mínimo), dono do token
+            #   sessão  -> JWT do usuário,    dono de `auth.uid()`
+            #
+            # O `last_seen_at` do dispositivo é atualizado dentro da própria
+            # função, na mesma chamada — ver migrations/005.
+            if caminho == CAMINHO_TOKEN:
+                gravado = db.registrar_leitura(device["token_hash"], payload)
+            else:
+                gravado = db.registrar_leitura_da_sessao(
+                    device["jwt"], device["id"], payload
+                )
+
+            if not gravado:
                 return jsonify({"error": "dados nao persistidos (fonte indisponivel)"}), 503
 
-            db.touch_device(device["id"])
             return jsonify({"status": "success"}), 201
         except Exception as e:
             return jsonify({"error": str(e)}), 400

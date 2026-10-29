@@ -1,0 +1,50 @@
+# Normalizacao de fim de linha (GIT-01).
+#
+# ── O PROBLEMA QUE ISTO RESOLVE ─────────────────────────────────────────
+#
+# Sem esta regra, editar o repositorio no Windows salvava CRLF no disco
+# enquanto o historico guardava LF. Resultado: `git status` acusava 144
+# arquivos modificados com 20.243 insercoes e 20.243 remocoes — o diff
+# inteiro era invisivel (`git diff --ignore-cr-at-eol` devolvia vazio).
+#
+# Um diff assim nao e so feio: ele esconde a mudanca de verdade. Revisar um
+# ajuste de tres linhas exige separa-lo de vinte mil linhas de nada.
+#
+# `text=auto` deixa o git decidir o que e texto e guarda tudo em LF no
+# historico, convertendo para o fim de linha da plataforma no checkout.
+* text=auto
+
+# Declarados explicitamente para o caso de o heuristico do git hesitar.
+*.py    text
+*.md    text
+*.ts    text
+*.tsx   text
+*.js    text
+*.jsx   text
+*.json  text
+*.css   text
+*.html  text
+*.yml   text
+*.yaml  text
+*.sql   text
+*.ino   text
+*.h     text
+*.svg   text
+*.txt   text
+
+# Scripts de shell precisam de LF mesmo quando clonados no Windows: com CRLF
+# o interpretador le `#!/bin/bash\r` e nao encontra o programa.
+*.sh    text eol=lf
+
+# Binarios: nunca converter. Uma unica conversao corrompe o arquivo.
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.ico   binary
+*.pdf   binary
+*.docx  binary
+*.woff  binary
+*.woff2 binary
+*.ttf   binary
+*.otf   binary

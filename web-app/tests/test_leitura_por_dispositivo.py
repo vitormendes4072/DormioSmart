@@ -127,9 +127,62 @@ def test_janela_invertida_responde_400():
 
 # --- o SELECT precisa trazer o device_id ---------------------------------
 
+def _colunas_do_select():
+    """As colunas pedidas no SELECT, sem os comentários que as explicam.
+
+    Recorta entre `.select(` e o `.eq(` seguinte e junta só o que está entre
+    aspas. A versão anterior cortava no primeiro `)`, e um comentário com
+    parêntese — "(DASH-09)" — truncava a leitura antes das colunas seguintes:
+    o teste passava a checar meia lista sem avisar.
+    """
+    import inspect
+    import re
+
+    fonte = inspect.getsource(database.Database.get_leituras_do_usuario)
+    trecho = fonte.split(".select(")[1].split(".eq(")[0]
+    return ", ".join(re.findall(r'"([^"]*)"', trecho))
+
+
 def test_a_consulta_seleciona_o_device_id():
     """Sem ele o cliente não sabe de qual instrumento veio cada ponto."""
+    assert "device_id" in _colunas_do_select()
+
+
+def test_a_consulta_seleciona_o_captured_at():
+    """DASH-12: sem ele o painel só tem a hora de CHEGADA.
+
+    `created_at` é gerado pelo banco quando a linha chega; `captured_at` é o
+    instante em que o dispositivo mediu. Toda a máquina de cobertura, lacuna e
+    sessão descreve uma captação, então tem que usar o instante da captação.
+
+    Faltando este campo, latência de rede aparece como irregularidade de
+    cadência — e o buffer offline do HW-05 chegaria todo empilhado em poucos
+    segundos de `created_at`, fazendo o painel ver uma "sessão de 2 segundos"
+    com o resto da noite como lacuna.
+    """
+    assert "captured_at" in _colunas_do_select()
+
+
+def test_o_select_traz_tambem_a_epoca_e_o_created_at():
+    """Guarda contra remoção acidental: os três descrevem a captação juntos.
+
+    `created_at` é o instante da chegada, `captured_at` o da medição e
+    `epoca_segundos` a duração que a linha resume. Perder qualquer um faz o
+    painel voltar a tratar ausência de dado como dado (DASH-09).
+    """
+    colunas = _colunas_do_select()
+    for coluna in ("created_at", "captured_at", "epoca_segundos"):
+        assert coluna in colunas
+
+
+def test_a_ordenacao_continua_por_created_at():
+    """`captured_at` é anulável; `created_at` tem `default now()`.
+
+    Ordenar pela coluna anulável deixaria as linhas anteriores ao campo em
+    posição arbitrária. Quem reordena pelo instante de medição, com fallback,
+    é o cliente (`instanteDaLeitura` em `types/sleep.ts`).
+    """
     import inspect
 
     fonte = inspect.getsource(database.Database.get_leituras_do_usuario)
-    assert "device_id" in fonte.split(".select(")[1].split(")")[0]
+    assert '.order("created_at", desc=True)' in fonte

@@ -203,7 +203,10 @@ void testarDados() {
 
 void bateria(uint32_t hz) {
   Serial.println("=====================================================");
-  Serial.printf(" I2C a %lu kHz\n", hz / 1000);
+  // `%u`, nao `%lu`: no ESP32 uint32_t e `unsigned int`. Com `%lu` o printf
+  // le 8 bytes de um argumento de 4 e imprime lixo. Achado pelo
+  // `make sintaxe` em 16/10, na primeira vez que este sketch foi compilado.
+  Serial.printf(" I2C a %u kHz\n", hz / 1000);
   Serial.println("=====================================================");
   Wire.setClock(hz);
   delay(50);
@@ -248,12 +251,9 @@ void setup() {
     Wire.beginTransmission(candidatos[i]);
     if (Wire.endTransmission() == 0) {
       endereco = candidatos[i];
-      Serial.printf("Sensor encontrado em 0x%02X
-
-", endereco);
+      Serial.printf("Sensor encontrado em 0x%02X\n\n", endereco);
       break;
     }
-  }
   }
 
   bateria(100000);
