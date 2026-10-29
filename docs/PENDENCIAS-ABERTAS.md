@@ -49,12 +49,12 @@ linha, não um resumo: resumo é a cópia que diverge.
 
 | Grupo | Itens |
 |---|---:|
-| A — Depende só de software: dá para fazer a qualquer momento | **38** |
+| A — Depende só de software: dá para fazer a qualquer momento | **39** |
 | B — Depende de decisão do Vitor | **10** |
 | C — Depende de ação do Vitor que não é decisão | **7** |
 | D — Bloqueado por hardware ou coleta | **23** |
 | E — Bloqueado por terceiro | **4** |
-| **Total** | **82** |
+| **Total** | **83** |
 
 ⚠️ **Este total não é comparável à contagem do backlog, e a diferença não é
 erro de nenhum dos dois.** São unidades de contagem diferentes: o backlog
@@ -75,7 +75,7 @@ outro item. **Desde 28/10 têm ID no backlog:** `GIT-07`, `INFRA-02` e
 
 ## A — Depende só de software: dá para fazer a qualquer momento
 
-**38 itens.**
+**39 itens.**
 
 ### `CALC-01` 🔴
 
@@ -320,6 +320,12 @@ Reduzir a lista de **8 ponteiros pendurados** — arquivo por arquivo: versionar
 *Camada no backlog: L0.*
 
 **Conferência.** Confirmado por execução: `conferir_docs_versionados.py` sai 0 e imprime os 8 isentos. A verificação (3) **não cobre nenhum dos oito; pega o nono.**
+
+### `DOC-13` ⚪
+
+Nada confere o resumo, o quadro e o caminho crítico do backlog contra as linhas dos itens; em 29/10 eles citavam seis itens fechados como pendentes. Uma conferência que reprove ID fechado citado ali.
+
+*Camada no backlog: L0.*
 
 ### `SEC-13` 🟡
 

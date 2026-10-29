@@ -14,7 +14,7 @@
 
 1. **O bloco de ML está fechado.** Pipeline reprodutível, baselines medidos, matriz de
    transferência N=92, ablação das hipóteses, quatro otimizações e validação externa em
-   coorte independente. 70 testes passando.
+   coorte independente. 70 testes passando *(em 22/09; 107 em 28/10)*.
 2. **O dado não é mais problema.** Wearanize+ OA (100 sujeitos, ~46 GB) e Newcastle 2015
    (55 registros) estão em disco. **O DUA deixou de ser bloqueante** — a coleção aberta tem
    tudo que o experimento precisa, sem cadastro.
@@ -47,11 +47,16 @@
    Sem isso não há calibração, bancada, noite captada nem validação no dispositivo.
 10. **Nada do bloco L0 substitui a medição** — e nada do que falta em L0 é grande.
 
-**Se você tem uma hora:** rode `DATA-03` no Supabase (um SQL, destrava o dashboard de conta
-nova). **Se tem um fim de semana:** solde. **Se tem um mês sem ferro de solda:** escreva os
+**Se você tem cinco minutos:** ligue o captcha do `SEC-11` no painel do Supabase (é
+mitigação, não fecha o oráculo). ✏️ *(29/10: até aqui esta linha mandava rodar o `DATA-03`,
+fechado em 28/10.)* **Se tem um fim de semana:** solde. **Se tem um mês sem ferro de solda:** escreva os
 `CALC-*` e `DIAG-*`, que são o que a banca lê.
 
-**Contagem:** 74 itens abertos · **L0: 42** · L1: 12 · L2: 9 · L3: 11. *(Recontado linha a linha em 28/10, e não por delta.)*
+**Contagem:** 75 itens abertos · **L0: 43** · L1: 12 · L2: 9 · L3: 11. *(Recontado linha a linha em 28/10, e não por delta.)*
+*(29/10, terceira parte: o resumo, o quadro e o caminho crítico foram reconferidos contra as
+linhas dos itens — citavam como pendentes `DATA-03`, `PERFIL-02`, `DOC-11`, `DIAG-01`,
+`DIAG-03` e `DATA-07c`, todos fechados. Entrou `DOC-13` (L0) — a guarda que faltava. L0 42+1 = 43;
+43+12+9+11 = 75.)*
 *(29/10, segunda parte: release `develop` → `main` (PR #5) e a 007 aplicada na produção. Nenhum item fecha nem abre — `INFRA-03` segue L3, esperando a execução agendada. 42+12+9+11 = 74.)*
 *(29/10: fechou `SEC-12` (L3) — a 009 aplicada e conferida na produção. 12−1 = 11; 42+12+9+11 = 74.)*
 *(28/10, quinta parte: fecharam `PERFIL-02` e `DATA-03` (L3), confirmados pelo diagnóstico na produção; entraram `SEC-12` (L3, aplicar a 009) e `SEC-13` (L0, a suíte que reaplica GRANTs). L3 13−2+1 = 12; L0 41+1 = 42; 42+12+9+12 = 75.)*
@@ -142,16 +147,16 @@ E um **peso**: 🔴 caminho crítico da defesa · 🟡 importante · ⚪ polimen
                     └─────────────────────────────────────────────┘
 
    L0  EM PARALELO, SEM DEPENDER DE NADA DISSO:
-       CALC-01..04 · DIAG-01..04 · REQ-01 · LGPD-01/02 · FW-07 · FW-01/03 · API-03
-       DATA-07b/07c · ML-06(carregador) · PWA-01
+       CALC-01..04 · DIAG-02/04 · REQ-01 · LGPD-01/02 · FW-07 · FW-01/03 · API-03
+       DATA-07b/07d · ML-06(carregador)
        ARQ-01(a,b) · DATA-07e · FW-08        ← novos em 17/10 (manha)
        UI-18 · UI-19(classe)                ← 19/10; as 2 instancias do UI-19 fecharam 20/10
        SEC-08 · SEC-09 · SEC-10              ← 20/10: 4 canais; (A) NAO fecha; DECIDIDO (B')
        SEC-11 ⚠️ L3                           ← 20/10: captcha no painel, ~5 min, e e MITIGACAO
-       LGPD-05 · LGPD-06 · DOC-11              ← novos em 17/10 (PERFIL-01)
-       PERFIL-02                             ← L3: a migracao 008, por voce
-       INFRA-03                              ← 28/10: L3 (producao pausava sem aviso;
-                                               o monitor so roda depois do release)
+       LGPD-05 · LGPD-06                     ← novos em 17/10 (PERFIL-01)
+       SEC-13                                ← 28/10: a suite de RLS reaplica GRANTs
+       INFRA-03                              ← 28/10: L3 (monitor em main desde 29/10;
+                                               fecha na 1a execucao agendada, 31/10)
        INFRA-02 · ESC-01 · PWA-01            ← 28/10: L3 (Supabase de teste,
                                                conceito de noite; PWA-01 veio de L0)
 
@@ -167,6 +172,8 @@ E um **peso**: 🔴 caminho crítico da defesa · 🟡 importante · ⚪ polimen
                 GIT-07 · CI-06 · ML-WIN-01 · DOCS-WIN-02 · DOC-12 · DIAG-01 · DIAG-03
                                          ← 28/10 (push; CI em runner; Windows; diagramas)
                 CI-07                    ← 28/10 (imagem do runner fixada em ubuntu-24.04)
+                DATA-03 · PERFIL-02 · SEC-12
+                                         ← 28-29/10 (migracoes na producao: 001-009)
                 INFRA-01 · SEC-05 · SEC-06 · SEC-07 · DATA-07a · UI-10 · UI-11
                 PERFIL-01 · LGPD-04  ← 17/10, tarde (o LGPD-04 fechou pelo lado
                                        que nao se esperava: a coluna ficou)
@@ -284,6 +291,7 @@ diagrama** — que é o que a banca lê.
 | **DOC-09** 🟠 *(novo — 30/09, primeira versão escrita)* | **`docs/DIARIO-DE-ENGENHARIA.md` — o diário cronológico, reconstruído retroativamente.** Cada entrada traz data e item, o problema como foi entendido no início, a hipótese de trabalho, o que foi testado e como, o resultado medido, a adaptação quando o resultado contrariou a hipótese, o risco que ficou em aberto, e a procedência. Vira o **capítulo de desenvolvimento** do TCC. O valor está no que deu errado: o sketch que nunca compilou, o vetor dourado que gravava a própria referência, o limiar de 1,2 m/s² que corresponde a ~67 σ, a feature angular desmentida pela geometria esférica, a recuperação de 78% que valia para um par de posições, e o ganho de modelo que não atravessou coorte. **O que falta:** o intervalo de junho a agosto está esparso, porque o `HISTORICO.md` que o cobre não é versionado e não pode servir de procedência num capítulo de TCC; e a seção final lista as lacunas de propósito. Daqui para frente é registro corrente, não reconstrução. | 🟡 |
 | **DOC-10** ✅ *(novo e feito — 17/10)* | **`docs/LICOES-APRENDIDAS.md` — o outro eixo do diário.** O diário registra *o que aconteceu*, em ordem cronológica; este registra **o que aprendemos, por padrão de falha**, que é o que se consulta *antes* de errar. Ninguém relê 29 entradas cronológicas para descobrir que já pisou na pedra. **Oito padrões, todos com duas ocorrências reais ou uma com custo medido** — regra de entrada explícita, para o arquivo não virar coleção de boa prática genérica: §1 alcance declarado que não alcança (**6 ocorrências**), §2 análise que não chega onde a decisão é tomada (4), §3 número herdado sem procedência (4), §4 instrumento que mede errado (4), §5 premissa herdada da documentação (3), §6 confirmação antes da verificação (3), §7 degradação silenciosa (3), §8 a média esconde o caso que importa (2). Cada lição traz **o padrão em uma frase, as ocorrências com entrada de diário e commit, o custo real, e a prevenção em forma verificável** — teste, alvo de `make`, verificação de CI ou pergunta de revisão. Fecha com um **checklist de sete perguntas** (§9) e com a seção do que não cobre: **nenhuma lição vem de bancada**, porque nada foi medido em placa. **Daqui em diante é manutenção corrente:** achado que exija tarefa vira item aqui no backlog; achado que exija cuidado vira padrão lá. | ✅ |
 | **DOC-06b** | **Ler os artigos antes de citá-los** (referência conferida ≠ artigo lido) e converter para o padrão de citação do TCC se não for autor-data. Herdado do `DOC-06`. | 🔴 |
+| **DOC-13** ⚪ *(novo — 29/10)* | **O resumo do backlog envelhece sem que nada acuse.** Em 29/10 o topo do arquivo mandava rodar o `DATA-03`, fechado na véspera, e o quadro listava seis itens fechados como pendentes (§6 das lições, ocorrência 8). Fechar um item mexe na linha e na contagem; nada confere as seções "Estado", "O quadro" e "O caminho crítico" contra as linhas. **Proposta:** em `scripts/conferir_docs_versionados.py` ou num script irmão, reprovar ID marcado ✅ na própria linha que apareça nessas seções fora de uma lista de fechados ou de um trecho riscado. Controle positivo: devolver o `DATA-03` ao caminho crítico e ver reprovar. | ⚪ |
 | **LGPD-01** | Política de privacidade e termos. **Rascunho escrito em 29/09** (`docs/POLITICA-DE-PRIVACIDADE.md`), a partir do código e não da intenção: cada direito do art. 18 vem marcado como implementado, parcial ou **sem mecanismo**. Falta: **(a)** decidir o controlador e a base legal — consentimento (art. 7º, I) ou pesquisa (art. 7º, IV), que muda a política inteira e **não dá para inferir do repositório**; **(b)** a rota e a página que sirvam o texto; **(c)** revisão jurídica. **Rascunho é L0; a revisão com o orientador é `LGPD-03`.** | 🟡 |
 | **LGPD-02** *(novo)* | **Não existe política de retenção.** Nenhum expurgo automático, nenhum prazo, nenhuma inatividade que dispare remoção: uma leitura enviada hoje fica indefinidamente até o titular apagar a conta. A política teve de declarar isso na seção 7. Decidir prazo e implementar, ou declarar formalmente que não haverá — as duas saídas são defensáveis; o silêncio não. 🔒 **E é bloqueante da distribuição** (`APP-05`), não do desenvolvimento: acelerômetro de celular é dado pessoal, e há literatura de identificação por padrão de marcha. ✏️ **28/10 (`GIT-06`)**: esta frase vivia numa **segunda** linha `LGPD-02`, em L2, e o item era contado duas vezes. | 🟡 |
 | ~~**LGPD-04**~~ ✅ *(17/10 — **pelo caminho que este item dava como menos provável**)* | **`profiles.idade` era coluna morta, e deixou de ser — sem sair.** O item previa dois desfechos: *"ou ganha finalidade declarada, ou sai por migração"*. Foi o primeiro, e o que o torna defensável não é a finalidade estar escrita: é ela ser **cumprida por código** (`frontend/src/lib/aplicabilidade.ts` diz ao titular se a idade dele está na faixa das coortes de validação citadas). Finalidade que só existe em política de privacidade é indistinguível de coluna morta com justificativa, e é a forma mais barata de cometer o §6 das lições — um parágrafo de documento não tem como ficar vermelho. **E `nome` deixou de ser a segunda coluna morta pelo mesmo movimento:** passou a ser a fonte de verdade do nome exibido. ⚠️ **A migração que este item previa não aconteceu, e a que aconteceu é outra:** a `008` não remove nada — ela acrescenta `updated_at` que se mantém, teto de tamanho e os comentários de finalidade no esquema. **Ainda falta aplicá-la** (`PERFIL-02`). 🔗 Fechou junto com o `PERFIL-01`, como o próprio item antecipava. ⬇️ *Registro original ao fim da linha, para procedência.* ⬇️ *Original:* **`profiles.idade` é coluna morta.** Existe no esquema desde a migração `001`, **nenhuma tela a preenche e nenhuma funcionalidade a lê** — está vazia para todos. Minimização (art. 6º, III) não é violada enquanto a coluna está vazia, mas é exatamente o tipo de estrutura que alguém preenche um dia "porque já estava lá". Ou ganha finalidade declarada, ou sai por migração. ✏️ **Atualização de 17/10, saída do `UI-11`: o item é mais amplo do que esta linha diz.** Conferido por varredura: `idade` aparece em **4 lugares do repositório, nenhum deles código de produção** — a migração `001`, um comentário da `006`, e três asserções dos testes de RLS. Mas **`profiles.nome` está no mesmo estado**: é escrita uma vez pelo trigger do signup e lida por nada. Não é uma coluna morta, são duas, e com a tela do `UI-11` gravando o nome **noutro lugar** (`auth.users.raw_user_meta_data`) a de `nome` passa a ser cópia que **pode divergir**. 🔗 **Este item não se resolve sozinho: depende do `PERFIL-01`**, que decide para que a tabela existe. Fechar o `LGPD-04` isolado — `drop column idade` — é defensável e barato, e deixaria de pé a pergunta maior com a aparência de resolvida. **Avaliação de 17/10: manter separados, e fazer o `PERFIL-01` primeiro.** A saída (B) do `PERFIL-01` fecha os dois de uma vez; as saídas (A) e (C) dão a `idade` finalidade ou declaração, e aí este item fecha por outro caminho. O que não se deve fazer é a migração antes da decisão. ⚠️ **E é L3, não L0:** migração em coluna de `profiles` exige SQL rodado no Supabase por você, como o `DATA-03`. | ✅ |
@@ -485,8 +493,9 @@ Depende de dado real captado — uma noite medida, ou o protocolo do `VIA-02`.
 
 Se só houver tempo para uma sequência, é esta:
 
-1. **`DATA-03`** (L3, um comando) — rodar o SQL no Supabase. É a coisa mais barata com
-   consequência real que sobrou: sem ele, o dashboard de uma conta nova nasce vazio.
+1. ✅ ~~**`DATA-03`**~~ — fechado em 28/10, confirmado pelo diagnóstico na produção (em 29/10,
+   001–009 aplicadas). ✏️ *(29/10: este passo seguiu aqui como o primeiro do caminho crítico
+   um dia depois de fechado.)*
 2. **Soldar** (L3). Tudo abaixo espera.
 3. **`CAL-01` + `CAL-02`** — calibrar a unidade *depois* do `FW-06`, senão o número não vale.
 4. **`VIA-01` + `VIA-02`** — um dia de bancada que produz a viabilidade, o limiar do celular
@@ -496,7 +505,7 @@ Se só houver tempo para uma sequência, é esta:
    feature nenhuma** e o modelo não a consome. Ver o aviso no próprio `VAL-01`.
 6. **`DASH-04` + `VAL-02`** — a noite na tela e os números medidos.
 
-**Em paralelo, sem esperar nada:** `CALC-01..04`, `DIAG-01..04`, `LGPD-01`, `FW-07`, `DATA-07b`.
+**Em paralelo, sem esperar nada:** `CALC-01..04`, `DIAG-02` e `DIAG-04`, `LGPD-01`, `FW-07`, `DATA-07b`.
 
 > 🔴 **O que mudou no caminho crítico em 17/10.** O `DATA-07b` fechou (a), (b) e (c) — o
 > firmware sabe calcular as features — e ao fechar **expôs três coisas que agora estão entre
