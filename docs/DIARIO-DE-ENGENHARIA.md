@@ -3449,6 +3449,98 @@ forma.
 **Procedência.** `docs/BACKLOG-COMPLETO.md`, linha do `DOC-05`, antes e depois deste commit;
 `scripts/consolidar_registro.py`, pendência `DOC-05`; backlog `DOC-11`.
 
+---
+
+# 2026-10-29 (v) — `ARQ-01` (a) e (b): a dicotomia tinha uma terceira saída
+
+**O problema, como foi entendido no início.** O `ARQ-01` pede (a) decidir contínuo-com-features
+× WoM-sem-features e (b) fixar banda e taxa contra os 12,8 Hz do `ml/`. O pedido foi preparar a
+análise das duas arquiteturas e das consequências, sem tomar a decisão: ela muda a frase da
+pergunta de pesquisa, que fala em "baixo consumo" e em "eventos de movimento".
+
+**Hipótese de trabalho.** Ao ler as fontes para o plano, surgiu uma terceira arquitetura: a FIFO
+do MPU6050 deixaria o ESP32 em sono leve entre rajadas, e a amostragem contínua sairia perto de
+uma ordem de grandeza mais barata que a do Z.4.4. Outra suspeita era que a grade de 32 Hz não
+existisse no sensor. As duas eram lembrança, não leitura.
+
+**O que foi testado, e como.**
+
+- **Folhas de dados:**
+  - PS-MPU-6000A-00 Rev. 3.2, baixada de um espelho e extraída com `pypdf`;
+  - ESP-IDF v6.1, *Sleep Modes*;
+  - o *Register Map* não baixou de nenhuma fonte (403, HTML no lugar do PDF), e foi lido só em
+    resumo de busca.
+- **O modelo:** `scripts/estudo_cadencia.py`, que importa as constantes e os dois cenários do
+  `calculos_tcc.py` em vez de copiá-los, mais dois cenários novos de sono leve (C1, uma amostra
+  por despertar; C2, FIFO). Ele varre todos os parâmetros em faixa e soma o consumo fixo da
+  placa.
+- **CI:** o `--conferir` entrou no job `documentos`.
+- **Controle positivo, três sabotagens:**
+  1. sono leve de 0,8 → 0,9 mA no `calculos_tcc.py`;
+  2. rádio de referência de 100 → 120 mA, que atinge o Z.4.4;
+  3. FIFO esvaziada a 60 % em vez de 50 %.
+- **Conferências:** `calculos_tcc.py --conferir`, `estudo_buffer.py --conferir`,
+  `conferir_docs_versionados.py`, `consolidar_registro.py --conferir`.
+
+**Resultado medido** (aritmética e folha de dados; nada medido na placa).
+
+- **Confirmado na folha:**
+  - FIFO de **1024 B**, feita *"to read the data in bursts and then go into a low-power mode"*;
+  - acelerômetro a 1 kHz;
+  - no sono leve, a RAM sobrevive e o Wi-Fi não se mantém.
+- **Achado que não estava na lembrança:** o oscilador interno do MPU tem **±5 % a 25 °C e −15 %
+  a +10 % na temperatura**. Nenhuma taxa ditada pelo sensor cai exata na grade, com ou sem
+  divisor, e o firmware precisa medir a taxa e reamostrar, como o `ml/` já faz com as bases
+  públicas.
+- **Os números:** o modelo reproduz o Z.4.4 (A 1,91 mA, B 23,9 mA). O sono leve com FIFO (C2,
+  50 Hz) dá **5,31 mA**, 4,5× abaixo de B. Não é "uma ordem de grandeza", como a hipótese dizia:
+  o rádio é 63 % de C2. Com lote (`API-03`), C2 cai a 2,03 mA. A ordem A < C2 < C1 < B vale com a
+  placa de 0 a 10 mA.
+- **Para (b):** o critério contra os 12,8 Hz é a dobra em f<sub>s</sub> − 12,8 Hz (37,2 Hz a
+  50 Hz), não 2 × a banda do DLPF. A 40 Hz com DLPF de 21 Hz, a dobra começa em 27,2 Hz.
+- **As três sabotagens reprovaram:**
+  1. 11 asserções caíram, nomeando C1, C2 e as razões;
+  2. caíram as âncoras do Z.4.4 (`A (Z.4.4)`, `B (Z.4.4)`);
+  3. caíram `C2 amostras/despertar` e `C2 acordado (%)`.
+
+  Restaurado, tudo passa.
+
+**Adaptação.**
+
+- **A dicotomia do backlog estava incompleta.** "Features ou Deep Sleep" comparava o WoM com a
+  amostragem contínua de CPU ativa. A análise acrescenta C2 e a recomenda, **marcada como
+  recomendação**: não é uma decisão tomada por esta sessão.
+- **A hipótese do plano errou para mais.** C2 sai 4,5× melhor que B, não dez vezes.
+- **O texto pronto do `CALCULOS-TCC.md` não foi editado.** Ele muda depois da decisão (§7 do
+  documento).
+
+**Risco em aberto.**
+
+- **Não conferido na fonte primária:** a fórmula do divisor, os degraus do DLPF e se a FIFO
+  funciona no modo de baixo consumo, todos do *Register Map*. O resultado que depende da fórmula
+  (não há 32 Hz exato) é robusto, porque o oscilador de ±5 % já o garante. Fica no `ARQ-01`.
+- **Não medido:**
+  - a latência e a corrente do sono leve na placa;
+  - o transbordo da FIFO;
+  - a reassociação Wi-Fi;
+  - o tempo do fechamento da época.
+
+  É a parte (c) do `ARQ-01`, que depende da solda.
+- **Não decidido:** a escolha entre A e C2. É do autor com o orientador (`ARQ-01` (a) e `RQ-01`).
+- **Não feito:** o experimento que daria número ao WoM do lado da hipótese (o kappa de uma
+  contagem de eventos simulada nas bases públicas). Só vale abrir se A for escolhida, e a
+  decisão diz.
+- **Lido em revisão diferente:** a folha de produto foi lida na Rev. 3.2; o `calculos_tcc.py`
+  cita a 3.4.
+
+**Procedência.**
+
+- `docs/DECISAO-ARQ-01-CADENCIA.md` e `scripts/estudo_cadencia.py`, deste commit;
+- `CALCULOS-TCC.md` Z.1.4, Z.4.3–Z.4.7 e "Uma divergência técnica";
+- PS-MPU-6000A-00 Rev. 3.2, §4, §5.1, §5.2 e §6.6;
+- ESP-IDF v6.1, *Sleep Modes — ESP32*;
+- backlog `ARQ-01`.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
