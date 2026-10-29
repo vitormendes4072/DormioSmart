@@ -23,8 +23,9 @@ linha por migração (`aplicada` true/false, o que falta). A consulta é conferi
 no CI por `tests/migracoes/verificar_migracoes.py`, migração a migração, na
 ordem numérica e na ordem real da produção.
 
-**Estado da produção em 2026-10-28:** 001, 003, 004, 005, 006 e 008 aplicadas;
-002 desnecessária; **009** pronta para aplicar; **007** só no release.
+**Estado da produção em 2026-10-29:** **todas aplicadas** — 001, 003, 004, 005, 006,
+008, 009 e, depois do release (PR #5), 007; a 002 desnecessária. O diagnóstico deu
+`aplicada = true` nas oito migrações de esquema.
 
 ## A armadilha dos privilégios padrão do Supabase
 

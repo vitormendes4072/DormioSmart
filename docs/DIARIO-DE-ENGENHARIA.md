@@ -3321,6 +3321,61 @@ ambiente, `vercel.json`) e todas as chamadas que o código de `develop` faz ao b
 **Procedência.** Resultados da produção colados pelo Vitor em 29/10; `git diff origin/main
 origin/develop`; `web-app/database.py`, `web-app/dispositivos.py`; backlog `SEC-12`.
 
+---
+
+# 2026-10-29 (ii) — o release para `main`, a 007 na produção e o monitor agendável
+
+**O problema, como foi entendido no início.** Levar `develop` para `main` (o que estava em
+produção era de setembro), aplicar a 007 logo depois do deploy — é a única migração que o código
+novo exige — e pôr o monitor do `INFRA-03` na branch de onde o agendamento roda.
+
+**Hipótese de trabalho.** A da entrada anterior: o merge não tem como dar conflito, e entre o
+deploy e a 007 só o pareamento de dispositivo novo falha. E que `service_role` executa as funções
+de ingestão — lida, não medida, e era por ela que o backend novo grava leitura. Confirmada nas
+duas partes.
+
+**O que foi testado, e como.**
+
+- **Antes do merge:** o Vitor rodou no SQL Editor `has_function_privilege('service_role', …)` nas
+  cinco funções que o backend chama e a contagem de dispositivos.
+- **O release:** PR #5, `develop` → `main`. **O merge em `main` foi negado a esta sessão** pelo
+  classificador de permissões (deploy de produção); o Vitor mesclou pelo GitHub
+  (*Create a merge commit*).
+- **Depois do merge:** `/health` e as rotas protegidas conferidos daqui. O Vitor aplicou a 007
+  e rodou a conferência que vem nela e o diagnóstico de migrações.
+- **O monitor:** disparado à mão (`workflow_dispatch`) a partir de `main`.
+
+**Resultado medido.**
+
+- **Antes do merge:** `service_role` executa as cinco funções (5 × `true`); 4 dispositivos.
+  Fecha o risco em aberto da entrada anterior.
+- **Produção em `main 787227c`**, contrato 2.5.1: `/health` 200 com banco ok; rotas protegidas
+  respondem 401 sem token.
+- **A 007:** coluna `devices.token_hash` não existe mais (0); **4 dispositivos e 4 tokens** em
+  `device_tokens` — nenhuma credencial perdida na mudança de tabela; `anon` e `authenticated` sem
+  privilégio nenhum em `device_tokens` (0); `anon` não executa `parear_dispositivo`, usuário
+  logado executa. Diagnóstico: **`aplicada = true` nas oito migrações de esquema** (001, 003–009);
+  a 002 desnecessária. A ordem real da produção (009 antes da 007) é a que o
+  `verificar_migracoes.py` exercita no CI.
+- **O monitor:** a execução `40818265459`, de `main`, passou.
+
+**Adaptação.** Nenhuma no plano. A permissão negada mudou só quem clica: merge em `main` é do
+Vitor, e assim fica.
+
+**Risco em aberto.**
+
+- **Não medido:** que o agendamento roda. A execução manual prova o job, não o `schedule`; a
+  primeira agendada, pelo cron, cai em 31/10. Segue no `INFRA-03`.
+- **Não medido:** quanto durou a janela entre o deploy e a 007, em que parear falharia. Ninguém
+  pareou nela que se saiba — a produção não recebia dado desde setembro —, mas não há log
+  conferido.
+- **Não medido:** o pareamento de ponta a ponta pelo app em produção (`POST /api/devices`). O
+  que se mediu foi o privilégio da função no banco.
+
+**Procedência.** Resultados da produção colados pelo Vitor em 29/10 (privilégios de
+`service_role`, conferência da 007, diagnóstico); PR #5 e `main 787227c`; execução `40818265459`
+de `saude-producao.yml`; backlog `INFRA-03`.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

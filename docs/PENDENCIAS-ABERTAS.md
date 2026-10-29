@@ -453,7 +453,7 @@ Ligar captcha no painel do Supabase (`Authentication → Settings → Bot and Ab
 
 ### `INFRA-03 — monitor da produção` 🟡
 
-O job que chama o `/health` de produção a cada 3 dias está escrito e testado, e só roda agendado a partir de `main`: falta o release. Antes dele, conferir no Supabase as migrações 005–008 e o backfill 002.
+O job que chama o `/health` de produção a cada 3 dias está em `main` desde o release de 29/10, e a execução manual passou. Falta a primeira execução **agendada** (pelo cron, 31/10) — é ela que fecha o item.
 
 *Camada no backlog: L3.*
 
