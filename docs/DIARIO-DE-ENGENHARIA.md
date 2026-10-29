@@ -3417,6 +3417,38 @@ abriu um item (`DOC-13`) para a guarda que faltava.
 **Procedência.** `docs/BACKLOG-COMPLETO.md` antes e depois deste commit; §6 das lições,
 ocorrência 8.
 
+---
+
+# 2026-10-29 (iv) — o `DOC-05` dizia que o `CLAUDE.md` é gitignorado
+
+**O problema, como foi entendido no início.** Ao listar os 75 itens abertos, a linha do
+`DOC-05` dizia que o `CLAUDE.md` está no `.gitignore` e que toda correção nele fica fora do git.
+Ele é versionado desde 27/10 (`DOC-11`).
+
+**Hipótese de trabalho.** Que a frase velha estivesse em mais lugares. Refutada: busca por
+"`CLAUDE.md` está no" e "é gitignorado" em todo `.md` e `.py` do repositório achou só esta linha.
+A pendência gerada (`consolidar_registro.py`) já dizia o certo.
+
+**O que foi testado, e como.** A busca acima; depois a recontagem linha a linha,
+`consolidar_registro.py --conferir` e `conferir_docs_versionados.py`.
+
+**Resultado medido.** Uma linha corrigida, com a marca ✏️. Contagem inalterada (75). As
+conferências passam.
+
+**Adaptação.** O `DOC-13` ganhou uma ressalva: a guarda que ele propõe procura ID fechado citado
+como pendente, e **não pegaria este caso** — a frase velha estava dentro da linha de um item
+aberto, sem ID fechado nela. Mesmo padrão da entrada (iii) (§6 das lições, ocorrência 8), outra
+forma.
+
+**Risco em aberto.**
+
+- **Não medido:** quantas frases de estado assim restam dentro de linhas abertas. Achar esta foi
+  leitura, ao explicar o backlog; varrer as 75 linhas contra o estado do repositório não foi
+  feito. Fica no `DOC-13`, com a ressalva.
+
+**Procedência.** `docs/BACKLOG-COMPLETO.md`, linha do `DOC-05`, antes e depois deste commit;
+`scripts/consolidar_registro.py`, pendência `DOC-05`; backlog `DOC-11`.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
