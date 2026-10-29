@@ -19,15 +19,15 @@ a única coisa aqui que sustenta uma afirmação de método.
 
 ## Resumo quantitativo
 
-**121 correções registradas**, todas sustentadas no repositório.
+**122 correções registradas**, todas sustentadas no repositório.
 
 **A unidade de contagem, dita antes dos números, porque ela decide como
 lê-los.** Uma linha deste arquivo é **uma correção**: um defeito, uma
 causa, uma correção. Em 4 linhas, porém, a causa e a correção foram
 uma só e os defeitos foram vários — `DADOS-02` (10), `REF-01` (4), `GIT-06` (14), `SEC-12` (2) —, e agrupá-las foi deliberado,
 porque separá-las contaria a mesma correção várias vezes. **Contando
-defeito em vez de correção, o total seria 147.** Este
-arquivo usa **121**, que é o número menor e o mais defensável.
+defeito em vez de correção, o total seria 148.** Este
+arquivo usa **122**, que é o número menor e o mais defensável.
 
 **Fora da contagem, e visível:** 1 linha(s) — `ML-04b` —,
 em que a hipótese se confirmou e o que se corrigiu foi a afirmação
@@ -42,15 +42,15 @@ que se podia extrair do resultado, não um defeito. Estão na seção da
 | Interface | 23 |
 | Firmware | 18 |
 | Dados e ML | 23 |
-| Documentação | 18 |
+| Documentação | 19 |
 | Infraestrutura | 22 |
-| **Total** | **121** |
+| **Total** | **122** |
 
 ### Por instrumento — o campo que dá valor a este arquivo
 
 | Como foi encontrado | Correções | O que o instrumento é |
 |---|---:|---|
-| **leitura** | 21 | Inspeção do código ou do documento, raciocinando sobre ele. Nada roda, nada se confere contra terceiro. |
+| **leitura** | 22 | Inspeção do código ou do documento, raciocinando sobre ele. Nada roda, nada se confere contra terceiro. |
 | **cálculo** | 4 | Aritmética sobre os próprios números do projeto. O mais barato de todos, e derrubou premissas grandes. |
 | **execução** | 49 | Rodar código do projeto — suíte, job, compilador, script — e a **saída** acusar. O defeito não estava escondido: estava não exercitado. |
 | **controle positivo** | 13 | Provocar o defeito de propósito e exigir que a verificação acuse. Inclui verificação por mutação. **É o único instrumento que mede o alcance de uma verificação.** |
@@ -58,7 +58,7 @@ que se podia extrair do resultado, não um defeito. Estão na seção da
 | **terceiro** | 10 | Especificação, documentação oficial, artigo, issue ou API de terceiro. O artefato que decide a resposta está **fora** do repositório. |
 | **dado real** | 3 | Só apareceu com o arquivo ou a medição real em mãos. |
 | **uso real** | 1 | Alguém usou o produto como usuário. |
-| **Total** | **121** | |
+| **Total** | **122** | |
 
 ### As três derivações que os números sustentam
 
@@ -72,9 +72,9 @@ que se podia extrair do resultado, não um defeito. Estão na seção da
 > do projeto; são proporções do que foi achado.**
 
 **(1) Exercitar achou mais do que ler, por mais de duas vezes.**
-Execução, controle positivo e uso real somam **63 de 121**
-registros (52%). Leitura e cálculo — os dois
-instrumentos que não precisam rodar nada — somam **25** (20%). A razão é de **2,5 para 1**.
+Execução, controle positivo e uso real somam **63 de 122**
+registros (51%). Leitura e cálculo — os dois
+instrumentos que não precisam rodar nada — somam **26** (21%). A razão é de **2,4 para 1**.
 
 Com a ressalva que impede a leitura fácil: isto **não** diz que ler é
 pouco útil. Diz que, neste projeto, leitura e execução acharam classes
@@ -84,7 +84,7 @@ e a execução achou **alcance** insuficiente. Alcance não se vê lendo, e é
 por isso que a razão é essa e não o contrário.
 
 **(2) 13 correções tinham a causa fora do repositório.**
-Fonte de terceiro e dado real somam **13 de 121** (10%) — defeitos cuja causa não está em nenhuma
+Fonte de terceiro e dado real somam **13 de 122** (10%) — defeitos cuja causa não está em nenhuma
 linha deste projeto, e que **nenhum teste daqui poderia pegar**: a
 especificação do PostgREST, a unidade do Empatica em `g/64`, o valor de
 uma chave num painel do Supabase, a API do Actions, os coeficientes do
@@ -98,7 +98,7 @@ Supabase de teste**, que deve a quatro itens e desde 28/10 tem item próprio
 **(3) As próprias verificações do projeto estavam defeituosas
 26 vezes — e 24 dessas 26 só apareceram
 rodando ou sabotando.**
-São **26 de 121** registros (21%) em que a coisa errada era um teste, uma
+São **26 de 122** registros (21%) em que a coisa errada era um teste, uma
 guarda de CI, um harness de mutação ou um vetor de referência — não o
 código. A distribuição:
 
@@ -127,9 +127,9 @@ alguém tentou fazer a verificação falhar.
 | Procedência | Correções | O que significa |
 |---|---:|---|
 | `completa` | 117 | Commit **e** artefato reabrível — teste, script, seção de documento. Dá para reconferir sem acreditar em ninguém. |
-| `parcial` | 4 | Só a mensagem de commit, só a entrada de diário, ou correção em arquivo não versionado. Entra porque omitir seria pior, e entra **marcada**. |
+| `parcial` | 5 | Só a mensagem de commit, só a entrada de diário, ou correção em arquivo não versionado. Entra porque omitir seria pior, e entra **marcada**. |
 
-**48 dos 121 defeitos revelaram que a premissa estava
+**48 dos 122 defeitos revelaram que a premissa estava
 errada** — não que o código estava errado. É a seção mais instrutiva deste
 arquivo e tem lugar próprio no fim.
 
@@ -1099,9 +1099,9 @@ só de código filtra pela coluna de área.
 
 ---
 
-## Documentação — 18 defeitos
+## Documentação — 19 defeitos
 
-*10 inventário · 4 leitura · 3 terceiro · 1 execução*
+*10 inventário · 5 leitura · 3 terceiro · 1 execução*
 
 ### 2026-06-03 · `(README)`
 
@@ -1284,6 +1284,18 @@ só de código filtra pela coluna de área.
 **A correção.** Tabela em ordem, com a 008 e a 009, a seção de diagnóstico e a armadilha dos privilégios padrão.
 
 **Commit.** `040fe4b` · procedência **completa**
+
+### 2026-10-29 · `DATA-03`
+
+**O defeito.** O resumo, o quadro e o caminho crítico do backlog citavam como pendentes seis itens fechados — e o primeiro conselho do arquivo era rodar o `DATA-03`, fechado na véspera.
+
+**Como foi encontrado.** *leitura* — Fechar um item mexia na linha dele e na contagem; ninguém buscava o ID no resto do arquivo.
+
+**A correção.** As três seções reconferidas contra as linhas dos itens e corrigidas, com a marca ✏️ onde o texto mudou.
+
+**Nota.** §6 das lições, ocorrência 8. Achado por leitura, ao responder o que fazer a seguir; a guarda que faltava virou o `DOC-13`.
+
+**Commit.** `(o commit que introduz esta linha: um commit não cita o próprio hash — ver a entrada de 29/10 (iii) do diário)` · procedência **parcial**
 
 ### 2026-10-17 · `(ii)`
 
@@ -1621,7 +1633,7 @@ com competência teria produzido a coisa errada bem feita.
 | 2026-10-16 | `CI-06` | Que eram três, e não quatro, os jobs nunca rodados num runner. |
 | 2026-10-17 | `GIT-05` | Que um aviso escrito no `ROADMAP.md` chega a quem clona. |
 
-**48 de 121.** E a distribuição por instrumento dentro
+**48 de 122.** E a distribuição por instrumento dentro
 deste subconjunto é a parte que vale registrar:
 
 | Instrumento | Premissas derrubadas |

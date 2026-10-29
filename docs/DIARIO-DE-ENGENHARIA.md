@@ -3376,6 +3376,47 @@ Vitor, e assim fica.
 `service_role`, conferência da 007, diagnóstico); PR #5 e `main 787227c`; execução `40818265459`
 de `saude-producao.yml`; backlog `INFRA-03`.
 
+---
+
+# 2026-10-29 (iii) — o resumo do backlog mandava fazer o que já estava feito
+
+**O problema, como foi entendido no início.** Ao ler o backlog para responder *"o que temos a
+fazer agora?"*, o topo do arquivo dizia *"se você tem uma hora, rode `DATA-03`"* — fechado em
+28/10. A suspeita era de uma linha velha; o pedido foi corrigir o resumo, o quadro e o caminho
+crítico.
+
+**Hipótese de trabalho.** Que fossem três menções (`DATA-03`, `PERFIL-02` e o monitor
+"esperando o release"). Refutada: eram mais.
+
+**O que foi testado, e como.** Cada ID citado nas seções "Estado", "O quadro em uma tela" e "O
+caminho crítico" foi buscado na linha do próprio item, para ver se está aberto. Depois, a
+recontagem linha a linha, as conferências `consolidar_registro.py --conferir` e
+`conferir_docs_versionados.py`.
+
+**Resultado medido.**
+
+- **Seis itens fechados apareciam como pendentes:** `DATA-03` (o conselho de abertura e o passo 1
+  do caminho crítico), `PERFIL-02` e o `INFRA-03` "esperando o release" (o quadro), mais
+  `DOC-11`, `DIAG-01`, `DIAG-03` e `DATA-07c`, que o quadro e o "em paralelo" listavam entre os
+  pendentes. O mais antigo, o `DATA-07c`, fechou em 30/09.
+- **Faltavam no quadro:** `SEC-13` (aberto em 28/10) e `DATA-07d`. Entrou também o `DOC-13`. O `PWA-01` aparecia duas
+  vezes, em L0 e em L3; ficou só em L3, onde a linha dele está.
+- "70 testes" do ML ganhou data (22/09) e o número de 28/10 (107).
+- O conselho de abertura passou a ser o `SEC-11` (captcha no painel, ~5 min), com a ressalva
+  de que é mitigação. Recontagem: 75 (L0 43, com o `DOC-13`); conferências passam.
+
+**Adaptação.** O escopo cresceu de três menções para dez correções nas mesmas três seções, e
+abriu um item (`DOC-13`) para a guarda que faltava.
+
+**Risco em aberto.**
+
+- **Não mecanizado:** nada confere o resumo contra as linhas. A próxima vez que um item fechar,
+  o resumo pode envelhecer de novo. Abri o `DOC-13` (L0, ⚪): uma conferência que reprove ID
+  marcado ✅ na própria linha e citado como pendente no quadro ou no caminho crítico.
+
+**Procedência.** `docs/BACKLOG-COMPLETO.md` antes e depois deste commit; §6 das lições,
+ocorrência 8.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

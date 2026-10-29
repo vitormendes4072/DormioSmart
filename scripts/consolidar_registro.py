@@ -1811,6 +1811,21 @@ DEFEITOS: list[Defeito] = [
         commit="040fe4b",
     ),
     Defeito(
+        data="2026-10-29", area=DOC, item="DATA-03",
+        defeito="O resumo, o quadro e o caminho crítico do backlog citavam como "
+                "pendentes seis itens fechados — e o primeiro conselho do arquivo "
+                "era rodar o `DATA-03`, fechado na véspera.",
+        achado_por=LEITURA,
+        causa="Fechar um item mexia na linha dele e na contagem; ninguém buscava "
+              "o ID no resto do arquivo.",
+        correcao="As três seções reconferidas contra as linhas dos itens e "
+                 "corrigidas, com a marca ✏️ onde o texto mudou.",
+        commit="(o commit que introduz esta linha: um commit não cita o próprio "
+               "hash — ver a entrada de 29/10 (iii) do diário)", procedencia="parcial",
+        nota="§6 das lições, ocorrência 8. Achado por leitura, ao responder o que "
+             "fazer a seguir; a guarda que faltava virou o `DOC-13`.",
+    ),
+    Defeito(
         data="2026-10-17", area=DOC, item="(ii)",
         defeito="Uma afirmação da própria sessão saiu sem conferência: 'o "
                 "`README.md` manda ler `METODOLOGIA.md`, `HARDWARE.md` e "
@@ -2363,6 +2378,10 @@ PENDENCIAS: list[Pendencia] = [
               nota="Confirmado por execução: `conferir_docs_versionados.py` sai 0 "
                    "e imprime os 8 isentos. A verificação (3) **não cobre nenhum "
                    "dos oito; pega o nono.**"),
+    Pendencia("DOC-13", SOFTWARE, "Nada confere o resumo, o quadro e o caminho "
+              "crítico do backlog contra as linhas dos itens; em 29/10 eles citavam "
+              "seis itens fechados como pendentes. Uma conferência que reprove ID "
+              "fechado citado ali.", "⚪", camada_backlog="L0"),
     Pendencia("SEC-13", SOFTWARE, "A suíte de RLS reaplica os GRANTs das tabelas "
               "depois de todas as migrações, o que desfaz qualquer `revoke` que uma "
               "delas faça. Separar o arquivo das sabotagens do de GRANTs, e rodar "
