@@ -95,6 +95,13 @@ comment on table public.device_tokens is
 
 alter table public.device_tokens enable row level security;
 
+-- Revogação NOMINAL (SEC-12, 28/10). No Supabase a tabela nasce com ALL para
+-- `anon` e `authenticated` (privilégios padrão de `public`); sem esta linha o
+-- comentário acima seria falso e a única proteção seria o RLS. Medido: até
+-- 28/10 esta migração não tinha a linha, e a suíte não via porque não
+-- reproduzia os privilégios padrão.
+revoke all on public.device_tokens from anon, authenticated;
+
 -- `on delete cascade`: apagar o dispositivo apaga a credencial dele. Importa
 -- para a SEC-07 — a exclusão de conta apaga `devices`, e uma credencial órfã
 -- sobrevivente seria dado remanescente de uma conta que não existe mais.
@@ -270,6 +277,9 @@ comment on function public.parear_dispositivo(text, text, text) is
     'de parametro. Nao devolve o token_hash.';
 
 revoke all on function public.parear_dispositivo(text, text, text) from public;
+-- `from public` não alcança o EXECUTE nominal que o Supabase dá a `anon` em
+-- toda função nova (SEC-12). Precisa ser dito pelo nome.
+revoke all on function public.parear_dispositivo(text, text, text) from anon;
 grant execute on function public.parear_dispositivo(text, text, text) to authenticated;
 
 -- ---------------------------------------------------------------------

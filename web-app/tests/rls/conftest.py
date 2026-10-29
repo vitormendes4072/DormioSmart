@@ -63,6 +63,10 @@ MIGRACOES_APLICADAS = (
     # testes de `test_rls_perfil.py` exercitam justamente esses três, e porque
     # uma migração fora desta lista é uma migração que nenhum teste vê.
     "008_perfil_como_fonte_de_verdade.sql",
+    # A 009 (SEC-12) revoga o que os privilégios padrão do Supabase davam a
+    # `anon` e `authenticated`. Sem ela, com a base imitando esses padrões,
+    # 14 testes reprovam — medido em 28/10, e é o controle positivo dela.
+    "009_privilegios_padrao_do_supabase.sql",
 )
 
 VARIAVEL = "DORMIO_RLS_DATABASE_URL"
