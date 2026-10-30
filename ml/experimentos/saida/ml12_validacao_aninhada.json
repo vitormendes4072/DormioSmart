@@ -1,0 +1,3646 @@
+{
+ "experimento": "ML-12 validação aninhada",
+ "seed": 20260910,
+ "n_externa": 10,
+ "n_interna": 5,
+ "tolerancia_parada": 0.005,
+ "trio_ml11": [
+  "mag_din_media",
+  "p_frac",
+  "d_angulo"
+ ],
+ "teto_kappa": 0.612,
+ "bases": {
+  "wearanize/cabeca": {
+   "kappa": {
+    "as 8": [
+     0.3317146554705299,
+     0.3528425205220751,
+     0.3458181679666342,
+     0.4766748399384938,
+     0.4336436590293098,
+     0.5518596637373442,
+     0.25931689414879033,
+     0.40092226810454734,
+     0.42313712009318394,
+     0.44274880393861216
+    ],
+    "as 8 + HMM": [
+     0.3825068646271931,
+     0.423404424321301,
+     0.4743754421021311,
+     0.6212953944976114,
+     0.6260109091806596,
+     0.7314272470005179,
+     0.35591104792910133,
+     0.5284395043105438,
+     0.5858997838700828,
+     0.5822172141256863
+    ],
+    "aninhada": [
+     0.32654998476868846,
+     0.376928773031204,
+     0.3528564131879729,
+     0.4435901931261851,
+     0.4226700887479865,
+     0.5096812614763369,
+     0.25961160011686124,
+     0.38413538905802613,
+     0.4086928270734551,
+     0.4348959203628552
+    ],
+    "aninhada + HMM": [
+     0.373168107573293,
+     0.5002090722311523,
+     0.46407395320591016,
+     0.5807759873884479,
+     0.6207073479378509,
+     0.6573738783939037,
+     0.3347232193233688,
+     0.513712607623082,
+     0.5536821426256195,
+     0.5785213982840349
+    ],
+    "primeiro trio interno": [
+     0.3211215774585999,
+     0.38495433617882635,
+     0.3528564131879729,
+     0.4435901931261851,
+     0.4226700887479865,
+     0.5692636439553962,
+     0.25961160011686124,
+     0.38413538905802613,
+     0.4086928270734551,
+     0.4348959203628552
+    ],
+    "primeiro trio interno + HMM": [
+     0.3823335072802275,
+     0.5238515637375434,
+     0.46407395320591016,
+     0.5807759873884479,
+     0.6207073479378509,
+     0.7181959511208148,
+     0.3347232193233688,
+     0.513712607623082,
+     0.5536821426256195,
+     0.5785213982840349
+    ],
+    "trio do ML-11": [
+     0.3211215774585999,
+     0.38495433617882635,
+     0.3528564131879729,
+     0.5018506451942693,
+     0.4226700887479865,
+     0.5692636439553962,
+     0.25961160011686124,
+     0.38413538905802613,
+     0.4086928270734551,
+     0.4348959203628552
+    ],
+    "trio do ML-11 + HMM": [
+     0.3823335072802275,
+     0.5238515637375434,
+     0.46407395320591016,
+     0.6542623177772238,
+     0.6207073479378509,
+     0.7181959511208148,
+     0.3347232193233688,
+     0.513712607623082,
+     0.5536821426256195,
+     0.5785213982840349
+    ],
+    "as 8, contexto global": [
+     0.3333231802502227,
+     0.3528425205220751,
+     0.34696163457841434,
+     0.4798208212615733,
+     0.4356233213328369,
+     0.5521087233071462,
+     0.2633386928273128,
+     0.40139328344645897,
+     0.4246480351509725,
+     0.44158076393657875
+    ]
+   },
+   "especificidade": {
+    "as 8": [
+     0.48668885191347755,
+     0.6322489391796322,
+     0.6993865030674846,
+     0.6387225548902196,
+     0.7587168758716876,
+     0.8154825026511134,
+     0.5767690253671562,
+     0.6759656652360515,
+     0.6811751904243744,
+     0.7537746806039489
+    ],
+    "as 8 + HMM": [
+     0.43926788685524126,
+     0.6308345120226309,
+     0.7147239263803681,
+     0.667332002661344,
+     0.8075313807531381,
+     0.8441145281018028,
+     0.5527369826435247,
+     0.6974248927038627,
+     0.7094668117519043,
+     0.7537746806039489
+    ],
+    "aninhada": [
+     0.478369384359401,
+     0.6364922206506365,
+     0.7085889570552147,
+     0.5622089155023287,
+     0.7475592747559274,
+     0.7009544008483564,
+     0.5740987983978638,
+     0.6512875536480687,
+     0.6496191512513602,
+     0.7282229965156795
+    ],
+    "aninhada + HMM": [
+     0.4367720465890183,
+     0.6548797736916548,
+     0.7116564417177914,
+     0.6280771789753826,
+     0.7698744769874477,
+     0.7571580063626723,
+     0.5193591455273698,
+     0.6555793991416309,
+     0.6681175190424374,
+     0.7444831591173054
+    ],
+    "primeiro trio interno": [
+     0.46921797004991683,
+     0.6478076379066479,
+     0.7085889570552147,
+     0.5622089155023287,
+     0.7475592747559274,
+     0.8218451749734889,
+     0.5740987983978638,
+     0.6512875536480687,
+     0.6496191512513602,
+     0.7282229965156795
+    ],
+    "primeiro trio interno + HMM": [
+     0.4384359400998336,
+     0.6506364922206507,
+     0.7116564417177914,
+     0.6280771789753826,
+     0.7698744769874477,
+     0.8324496288441146,
+     0.5193591455273698,
+     0.6555793991416309,
+     0.6681175190424374,
+     0.7444831591173054
+    ],
+    "trio do ML-11": [
+     0.46921797004991683,
+     0.6478076379066479,
+     0.7085889570552147,
+     0.6433799068529608,
+     0.7475592747559274,
+     0.8218451749734889,
+     0.5740987983978638,
+     0.6512875536480687,
+     0.6496191512513602,
+     0.7282229965156795
+    ],
+    "trio do ML-11 + HMM": [
+     0.4384359400998336,
+     0.6506364922206507,
+     0.7116564417177914,
+     0.6959414504324684,
+     0.7698744769874477,
+     0.8324496288441146,
+     0.5193591455273698,
+     0.6555793991416309,
+     0.6681175190424374,
+     0.7444831591173054
+    ],
+    "as 8, contexto global": [
+     0.4858569051580699,
+     0.6322489391796322,
+     0.696319018404908,
+     0.6413838988689288,
+     0.7629009762900977,
+     0.8133616118769883,
+     0.582109479305741,
+     0.6759656652360515,
+     0.6811751904243744,
+     0.7526132404181185
+    ]
+   },
+   "selecionados": [
+    [
+     "mag_din_media",
+     "p_frac",
+     "d_angulo",
+     "enmo_media"
+    ],
+    [
+     "mag_din_media",
+     "p_frac",
+     "d_angulo",
+     "enmo_media"
+    ],
+    [
+     "mag_din_media",
+     "d_angulo",
+     "p_frac"
+    ],
+    [
+     "mag_din_media",
+     "d_angulo",
+     "enmo_media"
+    ],
+    [
+     "mag_din_media",
+     "p_frac",
+     "d_angulo"
+    ],
+    [
+     "mag_din_media",
+     "d_angulo"
+    ],
+    [
+     "mag_din_media",
+     "p_frac",
+     "d_angulo"
+    ],
+    [
+     "mag_din_media",
+     "p_frac",
+     "d_angulo"
+    ],
+    [
+     "mag_din_media",
+     "d_angulo",
+     "p_frac"
+    ],
+    [
+     "mag_din_media",
+     "d_angulo",
+     "p_frac"
+    ]
+   ],
+   "trilhas": [
+    [
+     {
+      "conjunto": [
+       "mag_din_media"
+      ],
+      "kappa_interno": 0.38081729308453516
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "p_frac"
+      ],
+      "kappa_interno": 0.41391870750277954
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "p_frac",
+       "d_angulo"
+      ],
+      "kappa_interno": 0.41902497577053727
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "p_frac",
+       "d_angulo",
+       "enmo_media"
+      ],
+      "kappa_interno": 0.4245759910930409
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "p_frac",
+       "d_angulo",
+       "enmo_media",
+       "inclinacao_rel"
+      ],
+      "kappa_interno": 0.42352048124954
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "p_frac",
+       "d_angulo",
+       "enmo_media",
+       "inclinacao_rel",
+       "enmo_max"
+      ],
+      "kappa_interno": 0.42286674871300284
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "p_frac",
+       "d_angulo",
+       "enmo_media",
+       "inclinacao_rel",
+       "enmo_max",
+       "zcr"
+      ],
+      "kappa_interno": 0.4219947248754477
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "p_frac",
+       "d_angulo",
+       "enmo_media",
+       "inclinacao_rel",
+       "enmo_max",
+       "zcr",
+       "enmo_desvio"
+      ],
+      "kappa_interno": 0.4213979610757133
+     }
+    ],
+    [
+     {
+      "conjunto": [
+       "mag_din_media"
+      ],
+      "kappa_interno": 0.373169184087777
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "p_frac"
+      ],
+      "kappa_interno": 0.39950996035488934
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "p_frac",
+       "d_angulo"
+      ],
+      "kappa_interno": 0.40545450644332537
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "p_frac",
+       "d_angulo",
+       "enmo_media"
+      ],
+      "kappa_interno": 0.41138171400834855
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "p_frac",
+       "d_angulo",
+       "enmo_media",
+       "enmo_max"
+      ],
+      "kappa_interno": 0.4089022622860954
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "p_frac",
+       "d_angulo",
+       "enmo_media",
+       "enmo_max",
+       "enmo_desvio"
+      ],
+      "kappa_interno": 0.40846947332760586
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "p_frac",
+       "d_angulo",
+       "enmo_media",
+       "enmo_max",
+       "enmo_desvio",
+       "zcr"
+      ],
+      "kappa_interno": 0.4073608437351897
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "p_frac",
+       "d_angulo",
+       "enmo_media",
+       "enmo_max",
+       "enmo_desvio",
+       "zcr",
+       "inclinacao_rel"
+      ],
+      "kappa_interno": 0.40582718834394527
+     }
+    ],
+    [
+     {
+      "conjunto": [
+       "mag_din_media"
+      ],
+      "kappa_interno": 0.37494010266471306
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "d_angulo"
+      ],
+      "kappa_interno": 0.40085430684635937
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "d_angulo",
+       "p_frac"
+      ],
+      "kappa_interno": 0.40916488469404655
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "d_angulo",
+       "p_frac",
+       "enmo_media"
+      ],
+      "kappa_interno": 0.4118867195150274
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "d_angulo",
+       "p_frac",
+       "enmo_media",
+       "enmo_desvio"
+      ],
+      "kappa_interno": 0.41009886230477993
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "d_angulo",
+       "p_frac",
+       "enmo_media",
+       "enmo_desvio",
+       "enmo_max"
+      ],
+      "kappa_interno": 0.40986428225609395
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "d_angulo",
+       "p_frac",
+       "enmo_media",
+       "enmo_desvio",
+       "enmo_max",
+       "inclinacao_rel"
+      ],
+      "kappa_interno": 0.4087559259716772
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "d_angulo",
+       "p_frac",
+       "enmo_media",
+       "enmo_desvio",
+       "enmo_max",
+       "inclinacao_rel",
+       "zcr"
+      ],
+      "kappa_interno": 0.40337936400549557
+     }
+    ],
+    [
+     {
+      "conjunto": [
+       "mag_din_media"
+      ],
+      "kappa_interno": 0.370212778591478
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "d_angulo"
+      ],
+      "kappa_interno": 0.39366317631127457
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "d_angulo",
+       "enmo_media"
+      ],
+      "kappa_interno": 0.3976727065097559
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "d_angulo",
+       "enmo_media",
+       "p_frac"
+      ],
+      "kappa_interno": 0.40181718933674493
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "d_angulo",
+       "enmo_media",
+       "p_frac",
+       "enmo_max"
+      ],
+      "kappa_interno": 0.40103485401986794
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "d_angulo",
+       "enmo_media",
+       "p_frac",
+       "enmo_max",
+       "enmo_desvio"
+      ],
+      "kappa_interno": 0.40005522570340163
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "d_angulo",
+       "enmo_media",
+       "p_frac",
+       "enmo_max",
+       "enmo_desvio",
+       "inclinacao_rel"
+      ],
+      "kappa_interno": 0.39875820400772
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "d_angulo",
+       "enmo_media",
+       "p_frac",
+       "enmo_max",
+       "enmo_desvio",
+       "inclinacao_rel",
+       "zcr"
+      ],
+      "kappa_interno": 0.39528619409577737
+     }
+    ],
+    [
+     {
+      "conjunto": [
+       "mag_din_media"
+      ],
+      "kappa_interno": 0.3694135397014254
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "p_frac"
+      ],
+      "kappa_interno": 0.397012382880214
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "p_frac",
+       "d_angulo"
+      ],
+      "kappa_interno": 0.4035473096667669
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "p_frac",
+       "d_angulo",
+       "enmo_media"
+      ],
+      "kappa_interno": 0.4070031082214488
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "p_frac",
+       "d_angulo",
+       "enmo_media",
+       "enmo_max"
+      ],
+      "kappa_interno": 0.4033509637766297
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "p_frac",
+       "d_angulo",
+       "enmo_media",
+       "enmo_max",
+       "enmo_desvio"
+      ],
+      "kappa_interno": 0.4027267988931584
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "p_frac",
+       "d_angulo",
+       "enmo_media",
+       "enmo_max",
+       "enmo_desvio",
+       "zcr"
+      ],
+      "kappa_interno": 0.4013439473774188
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "p_frac",
+       "d_angulo",
+       "enmo_media",
+       "enmo_max",
+       "enmo_desvio",
+       "zcr",
+       "inclinacao_rel"
+      ],
+      "kappa_interno": 0.39830326589514475
+     }
+    ],
+    [
+     {
+      "conjunto": [
+       "mag_din_media"
+      ],
+      "kappa_interno": 0.3555799707778578
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "d_angulo"
+      ],
+      "kappa_interno": 0.3856105938912843
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "d_angulo",
+       "p_frac"
+      ],
+      "kappa_interno": 0.3862401234717828
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "d_angulo",
+       "p_frac",
+       "enmo_media"
+      ],
+      "kappa_interno": 0.38791998063341193
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "d_angulo",
+       "p_frac",
+       "enmo_media",
+       "enmo_max"
+      ],
+      "kappa_interno": 0.3860999772394961
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "d_angulo",
+       "p_frac",
+       "enmo_media",
+       "enmo_max",
+       "enmo_desvio"
+      ],
+      "kappa_interno": 0.3862533013054156
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "d_angulo",
+       "p_frac",
+       "enmo_media",
+       "enmo_max",
+       "enmo_desvio",
+       "zcr"
+      ],
+      "kappa_interno": 0.3845855808924078
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "d_angulo",
+       "p_frac",
+       "enmo_media",
+       "enmo_max",
+       "enmo_desvio",
+       "zcr",
+       "inclinacao_rel"
+      ],
+      "kappa_interno": 0.38096569557054544
+     }
+    ],
+    [
+     {
+      "conjunto": [
+       "mag_din_media"
+      ],
+      "kappa_interno": 0.3811451780815237
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "p_frac"
+      ],
+      "kappa_interno": 0.4148973972029652
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "p_frac",
+       "d_angulo"
+      ],
+      "kappa_interno": 0.4234947116389586
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "p_frac",
+       "d_angulo",
+       "inclinacao_rel"
+      ],
+      "kappa_interno": 0.4240602748115709
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "p_frac",
+       "d_angulo",
+       "inclinacao_rel",
+       "enmo_media"
+      ],
+      "kappa_interno": 0.42450403039121554
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "p_frac",
+       "d_angulo",
+       "inclinacao_rel",
+       "enmo_media",
+       "enmo_max"
+      ],
+      "kappa_interno": 0.42470292761278916
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "p_frac",
+       "d_angulo",
+       "inclinacao_rel",
+       "enmo_media",
+       "enmo_max",
+       "enmo_desvio"
+      ],
+      "kappa_interno": 0.42471746413053335
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "p_frac",
+       "d_angulo",
+       "inclinacao_rel",
+       "enmo_media",
+       "enmo_max",
+       "enmo_desvio",
+       "zcr"
+      ],
+      "kappa_interno": 0.4224820844974414
+     }
+    ],
+    [
+     {
+      "conjunto": [
+       "mag_din_media"
+      ],
+      "kappa_interno": 0.3723690428309386
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "p_frac"
+      ],
+      "kappa_interno": 0.4012001761412848
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "p_frac",
+       "d_angulo"
+      ],
+      "kappa_interno": 0.4084120133740553
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "p_frac",
+       "d_angulo",
+       "enmo_media"
+      ],
+      "kappa_interno": 0.41152883865755047
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "p_frac",
+       "d_angulo",
+       "enmo_media",
+       "inclinacao_rel"
+      ],
+      "kappa_interno": 0.41032857306452686
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "p_frac",
+       "d_angulo",
+       "enmo_media",
+       "inclinacao_rel",
+       "enmo_max"
+      ],
+      "kappa_interno": 0.4079232865309832
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "p_frac",
+       "d_angulo",
+       "enmo_media",
+       "inclinacao_rel",
+       "enmo_max",
+       "enmo_desvio"
+      ],
+      "kappa_interno": 0.40760303659596764
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "p_frac",
+       "d_angulo",
+       "enmo_media",
+       "inclinacao_rel",
+       "enmo_max",
+       "enmo_desvio",
+       "zcr"
+      ],
+      "kappa_interno": 0.40569652208148543
+     }
+    ],
+    [
+     {
+      "conjunto": [
+       "mag_din_media"
+      ],
+      "kappa_interno": 0.3704676102914851
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "d_angulo"
+      ],
+      "kappa_interno": 0.40053427666165514
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "d_angulo",
+       "p_frac"
+      ],
+      "kappa_interno": 0.40764774085681516
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "d_angulo",
+       "p_frac",
+       "enmo_media"
+      ],
+      "kappa_interno": 0.4125573669891759
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "d_angulo",
+       "p_frac",
+       "enmo_media",
+       "enmo_max"
+      ],
+      "kappa_interno": 0.4103877245047972
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "d_angulo",
+       "p_frac",
+       "enmo_media",
+       "enmo_max",
+       "inclinacao_rel"
+      ],
+      "kappa_interno": 0.40862474679322186
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "d_angulo",
+       "p_frac",
+       "enmo_media",
+       "enmo_max",
+       "inclinacao_rel",
+       "enmo_desvio"
+      ],
+      "kappa_interno": 0.4073231028106122
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "d_angulo",
+       "p_frac",
+       "enmo_media",
+       "enmo_max",
+       "inclinacao_rel",
+       "enmo_desvio",
+       "zcr"
+      ],
+      "kappa_interno": 0.4048253149424482
+     }
+    ],
+    [
+     {
+      "conjunto": [
+       "mag_din_media"
+      ],
+      "kappa_interno": 0.36978097073218863
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "d_angulo"
+      ],
+      "kappa_interno": 0.39534670452966014
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "d_angulo",
+       "p_frac"
+      ],
+      "kappa_interno": 0.4002861897796282
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "d_angulo",
+       "p_frac",
+       "enmo_media"
+      ],
+      "kappa_interno": 0.4021579681631685
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "d_angulo",
+       "p_frac",
+       "enmo_media",
+       "zcr"
+      ],
+      "kappa_interno": 0.4002030662432259
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "d_angulo",
+       "p_frac",
+       "enmo_media",
+       "zcr",
+       "enmo_max"
+      ],
+      "kappa_interno": 0.4013827317738473
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "d_angulo",
+       "p_frac",
+       "enmo_media",
+       "zcr",
+       "enmo_max",
+       "enmo_desvio"
+      ],
+      "kappa_interno": 0.399830557510387
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "d_angulo",
+       "p_frac",
+       "enmo_media",
+       "zcr",
+       "enmo_max",
+       "enmo_desvio",
+       "inclinacao_rel"
+      ],
+      "kappa_interno": 0.39408455351519894
+     }
+    ]
+   ],
+   "resumo": {
+    "as 8": {
+     "kappa_medio": 0.4018678592949521,
+     "frac_teto": 0.6566468289133205,
+     "especificidade_media": 0.6718930789205146,
+     "dkappa": [
+      0.0,
+      0.0,
+      0.0
+     ],
+     "despecificidade": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    },
+    "as 8 + HMM": {
+     "kappa_medio": 0.5311487831964828,
+     "frac_teto": 0.867890168621704,
+     "especificidade_media": 0.6817207604477766,
+     "dkappa": [
+      0.0,
+      0.0,
+      0.0
+     ],
+     "despecificidade": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    },
+    "aninhada": {
+     "kappa_medio": 0.39196124509495717,
+     "frac_teto": 0.6404595508087536,
+     "especificidade_media": 0.6437401652984837,
+     "dkappa": [
+      -0.009906614199994935,
+      -0.023440059600467893,
+      0.0036268312004780236
+     ],
+     "despecificidade": [
+      -0.028152913622030918,
+      -0.05596749853856896,
+      -0.0003383287054928748
+     ]
+    },
+    "aninhada + HMM": {
+     "kappa_medio": 0.5176947714586664,
+     "frac_teto": 0.8459064893115464,
+     "especificidade_media": 0.6545957147152711,
+     "dkappa": [
+      -0.013454011737816495,
+      -0.040801772685052036,
+      0.013893749209419043
+     ],
+     "despecificidade": [
+      -0.02712504573250548,
+      -0.04900266981074459,
+      -0.005247421654266372
+     ]
+    },
+    "primeiro trio interno": {
+     "kappa_medio": 0.3981791989266165,
+     "frac_teto": 0.6506196060892427,
+     "especificidade_media": 0.6560456430056496,
+     "dkappa": [
+      -0.0036886603683356166,
+      -0.017022728705802414,
+      0.009645407969131181
+     ],
+     "despecificidade": [
+      -0.015847435914864948,
+      -0.034930626116629546,
+      0.0032357542868996503
+     ]
+    },
+    "primeiro trio interno + HMM": {
+     "kappa_medio": 0.52705776785269,
+     "frac_teto": 0.8612055030272713,
+     "especificidade_media": 0.6618669381673964,
+     "dkappa": [
+      -0.004091015343792826,
+      -0.03188976058695759,
+      0.023707729899371942
+     ],
+     "despecificidade": [
+      -0.01985382228038014,
+      -0.03533808674971223,
+      -0.004369557811048048
+     ]
+    },
+    "trio do ML-11": {
+     "kappa_medio": 0.4040052441334249,
+     "frac_teto": 0.660139287799714,
+     "especificidade_media": 0.6641627421407128,
+     "dkappa": [
+      0.0021373848384728,
+      -0.010382076912120793,
+      0.01465684658906639
+     ],
+     "despecificidade": [
+      -0.007730336779801739,
+      -0.019619251410509183,
+      0.0041585778509057045
+     ]
+    },
+    "trio do ML-11 + HMM": {
+     "kappa_medio": 0.5344064008915677,
+     "frac_teto": 0.8732130733522347,
+     "especificidade_media": 0.668653365313105,
+     "dkappa": [
+      0.003257617695084758,
+      -0.02403148698228952,
+      0.030546722372459034
+     ],
+     "despecificidade": [
+      -0.013067395134671566,
+      -0.03111507842270715,
+      0.0049802881533640205
+     ]
+    },
+    "as 8, contexto global": {
+     "kappa_medio": 0.4031640976613592,
+     "frac_teto": 0.6587648654597372,
+     "especificidade_media": 0.6723934925162911,
+     "dkappa": [
+      0.0012962383664070765,
+      0.0002031296668146929,
+      0.0023893470659994602
+     ],
+     "despecificidade": [
+      0.0005004135957764166,
+      -0.0014449023990219924,
+      0.002445729590574826
+     ]
+    }
+   },
+   "frequencia_de_selecao": {
+    "enmo_media": 3,
+    "enmo_desvio": 0,
+    "enmo_max": 0,
+    "mag_din_media": 10,
+    "zcr": 0,
+    "p_frac": 8,
+    "inclinacao_rel": 0,
+    "d_angulo": 10
+   },
+   "tamanhos_escolhidos": [
+    4,
+    4,
+    3,
+    3,
+    3,
+    2,
+    3,
+    3,
+    3,
+    3
+   ],
+   "segundos": 277.41872692108154
+  },
+  "wearanize/pulso": {
+   "kappa": {
+    "as 8": [
+     0.299684384564751,
+     0.3602914364121058,
+     0.32680968740758476,
+     0.41497820995343415,
+     0.3732775827540742,
+     0.45635881757360386,
+     0.3513837279160783,
+     0.4092777313275018,
+     0.35058841390121054,
+     0.38245302859103447
+    ],
+    "as 8 + HMM": [
+     0.3833162268453313,
+     0.500098576618036,
+     0.4527550505892415,
+     0.5234522555777159,
+     0.5587807530503043,
+     0.5962967770334712,
+     0.4854060059375127,
+     0.5516353769890435,
+     0.4170665033104035,
+     0.5334807017937817
+    ],
+    "aninhada": [
+     0.321247638742586,
+     0.3700913226915443,
+     0.35248419751541127,
+     0.42232087348978486,
+     0.3846251590104012,
+     0.47343106949077196,
+     0.3598678249376943,
+     0.41742217610140997,
+     0.3609153661705118,
+     0.41043491242755725
+    ],
+    "aninhada + HMM": [
+     0.38130196883698964,
+     0.5304121913414193,
+     0.47347956045812856,
+     0.507577731027937,
+     0.5821410285518887,
+     0.6051353657132568,
+     0.5328949593145194,
+     0.5152292562623295,
+     0.44826161799857733,
+     0.5672421969501096
+    ],
+    "primeiro trio interno": [
+     0.317070998372762,
+     0.3699053924267528,
+     0.33985057725563317,
+     0.42583089397624563,
+     0.38132039910881066,
+     0.47511629720107074,
+     0.36427043007100013,
+     0.41518715642557624,
+     0.3621624257303676,
+     0.40059324419307096
+    ],
+    "primeiro trio interno + HMM": [
+     0.36939522758011933,
+     0.5300468361058063,
+     0.49092164880887934,
+     0.5058584131486799,
+     0.5758136396330928,
+     0.6082370962214914,
+     0.5501193621110492,
+     0.5144067036451296,
+     0.4553821414962702,
+     0.5704495888177181
+    ],
+    "trio do ML-11": [
+     0.30963439364293,
+     0.35613415854799124,
+     0.34717026690968333,
+     0.4249035037570107,
+     0.3657690637278177,
+     0.4670474438552674,
+     0.33868712358201336,
+     0.40768503420827384,
+     0.35554337021830473,
+     0.3864828268293252
+    ],
+    "trio do ML-11 + HMM": [
+     0.37277097523610014,
+     0.46910297695715164,
+     0.466327001829248,
+     0.5066799015091015,
+     0.5573652999599811,
+     0.590611029580177,
+     0.51464515146155,
+     0.5455159459363492,
+     0.4194139967521996,
+     0.5671844863027515
+    ],
+    "as 8, contexto global": [
+     0.3024986577842842,
+     0.35628736982664333,
+     0.32511789886221754,
+     0.41526742969844177,
+     0.3732192367344739,
+     0.4555482567579292,
+     0.3538280387362608,
+     0.40822506124647284,
+     0.34991164727525037,
+     0.3853615375400756
+    ]
+   },
+   "especificidade": {
+    "as 8": [
+     0.4617304492512479,
+     0.628005657708628,
+     0.6625766871165644,
+     0.5721889554224884,
+     0.6750348675034867,
+     0.6850477200424178,
+     0.6275033377837116,
+     0.6555793991416309,
+     0.5669205658324266,
+     0.6922183507549361
+    ],
+    "as 8 + HMM": [
+     0.4176372712146423,
+     0.6831683168316832,
+     0.6733128834355828,
+     0.5681969394544245,
+     0.7071129707112971,
+     0.7242841993637328,
+     0.6181575433911882,
+     0.6791845493562232,
+     0.5397170837867247,
+     0.7386759581881533
+    ],
+    "aninhada": [
+     0.4475873544093178,
+     0.5912305516265912,
+     0.6365030674846626,
+     0.5389221556886228,
+     0.6443514644351465,
+     0.6659597030752916,
+     0.5981308411214953,
+     0.6330472103004292,
+     0.5473340587595212,
+     0.6759581881533101
+    ],
+    "aninhada + HMM": [
+     0.38851913477537436,
+     0.6548797736916548,
+     0.6533742331288344,
+     0.5242847638057219,
+     0.6694560669456067,
+     0.694591728525981,
+     0.6582109479305741,
+     0.5933476394849786,
+     0.5233949945593036,
+     0.7212543554006968
+    ],
+    "primeiro trio interno": [
+     0.45008319467554075,
+     0.5869872701555869,
+     0.6303680981595092,
+     0.5409181636726547,
+     0.6457461645746164,
+     0.6680805938494168,
+     0.5994659546061415,
+     0.6351931330472103,
+     0.5473340587595212,
+     0.6724738675958188
+    ],
+    "primeiro trio interno + HMM": [
+     0.38352745424292845,
+     0.6506364922206507,
+     0.661042944785276,
+     0.5209580838323353,
+     0.6569037656903766,
+     0.704135737009544,
+     0.6675567423230975,
+     0.5965665236051502,
+     0.5342763873775843,
+     0.7386759581881533
+    ],
+    "trio do ML-11": [
+     0.46089850249584025,
+     0.5954738330975955,
+     0.6579754601226994,
+     0.5668662674650699,
+     0.6527196652719666,
+     0.6776246023329798,
+     0.6021361815754339,
+     0.6491416309012875,
+     0.5669205658324266,
+     0.6817653890824622
+    ],
+    "trio do ML-11 + HMM": [
+     0.40266222961730447,
+     0.6181046676096181,
+     0.6641104294478528,
+     0.5329341317365269,
+     0.6527196652719666,
+     0.7168610816542949,
+     0.6542056074766355,
+     0.6641630901287554,
+     0.5473340587595212,
+     0.7375145180023229
+    ],
+    "as 8, contexto global": [
+     0.46422628951747086,
+     0.6237623762376238,
+     0.661042944785276,
+     0.5728542914171657,
+     0.6736401673640168,
+     0.6850477200424178,
+     0.6288384512683578,
+     0.6566523605150214,
+     0.5680087051142546,
+     0.6968641114982579
+    ]
+   },
+   "selecionados": [
+    [
+     "mag_din_media"
+    ],
+    [
+     "mag_din_media"
+    ],
+    [
+     "mag_din_media"
+    ],
+    [
+     "mag_din_media",
+     "inclinacao_rel"
+    ],
+    [
+     "mag_din_media"
+    ],
+    [
+     "mag_din_media"
+    ],
+    [
+     "mag_din_media"
+    ],
+    [
+     "mag_din_media"
+    ],
+    [
+     "mag_din_media"
+    ],
+    [
+     "mag_din_media"
+    ]
+   ],
+   "trilhas": [
+    [
+     {
+      "conjunto": [
+       "mag_din_media"
+      ],
+      "kappa_interno": 0.40038890864994386
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "p_frac"
+      ],
+      "kappa_interno": 0.3995294574347686
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "p_frac",
+       "enmo_media"
+      ],
+      "kappa_interno": 0.39871438100411155
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "p_frac",
+       "enmo_media",
+       "zcr"
+      ],
+      "kappa_interno": 0.3967575563401956
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "p_frac",
+       "enmo_media",
+       "zcr",
+       "inclinacao_rel"
+      ],
+      "kappa_interno": 0.39790466972866245
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "p_frac",
+       "enmo_media",
+       "zcr",
+       "inclinacao_rel",
+       "enmo_desvio"
+      ],
+      "kappa_interno": 0.39682033247733045
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "p_frac",
+       "enmo_media",
+       "zcr",
+       "inclinacao_rel",
+       "enmo_desvio",
+       "d_angulo"
+      ],
+      "kappa_interno": 0.3909448107388777
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "p_frac",
+       "enmo_media",
+       "zcr",
+       "inclinacao_rel",
+       "enmo_desvio",
+       "d_angulo",
+       "enmo_max"
+      ],
+      "kappa_interno": 0.3827422651031916
+     }
+    ],
+    [
+     {
+      "conjunto": [
+       "mag_din_media"
+      ],
+      "kappa_interno": 0.3897330953374535
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "p_frac"
+      ],
+      "kappa_interno": 0.38845760786441863
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "p_frac",
+       "inclinacao_rel"
+      ],
+      "kappa_interno": 0.38761503464172276
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "p_frac",
+       "inclinacao_rel",
+       "zcr"
+      ],
+      "kappa_interno": 0.3865079000054329
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "p_frac",
+       "inclinacao_rel",
+       "zcr",
+       "enmo_media"
+      ],
+      "kappa_interno": 0.38439450907446443
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "p_frac",
+       "inclinacao_rel",
+       "zcr",
+       "enmo_media",
+       "enmo_desvio"
+      ],
+      "kappa_interno": 0.38201942549409307
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "p_frac",
+       "inclinacao_rel",
+       "zcr",
+       "enmo_media",
+       "enmo_desvio",
+       "enmo_max"
+      ],
+      "kappa_interno": 0.3775359340139272
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "p_frac",
+       "inclinacao_rel",
+       "zcr",
+       "enmo_media",
+       "enmo_desvio",
+       "enmo_max",
+       "d_angulo"
+      ],
+      "kappa_interno": 0.37293782056799457
+     }
+    ],
+    [
+     {
+      "conjunto": [
+       "mag_din_media"
+      ],
+      "kappa_interno": 0.390902116855585
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "inclinacao_rel"
+      ],
+      "kappa_interno": 0.39329571205572533
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "inclinacao_rel",
+       "p_frac"
+      ],
+      "kappa_interno": 0.3932843406642066
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "inclinacao_rel",
+       "p_frac",
+       "zcr"
+      ],
+      "kappa_interno": 0.3945625771758937
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "inclinacao_rel",
+       "p_frac",
+       "zcr",
+       "enmo_desvio"
+      ],
+      "kappa_interno": 0.3924165642655466
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "inclinacao_rel",
+       "p_frac",
+       "zcr",
+       "enmo_desvio",
+       "enmo_media"
+      ],
+      "kappa_interno": 0.3889866559078953
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "inclinacao_rel",
+       "p_frac",
+       "zcr",
+       "enmo_desvio",
+       "enmo_media",
+       "enmo_max"
+      ],
+      "kappa_interno": 0.38525515574090063
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "inclinacao_rel",
+       "p_frac",
+       "zcr",
+       "enmo_desvio",
+       "enmo_media",
+       "enmo_max",
+       "d_angulo"
+      ],
+      "kappa_interno": 0.3820864798687468
+     }
+    ],
+    [
+     {
+      "conjunto": [
+       "mag_din_media"
+      ],
+      "kappa_interno": 0.38625558176034713
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "inclinacao_rel"
+      ],
+      "kappa_interno": 0.38816807786318097
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "inclinacao_rel",
+       "p_frac"
+      ],
+      "kappa_interno": 0.3884668539801208
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "inclinacao_rel",
+       "p_frac",
+       "zcr"
+      ],
+      "kappa_interno": 0.3915068261835477
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "inclinacao_rel",
+       "p_frac",
+       "zcr",
+       "enmo_media"
+      ],
+      "kappa_interno": 0.38945575200046384
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "inclinacao_rel",
+       "p_frac",
+       "zcr",
+       "enmo_media",
+       "enmo_desvio"
+      ],
+      "kappa_interno": 0.38704908974774804
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "inclinacao_rel",
+       "p_frac",
+       "zcr",
+       "enmo_media",
+       "enmo_desvio",
+       "d_angulo"
+      ],
+      "kappa_interno": 0.38064528379654966
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "inclinacao_rel",
+       "p_frac",
+       "zcr",
+       "enmo_media",
+       "enmo_desvio",
+       "d_angulo",
+       "enmo_max"
+      ],
+      "kappa_interno": 0.3773290131998612
+     }
+    ],
+    [
+     {
+      "conjunto": [
+       "mag_din_media"
+      ],
+      "kappa_interno": 0.38842002761366584
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "inclinacao_rel"
+      ],
+      "kappa_interno": 0.3887878336897598
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "inclinacao_rel",
+       "p_frac"
+      ],
+      "kappa_interno": 0.38881133247664945
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "inclinacao_rel",
+       "p_frac",
+       "zcr"
+      ],
+      "kappa_interno": 0.38907153189109867
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "inclinacao_rel",
+       "p_frac",
+       "zcr",
+       "enmo_media"
+      ],
+      "kappa_interno": 0.38819735561414714
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "inclinacao_rel",
+       "p_frac",
+       "zcr",
+       "enmo_media",
+       "enmo_desvio"
+      ],
+      "kappa_interno": 0.3845830392236168
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "inclinacao_rel",
+       "p_frac",
+       "zcr",
+       "enmo_media",
+       "enmo_desvio",
+       "enmo_max"
+      ],
+      "kappa_interno": 0.3793713698149831
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "inclinacao_rel",
+       "p_frac",
+       "zcr",
+       "enmo_media",
+       "enmo_desvio",
+       "enmo_max",
+       "d_angulo"
+      ],
+      "kappa_interno": 0.3738979412045881
+     }
+    ],
+    [
+     {
+      "conjunto": [
+       "mag_din_media"
+      ],
+      "kappa_interno": 0.37712133799252073
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "inclinacao_rel"
+      ],
+      "kappa_interno": 0.3758891106689799
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "inclinacao_rel",
+       "enmo_media"
+      ],
+      "kappa_interno": 0.3754687285441581
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "inclinacao_rel",
+       "enmo_media",
+       "zcr"
+      ],
+      "kappa_interno": 0.3735015237205097
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "inclinacao_rel",
+       "enmo_media",
+       "zcr",
+       "p_frac"
+      ],
+      "kappa_interno": 0.3729377993360471
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "inclinacao_rel",
+       "enmo_media",
+       "zcr",
+       "p_frac",
+       "enmo_desvio"
+      ],
+      "kappa_interno": 0.37128179660643534
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "inclinacao_rel",
+       "enmo_media",
+       "zcr",
+       "p_frac",
+       "enmo_desvio",
+       "enmo_max"
+      ],
+      "kappa_interno": 0.366113352631
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "inclinacao_rel",
+       "enmo_media",
+       "zcr",
+       "p_frac",
+       "enmo_desvio",
+       "enmo_max",
+       "d_angulo"
+      ],
+      "kappa_interno": 0.3603365929502974
+     }
+    ],
+    [
+     {
+      "conjunto": [
+       "mag_din_media"
+      ],
+      "kappa_interno": 0.3921538330959497
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "inclinacao_rel"
+      ],
+      "kappa_interno": 0.3925011927742096
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "inclinacao_rel",
+       "enmo_media"
+      ],
+      "kappa_interno": 0.39204116302579733
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "inclinacao_rel",
+       "enmo_media",
+       "zcr"
+      ],
+      "kappa_interno": 0.389960725723779
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "inclinacao_rel",
+       "enmo_media",
+       "zcr",
+       "p_frac"
+      ],
+      "kappa_interno": 0.39124811845689406
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "inclinacao_rel",
+       "enmo_media",
+       "zcr",
+       "p_frac",
+       "enmo_desvio"
+      ],
+      "kappa_interno": 0.3879370872890191
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "inclinacao_rel",
+       "enmo_media",
+       "zcr",
+       "p_frac",
+       "enmo_desvio",
+       "enmo_max"
+      ],
+      "kappa_interno": 0.3837867967630629
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "inclinacao_rel",
+       "enmo_media",
+       "zcr",
+       "p_frac",
+       "enmo_desvio",
+       "enmo_max",
+       "d_angulo"
+      ],
+      "kappa_interno": 0.37982144593669953
+     }
+    ],
+    [
+     {
+      "conjunto": [
+       "mag_din_media"
+      ],
+      "kappa_interno": 0.3872418127431739
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "inclinacao_rel"
+      ],
+      "kappa_interno": 0.38854134088487013
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "inclinacao_rel",
+       "p_frac"
+      ],
+      "kappa_interno": 0.38720817598332224
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "inclinacao_rel",
+       "p_frac",
+       "zcr"
+      ],
+      "kappa_interno": 0.3852010652855845
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "inclinacao_rel",
+       "p_frac",
+       "zcr",
+       "enmo_media"
+      ],
+      "kappa_interno": 0.3850727193674106
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "inclinacao_rel",
+       "p_frac",
+       "zcr",
+       "enmo_media",
+       "enmo_desvio"
+      ],
+      "kappa_interno": 0.38243168188608834
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "inclinacao_rel",
+       "p_frac",
+       "zcr",
+       "enmo_media",
+       "enmo_desvio",
+       "d_angulo"
+      ],
+      "kappa_interno": 0.3771062064741618
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "inclinacao_rel",
+       "p_frac",
+       "zcr",
+       "enmo_media",
+       "enmo_desvio",
+       "d_angulo",
+       "enmo_max"
+      ],
+      "kappa_interno": 0.3740515784353859
+     }
+    ],
+    [
+     {
+      "conjunto": [
+       "mag_din_media"
+      ],
+      "kappa_interno": 0.3925311169563439
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "inclinacao_rel"
+      ],
+      "kappa_interno": 0.3934532012218773
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "inclinacao_rel",
+       "p_frac"
+      ],
+      "kappa_interno": 0.3925250079883579
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "inclinacao_rel",
+       "p_frac",
+       "zcr"
+      ],
+      "kappa_interno": 0.39226409304856846
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "inclinacao_rel",
+       "p_frac",
+       "zcr",
+       "enmo_media"
+      ],
+      "kappa_interno": 0.392646600929709
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "inclinacao_rel",
+       "p_frac",
+       "zcr",
+       "enmo_media",
+       "enmo_desvio"
+      ],
+      "kappa_interno": 0.3910040579437493
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "inclinacao_rel",
+       "p_frac",
+       "zcr",
+       "enmo_media",
+       "enmo_desvio",
+       "d_angulo"
+      ],
+      "kappa_interno": 0.38290698387616945
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "inclinacao_rel",
+       "p_frac",
+       "zcr",
+       "enmo_media",
+       "enmo_desvio",
+       "d_angulo",
+       "enmo_max"
+      ],
+      "kappa_interno": 0.3783681589254613
+     }
+    ],
+    [
+     {
+      "conjunto": [
+       "mag_din_media"
+      ],
+      "kappa_interno": 0.385949761254533
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "inclinacao_rel"
+      ],
+      "kappa_interno": 0.38659906813493194
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "inclinacao_rel",
+       "zcr"
+      ],
+      "kappa_interno": 0.38636065090822147
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "inclinacao_rel",
+       "zcr",
+       "p_frac"
+      ],
+      "kappa_interno": 0.38537690229328686
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "inclinacao_rel",
+       "zcr",
+       "p_frac",
+       "enmo_media"
+      ],
+      "kappa_interno": 0.38620788694369657
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "inclinacao_rel",
+       "zcr",
+       "p_frac",
+       "enmo_media",
+       "enmo_desvio"
+      ],
+      "kappa_interno": 0.3844483227953893
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "inclinacao_rel",
+       "zcr",
+       "p_frac",
+       "enmo_media",
+       "enmo_desvio",
+       "enmo_max"
+      ],
+      "kappa_interno": 0.37992458724287637
+     },
+     {
+      "conjunto": [
+       "mag_din_media",
+       "inclinacao_rel",
+       "zcr",
+       "p_frac",
+       "enmo_media",
+       "enmo_desvio",
+       "enmo_max",
+       "d_angulo"
+      ],
+      "kappa_interno": 0.37422956593869217
+     }
+    ]
+   ],
+   "resumo": {
+    "as 8": {
+     "kappa_medio": 0.3725103020401379,
+     "frac_teto": 0.6086769641178724,
+     "especificidade_media": 0.6226805990557538,
+     "dkappa": [
+      0.0,
+      0.0,
+      0.0
+     ],
+     "despecificidade": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    },
+    "as 8 + HMM": {
+     "kappa_medio": 0.5002288227744842,
+     "frac_teto": 0.8173673574746474,
+     "especificidade_media": 0.6349447715733653,
+     "dkappa": [
+      0.0,
+      0.0,
+      0.0
+     ],
+     "despecificidade": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    },
+    "aninhada": {
+     "kappa_medio": 0.3872840540577672,
+     "frac_teto": 0.6328170817937373,
+     "especificidade_media": 0.5979024595054387,
+     "dkappa": [
+      0.014773752017629404,
+      0.009234456727365474,
+      0.020313047307893337
+     ],
+     "despecificidade": [
+      -0.024778139550315003,
+      -0.030234884995954805,
+      -0.0193213941046752
+     ]
+    },
+    "aninhada + HMM": {
+     "kappa_medio": 0.5143675876455156,
+     "frac_teto": 0.8404699144534569,
+     "especificidade_media": 0.6081313638248727,
+     "dkappa": [
+      0.014138764871031407,
+      -0.004212513705387744,
+      0.03249004344745056
+     ],
+     "despecificidade": [
+      -0.026813407748492595,
+      -0.04896023127235754,
+      -0.004666584224627651
+     ]
+    },
+    "primeiro trio interno": {
+     "kappa_medio": 0.385130781476129,
+     "frac_teto": 0.6292986625426945,
+     "especificidade_media": 0.5976650499096017,
+     "dkappa": [
+      0.012620479435991105,
+      0.009508274541686212,
+      0.015732684330295996
+     ],
+     "despecificidade": [
+      -0.02501554914615217,
+      -0.03130873571024,
+      -0.01872236258206434
+     ]
+    },
+    "primeiro trio interno + HMM": {
+     "kappa_medio": 0.5170630657568236,
+     "frac_teto": 0.8448742904523261,
+     "especificidade_media": 0.6114280089275097,
+     "dkappa": [
+      0.016834242982339452,
+      -0.005616110749018733,
+      0.039284596713697634
+     ],
+     "despecificidade": [
+      -0.023516762645855577,
+      -0.048860130073344235,
+      0.0018266047816330802
+     ]
+    },
+    "trio do ML-11": {
+     "kappa_medio": 0.37590571852786175,
+     "frac_teto": 0.6142250302742839,
+     "especificidade_media": 0.6111522098177762,
+     "dkappa": [
+      0.003395416487723868,
+      -0.003715172243463304,
+      0.01050600521891104
+     ],
+     "despecificidade": [
+      -0.011528389237977676,
+      -0.019532538190888144,
+      -0.0035242402850672074
+     ]
+    },
+    "trio do ML-11 + HMM": {
+     "kappa_medio": 0.500961676552461,
+     "frac_teto": 0.8185648309680736,
+     "especificidade_media": 0.6190609479704798,
+     "dkappa": [
+      0.0007328537779768052,
+      -0.013574742598700755,
+      0.015040450154654364
+     ],
+     "despecificidade": [
+      -0.015883823602885334,
+      -0.03702545617073875,
+      0.00525780896496808
+     ]
+    },
+    "as 8, contexto global": {
+     "kappa_medio": 0.37252651344620497,
+     "frac_teto": 0.6087034533434722,
+     "especificidade_media": 0.6230937417759863,
+     "dkappa": [
+      1.621140606706817e-05,
+      -0.0015575100463058515,
+      0.0015899328584399878
+     ],
+     "despecificidade": [
+      0.00041314272023242895,
+      -0.0013223072905558398,
+      0.002148592731020698
+     ]
+    }
+   },
+   "frequencia_de_selecao": {
+    "enmo_media": 0,
+    "enmo_desvio": 0,
+    "enmo_max": 0,
+    "mag_din_media": 10,
+    "zcr": 0,
+    "p_frac": 0,
+    "inclinacao_rel": 1,
+    "d_angulo": 0
+   },
+   "tamanhos_escolhidos": [
+    1,
+    1,
+    1,
+    2,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1
+   ],
+   "segundos": 260.0809528827667
+  },
+  "newcastle": {
+   "kappa": {
+    "as 8": [
+     0.05558725466205605,
+     0.4251105975312739,
+     0.24390833225945496,
+     0.1428096465242794,
+     0.34267446836769333,
+     0.31505535232043536,
+     0.30586280575485425,
+     0.20193000626139557,
+     0.24446801330569357,
+     0.21750369058824048
+    ],
+    "as 8 + HMM": [
+     0.11337657467058515,
+     0.5114122232135071,
+     0.3384018684458353,
+     0.14604699110617625,
+     0.380993972442632,
+     0.34830375402540725,
+     0.4087538624430087,
+     0.2763085139110345,
+     0.249812669796725,
+     0.22342258987086205
+    ],
+    "aninhada": [
+     0.07225580113207986,
+     0.35875621335302155,
+     0.30897664248374535,
+     0.1333692500034689,
+     0.38455719148143663,
+     0.38884709626717184,
+     0.3563372734917406,
+     0.26721269516252877,
+     0.3521609558396558,
+     0.22682955432842322
+    ],
+    "aninhada + HMM": [
+     0.18979291740621962,
+     0.4575539292297385,
+     0.5272053338306601,
+     0.15832598702175504,
+     0.4339880896510392,
+     0.49906474486107155,
+     0.4238251710733022,
+     0.4122691494553802,
+     0.36644763420553994,
+     0.25868971900469095
+    ],
+    "primeiro trio interno": [
+     0.07101778747508902,
+     0.34786975015474564,
+     0.30107981648984694,
+     0.1373907249201881,
+     0.39754248733172515,
+     0.4454680961462445,
+     0.3548671689173253,
+     0.27513860046341687,
+     0.3646761427694851,
+     0.23236458736722243
+    ],
+    "primeiro trio interno + HMM": [
+     0.189752117692502,
+     0.44665942756458843,
+     0.5230200632018942,
+     0.13253132312561788,
+     0.44502266243625666,
+     0.49273932038183277,
+     0.414602668716303,
+     0.44459519892390875,
+     0.36829625213810313,
+     0.24960169242155283
+    ],
+    "trio do ML-11": [
+     0.07936166325837402,
+     0.3612915810591272,
+     0.30922820168716725,
+     0.13629415113065568,
+     0.39754248733172515,
+     0.4454680961462445,
+     0.3523607392666984,
+     0.27513860046341687,
+     0.3651541139633163,
+     0.22159148387199712
+    ],
+    "trio do ML-11 + HMM": [
+     0.20789635317648714,
+     0.44364160372826966,
+     0.5081928921224049,
+     0.12460127221736172,
+     0.44502266243625666,
+     0.49273932038183277,
+     0.4323887069521172,
+     0.44459519892390875,
+     0.3598815745860334,
+     0.25149144819965275
+    ],
+    "as 8, contexto global": [
+     0.05563496153717007,
+     0.4280530145921121,
+     0.24777235156121014,
+     0.1426925590742406,
+     0.3476801828487561,
+     0.3165355136336272,
+     0.3077050483477539,
+     0.2031272207570708,
+     0.2486680045037184,
+     0.21852535342578872
+    ]
+   },
+   "especificidade": {
+    "as 8": [
+     0.2816593886462882,
+     0.5794473229706391,
+     0.5677966101694916,
+     0.3797672915319974,
+     0.5722361809045227,
+     0.5208422862054147,
+     0.44333683105981114,
+     0.4323453608247423,
+     0.5449101796407185,
+     0.42145178764897073
+    ],
+    "as 8 + HMM": [
+     0.3235080058224163,
+     0.6113989637305699,
+     0.6677966101694915,
+     0.39915966386554624,
+     0.6130653266331658,
+     0.532445208422862,
+     0.4732423924449108,
+     0.4722938144329897,
+     0.5643712574850299,
+     0.4626218851570964
+    ],
+    "aninhada": [
+     0.24526928675400292,
+     0.4378238341968912,
+     0.523728813559322,
+     0.34486102133160956,
+     0.5238693467336684,
+     0.48388483025354534,
+     0.40661070304302205,
+     0.37306701030927836,
+     0.4588323353293413,
+     0.39653304442036835
+    ],
+    "aninhada + HMM": [
+     0.3220524017467249,
+     0.48013816925734026,
+     0.6440677966101694,
+     0.37007110536522303,
+     0.5640703517587939,
+     0.5397507520412549,
+     0.412906610703043,
+     0.4632731958762887,
+     0.4550898203592814,
+     0.409534127843987
+    ],
+    "primeiro trio interno": [
+     0.24563318777292575,
+     0.4386873920552677,
+     0.5220338983050847,
+     0.35294117647058826,
+     0.5244974874371859,
+     0.5470562956596476,
+     0.41028331584470096,
+     0.389819587628866,
+     0.4820359281437126,
+     0.4035752979414951
+    ],
+    "primeiro trio interno + HMM": [
+     0.32241630276564776,
+     0.48013816925734026,
+     0.6542372881355932,
+     0.3519715578539108,
+     0.5690954773869347,
+     0.5311559948431457,
+     0.41500524658971666,
+     0.4574742268041237,
+     0.4745508982035928,
+     0.40628385698808234
+    ],
+    "trio do ML-11": [
+     0.25181950509461426,
+     0.4438687392055268,
+     0.5203389830508475,
+     0.34421460892049127,
+     0.5244974874371859,
+     0.5470562956596476,
+     0.412906610703043,
+     0.389819587628866,
+     0.4842814371257485,
+     0.39653304442036835
+    ],
+    "trio do ML-11 + HMM": [
+     0.3333333333333333,
+     0.48013816925734026,
+     0.6474576271186441,
+     0.343568196509373,
+     0.5690954773869347,
+     0.5311559948431457,
+     0.45015739769150054,
+     0.4574742268041237,
+     0.4573353293413174,
+     0.4057421451787649
+    ],
+    "as 8, contexto global": [
+     0.28129548762736534,
+     0.581174438687392,
+     0.5745762711864407,
+     0.3784744667097608,
+     0.5734924623115578,
+     0.5217017619252257,
+     0.44438614900314793,
+     0.43105670103092786,
+     0.5464071856287425,
+     0.4219934994582882
+    ]
+   },
+   "selecionados": [
+    [
+     "d_angulo",
+     "p_frac"
+    ],
+    [
+     "d_angulo",
+     "p_frac"
+    ],
+    [
+     "d_angulo",
+     "p_frac"
+    ],
+    [
+     "d_angulo"
+    ],
+    [
+     "d_angulo",
+     "mag_din_media"
+    ],
+    [
+     "d_angulo"
+    ],
+    [
+     "d_angulo",
+     "p_frac"
+    ],
+    [
+     "d_angulo"
+    ],
+    [
+     "d_angulo"
+    ],
+    [
+     "d_angulo",
+     "p_frac"
+    ]
+   ],
+   "trilhas": [
+    [
+     {
+      "conjunto": [
+       "d_angulo"
+      ],
+      "kappa_interno": 0.31327916315137505
+     },
+     {
+      "conjunto": [
+       "d_angulo",
+       "p_frac"
+      ],
+      "kappa_interno": 0.32065888955261673
+     },
+     {
+      "conjunto": [
+       "d_angulo",
+       "p_frac",
+       "enmo_desvio"
+      ],
+      "kappa_interno": 0.3185807001736899
+     },
+     {
+      "conjunto": [
+       "d_angulo",
+       "p_frac",
+       "enmo_desvio",
+       "enmo_media"
+      ],
+      "kappa_interno": 0.31611164898086674
+     },
+     {
+      "conjunto": [
+       "d_angulo",
+       "p_frac",
+       "enmo_desvio",
+       "enmo_media",
+       "mag_din_media"
+      ],
+      "kappa_interno": 0.31264436971156284
+     },
+     {
+      "conjunto": [
+       "d_angulo",
+       "p_frac",
+       "enmo_desvio",
+       "enmo_media",
+       "mag_din_media",
+       "zcr"
+      ],
+      "kappa_interno": 0.30546430832187477
+     },
+     {
+      "conjunto": [
+       "d_angulo",
+       "p_frac",
+       "enmo_desvio",
+       "enmo_media",
+       "mag_din_media",
+       "zcr",
+       "enmo_max"
+      ],
+      "kappa_interno": 0.28927918407697
+     },
+     {
+      "conjunto": [
+       "d_angulo",
+       "p_frac",
+       "enmo_desvio",
+       "enmo_media",
+       "mag_din_media",
+       "zcr",
+       "enmo_max",
+       "inclinacao_rel"
+      ],
+      "kappa_interno": 0.2605264185057835
+     }
+    ],
+    [
+     {
+      "conjunto": [
+       "d_angulo"
+      ],
+      "kappa_interno": 0.27254562481744576
+     },
+     {
+      "conjunto": [
+       "d_angulo",
+       "p_frac"
+      ],
+      "kappa_interno": 0.2786223267913598
+     },
+     {
+      "conjunto": [
+       "d_angulo",
+       "p_frac",
+       "enmo_desvio"
+      ],
+      "kappa_interno": 0.2778631254126155
+     },
+     {
+      "conjunto": [
+       "d_angulo",
+       "p_frac",
+       "enmo_desvio",
+       "mag_din_media"
+      ],
+      "kappa_interno": 0.2758201538914441
+     },
+     {
+      "conjunto": [
+       "d_angulo",
+       "p_frac",
+       "enmo_desvio",
+       "mag_din_media",
+       "enmo_max"
+      ],
+      "kappa_interno": 0.27414252992372395
+     },
+     {
+      "conjunto": [
+       "d_angulo",
+       "p_frac",
+       "enmo_desvio",
+       "mag_din_media",
+       "enmo_max",
+       "enmo_media"
+      ],
+      "kappa_interno": 0.2706305344675468
+     },
+     {
+      "conjunto": [
+       "d_angulo",
+       "p_frac",
+       "enmo_desvio",
+       "mag_din_media",
+       "enmo_max",
+       "enmo_media",
+       "zcr"
+      ],
+      "kappa_interno": 0.25882357383833104
+     },
+     {
+      "conjunto": [
+       "d_angulo",
+       "p_frac",
+       "enmo_desvio",
+       "mag_din_media",
+       "enmo_max",
+       "enmo_media",
+       "zcr",
+       "inclinacao_rel"
+      ],
+      "kappa_interno": 0.23846039656178766
+     }
+    ],
+    [
+     {
+      "conjunto": [
+       "d_angulo"
+      ],
+      "kappa_interno": 0.27728411532305597
+     },
+     {
+      "conjunto": [
+       "d_angulo",
+       "p_frac"
+      ],
+      "kappa_interno": 0.2840881961475807
+     },
+     {
+      "conjunto": [
+       "d_angulo",
+       "p_frac",
+       "enmo_desvio"
+      ],
+      "kappa_interno": 0.27920475870701933
+     },
+     {
+      "conjunto": [
+       "d_angulo",
+       "p_frac",
+       "enmo_desvio",
+       "enmo_media"
+      ],
+      "kappa_interno": 0.27820989610231905
+     },
+     {
+      "conjunto": [
+       "d_angulo",
+       "p_frac",
+       "enmo_desvio",
+       "enmo_media",
+       "enmo_max"
+      ],
+      "kappa_interno": 0.27738704697822547
+     },
+     {
+      "conjunto": [
+       "d_angulo",
+       "p_frac",
+       "enmo_desvio",
+       "enmo_media",
+       "enmo_max",
+       "mag_din_media"
+      ],
+      "kappa_interno": 0.270812607153912
+     },
+     {
+      "conjunto": [
+       "d_angulo",
+       "p_frac",
+       "enmo_desvio",
+       "enmo_media",
+       "enmo_max",
+       "mag_din_media",
+       "zcr"
+      ],
+      "kappa_interno": 0.2616808877859149
+     },
+     {
+      "conjunto": [
+       "d_angulo",
+       "p_frac",
+       "enmo_desvio",
+       "enmo_media",
+       "enmo_max",
+       "mag_din_media",
+       "zcr",
+       "inclinacao_rel"
+      ],
+      "kappa_interno": 0.24323627320745494
+     }
+    ],
+    [
+     {
+      "conjunto": [
+       "d_angulo"
+      ],
+      "kappa_interno": 0.298095559312426
+     },
+     {
+      "conjunto": [
+       "d_angulo",
+       "mag_din_media"
+      ],
+      "kappa_interno": 0.29992181284631936
+     },
+     {
+      "conjunto": [
+       "d_angulo",
+       "mag_din_media",
+       "enmo_desvio"
+      ],
+      "kappa_interno": 0.2959668518749435
+     },
+     {
+      "conjunto": [
+       "d_angulo",
+       "mag_din_media",
+       "enmo_desvio",
+       "enmo_max"
+      ],
+      "kappa_interno": 0.2930321941194959
+     },
+     {
+      "conjunto": [
+       "d_angulo",
+       "mag_din_media",
+       "enmo_desvio",
+       "enmo_max",
+       "p_frac"
+      ],
+      "kappa_interno": 0.28891977813524033
+     },
+     {
+      "conjunto": [
+       "d_angulo",
+       "mag_din_media",
+       "enmo_desvio",
+       "enmo_max",
+       "p_frac",
+       "zcr"
+      ],
+      "kappa_interno": 0.27945637139422896
+     },
+     {
+      "conjunto": [
+       "d_angulo",
+       "mag_din_media",
+       "enmo_desvio",
+       "enmo_max",
+       "p_frac",
+       "zcr",
+       "enmo_media"
+      ],
+      "kappa_interno": 0.27258184825447307
+     },
+     {
+      "conjunto": [
+       "d_angulo",
+       "mag_din_media",
+       "enmo_desvio",
+       "enmo_max",
+       "p_frac",
+       "zcr",
+       "enmo_media",
+       "inclinacao_rel"
+      ],
+      "kappa_interno": 0.26447151776727285
+     }
+    ],
+    [
+     {
+      "conjunto": [
+       "d_angulo"
+      ],
+      "kappa_interno": 0.2669951987142408
+     },
+     {
+      "conjunto": [
+       "d_angulo",
+       "mag_din_media"
+      ],
+      "kappa_interno": 0.2751399141383333
+     },
+     {
+      "conjunto": [
+       "d_angulo",
+       "mag_din_media",
+       "p_frac"
+      ],
+      "kappa_interno": 0.27137804774223334
+     },
+     {
+      "conjunto": [
+       "d_angulo",
+       "mag_din_media",
+       "p_frac",
+       "enmo_desvio"
+      ],
+      "kappa_interno": 0.2675509908073863
+     },
+     {
+      "conjunto": [
+       "d_angulo",
+       "mag_din_media",
+       "p_frac",
+       "enmo_desvio",
+       "enmo_media"
+      ],
+      "kappa_interno": 0.26631568947662193
+     },
+     {
+      "conjunto": [
+       "d_angulo",
+       "mag_din_media",
+       "p_frac",
+       "enmo_desvio",
+       "enmo_media",
+       "enmo_max"
+      ],
+      "kappa_interno": 0.2620327360088007
+     },
+     {
+      "conjunto": [
+       "d_angulo",
+       "mag_din_media",
+       "p_frac",
+       "enmo_desvio",
+       "enmo_media",
+       "enmo_max",
+       "zcr"
+      ],
+      "kappa_interno": 0.2573557185589939
+     },
+     {
+      "conjunto": [
+       "d_angulo",
+       "mag_din_media",
+       "p_frac",
+       "enmo_desvio",
+       "enmo_media",
+       "enmo_max",
+       "zcr",
+       "inclinacao_rel"
+      ],
+      "kappa_interno": 0.24857336934310084
+     }
+    ],
+    [
+     {
+      "conjunto": [
+       "d_angulo"
+      ],
+      "kappa_interno": 0.27201288607073554
+     },
+     {
+      "conjunto": [
+       "d_angulo",
+       "p_frac"
+      ],
+      "kappa_interno": 0.27217563767438824
+     },
+     {
+      "conjunto": [
+       "d_angulo",
+       "p_frac",
+       "mag_din_media"
+      ],
+      "kappa_interno": 0.2689973595089608
+     },
+     {
+      "conjunto": [
+       "d_angulo",
+       "p_frac",
+       "mag_din_media",
+       "zcr"
+      ],
+      "kappa_interno": 0.2644472277882599
+     },
+     {
+      "conjunto": [
+       "d_angulo",
+       "p_frac",
+       "mag_din_media",
+       "zcr",
+       "enmo_desvio"
+      ],
+      "kappa_interno": 0.26159384184461887
+     },
+     {
+      "conjunto": [
+       "d_angulo",
+       "p_frac",
+       "mag_din_media",
+       "zcr",
+       "enmo_desvio",
+       "enmo_max"
+      ],
+      "kappa_interno": 0.2580985431065039
+     },
+     {
+      "conjunto": [
+       "d_angulo",
+       "p_frac",
+       "mag_din_media",
+       "zcr",
+       "enmo_desvio",
+       "enmo_max",
+       "enmo_media"
+      ],
+      "kappa_interno": 0.25095005440280777
+     },
+     {
+      "conjunto": [
+       "d_angulo",
+       "p_frac",
+       "mag_din_media",
+       "zcr",
+       "enmo_desvio",
+       "enmo_max",
+       "enmo_media",
+       "inclinacao_rel"
+      ],
+      "kappa_interno": 0.22523892224941733
+     }
+    ],
+    [
+     {
+      "conjunto": [
+       "d_angulo"
+      ],
+      "kappa_interno": 0.28480322403800357
+     },
+     {
+      "conjunto": [
+       "d_angulo",
+       "p_frac"
+      ],
+      "kappa_interno": 0.2905271927785808
+     },
+     {
+      "conjunto": [
+       "d_angulo",
+       "p_frac",
+       "enmo_desvio"
+      ],
+      "kappa_interno": 0.28950637736731205
+     },
+     {
+      "conjunto": [
+       "d_angulo",
+       "p_frac",
+       "enmo_desvio",
+       "enmo_max"
+      ],
+      "kappa_interno": 0.2884437695609795
+     },
+     {
+      "conjunto": [
+       "d_angulo",
+       "p_frac",
+       "enmo_desvio",
+       "enmo_max",
+       "enmo_media"
+      ],
+      "kappa_interno": 0.2865920149269638
+     },
+     {
+      "conjunto": [
+       "d_angulo",
+       "p_frac",
+       "enmo_desvio",
+       "enmo_max",
+       "enmo_media",
+       "mag_din_media"
+      ],
+      "kappa_interno": 0.28202486791696324
+     },
+     {
+      "conjunto": [
+       "d_angulo",
+       "p_frac",
+       "enmo_desvio",
+       "enmo_max",
+       "enmo_media",
+       "mag_din_media",
+       "zcr"
+      ],
+      "kappa_interno": 0.2704886013693092
+     },
+     {
+      "conjunto": [
+       "d_angulo",
+       "p_frac",
+       "enmo_desvio",
+       "enmo_max",
+       "enmo_media",
+       "mag_din_media",
+       "zcr",
+       "inclinacao_rel"
+      ],
+      "kappa_interno": 0.23602175783561305
+     }
+    ],
+    [
+     {
+      "conjunto": [
+       "d_angulo"
+      ],
+      "kappa_interno": 0.2879392961059217
+     },
+     {
+      "conjunto": [
+       "d_angulo",
+       "p_frac"
+      ],
+      "kappa_interno": 0.29258129597545934
+     },
+     {
+      "conjunto": [
+       "d_angulo",
+       "p_frac",
+       "mag_din_media"
+      ],
+      "kappa_interno": 0.29143838461477933
+     },
+     {
+      "conjunto": [
+       "d_angulo",
+       "p_frac",
+       "mag_din_media",
+       "enmo_media"
+      ],
+      "kappa_interno": 0.289554004588448
+     },
+     {
+      "conjunto": [
+       "d_angulo",
+       "p_frac",
+       "mag_din_media",
+       "enmo_media",
+       "enmo_desvio"
+      ],
+      "kappa_interno": 0.28801827794355644
+     },
+     {
+      "conjunto": [
+       "d_angulo",
+       "p_frac",
+       "mag_din_media",
+       "enmo_media",
+       "enmo_desvio",
+       "enmo_max"
+      ],
+      "kappa_interno": 0.28825156627669585
+     },
+     {
+      "conjunto": [
+       "d_angulo",
+       "p_frac",
+       "mag_din_media",
+       "enmo_media",
+       "enmo_desvio",
+       "enmo_max",
+       "zcr"
+      ],
+      "kappa_interno": 0.2831489204935494
+     },
+     {
+      "conjunto": [
+       "d_angulo",
+       "p_frac",
+       "mag_din_media",
+       "enmo_media",
+       "enmo_desvio",
+       "enmo_max",
+       "zcr",
+       "inclinacao_rel"
+      ],
+      "kappa_interno": 0.23523140869635562
+     }
+    ],
+    [
+     {
+      "conjunto": [
+       "d_angulo"
+      ],
+      "kappa_interno": 0.2717923287085816
+     },
+     {
+      "conjunto": [
+       "d_angulo",
+       "p_frac"
+      ],
+      "kappa_interno": 0.2729280118896404
+     },
+     {
+      "conjunto": [
+       "d_angulo",
+       "p_frac",
+       "enmo_media"
+      ],
+      "kappa_interno": 0.27166803155247965
+     },
+     {
+      "conjunto": [
+       "d_angulo",
+       "p_frac",
+       "enmo_media",
+       "enmo_desvio"
+      ],
+      "kappa_interno": 0.2708125118435655
+     },
+     {
+      "conjunto": [
+       "d_angulo",
+       "p_frac",
+       "enmo_media",
+       "enmo_desvio",
+       "enmo_max"
+      ],
+      "kappa_interno": 0.27156592543440733
+     },
+     {
+      "conjunto": [
+       "d_angulo",
+       "p_frac",
+       "enmo_media",
+       "enmo_desvio",
+       "enmo_max",
+       "zcr"
+      ],
+      "kappa_interno": 0.2693964382762236
+     },
+     {
+      "conjunto": [
+       "d_angulo",
+       "p_frac",
+       "enmo_media",
+       "enmo_desvio",
+       "enmo_max",
+       "zcr",
+       "mag_din_media"
+      ],
+      "kappa_interno": 0.2645908574266236
+     },
+     {
+      "conjunto": [
+       "d_angulo",
+       "p_frac",
+       "enmo_media",
+       "enmo_desvio",
+       "enmo_max",
+       "zcr",
+       "mag_din_media",
+       "inclinacao_rel"
+      ],
+      "kappa_interno": 0.23940394700636136
+     }
+    ],
+    [
+     {
+      "conjunto": [
+       "d_angulo"
+      ],
+      "kappa_interno": 0.2836390742840531
+     },
+     {
+      "conjunto": [
+       "d_angulo",
+       "p_frac"
+      ],
+      "kappa_interno": 0.28873025535735913
+     },
+     {
+      "conjunto": [
+       "d_angulo",
+       "p_frac",
+       "enmo_media"
+      ],
+      "kappa_interno": 0.2861871493916852
+     },
+     {
+      "conjunto": [
+       "d_angulo",
+       "p_frac",
+       "enmo_media",
+       "mag_din_media"
+      ],
+      "kappa_interno": 0.284516640066104
+     },
+     {
+      "conjunto": [
+       "d_angulo",
+       "p_frac",
+       "enmo_media",
+       "mag_din_media",
+       "enmo_desvio"
+      ],
+      "kappa_interno": 0.28284673957422907
+     },
+     {
+      "conjunto": [
+       "d_angulo",
+       "p_frac",
+       "enmo_media",
+       "mag_din_media",
+       "enmo_desvio",
+       "enmo_max"
+      ],
+      "kappa_interno": 0.28502583691497846
+     },
+     {
+      "conjunto": [
+       "d_angulo",
+       "p_frac",
+       "enmo_media",
+       "mag_din_media",
+       "enmo_desvio",
+       "enmo_max",
+       "zcr"
+      ],
+      "kappa_interno": 0.27731894770096943
+     },
+     {
+      "conjunto": [
+       "d_angulo",
+       "p_frac",
+       "enmo_media",
+       "mag_din_media",
+       "enmo_desvio",
+       "enmo_max",
+       "zcr",
+       "inclinacao_rel"
+      ],
+      "kappa_interno": 0.2532948436214777
+     }
+    ]
+   ],
+   "resumo": {
+    "as 8": {
+     "kappa_medio": 0.24949101675753765,
+     "frac_teto": 0.407665060061336,
+     "especificidade_media": 0.4743793239602597,
+     "dkappa": [
+      0.0,
+      0.0,
+      0.0
+     ],
+     "despecificidade": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    },
+    "as 8 + HMM": {
+     "kappa_medio": 0.29968330199257737,
+     "frac_teto": 0.4896785980270872,
+     "especificidade_media": 0.5119903128164078,
+     "dkappa": [
+      0.0,
+      0.0,
+      0.0
+     ],
+     "despecificidade": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    },
+    "aninhada": {
+     "kappa_medio": 0.28493026735432725,
+     "frac_teto": 0.4655723322783125,
+     "especificidade_media": 0.41944802259310493,
+     "dkappa": [
+      0.03543925059678956,
+      -3.967384142246344e-05,
+      0.07091817503500158
+     ],
+     "despecificidade": [
+      -0.0549313013671547,
+      -0.07990132958834821,
+      -0.029961273145961188
+     ]
+    },
+    "aninhada + HMM": {
+     "kappa_medio": 0.3727162675739397,
+     "frac_teto": 0.6090135091077447,
+     "especificidade_media": 0.4660954331562106,
+     "dkappa": [
+      0.0730329655813624,
+      0.019555427866478903,
+      0.12651050329624589
+     ],
+     "despecificidade": [
+      -0.0458948796601972,
+      -0.07833991919596199,
+      -0.013449840124432413
+     ]
+    },
+    "primeiro trio interno": {
+     "kappa_medio": 0.29274151620352895,
+     "frac_teto": 0.47833581079008,
+     "especificidade_media": 0.43165635672594754,
+     "dkappa": [
+      0.04325049944599122,
+      -0.00022759229199201952,
+      0.08672859118397447
+     ],
+     "despecificidade": [
+      -0.04272296723431217,
+      -0.07270777868837039,
+      -0.012738155780253946
+     ]
+    },
+    "primeiro trio interno + HMM": {
+     "kappa_medio": 0.370682072660256,
+     "frac_teto": 0.6056896612095686,
+     "especificidade_media": 0.4662329018828088,
+     "dkappa": [
+      0.07099877066767864,
+      0.011660993357132922,
+      0.13033654797822436
+     ],
+     "despecificidade": [
+      -0.04575741093359907,
+      -0.07543645637503356,
+      -0.01607836549216458
+     ]
+    },
+    "trio do ML-11": {
+     "kappa_medio": 0.29434311181787226,
+     "frac_teto": 0.4809527970880266,
+     "especificidade_media": 0.4315336299246339,
+     "dkappa": [
+      0.044852095060334565,
+      0.002901085700165576,
+      0.08680310442050355
+     ],
+     "despecificidade": [
+      -0.04284569403562571,
+      -0.07148781658884604,
+      -0.014203571482405381
+     ]
+    },
+    "trio do ML-11 + HMM": {
+     "kappa_medio": 0.3710451032724325,
+     "frac_teto": 0.6062828484843669,
+     "especificidade_media": 0.4675457897464478,
+     "dkappa": [
+      0.07136180127985517,
+      0.01362185087024611,
+      0.12910175168946422
+     ],
+     "despecificidade": [
+      -0.044444523069960114,
+      -0.0768393052002694,
+      -0.012049740939650833
+     ]
+    },
+    "as 8, contexto global": {
+     "kappa_medio": 0.25163942102814485,
+     "frac_teto": 0.41117552455579226,
+     "especificidade_media": 0.4754558423568849,
+     "dkappa": [
+      0.0021484042706071183,
+      0.0008819779222282421,
+      0.0034148306189859946
+     ],
+     "despecificidade": [
+      0.0010765183966252533,
+      -0.0005543064919444772,
+      0.002707343285194984
+     ]
+    }
+   },
+   "frequencia_de_selecao": {
+    "enmo_media": 0,
+    "enmo_desvio": 0,
+    "enmo_max": 0,
+    "mag_din_media": 1,
+    "zcr": 0,
+    "p_frac": 5,
+    "inclinacao_rel": 0,
+    "d_angulo": 10
+   },
+   "tamanhos_escolhidos": [
+    2,
+    2,
+    2,
+    1,
+    2,
+    1,
+    2,
+    1,
+    1,
+    2
+   ],
+   "segundos": 136.40053033828735
+  }
+ },
+ "controle_positivo": {
+  "primeiras_escolhas": [
+   "ISCA",
+   "ISCA",
+   "ISCA",
+   "ISCA",
+   "ISCA",
+   "ISCA",
+   "ISCA",
+   "ISCA",
+   "ISCA",
+   "ISCA"
+  ],
+  "acertos": 10
+ }
+}

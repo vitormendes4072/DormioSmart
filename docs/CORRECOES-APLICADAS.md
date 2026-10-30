@@ -19,15 +19,15 @@ a única coisa aqui que sustenta uma afirmação de método.
 
 ## Resumo quantitativo
 
-**125 correções registradas**, todas sustentadas no repositório.
+**126 correções registradas**, todas sustentadas no repositório.
 
 **A unidade de contagem, dita antes dos números, porque ela decide como
 lê-los.** Uma linha deste arquivo é **uma correção**: um defeito, uma
 causa, uma correção. Em 4 linhas, porém, a causa e a correção foram
 uma só e os defeitos foram vários — `DADOS-02` (10), `REF-01` (4), `GIT-06` (14), `SEC-12` (2) —, e agrupá-las foi deliberado,
 porque separá-las contaria a mesma correção várias vezes. **Contando
-defeito em vez de correção, o total seria 151.** Este
-arquivo usa **125**, que é o número menor e o mais defensável.
+defeito em vez de correção, o total seria 152.** Este
+arquivo usa **126**, que é o número menor e o mais defensável.
 
 **Fora da contagem, e visível:** 1 linha(s) — `ML-04b` —,
 em que a hipótese se confirmou e o que se corrigiu foi a afirmação
@@ -41,16 +41,16 @@ que se podia extrair do resultado, não um defeito. Estão na seção da
 | Segurança | 17 |
 | Interface | 23 |
 | Firmware | 18 |
-| Dados e ML | 23 |
+| Dados e ML | 24 |
 | Documentação | 21 |
 | Infraestrutura | 23 |
-| **Total** | **125** |
+| **Total** | **126** |
 
 ### Por instrumento — o campo que dá valor a este arquivo
 
 | Como foi encontrado | Correções | O que o instrumento é |
 |---|---:|---|
-| **leitura** | 24 | Inspeção do código ou do documento, raciocinando sobre ele. Nada roda, nada se confere contra terceiro. |
+| **leitura** | 25 | Inspeção do código ou do documento, raciocinando sobre ele. Nada roda, nada se confere contra terceiro. |
 | **cálculo** | 4 | Aritmética sobre os próprios números do projeto. O mais barato de todos, e derrubou premissas grandes. |
 | **execução** | 49 | Rodar código do projeto — suíte, job, compilador, script — e a **saída** acusar. O defeito não estava escondido: estava não exercitado. |
 | **controle positivo** | 13 | Provocar o defeito de propósito e exigir que a verificação acuse. Inclui verificação por mutação. **É o único instrumento que mede o alcance de uma verificação.** |
@@ -58,7 +58,7 @@ que se podia extrair do resultado, não um defeito. Estão na seção da
 | **terceiro** | 10 | Especificação, documentação oficial, artigo, issue ou API de terceiro. O artefato que decide a resposta está **fora** do repositório. |
 | **dado real** | 3 | Só apareceu com o arquivo ou a medição real em mãos. |
 | **uso real** | 1 | Alguém usou o produto como usuário. |
-| **Total** | **125** | |
+| **Total** | **126** | |
 
 ### As três derivações que os números sustentam
 
@@ -72,9 +72,9 @@ que se podia extrair do resultado, não um defeito. Estão na seção da
 > do projeto; são proporções do que foi achado.**
 
 **(1) Exercitar achou mais do que ler, por mais de duas vezes.**
-Execução, controle positivo e uso real somam **63 de 125**
+Execução, controle positivo e uso real somam **63 de 126**
 registros (50%). Leitura e cálculo — os dois
-instrumentos que não precisam rodar nada — somam **28** (22%). A razão é de **2,2 para 1**.
+instrumentos que não precisam rodar nada — somam **29** (23%). A razão é de **2,2 para 1**.
 
 Com a ressalva que impede a leitura fácil: isto **não** diz que ler é
 pouco útil. Diz que, neste projeto, leitura e execução acharam classes
@@ -84,7 +84,7 @@ e a execução achou **alcance** insuficiente. Alcance não se vê lendo, e é
 por isso que a razão é essa e não o contrário.
 
 **(2) 13 correções tinham a causa fora do repositório.**
-Fonte de terceiro e dado real somam **13 de 125** (10%) — defeitos cuja causa não está em nenhuma
+Fonte de terceiro e dado real somam **13 de 126** (10%) — defeitos cuja causa não está em nenhuma
 linha deste projeto, e que **nenhum teste daqui poderia pegar**: a
 especificação do PostgREST, a unidade do Empatica em `g/64`, o valor de
 uma chave num painel do Supabase, a API do Actions, os coeficientes do
@@ -98,7 +98,7 @@ Supabase de teste**, que deve a quatro itens e desde 28/10 tem item próprio
 **(3) As próprias verificações do projeto estavam defeituosas
 26 vezes — e 24 dessas 26 só apareceram
 rodando ou sabotando.**
-São **26 de 125** registros (20%) em que a coisa errada era um teste, uma
+São **26 de 126** registros (20%) em que a coisa errada era um teste, uma
 guarda de CI, um harness de mutação ou um vetor de referência — não o
 código. A distribuição:
 
@@ -127,9 +127,9 @@ alguém tentou fazer a verificação falhar.
 | Procedência | Correções | O que significa |
 |---|---:|---|
 | `completa` | 117 | Commit **e** artefato reabrível — teste, script, seção de documento. Dá para reconferir sem acreditar em ninguém. |
-| `parcial` | 8 | Só a mensagem de commit, só a entrada de diário, ou correção em arquivo não versionado. Entra porque omitir seria pior, e entra **marcada**. |
+| `parcial` | 9 | Só a mensagem de commit, só a entrada de diário, ou correção em arquivo não versionado. Entra porque omitir seria pior, e entra **marcada**. |
 
-**48 dos 125 defeitos revelaram que a premissa estava
+**48 dos 126 defeitos revelaram que a premissa estava
 errada** — não que o código estava errado. É a seção mais instrutiva deste
 arquivo e tem lugar próprio no fim.
 
@@ -819,9 +819,9 @@ só de código filtra pela coluna de área.
 
 ---
 
-## Dados e ML — 23 defeitos
+## Dados e ML — 24 defeitos
 
-*15 execução · 2 dado real · 2 cálculo · 2 controle positivo · 1 terceiro · 1 inventário*
+*15 execução · 2 dado real · 2 cálculo · 2 controle positivo · 1 terceiro · 1 inventário · 1 leitura*
 
 ### 2026-09-14 · `ML-01` 🔄
 
@@ -1096,6 +1096,18 @@ só de código filtra pela coluna de área.
 **🔄 A premissa estava errada.** O relógio de parede mede tempo decorrido com resolução suficiente para um orçamento zero. Em Linux mede; no Windows, não — e a falha alternava entre execuções, o que a fazia parecer acaso.
 
 **Commit.** `7016c81` · procedência **completa**
+
+### 2026-10-30 · `ML-12`
+
+**O defeito.** Em todos os experimentos desde o `ML-02`, o contexto de ±2 épocas foi empilhado sobre a base concatenada, e nas fronteiras misturava features de dois sujeitos.
+
+**Como foi encontrado.** *leitura* — `empilhar_contexto` replica a borda da matriz que recebe; os experimentos passavam a base inteira, não um sujeito por vez.
+
+**A correção.** O `ML-12` aplica o contexto por sujeito e mediu a diferença: +0,001 a +0,002 de κ a favor do global, desprezível. Os experimentos anteriores não foram refeitos, de propósito: o efeito é uma ordem de grandeza menor que qualquer um deles.
+
+**Nota.** Achado ao escrever o `ML-12`, lendo `src/epocas.py` para reusar.
+
+**Commit.** `(o commit que introduz esta linha: um commit não cita o próprio hash — ver a entrada de 30/10 (iv) do diário)` · procedência **parcial**
 
 ---
 
@@ -1667,7 +1679,7 @@ com competência teria produzido a coisa errada bem feita.
 | 2026-10-16 | `CI-06` | Que eram três, e não quatro, os jobs nunca rodados num runner. |
 | 2026-10-17 | `GIT-05` | Que um aviso escrito no `ROADMAP.md` chega a quem clona. |
 
-**48 de 125.** E a distribuição por instrumento dentro
+**48 de 126.** E a distribuição por instrumento dentro
 deste subconjunto é a parte que vale registrar:
 
 | Instrumento | Premissas derrubadas |

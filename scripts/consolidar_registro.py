@@ -1811,6 +1811,22 @@ DEFEITOS: list[Defeito] = [
         commit="040fe4b",
     ),
     Defeito(
+        data="2026-10-30", area=ML, item="ML-12",
+        defeito="Em todos os experimentos desde o `ML-02`, o contexto de ±2 épocas "
+                "foi empilhado sobre a base concatenada, e nas fronteiras misturava "
+                "features de dois sujeitos.",
+        achado_por=LEITURA,
+        causa="`empilhar_contexto` replica a borda da matriz que recebe; os "
+              "experimentos passavam a base inteira, não um sujeito por vez.",
+        correcao="O `ML-12` aplica o contexto por sujeito e mediu a diferença: "
+                 "+0,001 a +0,002 de κ a favor do global, desprezível. Os "
+                 "experimentos anteriores não foram refeitos, de propósito: o "
+                 "efeito é uma ordem de grandeza menor que qualquer um deles.",
+        commit="(o commit que introduz esta linha: um commit não cita o próprio "
+               "hash — ver a entrada de 30/10 (iv) do diário)", procedencia="parcial",
+        nota="Achado ao escrever o `ML-12`, lendo `src/epocas.py` para reusar.",
+    ),
+    Defeito(
         data="2026-10-30", area=DOC, item="FW-07",
         defeito="A pendência gerada do `FW-07` seguiu descrevendo buffer no RTC e "
                 "Deep Sleep depois de o `ARQ-01` decidir a C2 (sono leve).",
@@ -2281,14 +2297,11 @@ PENDENCIAS: list[Pendencia] = [
     Pendencia("REQ-01", SOFTWARE, "Documentar requisitos: dimensões, conforto, "
               "autonomia, aquecimento, custo, segurança.", "🟡",
               camada_backlog="L0"),
-    Pendencia("ML-12", SOFTWARE, "Confirmar a redução para 3 features "
-              "(`mag_din_media`, `p_frac`, `d_angulo`) que o `ML-11` achou: "
-              "validação aninhada nas três bases, o mesmo com o HMM e, quando "
-              "houver, dado do travesseiro. Só depois o `DATA-07e` encolhe o "
-              "registro.", "🟡", camada_backlog="L0",
-              nota="O `ML-11` escolheu o subconjunto olhando as dobras de "
-                   "avaliação da cabeça; fora da amostra ele empatou, mas a "
-                   "escolha em si não foi validada."),
+    Pendencia("ML-12 (c)", HARDWARE, "Repetir a comparação 8 × 3 features com "
+              "dado do travesseiro, quando o `VIA-01`/`VIA-02` o produzirem. As "
+              "partes (a) e (b) fecharam em 30/10: no kappa a redução sobrevive; "
+              "na especificidade custa de 1 a 5 pontos, e a recomendação é "
+              "manter as 6 no dispositivo.", "🟡", camada_backlog="L1"),
     Pendencia("ML-06b", SOFTWARE, "Escrever `ml/src/carregar/walch.py`. A "
               "interface única garante que é só isso. ⚠️ Escrever carregador sem "
               "ver o arquivo real produziu as 10 armadilhas já catalogadas: "

@@ -3778,6 +3778,71 @@ orçamento de tempo.
 - `docs/DATA-CONTRACT.md` 2.6.0, §5.2;
 - backlog `API-03` e `FW-07`.
 
+---
+
+# 2026-10-30 (iv) — `ML-12`: a redução para 3 features sobrevive no kappa e custa especificidade
+
+**O problema, como foi entendido no início.** O `ML-11` achou que três features empatam com
+as oito, mas escolheu o trio olhando as dobras de avaliação da cabeça. Antes de o `DATA-07e`
+encolher o registro, o `ML-12` pedia: (a) validação aninhada, (b) o mesmo com o HMM e (c) dado
+do travesseiro, que não existe ainda.
+
+**Hipótese de trabalho.** Que a redução sobrevivesse, porque o trio do `ML-11` já tinha
+empatado fora da amostra. E, ao ler `src/epocas.py` para reusar, uma suspeita nova: o contexto
+de ±2 épocas é empilhado sobre a base concatenada e atravessa a fronteira entre sujeitos.
+
+**O que foi testado, e como.**
+
+- **`ml/experimentos/ml12_validacao_aninhada.py`:** seleção progressiva dentro de cada uma das
+  10 dobras externas, com 5 internas que só veem o treino. A regra de parada foi fixada antes de
+  rodar (o menor conjunto a até 0,005 do melhor kappa interno). Cada conjunto foi avaliado com
+  e sem o Viterbi de 2 estados, contra as 8, pareado por dobra, com IC de 95 %.
+- **Contexto por sujeito**, com a comparação contra o global.
+- **Controle positivo antes de tudo:** uma coluna-isca que vaza o rótulo. O script para se a
+  seleção não a escolher em todas as dobras.
+- Rodou com `python -u`, a saída em tempo real; Windows 11, `ml/.venv`, ~11 min.
+
+**Resultado medido.**
+
+- **Controle positivo:** a isca foi a primeira escolha em 10 de 10 dobras.
+- **O que a seleção escolhe:**
+  - cabeça: `mag_din_media` e `d_angulo` em 10/10, `p_frac` em 8/10;
+  - pulso: só `mag_din_media`;
+  - Newcastle: `d_angulo` e às vezes `p_frac`;
+  - `enmo_desvio`, `enmo_max` e `zcr` nunca foram escolhidas.
+- **Kappa:** nenhuma perda significativa em nenhuma base, com ou sem HMM. Cabeça: aninhada
+  −0,010, trio +0,002. Pulso e Newcastle: sobe.
+- **Especificidade:** cai de 0,8 a 5,5 pontos, e o IC não cruza o zero em 9 dos 12 casos
+  (cabeça aninhada −0,028; Newcastle trio −0,043).
+- **Contexto global contra por sujeito:** κ +0,001 a +0,002 a favor do global (vazamento
+  real e desprezível).
+
+**Adaptação.**
+
+- **A hipótese acertou no kappa e errou no que importa para a decisão.** O `ML-11` já mostrava
+  a especificidade caindo, e eu a tratei como ressalva. Com IC, ela é o resultado: o vetor menor
+  troca vigília por sono acertado.
+- **A recomendação para o `DATA-07e` mudou de "pode encolher" para "manter as 6".** São 8 B por
+  época, e a flash do `FW-08` não precisa deles.
+- **O `ML-12` foi para L1:** a parte (c) espera dado do travesseiro.
+- **O vazamento do contexto entrou como defeito.** Os experimentos antigos não foram refeitos,
+  de propósito: o efeito é uma ordem de grandeza menor que qualquer um deles.
+
+**Risco em aberto.**
+
+- **Não medido:** o travesseiro. Todas as bases são de sensores presos ao corpo. Fica no `ML-12`
+  (c).
+- **Não decidido:** o vetor do dispositivo. A recomendação é manter as 6; o `DATA-07e` decide.
+- **Não refeito:** os experimentos anteriores com o contexto por sujeito. A diferença medida
+  (≤ 0,002) não muda nenhuma leitura, e refazê-los custaria horas por nada.
+
+**Procedência.**
+
+- `ml/experimentos/ml12_validacao_aninhada.py` e
+  `ml/experimentos/saida/ml12_validacao_aninhada.json`, deste commit;
+- `docs/ARQUITETURA-DE-CAPTACAO.md` §3.4;
+- backlog `ML-12` e `DATA-07e`.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
