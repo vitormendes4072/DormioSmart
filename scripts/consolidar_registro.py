@@ -2540,14 +2540,6 @@ PENDENCIAS: list[Pendencia] = [
               "zero código, cobre `signup`/`token`/`recover`. ⚠️ **É mitigação: "
               "reduz a taxa, não elimina o oráculo** — e ligar isto **não "
               "autoriza mudar uma palavra da X.7**.", "⚠️", camada_backlog="L3"),
-    Pendencia("DATA-07f", ACAO, "Aplicar `web-app/migrations/010_vetor_de_"
-              "caracteristicas.sql` no SQL Editor da produção **antes** do release "
-              "do backend da v2.7.0, e conferir com o diagnóstico (a linha da 010 "
-              "com as quatro marcas `true`). Na ordem inversa, `f` validado seria "
-              "descartado pela função antiga, com `201`.", "🔴",
-              camada_backlog="L3",
-              nota="A 010 não quebra o backend de hoje: a gravação sem vetor foi "
-                   "medida contra Postgres 16 com as dez colunas nulas."),
     Pendencia("INFRA-03 — monitor da produção", ACAO, "O job que chama o "
               "`/health` de produção a cada 3 dias está em `main` desde o release "
               "de 29/10, e a execução manual passou. Falta a primeira execução "
