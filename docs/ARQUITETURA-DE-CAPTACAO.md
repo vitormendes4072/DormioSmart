@@ -126,6 +126,65 @@ acima de 1,2 m/s² na época"; o superior é a fração de amostras acima desse 
 WoM real não alcança. A postura usa a época inteira, o que é otimista para uma leitura só. O
 circuito de detecção do MPU6050 não usa exatamente esse critério.
 
+### 3.4 `ML-12`: a redução sobrevive a uma validação honesta? (30/10)
+
+**Como foi medido** (`ml/experimentos/ml12_validacao_aninhada.py`). A seleção progressiva foi
+refeita **dentro** de cada uma das 10 dobras externas, com 5 dobras internas que só veem os
+sujeitos de treino. A regra de parada foi fixada antes de rodar: o menor conjunto a até 0,005
+do melhor kappa interno. Depois, o mesmo com o Viterbi de 2 estados do produto (HMM). O
+contexto de ±2 épocas passou a ser aplicado **por sujeito**. Comparação pareada contra as 8,
+IC 95 %. ~11 min no total.
+
+**Controle positivo:** uma coluna-isca que vaza o rótulo (`y` com 20 % de ruído) foi a
+primeira escolha em **10 de 10** dobras. O instrumento acha uma feature informativa quando
+ela existe.
+
+**O que a seleção aninhada escolhe:**
+
+| Base | Escolhida em quantas das 10 dobras | Tamanho |
+|---|---|---|
+| Cabeça | `mag_din_media` 10, `d_angulo` 10, `p_frac` 8, `enmo_media` 3 | 2 a 4 |
+| Pulso | `mag_din_media` 10, `inclinacao_rel` 1 | 1 a 2 |
+| Newcastle | `d_angulo` 10, `p_frac` 5, `mag_din_media` 1 | 1 a 2 |
+
+`enmo_desvio`, `enmo_max` e `zcr` **nunca** foram escolhidas, em nenhuma base. O trio do
+`ML-11` é a união do que cada base escolhe mais.
+
+**Kappa e especificidade contra as 8** (Δ, IC 95 %; em negrito, IC que não cruza o zero):
+
+| Base | Conjunto | Δκ | Δκ com HMM | Δ especificidade | Δ espec. com HMM |
+|---|---|---:|---:|---:|---:|
+| Cabeça | seleção aninhada | −0,010 [−0,023; +0,004] | −0,014 | **−0,028** | **−0,027** |
+| Cabeça | trio do `ML-11` | +0,002 [−0,010; +0,015] | +0,003 | −0,008 | −0,013 |
+| Pulso | seleção aninhada | **+0,015** [+0,009; +0,020] | +0,014 | **−0,025** | **−0,027** |
+| Pulso | trio do `ML-11` | +0,003 [−0,004; +0,011] | +0,001 | **−0,012** | −0,016 |
+| Newcastle | seleção aninhada | +0,035 [−0,000; +0,071] | **+0,073** | **−0,055** | **−0,046** |
+| Newcastle | trio do `ML-11` | **+0,045** | **+0,071** | **−0,043** | **−0,044** |
+
+Referência das 8: κ 0,402 na cabeça (0,531 com HMM), 0,373 no pulso (0,500), 0,250 no
+Newcastle (0,300).
+
+**Leitura:**
+
+1. **No kappa, a redução sobrevive.** Nenhuma perda significativa em nenhuma base, com ou sem
+   HMM. No pulso e no Newcastle o kappa até sobe.
+2. **Na especificidade, não sai de graça.** Ela cai de 0,8 a 5,5 pontos, e a queda é
+   significativa em 9 dos 12 casos. Especificidade é justamente a métrica fraca do projeto (a
+   externa é 0,507, `ML-04`). O que o kappa ganha vem de mais sono acertado, à custa de
+   vigília.
+3. **Para o `DATA-07e`, a conta não fecha a favor de reduzir.** O ganho seria 8 B por época. A
+   flash do `FW-08` já guarda 13,7 dias em resolução plena com o registro de 40 B. Pagar de 1 a
+   4 pontos de especificidade por 8 B que não faltam é troca ruim. **A recomendação desta
+   análise é manter as 6 features no dispositivo.**
+
+**(d) O contexto atravessava a fronteira entre sujeitos.** Em todos os experimentos desde o
+`ML-02`, `empilhar_contexto` rodou sobre a base concatenada, e a janela de ±2 épocas misturava
+duas pessoas nas fronteiras. Medido: o contexto global dá κ **+0,001 a +0,002** acima do
+contexto por sujeito (IC que não cruza o zero na cabeça e no Newcastle). É um vazamento real e
+**desprezível**: duas épocas por fronteira, num universo de ~950 por sujeito, e uma ordem de
+grandeza abaixo de qualquer efeito que o projeto reportou. Os resultados anteriores não mudam
+de leitura.
+
 ## 4. O dispositivo ESP32: o que o `ML-11` muda na análise de energia
 
 1. **A escolha entre WoM e features continua real, e agora tem preço medido.** O WoM economiza
@@ -275,9 +334,10 @@ completa"), mas aumenta o que é preciso validar.
 
 **O que fica aberto:**
 
-- A redução para 3 features foi escolhida e testada em bases de sensores presos ao corpo. Ela
-  precisa ser confirmada com validação aninhada (escolher dentro de cada dobra) e, quando
-  houver, com dado do travesseiro (`ML-12`).
+- ✏️ *30/10, `ML-12` (§3.4):* a redução para 3 features **sobrevive no kappa** a uma validação
+  aninhada e ao HMM, mas **custa de 1 a 5 pontos de especificidade**. A recomendação passou a
+  ser **manter as 6 features no dispositivo**: o ganho de 8 B por época não paga a perda. O dado
+  do travesseiro (`ML-12` (c)) segue aberto.
 - Que modos oferecer ao usuário, e se o travesseiro terá um ou dois (`ARQ-02`).
 - A escolha do `ARQ-01` (a), com o orientador.
 

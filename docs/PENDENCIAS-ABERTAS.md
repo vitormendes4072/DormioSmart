@@ -49,10 +49,10 @@ linha, não um resumo: resumo é a cópia que diverge.
 
 | Grupo | Itens |
 |---|---:|
-| A — Depende só de software: dá para fazer a qualquer momento | **38** |
+| A — Depende só de software: dá para fazer a qualquer momento | **37** |
 | B — Depende de decisão do Vitor | **10** |
 | C — Depende de ação do Vitor que não é decisão | **7** |
-| D — Bloqueado por hardware ou coleta | **23** |
+| D — Bloqueado por hardware ou coleta | **24** |
 | E — Bloqueado por terceiro | **4** |
 | **Total** | **82** |
 
@@ -75,7 +75,7 @@ outro item. **Desde 28/10 têm ID no backlog:** `GIT-07`, `INFRA-02` e
 
 ## A — Depende só de software: dá para fazer a qualquer momento
 
-**38 itens.**
+**37 itens.**
 
 ### `CALC-01` 🔴
 
@@ -156,14 +156,6 @@ Não existe política de retenção: nenhum expurgo, nenhum prazo. Implementar u
 Documentar requisitos: dimensões, conforto, autonomia, aquecimento, custo, segurança.
 
 *Camada no backlog: L0.*
-
-### `ML-12` 🟡
-
-Confirmar a redução para 3 features (`mag_din_media`, `p_frac`, `d_angulo`) que o `ML-11` achou: validação aninhada nas três bases, o mesmo com o HMM e, quando houver, dado do travesseiro. Só depois o `DATA-07e` encolhe o registro.
-
-*Camada no backlog: L0.*
-
-**Conferência.** O `ML-11` escolheu o subconjunto olhando as dobras de avaliação da cabeça; fora da amostra ele empatou, mas a escolha em si não foi validada.
 
 ### `ML-06b` 🟡
 
@@ -491,7 +483,13 @@ SMTP próprio (Resend/Brevo) para 'esqueci minha senha'. Exige criar conta em se
 
 ## D — Bloqueado por hardware ou coleta
 
-**23 itens.**
+**24 itens.**
+
+### `ML-12 (c)` 🟡
+
+Repetir a comparação 8 × 3 features com dado do travesseiro, quando o `VIA-01`/`VIA-02` o produzirem. As partes (a) e (b) fecharam em 30/10: no kappa a redução sobrevive; na especificidade custa de 1 a 5 pontos, e a recomendação é manter as 6 no dispositivo.
+
+*Camada no backlog: L1.*
 
 ### `CAL-01` 🔴
 
