@@ -298,6 +298,14 @@ jobs:
         working-directory: firmware/nucleo
         run: make sintaxe
 
+      # FW-07 (30/10): o controle positivo da cadeia C2 roda a cada push, e nao
+      # so na maquina de quem mexeu. Sao 17 compilacoes duplas (~1 min). Se um
+      # sabotador deixar de casar com o codigo, o script reprova como
+      # SABOTADOR QUEBRADO em vez de "passar" sem sabotar nada.
+      - name: Mutação da cadeia C2 (o dourado e a suíte acusam cada sabotagem)
+        working-directory: firmware/nucleo
+        run: make mutacao-cadeia
+
       # Nao e teste: e a medicao de quantas horas cabem no buffer, que o
       # `firmware/nucleo/README.md` e o backlog citam como numero medido. Rodar
       # junto garante que o numero citado continua sendo o que o codigo produz.

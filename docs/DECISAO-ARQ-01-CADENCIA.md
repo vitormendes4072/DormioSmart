@@ -228,7 +228,7 @@ mantém o sono leve com o relógio do ESP32, a 7,64 mA. B fica como último recu
 | Pergunta de pesquisa (`RQ-01`) | "Baixo consumo" passa a se sustentar por sono leve com FIFO, não por Deep Sleep com WoM |
 | `CLAUDE.md`, "Contexto do projeto" | Diz *"usando Deep Sleep e Wake-on-Motion"*; deixaria de ser verdade |
 | `HW-03` | Deixa de ser pré-requisito; vira opcional |
-| `FW-07` | A reescrita do `sketch.ino` passa a ser em torno do sono leve e da FIFO, e não do buffer no RTC |
+| `FW-07` | A reescrita do `sketch.ino` passa a ser em torno do sono leve e da FIFO, e não do buffer no RTC. ✏️ *30/10: a parte (a) está feita — a cadeia FIFO → taxa medida → anti-aliasing → grade de 32 Hz, no núcleo, com dourado próprio e 16/16 sabotagens acusadas (`firmware/nucleo/README.md`, "A arquitetura C2"). O intervalo entre drenagens ganhou uma variação de 0 a 20 ms: a 50 Hz exatos, 1,7 s trava em fase com a amostragem* |
 | `FW-05` | Desbloqueia com taxa e banda definidas (50 Hz, DLPF de 21 Hz) |
 | `FW-08` | A premissa do heap de ~300 KiB passa a valer |
 | `API-03` | Sobe de prioridade: em C2, o rádio é 63 % da corrente |

@@ -1843,6 +1843,26 @@ DEFEITOS: list[Defeito] = [
              "contra a pendência gerada.",
     ),
     Defeito(
+        data="2026-10-30", area=DOC, item="FW-07",
+        defeito="O `firmware/nucleo/README.md` e o texto que o `make capacidade` "
+                "imprime seguiam dizendo que o `sketch.ino` reescrito usaria 128 "
+                "épocas no RTC, porque o heap não sobrevive ao Deep Sleep, e que o "
+                "`API-03` era item aberto.",
+        achado_por=LEITURA,
+        causa="A propagação da C2 (30/10) passou pelo backlog, pelo `CLAUDE.md` e "
+              "pelos documentos de decisão, e não pelos textos do núcleo — que são "
+              "os que quem for escrever o sketch lê primeiro. O fechamento do "
+              "`API-03` também não voltou a eles.",
+        correcao="Os dois textos reescritos para a C2 (heap, flash do `FW-08`) e "
+                 "para o `API-03` fechado, com nota de correção.",
+        commit="(o commit que introduz esta linha: um commit não cita o próprio "
+               "hash — ver a entrada de 30/10 (v) do diário)", procedencia="parcial",
+        nota="Achado ao escrever a parte (a) do `FW-07`, lendo o README para "
+             "acrescentar a seção da cadeia. Dano: zero (o sketch não foi "
+             "escrito). Terceira vez no mesmo dia que a propagação de uma decisão "
+             "esquece um texto — o padrão que o `DOC-13` registra.",
+    ),
+    Defeito(
         data="2026-10-30", area=INFRA, item="ML-11",
         defeito="O commit do `ML-11` (PR #13) não chegou a `develop`: a PR foi "
                 "mesclada na branch da #12, que já tinha entrado em `develop` 19 s "
@@ -2399,13 +2419,15 @@ PENDENCIAS: list[Pendencia] = [
               "`ts-prune`) ou script próprio **com controle positivo**, porque o "
               "instrumento é a parte difícil e isso já foi medido.", "🟡",
               camada_backlog="L0"),
-    Pendencia("FW-07", SOFTWARE, "Reescrever o `sketch.ino`, que hoje tira **uma "
-              "amostra por boot** e dorme. Desde a decisão do `ARQ-01` (C2, 30/10): "
-              "em torno do núcleo, com o ESP32 em **sono leve** (a RAM sobrevive), "
-              "driver da FIFO do MPU a 50 Hz, estimativa de taxa e reamostragem, "
-              "buffer no heap e na flash (`FW-08`), e drenagem pelo "
-              "`POST /api/data/lote` (`API-03`). O núcleo já existe e está "
-              "testado.", "🔴", camada_backlog="L0"),
+    Pendencia("FW-07", SOFTWARE, "Parte (b): reescrever o `sketch.ino`, que hoje "
+              "tira **uma amostra por boot** e dorme, em torno da cadeia C2 que a "
+              "parte (a) deixou pronta e testada no núcleo (30/10: `fifo_mpu.h`, "
+              "`reamostragem.h`, `cadeia_c2.h`, `lote.h`). Falta a cola com o "
+              "hardware: ESP32 em **sono leve**, os registradores da C2, a FIFO lida "
+              "por I2C em blocos, o despertar com intervalo variado, buffer no heap "
+              "e na flash (`FW-08`) e drenagem pelo `POST /api/data/lote`. Sem a "
+              "placa ela só compila; e um POST que bloqueie mais de ~1,7 s deixa a "
+              "FIFO transbordar.", "🔴", camada_backlog="L0"),
     Pendencia("FW-01", SOFTWARE, "Lógica atividade/repouso por época no firmware. "
               "**Parcialmente coberto:** o `envio-continuo` já classifica por "
               "época de 30 s desde o `HW-05`; falta levar ao `sketch.ino` "

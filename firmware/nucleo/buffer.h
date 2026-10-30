@@ -62,7 +62,7 @@ struct EstatisticasDoBuffer {
 template <uint32_t Capacidade>
 class BufferDeEpocas {
  public:
-  BufferDeEpocas() : inicio_(0), tamanho_(0), limiar_percentual_(75) {}
+  BufferDeEpocas() : inicio_(0), tamanho_(0), geracao_(0), limiar_percentual_(75) {}
 
   // Ocupacao (em %) a partir da qual a fila degrada antes de aceitar a
   // proxima epoca. Abaixo de 100 de proposito: degradar so na borda faria a
@@ -129,6 +129,26 @@ class BufferDeEpocas {
     return true;
   }
 
+  // Muda toda vez que `degradar` funde alguma coisa. O lote (`lote.h`) guarda
+  // a geracao em que foi montado: se a fila degradou enquanto ele estava no
+  // ar, as `k` primeiras epocas de agora nao sao mais as `k` que foram
+  // enviadas -- algumas viraram uma so, de 60 s --, e confirmar `k` apagaria
+  // epocas que o servidor nunca viu.
+  uint32_t geracao() const { return geracao_; }
+
+  // Remove as `k` mais antigas, depois de o servidor confirmar o lote (FW-07).
+  // Devolve quantas removeu: 0 se a fila degradou desde `geracao_do_lote` (o
+  // lote volta inteiro -- duplicata no servidor, nunca perda aqui), e no
+  // maximo o tamanho da fila.
+  uint32_t confirmar_entregas(uint32_t k, uint32_t geracao_do_lote) {
+    if (geracao_do_lote != geracao_) return 0;
+    if (k > tamanho_) k = tamanho_;
+    inicio_ = (inicio_ + k) % Capacidade;
+    tamanho_ -= k;
+    stats_.epocas_drenadas += k;
+    return k;
+  }
+
   // Funde pares adjacentes e compativeis, varrendo do mais antigo para o mais
   // novo. Um par so funde se estiver no mesmo nivel e for adjacente na grade
   // daquele nivel (indice par seguido do impar imediato) -- assim o instante
@@ -170,6 +190,7 @@ class BufferDeEpocas {
 
     tamanho_ = escrita;
     if (fundidos > 0) {
+      geracao_++;
       stats_.degradacoes++;
       stats_.fusoes += fundidos;
       for (uint32_t i = 0; i < tamanho_; i++) {
@@ -190,6 +211,7 @@ class BufferDeEpocas {
   Epoca dados_[Capacidade];
   uint32_t inicio_;
   uint32_t tamanho_;
+  uint32_t geracao_;
   uint8_t limiar_percentual_;
   EstatisticasDoBuffer stats_;
 };
