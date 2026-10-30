@@ -8,7 +8,7 @@
 
 ## Contexto do projeto
 
-DormioSmart (SmartDormio) é um **dispositivo embarcado de baixo consumo para monitoramento não invasivo do sono, instalado dentro de um travesseiro**, desenvolvido como Trabalho de Conclusão de Curso por dois autores. O ESP32 + MPU6050 capta eventos de movimento durante o repouso (sem contato com o corpo) usando Deep Sleep e Wake-on-Motion; os dados vão para uma aplicação web que os armazena e apresenta. O escopo é deliberadamente modesto: registrar indícios de movimento ancorados em actigrafia, **sem** prometer estadiamento de sono nem diagnóstico clínico. Detecção de áudio/ronco é expansão futura, não requisito do MVP.
+DormioSmart (SmartDormio) é um **dispositivo embarcado de baixo consumo para monitoramento não invasivo do sono, instalado dentro de um travesseiro**, desenvolvido como Trabalho de Conclusão de Curso por dois autores. O ESP32 + MPU6050 capta o movimento durante o repouso (sem contato com o corpo) em **sono leve, lendo em rajadas a memória interna (FIFO) do sensor a 50 Hz** — arquitetura decidida em 2026-10-30 (`ARQ-01`, `docs/DECISAO-ARQ-01-CADENCIA.md`; até ali o desenho era Deep Sleep com Wake-on-Motion, que não alimenta as features do modelo); os dados vão para uma aplicação web que os armazena e apresenta. O escopo é deliberadamente modesto: registrar indícios de movimento ancorados em actigrafia, **sem** prometer estadiamento de sono nem diagnóstico clínico. Detecção de áudio/ronco é expansão futura, não requisito do MVP.
 
 O projeto tem **duas fases**: Fase 1 = simulação no Wokwi (suficiente para a primeira entrega); Fase 2 = **dispositivo físico real funcionando**, que é o entregável que importa para a defesa. Detalhes de hardware, BOM e fases em `docs/HARDWARE.md`.
 
@@ -96,6 +96,8 @@ Branches:
 - `bugfix/<id-do-item>-<descricao>` — correções (base: `develop`)
 
 **Nunca fazer merge direto.** Sempre apresentar o resumo das alterações para o usuário revisar e aprovar o merge para `develop`.
+
+**PR sempre com base em `develop`, nunca empilhada sobre outra branch** (✏️ 30/10). A PR #13 tinha como base a branch da #12; a #12 entrou em `develop` 19 s antes, a #13 foi mesclada na branch antiga, e o `ML-11` ficou fora de `develop` sem que nada avisasse. Trabalho que depende de outra PR ainda aberta parte da branch dela, mas a PR aponta para `develop`: o diff mostra os dois, e qualquer ordem de merge chega ao lugar certo.
 
 ### Protocolo por tarefa — itens do roadmap
 

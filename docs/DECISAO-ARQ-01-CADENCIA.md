@@ -1,8 +1,17 @@
 # Análise: cadência de amostragem e arquitetura de energia (ARQ-01, partes a e b)
 
-**Data:** 2026-10-29 · **Item:** `ARQ-01` · **Estado:** analisado, **não decidido**. A escolha
-é do autor, e passa pelo orientador junto com o `RQ-01`, porque mexe no texto da pergunta de
-pesquisa. O `ARQ-01` só fecha com a parte (c), medida na placa.
+**Data:** 2026-10-29 · **Item:** `ARQ-01` · **Estado:** ✅ **(a) e (b) decididos pelo autor
+em 2026-10-30: arquitetura C2** (sono leve + FIFO, MPU a 50 Hz, DLPF de 21 Hz, taxa medida e
+reamostragem igual à do `ml/`, entrega em lote pelo `API-03`). A decisão muda a frase da
+pergunta de pesquisa e **vai ao orientador para confirmação** junto com o `RQ-01`. O `ARQ-01`
+só fecha com a parte (c), medida na placa.
+
+> **A decisão, em uma linha (30/10).** Escolhida a C2 depois do `ML-11`
+> (`docs/ARQUITETURA-DE-CAPTACAO.md`), que mediu o lado do modelo: o que o WoM entrega custa
+> de 0,07 a 0,10 de kappa na base de cabeça, e a C2 custa 3,4 mA a mais que o WoM (só nos
+> circuitos integrados). O conjunto de features (8 ou 3) **não** foi decidido: espera o
+> `ML-12`. As consequências estão aplicadas no backlog (`HW-03`, `FW-05`, `FW-07`, `FW-08`), no
+> `CALCULOS-TCC.md` (Z.1.4 e Z.4.4b) e no `CLAUDE.md`.
 
 > **Reprodutibilidade.** Todo número deste documento sai de:
 >
@@ -128,7 +137,7 @@ a placa não inverte nada, mas comprime as razões. Com o DevKit de hoje (miliam
 | | A. WoM | B. Contínua | C1 | C2 |
 |---|---|---|---|---|
 | **Pergunta de pesquisa**, "baixo consumo" e "eventos de movimento" | literal | difícil de sustentar | sustentável | sustentável |
-| **Hipótese**, validação contra acelerometria pública | só com uma feature degradada (contagem de eventos), a medir | sim | sim | sim |
+| **Hipótese**, validação contra acelerometria pública | só com uma feature degradada: −0,07 a −0,10 de κ na cabeça (`ML-11`, 30/10) | sim | sim | sim |
 | O `ml/` consome? | não, nem o pipeline nem o dourado | sim | sim, grade exata | sim, reamostrada como as bases públicas |
 | `HW-03` (INT do MPU num GPIO RTC) | **necessário** | desnecessário | desnecessário | opcional (alarme de transbordo da FIFO) |
 | `FW-07` (reescrever o `sketch.ino`) | como escrito: buffer no RTC, Deep Sleep | muda: heap e laço contínuo | muda: sono leve | muda: sono leve e driver de FIFO |
@@ -137,9 +146,12 @@ a placa não inverte nada, mas comprime as razões. Com o DevKit de hoje (miliam
 | Só a medição responde | — | — | se o despertar a cada 15,6 ms cabe | latência, transbordo, taxa real |
 
 **Sobre A e a hipótese.** O WoM não fica sem validação de saída: dá para simular o despertar por
-limiar nas bases públicas e medir o kappa de uma "contagem de eventos por época". Esse
-experimento **não foi feito**, e não há número para pôr ao lado do vetor de 8 features. Ele
-entra aqui como possibilidade, não como resultado.
+limiar nas bases públicas e medir o kappa de uma "contagem de eventos por época". ✏️ *30/10:
+medido, com proxies, no `ML-11` (`docs/ARQUITETURA-DE-CAPTACAO.md` §3.3).* Na base de cabeça,
+que é o substituto mais próximo do travesseiro, o que o WoM entrega custa de **0,07 a 0,10 de
+kappa** contra as 8 features (de 66 % para 50–55 % do teto humano); no pulso, de 0,01 a 0,05.
+O mesmo experimento mostrou que **três features bastam** (`mag_din_media`, `p_frac`,
+`d_angulo`), o que simplifica a C2, mas não muda a energia dela.
 
 ## 5. (b) Banda e taxa, contra os 12,8 Hz
 
@@ -183,6 +195,9 @@ fixo da placa, e cobra duas incógnitas (a FIFO no modo de baixo consumo, e o ka
 10 Hz). Fica registrada como otimização posterior.
 
 ## 6. Recomendação
+
+> ✅ **Adotada pelo autor em 30/10** (ver o cabeçalho). O texto abaixo é o de 29/10, mantido
+> como procedência.
 
 > ⚠️ **É uma recomendação, não uma decisão.** A escolha muda a frase da pergunta de pesquisa e
 > o capítulo de energia, e é do autor com o orientador.

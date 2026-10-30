@@ -3541,6 +3541,166 @@ existisse no sensor. As duas eram lembrança, não leitura.
 - ESP-IDF v6.1, *Sleep Modes — ESP32*;
 - backlog `ARQ-01`.
 
+---
+
+# 2026-10-30 — `ML-11`: três features bastam, e o WoM custa de 0,07 a 0,10 de kappa
+
+**O problema, como foi entendido no início.** Depois da análise do `ARQ-01` (29/10 (v)), o
+Vitor perguntou se todas as 8 features são necessárias, e pediu o resultado antes de decidir
+qualquer coisa. Ele está inclinado ao sono leve com FIFO. Pediu também a investigação do
+registro pelo celular, que não tem as limitações do ESP32, e se dá para oferecer mais de um
+modo de registro ao usuário, com tudo registrado num documento.
+
+**Hipótese de trabalho.** Cinco hipóteses, declaradas antes de rodar
+(`docs/ARQUITETURA-DE-CAPTACAO.md` §2):
+- H1: as features de intensidade são redundantes entre si;
+- H2: poucas features bastam;
+- H3: o que o WoM entrega perde muito;
+- H4: no celular, o limite é o sistema operacional, não a energia;
+- H5: o contrato já comporta vários modos.
+
+**O que foi testado, e como.**
+
+- **`ml/experimentos/ml11_ablacao_features.py`**, sobre as features já extraídas (cache do
+  Wearanize, 92 pessoas em cabeça e pulso; Newcastle, 27). Usa o pipeline do produto, igual ao
+  do experimento de quantização, mudando só as colunas. Mede:
+  - tirar uma feature de cada vez;
+  - a seleção progressiva;
+  - os conjuntos de cada arquitetura, com o WoM cercado por dois proxies;
+  - o subconjunto escolhido na cabeça, fixo, nas outras bases.
+
+  Toda diferença é pareada por dobra, com IC de 95 %.
+- **Rodou duas vezes** (a segunda com o teste fora da amostra acrescentado): Windows 11,
+  `ml/.venv`, ~6 min cada.
+- **O celular:** leitura do código da coleta (`frontend/src/hooks/useColeta.ts`,
+  `lib/acelerometro.ts`) e pesquisa na web (AOSP, fóruns da Apple, quatro estudos de validação).
+
+**Resultado medido.**
+
+- **Tirar uma:** perdas detectáveis só em `mag_din_media` (−0,049 de κ na cabeça; −0,011 no
+  pulso), `p_frac` (−0,017 na cabeça) e `d_angulo` (−0,008 na cabeça; −0,024 no Newcastle).
+  Saem sem perda: as três `enmo_*`, `zcr` e `inclinacao_rel`.
+- **Quantas bastam:** `mag_din_media` + `p_frac` + `d_angulo` dão κ 0,405 contra 0,403 das
+  oito na cabeça (número otimista). Fixas, fora da amostra: pulso Δκ +0,004 [−0,004; +0,011];
+  Newcastle +0,044 [+0,002; +0,086]. A especificidade cai de 1 a 4 pontos.
+- **O WoM, na cabeça:** −0,070 (limite superior) a −0,090 (inferior) de κ, os dois com IC longe
+  do zero: de 66 % para 51–55 % do teto humano. No pulso, −0,008 (n.s.) a −0,039. No Newcastle,
+  nada detectável. A contagem clássica de actigrafia, um número só, fica a −0,024 na cabeça.
+- **A segunda rodada** reproduziu todos os números da primeira.
+- **O celular:** no navegador, o sensor para com a tela bloqueada, o que o próprio código já
+  declarava. Para a noite inteira, o caminho é o Android nativo, com *batching* do *sensor hub*
+  (a mesma ideia da FIFO, feita em hardware). O iOS não está verificado. A literatura mostra o
+  celular sobre a cama detectando bem o sono e mal a vigília.
+
+**Adaptação.**
+
+- **H1 errou em parte, e a correção ficou registrada.** O documento dizia que as três `enmo_*`
+  eram redundantes com `mag_din_media` por correlação. A `enmo_media` tem correlação de 0,25 com
+  ela, e mesmo assim sai sem perda. Já `mag_din_media` e `p_frac`, que a H1 dava como
+  redundantes, são as que mais carregam informação.
+- **A seleção progressiva é otimista por construção.** Por isso o subconjunto foi testado fixo
+  nas bases que não participaram da escolha, e esse teste entrou no script antes do commit.
+- **Uma citação foi atribuída ao artigo errado e foi corrigida antes do commit:** o link do PMC
+  era o estudo do Sleep Time (2015), não o de 2012.
+
+**Risco em aberto.**
+
+- **Não medido:** o WoM real. Os proxies saem do cache de features; o circuito do MPU6050
+  detecta movimento por diferença entre amostras, e a postura com uma leitura só é otimista.
+  Como os dois limites dão perda grande na cabeça, a conclusão não depende do proxy exato; o
+  número exato, sim.
+- **Não validado:** a escolha do subconjunto de 3 features (validação aninhada, HMM, dado do
+  travesseiro). Fica no `ML-12`, aberto hoje.
+- **Não medido:** que as 3 features toleram o DLPF de 10 Hz (C2-LP). É hipótese no §4 do
+  documento.
+- **As bases são de sensores presos ao corpo.** Cabeça ≠ travesseiro (`ML-DATASETS-E-PLANO.md`).
+  Os números ordenam as arquiteturas; não preveem o kappa do travesseiro.
+- **Não decidido:** os modos de registro (`ARQ-02`, aberto hoje) e a escolha do `ARQ-01` (a).
+- **Fora do CI:** os números do `ML-11` não são travados por nenhuma conferência, como os demais
+  experimentos de ML. O JSON é a procedência.
+
+**Procedência.**
+
+- `ml/experimentos/ml11_ablacao_features.py` e `ml/experimentos/saida/ml11_ablacao_features.json`,
+  deste commit;
+- `docs/ARQUITETURA-DE-CAPTACAO.md`;
+- `docs/DECISAO-ARQ-01-CADENCIA.md` §4.4, atualizado;
+- fontes externas na §9 do documento.
+
+---
+
+# 2026-10-30 (ii) — `ARQ-01` decidido: arquitetura C2, e o `ML-11` fora de `develop`
+
+**O problema, como foi entendido no início.** O Vitor mesclou as PRs #12 e #13 e decidiu:
+seguir com a arquitetura **C2** (sono leve + FIFO). Pediu os ajustes que a decisão exige, depois
+o `API-03`, depois o `ML-12`, tudo registrado, e que eu dissesse se houve algum erro em qualquer
+parte.
+
+**Hipótese de trabalho.** Que as duas PRs estivessem em `develop`, e que a decisão tocasse:
+- os dois documentos de análise;
+- o `CALCULOS-TCC.md` (Z.4, que dizia "muda depois da decisão");
+- o `CLAUDE.md` e o `README.md`, que descreviam o dispositivo como Deep Sleep com WoM;
+- as linhas `HW-03`, `FW-05`, `FW-07`, `FW-08` e `RQ-01` do backlog.
+
+**O que foi testado, e como.**
+
+- `gh pr view 12` e `13` antes de criar a branch;
+- busca por "Wake-on-Motion", "Deep Sleep" e `ARQ-01` nos documentos versionados e nos locais;
+- depois das edições:
+  - recontagem do backlog linha a linha;
+  - `consolidar_registro.py --conferir`;
+  - `conferir_docs_versionados.py`;
+  - `calculos_tcc.py --conferir`;
+  - `estudo_cadencia.py --conferir`.
+
+**Resultado medido.**
+
+- **A #13 não estava em `develop`.** A #12 entrou às 03:33:09; a #13, que tinha como base a
+  branch da #12, foi mesclada às 03:33:28 **nessa branch**, e não em `develop`. O `ML-11` (o
+  experimento, o JSON, o documento de captação e o registro) estava só na branch velha.
+  Corrigido partindo dela, para que a PR desta entrada leve os dois.
+- **Decisão aplicada:**
+  - os dois documentos de análise ganharam o estado "decidido em 30/10, a confirmar com o
+    orientador";
+  - o `CALCULOS-TCC.md` ganhou a seção Z.4.4b (a arquitetura adotada, com os números do
+    `estudo_cadencia.py` e do `ML-11`) e, em Z.1.4, o critério de dobra contra os 12,8 Hz e a
+    tolerância do oscilador;
+  - `CLAUDE.md` e `README.md` agora descrevem o sono leve com FIFO;
+  - os locais `HARDWARE.md` e `ROADMAP.md` ganharam nota datada.
+- **Backlog:**
+  - `ARQ-01` (a,b) decididos; o item segue aberto pela parte (c) e passou de L0 para L1;
+  - `HW-03` deixou de ser pré-requisito;
+  - `FW-05` foi desbloqueado, com a especificação nova (50 Hz pela FIFO, DLPF de 21 Hz);
+  - `FW-07` mudou de premissa (sono leve, não Deep Sleep);
+  - a premissa do `FW-08` passou a valer;
+  - o `RQ-01` leva a decisão ao orientador;
+  - recontagem: 77 (L0 44, L1 13).
+- **Na primeira versão do script, três prefixos começavam com ✅ em itens que seguem
+  abertos** (`ARQ-01`, `FW-05`, `FW-08`). O recontador conta ✅ no começo da célula como item
+  fechado. Trocados por 📌 e 🔓 antes de rodar, então nada saiu errado no arquivo.
+- **Consolidação:** as pendências `ARQ-01 (a, b)` e `ARQ-01 (a) — a escolha` saíram (83
+  pendências); as de `FW-05` e `HW-03` foram reescritas. Todas as conferências passam.
+
+**Adaptação.**
+
+- **A regra que faltava foi para o `CLAUDE.md`:** PR sempre com base em `develop`. Trabalho que
+  depende de outra PR parte da branch dela, mas aponta para `develop`, e assim qualquer ordem de
+  merge chega ao lugar certo.
+- **O defeito entrou na consolidação** (`ML-11`, área de infraestrutura).
+
+**Risco em aberto.**
+
+- **Não confirmado:** a decisão com o orientador. Ela muda a frase de "baixo consumo" da RQ; se o
+  orientador recusar, o `ARQ-01` volta a L0. Fica no `RQ-01`.
+- **Não decidido:** o conjunto de features (8 ou 3). Espera o `ML-12`, que é o terceiro passo do
+  pedido.
+- **Não medido:** tudo o que a C2 promete na placa (latência do sono leve, transbordo da FIFO,
+  taxa real). É a parte (c) do `ARQ-01`, que espera a solda.
+
+**Procedência.** `gh pr view 12 --json mergedAt` e `gh pr view 13 --json baseRefName,mergedAt`
+(30/10, 03:33:09 e 03:33:28 UTC); os arquivos tocados por este commit; backlog `ARQ-01`, `FW-05`,
+`HW-03`, `FW-07`, `FW-08`, `RQ-01`.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

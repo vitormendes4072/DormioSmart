@@ -19,15 +19,15 @@ a única coisa aqui que sustenta uma afirmação de método.
 
 ## Resumo quantitativo
 
-**123 correções registradas**, todas sustentadas no repositório.
+**124 correções registradas**, todas sustentadas no repositório.
 
 **A unidade de contagem, dita antes dos números, porque ela decide como
 lê-los.** Uma linha deste arquivo é **uma correção**: um defeito, uma
 causa, uma correção. Em 4 linhas, porém, a causa e a correção foram
 uma só e os defeitos foram vários — `DADOS-02` (10), `REF-01` (4), `GIT-06` (14), `SEC-12` (2) —, e agrupá-las foi deliberado,
 porque separá-las contaria a mesma correção várias vezes. **Contando
-defeito em vez de correção, o total seria 149.** Este
-arquivo usa **123**, que é o número menor e o mais defensável.
+defeito em vez de correção, o total seria 150.** Este
+arquivo usa **124**, que é o número menor e o mais defensável.
 
 **Fora da contagem, e visível:** 1 linha(s) — `ML-04b` —,
 em que a hipótese se confirmou e o que se corrigiu foi a afirmação
@@ -43,8 +43,8 @@ que se podia extrair do resultado, não um defeito. Estão na seção da
 | Firmware | 18 |
 | Dados e ML | 23 |
 | Documentação | 20 |
-| Infraestrutura | 22 |
-| **Total** | **123** |
+| Infraestrutura | 23 |
+| **Total** | **124** |
 
 ### Por instrumento — o campo que dá valor a este arquivo
 
@@ -54,11 +54,11 @@ que se podia extrair do resultado, não um defeito. Estão na seção da
 | **cálculo** | 4 | Aritmética sobre os próprios números do projeto. O mais barato de todos, e derrubou premissas grandes. |
 | **execução** | 49 | Rodar código do projeto — suíte, job, compilador, script — e a **saída** acusar. O defeito não estava escondido: estava não exercitado. |
 | **controle positivo** | 13 | Provocar o defeito de propósito e exigir que a verificação acuse. Inclui verificação por mutação. **É o único instrumento que mede o alcance de uma verificação.** |
-| **inventário** | 20 | Conferir estado declarado contra estado real: `grep` por símbolo, `git ls-files` contra o disco, varredura de afirmações em documentos. |
+| **inventário** | 21 | Conferir estado declarado contra estado real: `grep` por símbolo, `git ls-files` contra o disco, varredura de afirmações em documentos. |
 | **terceiro** | 10 | Especificação, documentação oficial, artigo, issue ou API de terceiro. O artefato que decide a resposta está **fora** do repositório. |
 | **dado real** | 3 | Só apareceu com o arquivo ou a medição real em mãos. |
 | **uso real** | 1 | Alguém usou o produto como usuário. |
-| **Total** | **123** | |
+| **Total** | **124** | |
 
 ### As três derivações que os números sustentam
 
@@ -72,8 +72,8 @@ que se podia extrair do resultado, não um defeito. Estão na seção da
 > do projeto; são proporções do que foi achado.**
 
 **(1) Exercitar achou mais do que ler, por mais de duas vezes.**
-Execução, controle positivo e uso real somam **63 de 123**
-registros (51%). Leitura e cálculo — os dois
+Execução, controle positivo e uso real somam **63 de 124**
+registros (50%). Leitura e cálculo — os dois
 instrumentos que não precisam rodar nada — somam **27** (21%). A razão é de **2,3 para 1**.
 
 Com a ressalva que impede a leitura fácil: isto **não** diz que ler é
@@ -84,7 +84,7 @@ e a execução achou **alcance** insuficiente. Alcance não se vê lendo, e é
 por isso que a razão é essa e não o contrário.
 
 **(2) 13 correções tinham a causa fora do repositório.**
-Fonte de terceiro e dado real somam **13 de 123** (10%) — defeitos cuja causa não está em nenhuma
+Fonte de terceiro e dado real somam **13 de 124** (10%) — defeitos cuja causa não está em nenhuma
 linha deste projeto, e que **nenhum teste daqui poderia pegar**: a
 especificação do PostgREST, a unidade do Empatica em `g/64`, o valor de
 uma chave num painel do Supabase, a API do Actions, os coeficientes do
@@ -98,7 +98,7 @@ Supabase de teste**, que deve a quatro itens e desde 28/10 tem item próprio
 **(3) As próprias verificações do projeto estavam defeituosas
 26 vezes — e 24 dessas 26 só apareceram
 rodando ou sabotando.**
-São **26 de 123** registros (21%) em que a coisa errada era um teste, uma
+São **26 de 124** registros (20%) em que a coisa errada era um teste, uma
 guarda de CI, um harness de mutação ou um vetor de referência — não o
 código. A distribuição:
 
@@ -127,9 +127,9 @@ alguém tentou fazer a verificação falhar.
 | Procedência | Correções | O que significa |
 |---|---:|---|
 | `completa` | 117 | Commit **e** artefato reabrível — teste, script, seção de documento. Dá para reconferir sem acreditar em ninguém. |
-| `parcial` | 6 | Só a mensagem de commit, só a entrada de diário, ou correção em arquivo não versionado. Entra porque omitir seria pior, e entra **marcada**. |
+| `parcial` | 7 | Só a mensagem de commit, só a entrada de diário, ou correção em arquivo não versionado. Entra porque omitir seria pior, e entra **marcada**. |
 
-**48 dos 123 defeitos revelaram que a premissa estava
+**48 dos 124 defeitos revelaram que a premissa estava
 errada** — não que o código estava errado. É a seção mais instrutiva deste
 arquivo e tem lugar próprio no fim.
 
@@ -1333,9 +1333,9 @@ só de código filtra pela coluna de área.
 
 ---
 
-## Infraestrutura — 22 defeitos
+## Infraestrutura — 23 defeitos
 
-*13 execução · 4 leitura · 3 inventário · 1 controle positivo · 1 terceiro*
+*13 execução · 4 inventário · 4 leitura · 1 controle positivo · 1 terceiro*
 
 ### 2026-10-28 · `DOCS-WIN-01` 🔄
 
@@ -1368,6 +1368,18 @@ só de código filtra pela coluna de área.
 **A correção.** GRANTs aplicados uma vez, logo depois da 001; a sabotagem passou a ser acusada ('permission denied for table sleep_data'). Na suíte de RLS ficou como item (`SEC-13`).
 
 **Commit.** `040fe4b` · procedência **completa**
+
+### 2026-10-30 · `ML-11`
+
+**O defeito.** O commit do `ML-11` (PR #13) não chegou a `develop`: a PR foi mesclada na branch da #12, que já tinha entrado em `develop` 19 s antes.
+
+**Como foi encontrado.** *inventário* — A #13 foi aberta empilhada, com base na branch da #12, contando que o GitHub a redirecionaria para `develop` quando a #12 entrasse; o redirecionamento não acontece quando a base é mesclada e a PR de cima é mesclada logo em seguida, na base velha.
+
+**A correção.** O trabalho seguinte partiu da branch que contém o `ML-11` e a PR aponta para `develop`, levando os dois. Regra no `CLAUDE.md`: PR sempre com base em `develop`.
+
+**Nota.** Achado ao conferir `gh pr view 13` antes de começar o trabalho seguinte; nenhum dado se perdeu, mas `develop` ficou sem o `ML-11` por algumas horas.
+
+**Commit.** `(o commit que introduz esta linha: um commit não cita o próprio hash — ver a entrada de 30/10 (ii) do diário)` · procedência **parcial**
 
 ### 2026-02-18 · `(bootstrap)`
 
@@ -1643,7 +1655,7 @@ com competência teria produzido a coisa errada bem feita.
 | 2026-10-16 | `CI-06` | Que eram três, e não quatro, os jobs nunca rodados num runner. |
 | 2026-10-17 | `GIT-05` | Que um aviso escrito no `ROADMAP.md` chega a quem clona. |
 
-**48 de 123.** E a distribuição por instrumento dentro
+**48 de 124.** E a distribuição por instrumento dentro
 deste subconjunto é a parte que vale registrar:
 
 | Instrumento | Premissas derrubadas |
