@@ -4094,6 +4094,54 @@ do servidor batendo com o `ml/` sem numpy.
 - `docs/DATA-CONTRACT.md` 2.7.0, §2.6;
 - backlog `DATA-07b`, `DATA-07d` e `DATA-07f`.
 
+---
+
+# 2026-10-30 (vii) — `DATA-07f`: a 010 na produção, antes do release
+
+**O problema, como foi entendido no início.** O `DATA-07b` entrou em `develop` com a migração
+`010`, e o backend novo valida o vetor `f` e o entrega às funções de gravação. Se o release
+levasse esse backend a `main` antes da 010 estar no banco, as funções antigas descartariam o
+vetor e responderiam `201`: perda silenciosa, a mesma família do `SEC-12`.
+
+**Hipótese de trabalho.** Que a 010 entrasse na produção sem efeito sobre o backend que está no
+ar (contrato 2.5.1), e que o diagnóstico distinguisse "aplicada" de "colunas criadas com a
+função antiga".
+
+**O que foi testado, e como.** O autor aplicou `010_vetor_de_caracteristicas.sql` no SQL Editor
+do Supabase e colou aqui o resultado de `DIAGNOSTICO-migracoes-aplicadas.sql`. O `/health` de
+produção foi chamado daqui depois da aplicação.
+
+**Resultado medido.**
+
+- **Diagnóstico:**
+  - a 010 com **4 de 4 marcas**: a coluna `fs_features`, a restrição tudo-ou-nada, e as duas
+    funções extraindo `->> 'fs_features'`;
+  - 001 e 003–009 com todas as marcas, como em 29/10;
+  - 0 leituras sem dono (002).
+- **`/health`:** `200`, `"banco": "ok"`, `"contrato_de_dados": "2.5.1"`. O backend de `main`
+  continua funcionando sobre o banco novo, e ainda não é o da v2.7.0.
+
+**Adaptação.** Nenhuma: a aplicação seguiu o passo a passo do item. A régua do diagnóstico já
+tinha sido endurecida no `DATA-07b`, e foi ela que permitiu dar o item por fechado só com o
+resultado colado, sem acesso ao banco daqui.
+
+**O que deu errado no caminho.** Nada nesta etapa.
+
+**Risco em aberto.**
+
+- **Não exercitado na produção:** nenhuma leitura com vetor foi gravada lá. O dispositivo ainda não
+  emite `f` em campo (`FW-07` (b), `FW-08`), e o backend que validaria `f` só chega a `main` no
+  próximo release. O caminho completo está testado contra Postgres 16 local, não contra o
+  Supabase.
+- **O release de `develop` para `main`** ficou desbloqueado deste lado; não foi feito.
+
+**Procedência.**
+
+- `web-app/migrations/010_vetor_de_caracteristicas.sql` e `DIAGNOSTICO-migracoes-aplicadas.sql`;
+- resultado do diagnóstico na produção, colado pelo autor em 30/10;
+- `GET https://dormio-smart.vercel.app/health`, 30/10;
+- backlog `DATA-07f`.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

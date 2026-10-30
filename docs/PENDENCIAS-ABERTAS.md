@@ -51,10 +51,10 @@ linha, não um resumo: resumo é a cópia que diverge.
 |---|---:|
 | A — Depende só de software: dá para fazer a qualquer momento | **35** |
 | B — Depende de decisão do Vitor | **10** |
-| C — Depende de ação do Vitor que não é decisão | **8** |
+| C — Depende de ação do Vitor que não é decisão | **7** |
 | D — Bloqueado por hardware ou coleta | **24** |
 | E — Bloqueado por terceiro | **4** |
-| **Total** | **81** |
+| **Total** | **80** |
 
 ⚠️ **Este total não é comparável à contagem do backlog, e a diferença não é
 erro de nenhum dos dois.** São unidades de contagem diferentes: o backlog
@@ -409,7 +409,7 @@ iOS: **investigação, não implementação.** Rota A (áudio em background) mud
 
 ## C — Depende de ação do Vitor que não é decisão
 
-**8 itens.**
+**7 itens.**
 
 Nada aqui é decisão: a decisão já foi tomada, ou nunca houve uma.
 São ações que só você pode executar, porque exigem credencial,
@@ -428,14 +428,6 @@ terminal na máquina, ferro de solda ou uma conta num serviço.
 Ligar captcha no painel do Supabase (`Authentication → Settings → Bot and Abuse Protection`). ~5 min, zero código, cobre `signup`/`token`/`recover`. ⚠️ **É mitigação: reduz a taxa, não elimina o oráculo** — e ligar isto **não autoriza mudar uma palavra da X.7**.
 
 *Camada no backlog: L3.*
-
-### `DATA-07f` 🔴
-
-Aplicar `web-app/migrations/010_vetor_de_caracteristicas.sql` no SQL Editor da produção **antes** do release do backend da v2.7.0, e conferir com o diagnóstico (a linha da 010 com as quatro marcas `true`). Na ordem inversa, `f` validado seria descartado pela função antiga, com `201`.
-
-*Camada no backlog: L3.*
-
-**Conferência.** A 010 não quebra o backend de hoje: a gravação sem vetor foi medida contra Postgres 16 com as dez colunas nulas.
 
 ### `INFRA-03 — monitor da produção` 🟡
 
