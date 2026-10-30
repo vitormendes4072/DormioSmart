@@ -2333,21 +2333,6 @@ PENDENCIAS: list[Pendencia] = [
               "(N=92). **Provavelmente esforço mal gasto** — a validação externa "
               "já mostrou que o ganho do HMM não atravessa coorte. Registrado "
               "para não parecer esquecimento.", "⚪", camada_backlog="L0"),
-    Pendencia("DATA-07b (d, e)", SOFTWARE, "**(d)** migração e mudança na função "
-              "de ingestão para persistir o vetor; **(e)** derivação de "
-              "`inclinacao_rel`/`d_angulo` no servidor. **E o terceiro, que é "
-              "pré-requisito de qualquer captação útil:** `montar_payload` não "
-              "emite `f`, `g` e `fs` — o contrato v2.5.1 continua 'declarado, não "
-              "implementado' do lado do transporte.", "🔴", camada_backlog="L0",
-              nota="Confirmado aberto, nos três. `grep` por `features`/`fs` em "
-                   "`web-app/database.py` devolve vazio; nenhuma migração "
-                   "menciona o vetor; `features_inter_epoca` existe em "
-                   "`ml/src/features.py:194` e **não é referenciada por "
-                   "`web-app/`**."),
-    Pendencia("DATA-07d", SOFTWARE, "O que resta: **o contrato precisa dizer que "
-              "o dispositivo não emite `f` de época truncada**, e não diz. Os "
-              "itens (a), (b) e (c) do achado fecharam em 30/09.", "🟡",
-              camada_backlog="L0"),
     Pendencia("DATA-07e", SOFTWARE, "Quantizar os 5 floats de pico: 52 B → 40 B, "
               "e a cobertura de 5,25 h → 6,83 h em 32 KiB. Dívida assumida de "
               "propósito, porque mexe na precisão **transmitida** e na checagem "
@@ -2555,6 +2540,14 @@ PENDENCIAS: list[Pendencia] = [
               "zero código, cobre `signup`/`token`/`recover`. ⚠️ **É mitigação: "
               "reduz a taxa, não elimina o oráculo** — e ligar isto **não "
               "autoriza mudar uma palavra da X.7**.", "⚠️", camada_backlog="L3"),
+    Pendencia("DATA-07f", ACAO, "Aplicar `web-app/migrations/010_vetor_de_"
+              "caracteristicas.sql` no SQL Editor da produção **antes** do release "
+              "do backend da v2.7.0, e conferir com o diagnóstico (a linha da 010 "
+              "com as quatro marcas `true`). Na ordem inversa, `f` validado seria "
+              "descartado pela função antiga, com `201`.", "🔴",
+              camada_backlog="L3",
+              nota="A 010 não quebra o backend de hoje: a gravação sem vetor foi "
+                   "medida contra Postgres 16 com as dez colunas nulas."),
     Pendencia("INFRA-03 — monitor da produção", ACAO, "O job que chama o "
               "`/health` de produção a cada 3 dias está em `main` desde o release "
               "de 29/10, e a execução manual passou. Falta a primeira execução "
@@ -2644,12 +2637,15 @@ PENDENCIAS: list[Pendencia] = [
               camada_backlog="L1"),
     Pendencia("VAL-01", HARDWARE, "Uma noite captada. 🛑 **Com o firmware como "
               "está, a noite sai sem feature nenhuma e o modelo não a consome** "
-              "— cadência de 0,1 Hz (3 amostras por época), o acumulador recusa "
-              "a época, e o payload não emite `f`. A ordem correta é `ARQ-01` → "
-              "`FW-05` → `DATA-07b` (d, e) → **só então** captar.", "🔴",
+              "— cadência de 0,1 Hz (3 amostras por época) e o acumulador recusa "
+              "a época. O transporte do vetor existe desde 30/10 (`DATA-07b`); o "
+              "que falta é firmware: `FW-05`, `FW-07` (b) e `FW-08` → **só "
+              "então** captar.", "🔴",
               camada_backlog="L1",
               nota="Confirmado: `INTERVALO_AMOSTRA_MS = 10000` em "
-                   "`envio-continuo.ino:109`, e `montar_payload` sem `f`/`g`/`fs`."),
+                   "`envio-continuo.ino:109`. O `montar_payload` emite "
+                   "`f`/`g`/`fs` desde o `DATA-07b`, mas nenhum sketch o chama com "
+                   "o vetor."),
     Pendencia("VAL-02", HARDWARE, "Validação quantitativa: F1, matriz de "
               "confusão, curva de corrente×tempo medida.", "🔴",
               camada_backlog="L2"),

@@ -75,6 +75,26 @@ METODOS_DE_AGREGACAO = ("pico-da-magnitude",)
 # Relógio de celular é ajustável. Ver a nota em `validar_captacao`.
 TOLERANCIA_DE_ADIANTAMENTO = timedelta(minutes=5)
 
+# --- Vetor de características por época (contrato v2.5.0 §2.6, DATA-07b) ---
+# A ORDEM é a canônica de `ml/src/features.py::FEATURES_DO_DISPOSITIVO`, e
+# trocá-la é mudança MAJOR do contrato: um vetor na ordem errada passa em toda
+# faixa e produz um modelo errado em silêncio. As faixas são as da tabela do
+# §2.6, em **g** — `f` não está em m/s², ao contrário do resto do payload.
+FEATURES_DO_DISPOSITIVO = (
+    ("enmo_media", 0.0, 1.0),
+    ("enmo_desvio", 0.0, 1.0),
+    ("enmo_max", 0.0, 16.0),
+    ("mag_din_media", 0.0, 2.0),
+    ("zcr", 0.0, 1.0),
+    ("p_frac", 0.0, 1.0),
+)
+# `‖g‖ = 1 ± 1e-3` é checagem de COERÊNCIA (o vetor é unitário?), não régua de
+# paridade entre implementações — ver a nota do §2.6.
+TOLERANCIA_NORMA_G = 1e-3
+# A taxa que produziu o vetor. Na C2 é a da grade, 32 Hz; o teto cobre
+# qualquer taxa de acelerômetro de celular.
+FS_MAXIMA = 200.0
+
 # `total` deve bater com a magnitude de (ax, ay, az). O firmware transmite os
 # valores com 2 casas decimais, então a diferença esperada é de centésimos;
 # 0,5 m/s² é folga generosa que ainda pega payload montado errado.
@@ -135,7 +155,14 @@ def validar_leitura(content):
     if erro:
         return None, erro
 
-    return _validar_agregacao(content)
+    content, erro = _validar_agregacao(content)
+    if erro:
+        return None, erro
+
+    erro = _validar_features(content)
+    if erro:
+        return None, erro
+    return content, None
 
 
 def _recusar_sensor_mudo(content):
@@ -227,6 +254,65 @@ def _validar_agregacao(content):
             return None, "campo amostras deve ser inteiro maior que zero"
 
     return content, None
+
+
+def _validar_features(content):
+    """`f`, `g` e `fs` (contrato §2.6, "Validação prevista"; DATA-07b).
+
+    Ausentes os três é o caso normal — e continuará sendo: dispositivo velho
+    em campo é dispositivo válido. Presente qualquer um, valem todas as
+    regras, e a primeira que falhar recusa a leitura inteira com 400.
+    """
+    f, gv, fs = content.get("f"), content.get("g"), content.get("fs")
+    if f is None and gv is None and fs is None:
+        return None
+    if f is None or gv is None or fs is None:
+        return "campos f, g e fs vem juntos: falta " + ", ".join(
+            nome for nome, v in (("f", f), ("g", gv), ("fs", fs)) if v is None)
+
+    # Vetor de características de uma amostra instantânea não significa nada.
+    if content.get("epoca_s") is None:
+        return "campo f exige epoca_s"
+
+    if not isinstance(f, list) or len(f) != len(FEATURES_DO_DISPOSITIVO):
+        return f"campo f deve ser lista de {len(FEATURES_DO_DISPOSITIVO)} numeros"
+    for valor, (nome, minimo, maximo) in zip(f, FEATURES_DO_DISPOSITIVO):
+        erro = _fora_da_faixa(f"f.{nome}", valor, minimo, maximo)
+        if erro:
+            return erro
+
+    if not isinstance(gv, list) or len(gv) != 3:
+        return "campo g deve ser lista de 3 numeros"
+    for valor, eixo in zip(gv, "xyz"):
+        erro = _fora_da_faixa(f"g.{eixo}", valor, -1.0, 1.0)
+        if erro:
+            return erro
+    norma = math.sqrt(sum(c * c for c in gv))
+    if abs(norma - 1.0) > TOLERANCIA_NORMA_G:
+        return f"campo g deve ser unitario (|g| = 1 +- {TOLERANCIA_NORMA_G}): |g| = {norma:.6f}"
+
+    if not _numero_valido(fs) or not (0.0 < fs <= FS_MAXIMA):
+        return f"campo fs deve ser numero em (0, {FS_MAXIMA}]"
+    return None
+
+
+#: As colunas de `sleep_data` que guardam o vetor (migração 010). A ordem de
+#: `f` vira NOME aqui, uma vez, e daí em diante ninguém depende de posição.
+COLUNAS_DE_FEATURES = tuple(nome for nome, _, _ in FEATURES_DO_DISPOSITIVO) + (
+    "g_x", "g_y", "g_z", "fs_features")
+
+
+def colunas_de_features(content):
+    """Traduz `f`/`g`/`fs` de uma leitura JÁ VALIDADA para as colunas.
+
+    Sem `f`, as dez colunas vão nulas — que é o que a restrição "tudo ou nada"
+    da migração 010 exige.
+    """
+    f = content.get("f")
+    if f is None:
+        return {coluna: None for coluna in COLUNAS_DE_FEATURES}
+    valores = list(f) + list(content["g"]) + [content["fs"]]
+    return dict(zip(COLUNAS_DE_FEATURES, (float(v) for v in valores)))
 
 
 def validar_captacao(valor):

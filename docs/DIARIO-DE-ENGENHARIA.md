@@ -3981,6 +3981,119 @@ verdadeiro.
 - `firmware/nucleo/README.md`, seção "A arquitetura C2";
 - backlog `FW-07` e `FW-05`.
 
+---
+
+# 2026-10-30 (vi) — `DATA-07b` fechado: o vetor sai do dispositivo, entra no banco e volta com as oito
+
+**O problema, como foi entendido no início.** O firmware calculava as 6 features e `ĝ` de cada
+época, mas nada levava isso adiante: `montar_payload` não tinha `f`, `g` e `fs`; o backend não
+os validava; o banco não tinha colunas, e as duas funções de gravação só extraíam os campos que
+conheciam; e `inclinacao_rel` e `d_angulo`, que dependem da noite inteira, não eram calculadas
+em lugar nenhum fora do `ml/`. Uma noite captada chegaria sem vetor, e o modelo não teria o que
+ler. O plano aprovado juntou o transporte, (d) e (e) numa PR, com duas decisões do autor para a
+(e): a janela é escolhida por quem pede (o `ESC-01` decide a "noite" depois), e `d_angulo` é
+nulo depois de buraco.
+
+**Hipótese de trabalho.** Que o caminho inteiro pudesse ser escrito sem mudar o que já está em
+campo: payload sem `f` continuando válido, a 010 sem quebrar o backend de hoje, e a derivação
+do servidor batendo com o `ml/` sem numpy.
+
+**O que foi testado, e como.**
+
+- **Firmware:** `montar_payload` ganhou o vetor opcional, só para época de nível 0 (30 s) com
+  todos os valores dentro das faixas. 13 verificações novas em `testes_c2.cpp`.
+- **Backend:**
+  - `validacao._validar_features`, as regras do §2.6 uma a uma;
+  - `colunas_de_features`, onde a ordem de `f` vira nome;
+  - 40 testes em `test_features_da_epoca.py`.
+- **Banco:** a migração `010` (dez colunas nomeadas, restrição tudo-ou-nada, as duas funções
+  recriadas). Sete testes contra Postgres 16 em Docker (`test_rls_features.py`). O verificador de
+  migrações e o diagnóstico de produção ganharam a 010.
+- **Servidor:**
+  - `web-app/features_noite.py` (Weiszfeld e arccos em Python puro) e `GET /api/features`;
+  - 28 testes em `test_features_noite.py`, incluindo a paridade contra as oito sequências de
+    `ml/testes/vetor_dourado_sequencias.json`.
+- **Controle positivo:**
+  - 13 sabotagens no backend e no banco (script em scratchpad, que aplica, roda o teste nomeado e
+    restaura);
+  - 3 no payload, agora no `make mutacao-cadeia`;
+  - a 010 com uma função que grava nulo, rodada pelo verificador do diagnóstico.
+- **Suítes completas:** backend e RLS no Windows 11 (RLS contra `postgres:16` em Docker);
+  firmware em `gcc:13`; ML no `ml/.venv`.
+
+**Resultado medido.**
+
+- **Paridade da derivação:** `g_ref` difere do `ml/` em 5,6e-16, e os ângulos em 2,4e-10 grau.
+  O arccos amplifica perto de 0 a diferença de 1e-16 no cosseno, então a régua "exato" do arquivo
+  (1e-12) **reprovaria a implementação correta** nos ângulos. A régua adotada é 1e-6 grau,
+  4 000× acima do piso; as sabotagens movem graus inteiros.
+- **Suítes:**
+  - backend: 384 passam (316 + 68);
+  - RLS: 158 (151 + 7);
+  - firmware: 341 + 157 + 118 + 456, 0 falhas; 4/4 sketches;
+  - mutação: 15/15 da paridade e 19/19 da cadeia e do payload;
+  - o verificador de migrações acerta os 10 estados e a mutação do RLS segue 32/32.
+- **Controle positivo:** 13/13 no backend e no banco, 3/3 no payload. O diagnóstico acusou a 010
+  sabotada ("3 de 4 marcas; falta: registrar_leitura extrai o vetor").
+- **A 010 não quebra o backend de hoje:** a gravação sem as dez chaves entra com as colunas nulas,
+  medido.
+
+**Adaptação.**
+
+- **Três escolhas que o plano não detalhava.**
+  1. **Vetor fora de faixa sai sem `f`, em vez de ir e levar a leitura inteira a um `400`.** Uma
+     época de movimento violento pode passar de 2 g de magnitude dinâmica, e o pico, que é válido,
+     se perderia junto.
+  2. **`%.9g` no texto:** uma noite parada tem `enmo_media` da ordem de 1e-4 g, e `%.4f`
+     arredondaria a feature a zero (virou sabotador).
+  3. **A consulta pagina de 1 000 em 1 000.** O Supabase corta em 1 000 linhas, e 24 h são 2 880
+     épocas.
+- **Só entram em `/api/features` as épocas com `captured_at`.** Sem o instante da medição não há
+  como ordenar a noite nem reconhecer buraco, e o `created_at` é a hora de chegada.
+- **O guarda de privilégio mínimo acusou a rota nova**, como deveria. O método entrou na lista
+  dos que usam o JWT, e um teste confere que ele de fato monta o cliente com o JWT.
+- **`DATA-07d` fechou junto:** o que restava dele era o contrato dizer que época truncada não
+  emite `f`, e a v2.7.0 diz.
+- **Entrou `DATA-07f` (L3):** aplicar a 010 na produção antes do release.
+
+**O que deu errado no caminho** (nenhum chegou ao commit):
+
+1. **Dois testes meus conferiam pouco, e só a revisão antes das sabotagens os pegou.**
+   - O "os três vêm juntos" procurava a letra `g` ou `fs` na mensagem, e quase toda recusa as
+     contém: a regra podia sumir e o teste passar.
+   - O diagnóstico procurava `fs_features` em qualquer lugar da função; uma função que listasse a
+     coluna e gravasse nulo passaria.
+
+   Os dois agora conferem a mensagem inteira e a extração (`->> 'fs_features'`), e as duas
+   sabotagens provam que acusam.
+2. **Um teste do payload supôs que 220 bytes não cabiam o vetor.** Cabiam, porque `%.9g` encurta
+   os números. Agora o teste usa um buffer de 150.
+3. **Um `heredoc` do bash corrompeu o travessão de uma âncora de edição.** O script de edição
+   recusou ("casou 0") em vez de gravar errado, e as edições com acento passaram a ir por arquivo.
+
+**Risco em aberto.**
+
+- **Ordem de aplicação** (`DATA-07f`): a 010 tem de entrar antes do release.
+- **Não guardado:** a fila do firmware (`buffer.h`) guarda `Epoca` sem o vetor. O payload sabe
+  levar `f`, e quem passa a guardá-lo até o envio é o `FW-08`.
+- **Não exercitado:** nenhum sketch chama `montar_payload` com o vetor (`FW-07` (b)).
+- **Não decidido:** o que é "a noite" (`ESC-01`). A rota devolve o `g_ref` e a janela usados
+  para que a escolha fique visível.
+- **Não testado contra o PostgREST:** a consulta paginada roda mockada no backend. O RLS das
+  colunas novas é testado em Postgres de verdade, mas sem o PostgREST na frente.
+
+**Procedência.**
+
+- `firmware/nucleo/payload.{h,cpp}`, `testes/testes_c2.cpp` e
+  `testes/verificar_cadeia_por_mutacao.sh`;
+- `web-app/validacao.py`, `routes.py`, `database.py` e `features_noite.py`;
+- `web-app/migrations/010_vetor_de_caracteristicas.sql` e `DIAGNOSTICO-migracoes-aplicadas.sql`;
+- `web-app/tests/test_features_da_epoca.py`, `test_features_noite.py`,
+  `rls/test_rls_features.py`, `rls/conftest.py`, `migracoes/verificar_migracoes.py` e
+  `test_privilegio_minimo.py`;
+- `docs/DATA-CONTRACT.md` 2.7.0, §2.6;
+- backlog `DATA-07b`, `DATA-07d` e `DATA-07f`.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

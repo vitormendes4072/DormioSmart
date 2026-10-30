@@ -51,7 +51,7 @@ flowchart TB
 
     subgraph API["BACKEND — Flask em Vercel (dormio-smart.vercel.app)"]
         direction TB
-        RT["web-app/routes.py<br/>POST /api/data · POST /api/data/lote · GET /api/sleep-history<br/>/api/devices · /api/me/perfil · DELETE /api/me<br/>GET /health"]
+        RT["web-app/routes.py<br/>POST /api/data · POST /api/data/lote · GET /api/sleep-history · GET /api/features<br/>/api/devices · /api/me/perfil · DELETE /api/me<br/>GET /health"]
         ING["ingestao.py — qual caminho de credencial<br/>device_auth.py — hash SHA-256 do token<br/>auth.py — Bearer JWT"]
         VAL["validacao.py — SEC-03<br/>faixa fisica, coerencia ax/ay/az x total,<br/>epoca_s <= 3600 exige metodo"]
         DB["database.py<br/>cliente_de_ingestao() / cliente_do_usuario()"]

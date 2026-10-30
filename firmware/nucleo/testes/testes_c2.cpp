@@ -7,6 +7,7 @@
 
 #include <math.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "../buffer.h"
@@ -448,6 +449,92 @@ static void testar_buffer_confirma_o_prefixo() {
   VERIFICAR(c.confirmar_entregas(99, c.geracao()) == 4, "k acima do tamanho satura");
 }
 
+// ── Payload com o vetor da epoca (DATA-07b) ───────────────────────────
+
+static FeaturesDeEpoca vetor_tipico() {
+  FeaturesDeEpoca f;
+  f.enmo_media = 0.000123456;
+  f.enmo_desvio = 0.0021;
+  f.enmo_max = 0.0876;
+  f.mag_din_media = 0.0244;
+  f.zcr = 0.4171;
+  f.p_frac = 0.0125;
+  f.gx = 0.6;
+  f.gy = 0.0;
+  f.gz = 0.8;
+  return f;
+}
+
+// Le o numero que vem depois de `chave` no texto (so para os testes).
+static bool numeros_depois(const char *texto, const char *chave, double *v, int n) {
+  const char *p = strstr(texto, chave);
+  if (p == 0) return false;
+  p += strlen(chave);
+  for (int i = 0; i < n; i++) {
+    char *fim = 0;
+    v[i] = strtod(p, &fim);
+    if (fim == p) return false;
+    p = fim + 1;  // pula a virgula ou o ]
+  }
+  return true;
+}
+
+static void testar_payload_com_features() {
+  secao("payload -- f, g e fs viajam com a epoca (contrato 2.6)");
+  char buf[512];
+  uint32_t n = 0;
+  bool incluiu = false;
+  ResolucaoDeParede parede;
+  Epoca e = fabricar(0);
+  const FeaturesDeEpoca f = vetor_tipico();
+
+  VERIFICAR(montar_payload(e, parede, 0, buf, sizeof(buf), &n, &f, 32.0f, &incluiu) ==
+                PAYLOAD_OK && incluiu,
+            "epoca de 30 s com vetor no contrato: f vai");
+  VERIFICAR(n == strlen(buf) && buf[n - 1] == '}', "JSON fechado, tamanho certo");
+  double lidos[6];
+  VERIFICAR(numeros_depois(buf, "\"f\":[", lidos, 6), "f tem 6 numeros");
+  const double esperados[6] = {f.enmo_media, f.enmo_desvio, f.enmo_max,
+                               f.mag_din_media, f.zcr, f.p_frac};
+  double pior = 0.0;
+  for (int i = 0; i < 6; i++) pior = fmax(pior, fabs(lidos[i] - esperados[i]) / esperados[i]);
+  VERIFICAR(pior < 1e-8, "ida e volta pelo texto sem perder a feature (inclusive 1e-4 g)");
+  double gs[3];
+  VERIFICAR(numeros_depois(buf, "\"g\":[", gs, 3) && gs[0] == 0.6 && gs[2] == 0.8,
+            "g na ordem x, y, z");
+  VERIFICAR(strstr(buf, "\"fs\":32") != 0, "fs = taxa da grade que produziu o vetor");
+  VERIFICAR(strstr(buf, "\"gx\"") == 0, "`g` nao e o giroscopio: gx/gy/gz seguem ausentes");
+
+  VERIFICAR(montar_payload(e, parede, 0, buf, sizeof(buf), &n) == PAYLOAD_OK &&
+                strstr(buf, "\"f\"") == 0,
+            "sem vetor, o payload e o de antes");
+
+  Epoca degradada = fabricar(0);
+  degradada.nivel = 1;
+  degradada.duracao_s = 60;
+  VERIFICAR(montar_payload(degradada, parede, 0, buf, sizeof(buf), &n, &f, 32.0f, &incluiu) ==
+                    PAYLOAD_OK &&
+                !incluiu && strstr(buf, "\"f\"") == 0,
+            "epoca degradada (60 s) sai SEM f: as features nao fundem");
+
+  FeaturesDeEpoca violenta = f;
+  violenta.mag_din_media = 2.3;
+  VERIFICAR(montar_payload(e, parede, 0, buf, sizeof(buf), &n, &violenta, 32.0f, &incluiu) ==
+                    PAYLOAD_OK &&
+                !incluiu && strstr(buf, "\"total\"") != 0,
+            "vetor fora da faixa: a leitura vai sem f, em vez de ser recusada inteira");
+
+  FeaturesDeEpoca torta = f;
+  torta.gz = 0.9;  // |g| = 1,08
+  VERIFICAR(!features_no_contrato(torta, 32.0f), "g nao unitario fica fora do contrato");
+  VERIFICAR(!features_no_contrato(f, 0.0f), "fs zero fica fora do contrato");
+
+  char curto[150];  // cabe a leitura (~125 B), nao o vetor (~85 B a mais)
+  VERIFICAR(montar_payload(e, parede, 0, curto, sizeof(curto), &n, &f, 32.0f, &incluiu) ==
+                PAYLOAD_BUFFER_PEQUENO,
+            "buffer curto para o vetor: recusa, nao corta o JSON no meio");
+}
+
 int main() {
   printf("Nucleo do firmware Dormio -- pecas da arquitetura C2 (FW-07)\n");
 
@@ -465,6 +552,7 @@ int main() {
   testar_resposta_do_lote();
   testar_resposta_incoerente_nao_apaga_nada();
   testar_buffer_confirma_o_prefixo();
+  testar_payload_com_features();
 
   printf("\n-----------------------------------------\n");
   printf("%d verificacoes, %d falhas\n", total, falhas);

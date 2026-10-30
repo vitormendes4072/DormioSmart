@@ -237,15 +237,15 @@ custo para rodar:
 
 | Onde | Como rodar | Resultado em 28/10 |
 |---|---|---|
-| Backend (Flask) | `cd web-app && pytest --ignore=tests/rls` | **316 passam** ✏️ *(30/10, branch do `API-03`; eram 293 em 28/10)* |
+| Backend (Flask) | `cd web-app && pytest --ignore=tests/rls` | **384 passam** ✏️ *(30/10, branch do `DATA-07b`; eram 316 no `API-03` e 293 em 28/10)* |
 | Frontend | `cd frontend && npx vitest run` | **418 passam, 27 arquivos** |
 | Tipos e build | `cd frontend && npm run build` (`tsc --noEmit && vite build`) | `tsc` limpo; `vite build` ok (avisa do chunk único — `UI-15`) |
-| RLS (Postgres real) | `DORMIO_RLS_DATABASE_URL=... pytest tests/rls` | **151 passam** contra `postgres:16` em Docker (28/10, com a base imitando os privilégios padrão do Supabase — `SEC-12`) — **pulam** sem a variável, de propósito |
+| RLS (Postgres real) | `DORMIO_RLS_DATABASE_URL=... pytest tests/rls` | **158 passam** contra `postgres:16` em Docker ✏️ *(30/10, `DATA-07b`: +7 da migração 010; eram 151 em 28/10)*, com a base imitando os privilégios padrão do Supabase (`SEC-12`) — **pulam** sem a variável, de propósito |
 | Mutação do RLS | `python web-app/tests/rls/verificar_por_mutacao.py` | **32/32 sabotagens detectadas** |
-| Diagnóstico e ordem das migrações | `DORMIO_RLS_DATABASE_URL=... python web-app/tests/migracoes/verificar_migracoes.py` | os 9 estados e a ordem real da produção; 3/3 sabotagens acusadas |
+| Diagnóstico e ordem das migrações | `DORMIO_RLS_DATABASE_URL=... python web-app/tests/migracoes/verificar_migracoes.py` | os 10 estados (30/10, com a 010) e a ordem real da produção; 3/3 sabotagens acusadas em 28/10, e a da 010 (função que grava nulo) em 30/10 |
 | ML | `cd ml && .venv/Scripts/python -m pytest testes` | **126 passam** ✏️ *(30/10, branch do `FW-07`: +19 do dourado da cadeia C2)* |
 | Mutação do dourado | `cd ml && .venv/Scripts/python testes/verificar_vetor_dourado_por_mutacao.py` | **12/12**, e o ponto cego registrado segue cego |
-| Firmware | `cd firmware/nucleo && make && make sintaxe capacidade mutacao mutacao-cadeia` | **341 + 157 + 105 + 456 verificações, 0 falhas; 4/4 sketches compilam; mutação 15/15; mutação da cadeia C2 16/16** (em contêiner `gcc:13`) ✏️ *(30/10, `FW-07`: entraram os alvos `c2` e `cadeia`)* |
+| Firmware | `cd firmware/nucleo && make && make sintaxe capacidade mutacao mutacao-cadeia` | **341 + 157 + 118 + 456 verificações, 0 falhas; 4/4 sketches compilam; mutação 15/15; mutação da cadeia C2 e do payload 19/19** (em contêiner `gcc:13`) ✏️ *(30/10, `FW-07` e `DATA-07b`: entraram os alvos `c2` e `cadeia`)* |
 | Conferências de documento | `python scripts/<nome>.py --conferir` para `calculos_tcc`, `estudo_buffer`, `conferir_docs_versionados`, `consolidar_registro` | todas passam |
 
 Total: **967 testes** de pytest/vitest + **498 verificações** do núcleo C++. ✏️ *30/10: com as
@@ -291,5 +291,5 @@ Convenções por camada:
 - **Produção:** Vercel — https://dormio-smart.vercel.app
 - **Health check:** ✏️ **existe desde o `WEB-04`** — `GET /health`, sem autenticação, respondendo `200` quando o banco está alcançável e `503` quando o app está de pé e o banco não. A linha anterior ("ainda não existe — criar um endpoint simples é item de roadmap") foi corrigida em 17/10 pelo `DOC-11`, junto com a da seção "Testes".
 - **Monitor da produção** (`INFRA-03`, 28/10): `.github/workflows/saude-producao.yml` chama o `/health` a cada 3 dias por `scripts/conferir_producao.py` e reprova se o banco não responder. ⚠️ O Supabase é do **plano gratuito e pausa depois de uma semana sem uso** — foi o que derrubou a produção até 28/10; se o job reprovar, a primeira coisa a olhar é o painel do Supabase. O agendamento só roda a partir de `main`; o workflow está lá desde o release de 29/10 (execução manual `40818265459` passou; a primeira agendada, pelo cron, cai em 31/10).
-- **Banco de produção** (diagnóstico de 29/10): migrações 001–009 **todas aplicadas** (a 002 desnecessária), na ordem real 001, 003–006, 008, 009, 007. Migração nova: aplicar no SQL Editor e rodar `web-app/migrations/DIAGNOSTICO-migracoes-aplicadas.sql`.
+- **Banco de produção** (diagnóstico de 29/10): migrações 001–009 **todas aplicadas** (a 002 desnecessária), na ordem real 001, 003–006, 008, 009, 007. Migração nova: aplicar no SQL Editor e rodar `web-app/migrations/DIAGNOSTICO-migracoes-aplicadas.sql`. ⚠️ *30/10: a **010** (`DATA-07b`) existe e **não** está aplicada; entra antes do próximo release (`DATA-07f`).*
 - **Observações:** funções serverless no Vercel têm cold start; o `app` precisa estar disponível no import (ver Decisões técnicas).
