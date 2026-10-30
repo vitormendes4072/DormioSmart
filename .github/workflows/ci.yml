@@ -356,3 +356,10 @@ jobs:
       # com a tabela.
       - name: Consolidacao do registro
         run: python scripts/consolidar_registro.py --conferir
+
+      # ARQ-01 (29/10): os numeros de `docs/DECISAO-ARQ-01-CADENCIA.md`. O
+      # script importa as constantes e os modelos do `calculos_tcc.py`, entao
+      # esta linha tambem reprova se o Z.4.4 mudar por baixo da analise (as
+      # duas arquiteturas de referencia tem de seguir dando 23,9 e 1,91 mA).
+      - name: Estudo de cadencia (ARQ-01)
+        run: python scripts/estudo_cadencia.py --conferir

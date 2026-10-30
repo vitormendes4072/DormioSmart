@@ -159,11 +159,11 @@ Documentar requisitos: dimensões, conforto, autonomia, aquecimento, custo, segu
 
 ### `ARQ-01 (a, b)` 🔴
 
-Escrever a decisão de arquitetura da cadência: **(a)** contínuo-com-features × WoM-sem-features, por escrito, com a consequência em `HW-03` e `CALC-01` assumida; **(b)** fixar banda do MPU e taxa da placa **juntas e contra os 12,8 Hz** do `ml/`, não contra os 21 Hz. A parte (c) é medição em placa e está no grupo D.
+A análise está escrita (`docs/DECISAO-ARQ-01-CADENCIA.md`, 29/10, números travados por `scripts/estudo_cadencia.py --conferir` no CI). Falta, **depois da decisão** (grupo de decisões), registrar a escolha no documento e levar as consequências ao Z.4 do `CALCULOS-TCC.md`, ao `FW-07` e ao `HW-03`. A parte (c) é medição em placa e está no grupo D.
 
 *Camada no backlog: L0 (a,b) / L1 (c).*
 
-**Conferência.** É o item que trava a corrente de captação inteira. As partes (a) e (b) não dependem de nada físico.
+**Conferência.** É o item que trava a corrente de captação inteira. A análise achou uma terceira arquitetura (sono leve com a FIFO do MPU) que nenhum documento considerava.
 
 ### `ML-06b` 🟡
 
@@ -377,9 +377,9 @@ Idade autodeclarada pode revelar que o titular é criança ou adolescente, e o a
 
 ### `ARQ-01 (a) — a escolha` 🔴
 
-A cadência escolhe entre o vetor de features e o Deep Sleep com WoM. 42 Hz de Nyquist atravessam os 40 Hz do modo de baixo consumo: 4,5× na corrente do transdutor **e fim do despertar por movimento**.
+A cadência escolhe entre o vetor de features e o Deep Sleep com WoM: 42 Hz de Nyquist atravessam os 40 Hz do modo de baixo consumo. Desde 29/10 há três candidatas quantificadas em `docs/DECISAO-ARQ-01-CADENCIA.md`: WoM (1,91 mA), contínua com CPU ativa (23,9 mA) e **sono leve com a FIFO** (5,31 mA; só circuitos integrados, premissas do Z.4.4).
 
-**A decisão.** Amostragem contínua **com** features, ou Deep Sleep com WoM **sem** features? A escolha derruba o `HW-03`, muda o orçamento de energia inteiro e libera (ou não) o heap de ~300 KiB que o `FW-08` assume.
+**A decisão.** WoM **sem** features (a RQ ao pé da letra, o menor consumo) ou sono leve com FIFO **com** features (a hipótese de validação, recomendada pela análise)? Muda a frase da RQ (`RQ-01`), o Z.4, o `HW-03` e o `FW-07`.
 
 *Camada no backlog: L0.*
 
@@ -525,7 +525,7 @@ O mesmo protocolo com **celular e travesseiro gravando ao mesmo tempo**. Produz 
 
 ### `ARQ-01 (c)` 🔴
 
-**Medir na placa**: os 18,8 KiB do acumulador, os ~29 000 MACs em `double` por época e o tempo de parede do fechamento são `sizeof` e aritmética no host. A 42 Hz o orçamento por amostra é 23,8 ms. **O `ARQ-01` só fecha com (c).**
+**Medir na placa**: os 18,8 KiB do acumulador, os ~29 000 MACs em `double` por época e o tempo de parede do fechamento são `sizeof` e aritmética no host. Se a escolha for o sono leve com FIFO: a latência e a corrente do sono leve na placa, o transbordo da FIFO (esvaziada a cada 1,70 s a 50 Hz), a taxa real do MPU e a reassociação Wi-Fi (§8 do documento do `ARQ-01`). **O `ARQ-01` só fecha com (c).**
 
 *Camada no backlog: L1.*
 
