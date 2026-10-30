@@ -2256,6 +2256,14 @@ PENDENCIAS: list[Pendencia] = [
               nota="É o item que trava a corrente de captação inteira. A análise "
                    "achou uma terceira arquitetura (sono leve com a FIFO do MPU) "
                    "que nenhum documento considerava."),
+    Pendencia("ML-12", SOFTWARE, "Confirmar a redução para 3 features "
+              "(`mag_din_media`, `p_frac`, `d_angulo`) que o `ML-11` achou: "
+              "validação aninhada nas três bases, o mesmo com o HMM e, quando "
+              "houver, dado do travesseiro. Só depois o `DATA-07e` encolhe o "
+              "registro.", "🟡", camada_backlog="L0",
+              nota="O `ML-11` escolheu o subconjunto olhando as dobras de "
+                   "avaliação da cabeça; fora da amostra ele empatou, mas a "
+                   "escolha em si não foi validada."),
     Pendencia("ML-06b", SOFTWARE, "Escrever `ml/src/carregar/walch.py`. A "
               "interface única garante que é só isso. ⚠️ Escrever carregador sem "
               "ver o arquivo real produziu as 10 armadilhas já catalogadas: "
@@ -2439,7 +2447,17 @@ PENDENCIAS: list[Pendencia] = [
               decisao="WoM **sem** features (a RQ ao pé da letra, o menor consumo) "
                       "ou sono leve com FIFO **com** features (a hipótese de "
                       "validação, recomendada pela análise)? Muda a frase da RQ "
-                      "(`RQ-01`), o Z.4, o `HW-03` e o `FW-07`."),
+                      "(`RQ-01`), o Z.4, o `HW-03` e o `FW-07`. Desde 30/10 o "
+                      "custo do WoM no modelo está medido (`ML-11`): −0,07 a "
+                      "−0,10 de κ na base de cabeça."),
+    Pendencia("ARQ-02 — modos de registro", DECISAO, "Quatro modos analisados "
+              "em `docs/ARQUITETURA-DE-CAPTACAO.md`: travesseiro com bateria "
+              "máxima (WoM), travesseiro com análise completa (sono leve + FIFO), "
+              "celular para teste rápido (navegador) e celular para a noite "
+              "inteira (app nativo).", "⚪", camada_backlog="L0",
+              decisao="Quais modos oferecer, e se o travesseiro terá um ou dois? "
+                      "A análise recomenda um modo só no travesseiro antes da "
+                      "banca."),
     Pendencia("FW-08 (a, b) — as escolhas", DECISAO, "Persistência em flash.",
               "🔴", camada_backlog="L0",
               decisao="LittleFS ou NVS? E versionar o `partitions.csv` — hoje o "

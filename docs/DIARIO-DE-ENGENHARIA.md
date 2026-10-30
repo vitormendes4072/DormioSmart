@@ -3541,6 +3541,92 @@ existisse no sensor. As duas eram lembrança, não leitura.
 - ESP-IDF v6.1, *Sleep Modes — ESP32*;
 - backlog `ARQ-01`.
 
+---
+
+# 2026-10-30 — `ML-11`: três features bastam, e o WoM custa de 0,07 a 0,10 de kappa
+
+**O problema, como foi entendido no início.** Depois da análise do `ARQ-01` (29/10 (v)), o
+Vitor perguntou se todas as 8 features são necessárias, e pediu o resultado antes de decidir
+qualquer coisa. Ele está inclinado ao sono leve com FIFO. Pediu também a investigação do
+registro pelo celular, que não tem as limitações do ESP32, e se dá para oferecer mais de um
+modo de registro ao usuário, com tudo registrado num documento.
+
+**Hipótese de trabalho.** Cinco hipóteses, declaradas antes de rodar
+(`docs/ARQUITETURA-DE-CAPTACAO.md` §2):
+- H1: as features de intensidade são redundantes entre si;
+- H2: poucas features bastam;
+- H3: o que o WoM entrega perde muito;
+- H4: no celular, o limite é o sistema operacional, não a energia;
+- H5: o contrato já comporta vários modos.
+
+**O que foi testado, e como.**
+
+- **`ml/experimentos/ml11_ablacao_features.py`**, sobre as features já extraídas (cache do
+  Wearanize, 92 pessoas em cabeça e pulso; Newcastle, 27). Usa o pipeline do produto, igual ao
+  do experimento de quantização, mudando só as colunas. Mede:
+  - tirar uma feature de cada vez;
+  - a seleção progressiva;
+  - os conjuntos de cada arquitetura, com o WoM cercado por dois proxies;
+  - o subconjunto escolhido na cabeça, fixo, nas outras bases.
+
+  Toda diferença é pareada por dobra, com IC de 95 %.
+- **Rodou duas vezes** (a segunda com o teste fora da amostra acrescentado): Windows 11,
+  `ml/.venv`, ~6 min cada.
+- **O celular:** leitura do código da coleta (`frontend/src/hooks/useColeta.ts`,
+  `lib/acelerometro.ts`) e pesquisa na web (AOSP, fóruns da Apple, quatro estudos de validação).
+
+**Resultado medido.**
+
+- **Tirar uma:** perdas detectáveis só em `mag_din_media` (−0,049 de κ na cabeça; −0,011 no
+  pulso), `p_frac` (−0,017 na cabeça) e `d_angulo` (−0,008 na cabeça; −0,024 no Newcastle).
+  Saem sem perda: as três `enmo_*`, `zcr` e `inclinacao_rel`.
+- **Quantas bastam:** `mag_din_media` + `p_frac` + `d_angulo` dão κ 0,405 contra 0,403 das
+  oito na cabeça (número otimista). Fixas, fora da amostra: pulso Δκ +0,004 [−0,004; +0,011];
+  Newcastle +0,044 [+0,002; +0,086]. A especificidade cai de 1 a 4 pontos.
+- **O WoM, na cabeça:** −0,070 (limite superior) a −0,090 (inferior) de κ, os dois com IC longe
+  do zero: de 66 % para 51–55 % do teto humano. No pulso, −0,008 (n.s.) a −0,039. No Newcastle,
+  nada detectável. A contagem clássica de actigrafia, um número só, fica a −0,024 na cabeça.
+- **A segunda rodada** reproduziu todos os números da primeira.
+- **O celular:** no navegador, o sensor para com a tela bloqueada, o que o próprio código já
+  declarava. Para a noite inteira, o caminho é o Android nativo, com *batching* do *sensor hub*
+  (a mesma ideia da FIFO, feita em hardware). O iOS não está verificado. A literatura mostra o
+  celular sobre a cama detectando bem o sono e mal a vigília.
+
+**Adaptação.**
+
+- **H1 errou em parte, e a correção ficou registrada.** O documento dizia que as três `enmo_*`
+  eram redundantes com `mag_din_media` por correlação. A `enmo_media` tem correlação de 0,25 com
+  ela, e mesmo assim sai sem perda. Já `mag_din_media` e `p_frac`, que a H1 dava como
+  redundantes, são as que mais carregam informação.
+- **A seleção progressiva é otimista por construção.** Por isso o subconjunto foi testado fixo
+  nas bases que não participaram da escolha, e esse teste entrou no script antes do commit.
+- **Uma citação foi atribuída ao artigo errado e foi corrigida antes do commit:** o link do PMC
+  era o estudo do Sleep Time (2015), não o de 2012.
+
+**Risco em aberto.**
+
+- **Não medido:** o WoM real. Os proxies saem do cache de features; o circuito do MPU6050
+  detecta movimento por diferença entre amostras, e a postura com uma leitura só é otimista.
+  Como os dois limites dão perda grande na cabeça, a conclusão não depende do proxy exato; o
+  número exato, sim.
+- **Não validado:** a escolha do subconjunto de 3 features (validação aninhada, HMM, dado do
+  travesseiro). Fica no `ML-12`, aberto hoje.
+- **Não medido:** que as 3 features toleram o DLPF de 10 Hz (C2-LP). É hipótese no §4 do
+  documento.
+- **As bases são de sensores presos ao corpo.** Cabeça ≠ travesseiro (`ML-DATASETS-E-PLANO.md`).
+  Os números ordenam as arquiteturas; não preveem o kappa do travesseiro.
+- **Não decidido:** os modos de registro (`ARQ-02`, aberto hoje) e a escolha do `ARQ-01` (a).
+- **Fora do CI:** os números do `ML-11` não são travados por nenhuma conferência, como os demais
+  experimentos de ML. O JSON é a procedência.
+
+**Procedência.**
+
+- `ml/experimentos/ml11_ablacao_features.py` e `ml/experimentos/saida/ml11_ablacao_features.json`,
+  deste commit;
+- `docs/ARQUITETURA-DE-CAPTACAO.md`;
+- `docs/DECISAO-ARQ-01-CADENCIA.md` §4.4, atualizado;
+- fontes externas na §9 do documento.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

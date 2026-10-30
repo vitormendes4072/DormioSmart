@@ -128,7 +128,7 @@ a placa não inverte nada, mas comprime as razões. Com o DevKit de hoje (miliam
 | | A. WoM | B. Contínua | C1 | C2 |
 |---|---|---|---|---|
 | **Pergunta de pesquisa**, "baixo consumo" e "eventos de movimento" | literal | difícil de sustentar | sustentável | sustentável |
-| **Hipótese**, validação contra acelerometria pública | só com uma feature degradada (contagem de eventos), a medir | sim | sim | sim |
+| **Hipótese**, validação contra acelerometria pública | só com uma feature degradada: −0,07 a −0,10 de κ na cabeça (`ML-11`, 30/10) | sim | sim | sim |
 | O `ml/` consome? | não, nem o pipeline nem o dourado | sim | sim, grade exata | sim, reamostrada como as bases públicas |
 | `HW-03` (INT do MPU num GPIO RTC) | **necessário** | desnecessário | desnecessário | opcional (alarme de transbordo da FIFO) |
 | `FW-07` (reescrever o `sketch.ino`) | como escrito: buffer no RTC, Deep Sleep | muda: heap e laço contínuo | muda: sono leve | muda: sono leve e driver de FIFO |
@@ -137,9 +137,12 @@ a placa não inverte nada, mas comprime as razões. Com o DevKit de hoje (miliam
 | Só a medição responde | — | — | se o despertar a cada 15,6 ms cabe | latência, transbordo, taxa real |
 
 **Sobre A e a hipótese.** O WoM não fica sem validação de saída: dá para simular o despertar por
-limiar nas bases públicas e medir o kappa de uma "contagem de eventos por época". Esse
-experimento **não foi feito**, e não há número para pôr ao lado do vetor de 8 features. Ele
-entra aqui como possibilidade, não como resultado.
+limiar nas bases públicas e medir o kappa de uma "contagem de eventos por época". ✏️ *30/10:
+medido, com proxies, no `ML-11` (`docs/ARQUITETURA-DE-CAPTACAO.md` §3.3).* Na base de cabeça,
+que é o substituto mais próximo do travesseiro, o que o WoM entrega custa de **0,07 a 0,10 de
+kappa** contra as 8 features (de 66 % para 50–55 % do teto humano); no pulso, de 0,01 a 0,05.
+O mesmo experimento mostrou que **três features bastam** (`mag_din_media`, `p_frac`,
+`d_angulo`), o que simplifica a C2, mas não muda a energia dela.
 
 ## 5. (b) Banda e taxa, contra os 12,8 Hz
 

@@ -49,12 +49,12 @@ linha, não um resumo: resumo é a cópia que diverge.
 
 | Grupo | Itens |
 |---|---:|
-| A — Depende só de software: dá para fazer a qualquer momento | **39** |
-| B — Depende de decisão do Vitor | **10** |
+| A — Depende só de software: dá para fazer a qualquer momento | **40** |
+| B — Depende de decisão do Vitor | **11** |
 | C — Depende de ação do Vitor que não é decisão | **7** |
 | D — Bloqueado por hardware ou coleta | **23** |
 | E — Bloqueado por terceiro | **4** |
-| **Total** | **83** |
+| **Total** | **85** |
 
 ⚠️ **Este total não é comparável à contagem do backlog, e a diferença não é
 erro de nenhum dos dois.** São unidades de contagem diferentes: o backlog
@@ -75,7 +75,7 @@ outro item. **Desde 28/10 têm ID no backlog:** `GIT-07`, `INFRA-02` e
 
 ## A — Depende só de software: dá para fazer a qualquer momento
 
-**39 itens.**
+**40 itens.**
 
 ### `CALC-01` 🔴
 
@@ -164,6 +164,14 @@ A análise está escrita (`docs/DECISAO-ARQ-01-CADENCIA.md`, 29/10, números tra
 *Camada no backlog: L0 (a,b) / L1 (c).*
 
 **Conferência.** É o item que trava a corrente de captação inteira. A análise achou uma terceira arquitetura (sono leve com a FIFO do MPU) que nenhum documento considerava.
+
+### `ML-12` 🟡
+
+Confirmar a redução para 3 features (`mag_din_media`, `p_frac`, `d_angulo`) que o `ML-11` achou: validação aninhada nas três bases, o mesmo com o HMM e, quando houver, dado do travesseiro. Só depois o `DATA-07e` encolhe o registro.
+
+*Camada no backlog: L0.*
+
+**Conferência.** O `ML-11` escolheu o subconjunto olhando as dobras de avaliação da cabeça; fora da amostra ele empatou, mas a escolha em si não foi validada.
 
 ### `ML-06b` 🟡
 
@@ -345,7 +353,7 @@ O CI **não roda linter** — não há ESLint nem Ruff/flake8. Pressupõe uma de
 
 ## B — Depende de decisão do Vitor
 
-**10 itens.**
+**11 itens.**
 
 Cada linha traz a decisão em uma frase. Nenhum destes itens anda
 sem uma resposta sua — e nenhum deles exige que você escreva
@@ -379,7 +387,15 @@ Idade autodeclarada pode revelar que o titular é criança ou adolescente, e o a
 
 A cadência escolhe entre o vetor de features e o Deep Sleep com WoM: 42 Hz de Nyquist atravessam os 40 Hz do modo de baixo consumo. Desde 29/10 há três candidatas quantificadas em `docs/DECISAO-ARQ-01-CADENCIA.md`: WoM (1,91 mA), contínua com CPU ativa (23,9 mA) e **sono leve com a FIFO** (5,31 mA; só circuitos integrados, premissas do Z.4.4).
 
-**A decisão.** WoM **sem** features (a RQ ao pé da letra, o menor consumo) ou sono leve com FIFO **com** features (a hipótese de validação, recomendada pela análise)? Muda a frase da RQ (`RQ-01`), o Z.4, o `HW-03` e o `FW-07`.
+**A decisão.** WoM **sem** features (a RQ ao pé da letra, o menor consumo) ou sono leve com FIFO **com** features (a hipótese de validação, recomendada pela análise)? Muda a frase da RQ (`RQ-01`), o Z.4, o `HW-03` e o `FW-07`. Desde 30/10 o custo do WoM no modelo está medido (`ML-11`): −0,07 a −0,10 de κ na base de cabeça.
+
+*Camada no backlog: L0.*
+
+### `ARQ-02 — modos de registro` ⚪
+
+Quatro modos analisados em `docs/ARQUITETURA-DE-CAPTACAO.md`: travesseiro com bateria máxima (WoM), travesseiro com análise completa (sono leve + FIFO), celular para teste rápido (navegador) e celular para a noite inteira (app nativo).
+
+**A decisão.** Quais modos oferecer, e se o travesseiro terá um ou dois? A análise recomenda um modo só no travesseiro antes da banca.
 
 *Camada no backlog: L0.*
 
