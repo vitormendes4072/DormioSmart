@@ -14,6 +14,7 @@ Scripts SQL versionados, aplicados **em ordem numérica** no Supabase
 | 007 | `007_credencial_fora_da_tabela_exposta.sql` | SEC-08 | Move `devices.token_hash` para `public.device_tokens`. **Quebra o código anterior ao release** (que lê `devices.token_hash`): aplicar **junto com o release**, nunca antes. |
 | 008 | `008_perfil_como_fonte_de_verdade.sql` | PERFIL-01 | `profiles` como fonte de verdade: gatilho de `updated_at`, teto de tamanho do nome, papel de cada coluna declarado. |
 | 009 | `009_privilegios_padrao_do_supabase.sql` | SEC-12 | Revoga **nominalmente** o que os privilégios padrão do Supabase dão a `anon`/`authenticated` em funções, e muda o padrão para funções futuras. Pode rodar antes ou depois da 007. |
+| 010 | `010_vetor_de_caracteristicas.sql` | DATA-07b | O vetor de características: dez colunas nomeadas em `sleep_data`, restrição tudo-ou-nada, e as duas funções de gravação recriadas para extraí-las. **Aplicar ANTES do release do backend da v2.7.0** (`DATA-07f`): na ordem inversa, `f` validado seria descartado com `201`. Não quebra o backend anterior. ✅ Aplicada na produção em 30/10, antes do release (diagnóstico com 4 de 4 marcas). |
 
 ## Quais estão aplicadas no banco
 

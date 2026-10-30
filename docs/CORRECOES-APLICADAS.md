@@ -19,15 +19,15 @@ a única coisa aqui que sustenta uma afirmação de método.
 
 ## Resumo quantitativo
 
-**123 correções registradas**, todas sustentadas no repositório.
+**127 correções registradas**, todas sustentadas no repositório.
 
 **A unidade de contagem, dita antes dos números, porque ela decide como
 lê-los.** Uma linha deste arquivo é **uma correção**: um defeito, uma
 causa, uma correção. Em 4 linhas, porém, a causa e a correção foram
 uma só e os defeitos foram vários — `DADOS-02` (10), `REF-01` (4), `GIT-06` (14), `SEC-12` (2) —, e agrupá-las foi deliberado,
 porque separá-las contaria a mesma correção várias vezes. **Contando
-defeito em vez de correção, o total seria 149.** Este
-arquivo usa **123**, que é o número menor e o mais defensável.
+defeito em vez de correção, o total seria 153.** Este
+arquivo usa **127**, que é o número menor e o mais defensável.
 
 **Fora da contagem, e visível:** 1 linha(s) — `ML-04b` —,
 em que a hipótese se confirmou e o que se corrigiu foi a afirmação
@@ -41,24 +41,24 @@ que se podia extrair do resultado, não um defeito. Estão na seção da
 | Segurança | 17 |
 | Interface | 23 |
 | Firmware | 18 |
-| Dados e ML | 23 |
-| Documentação | 20 |
-| Infraestrutura | 22 |
-| **Total** | **123** |
+| Dados e ML | 24 |
+| Documentação | 22 |
+| Infraestrutura | 23 |
+| **Total** | **127** |
 
 ### Por instrumento — o campo que dá valor a este arquivo
 
 | Como foi encontrado | Correções | O que o instrumento é |
 |---|---:|---|
-| **leitura** | 23 | Inspeção do código ou do documento, raciocinando sobre ele. Nada roda, nada se confere contra terceiro. |
+| **leitura** | 26 | Inspeção do código ou do documento, raciocinando sobre ele. Nada roda, nada se confere contra terceiro. |
 | **cálculo** | 4 | Aritmética sobre os próprios números do projeto. O mais barato de todos, e derrubou premissas grandes. |
 | **execução** | 49 | Rodar código do projeto — suíte, job, compilador, script — e a **saída** acusar. O defeito não estava escondido: estava não exercitado. |
 | **controle positivo** | 13 | Provocar o defeito de propósito e exigir que a verificação acuse. Inclui verificação por mutação. **É o único instrumento que mede o alcance de uma verificação.** |
-| **inventário** | 20 | Conferir estado declarado contra estado real: `grep` por símbolo, `git ls-files` contra o disco, varredura de afirmações em documentos. |
+| **inventário** | 21 | Conferir estado declarado contra estado real: `grep` por símbolo, `git ls-files` contra o disco, varredura de afirmações em documentos. |
 | **terceiro** | 10 | Especificação, documentação oficial, artigo, issue ou API de terceiro. O artefato que decide a resposta está **fora** do repositório. |
 | **dado real** | 3 | Só apareceu com o arquivo ou a medição real em mãos. |
 | **uso real** | 1 | Alguém usou o produto como usuário. |
-| **Total** | **123** | |
+| **Total** | **127** | |
 
 ### As três derivações que os números sustentam
 
@@ -72,9 +72,9 @@ que se podia extrair do resultado, não um defeito. Estão na seção da
 > do projeto; são proporções do que foi achado.**
 
 **(1) Exercitar achou mais do que ler, por mais de duas vezes.**
-Execução, controle positivo e uso real somam **63 de 123**
-registros (51%). Leitura e cálculo — os dois
-instrumentos que não precisam rodar nada — somam **27** (21%). A razão é de **2,3 para 1**.
+Execução, controle positivo e uso real somam **63 de 127**
+registros (49%). Leitura e cálculo — os dois
+instrumentos que não precisam rodar nada — somam **30** (23%). A razão é de **2,1 para 1**.
 
 Com a ressalva que impede a leitura fácil: isto **não** diz que ler é
 pouco útil. Diz que, neste projeto, leitura e execução acharam classes
@@ -84,7 +84,7 @@ e a execução achou **alcance** insuficiente. Alcance não se vê lendo, e é
 por isso que a razão é essa e não o contrário.
 
 **(2) 13 correções tinham a causa fora do repositório.**
-Fonte de terceiro e dado real somam **13 de 123** (10%) — defeitos cuja causa não está em nenhuma
+Fonte de terceiro e dado real somam **13 de 127** (10%) — defeitos cuja causa não está em nenhuma
 linha deste projeto, e que **nenhum teste daqui poderia pegar**: a
 especificação do PostgREST, a unidade do Empatica em `g/64`, o valor de
 uma chave num painel do Supabase, a API do Actions, os coeficientes do
@@ -98,7 +98,7 @@ Supabase de teste**, que deve a quatro itens e desde 28/10 tem item próprio
 **(3) As próprias verificações do projeto estavam defeituosas
 26 vezes — e 24 dessas 26 só apareceram
 rodando ou sabotando.**
-São **26 de 123** registros (21%) em que a coisa errada era um teste, uma
+São **26 de 127** registros (20%) em que a coisa errada era um teste, uma
 guarda de CI, um harness de mutação ou um vetor de referência — não o
 código. A distribuição:
 
@@ -127,9 +127,9 @@ alguém tentou fazer a verificação falhar.
 | Procedência | Correções | O que significa |
 |---|---:|---|
 | `completa` | 117 | Commit **e** artefato reabrível — teste, script, seção de documento. Dá para reconferir sem acreditar em ninguém. |
-| `parcial` | 6 | Só a mensagem de commit, só a entrada de diário, ou correção em arquivo não versionado. Entra porque omitir seria pior, e entra **marcada**. |
+| `parcial` | 10 | Só a mensagem de commit, só a entrada de diário, ou correção em arquivo não versionado. Entra porque omitir seria pior, e entra **marcada**. |
 
-**48 dos 123 defeitos revelaram que a premissa estava
+**48 dos 127 defeitos revelaram que a premissa estava
 errada** — não que o código estava errado. É a seção mais instrutiva deste
 arquivo e tem lugar próprio no fim.
 
@@ -819,9 +819,9 @@ só de código filtra pela coluna de área.
 
 ---
 
-## Dados e ML — 23 defeitos
+## Dados e ML — 24 defeitos
 
-*15 execução · 2 dado real · 2 cálculo · 2 controle positivo · 1 terceiro · 1 inventário*
+*15 execução · 2 dado real · 2 cálculo · 2 controle positivo · 1 terceiro · 1 inventário · 1 leitura*
 
 ### 2026-09-14 · `ML-01` 🔄
 
@@ -1097,11 +1097,23 @@ só de código filtra pela coluna de área.
 
 **Commit.** `7016c81` · procedência **completa**
 
+### 2026-10-30 · `ML-12`
+
+**O defeito.** Em todos os experimentos desde o `ML-02`, o contexto de ±2 épocas foi empilhado sobre a base concatenada, e nas fronteiras misturava features de dois sujeitos.
+
+**Como foi encontrado.** *leitura* — `empilhar_contexto` replica a borda da matriz que recebe; os experimentos passavam a base inteira, não um sujeito por vez.
+
+**A correção.** O `ML-12` aplica o contexto por sujeito e mediu a diferença: +0,001 a +0,002 de κ a favor do global, desprezível. Os experimentos anteriores não foram refeitos, de propósito: o efeito é uma ordem de grandeza menor que qualquer um deles.
+
+**Nota.** Achado ao escrever o `ML-12`, lendo `src/epocas.py` para reusar.
+
+**Commit.** `(o commit que introduz esta linha: um commit não cita o próprio hash — ver a entrada de 30/10 (iv) do diário)` · procedência **parcial**
+
 ---
 
-## Documentação — 20 defeitos
+## Documentação — 22 defeitos
 
-*10 inventário · 6 leitura · 3 terceiro · 1 execução*
+*10 inventário · 8 leitura · 3 terceiro · 1 execução*
 
 ### 2026-06-03 · `(README)`
 
@@ -1285,6 +1297,30 @@ só de código filtra pela coluna de área.
 
 **Commit.** `040fe4b` · procedência **completa**
 
+### 2026-10-30 · `FW-07`
+
+**O defeito.** A pendência gerada do `FW-07` seguiu descrevendo buffer no RTC e Deep Sleep depois de o `ARQ-01` decidir a C2 (sono leve).
+
+**Como foi encontrado.** *leitura* — A propagação da decisão atualizou a linha do `FW-07` no backlog e não a pendência em `consolidar_registro.py` — o mesmo padrão do `DOC-05` de 29/10, ao contrário.
+
+**A correção.** Pendência reescrita na mesma leva do `API-03`, que ao fechar precisou ler a linha vizinha.
+
+**Nota.** Dano: zero (a decisão ainda não tinha saído da branch). Mostra de novo o que o `DOC-13` registra: nada confere a linha do backlog contra a pendência gerada.
+
+**Commit.** `(o commit que introduz esta linha: um commit não cita o próprio hash — ver a entrada de 30/10 (iii) do diário)` · procedência **parcial**
+
+### 2026-10-30 · `FW-07`
+
+**O defeito.** O `firmware/nucleo/README.md` e o texto que o `make capacidade` imprime seguiam dizendo que o `sketch.ino` reescrito usaria 128 épocas no RTC, porque o heap não sobrevive ao Deep Sleep, e que o `API-03` era item aberto.
+
+**Como foi encontrado.** *leitura* — A propagação da C2 (30/10) passou pelo backlog, pelo `CLAUDE.md` e pelos documentos de decisão, e não pelos textos do núcleo — que são os que quem for escrever o sketch lê primeiro. O fechamento do `API-03` também não voltou a eles.
+
+**A correção.** Os dois textos reescritos para a C2 (heap, flash do `FW-08`) e para o `API-03` fechado, com nota de correção.
+
+**Nota.** Achado ao escrever a parte (a) do `FW-07`, lendo o README para acrescentar a seção da cadeia. Dano: zero (o sketch não foi escrito). Terceira vez no mesmo dia que a propagação de uma decisão esquece um texto — o padrão que o `DOC-13` registra.
+
+**Commit.** `(o commit que introduz esta linha: um commit não cita o próprio hash — ver a entrada de 30/10 (v) do diário)` · procedência **parcial**
+
 ### 2026-10-29 · `DOC-05`
 
 **O defeito.** A linha do `DOC-05` no backlog dizia que o `CLAUDE.md` está no `.gitignore` e que toda correção nele fica fora do git — ele é versionado desde 27/10.
@@ -1333,9 +1369,9 @@ só de código filtra pela coluna de área.
 
 ---
 
-## Infraestrutura — 22 defeitos
+## Infraestrutura — 23 defeitos
 
-*13 execução · 4 leitura · 3 inventário · 1 controle positivo · 1 terceiro*
+*13 execução · 4 inventário · 4 leitura · 1 controle positivo · 1 terceiro*
 
 ### 2026-10-28 · `DOCS-WIN-01` 🔄
 
@@ -1368,6 +1404,18 @@ só de código filtra pela coluna de área.
 **A correção.** GRANTs aplicados uma vez, logo depois da 001; a sabotagem passou a ser acusada ('permission denied for table sleep_data'). Na suíte de RLS ficou como item (`SEC-13`).
 
 **Commit.** `040fe4b` · procedência **completa**
+
+### 2026-10-30 · `ML-11`
+
+**O defeito.** O commit do `ML-11` (PR #13) não chegou a `develop`: a PR foi mesclada na branch da #12, que já tinha entrado em `develop` 19 s antes.
+
+**Como foi encontrado.** *inventário* — A #13 foi aberta empilhada, com base na branch da #12, contando que o GitHub a redirecionaria para `develop` quando a #12 entrasse; o redirecionamento não acontece quando a base é mesclada e a PR de cima é mesclada logo em seguida, na base velha.
+
+**A correção.** O trabalho seguinte partiu da branch que contém o `ML-11` e a PR aponta para `develop`, levando os dois. Regra no `CLAUDE.md`: PR sempre com base em `develop`.
+
+**Nota.** Achado ao conferir `gh pr view 13` antes de começar o trabalho seguinte; nenhum dado se perdeu, mas `develop` ficou sem o `ML-11` por algumas horas.
+
+**Commit.** `(o commit que introduz esta linha: um commit não cita o próprio hash — ver a entrada de 30/10 (ii) do diário)` · procedência **parcial**
 
 ### 2026-02-18 · `(bootstrap)`
 
@@ -1643,7 +1691,7 @@ com competência teria produzido a coisa errada bem feita.
 | 2026-10-16 | `CI-06` | Que eram três, e não quatro, os jobs nunca rodados num runner. |
 | 2026-10-17 | `GIT-05` | Que um aviso escrito no `ROADMAP.md` chega a quem clona. |
 
-**48 de 123.** E a distribuição por instrumento dentro
+**48 de 127.** E a distribuição por instrumento dentro
 deste subconjunto é a parte que vale registrar:
 
 | Instrumento | Premissas derrubadas |

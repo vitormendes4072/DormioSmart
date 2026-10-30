@@ -227,6 +227,19 @@ interpolar para a nova grade. Registra-se que a filtragem é de **fase zero**, e
 pelo alinhamento com os rótulos: um filtro causal desloca o sinal no tempo, e deslocamento
 inferior a um segundo já transfere amostras para a época vizinha.
 
+Registra-se, por fim, que o critério relevante para a cadeia de análise não é o dobro da banda
+do filtro do transdutor, e sim a frequência a partir da qual o conteúdo rebatido cai **dentro**
+da banda útil de 12,8 Hz. Uma componente de frequência *f* acima da metade da taxa
+*f*<sub>s</sub> reaparece em *f*<sub>s</sub> − *f*, e só contamina as características se
+*f*<sub>s</sub> − *f* < 12,8 Hz; o que é rebatido entre 12,8 Hz e *f*<sub>s</sub>/2 é removido
+pelo próprio filtro de fase zero. À taxa adotada de **50 Hz** — a menor taxa nativa do
+componente acima de 42 Hz —, apenas componentes acima de **37,2 Hz** alcançam a banda útil,
+quase o dobro da frequência de corte do filtro do transdutor (*cálculo*). Registra-se ainda que
+a taxa do componente resulta da divisão inteira de 1 kHz e que seu oscilador interno tem
+tolerância de ±5 % a 25 °C (*especificação*): nenhuma taxa do componente coincide com a grade
+de 32 Hz, de modo que o sinal do dispositivo é reamostrado para a grade pela **mesma** cadeia
+aplicada às bases públicas, a partir da taxa efetivamente medida.
+
 #### Z.1.5 Faixa de validade
 
 Os valores desta seção deixam de descrever o sistema nas seguintes condições. **(i)** Fora da
@@ -616,6 +629,40 @@ controla a autonomia não é o modo de sono adotado, e sim o **número de transm
 consequência de projeto é direta e é registrada: agregar entregas em lote reduz mais a
 corrente média do que qualquer refinamento adicional da política de sono.
 
+#### Z.4.4b A arquitetura adotada: sono leve com a memória do transdutor
+
+A comparação de Z.4.4 supõe que a amostragem contínua mantém o processador ativo durante toda
+a noite. A suposição não é necessária. O transdutor dispõe de memória interna do tipo fila, de
+1 024 bytes, destinada a permitir que o processador leia os dados em rajadas e permaneça em
+modo de baixo consumo entre elas (*especificação*). Com apenas o acelerômetro gravando, a
+50 Hz, a fila comporta 170 amostras, ou 3,4 s. O processador, em **sono leve** — modo que
+preserva a memória e o estado de execução, ao contrário do sono profundo —, desperta quando a
+fila atinge metade da capacidade, a cada 1,7 s, esvazia-a e retorna ao sono. Sob as mesmas
+premissas de Z.4.4, o processador permanece acordado 3,1 % do tempo, e a corrente média
+resulta (*cálculo* sobre *especificação* e *estimativa*):
+
+| Arquitetura | I<sub>média</sub> (só circuitos integrados) |
+|---|---:|
+| Amostragem contínua com processador ativo | 23,9 mA |
+| **Amostragem contínua com sono leve e fila do transdutor** | **5,31 mA** |
+| Despertar por movimento | 1,91 mA |
+
+A arquitetura reduz a corrente da amostragem contínua por um fator de **4,5** e preserva o
+vetor de características. Nela, o rádio responde por 63 % da corrente média, de modo que a
+agregação das entregas em lote, uma por hora, reduz a corrente a 2,03 mA — da ordem do
+despertar por movimento com entrega por evento. A varredura dos parâmetros estimados produz
+corrente entre 3,20 mA e 18,55 mA, e a ordem entre as três arquiteturas se mantém em toda a
+faixa de consumo fixo da placa examinada em Z.4.5.
+
+Registra-se o custo da alternativa do lado do modelo de classificação, medido sobre as bases
+públicas: na base com sensor na cabeça, a mais próxima da posição do dispositivo, a informação
+que o despertar por movimento é capaz de entregar reduz o coeficiente kappa de 0,403 para
+valores entre 0,306 e 0,334, isto é, de 66 % para 50–55 % do teto de concordância entre
+avaliadores humanos (*medição*). Pesadas as duas grandezas, **adota-se a amostragem contínua com
+sono leve e fila do transdutor**. A latência de despertar do sono leve, a corrente desse modo
+na placa e o comportamento da fila ao longo de uma noite não foram medidos, e constam como
+parâmetros desta predição (Z.4.7).
+
 #### Z.4.5 O que a placa de desenvolvimento faz com o modelo
 
 Os valores de Z.4.4 referem-se aos circuitos integrados. A placa de desenvolvimento
@@ -700,6 +747,12 @@ Notas para você, não para o texto. A regra deste arquivo é a mesma do `RESULT
 nada foi escrito de memória. Todo número calculado sai de `scripts/calculos_tcc.py`; todo
 número de folha de dados traz a condição; todo número recuperado de outro documento do
 repositório foi **reconferido** antes de entrar aqui.
+
+> ✏️ **30/10 (`ARQ-01`, decisão C2).** Entraram o último parágrafo de Z.1.4 e a seção Z.4.4b.
+> Os números de energia saem de `scripts/estudo_cadencia.py` (o `--conferir` roda no CI); os de
+> kappa, de `ml/experimentos/ml11_ablacao_features.py` (`saida/ml11_ablacao_features.json`).
+> Folhas de dados: PS-MPU-6000A-00 Rev. 3.2 (FIFO, taxa, tolerância do oscilador) e ESP-IDF v6.1
+> (sono leve). Análise completa: `docs/DECISAO-ARQ-01-CADENCIA.md`.
 
 ### Os três cálculos que já existiam, e o resultado da conferência
 

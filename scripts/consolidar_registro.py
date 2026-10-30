@@ -1811,6 +1811,77 @@ DEFEITOS: list[Defeito] = [
         commit="040fe4b",
     ),
     Defeito(
+        data="2026-10-30", area=ML, item="ML-12",
+        defeito="Em todos os experimentos desde o `ML-02`, o contexto de ±2 épocas "
+                "foi empilhado sobre a base concatenada, e nas fronteiras misturava "
+                "features de dois sujeitos.",
+        achado_por=LEITURA,
+        causa="`empilhar_contexto` replica a borda da matriz que recebe; os "
+              "experimentos passavam a base inteira, não um sujeito por vez.",
+        correcao="O `ML-12` aplica o contexto por sujeito e mediu a diferença: "
+                 "+0,001 a +0,002 de κ a favor do global, desprezível. Os "
+                 "experimentos anteriores não foram refeitos, de propósito: o "
+                 "efeito é uma ordem de grandeza menor que qualquer um deles.",
+        commit="(o commit que introduz esta linha: um commit não cita o próprio "
+               "hash — ver a entrada de 30/10 (iv) do diário)", procedencia="parcial",
+        nota="Achado ao escrever o `ML-12`, lendo `src/epocas.py` para reusar.",
+    ),
+    Defeito(
+        data="2026-10-30", area=DOC, item="FW-07",
+        defeito="A pendência gerada do `FW-07` seguiu descrevendo buffer no RTC e "
+                "Deep Sleep depois de o `ARQ-01` decidir a C2 (sono leve).",
+        achado_por=LEITURA,
+        causa="A propagação da decisão atualizou a linha do `FW-07` no backlog e "
+              "não a pendência em `consolidar_registro.py` — o mesmo padrão do "
+              "`DOC-05` de 29/10, ao contrário.",
+        correcao="Pendência reescrita na mesma leva do `API-03`, que ao fechar "
+                 "precisou ler a linha vizinha.",
+        commit="(o commit que introduz esta linha: um commit não cita o próprio "
+               "hash — ver a entrada de 30/10 (iii) do diário)", procedencia="parcial",
+        nota="Dano: zero (a decisão ainda não tinha saído da branch). Mostra de "
+             "novo o que o `DOC-13` registra: nada confere a linha do backlog "
+             "contra a pendência gerada.",
+    ),
+    Defeito(
+        data="2026-10-30", area=DOC, item="FW-07",
+        defeito="O `firmware/nucleo/README.md` e o texto que o `make capacidade` "
+                "imprime seguiam dizendo que o `sketch.ino` reescrito usaria 128 "
+                "épocas no RTC, porque o heap não sobrevive ao Deep Sleep, e que o "
+                "`API-03` era item aberto.",
+        achado_por=LEITURA,
+        causa="A propagação da C2 (30/10) passou pelo backlog, pelo `CLAUDE.md` e "
+              "pelos documentos de decisão, e não pelos textos do núcleo — que são "
+              "os que quem for escrever o sketch lê primeiro. O fechamento do "
+              "`API-03` também não voltou a eles.",
+        correcao="Os dois textos reescritos para a C2 (heap, flash do `FW-08`) e "
+                 "para o `API-03` fechado, com nota de correção.",
+        commit="(o commit que introduz esta linha: um commit não cita o próprio "
+               "hash — ver a entrada de 30/10 (v) do diário)", procedencia="parcial",
+        nota="Achado ao escrever a parte (a) do `FW-07`, lendo o README para "
+             "acrescentar a seção da cadeia. Dano: zero (o sketch não foi "
+             "escrito). Terceira vez no mesmo dia que a propagação de uma decisão "
+             "esquece um texto — o padrão que o `DOC-13` registra.",
+    ),
+    Defeito(
+        data="2026-10-30", area=INFRA, item="ML-11",
+        defeito="O commit do `ML-11` (PR #13) não chegou a `develop`: a PR foi "
+                "mesclada na branch da #12, que já tinha entrado em `develop` 19 s "
+                "antes.",
+        achado_por=INVENTARIO,
+        causa="A #13 foi aberta empilhada, com base na branch da #12, contando "
+              "que o GitHub a redirecionaria para `develop` quando a #12 "
+              "entrasse; o redirecionamento não acontece quando a base é "
+              "mesclada e a PR de cima é mesclada logo em seguida, na base velha.",
+        correcao="O trabalho seguinte partiu da branch que contém o `ML-11` e a "
+                 "PR aponta para `develop`, levando os dois. Regra no `CLAUDE.md`: "
+                 "PR sempre com base em `develop`.",
+        commit="(o commit que introduz esta linha: um commit não cita o próprio "
+               "hash — ver a entrada de 30/10 (ii) do diário)", procedencia="parcial",
+        nota="Achado ao conferir `gh pr view 13` antes de começar o trabalho "
+             "seguinte; nenhum dado se perdeu, mas `develop` ficou sem o `ML-11` "
+             "por algumas horas.",
+    ),
+    Defeito(
         data="2026-10-29", area=DOC, item="DOC-05",
         defeito="A linha do `DOC-05` no backlog dizia que o `CLAUDE.md` está no "
                 "`.gitignore` e que toda correção nele fica fora do git — ele é "
@@ -2246,14 +2317,11 @@ PENDENCIAS: list[Pendencia] = [
     Pendencia("REQ-01", SOFTWARE, "Documentar requisitos: dimensões, conforto, "
               "autonomia, aquecimento, custo, segurança.", "🟡",
               camada_backlog="L0"),
-    Pendencia("ARQ-01 (a, b)", SOFTWARE, "Escrever a decisão de arquitetura da "
-              "cadência: **(a)** contínuo-com-features × WoM-sem-features, por "
-              "escrito, com a consequência em `HW-03` e `CALC-01` assumida; "
-              "**(b)** fixar banda do MPU e taxa da placa **juntas e contra os "
-              "12,8 Hz** do `ml/`, não contra os 21 Hz. A parte (c) é medição em "
-              "placa e está no grupo D.", "🔴", camada_backlog="L0 (a,b) / L1 (c)",
-              nota="É o item que trava a corrente de captação inteira. As partes "
-                   "(a) e (b) não dependem de nada físico."),
+    Pendencia("ML-12 (c)", HARDWARE, "Repetir a comparação 8 × 3 features com "
+              "dado do travesseiro, quando o `VIA-01`/`VIA-02` o produzirem. As "
+              "partes (a) e (b) fecharam em 30/10: no kappa a redução sobrevive; "
+              "na especificidade custa de 1 a 5 pontos, e a recomendação é "
+              "manter as 6 no dispositivo.", "🟡", camada_backlog="L1"),
     Pendencia("ML-06b", SOFTWARE, "Escrever `ml/src/carregar/walch.py`. A "
               "interface única garante que é só isso. ⚠️ Escrever carregador sem "
               "ver o arquivo real produziu as 10 armadilhas já catalogadas: "
@@ -2265,21 +2333,6 @@ PENDENCIAS: list[Pendencia] = [
               "(N=92). **Provavelmente esforço mal gasto** — a validação externa "
               "já mostrou que o ganho do HMM não atravessa coorte. Registrado "
               "para não parecer esquecimento.", "⚪", camada_backlog="L0"),
-    Pendencia("DATA-07b (d, e)", SOFTWARE, "**(d)** migração e mudança na função "
-              "de ingestão para persistir o vetor; **(e)** derivação de "
-              "`inclinacao_rel`/`d_angulo` no servidor. **E o terceiro, que é "
-              "pré-requisito de qualquer captação útil:** `montar_payload` não "
-              "emite `f`, `g` e `fs` — o contrato v2.5.1 continua 'declarado, não "
-              "implementado' do lado do transporte.", "🔴", camada_backlog="L0",
-              nota="Confirmado aberto, nos três. `grep` por `features`/`fs` em "
-                   "`web-app/database.py` devolve vazio; nenhuma migração "
-                   "menciona o vetor; `features_inter_epoca` existe em "
-                   "`ml/src/features.py:194` e **não é referenciada por "
-                   "`web-app/`**."),
-    Pendencia("DATA-07d", SOFTWARE, "O que resta: **o contrato precisa dizer que "
-              "o dispositivo não emite `f` de época truncada**, e não diz. Os "
-              "itens (a), (b) e (c) do achado fecharam em 30/09.", "🟡",
-              camada_backlog="L0"),
     Pendencia("DATA-07e", SOFTWARE, "Quantizar os 5 floats de pico: 52 B → 40 B, "
               "e a cobertura de 5,25 h → 6,83 h em 32 KiB. Dívida assumida de "
               "propósito, porque mexe na precisão **transmitida** e na checagem "
@@ -2351,14 +2404,15 @@ PENDENCIAS: list[Pendencia] = [
               "`ts-prune`) ou script próprio **com controle positivo**, porque o "
               "instrumento é a parte difícil e isso já foi medido.", "🟡",
               camada_backlog="L0"),
-    Pendencia("FW-07", SOFTWARE, "Reescrever o `sketch.ino`, que hoje tira **uma "
-              "amostra por boot** e dorme. Reorganizá-lo em torno do núcleo, com "
-              "buffer no RTC (`RTC_DATA_ATTR`, 128 épocas — o heap não sobrevive "
-              "ao Deep Sleep) e ciclo acordar → medir → agregar → dormir. O "
-              "núcleo já existe e está testado.", "🔴", camada_backlog="L0"),
-    Pendencia("API-03", SOFTWARE, "Endpoint de lote no `/api/data`. Drenar 8 h "
-              "são **960 POSTs**, um handshake TLS novo cada — medido em "
-              "`capacidade.cpp`, não estimado.", "🟡", camada_backlog="L0"),
+    Pendencia("FW-07", SOFTWARE, "Parte (b): reescrever o `sketch.ino`, que hoje "
+              "tira **uma amostra por boot** e dorme, em torno da cadeia C2 que a "
+              "parte (a) deixou pronta e testada no núcleo (30/10: `fifo_mpu.h`, "
+              "`reamostragem.h`, `cadeia_c2.h`, `lote.h`). Falta a cola com o "
+              "hardware: ESP32 em **sono leve**, os registradores da C2, a FIFO lida "
+              "por I2C em blocos, o despertar com intervalo variado, buffer no heap "
+              "e na flash (`FW-08`) e drenagem pelo `POST /api/data/lote`. Sem a "
+              "placa ela só compila; e um POST que bloqueie mais de ~1,7 s deixa a "
+              "FIFO transbordar.", "🔴", camada_backlog="L0"),
     Pendencia("FW-01", SOFTWARE, "Lógica atividade/repouso por época no firmware. "
               "**Parcialmente coberto:** o `envio-continuo` já classifica por "
               "época de 30 s desde o `HW-05`; falta levar ao `sketch.ino` "
@@ -2427,15 +2481,14 @@ PENDENCIAS: list[Pendencia] = [
                       "o fluxo de consentimento de responsável, ou (c) manter a "
                       "lacuna declarada. **A defesa de (c) expira no dia em que "
                       "alguém além de você criar conta.**"),
-    Pendencia("ARQ-01 (a) — a escolha", DECISAO, "A cadência escolhe entre o "
-              "vetor de features e o Deep Sleep com WoM. 42 Hz de Nyquist "
-              "atravessam os 40 Hz do modo de baixo consumo: 4,5× na corrente do "
-              "transdutor **e fim do despertar por movimento**.", "🔴",
-              camada_backlog="L0",
-              decisao="Amostragem contínua **com** features, ou Deep Sleep com "
-                      "WoM **sem** features? A escolha derruba o `HW-03`, muda o "
-                      "orçamento de energia inteiro e libera (ou não) o heap de "
-                      "~300 KiB que o `FW-08` assume."),
+    Pendencia("ARQ-02 — modos de registro", DECISAO, "Quatro modos analisados "
+              "em `docs/ARQUITETURA-DE-CAPTACAO.md`: travesseiro com bateria "
+              "máxima (WoM), travesseiro com análise completa (sono leve + FIFO), "
+              "celular para teste rápido (navegador) e celular para a noite "
+              "inteira (app nativo).", "⚪", camada_backlog="L0",
+              decisao="Quais modos oferecer, e se o travesseiro terá um ou dois? "
+                      "A análise recomenda um modo só no travesseiro antes da "
+                      "banca."),
     Pendencia("FW-08 (a, b) — as escolhas", DECISAO, "Persistência em flash.",
               "🔴", camada_backlog="L0",
               decisao="LittleFS ou NVS? E versionar o `partitions.csv` — hoje o "
@@ -2544,13 +2597,16 @@ PENDENCIAS: list[Pendencia] = [
               "controle.", "🔴", camada_backlog="L1"),
     Pendencia("ARQ-01 (c)", HARDWARE, "**Medir na placa**: os 18,8 KiB do "
               "acumulador, os ~29 000 MACs em `double` por época e o tempo de "
-              "parede do fechamento são `sizeof` e aritmética no host. A 42 Hz o "
-              "orçamento por amostra é 23,8 ms. **O `ARQ-01` só fecha com (c).**",
+              "parede do fechamento são `sizeof` e aritmética no host. Se a "
+              "escolha for o sono leve com FIFO: a latência e a corrente do sono "
+              "leve na placa, o transbordo da FIFO (esvaziada a cada 1,70 s a "
+              "50 Hz), a taxa real do MPU e a reassociação Wi-Fi (§8 do documento "
+              "do `ARQ-01`). **O `ARQ-01` só fecha com (c).**",
               "🔴", camada_backlog="L1"),
-    Pendencia("FW-05", HARDWARE, "Amostragem bruta para o ML: ≥ 42 Hz, épocas de "
-              "30 s. O lado C++ já existe e passa. ⚠️ **Deixou de ser "
-              "'configurar a taxa': bloqueado por `ARQ-01`.** Não implemente a "
-              "taxa antes de o `ARQ-01` estar decidido por escrito.", "🔴",
+    Pendencia("FW-05", HARDWARE, "Amostragem bruta para o ML, na arquitetura "
+              "decidida no `ARQ-01` (C2, 30/10): MPU a 50 Hz pela FIFO, DLPF de "
+              "21 Hz, ESP32 em sono leve, taxa medida e reamostragem para 32 Hz "
+              "como o `ml/`. O lado C++ das features já existe e passa.", "🔴",
               camada_backlog="L1"),
     Pendencia("FW-02", HARDWARE, "Deep Sleep real testado na placa (hoje é mock "
               "do Wokwi).", "🟡", camada_backlog="L1"),
@@ -2558,7 +2614,9 @@ PENDENCIAS: list[Pendencia] = [
               "do Wokwi.", "🟡", camada_backlog="L1"),
     Pendencia("HW-03", HARDWARE, "Wake-on-Motion real: ligar o INT do MPU6050 a "
               "um GPIO RTC. Hoje o despertar é por EXT1 num **botão** — andaime "
-              "de simulação. ⚠️ **Pode deixar de existir, conforme o `ARQ-01`.**",
+              "de simulação. ⚠️ **30/10: deixou de ser pré-requisito** — com a "
+              "C2 (`ARQ-01`) o ESP32 acorda por temporizador; o INT vira opcional "
+              "(alarme de transbordo da FIFO).",
               "🟡", camada_backlog="L1"),
     Pendencia("HW-04", HARDWARE, "Encapsulamento e fixação para uso noturno; "
               "**segurança térmica do LiPo dentro do travesseiro**.", "🔴",
@@ -2571,12 +2629,15 @@ PENDENCIAS: list[Pendencia] = [
               camada_backlog="L1"),
     Pendencia("VAL-01", HARDWARE, "Uma noite captada. 🛑 **Com o firmware como "
               "está, a noite sai sem feature nenhuma e o modelo não a consome** "
-              "— cadência de 0,1 Hz (3 amostras por época), o acumulador recusa "
-              "a época, e o payload não emite `f`. A ordem correta é `ARQ-01` → "
-              "`FW-05` → `DATA-07b` (d, e) → **só então** captar.", "🔴",
+              "— cadência de 0,1 Hz (3 amostras por época) e o acumulador recusa "
+              "a época. O transporte do vetor existe desde 30/10 (`DATA-07b`); o "
+              "que falta é firmware: `FW-05`, `FW-07` (b) e `FW-08` → **só "
+              "então** captar.", "🔴",
               camada_backlog="L1",
               nota="Confirmado: `INTERVALO_AMOSTRA_MS = 10000` em "
-                   "`envio-continuo.ino:109`, e `montar_payload` sem `f`/`g`/`fs`."),
+                   "`envio-continuo.ino:109`. O `montar_payload` emite "
+                   "`f`/`g`/`fs` desde o `DATA-07b`, mas nenhum sketch o chama com "
+                   "o vetor."),
     Pendencia("VAL-02", HARDWARE, "Validação quantitativa: F1, matriz de "
               "confusão, curva de corrente×tempo medida.", "🔴",
               camada_backlog="L2"),

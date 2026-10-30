@@ -1,16 +1,19 @@
 import logging
+import time
 from datetime import datetime, timezone
 
 from flask import g, jsonify, request
 
 import dispositivos
+import features_noite
+import lote
 import perfil
 from auth import extrair_bearer, require_auth
 from database import db
 from consulta import ler_parametros
 from ingestao import CAMINHO_SESSAO, CAMINHO_TOKEN, extrair_device_id, identificar_caminho
 from device_auth import extrair_token, gerar_token, hash_token
-from validacao import validar_captacao, validar_leitura
+from validacao import colunas_de_features, validar_captacao, validar_leitura
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +41,13 @@ logger = logging.getLogger(__name__)
 # a suite nao era executada desde 10/09. A deteccao funcionou; o intervalo entre
 # o bug e a deteccao e que foi de duas semanas, e e por isso que o backend
 # tambem precisa rodar em cada push, nao so quando alguem lembra.
-CONTRATO_DE_DADOS = "2.5.1"
+#
+# 2.6.0 (30/10, API-03) e MINOR: `POST /api/data/lote`, rota nova e opcional.
+# Nada do `/api/data` mudou; um firmware que nunca use o lote continua conforme.
+#
+# 2.7.0 (30/10, DATA-07b) e MINOR: `f`/`g`/`fs` validados e gravados, e
+# `GET /api/features`. Payload sem `f` continua sendo o payload correto.
+CONTRATO_DE_DADOS = "2.7.0"
 
 # Frase exigida no corpo de `DELETE /api/me` (SEC-07). Em portugues e em
 # maiusculas de proposito: tem de ser digitada, e nao pode ser o resultado de
@@ -106,6 +115,52 @@ def init_routes(app):
                 limite=parametros["limite"],
             )
         )
+
+    #: A janela de `/api/features`. Uma noite cabe com folga; acima disso, a
+    #: `inclinacao_rel` passaria a ser contra a postura típica de dias.
+    JANELA_MAXIMA_DE_FEATURES_H = 24
+
+    @app.route('/api/features')
+    @require_auth
+    def get_features():
+        """As oito features por época de uma janela (DATA-07b (e)).
+
+        `device`, `desde` e `ate` são obrigatórios: `inclinacao_rel` é medida
+        contra a postura típica DA JANELA (`g_ref`), então a janela faz parte
+        do resultado e não pode ficar implícita. O "conceito de noite" é do
+        `ESC-01`; até lá, quem pede escolhe, e a resposta devolve o `g_ref` e a
+        janela usados.
+        """
+        parametros, erro = ler_parametros(request.args)
+        if erro:
+            return jsonify({"error": erro}), 400
+        faltando = [n for n, k in (("device", "device_id"), ("desde", "desde"), ("ate", "ate"))
+                    if not parametros[k]]
+        if faltando:
+            return jsonify({"error": "parametros obrigatorios: " + ", ".join(faltando)}), 400
+        desde = features_noite.instante_do_banco(parametros["desde"])
+        ate = features_noite.instante_do_banco(parametros["ate"])
+        if desde.tzinfo is None or ate.tzinfo is None:
+            return jsonify({"error": "'desde' e 'ate' precisam de fuso horario"}), 400
+        if (ate - desde).total_seconds() > JANELA_MAXIMA_DE_FEATURES_H * 3600:
+            return jsonify({"error": f"janela acima de {JANELA_MAXIMA_DE_FEATURES_H} h"}), 400
+
+        linhas = db.get_features_do_usuario(
+            g.jwt, g.usuario_id, parametros["device_id"], desde.isoformat(), ate.isoformat())
+        if linhas is None:
+            return jsonify({"error": "consulta indisponivel"}), 503
+
+        epocas = [e for e in map(features_noite.epoca_da_linha, linhas) if e is not None]
+        saida, g_ref = features_noite.derivar_noite(epocas)
+        return jsonify({
+            "device_id": parametros["device_id"],
+            "desde": desde.isoformat(),
+            "ate": ate.isoformat(),
+            "ordem_features": list(features_noite.ORDEM_FEATURES),
+            "g_ref": g_ref,
+            "lacuna_maxima_s": features_noite.LACUNA_MAXIMA_S,
+            "epocas": saida,
+        })
 
     # --- Dispositivos do usuário (AUTH-05) ---
     #
@@ -424,6 +479,85 @@ def init_routes(app):
         # de `auth.uid()` (SEC-06).
         return dict(device, user_id=usuario_id, jwt=jwt), None, 200
 
+    def _gravar_leitura(caminho, device, content):
+        """Valida, traduz e grava UMA leitura (FIX-02, SEC-03, SEC-06).
+
+        Devolve `(True, None, 201)` quando a gravação foi confirmada, e
+        `(False, motivo, status)` quando não: 400 para leitura inválida (não
+        adianta reenviar) e 503 para banco que não persistiu (adianta).
+
+        Extraído de `receive_data` para o lote (API-03) usar exatamente a
+        mesma regra: uma leitura não pode ser válida num caminho e inválida
+        no outro.
+        """
+
+        # --- VALIDAÇÃO DE ENTRADA (SEC-03) ---
+        # Autenticado não é o mesmo que confiável: token roubado, sensor
+        # solto ou firmware antigo não podem contaminar a base.
+        content, erro = validar_leitura(content)
+        if erro:
+            return False, erro, 400
+
+        # Instante da MEDIÇÃO, quando o dispositivo souber informá-lo
+        # (contrato v2.0.0). O `created_at` do banco continua sendo o do
+        # recebimento — este é um campo novo, não uma substituição.
+        captado_em, erro = validar_captacao(content.get("ts"))
+        if erro:
+            return False, erro, 400
+
+        # --- O TRADUTOR ---
+        # Aqui convertemos o "dialeto" do ESP32 (chaves curtas)
+        # para o "idioma" do Supabase (nomes das colunas)
+        payload = {
+            "accel_x": content.get("ax"),
+            "accel_y": content.get("ay"),
+            "accel_z": content.get("az"),
+            "gyro_x":  content.get("gx"),
+            "gyro_y":  content.get("gy"),
+            "gyro_z":  content.get("gz"),
+            "temp":    content.get("t"),
+            "movimento_total": content.get("total"),
+            "status":  content.get("status"),
+            # Agregação por época (v2.0.0). Nulos para o ESP32, que envia
+            # amostra instantânea.
+            "captured_at":      captado_em,
+            "epoca_segundos":   content.get("epoca_s"),
+            "metodo_agregacao": content.get("metodo"),
+            "amostras":         content.get("amostras"),
+            # Vetor da época (DATA-07b, contrato §2.6). Uma coluna por feature,
+            # com o NOME dela, e não um array: um array na ordem errada passaria
+            # em toda faixa. Nulos quando a leitura não traz `f`.
+            **colunas_de_features(content),
+            # `user_id` e `device_id` NÃO entram aqui (SEC-06). Quem carimba
+            # o dono é a função no banco, a partir do token ou do
+            # `auth.uid()` do JWT. Antes eram estas duas linhas de Python
+            # que separavam uma chave vazada da posse de dado alheio; agora
+            # não existe parâmetro por onde escolher o dono.
+        }
+
+        # Persiste e confirma: só responde 201 se o dado foi realmente
+        # gravado. Se nada persistiu (fonte indisponível), responde 503 em
+        # vez de mentir sucesso e enganar o firmware (FIX-02).
+        #
+        # Dois caminhos, duas credenciais — e nenhum dos dois manda o dono:
+        #
+        #   token   -> chave de ingestão (privilégio mínimo), dono do token
+        #   sessão  -> JWT do usuário,    dono de `auth.uid()`
+        #
+        # O `last_seen_at` do dispositivo é atualizado dentro da própria
+        # função, na mesma chamada — ver migrations/005.
+        if caminho == CAMINHO_TOKEN:
+            gravado = db.registrar_leitura(device["token_hash"], payload)
+        else:
+            gravado = db.registrar_leitura_da_sessao(
+                device["jwt"], device["id"], payload
+            )
+
+        if not gravado:
+            return False, "dados nao persistidos (fonte indisponivel)", 503
+
+        return True, None, 201
+
     @app.route('/api/data', methods=['POST'])
     def receive_data():
         try:
@@ -446,67 +580,61 @@ def init_routes(app):
 
             content = request.json
 
-            # --- VALIDAÇÃO DE ENTRADA (SEC-03) ---
-            # Autenticado não é o mesmo que confiável: token roubado, sensor
-            # solto ou firmware antigo não podem contaminar a base.
-            content, erro = validar_leitura(content)
-            if erro:
-                return jsonify({"error": erro}), 400
-
-            # Instante da MEDIÇÃO, quando o dispositivo souber informá-lo
-            # (contrato v2.0.0). O `created_at` do banco continua sendo o do
-            # recebimento — este é um campo novo, não uma substituição.
-            captado_em, erro = validar_captacao(content.get("ts"))
-            if erro:
-                return jsonify({"error": erro}), 400
-
-            # --- O TRADUTOR ---
-            # Aqui convertemos o "dialeto" do ESP32 (chaves curtas)
-            # para o "idioma" do Supabase (nomes das colunas)
-            payload = {
-                "accel_x": content.get("ax"),
-                "accel_y": content.get("ay"),
-                "accel_z": content.get("az"),
-                "gyro_x":  content.get("gx"),
-                "gyro_y":  content.get("gy"),
-                "gyro_z":  content.get("gz"),
-                "temp":    content.get("t"),
-                "movimento_total": content.get("total"),
-                "status":  content.get("status"),
-                # Agregação por época (v2.0.0). Nulos para o ESP32, que envia
-                # amostra instantânea.
-                "captured_at":      captado_em,
-                "epoca_segundos":   content.get("epoca_s"),
-                "metodo_agregacao": content.get("metodo"),
-                "amostras":         content.get("amostras"),
-                # `user_id` e `device_id` NÃO entram aqui (SEC-06). Quem carimba
-                # o dono é a função no banco, a partir do token ou do
-                # `auth.uid()` do JWT. Antes eram estas duas linhas de Python
-                # que separavam uma chave vazada da posse de dado alheio; agora
-                # não existe parâmetro por onde escolher o dono.
-            }
-
-            # Persiste e confirma: só responde 201 se o dado foi realmente
-            # gravado. Se nada persistiu (fonte indisponível), responde 503 em
-            # vez de mentir sucesso e enganar o firmware (FIX-02).
-            #
-            # Dois caminhos, duas credenciais — e nenhum dos dois manda o dono:
-            #
-            #   token   -> chave de ingestão (privilégio mínimo), dono do token
-            #   sessão  -> JWT do usuário,    dono de `auth.uid()`
-            #
-            # O `last_seen_at` do dispositivo é atualizado dentro da própria
-            # função, na mesma chamada — ver migrations/005.
-            if caminho == CAMINHO_TOKEN:
-                gravado = db.registrar_leitura(device["token_hash"], payload)
-            else:
-                gravado = db.registrar_leitura_da_sessao(
-                    device["jwt"], device["id"], payload
-                )
-
+            gravado, erro, status = _gravar_leitura(caminho, device, content)
             if not gravado:
-                return jsonify({"error": "dados nao persistidos (fonte indisponivel)"}), 503
+                return jsonify({"error": erro}), status
 
             return jsonify({"status": "success"}), 201
+        except Exception as e:
+            return jsonify({"error": str(e)}), 400
+
+    @app.route('/api/data/lote', methods=['POST'])
+    def receive_lote():
+        """Várias leituras numa requisição só (API-03). Ver `lote.py`."""
+        try:
+            # Autenticação antes do envelope, como no `/api/data`: quem não se
+            # identifica não recebe diagnóstico do próprio corpo.
+            caminho = identificar_caminho(request.headers)
+            if caminho == CAMINHO_TOKEN:
+                device, erro, status = _device_por_token()
+            elif caminho == CAMINHO_SESSAO:
+                device, erro, status = _device_por_sessao()
+            else:
+                return jsonify({"error": "credencial ausente"}), 401
+            if device is None:
+                return jsonify({"error": erro}), status
+
+            leituras, erro, status = lote.extrair_leituras(request.get_json(silent=True))
+            if erro:
+                return jsonify({"error": erro}), status
+
+            resposta = lote.nova_resposta()
+            inicio = time.monotonic()
+            for indice, content in enumerate(leituras):
+                # Passou do orçamento: o resto volta como pendente, inteiro,
+                # em vez de a função serverless morrer no meio do lote.
+                if time.monotonic() - inicio > lote.ORCAMENTO_DE_TEMPO_S:
+                    resposta["pendentes"].extend(range(indice, len(leituras)))
+                    break
+
+                try:
+                    gravado, erro, status = _gravar_leitura(caminho, device, content)
+                except Exception as e:
+                    # Mesma régua do `/api/data`, que responde 400 a exceção de
+                    # leitura malformada. Aqui ela vira rejeição DESTE item: deixar
+                    # a exceção derrubar o lote esconderia as que já foram
+                    # gravadas, e o dispositivo reenviaria todas em duplicata.
+                    gravado, erro, status = False, str(e), 400
+                if gravado:
+                    resposta["aceitas"].append(indice)
+                elif status == 503:
+                    # O banco não persistiu. Insistir nas próximas só acumula
+                    # falha e tempo: param aqui, e o dispositivo reenvia.
+                    resposta["pendentes"].extend(range(indice, len(leituras)))
+                    break
+                else:
+                    resposta["rejeitadas"].append({"indice": indice, "erro": erro})
+
+            return jsonify(resposta), lote.status_da_resposta(resposta)
         except Exception as e:
             return jsonify({"error": str(e)}), 400

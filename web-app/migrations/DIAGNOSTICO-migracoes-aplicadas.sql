@@ -79,7 +79,19 @@ marcas (migracao, item, marca, presente) as (values
         not exists (select 1 from pg_default_acl
                      where defaclnamespace = 'public'::regnamespace and defaclobjtype = 'f'
                        and pg_get_userbyid(defaclrole) = 'postgres'
-                       and defaclacl::text like '%anon=%'))
+                       and defaclacl::text like '%anon=%')),
+    -- 010: o vetor de características (DATA-07b). As FUNÇÕES são conferidas, e
+    -- não só as colunas: coluna criada com função antiga é o caso perigoso —
+    -- o backend valida `f`, a função o ignora, e a resposta é 201. A marca é a
+    -- EXTRAÇÃO (`->> 'fs_features'`), não a menção: uma função que listasse a
+    -- coluna e gravasse nulo passaria por `like '%fs_features%'`.
+    ('010', 'DATA-07b', 'coluna sleep_data.fs_features',   exists (select 1 from col where nome = 'sleep_data.fs_features')),
+    ('010', 'DATA-07b', 'restrição sleep_data_features_tudo_ou_nada',
+                                                           exists (select 1 from pg_constraint where conname = 'sleep_data_features_tudo_ou_nada')),
+    ('010', 'DATA-07b', 'registrar_leitura extrai o vetor',
+        coalesce((select pg_get_functiondef(to_regprocedure('public.registrar_leitura(text,jsonb)')) like '%->> ''fs_features''%'), false)),
+    ('010', 'DATA-07b', 'registrar_leitura_da_sessao extrai o vetor',
+        coalesce((select pg_get_functiondef(to_regprocedure('public.registrar_leitura_da_sessao(uuid,jsonb)')) like '%->> ''fs_features''%'), false))
 ),
 esquema as (
     select migracao, min(item) as item,

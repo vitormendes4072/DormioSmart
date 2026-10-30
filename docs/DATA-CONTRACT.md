@@ -1,7 +1,16 @@
 # Contrato de dados — Smart Dormio
 
-**Versão:** 2.5.1 · **Itens:** DATA-01, DATA-02, SEC-02, SEC-03, DASH-05, DASH-06, DATA-04, APP-01, SEC-06, SEC-07, APP-08, DASH-08, DASH-12, DASH-13, DATA-07a, DATA-07b, DATA-07c
+**Versão:** 2.7.0 · **Itens:** API-03, DATA-01, DATA-02, SEC-02, SEC-03, DASH-05, DASH-06, DATA-04, APP-01, SEC-06, SEC-07, APP-08, DASH-08, DASH-12, DASH-13, DATA-07a, DATA-07b, DATA-07c
 
+> **2.7.0 (MINOR — nada quebra em campo):** a seção 2.6 deixou de ser só declarada. `f`, `g`
+> e `fs` são emitidos pelo firmware, validados na ingestão, gravados (migração 010) e
+> devolvidos, com as duas features derivadas no servidor, por `GET /api/features`. Payload
+> sem `f` continua sendo o payload correto.
+>
+> **2.6.0 (MINOR — nada quebra em campo):** rota nova e opcional, `POST /api/data/lote`,
+> para entregar várias leituras numa requisição (seção 5.2). O `POST /api/data` não mudou
+> uma linha; um firmware que nunca use o lote continua conforme.
+>
 > **2.5.0 (MINOR — nada quebra em campo):** o payload ganha o **vetor de
 > características por época** (`f`), campo **opcional**, e a seção 2.6 fixa a
 > ordem canônica das oito, a unidade de cada uma e a representação em ponto
@@ -147,6 +156,13 @@ ESP32. O backend traduz para os nomes de coluna (seção 4).
 
 ### 2.6 Vetor de características por época (v2.5.0, DATA-07a)
 
+> ✅ **Estado em 2026-10-30 (v2.7.0, `DATA-07b` fechado):** as sete linhas da
+> tabela abaixo estão implementadas — emissão em `firmware/nucleo/payload.cpp`,
+> validação em `web-app/validacao.py::_validar_features`, persistência na
+> migração `010`, derivação em `web-app/features_noite.py`, servida por
+> `GET /api/features` (abaixo, "Derivação no servidor"). A nota de 17/10 fica
+> como procedência.
+>
 > ⚠️ **Estado em 2026-10-17 — o cálculo existe nos dois lados; o transporte
 > não.** Esta nota dizia "nada implementa esta seção ainda", e isso deixou de
 > ser verdade pela metade, então vale a precisão:
@@ -300,10 +316,18 @@ contagem de amostras para o servidor descartar. Enquanto isso não for decidido,
 o risco é real e silencioso: uma época curta produz um vetor de características
 plausível, dentro de todas as faixas desta seção, e simplesmente errado.
 
+✅ **Decidido em 2026-10-30 (v2.7.0): o dispositivo descarta.** O
+`AcumuladorDeFeatures` recusa a época com menos de 960 amostras, e
+`montar_payload` só emite `f` para época de nível 0 (30 s) com todos os valores
+dentro das faixas. Época degradada (60 s ou mais) também sai **sem** `f`: as
+features não fundem (`firmware/nucleo/caracteristicas.h`), e o vetor de uma das
+metades descreveria 30 s de uma leitura que resume mais. Vetor fora de faixa
+também sai sem `f`, em vez de levar a leitura inteira a um `400`.
+
 A medição está travada em
 `ml/testes/test_vetor_dourado.py::test_epoca_incompleta_nao_tem_paridade`.
 
-#### Validação prevista (a implementar no DATA-07b)
+#### Validação (implementada na v2.7.0, `web-app/validacao.py::_validar_features`)
 
 - `f` presente exige `g` e `fs`; qualquer um dos três sozinho é `400`.
 - `f` exige `epoca_s` — um vetor de características de uma amostra instantânea
@@ -315,6 +339,51 @@ A medição está travada em
   de `total` contra `(ax, ay, az)` na seção 5.1.
 - **Ausente continua sendo o caso normal**, e continuará sendo depois que o
   firmware novo existir: dispositivo velho em campo é dispositivo válido.
+- `fs` é número em (0, 200] Hz.
+
+#### Persistência (migração 010)
+
+Dez colunas em `sleep_data`, uma por número e **com o nome dele**:
+`enmo_media`, `enmo_desvio`, `enmo_max`, `mag_din_media`, `zcr`, `p_frac`,
+`g_x`, `g_y`, `g_z` e `fs_features`. Não um array: num array a ordem é
+implícita, e uma troca passaria em toda faixa. A ordem de `f` vira nome uma vez,
+em `validacao.colunas_de_features`. Uma restrição (`sleep_data_features_tudo_ou_nada`)
+exige as dez preenchidas ou as dez nulas.
+
+⚠️ **A 010 entra no banco antes do release do backend da v2.7.0.** Na ordem
+inversa, o backend validaria `f` e a função de gravação antiga o descartaria,
+respondendo `201`. O `DIAGNOSTICO-migracoes-aplicadas.sql` confere as funções,
+não só as colunas.
+
+#### Derivação no servidor: `GET /api/features`
+
+`inclinacao_rel` e `d_angulo` não são gravadas: são derivadas na leitura, sobre
+a janela pedida, por `web-app/features_noite.py` — a mesma conta de
+`ml/src/features.py::features_inter_epoca`, reescrita em Python puro e conferida
+contra `ml/testes/vetor_dourado_sequencias.json` (`g_ref` a 1e-12, ângulos a
+1e-6 grau).
+
+```
+GET /api/features?device=<uuid>&desde=<ISO 8601 com fuso>&ate=<ISO 8601 com fuso>
+Authorization: Bearer <JWT do usuário>
+```
+
+- Os três parâmetros são obrigatórios, e a janela vai até **24 h**. A janela
+  faz parte do resultado: `inclinacao_rel` é medida contra a postura típica
+  **da janela** (`g_ref`, mediana geométrica), e a mesma época tem outro valor
+  noutra janela. O que é "a noite" é o `ESC-01`; até lá, quem pede escolhe.
+- Entram só as épocas **com vetor e com `captured_at`**. Sem o instante da
+  medição não há como ordenar a noite nem reconhecer um buraco.
+- **Uma diferença deliberada em relação ao `ml/`:** `d_angulo` é `null` na
+  primeira época e em toda época que começa mais de 45 s depois da anterior.
+  As bases públicas não têm buracos; o dispositivo tem, e uma hora sem leitura
+  apareceria como uma virada enorme "em 30 s". Sem buraco, o resultado é
+  idêntico ao do `ml/`.
+- Resposta `200`: `{"device_id", "desde", "ate", "ordem_features", "g_ref",
+  "lacuna_maxima_s", "epocas": [{"instante", <as oito pelo nome>, "fs"}]}`.
+  `400` para parâmetro faltando, sem fuso ou janela acima de 24 h; `401` sem
+  JWT; `503` se a consulta falhar — uma lista vazia pareceria noite sem
+  movimento.
 
 ### 2.1 `total` — o que é e o que NÃO é
 
@@ -516,6 +585,59 @@ A ordem importa: **autenticação antes de validação**. Um payload inválido s
 token devolve `401`, não `400` — quem não se identifica não recebe diagnóstico
 do próprio payload.
 
+### 5.2 `POST /api/data/lote` (v2.6.0, API-03)
+
+Várias leituras numa requisição só. Existe porque, na arquitetura do `ARQ-01` (sono leve +
+FIFO), o rádio é **63 %** da corrente média com uma entrega por época, e uma entrega por hora
+a reduz de 5,31 para 2,03 mA (`docs/DECISAO-ARQ-01-CADENCIA.md`).
+
+**Autenticação:** a mesma do `/api/data`, nos dois caminhos (seção 3). No caminho por sessão,
+o `device_id` vai no envelope, não em cada leitura. E vale a mesma ordem: sem credencial,
+`401` antes de qualquer olhar no corpo.
+
+**Envelope:**
+
+```json
+{"leituras": [ {<leitura da seção 2>}, {<leitura>}, ... ]}
+```
+
+Cada leitura é **exatamente** o corpo do `POST /api/data`, validado pelas mesmas regras (5.1)
+e gravado pela mesma função. Uma leitura não pode ser válida num caminho e inválida no outro.
+
+**Teto:** 60 leituras por lote (meia hora de épocas de 30 s). Mais que isso responde `413`, e
+nada é gravado: o cliente divide o lote.
+
+**Resposta (`200`):** cada leitura cai em **exatamente uma** de três listas, pelo índice dela
+no array enviado:
+
+```json
+{"aceitas": [0, 1, 3], "rejeitadas": [{"indice": 2, "erro": "..."}], "pendentes": [4, 5]}
+```
+
+| Lista | Significa | O que o dispositivo faz |
+|---|---|---|
+| `aceitas` | gravadas **e confirmadas** (FIX-02, item a item) | apaga da fila |
+| `rejeitadas` | inválidas, com o motivo | descarta: reenviar não adianta |
+| `pendentes` | não gravadas: o banco falhou ou o tempo acabou | reenvia no próximo lote |
+
+Quando o banco falha numa leitura, o servidor **para ali**: aquela e todas as seguintes voltam
+como pendentes. O mesmo vale quando o trabalho passa de 6 s, para não estourar o limite da
+função serverless.
+
+| Código | Significado |
+|---|---|
+| `200` | Lote processado; ler as três listas |
+| `400` | Envelope malformado (`leituras` ausente, não lista, vazia) |
+| `401` | Credencial ausente, inválida ou revogada |
+| `404` | Caminho por sessão: dispositivo inexistente, revogado ou de outra pessoa |
+| `413` | Mais de 60 leituras |
+| `503` | **Nada** foi gravado e há pendentes: um `200` vazio pareceria sucesso |
+
+⚠️ **Duplicata, não resolvida:** se a resposta se perder depois da gravação, o dispositivo
+reenvia leituras já gravadas. O `/api/data` tem o mesmo risco desde sempre; o lote só o
+concentra. Uma chave de idempotência (por exemplo, dispositivo + `ts`) fica para quando o
+firmware enviar `ts` (contrato v2.0.0).
+
 ### 5.1 Regras de validação (SEC-03)
 
 > **v2.1.0 — os três eixos exatamente zero são recusados (SEC-06).**
@@ -710,6 +832,8 @@ unidade alterada, novo header obrigatório). **MINOR** = campo opcional novo.
 
 | Versão | Data | Mudança |
 |---|---|---|
+| 2.7.0 | 2026-10-30 | **MINOR.** A seção 2.6 implementada (`DATA-07b` (d) e (e)): `f`/`g`/`fs` emitidos pelo firmware (só época de 30 s com vetor dentro das faixas), validados na ingestão, gravados em dez colunas nomeadas (migração 010) e servidos por `GET /api/features`, que deriva `inclinacao_rel` e `d_angulo` sobre a janela pedida, com `d_angulo` nulo depois de buraco. Payload sem `f` não muda |
+| 2.6.0 | 2026-10-30 | **MINOR.** `POST /api/data/lote` (seção 5.2, `API-03`): até 60 leituras por requisição, resposta com `aceitas`, `rejeitadas` e `pendentes` por índice. O `POST /api/data` não muda |
 | 2.5.1 *(nota de estado, 2026-10-17)* | — | **Não é mudança de contrato: nenhum campo, faixa ou obrigatoriedade mudou, e por isso a versão NÃO foi incrementada** (o backend declara `CONTRATO_DE_DADOS = "2.5.1"` e continua correto). A nota de abertura da seção 2.6 deixou de dizer "nada implementa esta seção": o `DATA-07b` implementou o **cálculo** das 6 features e de `ĝ` no firmware e **provou a paridade** Python↔C++ contra o `vetor_dourado.json` (`make dourado`). O **transporte segue não implementado** — `f` não é emitido, validado nem persistido. Registrado também o pré-requisito de taxa: a 10 s de cadência a época tem 3 amostras, e o firmware recusa emitir |
 | 2.5.1 | 2026-09-30 | **PATCH — nenhuma mudança de formato.** A seção 2.6 ganha dois fatos medidos no `DATA-07c`, ambos sobre a seção que ainda não está implementada: **(a)** época incompleta não tem paridade entre as implementações (até 54 % de divergência em `mag_din_media`), então o dispositivo não pode emitir `f` de época truncada — decidir *como* no `DATA-07b`; **(b)** o `‖g‖ = 1 ± 1e−3` é checagem de coerência de um lado, e **não** o orçamento de discordância entre implementações, que é de 0,25 grau. Nenhum campo, faixa ou obrigatoriedade muda |
 | 2.5.0 | 2026-09-29 | Payload ganha o vetor de características por época: `f` (6 intra-época), `g` (gravidade unitária) e `fs` (taxa), todos opcionais; seção 2.6 fixa ordem canônica, unidades, faixas e representação em ponto fixo (DATA-07a). **MINOR:** campo opcional novo, nenhuma obrigatoriedade muda, nenhum firmware precisa ser regravado. ⚠️ **Declarado, não implementado** — nenhum dos três lados emite, valida ou persiste `f`; isso é o `DATA-07b` |

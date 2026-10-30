@@ -334,6 +334,21 @@ referência, onde ele é possível. Registra-se igualmente que toda a verificaç
 conduzida em ambiente de desenvolvimento, não no dispositivo físico, conforme a seção X.4,
 parágrafo "Amostra própria".
 
+**Sobre o instante de cada amostra no dispositivo.** ✏️ *(30/10, `FW-07`.)* Na arquitetura
+adotada, o sensor armazena as leituras em memória interna sem marca de tempo, a uma taxa
+governada por oscilador próprio cuja tolerância declarada é de −15 % a +10 % na faixa de
+temperatura de operação. O dispositivo estima, por regressão linear entre o número acumulado de
+amostras e o instante de cada leitura da memória, a taxa efetiva e o instante de cada amostra.
+Em simulação com 50 sementes e quatro taxas entre 42,5 e 55 Hz, o erro dessa estimativa atingiu
+cerca de 5 ms no centro da época; com o instante verdadeiro, a cadeia de reamostragem
+embarcada reproduz a do pipeline de análise em 1,5 × 10⁻⁶ g. A divergência residual entre as
+características calculadas no dispositivo e as do pipeline é, portanto, atribuível ao relógio, e
+foi quantificada: até 2,2 × 10⁻³ g no máximo do ENMO, até 8 cruzamentos de 959 na taxa de
+cruzamentos e até 1,1 % na magnitude dinâmica média. Registra-se, adicionalmente, que a
+estimativa toma como exato o relógio do próprio microcontrolador, que durante o sono leve opera
+a partir de oscilador interno de menor estabilidade; o erro desse relógio não foi medido e
+depende do dispositivo físico.
+
 **Sobre a métrica de acurácia.** Registra-se, por rigor metodológico, que a acurácia global
 não constitui métrica informativa neste domínio. Dado que a proporção de épocas de sono em
 um registro noturno é elevada, um classificador trivial que atribuísse a totalidade das

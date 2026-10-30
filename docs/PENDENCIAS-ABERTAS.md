@@ -49,12 +49,12 @@ linha, não um resumo: resumo é a cópia que diverge.
 
 | Grupo | Itens |
 |---|---:|
-| A — Depende só de software: dá para fazer a qualquer momento | **39** |
+| A — Depende só de software: dá para fazer a qualquer momento | **35** |
 | B — Depende de decisão do Vitor | **10** |
 | C — Depende de ação do Vitor que não é decisão | **7** |
-| D — Bloqueado por hardware ou coleta | **23** |
+| D — Bloqueado por hardware ou coleta | **24** |
 | E — Bloqueado por terceiro | **4** |
-| **Total** | **83** |
+| **Total** | **80** |
 
 ⚠️ **Este total não é comparável à contagem do backlog, e a diferença não é
 erro de nenhum dos dois.** São unidades de contagem diferentes: o backlog
@@ -75,7 +75,7 @@ outro item. **Desde 28/10 têm ID no backlog:** `GIT-07`, `INFRA-02` e
 
 ## A — Depende só de software: dá para fazer a qualquer momento
 
-**39 itens.**
+**35 itens.**
 
 ### `CALC-01` 🔴
 
@@ -157,14 +157,6 @@ Documentar requisitos: dimensões, conforto, autonomia, aquecimento, custo, segu
 
 *Camada no backlog: L0.*
 
-### `ARQ-01 (a, b)` 🔴
-
-Escrever a decisão de arquitetura da cadência: **(a)** contínuo-com-features × WoM-sem-features, por escrito, com a consequência em `HW-03` e `CALC-01` assumida; **(b)** fixar banda do MPU e taxa da placa **juntas e contra os 12,8 Hz** do `ml/`, não contra os 21 Hz. A parte (c) é medição em placa e está no grupo D.
-
-*Camada no backlog: L0 (a,b) / L1 (c).*
-
-**Conferência.** É o item que trava a corrente de captação inteira. As partes (a) e (b) não dependem de nada físico.
-
 ### `ML-06b` 🟡
 
 Escrever `ml/src/carregar/walch.py`. A interface única garante que é só isso. ⚠️ Escrever carregador sem ver o arquivo real produziu as 10 armadilhas já catalogadas: escreva, mas **não confie até rodar**.
@@ -176,20 +168,6 @@ Escrever `ml/src/carregar/walch.py`. A interface única garante que é só isso.
 ### `ML-08` ⚪
 
 Combinação item 9 + HMM com LOSO interno (N=92). **Provavelmente esforço mal gasto** — a validação externa já mostrou que o ganho do HMM não atravessa coorte. Registrado para não parecer esquecimento.
-
-*Camada no backlog: L0.*
-
-### `DATA-07b (d, e)` 🔴
-
-**(d)** migração e mudança na função de ingestão para persistir o vetor; **(e)** derivação de `inclinacao_rel`/`d_angulo` no servidor. **E o terceiro, que é pré-requisito de qualquer captação útil:** `montar_payload` não emite `f`, `g` e `fs` — o contrato v2.5.1 continua 'declarado, não implementado' do lado do transporte.
-
-*Camada no backlog: L0.*
-
-**Conferência.** Confirmado aberto, nos três. `grep` por `features`/`fs` em `web-app/database.py` devolve vazio; nenhuma migração menciona o vetor; `features_inter_epoca` existe em `ml/src/features.py:194` e **não é referenciada por `web-app/`**.
-
-### `DATA-07d` 🟡
-
-O que resta: **o contrato precisa dizer que o dispositivo não emite `f` de época truncada**, e não diz. Os itens (a), (b) e (c) do achado fecharam em 30/09.
 
 *Camada no backlog: L0.*
 
@@ -257,13 +235,7 @@ As duas instâncias fecharam em 20/10; **a classe não.** Não há verificação
 
 ### `FW-07` 🔴
 
-Reescrever o `sketch.ino`, que hoje tira **uma amostra por boot** e dorme. Reorganizá-lo em torno do núcleo, com buffer no RTC (`RTC_DATA_ATTR`, 128 épocas — o heap não sobrevive ao Deep Sleep) e ciclo acordar → medir → agregar → dormir. O núcleo já existe e está testado.
-
-*Camada no backlog: L0.*
-
-### `API-03` 🟡
-
-Endpoint de lote no `/api/data`. Drenar 8 h são **960 POSTs**, um handshake TLS novo cada — medido em `capacidade.cpp`, não estimado.
+Parte (b): reescrever o `sketch.ino`, que hoje tira **uma amostra por boot** e dorme, em torno da cadeia C2 que a parte (a) deixou pronta e testada no núcleo (30/10: `fifo_mpu.h`, `reamostragem.h`, `cadeia_c2.h`, `lote.h`). Falta a cola com o hardware: ESP32 em **sono leve**, os registradores da C2, a FIFO lida por I2C em blocos, o despertar com intervalo variado, buffer no heap e na flash (`FW-08`) e drenagem pelo `POST /api/data/lote`. Sem a placa ela só compila; e um POST que bloqueie mais de ~1,7 s deixa a FIFO transbordar.
 
 *Camada no backlog: L0.*
 
@@ -375,11 +347,11 @@ Idade autodeclarada pode revelar que o titular é criança ou adolescente, e o a
 
 *Camada no backlog: L0.*
 
-### `ARQ-01 (a) — a escolha` 🔴
+### `ARQ-02 — modos de registro` ⚪
 
-A cadência escolhe entre o vetor de features e o Deep Sleep com WoM. 42 Hz de Nyquist atravessam os 40 Hz do modo de baixo consumo: 4,5× na corrente do transdutor **e fim do despertar por movimento**.
+Quatro modos analisados em `docs/ARQUITETURA-DE-CAPTACAO.md`: travesseiro com bateria máxima (WoM), travesseiro com análise completa (sono leve + FIFO), celular para teste rápido (navegador) e celular para a noite inteira (app nativo).
 
-**A decisão.** Amostragem contínua **com** features, ou Deep Sleep com WoM **sem** features? A escolha derruba o `HW-03`, muda o orçamento de energia inteiro e libera (ou não) o heap de ~300 KiB que o `FW-08` assume.
+**A decisão.** Quais modos oferecer, e se o travesseiro terá um ou dois? A análise recomenda um modo só no travesseiro antes da banca.
 
 *Camada no backlog: L0.*
 
@@ -497,7 +469,13 @@ SMTP próprio (Resend/Brevo) para 'esqueci minha senha'. Exige criar conta em se
 
 ## D — Bloqueado por hardware ou coleta
 
-**23 itens.**
+**24 itens.**
+
+### `ML-12 (c)` 🟡
+
+Repetir a comparação 8 × 3 features com dado do travesseiro, quando o `VIA-01`/`VIA-02` o produzirem. As partes (a) e (b) fecharam em 30/10: no kappa a redução sobrevive; na especificidade custa de 1 a 5 pontos, e a recomendação é manter as 6 no dispositivo.
+
+*Camada no backlog: L1.*
 
 ### `CAL-01` 🔴
 
@@ -525,13 +503,13 @@ O mesmo protocolo com **celular e travesseiro gravando ao mesmo tempo**. Produz 
 
 ### `ARQ-01 (c)` 🔴
 
-**Medir na placa**: os 18,8 KiB do acumulador, os ~29 000 MACs em `double` por época e o tempo de parede do fechamento são `sizeof` e aritmética no host. A 42 Hz o orçamento por amostra é 23,8 ms. **O `ARQ-01` só fecha com (c).**
+**Medir na placa**: os 18,8 KiB do acumulador, os ~29 000 MACs em `double` por época e o tempo de parede do fechamento são `sizeof` e aritmética no host. Se a escolha for o sono leve com FIFO: a latência e a corrente do sono leve na placa, o transbordo da FIFO (esvaziada a cada 1,70 s a 50 Hz), a taxa real do MPU e a reassociação Wi-Fi (§8 do documento do `ARQ-01`). **O `ARQ-01` só fecha com (c).**
 
 *Camada no backlog: L1.*
 
 ### `FW-05` 🔴
 
-Amostragem bruta para o ML: ≥ 42 Hz, épocas de 30 s. O lado C++ já existe e passa. ⚠️ **Deixou de ser 'configurar a taxa': bloqueado por `ARQ-01`.** Não implemente a taxa antes de o `ARQ-01` estar decidido por escrito.
+Amostragem bruta para o ML, na arquitetura decidida no `ARQ-01` (C2, 30/10): MPU a 50 Hz pela FIFO, DLPF de 21 Hz, ESP32 em sono leve, taxa medida e reamostragem para 32 Hz como o `ml/`. O lado C++ das features já existe e passa.
 
 *Camada no backlog: L1.*
 
@@ -549,7 +527,7 @@ Portar o firmware para a placa sem dependências do Wokwi.
 
 ### `HW-03` 🟡
 
-Wake-on-Motion real: ligar o INT do MPU6050 a um GPIO RTC. Hoje o despertar é por EXT1 num **botão** — andaime de simulação. ⚠️ **Pode deixar de existir, conforme o `ARQ-01`.**
+Wake-on-Motion real: ligar o INT do MPU6050 a um GPIO RTC. Hoje o despertar é por EXT1 num **botão** — andaime de simulação. ⚠️ **30/10: deixou de ser pré-requisito** — com a C2 (`ARQ-01`) o ESP32 acorda por temporizador; o INT vira opcional (alarme de transbordo da FIFO).
 
 *Camada no backlog: L1.*
 
@@ -575,11 +553,11 @@ Análise térmica com **medição real** — `P = V·I`, elevação de temperatu
 
 ### `VAL-01` 🔴
 
-Uma noite captada. 🛑 **Com o firmware como está, a noite sai sem feature nenhuma e o modelo não a consome** — cadência de 0,1 Hz (3 amostras por época), o acumulador recusa a época, e o payload não emite `f`. A ordem correta é `ARQ-01` → `FW-05` → `DATA-07b` (d, e) → **só então** captar.
+Uma noite captada. 🛑 **Com o firmware como está, a noite sai sem feature nenhuma e o modelo não a consome** — cadência de 0,1 Hz (3 amostras por época) e o acumulador recusa a época. O transporte do vetor existe desde 30/10 (`DATA-07b`); o que falta é firmware: `FW-05`, `FW-07` (b) e `FW-08` → **só então** captar.
 
 *Camada no backlog: L1.*
 
-**Conferência.** Confirmado: `INTERVALO_AMOSTRA_MS = 10000` em `envio-continuo.ino:109`, e `montar_payload` sem `f`/`g`/`fs`.
+**Conferência.** Confirmado: `INTERVALO_AMOSTRA_MS = 10000` em `envio-continuo.ino:109`. O `montar_payload` emite `f`/`g`/`fs` desde o `DATA-07b`, mas nenhum sketch o chama com o vetor.
 
 ### `VAL-02` 🔴
 

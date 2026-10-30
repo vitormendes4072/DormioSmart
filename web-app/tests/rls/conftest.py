@@ -67,6 +67,10 @@ MIGRACOES_APLICADAS = (
     # `anon` e `authenticated`. Sem ela, com a base imitando esses padrões,
     # 14 testes reprovam — medido em 28/10, e é o controle positivo dela.
     "009_privilegios_padrao_do_supabase.sql",
+    # A 010 (DATA-07b) acrescenta o vetor de características e recria as duas
+    # funções de gravação. `test_rls_features.py` confere que elas EXTRAEM os
+    # campos novos e que o ACL da 009 sobreviveu ao `create or replace`.
+    "010_vetor_de_caracteristicas.sql",
 )
 
 VARIAVEL = "DORMIO_RLS_DATABASE_URL"

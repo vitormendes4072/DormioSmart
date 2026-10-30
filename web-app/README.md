@@ -34,7 +34,9 @@ A separação é deliberada:
 | Método | Rota | Autenticação | Resposta |
 |---|---|---|---|
 | `POST` | `/api/data` | `X-Device-Token` | `201` · `400` payload inválido · `401` token · `503` não persistiu |
+| `POST` | `/api/data/lote` | `X-Device-Token` (ou sessão) | `200` com `aceitas`/`rejeitadas`/`pendentes` · `400` · `401` · `413` mais de 60 · `503` nada gravado (`API-03`, contrato 2.6.0 §5.2) |
 | `GET` | `/api/sleep-history` | `Bearer <JWT>` | `200` com as leituras do usuário · `401` |
+| `GET` | `/api/features?device&desde&ate` | `Bearer <JWT>` | `200` com as 8 features por época e o `g_ref` da janela · `400` parâmetro faltando, sem fuso ou janela > 24 h · `401` · `503` (`DATA-07b`, contrato 2.7.0 §2.6) |
 | `GET` | `/api/devices` | `Bearer <JWT>` | `200` · `503` |
 | `POST` | `/api/devices` | `Bearer <JWT>` | `201` com o token **exibido uma única vez** |
 | `PATCH` | `/api/devices/<id>` | `Bearer <JWT>` | `200` · `404` |

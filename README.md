@@ -26,6 +26,8 @@ MPU6050 ──I2C──> ESP32 ──HTTPS POST──> API Flask (Vercel) ──
 
 ## 🔌 API
 - `POST /api/data` — recebe as leituras do dispositivo e as persiste (ingestão).
+- `POST /api/data/lote` — até 60 leituras numa requisição, com o resultado de cada uma (`API-03`).
+- `GET /api/features` — as 8 features por época de uma janela de até 24 h, com as duas angulares derivadas no servidor (`DATA-07b`).
 - `GET /api/sleep-history` — devolve os registros mais recentes para o dashboard.
 
 ## 🗂️ Estrutura
@@ -65,7 +67,7 @@ O firmware é aberto em **firmware/** no [Wokwi](https://wokwi.com) (Fase 1). Ve
 ## 📌 Status
 - ✅ Web-app no ar — fluxo coleta → armazenamento → visualização funcionando
 - ✅ Firmware validado em **simulação** (Wokwi); CI verde
-- 🔜 **Fase 2:** protótipo físico no travesseiro (energia, Wake-on-Motion real, validação noturna)
+- 🔜 **Fase 2:** protótipo físico no travesseiro (energia em sono leve com a FIFO do sensor — arquitetura decidida em 30/10, `ARQ-01` —, validação noturna)
 - ⚠️ Não validado clinicamente — projeto acadêmico em desenvolvimento
 
 > 🛑 **Antes de captar uma noite com o dispositivo, leia isto (17/10/2026).**

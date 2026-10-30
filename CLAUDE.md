@@ -8,7 +8,7 @@
 
 ## Contexto do projeto
 
-DormioSmart (SmartDormio) é um **dispositivo embarcado de baixo consumo para monitoramento não invasivo do sono, instalado dentro de um travesseiro**, desenvolvido como Trabalho de Conclusão de Curso por dois autores. O ESP32 + MPU6050 capta eventos de movimento durante o repouso (sem contato com o corpo) usando Deep Sleep e Wake-on-Motion; os dados vão para uma aplicação web que os armazena e apresenta. O escopo é deliberadamente modesto: registrar indícios de movimento ancorados em actigrafia, **sem** prometer estadiamento de sono nem diagnóstico clínico. Detecção de áudio/ronco é expansão futura, não requisito do MVP.
+DormioSmart (SmartDormio) é um **dispositivo embarcado de baixo consumo para monitoramento não invasivo do sono, instalado dentro de um travesseiro**, desenvolvido como Trabalho de Conclusão de Curso por dois autores. O ESP32 + MPU6050 capta o movimento durante o repouso (sem contato com o corpo) em **sono leve, lendo em rajadas a memória interna (FIFO) do sensor a 50 Hz** — arquitetura decidida em 2026-10-30 (`ARQ-01`, `docs/DECISAO-ARQ-01-CADENCIA.md`; até ali o desenho era Deep Sleep com Wake-on-Motion, que não alimenta as features do modelo); os dados vão para uma aplicação web que os armazena e apresenta. O escopo é deliberadamente modesto: registrar indícios de movimento ancorados em actigrafia, **sem** prometer estadiamento de sono nem diagnóstico clínico. Detecção de áudio/ronco é expansão futura, não requisito do MVP.
 
 O projeto tem **duas fases**: Fase 1 = simulação no Wokwi (suficiente para a primeira entrega); Fase 2 = **dispositivo físico real funcionando**, que é o entregável que importa para a defesa. Detalhes de hardware, BOM e fases em `docs/HARDWARE.md`.
 
@@ -96,6 +96,8 @@ Branches:
 - `bugfix/<id-do-item>-<descricao>` — correções (base: `develop`)
 
 **Nunca fazer merge direto.** Sempre apresentar o resumo das alterações para o usuário revisar e aprovar o merge para `develop`.
+
+**PR sempre com base em `develop`, nunca empilhada sobre outra branch** (✏️ 30/10). A PR #13 tinha como base a branch da #12; a #12 entrou em `develop` 19 s antes, a #13 foi mesclada na branch antiga, e o `ML-11` ficou fora de `develop` sem que nada avisasse. Trabalho que depende de outra PR ainda aberta parte da branch dela, mas a PR aponta para `develop`: o diff mostra os dois, e qualquer ordem de merge chega ao lugar certo.
 
 ### Protocolo por tarefa — itens do roadmap
 
@@ -235,18 +237,21 @@ custo para rodar:
 
 | Onde | Como rodar | Resultado em 28/10 |
 |---|---|---|
-| Backend (Flask) | `cd web-app && pytest --ignore=tests/rls` | **293 passam** |
+| Backend (Flask) | `cd web-app && pytest --ignore=tests/rls` | **384 passam** ✏️ *(30/10, branch do `DATA-07b`; eram 316 no `API-03` e 293 em 28/10)* |
 | Frontend | `cd frontend && npx vitest run` | **418 passam, 27 arquivos** |
 | Tipos e build | `cd frontend && npm run build` (`tsc --noEmit && vite build`) | `tsc` limpo; `vite build` ok (avisa do chunk único — `UI-15`) |
-| RLS (Postgres real) | `DORMIO_RLS_DATABASE_URL=... pytest tests/rls` | **151 passam** contra `postgres:16` em Docker (28/10, com a base imitando os privilégios padrão do Supabase — `SEC-12`) — **pulam** sem a variável, de propósito |
+| RLS (Postgres real) | `DORMIO_RLS_DATABASE_URL=... pytest tests/rls` | **158 passam** contra `postgres:16` em Docker ✏️ *(30/10, `DATA-07b`: +7 da migração 010; eram 151 em 28/10)*, com a base imitando os privilégios padrão do Supabase (`SEC-12`) — **pulam** sem a variável, de propósito |
 | Mutação do RLS | `python web-app/tests/rls/verificar_por_mutacao.py` | **32/32 sabotagens detectadas** |
-| Diagnóstico e ordem das migrações | `DORMIO_RLS_DATABASE_URL=... python web-app/tests/migracoes/verificar_migracoes.py` | os 9 estados e a ordem real da produção; 3/3 sabotagens acusadas |
-| ML | `cd ml && .venv/Scripts/python -m pytest testes` | **107 passam** |
+| Diagnóstico e ordem das migrações | `DORMIO_RLS_DATABASE_URL=... python web-app/tests/migracoes/verificar_migracoes.py` | os 10 estados (30/10, com a 010) e a ordem real da produção; 3/3 sabotagens acusadas em 28/10, e a da 010 (função que grava nulo) em 30/10 |
+| ML | `cd ml && .venv/Scripts/python -m pytest testes` | **126 passam** ✏️ *(30/10, branch do `FW-07`: +19 do dourado da cadeia C2)* |
 | Mutação do dourado | `cd ml && .venv/Scripts/python testes/verificar_vetor_dourado_por_mutacao.py` | **12/12**, e o ponto cego registrado segue cego |
-| Firmware | `cd firmware/nucleo && make && make sintaxe capacidade mutacao` | **341 + 157 verificações, 0 falhas; 4/4 sketches compilam; mutação 15/15** (em contêiner `gcc:13`) |
+| Firmware | `cd firmware/nucleo && make && make sintaxe capacidade mutacao mutacao-cadeia` | **341 + 157 + 118 + 456 verificações, 0 falhas; 4/4 sketches compilam; mutação 15/15; mutação da cadeia C2 e do payload 19/19** (em contêiner `gcc:13`) ✏️ *(30/10, `FW-07` e `DATA-07b`: entraram os alvos `c2` e `cadeia`)* |
 | Conferências de documento | `python scripts/<nome>.py --conferir` para `calculos_tcc`, `estudo_buffer`, `conferir_docs_versionados`, `consolidar_registro` | todas passam |
 
-Total: **967 testes** de pytest/vitest + **498 verificações** do núcleo C++.
+Total: **967 testes** de pytest/vitest + **498 verificações** do núcleo C++. ✏️ *30/10: com as
+linhas acima, 316 + 418 + 151 + 126 = **1 011** de pytest/vitest (frontend e RLS não foram
+reexecutados: valem os números de 28/10) e **1 059** verificações do núcleo. A soma de 28/10 com
+a própria tabela daria 969, não 967 — a diferença não foi investigada.*
 
 **Rodando no Windows** — o CI é Ubuntu. Desde 28/10 os scripts e a suíte de ML funcionam no
 Windows sem ajuste (`DOCS-WIN-01`, `DOCS-WIN-02`, `ML-WIN-01`). Resta uma diferença:
@@ -286,5 +291,5 @@ Convenções por camada:
 - **Produção:** Vercel — https://dormio-smart.vercel.app
 - **Health check:** ✏️ **existe desde o `WEB-04`** — `GET /health`, sem autenticação, respondendo `200` quando o banco está alcançável e `503` quando o app está de pé e o banco não. A linha anterior ("ainda não existe — criar um endpoint simples é item de roadmap") foi corrigida em 17/10 pelo `DOC-11`, junto com a da seção "Testes".
 - **Monitor da produção** (`INFRA-03`, 28/10): `.github/workflows/saude-producao.yml` chama o `/health` a cada 3 dias por `scripts/conferir_producao.py` e reprova se o banco não responder. ⚠️ O Supabase é do **plano gratuito e pausa depois de uma semana sem uso** — foi o que derrubou a produção até 28/10; se o job reprovar, a primeira coisa a olhar é o painel do Supabase. O agendamento só roda a partir de `main`; o workflow está lá desde o release de 29/10 (execução manual `40818265459` passou; a primeira agendada, pelo cron, cai em 31/10).
-- **Banco de produção** (diagnóstico de 29/10): migrações 001–009 **todas aplicadas** (a 002 desnecessária), na ordem real 001, 003–006, 008, 009, 007. Migração nova: aplicar no SQL Editor e rodar `web-app/migrations/DIAGNOSTICO-migracoes-aplicadas.sql`.
+- **Banco de produção** (diagnóstico de 30/10): migrações 001–010 **todas aplicadas** (a 002 desnecessária), na ordem real 001, 003–006, 008, 009, 007, 010. Migração nova: aplicar no SQL Editor e rodar `web-app/migrations/DIAGNOSTICO-migracoes-aplicadas.sql`. ✏️ *30/10: a **010** (`DATA-07b`) foi aplicada antes do release que leva o backend v2.7.0 a `main`, como exigia o `DATA-07f`; o `/health` de produção ainda responde contrato 2.5.1 até esse release.*
 - **Observações:** funções serverless no Vercel têm cold start; o `app` precisa estar disponível no import (ver Decisões técnicas).

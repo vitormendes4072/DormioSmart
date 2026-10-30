@@ -170,6 +170,10 @@ def test_o_acessor_antigo_nao_ressuscitou():
 ROTAS_SEM_CLIENTE_DO_USUARIO = {
     "health": "sem autenticacao de proposito; chama sanidade()",
     "receive_data": "ingestao: o ESP32 nao tem JWT (caminho por token)",
+    # API-03 (30/10): mesma ingestao, em lote, pelo mesmo `_gravar_leitura` —
+    # o caminho por sessao dela grava com o JWT, mas dentro do helper, que o
+    # parser nao enxerga a partir do corpo da rota.
+    "receive_lote": "ingestao em lote: o ESP32 nao tem JWT (caminho por token)",
 }
 
 
@@ -202,6 +206,9 @@ def test_toda_rota_de_usuario_consulta_pelo_cliente_do_usuario():
     PASSA_JWT = {
         "cliente_do_usuario",
         "get_leituras_do_usuario",
+        # DATA-07b (e), 30/10: monta o cliente com `cliente_do_usuario(jwt)`,
+        # como o histórico. Entrou aqui porque este teste acusou a rota nova.
+        "get_features_do_usuario",
         "registrar_leitura_da_sessao",
         "apagar_minha_conta",
     }
@@ -241,19 +248,31 @@ def test_a_ingestao_nao_monta_user_id_no_payload():
     reintroduzir a chave no payload seria voltar a permitir escolher o dono.
     """
     arvore = _arvore(WEB_APP / "routes.py")
-    rota = _rotas_de(arvore).get("receive_data")
-    assert rota is not None
+    # API-03 (30/10): a montagem do payload saiu de `receive_data` para
+    # `_gravar_leitura`, que as duas rotas de ingestão usam. Conferir só o corpo
+    # da rota passaria a passar sem olhar nada — por isso o helper entra, e o
+    # teste exige achá-lo: se ele sumir ou mudar de nome, o teste quebra em vez
+    # de virar vacuamente verde.
+    funcoes = {no.name: no for no in ast.walk(arvore) if isinstance(no, ast.FunctionDef)}
+    alvos = ("receive_data", "receive_lote", "_gravar_leitura")
+    faltando = [nome for nome in alvos if nome not in funcoes]
+    assert not faltando, f"funcoes de ingestao nao encontradas: {faltando}"
+    assert any(
+        isinstance(no, ast.Constant) and no.value == "movimento_total"
+        for no in ast.walk(funcoes["_gravar_leitura"])
+    ), "o payload nao esta mais em `_gravar_leitura` — atualize este teste"
 
-    chaves = [
-        no.value
-        for no in ast.walk(rota)
-        if isinstance(no, ast.Constant) and isinstance(no.value, str)
-    ]
-    assert "user_id" not in chaves, (
-        "`receive_data` voltou a mencionar 'user_id'. O carimbo do dono "
-        "pertence a `registrar_leitura`/`registrar_leitura_da_sessao` no banco "
-        "(migrations/005): la nao existe parametro para escolher o dono."
-    )
+    for nome in alvos:
+        chaves = [
+            no.value
+            for no in ast.walk(funcoes[nome])
+            if isinstance(no, ast.Constant) and isinstance(no.value, str)
+        ]
+        assert "user_id" not in chaves, (
+            f"`{nome}` voltou a mencionar 'user_id'. O carimbo do dono "
+            "pertence a `registrar_leitura`/`registrar_leitura_da_sessao` no banco "
+            "(migrations/005): la nao existe parametro para escolher o dono."
+        )
 
 
 # =====================================================================

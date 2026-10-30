@@ -3449,6 +3449,699 @@ forma.
 **Procedência.** `docs/BACKLOG-COMPLETO.md`, linha do `DOC-05`, antes e depois deste commit;
 `scripts/consolidar_registro.py`, pendência `DOC-05`; backlog `DOC-11`.
 
+---
+
+# 2026-10-29 (v) — `ARQ-01` (a) e (b): a dicotomia tinha uma terceira saída
+
+**O problema, como foi entendido no início.** O `ARQ-01` pede (a) decidir contínuo-com-features
+× WoM-sem-features e (b) fixar banda e taxa contra os 12,8 Hz do `ml/`. O pedido foi preparar a
+análise das duas arquiteturas e das consequências, sem tomar a decisão: ela muda a frase da
+pergunta de pesquisa, que fala em "baixo consumo" e em "eventos de movimento".
+
+**Hipótese de trabalho.** Ao ler as fontes para o plano, surgiu uma terceira arquitetura: a FIFO
+do MPU6050 deixaria o ESP32 em sono leve entre rajadas, e a amostragem contínua sairia perto de
+uma ordem de grandeza mais barata que a do Z.4.4. Outra suspeita era que a grade de 32 Hz não
+existisse no sensor. As duas eram lembrança, não leitura.
+
+**O que foi testado, e como.**
+
+- **Folhas de dados:**
+  - PS-MPU-6000A-00 Rev. 3.2, baixada de um espelho e extraída com `pypdf`;
+  - ESP-IDF v6.1, *Sleep Modes*;
+  - o *Register Map* não baixou de nenhuma fonte (403, HTML no lugar do PDF), e foi lido só em
+    resumo de busca.
+- **O modelo:** `scripts/estudo_cadencia.py`, que importa as constantes e os dois cenários do
+  `calculos_tcc.py` em vez de copiá-los, mais dois cenários novos de sono leve (C1, uma amostra
+  por despertar; C2, FIFO). Ele varre todos os parâmetros em faixa e soma o consumo fixo da
+  placa.
+- **CI:** o `--conferir` entrou no job `documentos`.
+- **Controle positivo, três sabotagens:**
+  1. sono leve de 0,8 → 0,9 mA no `calculos_tcc.py`;
+  2. rádio de referência de 100 → 120 mA, que atinge o Z.4.4;
+  3. FIFO esvaziada a 60 % em vez de 50 %.
+- **Conferências:** `calculos_tcc.py --conferir`, `estudo_buffer.py --conferir`,
+  `conferir_docs_versionados.py`, `consolidar_registro.py --conferir`.
+
+**Resultado medido** (aritmética e folha de dados; nada medido na placa).
+
+- **Confirmado na folha:**
+  - FIFO de **1024 B**, feita *"to read the data in bursts and then go into a low-power mode"*;
+  - acelerômetro a 1 kHz;
+  - no sono leve, a RAM sobrevive e o Wi-Fi não se mantém.
+- **Achado que não estava na lembrança:** o oscilador interno do MPU tem **±5 % a 25 °C e −15 %
+  a +10 % na temperatura**. Nenhuma taxa ditada pelo sensor cai exata na grade, com ou sem
+  divisor, e o firmware precisa medir a taxa e reamostrar, como o `ml/` já faz com as bases
+  públicas.
+- **Os números:** o modelo reproduz o Z.4.4 (A 1,91 mA, B 23,9 mA). O sono leve com FIFO (C2,
+  50 Hz) dá **5,31 mA**, 4,5× abaixo de B. Não é "uma ordem de grandeza", como a hipótese dizia:
+  o rádio é 63 % de C2. Com lote (`API-03`), C2 cai a 2,03 mA. A ordem A < C2 < C1 < B vale com a
+  placa de 0 a 10 mA.
+- **Para (b):** o critério contra os 12,8 Hz é a dobra em f<sub>s</sub> − 12,8 Hz (37,2 Hz a
+  50 Hz), não 2 × a banda do DLPF. A 40 Hz com DLPF de 21 Hz, a dobra começa em 27,2 Hz.
+- **As três sabotagens reprovaram:**
+  1. 11 asserções caíram, nomeando C1, C2 e as razões;
+  2. caíram as âncoras do Z.4.4 (`A (Z.4.4)`, `B (Z.4.4)`);
+  3. caíram `C2 amostras/despertar` e `C2 acordado (%)`.
+
+  Restaurado, tudo passa.
+
+**Adaptação.**
+
+- **A dicotomia do backlog estava incompleta.** "Features ou Deep Sleep" comparava o WoM com a
+  amostragem contínua de CPU ativa. A análise acrescenta C2 e a recomenda, **marcada como
+  recomendação**: não é uma decisão tomada por esta sessão.
+- **A hipótese do plano errou para mais.** C2 sai 4,5× melhor que B, não dez vezes.
+- **O texto pronto do `CALCULOS-TCC.md` não foi editado.** Ele muda depois da decisão (§7 do
+  documento).
+
+**Risco em aberto.**
+
+- **Não conferido na fonte primária:** a fórmula do divisor, os degraus do DLPF e se a FIFO
+  funciona no modo de baixo consumo, todos do *Register Map*. O resultado que depende da fórmula
+  (não há 32 Hz exato) é robusto, porque o oscilador de ±5 % já o garante. Fica no `ARQ-01`.
+- **Não medido:**
+  - a latência e a corrente do sono leve na placa;
+  - o transbordo da FIFO;
+  - a reassociação Wi-Fi;
+  - o tempo do fechamento da época.
+
+  É a parte (c) do `ARQ-01`, que depende da solda.
+- **Não decidido:** a escolha entre A e C2. É do autor com o orientador (`ARQ-01` (a) e `RQ-01`).
+- **Não feito:** o experimento que daria número ao WoM do lado da hipótese (o kappa de uma
+  contagem de eventos simulada nas bases públicas). Só vale abrir se A for escolhida, e a
+  decisão diz.
+- **Lido em revisão diferente:** a folha de produto foi lida na Rev. 3.2; o `calculos_tcc.py`
+  cita a 3.4.
+
+**Procedência.**
+
+- `docs/DECISAO-ARQ-01-CADENCIA.md` e `scripts/estudo_cadencia.py`, deste commit;
+- `CALCULOS-TCC.md` Z.1.4, Z.4.3–Z.4.7 e "Uma divergência técnica";
+- PS-MPU-6000A-00 Rev. 3.2, §4, §5.1, §5.2 e §6.6;
+- ESP-IDF v6.1, *Sleep Modes — ESP32*;
+- backlog `ARQ-01`.
+
+---
+
+# 2026-10-30 — `ML-11`: três features bastam, e o WoM custa de 0,07 a 0,10 de kappa
+
+**O problema, como foi entendido no início.** Depois da análise do `ARQ-01` (29/10 (v)), o
+Vitor perguntou se todas as 8 features são necessárias, e pediu o resultado antes de decidir
+qualquer coisa. Ele está inclinado ao sono leve com FIFO. Pediu também a investigação do
+registro pelo celular, que não tem as limitações do ESP32, e se dá para oferecer mais de um
+modo de registro ao usuário, com tudo registrado num documento.
+
+**Hipótese de trabalho.** Cinco hipóteses, declaradas antes de rodar
+(`docs/ARQUITETURA-DE-CAPTACAO.md` §2):
+- H1: as features de intensidade são redundantes entre si;
+- H2: poucas features bastam;
+- H3: o que o WoM entrega perde muito;
+- H4: no celular, o limite é o sistema operacional, não a energia;
+- H5: o contrato já comporta vários modos.
+
+**O que foi testado, e como.**
+
+- **`ml/experimentos/ml11_ablacao_features.py`**, sobre as features já extraídas (cache do
+  Wearanize, 92 pessoas em cabeça e pulso; Newcastle, 27). Usa o pipeline do produto, igual ao
+  do experimento de quantização, mudando só as colunas. Mede:
+  - tirar uma feature de cada vez;
+  - a seleção progressiva;
+  - os conjuntos de cada arquitetura, com o WoM cercado por dois proxies;
+  - o subconjunto escolhido na cabeça, fixo, nas outras bases.
+
+  Toda diferença é pareada por dobra, com IC de 95 %.
+- **Rodou duas vezes** (a segunda com o teste fora da amostra acrescentado): Windows 11,
+  `ml/.venv`, ~6 min cada.
+- **O celular:** leitura do código da coleta (`frontend/src/hooks/useColeta.ts`,
+  `lib/acelerometro.ts`) e pesquisa na web (AOSP, fóruns da Apple, quatro estudos de validação).
+
+**Resultado medido.**
+
+- **Tirar uma:** perdas detectáveis só em `mag_din_media` (−0,049 de κ na cabeça; −0,011 no
+  pulso), `p_frac` (−0,017 na cabeça) e `d_angulo` (−0,008 na cabeça; −0,024 no Newcastle).
+  Saem sem perda: as três `enmo_*`, `zcr` e `inclinacao_rel`.
+- **Quantas bastam:** `mag_din_media` + `p_frac` + `d_angulo` dão κ 0,405 contra 0,403 das
+  oito na cabeça (número otimista). Fixas, fora da amostra: pulso Δκ +0,004 [−0,004; +0,011];
+  Newcastle +0,044 [+0,002; +0,086]. A especificidade cai de 1 a 4 pontos.
+- **O WoM, na cabeça:** −0,070 (limite superior) a −0,090 (inferior) de κ, os dois com IC longe
+  do zero: de 66 % para 51–55 % do teto humano. No pulso, −0,008 (n.s.) a −0,039. No Newcastle,
+  nada detectável. A contagem clássica de actigrafia, um número só, fica a −0,024 na cabeça.
+- **A segunda rodada** reproduziu todos os números da primeira.
+- **O celular:** no navegador, o sensor para com a tela bloqueada, o que o próprio código já
+  declarava. Para a noite inteira, o caminho é o Android nativo, com *batching* do *sensor hub*
+  (a mesma ideia da FIFO, feita em hardware). O iOS não está verificado. A literatura mostra o
+  celular sobre a cama detectando bem o sono e mal a vigília.
+
+**Adaptação.**
+
+- **H1 errou em parte, e a correção ficou registrada.** O documento dizia que as três `enmo_*`
+  eram redundantes com `mag_din_media` por correlação. A `enmo_media` tem correlação de 0,25 com
+  ela, e mesmo assim sai sem perda. Já `mag_din_media` e `p_frac`, que a H1 dava como
+  redundantes, são as que mais carregam informação.
+- **A seleção progressiva é otimista por construção.** Por isso o subconjunto foi testado fixo
+  nas bases que não participaram da escolha, e esse teste entrou no script antes do commit.
+- **Uma citação foi atribuída ao artigo errado e foi corrigida antes do commit:** o link do PMC
+  era o estudo do Sleep Time (2015), não o de 2012.
+
+**Risco em aberto.**
+
+- **Não medido:** o WoM real. Os proxies saem do cache de features; o circuito do MPU6050
+  detecta movimento por diferença entre amostras, e a postura com uma leitura só é otimista.
+  Como os dois limites dão perda grande na cabeça, a conclusão não depende do proxy exato; o
+  número exato, sim.
+- **Não validado:** a escolha do subconjunto de 3 features (validação aninhada, HMM, dado do
+  travesseiro). Fica no `ML-12`, aberto hoje.
+- **Não medido:** que as 3 features toleram o DLPF de 10 Hz (C2-LP). É hipótese no §4 do
+  documento.
+- **As bases são de sensores presos ao corpo.** Cabeça ≠ travesseiro (`ML-DATASETS-E-PLANO.md`).
+  Os números ordenam as arquiteturas; não preveem o kappa do travesseiro.
+- **Não decidido:** os modos de registro (`ARQ-02`, aberto hoje) e a escolha do `ARQ-01` (a).
+- **Fora do CI:** os números do `ML-11` não são travados por nenhuma conferência, como os demais
+  experimentos de ML. O JSON é a procedência.
+
+**Procedência.**
+
+- `ml/experimentos/ml11_ablacao_features.py` e `ml/experimentos/saida/ml11_ablacao_features.json`,
+  deste commit;
+- `docs/ARQUITETURA-DE-CAPTACAO.md`;
+- `docs/DECISAO-ARQ-01-CADENCIA.md` §4.4, atualizado;
+- fontes externas na §9 do documento.
+
+---
+
+# 2026-10-30 (ii) — `ARQ-01` decidido: arquitetura C2, e o `ML-11` fora de `develop`
+
+**O problema, como foi entendido no início.** O Vitor mesclou as PRs #12 e #13 e decidiu:
+seguir com a arquitetura **C2** (sono leve + FIFO). Pediu os ajustes que a decisão exige, depois
+o `API-03`, depois o `ML-12`, tudo registrado, e que eu dissesse se houve algum erro em qualquer
+parte.
+
+**Hipótese de trabalho.** Que as duas PRs estivessem em `develop`, e que a decisão tocasse:
+- os dois documentos de análise;
+- o `CALCULOS-TCC.md` (Z.4, que dizia "muda depois da decisão");
+- o `CLAUDE.md` e o `README.md`, que descreviam o dispositivo como Deep Sleep com WoM;
+- as linhas `HW-03`, `FW-05`, `FW-07`, `FW-08` e `RQ-01` do backlog.
+
+**O que foi testado, e como.**
+
+- `gh pr view 12` e `13` antes de criar a branch;
+- busca por "Wake-on-Motion", "Deep Sleep" e `ARQ-01` nos documentos versionados e nos locais;
+- depois das edições:
+  - recontagem do backlog linha a linha;
+  - `consolidar_registro.py --conferir`;
+  - `conferir_docs_versionados.py`;
+  - `calculos_tcc.py --conferir`;
+  - `estudo_cadencia.py --conferir`.
+
+**Resultado medido.**
+
+- **A #13 não estava em `develop`.** A #12 entrou às 03:33:09; a #13, que tinha como base a
+  branch da #12, foi mesclada às 03:33:28 **nessa branch**, e não em `develop`. O `ML-11` (o
+  experimento, o JSON, o documento de captação e o registro) estava só na branch velha.
+  Corrigido partindo dela, para que a PR desta entrada leve os dois.
+- **Decisão aplicada:**
+  - os dois documentos de análise ganharam o estado "decidido em 30/10, a confirmar com o
+    orientador";
+  - o `CALCULOS-TCC.md` ganhou a seção Z.4.4b (a arquitetura adotada, com os números do
+    `estudo_cadencia.py` e do `ML-11`) e, em Z.1.4, o critério de dobra contra os 12,8 Hz e a
+    tolerância do oscilador;
+  - `CLAUDE.md` e `README.md` agora descrevem o sono leve com FIFO;
+  - os locais `HARDWARE.md` e `ROADMAP.md` ganharam nota datada.
+- **Backlog:**
+  - `ARQ-01` (a,b) decididos; o item segue aberto pela parte (c) e passou de L0 para L1;
+  - `HW-03` deixou de ser pré-requisito;
+  - `FW-05` foi desbloqueado, com a especificação nova (50 Hz pela FIFO, DLPF de 21 Hz);
+  - `FW-07` mudou de premissa (sono leve, não Deep Sleep);
+  - a premissa do `FW-08` passou a valer;
+  - o `RQ-01` leva a decisão ao orientador;
+  - recontagem: 77 (L0 44, L1 13).
+- **Na primeira versão do script, três prefixos começavam com ✅ em itens que seguem
+  abertos** (`ARQ-01`, `FW-05`, `FW-08`). O recontador conta ✅ no começo da célula como item
+  fechado. Trocados por 📌 e 🔓 antes de rodar, então nada saiu errado no arquivo.
+- **Consolidação:** as pendências `ARQ-01 (a, b)` e `ARQ-01 (a) — a escolha` saíram (83
+  pendências); as de `FW-05` e `HW-03` foram reescritas. Todas as conferências passam.
+
+**Adaptação.**
+
+- **A regra que faltava foi para o `CLAUDE.md`:** PR sempre com base em `develop`. Trabalho que
+  depende de outra PR parte da branch dela, mas aponta para `develop`, e assim qualquer ordem de
+  merge chega ao lugar certo.
+- **O defeito entrou na consolidação** (`ML-11`, área de infraestrutura).
+
+**Risco em aberto.**
+
+- **Não confirmado:** a decisão com o orientador. Ela muda a frase de "baixo consumo" da RQ; se o
+  orientador recusar, o `ARQ-01` volta a L0. Fica no `RQ-01`.
+- **Não decidido:** o conjunto de features (8 ou 3). Espera o `ML-12`, que é o terceiro passo do
+  pedido.
+- **Não medido:** tudo o que a C2 promete na placa (latência do sono leve, transbordo da FIFO,
+  taxa real). É a parte (c) do `ARQ-01`, que espera a solda.
+
+**Procedência.** `gh pr view 12 --json mergedAt` e `gh pr view 13 --json baseRefName,mergedAt`
+(30/10, 03:33:09 e 03:33:28 UTC); os arquivos tocados por este commit; backlog `ARQ-01`, `FW-05`,
+`HW-03`, `FW-07`, `FW-08`, `RQ-01`.
+
+---
+
+# 2026-10-30 (iii) — `API-03`: o endpoint de lote
+
+**O problema, como foi entendido no início.** Na arquitetura C2, o rádio é 63 % da corrente
+média com uma entrega por época, e uma entrega por hora a reduz de 5,31 para 2,03 mA. Drenar 8 h
+pelo `POST /api/data` são 960 requisições, cada uma com um handshake TLS novo. O item pedia
+`POST /api/data/lote`, validando item a item e respondendo quais entraram.
+
+**Hipótese de trabalho.** Que desse para fazer **sem migração**. O caro em energia é o enlace
+dispositivo → Vercel; o Vercel → Supabase pode continuar uma chamada por leitura, pela mesma
+função do `/api/data`. O preço seria o tempo de servidor, contido por um teto de tamanho e um
+orçamento de tempo.
+
+**O que foi testado, e como.**
+
+- **Refatoração:** a gravação de uma leitura saiu de `receive_data` para `_gravar_leitura`, por
+  transformação mecânica do bloco original (script em scratchpad), e a suíte do backend rodou
+  antes de qualquer código novo.
+- **Código novo:**
+  - `web-app/lote.py` (envelope, teto de 60, orçamento de 6 s, código da resposta);
+  - a rota `receive_lote`;
+  - `web-app/tests/test_lote.py` (23 testes).
+- **Contrato:** v2.6.0, seção 5.2. A constante `CONTRATO_DE_DADOS` subiu junto.
+- **Controle positivo, quatro sabotagens no `routes.py`:**
+  1. falha do banco tratada como rejeição;
+  2. aceitar sem gravação confirmada;
+  3. desligar o orçamento de tempo;
+  4. `user_id` de volta no payload.
+- **Suítes completas:** backend, Windows 11, sem variável de ambiente; ML no `ml/.venv`.
+
+**Resultado medido.**
+
+- **A refatoração não mudou nada:** 293 passam antes e depois.
+- **Com o lote:** 316 passam no backend (23 novos) e 107 no ML.
+- **As quatro sabotagens reprovaram, pelos testes certos:**
+  1. `test_banco_falha_no_meio…` e `test_banco_fora_desde_a_primeira_e_503_nao_200`;
+  2. seis testes do lote;
+  3. `test_estouro_do_orcamento…`;
+  4. sete testes, entre eles o de privilégio mínimo corrigido (abaixo).
+- **Duas sabotagens não chegaram a aplicar na primeira tentativa.** A âncora com `\r\n`
+  escapado não casou com o arquivo CRLF, e o script acusou "âncora 0" em vez de seguir. Elas
+  foram refeitas com a âncora exata e só contam a partir daí.
+
+**Adaptação.**
+
+- **O guarda de privilégio mínimo pegou a rota nova**, como deveria: ela não monta cliente do
+  usuário no corpo. Ela entrou na lista de isenções com o motivo, igual ao da `receive_data`.
+- **A refatoração cegou outro guarda, e isso foi corrigido.** O
+  `test_a_ingestao_nao_monta_user_id_no_payload` olhava só o corpo da `receive_data`. Com o
+  payload movido para o helper, ele **passaria sem conferir nada**. Agora ele confere as três
+  funções e exige achar o payload em `_gravar_leitura`, e a sabotagem 4 prova que ele acusa.
+- **A pendência gerada do `FW-07` estava velha.** Ela seguia dizendo buffer no RTC e Deep
+  Sleep, porque a propagação da C2 (entrada (ii)) atualizou a linha do backlog e não a
+  pendência. Foi corrigida aqui e registrada como defeito; é o mesmo padrão que o `DOC-13`
+  descreve.
+
+**Risco em aberto.**
+
+- **Não em produção:** a rota só existe em `main` depois do próximo release.
+- **Não usado:** o firmware ainda drena em rajadas de 3 POSTs. Adotar o lote é parte do `FW-07`.
+- **Não resolvido:** duplicata quando a resposta se perde depois da gravação. O `/api/data` tem
+  o mesmo risco; registrado no contrato §5.2, com a saída (idempotência por dispositivo + `ts`).
+- **Não medido:** o tempo real de 60 chamadas ao Supabase a partir do Vercel. O orçamento de
+  6 s e o teto de 60 são estimativa; o que não couber volta como pendente, então o pior caso é
+  lentidão, não perda.
+- **Envelhecido de propósito:** o `CLAUDE.md` ainda diz "Backend 293 passam (28/10)". O número
+  tem data, então envelhece de forma visível (regra 6 do §6 das lições); fica para a próxima
+  reconferência da tabela.
+
+**Procedência.**
+
+- `web-app/routes.py`, `web-app/lote.py`, `web-app/tests/test_lote.py` e
+  `web-app/tests/test_privilegio_minimo.py`, deste commit;
+- `docs/DATA-CONTRACT.md` 2.6.0, §5.2;
+- backlog `API-03` e `FW-07`.
+
+---
+
+# 2026-10-30 (iv) — `ML-12`: a redução para 3 features sobrevive no kappa e custa especificidade
+
+**O problema, como foi entendido no início.** O `ML-11` achou que três features empatam com
+as oito, mas escolheu o trio olhando as dobras de avaliação da cabeça. Antes de o `DATA-07e`
+encolher o registro, o `ML-12` pedia: (a) validação aninhada, (b) o mesmo com o HMM e (c) dado
+do travesseiro, que não existe ainda.
+
+**Hipótese de trabalho.** Que a redução sobrevivesse, porque o trio do `ML-11` já tinha
+empatado fora da amostra. E, ao ler `src/epocas.py` para reusar, uma suspeita nova: o contexto
+de ±2 épocas é empilhado sobre a base concatenada e atravessa a fronteira entre sujeitos.
+
+**O que foi testado, e como.**
+
+- **`ml/experimentos/ml12_validacao_aninhada.py`:** seleção progressiva dentro de cada uma das
+  10 dobras externas, com 5 internas que só veem o treino. A regra de parada foi fixada antes de
+  rodar (o menor conjunto a até 0,005 do melhor kappa interno). Cada conjunto foi avaliado com
+  e sem o Viterbi de 2 estados, contra as 8, pareado por dobra, com IC de 95 %.
+- **Contexto por sujeito**, com a comparação contra o global.
+- **Controle positivo antes de tudo:** uma coluna-isca que vaza o rótulo. O script para se a
+  seleção não a escolher em todas as dobras.
+- Rodou com `python -u`, a saída em tempo real; Windows 11, `ml/.venv`, ~11 min.
+
+**Resultado medido.**
+
+- **Controle positivo:** a isca foi a primeira escolha em 10 de 10 dobras.
+- **O que a seleção escolhe:**
+  - cabeça: `mag_din_media` e `d_angulo` em 10/10, `p_frac` em 8/10;
+  - pulso: só `mag_din_media`;
+  - Newcastle: `d_angulo` e às vezes `p_frac`;
+  - `enmo_desvio`, `enmo_max` e `zcr` nunca foram escolhidas.
+- **Kappa:** nenhuma perda significativa em nenhuma base, com ou sem HMM. Cabeça: aninhada
+  −0,010, trio +0,002. Pulso e Newcastle: sobe.
+- **Especificidade:** cai de 0,8 a 5,5 pontos, e o IC não cruza o zero em 9 dos 12 casos
+  (cabeça aninhada −0,028; Newcastle trio −0,043).
+- **Contexto global contra por sujeito:** κ +0,001 a +0,002 a favor do global (vazamento
+  real e desprezível).
+
+**Adaptação.**
+
+- **A hipótese acertou no kappa e errou no que importa para a decisão.** O `ML-11` já mostrava
+  a especificidade caindo, e eu a tratei como ressalva. Com IC, ela é o resultado: o vetor menor
+  troca vigília por sono acertado.
+- **A recomendação para o `DATA-07e` mudou de "pode encolher" para "manter as 6".** São 8 B por
+  época, e a flash do `FW-08` não precisa deles.
+- **O `ML-12` foi para L1:** a parte (c) espera dado do travesseiro.
+- **O vazamento do contexto entrou como defeito.** Os experimentos antigos não foram refeitos,
+  de propósito: o efeito é uma ordem de grandeza menor que qualquer um deles.
+
+**Risco em aberto.**
+
+- **Não medido:** o travesseiro. Todas as bases são de sensores presos ao corpo. Fica no `ML-12`
+  (c).
+- **Não decidido:** o vetor do dispositivo. A recomendação é manter as 6; o `DATA-07e` decide.
+- **Não refeito:** os experimentos anteriores com o contexto por sujeito. A diferença medida
+  (≤ 0,002) não muda nenhuma leitura, e refazê-los custaria horas por nada.
+
+**Procedência.**
+
+- `ml/experimentos/ml12_validacao_aninhada.py` e
+  `ml/experimentos/saida/ml12_validacao_aninhada.json`, deste commit;
+- `docs/ARQUITETURA-DE-CAPTACAO.md` §3.4;
+- backlog `ML-12` e `DATA-07e`.
+
+---
+
+# 2026-10-30 (v) — `FW-07`, parte do núcleo: a cadeia C2, da FIFO à grade de 32 Hz
+
+**O problema, como foi entendido no início.** O núcleo C++ já calculava as 6 features a
+partir de 960 amostras numa grade de 32 Hz (`DATA-07b`), mas nada no firmware produzia essa
+grade. Na C2 o sensor entrega outra coisa: blocos da FIFO a ~50 Hz **nominais**, sem carimbo
+de tempo, de um oscilador que erra de −15 a +10 %. O plano aprovado separou o `FW-07` em duas
+partes: (a) o que se escreve e testa no computador, no `firmware/nucleo/`, e (b) o
+`sketch.ino`, que só compila sem a placa e fica para outra PR.
+
+**Hipótese de trabalho.** Que a cadeia do `ml/src/sinal.py::reamostrar` (Butterworth de 4ª
+ordem a 12,8 Hz, fase zero, depois interpolação linear) pudesse ser aplicada **por época**,
+com uma margem de sinal de cada lado, e que a taxa pudesse ser medida por uma regressão da
+contagem acumulada contra o instante de cada drenagem. A dúvida era quanto a margem e a
+estimativa de tempo custariam contra o `ml/`, que filtra a noite inteira com o tempo
+verdadeiro.
+
+**O que foi testado, e como.**
+
+- **Protótipo em Python antes do C++** (scratchpad), 30 sementes × 4 taxas (42,5; 47; 50;
+  55 Hz) × 2 épocas, medindo três coisas separadas:
+  - a margem, com o tempo verdadeiro ("oráculo");
+  - o erro de tempo da regressão;
+  - o efeito de variar o intervalo de despertar.
+- **A referência e o gerador:** `ml/testes/dourado_cadeia_c2.py`. Contém o gerador (sinal da
+  geradora histórica + uma componente de 14–20 Hz para exercitar o anti-aliasing), o
+  `esperado_pelo_pipeline` (o `ml/` com o tempo verdadeiro) e o `cadeia_estilo_firmware` (a
+  conta que o C++ copia).
+- **Os testes Python:** `test_dourado_cadeia_c2.py`, 19 testes. Medem o piso em 400 épocas,
+  conferem as constantes contra o `config.yaml`, provam a margem com o oráculo, conferem as
+  recusas e mostram que cada sabotagem estoura a régua de exatidão. Gravam
+  `vetor_dourado_cadeia_c2.json` (473 KB).
+- **O C++:**
+  - `fifo_mpu.h/.cpp`: registradores e decodificação;
+  - `reamostragem.h/.cpp`: duas seções com Q distintos, ida e volta;
+  - `cadeia_c2.h/.cpp`: regressão, janela, recusas;
+  - `lote.h/.cpp`: envelope e leitura da resposta do `API-03`;
+  - `buffer.h`: `confirmar_entregas` e uma geração que muda quando a fila degrada;
+  - `filtro.h/.cpp`: a passagem do biquad exposta, não copiada.
+- **Testes C++:** `testes_c2.cpp` (105 verificações de unidade) e `testes_cadeia_c2.cpp` (456,
+  a cadeia contra o dourado, com as drenagens entrando uma a uma e os bytes passando pelo
+  decodificador).
+- **Controle positivo:** `verificar_cadeia_por_mutacao.sh` (alvo `make mutacao-cadeia`, e
+  agora no CI). São 16 sabotadores, cada um declarando qual alvo **tem** de acusar.
+- **Suítes completas:** firmware em `gcc:13` (Docker, Windows 11); ML no `ml/.venv`.
+
+**Resultado medido.**
+
+- **A margem resolve as bordas.** Com o tempo verdadeiro, a cadeia por época com 0,5 s de
+  margem dá a mesma grade que o `reamostrar` da noite inteira em **1,5e-6 g**. Sem margem, a
+  borda move `mag_din_media` em até 1 %. Com 1 s, nada melhora.
+- **O que sobra é o relógio.** A regressão erra o instante em até ~5 ms no centro da época.
+  Piso medido em 400 épocas, firmware contra o pipeline:
+
+  | Medida | Piso |
+  |---|---|
+  | `enmo_media`, `enmo_desvio` | 2,2e-5 g |
+  | `enmo_max` | 2,2e-3 g |
+  | `mag_din_media` | 1,12 % |
+  | `zcr` | 8 cruzamentos |
+  | `p_frac` | 11 amostras |
+  | `ĝ` | 0,079° |
+
+- **Cinco das seis sabotagens movem as features menos que o próprio piso.** Só a ausência de
+  anti-aliasing estoura uma régua de validade com folga. Daí as **duas referências** do dourado:
+  - validade, contra o pipeline, com régua larga;
+  - exatidão, contra a mesma conta em Python, com 1e-4 g de grade e 1e-9 s de linha do tempo.
+- **O C++ contra a referência de exatidão:** linha do tempo idêntica (0 s), grade a **9,2e-8
+  g**. Contra o pipeline: `enmo` 9,6e-6 g, `enmo_max` 3,4e-4 g, `mag_din` 0,85 %, `zcr` 0,
+  `p_frac` 7 amostras, `ĝ` 0,065°. Tudo dentro.
+- **Controle positivo: 16/16 sabotadores acusados pelo alvo esperado**, e a árvore limpa
+  passou.
+  - Pelo dourado: taxa nominal, sem anti-aliasing, Q errado, filtro causal, sem meio passo,
+    sem margem, grade deslocada, FIFO little-endian, regressão com todas as drenagens, ±16 g.
+  - Pela unidade: transbordo e taxa que deixam de recusar, lote que confirma pendentes ou
+    aceita pendente no meio, buffer que confirma depois de degradar, FIFO no teto.
+- **Suítes:**
+  - firmware: 341 + 157 + 105 + 456 verificações, 0 falhas; 4/4 sketches compilam; mutação da
+    paridade antiga continua 15/15;
+  - ML: 126 passam (107 + 19).
+- **Memória:** `CadeiaC2` ocupa 23,7 KiB, mais 11,3 KiB de grade. Cabe porque o sono leve
+  preserva a RAM.
+
+**Adaptação.**
+
+- **Um achado de projeto: o despertar trava em fase com a amostragem.** A 50 Hz exatos, 1,7 s
+  são 85 amostras inteiras: toda drenagem cai no mesmo ponto entre duas amostras, e a
+  regressão herda o deslocamento inteiro (até 10 ms) em vez de tirar a média. Variar o
+  intervalo em [0, 20 ms) (`intervalo_de_drenagem_us`) baixou o pior erro de 8,1 para 4,7 ms.
+  A FIFO segue com folga: no pior caso, 95 de 170 amostras.
+- **O meio passo.** A drenagem que deixa a contagem em C acontece, em média, meio passo depois
+  da amostra C−1. Sem esse termo a linha inteira atrasa 10 ms; virou sabotador.
+- **A confirmação do lote ficou mais simples que o previsto.** O servidor para na primeira
+  falha, então `pendentes` é sempre um sufixo, e o dispositivo confirma um **prefixo** da fila,
+  que é a única operação que ela sabe fazer sem furar a série. Resposta incoerente → nada sai
+  (duplicata no servidor, nunca perda aqui).
+- **Um risco que o plano não tinha:** a fila pode degradar com um lote no ar, e as k primeiras
+  épocas deixam de ser as k enviadas. A geração do buffer resolve: lote montado antes de uma
+  fusão não confirma nada.
+- **Textos velhos corrigidos, e um registrado como defeito.** O `README.md` do núcleo e o
+  `capacidade.cpp` ainda diziam que o `sketch.ino` reescrito usaria 128 épocas no RTC (desenho
+  Deep Sleep) e que o `API-03` era item aberto.
+
+**O que deu errado no caminho** (nenhum chegou ao commit):
+
+1. **O gerador cortava as drenagens cedo.** A 42,5 Hz, a última drenagem caía antes do fim da
+   janela, e a época 1 saía recusada. Era o gerador, não o firmware: o firmware espera a
+   drenagem seguinte.
+2. **O primeiro protótipo deu números absurdos com margem de 1 s.** As drenagens depois do fim
+   do registro repetiam a contagem final e entortavam a regressão. Também era do simulador.
+3. **Um teste meu reprovou o filtro sem razão.** Ele media a amplitude de 3 Hz pelo maior valor
+   amostrado (0,998), e a 50 Hz as amostras não caem no pico. Trocado por RMS sobre ciclos
+   inteiros; o filtro passa 3 Hz com 1,0000 e corta 20 Hz a 0,0002.
+4. **O primeiro dourado tinha 1,1 MB.** O `indent=2` punha cada inteiro numa linha. As listas
+   internas foram compactadas: 473 KB.
+
+**Risco em aberto.**
+
+- **Não exercitado:** nada disto rodou num MPU6050. Os registradores, o transbordo e o
+  comportamento real da FIFO esperam a solda (`FW-05`, L1).
+- **Não medido:** o relógio do ESP32 em sono leve. A taxa "medida" herda o erro dele. É a parte
+  (c) do `ARQ-01`, e foi para `docs/LIMITACOES-TCC.md`.
+- **Não feito:** o `sketch.ino` (parte (b) do `FW-07`). Ele tem um risco próprio: um POST que
+  bloqueie mais de ~1,7 s deixa a FIFO transbordar, porque o laço é de uma linha só.
+- **Não transportado:** o payload ainda não leva `f` (`DATA-07b`). A cadeia produz a grade, o
+  acumulador produz as features, e o servidor ainda não as recebe.
+
+**Procedência.**
+
+- `firmware/nucleo/{fifo_mpu,reamostragem,cadeia_c2,lote}.{h,cpp}`, `buffer.h`, `filtro.{h,cpp}`,
+  `testes/testes_c2.cpp`, `testes/testes_cadeia_c2.cpp` e
+  `testes/verificar_cadeia_por_mutacao.sh`, deste commit;
+- `ml/testes/dourado_cadeia_c2.py`, `test_dourado_cadeia_c2.py` e
+  `vetor_dourado_cadeia_c2.json`;
+- `firmware/nucleo/README.md`, seção "A arquitetura C2";
+- backlog `FW-07` e `FW-05`.
+
+---
+
+# 2026-10-30 (vi) — `DATA-07b` fechado: o vetor sai do dispositivo, entra no banco e volta com as oito
+
+**O problema, como foi entendido no início.** O firmware calculava as 6 features e `ĝ` de cada
+época, mas nada levava isso adiante: `montar_payload` não tinha `f`, `g` e `fs`; o backend não
+os validava; o banco não tinha colunas, e as duas funções de gravação só extraíam os campos que
+conheciam; e `inclinacao_rel` e `d_angulo`, que dependem da noite inteira, não eram calculadas
+em lugar nenhum fora do `ml/`. Uma noite captada chegaria sem vetor, e o modelo não teria o que
+ler. O plano aprovado juntou o transporte, (d) e (e) numa PR, com duas decisões do autor para a
+(e): a janela é escolhida por quem pede (o `ESC-01` decide a "noite" depois), e `d_angulo` é
+nulo depois de buraco.
+
+**Hipótese de trabalho.** Que o caminho inteiro pudesse ser escrito sem mudar o que já está em
+campo: payload sem `f` continuando válido, a 010 sem quebrar o backend de hoje, e a derivação
+do servidor batendo com o `ml/` sem numpy.
+
+**O que foi testado, e como.**
+
+- **Firmware:** `montar_payload` ganhou o vetor opcional, só para época de nível 0 (30 s) com
+  todos os valores dentro das faixas. 13 verificações novas em `testes_c2.cpp`.
+- **Backend:**
+  - `validacao._validar_features`, as regras do §2.6 uma a uma;
+  - `colunas_de_features`, onde a ordem de `f` vira nome;
+  - 40 testes em `test_features_da_epoca.py`.
+- **Banco:** a migração `010` (dez colunas nomeadas, restrição tudo-ou-nada, as duas funções
+  recriadas). Sete testes contra Postgres 16 em Docker (`test_rls_features.py`). O verificador de
+  migrações e o diagnóstico de produção ganharam a 010.
+- **Servidor:**
+  - `web-app/features_noite.py` (Weiszfeld e arccos em Python puro) e `GET /api/features`;
+  - 28 testes em `test_features_noite.py`, incluindo a paridade contra as oito sequências de
+    `ml/testes/vetor_dourado_sequencias.json`.
+- **Controle positivo:**
+  - 13 sabotagens no backend e no banco (script em scratchpad, que aplica, roda o teste nomeado e
+    restaura);
+  - 3 no payload, agora no `make mutacao-cadeia`;
+  - a 010 com uma função que grava nulo, rodada pelo verificador do diagnóstico.
+- **Suítes completas:** backend e RLS no Windows 11 (RLS contra `postgres:16` em Docker);
+  firmware em `gcc:13`; ML no `ml/.venv`.
+
+**Resultado medido.**
+
+- **Paridade da derivação:** `g_ref` difere do `ml/` em 5,6e-16, e os ângulos em 2,4e-10 grau.
+  O arccos amplifica perto de 0 a diferença de 1e-16 no cosseno, então a régua "exato" do arquivo
+  (1e-12) **reprovaria a implementação correta** nos ângulos. A régua adotada é 1e-6 grau,
+  4 000× acima do piso; as sabotagens movem graus inteiros.
+- **Suítes:**
+  - backend: 384 passam (316 + 68);
+  - RLS: 158 (151 + 7);
+  - firmware: 341 + 157 + 118 + 456, 0 falhas; 4/4 sketches;
+  - mutação: 15/15 da paridade e 19/19 da cadeia e do payload;
+  - o verificador de migrações acerta os 10 estados e a mutação do RLS segue 32/32.
+- **Controle positivo:** 13/13 no backend e no banco, 3/3 no payload. O diagnóstico acusou a 010
+  sabotada ("3 de 4 marcas; falta: registrar_leitura extrai o vetor").
+- **A 010 não quebra o backend de hoje:** a gravação sem as dez chaves entra com as colunas nulas,
+  medido.
+
+**Adaptação.**
+
+- **Três escolhas que o plano não detalhava.**
+  1. **Vetor fora de faixa sai sem `f`, em vez de ir e levar a leitura inteira a um `400`.** Uma
+     época de movimento violento pode passar de 2 g de magnitude dinâmica, e o pico, que é válido,
+     se perderia junto.
+  2. **`%.9g` no texto:** uma noite parada tem `enmo_media` da ordem de 1e-4 g, e `%.4f`
+     arredondaria a feature a zero (virou sabotador).
+  3. **A consulta pagina de 1 000 em 1 000.** O Supabase corta em 1 000 linhas, e 24 h são 2 880
+     épocas.
+- **Só entram em `/api/features` as épocas com `captured_at`.** Sem o instante da medição não há
+  como ordenar a noite nem reconhecer buraco, e o `created_at` é a hora de chegada.
+- **O guarda de privilégio mínimo acusou a rota nova**, como deveria. O método entrou na lista
+  dos que usam o JWT, e um teste confere que ele de fato monta o cliente com o JWT.
+- **`DATA-07d` fechou junto:** o que restava dele era o contrato dizer que época truncada não
+  emite `f`, e a v2.7.0 diz.
+- **Entrou `DATA-07f` (L3):** aplicar a 010 na produção antes do release.
+
+**O que deu errado no caminho** (nenhum chegou ao commit):
+
+1. **Dois testes meus conferiam pouco, e só a revisão antes das sabotagens os pegou.**
+   - O "os três vêm juntos" procurava a letra `g` ou `fs` na mensagem, e quase toda recusa as
+     contém: a regra podia sumir e o teste passar.
+   - O diagnóstico procurava `fs_features` em qualquer lugar da função; uma função que listasse a
+     coluna e gravasse nulo passaria.
+
+   Os dois agora conferem a mensagem inteira e a extração (`->> 'fs_features'`), e as duas
+   sabotagens provam que acusam.
+2. **Um teste do payload supôs que 220 bytes não cabiam o vetor.** Cabiam, porque `%.9g` encurta
+   os números. Agora o teste usa um buffer de 150.
+3. **Um `heredoc` do bash corrompeu o travessão de uma âncora de edição.** O script de edição
+   recusou ("casou 0") em vez de gravar errado, e as edições com acento passaram a ir por arquivo.
+
+**Risco em aberto.**
+
+- **Ordem de aplicação** (`DATA-07f`): a 010 tem de entrar antes do release.
+- **Não guardado:** a fila do firmware (`buffer.h`) guarda `Epoca` sem o vetor. O payload sabe
+  levar `f`, e quem passa a guardá-lo até o envio é o `FW-08`.
+- **Não exercitado:** nenhum sketch chama `montar_payload` com o vetor (`FW-07` (b)).
+- **Não decidido:** o que é "a noite" (`ESC-01`). A rota devolve o `g_ref` e a janela usados
+  para que a escolha fique visível.
+- **Não testado contra o PostgREST:** a consulta paginada roda mockada no backend. O RLS das
+  colunas novas é testado em Postgres de verdade, mas sem o PostgREST na frente.
+
+**Procedência.**
+
+- `firmware/nucleo/payload.{h,cpp}`, `testes/testes_c2.cpp` e
+  `testes/verificar_cadeia_por_mutacao.sh`;
+- `web-app/validacao.py`, `routes.py`, `database.py` e `features_noite.py`;
+- `web-app/migrations/010_vetor_de_caracteristicas.sql` e `DIAGNOSTICO-migracoes-aplicadas.sql`;
+- `web-app/tests/test_features_da_epoca.py`, `test_features_noite.py`,
+  `rls/test_rls_features.py`, `rls/conftest.py`, `migracoes/verificar_migracoes.py` e
+  `test_privilegio_minimo.py`;
+- `docs/DATA-CONTRACT.md` 2.7.0, §2.6;
+- backlog `DATA-07b`, `DATA-07d` e `DATA-07f`.
+
+---
+
+# 2026-10-30 (vii) — `DATA-07f`: a 010 na produção, antes do release
+
+**O problema, como foi entendido no início.** O `DATA-07b` entrou em `develop` com a migração
+`010`, e o backend novo valida o vetor `f` e o entrega às funções de gravação. Se o release
+levasse esse backend a `main` antes da 010 estar no banco, as funções antigas descartariam o
+vetor e responderiam `201`: perda silenciosa, a mesma família do `SEC-12`.
+
+**Hipótese de trabalho.** Que a 010 entrasse na produção sem efeito sobre o backend que está no
+ar (contrato 2.5.1), e que o diagnóstico distinguisse "aplicada" de "colunas criadas com a
+função antiga".
+
+**O que foi testado, e como.** O autor aplicou `010_vetor_de_caracteristicas.sql` no SQL Editor
+do Supabase e colou aqui o resultado de `DIAGNOSTICO-migracoes-aplicadas.sql`. O `/health` de
+produção foi chamado daqui depois da aplicação.
+
+**Resultado medido.**
+
+- **Diagnóstico:**
+  - a 010 com **4 de 4 marcas**: a coluna `fs_features`, a restrição tudo-ou-nada, e as duas
+    funções extraindo `->> 'fs_features'`;
+  - 001 e 003–009 com todas as marcas, como em 29/10;
+  - 0 leituras sem dono (002).
+- **`/health`:** `200`, `"banco": "ok"`, `"contrato_de_dados": "2.5.1"`. O backend de `main`
+  continua funcionando sobre o banco novo, e ainda não é o da v2.7.0.
+
+**Adaptação.** Nenhuma: a aplicação seguiu o passo a passo do item. A régua do diagnóstico já
+tinha sido endurecida no `DATA-07b`, e foi ela que permitiu dar o item por fechado só com o
+resultado colado, sem acesso ao banco daqui.
+
+**O que deu errado no caminho.** Nada nesta etapa.
+
+**Risco em aberto.**
+
+- **Não exercitado na produção:** nenhuma leitura com vetor foi gravada lá. O dispositivo ainda não
+  emite `f` em campo (`FW-07` (b), `FW-08`), e o backend que validaria `f` só chega a `main` no
+  próximo release. O caminho completo está testado contra Postgres 16 local, não contra o
+  Supabase.
+- **O release de `develop` para `main`** ficou desbloqueado deste lado; não foi feito.
+
+**Procedência.**
+
+- `web-app/migrations/010_vetor_de_caracteristicas.sql` e `DIAGNOSTICO-migracoes-aplicadas.sql`;
+- resultado do diagnóstico na produção, colado pelo autor em 30/10;
+- `GET https://dormio-smart.vercel.app/health`, 30/10;
+- backlog `DATA-07f`.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

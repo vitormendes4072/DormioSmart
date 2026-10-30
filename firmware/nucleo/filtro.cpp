@@ -97,6 +97,11 @@ static void passagem(float *v, uint32_t n, const CoeficientesBiquad &c,
   }
 }
 
+void passagem_biquad(float *v, uint32_t n, const CoeficientesBiquad &c, bool reversa) {
+  if (v == 0 || n == 0) return;
+  passagem(v, n, c, reversa ? -1 : +1);
+}
+
 bool filtrar_ida_e_volta(float *v, uint32_t n, float fs, float corte_hz) {
   if (v == 0) return false;
   if (n < 2) return false;
