@@ -1,7 +1,11 @@
 # Contrato de dados — Smart Dormio
 
-**Versão:** 2.5.1 · **Itens:** DATA-01, DATA-02, SEC-02, SEC-03, DASH-05, DASH-06, DATA-04, APP-01, SEC-06, SEC-07, APP-08, DASH-08, DASH-12, DASH-13, DATA-07a, DATA-07b, DATA-07c
+**Versão:** 2.6.0 · **Itens:** API-03, DATA-01, DATA-02, SEC-02, SEC-03, DASH-05, DASH-06, DATA-04, APP-01, SEC-06, SEC-07, APP-08, DASH-08, DASH-12, DASH-13, DATA-07a, DATA-07b, DATA-07c
 
+> **2.6.0 (MINOR — nada quebra em campo):** rota nova e opcional, `POST /api/data/lote`,
+> para entregar várias leituras numa requisição (seção 5.2). O `POST /api/data` não mudou
+> uma linha; um firmware que nunca use o lote continua conforme.
+>
 > **2.5.0 (MINOR — nada quebra em campo):** o payload ganha o **vetor de
 > características por época** (`f`), campo **opcional**, e a seção 2.6 fixa a
 > ordem canônica das oito, a unidade de cada uma e a representação em ponto
@@ -516,6 +520,59 @@ A ordem importa: **autenticação antes de validação**. Um payload inválido s
 token devolve `401`, não `400` — quem não se identifica não recebe diagnóstico
 do próprio payload.
 
+### 5.2 `POST /api/data/lote` (v2.6.0, API-03)
+
+Várias leituras numa requisição só. Existe porque, na arquitetura do `ARQ-01` (sono leve +
+FIFO), o rádio é **63 %** da corrente média com uma entrega por época, e uma entrega por hora
+a reduz de 5,31 para 2,03 mA (`docs/DECISAO-ARQ-01-CADENCIA.md`).
+
+**Autenticação:** a mesma do `/api/data`, nos dois caminhos (seção 3). No caminho por sessão,
+o `device_id` vai no envelope, não em cada leitura. E vale a mesma ordem: sem credencial,
+`401` antes de qualquer olhar no corpo.
+
+**Envelope:**
+
+```json
+{"leituras": [ {<leitura da seção 2>}, {<leitura>}, ... ]}
+```
+
+Cada leitura é **exatamente** o corpo do `POST /api/data`, validado pelas mesmas regras (5.1)
+e gravado pela mesma função. Uma leitura não pode ser válida num caminho e inválida no outro.
+
+**Teto:** 60 leituras por lote (meia hora de épocas de 30 s). Mais que isso responde `413`, e
+nada é gravado: o cliente divide o lote.
+
+**Resposta (`200`):** cada leitura cai em **exatamente uma** de três listas, pelo índice dela
+no array enviado:
+
+```json
+{"aceitas": [0, 1, 3], "rejeitadas": [{"indice": 2, "erro": "..."}], "pendentes": [4, 5]}
+```
+
+| Lista | Significa | O que o dispositivo faz |
+|---|---|---|
+| `aceitas` | gravadas **e confirmadas** (FIX-02, item a item) | apaga da fila |
+| `rejeitadas` | inválidas, com o motivo | descarta: reenviar não adianta |
+| `pendentes` | não gravadas: o banco falhou ou o tempo acabou | reenvia no próximo lote |
+
+Quando o banco falha numa leitura, o servidor **para ali**: aquela e todas as seguintes voltam
+como pendentes. O mesmo vale quando o trabalho passa de 6 s, para não estourar o limite da
+função serverless.
+
+| Código | Significado |
+|---|---|
+| `200` | Lote processado; ler as três listas |
+| `400` | Envelope malformado (`leituras` ausente, não lista, vazia) |
+| `401` | Credencial ausente, inválida ou revogada |
+| `404` | Caminho por sessão: dispositivo inexistente, revogado ou de outra pessoa |
+| `413` | Mais de 60 leituras |
+| `503` | **Nada** foi gravado e há pendentes: um `200` vazio pareceria sucesso |
+
+⚠️ **Duplicata, não resolvida:** se a resposta se perder depois da gravação, o dispositivo
+reenvia leituras já gravadas. O `/api/data` tem o mesmo risco desde sempre; o lote só o
+concentra. Uma chave de idempotência (por exemplo, dispositivo + `ts`) fica para quando o
+firmware enviar `ts` (contrato v2.0.0).
+
 ### 5.1 Regras de validação (SEC-03)
 
 > **v2.1.0 — os três eixos exatamente zero são recusados (SEC-06).**
@@ -710,6 +767,7 @@ unidade alterada, novo header obrigatório). **MINOR** = campo opcional novo.
 
 | Versão | Data | Mudança |
 |---|---|---|
+| 2.6.0 | 2026-10-30 | **MINOR.** `POST /api/data/lote` (seção 5.2, `API-03`): até 60 leituras por requisição, resposta com `aceitas`, `rejeitadas` e `pendentes` por índice. O `POST /api/data` não muda |
 | 2.5.1 *(nota de estado, 2026-10-17)* | — | **Não é mudança de contrato: nenhum campo, faixa ou obrigatoriedade mudou, e por isso a versão NÃO foi incrementada** (o backend declara `CONTRATO_DE_DADOS = "2.5.1"` e continua correto). A nota de abertura da seção 2.6 deixou de dizer "nada implementa esta seção": o `DATA-07b` implementou o **cálculo** das 6 features e de `ĝ` no firmware e **provou a paridade** Python↔C++ contra o `vetor_dourado.json` (`make dourado`). O **transporte segue não implementado** — `f` não é emitido, validado nem persistido. Registrado também o pré-requisito de taxa: a 10 s de cadência a época tem 3 amostras, e o firmware recusa emitir |
 | 2.5.1 | 2026-09-30 | **PATCH — nenhuma mudança de formato.** A seção 2.6 ganha dois fatos medidos no `DATA-07c`, ambos sobre a seção que ainda não está implementada: **(a)** época incompleta não tem paridade entre as implementações (até 54 % de divergência em `mag_din_media`), então o dispositivo não pode emitir `f` de época truncada — decidir *como* no `DATA-07b`; **(b)** o `‖g‖ = 1 ± 1e−3` é checagem de coerência de um lado, e **não** o orçamento de discordância entre implementações, que é de 0,25 grau. Nenhum campo, faixa ou obrigatoriedade muda |
 | 2.5.0 | 2026-09-29 | Payload ganha o vetor de características por época: `f` (6 intra-época), `g` (gravidade unitária) e `fs` (taxa), todos opcionais; seção 2.6 fixa ordem canônica, unidades, faixas e representação em ponto fixo (DATA-07a). **MINOR:** campo opcional novo, nenhuma obrigatoriedade muda, nenhum firmware precisa ser regravado. ⚠️ **Declarado, não implementado** — nenhum dos três lados emite, valida ou persiste `f`; isso é o `DATA-07b` |

@@ -54,7 +54,8 @@ mitigação, não fecha o oráculo). ✏️ *(29/10: até aqui esta linha mandav
 fechado em 28/10.)* **Se tem um fim de semana:** solde. **Se tem um mês sem ferro de solda:** escreva os
 `CALC-*` e `DIAG-*`, que são o que a banca lê.
 
-**Contagem:** 77 itens abertos · **L0: 44** · L1: 13 · L2: 9 · L3: 11. *(Recontado linha a linha em 28/10, e não por delta.)*
+**Contagem:** 76 itens abertos · **L0: 43** · L1: 13 · L2: 9 · L3: 11. *(Recontado linha a linha em 28/10, e não por delta.)*
+*(30/10, terceira parte: fechou `API-03` (L0), o endpoint de lote. L0 44−1 = 43; 43+13+9+11 = 76.)*
 *(30/10, segunda parte: o autor decidiu o `ARQ-01` (a) e (b) — arquitetura C2. O item segue aberto pela parte (c), que espera a solda, e por isso passou de L0 para L1. L0 45−1 = 44; L1 12+1 = 13; 44+13+9+11 = 77.)*
 *(30/10: fechou `ML-11` no mesmo dia em que abriu (ablação das features). Entraram `ARQ-02` (modos de registro) e `ML-12` (confirmar a redução para 3 features), os dois L0. L0 43+2 = 45; 45+12+9+11 = 77.)*
 *(29/10, quarta parte: `ARQ-01` (a) e (b) analisados em `docs/DECISAO-ARQ-01-CADENCIA.md`; a decisão segue aberta e o item só fecha com (c). Nenhum item fecha nem abre. 43+12+9+11 = 75.)*
@@ -153,7 +154,7 @@ E um **peso**: 🔴 caminho crítico da defesa · 🟡 importante · ⚪ polimen
                     └─────────────────────────────────────────────┘
 
    L0  EM PARALELO, SEM DEPENDER DE NADA DISSO:
-       CALC-01..04 · DIAG-02/04 · REQ-01 · LGPD-01/02 · FW-07 · FW-01/03 · API-03
+       CALC-01..04 · DIAG-02/04 · REQ-01 · LGPD-01/02 · FW-07 · FW-01/03
        DATA-07b/07d · ML-06(carregador)
        DATA-07e · FW-08                      ← novos em 17/10 (manha); o ARQ-01 (a,b)
                                                foi DECIDIDO em 30/10 (C2) e o (c) e L1
@@ -176,7 +177,7 @@ E um **peso**: 🔴 caminho crítico da defesa · 🟡 importante · ⚪ polimen
        Ver GIT-05 — o ROADMAP.md está no .gitignore e não chega a um clone.
 
    ✅ FECHADO:  ML-01 · ML-02 · ML-03 · ML-03b · ML-04 · ML-04b · ML-05 · HW-05
-                ML-11                    ← 30/10 (ablacao das features)
+                ML-11 · API-03           ← 30/10 (ablacao das features; endpoint de lote)
                 DOC-08 · DOC-10 · DOC-11 ← 27/10 (CLAUDE.md versionado)
                 GIT-06 · DOCS-WIN-01     ← 28/10 (consolidacao no git; Windows)
                 GIT-07 · CI-06 · ML-WIN-01 · DOCS-WIN-02 · DOC-12 · DIAG-01 · DIAG-03
@@ -365,8 +366,8 @@ diagrama** — que é o que a banca lê.
 
 | Item | O quê | Peso |
 |---|---|:---:|
-| **FW-07** *(novo)* | ⚠️ **30/10: muda de premissa com a C2 (`ARQ-01`).** A reescrita deixa de ser em torno do Deep Sleep com buffer no RTC: passa a ser **sono leve** (a RAM sobrevive), driver da FIFO do MPU, estimativa de taxa e reamostragem, com o buffer no heap e na flash (`FW-08`). O ciclo "acordar → medir → agregar → dormir" continua, a cada ~1,7 s. ⬇️ *Texto anterior:* **Reescrever o `sketch.ino`.** Hoje ele tira **uma amostra por boot** e dorme: não registraria uma noite nem com rede perfeita, porque não tem amostragem periódica nenhuma. Em 22/09 recebeu só a correção defensiva dos travamentos — os `while` sem saída e a medição que vinha depois da rede. O conserto de verdade é reorganizá-lo em torno do núcleo (`firmware/nucleo/`), com **buffer no RTC** (`RTC_DATA_ATTR`, 128 épocas ≈ 1 h em resolução cheia e 65 h degradado — o heap não sobrevive ao Deep Sleep) e ciclo acordar → medir → agregar → dormir. O núcleo já existe e está testado; o que falta é a máquina de estados do sono. | 🔴 |
-| **API-03** *(novo)* | **Endpoint de lote no `/api/data`.** Drenar uma noite de 8 h são **960 POSTs**, um handshake TLS novo cada — número medido, não estimado (`firmware/nucleo/capacidade.cpp`). Hoje o firmware contorna com rajada limitada (3 por volta, e só com folga até o próximo tick), o que funciona e é lento. Um `POST /api/data/lote` com um array de leituras, validando item a item e respondendo quais entraram, resolve. **Observação de dimensionamento:** foi por causa desses 960 que o backoff ganhou teto de 2 min — sem teto, o aparelho não perceberia a rede voltando; com teto curto demais, gastaria rádio para falhar. | 🟡 |
+| **FW-07** *(novo)* | ⚠️ **30/10: muda de premissa com a C2 (`ARQ-01`), e a drenagem passa a usar o `POST /api/data/lote` (`API-03`, fechado em 30/10)** no lugar das rajadas de 3 POSTs. A reescrita deixa de ser em torno do Deep Sleep com buffer no RTC: passa a ser **sono leve** (a RAM sobrevive), driver da FIFO do MPU, estimativa de taxa e reamostragem, com o buffer no heap e na flash (`FW-08`). O ciclo "acordar → medir → agregar → dormir" continua, a cada ~1,7 s. ⬇️ *Texto anterior:* **Reescrever o `sketch.ino`.** Hoje ele tira **uma amostra por boot** e dorme: não registraria uma noite nem com rede perfeita, porque não tem amostragem periódica nenhuma. Em 22/09 recebeu só a correção defensiva dos travamentos — os `while` sem saída e a medição que vinha depois da rede. O conserto de verdade é reorganizá-lo em torno do núcleo (`firmware/nucleo/`), com **buffer no RTC** (`RTC_DATA_ATTR`, 128 épocas ≈ 1 h em resolução cheia e 65 h degradado — o heap não sobrevive ao Deep Sleep) e ciclo acordar → medir → agregar → dormir. O núcleo já existe e está testado; o que falta é a máquina de estados do sono. | 🔴 |
+| **API-03** ✅ *(30/10)* | ✅ **Fechado: `POST /api/data/lote` existe** (contrato v2.6.0, seção 5.2). Até 60 leituras por requisição; cada uma validada e gravada pelas **mesmas** regras e função do `/api/data` (`_gravar_leitura`, extraído); resposta com `aceitas`, `rejeitadas` e `pendentes` por índice; para no primeiro 503 do banco e num orçamento de 6 s; `503` se nada gravou. Sem migração: o enlace caro (dispositivo → Vercel) é que vira um só; o Vercel → Supabase segue uma chamada por leitura. 23 testes novos (316 no backend), controle positivo com 4 sabotagens. ⚠️ **Não está em produção até o próximo release**, e **o firmware ainda não o usa**: adotá-lo é parte do `FW-07`. Risco registrado no contrato: duplicata se a resposta se perder (o `/api/data` já tinha). ⬇️ *Texto de origem:* **Endpoint de lote no `/api/data`.** Drenar uma noite de 8 h são **960 POSTs**, um handshake TLS novo cada — número medido, não estimado (`firmware/nucleo/capacidade.cpp`). Hoje o firmware contorna com rajada limitada (3 por volta, e só com folga até o próximo tick), o que funciona e é lento. Um `POST /api/data/lote` com um array de leituras, validando item a item e respondendo quais entraram, resolve. **Observação de dimensionamento:** foi por causa desses 960 que o backoff ganhou teto de 2 min — sem teto, o aparelho não perceberia a rede voltando; com teto curto demais, gastaria rádio para falhar. | 🟡 |
 | **FW-01** | Lógica atividade/repouso por época no firmware (`DATA-02`). Escrevível e testável no Wokwi; só a calibração espera a solda. **Parcialmente coberto:** o `envio-continuo` já classifica por época de 30 s desde o `HW-05`; falta levar ao `sketch.ino` (`FW-07`). | 🟡 |
 | **FW-03** | Empacotamento do dado conforme `DATA-01`. | 🟡 |
 | **HW-01** | Revisar o BOM: o que é andaime (botão, pull-down de 10 kΩ) e o que é produto. É análise, não montagem. | 🟡 |
