@@ -49,12 +49,12 @@ linha, não um resumo: resumo é a cópia que diverge.
 
 | Grupo | Itens |
 |---|---:|
-| A — Depende só de software: dá para fazer a qualquer momento | **39** |
+| A — Depende só de software: dá para fazer a qualquer momento | **38** |
 | B — Depende de decisão do Vitor | **10** |
 | C — Depende de ação do Vitor que não é decisão | **7** |
 | D — Bloqueado por hardware ou coleta | **23** |
 | E — Bloqueado por terceiro | **4** |
-| **Total** | **83** |
+| **Total** | **82** |
 
 ⚠️ **Este total não é comparável à contagem do backlog, e a diferença não é
 erro de nenhum dos dois.** São unidades de contagem diferentes: o backlog
@@ -75,7 +75,7 @@ outro item. **Desde 28/10 têm ID no backlog:** `GIT-07`, `INFRA-02` e
 
 ## A — Depende só de software: dá para fazer a qualquer momento
 
-**39 itens.**
+**38 itens.**
 
 ### `CALC-01` 🔴
 
@@ -257,13 +257,7 @@ As duas instâncias fecharam em 20/10; **a classe não.** Não há verificação
 
 ### `FW-07` 🔴
 
-Reescrever o `sketch.ino`, que hoje tira **uma amostra por boot** e dorme. Reorganizá-lo em torno do núcleo, com buffer no RTC (`RTC_DATA_ATTR`, 128 épocas — o heap não sobrevive ao Deep Sleep) e ciclo acordar → medir → agregar → dormir. O núcleo já existe e está testado.
-
-*Camada no backlog: L0.*
-
-### `API-03` 🟡
-
-Endpoint de lote no `/api/data`. Drenar 8 h são **960 POSTs**, um handshake TLS novo cada — medido em `capacidade.cpp`, não estimado.
+Reescrever o `sketch.ino`, que hoje tira **uma amostra por boot** e dorme. Desde a decisão do `ARQ-01` (C2, 30/10): em torno do núcleo, com o ESP32 em **sono leve** (a RAM sobrevive), driver da FIFO do MPU a 50 Hz, estimativa de taxa e reamostragem, buffer no heap e na flash (`FW-08`), e drenagem pelo `POST /api/data/lote` (`API-03`). O núcleo já existe e está testado.
 
 *Camada no backlog: L0.*
 

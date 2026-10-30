@@ -26,6 +26,7 @@ MPU6050 ──I2C──> ESP32 ──HTTPS POST──> API Flask (Vercel) ──
 
 ## 🔌 API
 - `POST /api/data` — recebe as leituras do dispositivo e as persiste (ingestão).
+- `POST /api/data/lote` — até 60 leituras numa requisição, com o resultado de cada uma (`API-03`).
 - `GET /api/sleep-history` — devolve os registros mais recentes para o dashboard.
 
 ## 🗂️ Estrutura

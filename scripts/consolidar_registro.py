@@ -1811,6 +1811,22 @@ DEFEITOS: list[Defeito] = [
         commit="040fe4b",
     ),
     Defeito(
+        data="2026-10-30", area=DOC, item="FW-07",
+        defeito="A pendência gerada do `FW-07` seguiu descrevendo buffer no RTC e "
+                "Deep Sleep depois de o `ARQ-01` decidir a C2 (sono leve).",
+        achado_por=LEITURA,
+        causa="A propagação da decisão atualizou a linha do `FW-07` no backlog e "
+              "não a pendência em `consolidar_registro.py` — o mesmo padrão do "
+              "`DOC-05` de 29/10, ao contrário.",
+        correcao="Pendência reescrita na mesma leva do `API-03`, que ao fechar "
+                 "precisou ler a linha vizinha.",
+        commit="(o commit que introduz esta linha: um commit não cita o próprio "
+               "hash — ver a entrada de 30/10 (iii) do diário)", procedencia="parcial",
+        nota="Dano: zero (a decisão ainda não tinha saído da branch). Mostra de "
+             "novo o que o `DOC-13` registra: nada confere a linha do backlog "
+             "contra a pendência gerada.",
+    ),
+    Defeito(
         data="2026-10-30", area=INFRA, item="ML-11",
         defeito="O commit do `ML-11` (PR #13) não chegou a `develop`: a PR foi "
                 "mesclada na branch da #12, que já tinha entrado em `develop` 19 s "
@@ -2371,13 +2387,12 @@ PENDENCIAS: list[Pendencia] = [
               "instrumento é a parte difícil e isso já foi medido.", "🟡",
               camada_backlog="L0"),
     Pendencia("FW-07", SOFTWARE, "Reescrever o `sketch.ino`, que hoje tira **uma "
-              "amostra por boot** e dorme. Reorganizá-lo em torno do núcleo, com "
-              "buffer no RTC (`RTC_DATA_ATTR`, 128 épocas — o heap não sobrevive "
-              "ao Deep Sleep) e ciclo acordar → medir → agregar → dormir. O "
-              "núcleo já existe e está testado.", "🔴", camada_backlog="L0"),
-    Pendencia("API-03", SOFTWARE, "Endpoint de lote no `/api/data`. Drenar 8 h "
-              "são **960 POSTs**, um handshake TLS novo cada — medido em "
-              "`capacidade.cpp`, não estimado.", "🟡", camada_backlog="L0"),
+              "amostra por boot** e dorme. Desde a decisão do `ARQ-01` (C2, 30/10): "
+              "em torno do núcleo, com o ESP32 em **sono leve** (a RAM sobrevive), "
+              "driver da FIFO do MPU a 50 Hz, estimativa de taxa e reamostragem, "
+              "buffer no heap e na flash (`FW-08`), e drenagem pelo "
+              "`POST /api/data/lote` (`API-03`). O núcleo já existe e está "
+              "testado.", "🔴", camada_backlog="L0"),
     Pendencia("FW-01", SOFTWARE, "Lógica atividade/repouso por época no firmware. "
               "**Parcialmente coberto:** o `envio-continuo` já classifica por "
               "época de 30 s desde o `HW-05`; falta levar ao `sketch.ino` "

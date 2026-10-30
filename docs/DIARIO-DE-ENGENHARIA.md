@@ -3701,6 +3701,83 @@ parte.
 (30/10, 03:33:09 e 03:33:28 UTC); os arquivos tocados por este commit; backlog `ARQ-01`, `FW-05`,
 `HW-03`, `FW-07`, `FW-08`, `RQ-01`.
 
+---
+
+# 2026-10-30 (iii) — `API-03`: o endpoint de lote
+
+**O problema, como foi entendido no início.** Na arquitetura C2, o rádio é 63 % da corrente
+média com uma entrega por época, e uma entrega por hora a reduz de 5,31 para 2,03 mA. Drenar 8 h
+pelo `POST /api/data` são 960 requisições, cada uma com um handshake TLS novo. O item pedia
+`POST /api/data/lote`, validando item a item e respondendo quais entraram.
+
+**Hipótese de trabalho.** Que desse para fazer **sem migração**. O caro em energia é o enlace
+dispositivo → Vercel; o Vercel → Supabase pode continuar uma chamada por leitura, pela mesma
+função do `/api/data`. O preço seria o tempo de servidor, contido por um teto de tamanho e um
+orçamento de tempo.
+
+**O que foi testado, e como.**
+
+- **Refatoração:** a gravação de uma leitura saiu de `receive_data` para `_gravar_leitura`, por
+  transformação mecânica do bloco original (script em scratchpad), e a suíte do backend rodou
+  antes de qualquer código novo.
+- **Código novo:**
+  - `web-app/lote.py` (envelope, teto de 60, orçamento de 6 s, código da resposta);
+  - a rota `receive_lote`;
+  - `web-app/tests/test_lote.py` (23 testes).
+- **Contrato:** v2.6.0, seção 5.2. A constante `CONTRATO_DE_DADOS` subiu junto.
+- **Controle positivo, quatro sabotagens no `routes.py`:**
+  1. falha do banco tratada como rejeição;
+  2. aceitar sem gravação confirmada;
+  3. desligar o orçamento de tempo;
+  4. `user_id` de volta no payload.
+- **Suítes completas:** backend, Windows 11, sem variável de ambiente; ML no `ml/.venv`.
+
+**Resultado medido.**
+
+- **A refatoração não mudou nada:** 293 passam antes e depois.
+- **Com o lote:** 316 passam no backend (23 novos) e 107 no ML.
+- **As quatro sabotagens reprovaram, pelos testes certos:**
+  1. `test_banco_falha_no_meio…` e `test_banco_fora_desde_a_primeira_e_503_nao_200`;
+  2. seis testes do lote;
+  3. `test_estouro_do_orcamento…`;
+  4. sete testes, entre eles o de privilégio mínimo corrigido (abaixo).
+- **Duas sabotagens não chegaram a aplicar na primeira tentativa.** A âncora com `\r\n`
+  escapado não casou com o arquivo CRLF, e o script acusou "âncora 0" em vez de seguir. Elas
+  foram refeitas com a âncora exata e só contam a partir daí.
+
+**Adaptação.**
+
+- **O guarda de privilégio mínimo pegou a rota nova**, como deveria: ela não monta cliente do
+  usuário no corpo. Ela entrou na lista de isenções com o motivo, igual ao da `receive_data`.
+- **A refatoração cegou outro guarda, e isso foi corrigido.** O
+  `test_a_ingestao_nao_monta_user_id_no_payload` olhava só o corpo da `receive_data`. Com o
+  payload movido para o helper, ele **passaria sem conferir nada**. Agora ele confere as três
+  funções e exige achar o payload em `_gravar_leitura`, e a sabotagem 4 prova que ele acusa.
+- **A pendência gerada do `FW-07` estava velha.** Ela seguia dizendo buffer no RTC e Deep
+  Sleep, porque a propagação da C2 (entrada (ii)) atualizou a linha do backlog e não a
+  pendência. Foi corrigida aqui e registrada como defeito; é o mesmo padrão que o `DOC-13`
+  descreve.
+
+**Risco em aberto.**
+
+- **Não em produção:** a rota só existe em `main` depois do próximo release.
+- **Não usado:** o firmware ainda drena em rajadas de 3 POSTs. Adotar o lote é parte do `FW-07`.
+- **Não resolvido:** duplicata quando a resposta se perde depois da gravação. O `/api/data` tem
+  o mesmo risco; registrado no contrato §5.2, com a saída (idempotência por dispositivo + `ts`).
+- **Não medido:** o tempo real de 60 chamadas ao Supabase a partir do Vercel. O orçamento de
+  6 s e o teto de 60 são estimativa; o que não couber volta como pendente, então o pior caso é
+  lentidão, não perda.
+- **Envelhecido de propósito:** o `CLAUDE.md` ainda diz "Backend 293 passam (28/10)". O número
+  tem data, então envelhece de forma visível (regra 6 do §6 das lições); fica para a próxima
+  reconferência da tabela.
+
+**Procedência.**
+
+- `web-app/routes.py`, `web-app/lote.py`, `web-app/tests/test_lote.py` e
+  `web-app/tests/test_privilegio_minimo.py`, deste commit;
+- `docs/DATA-CONTRACT.md` 2.6.0, §5.2;
+- backlog `API-03` e `FW-07`.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
