@@ -3627,6 +3627,80 @@ modo de registro ao usuário, com tudo registrado num documento.
 - `docs/DECISAO-ARQ-01-CADENCIA.md` §4.4, atualizado;
 - fontes externas na §9 do documento.
 
+---
+
+# 2026-10-30 (ii) — `ARQ-01` decidido: arquitetura C2, e o `ML-11` fora de `develop`
+
+**O problema, como foi entendido no início.** O Vitor mesclou as PRs #12 e #13 e decidiu:
+seguir com a arquitetura **C2** (sono leve + FIFO). Pediu os ajustes que a decisão exige, depois
+o `API-03`, depois o `ML-12`, tudo registrado, e que eu dissesse se houve algum erro em qualquer
+parte.
+
+**Hipótese de trabalho.** Que as duas PRs estivessem em `develop`, e que a decisão tocasse:
+- os dois documentos de análise;
+- o `CALCULOS-TCC.md` (Z.4, que dizia "muda depois da decisão");
+- o `CLAUDE.md` e o `README.md`, que descreviam o dispositivo como Deep Sleep com WoM;
+- as linhas `HW-03`, `FW-05`, `FW-07`, `FW-08` e `RQ-01` do backlog.
+
+**O que foi testado, e como.**
+
+- `gh pr view 12` e `13` antes de criar a branch;
+- busca por "Wake-on-Motion", "Deep Sleep" e `ARQ-01` nos documentos versionados e nos locais;
+- depois das edições:
+  - recontagem do backlog linha a linha;
+  - `consolidar_registro.py --conferir`;
+  - `conferir_docs_versionados.py`;
+  - `calculos_tcc.py --conferir`;
+  - `estudo_cadencia.py --conferir`.
+
+**Resultado medido.**
+
+- **A #13 não estava em `develop`.** A #12 entrou às 03:33:09; a #13, que tinha como base a
+  branch da #12, foi mesclada às 03:33:28 **nessa branch**, e não em `develop`. O `ML-11` (o
+  experimento, o JSON, o documento de captação e o registro) estava só na branch velha.
+  Corrigido partindo dela, para que a PR desta entrada leve os dois.
+- **Decisão aplicada:**
+  - os dois documentos de análise ganharam o estado "decidido em 30/10, a confirmar com o
+    orientador";
+  - o `CALCULOS-TCC.md` ganhou a seção Z.4.4b (a arquitetura adotada, com os números do
+    `estudo_cadencia.py` e do `ML-11`) e, em Z.1.4, o critério de dobra contra os 12,8 Hz e a
+    tolerância do oscilador;
+  - `CLAUDE.md` e `README.md` agora descrevem o sono leve com FIFO;
+  - os locais `HARDWARE.md` e `ROADMAP.md` ganharam nota datada.
+- **Backlog:**
+  - `ARQ-01` (a,b) decididos; o item segue aberto pela parte (c) e passou de L0 para L1;
+  - `HW-03` deixou de ser pré-requisito;
+  - `FW-05` foi desbloqueado, com a especificação nova (50 Hz pela FIFO, DLPF de 21 Hz);
+  - `FW-07` mudou de premissa (sono leve, não Deep Sleep);
+  - a premissa do `FW-08` passou a valer;
+  - o `RQ-01` leva a decisão ao orientador;
+  - recontagem: 77 (L0 44, L1 13).
+- **Na primeira versão do script, três prefixos começavam com ✅ em itens que seguem
+  abertos** (`ARQ-01`, `FW-05`, `FW-08`). O recontador conta ✅ no começo da célula como item
+  fechado. Trocados por 📌 e 🔓 antes de rodar, então nada saiu errado no arquivo.
+- **Consolidação:** as pendências `ARQ-01 (a, b)` e `ARQ-01 (a) — a escolha` saíram (83
+  pendências); as de `FW-05` e `HW-03` foram reescritas. Todas as conferências passam.
+
+**Adaptação.**
+
+- **A regra que faltava foi para o `CLAUDE.md`:** PR sempre com base em `develop`. Trabalho que
+  depende de outra PR parte da branch dela, mas aponta para `develop`, e assim qualquer ordem de
+  merge chega ao lugar certo.
+- **O defeito entrou na consolidação** (`ML-11`, área de infraestrutura).
+
+**Risco em aberto.**
+
+- **Não confirmado:** a decisão com o orientador. Ela muda a frase de "baixo consumo" da RQ; se o
+  orientador recusar, o `ARQ-01` volta a L0. Fica no `RQ-01`.
+- **Não decidido:** o conjunto de features (8 ou 3). Espera o `ML-12`, que é o terceiro passo do
+  pedido.
+- **Não medido:** tudo o que a C2 promete na placa (latência do sono leve, transbordo da FIFO,
+  taxa real). É a parte (c) do `ARQ-01`, que espera a solda.
+
+**Procedência.** `gh pr view 12 --json mergedAt` e `gh pr view 13 --json baseRefName,mergedAt`
+(30/10, 03:33:09 e 03:33:28 UTC); os arquivos tocados por este commit; backlog `ARQ-01`, `FW-05`,
+`HW-03`, `FW-07`, `FW-08`, `RQ-01`.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

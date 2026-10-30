@@ -49,12 +49,12 @@ linha, não um resumo: resumo é a cópia que diverge.
 
 | Grupo | Itens |
 |---|---:|
-| A — Depende só de software: dá para fazer a qualquer momento | **40** |
-| B — Depende de decisão do Vitor | **11** |
+| A — Depende só de software: dá para fazer a qualquer momento | **39** |
+| B — Depende de decisão do Vitor | **10** |
 | C — Depende de ação do Vitor que não é decisão | **7** |
 | D — Bloqueado por hardware ou coleta | **23** |
 | E — Bloqueado por terceiro | **4** |
-| **Total** | **85** |
+| **Total** | **83** |
 
 ⚠️ **Este total não é comparável à contagem do backlog, e a diferença não é
 erro de nenhum dos dois.** São unidades de contagem diferentes: o backlog
@@ -75,7 +75,7 @@ outro item. **Desde 28/10 têm ID no backlog:** `GIT-07`, `INFRA-02` e
 
 ## A — Depende só de software: dá para fazer a qualquer momento
 
-**40 itens.**
+**39 itens.**
 
 ### `CALC-01` 🔴
 
@@ -156,14 +156,6 @@ Não existe política de retenção: nenhum expurgo, nenhum prazo. Implementar u
 Documentar requisitos: dimensões, conforto, autonomia, aquecimento, custo, segurança.
 
 *Camada no backlog: L0.*
-
-### `ARQ-01 (a, b)` 🔴
-
-A análise está escrita (`docs/DECISAO-ARQ-01-CADENCIA.md`, 29/10, números travados por `scripts/estudo_cadencia.py --conferir` no CI). Falta, **depois da decisão** (grupo de decisões), registrar a escolha no documento e levar as consequências ao Z.4 do `CALCULOS-TCC.md`, ao `FW-07` e ao `HW-03`. A parte (c) é medição em placa e está no grupo D.
-
-*Camada no backlog: L0 (a,b) / L1 (c).*
-
-**Conferência.** É o item que trava a corrente de captação inteira. A análise achou uma terceira arquitetura (sono leve com a FIFO do MPU) que nenhum documento considerava.
 
 ### `ML-12` 🟡
 
@@ -353,7 +345,7 @@ O CI **não roda linter** — não há ESLint nem Ruff/flake8. Pressupõe uma de
 
 ## B — Depende de decisão do Vitor
 
-**11 itens.**
+**10 itens.**
 
 Cada linha traz a decisão em uma frase. Nenhum destes itens anda
 sem uma resposta sua — e nenhum deles exige que você escreva
@@ -380,14 +372,6 @@ Política de retenção.
 Idade autodeclarada pode revelar que o titular é criança ou adolescente, e o art. 14 impõe tratamento próprio. Hoje o sistema não verifica e não trata diferente.
 
 **A decisão.** (a) restringir o cadastro a maiores de 18, (b) implementar o fluxo de consentimento de responsável, ou (c) manter a lacuna declarada. **A defesa de (c) expira no dia em que alguém além de você criar conta.**
-
-*Camada no backlog: L0.*
-
-### `ARQ-01 (a) — a escolha` 🔴
-
-A cadência escolhe entre o vetor de features e o Deep Sleep com WoM: 42 Hz de Nyquist atravessam os 40 Hz do modo de baixo consumo. Desde 29/10 há três candidatas quantificadas em `docs/DECISAO-ARQ-01-CADENCIA.md`: WoM (1,91 mA), contínua com CPU ativa (23,9 mA) e **sono leve com a FIFO** (5,31 mA; só circuitos integrados, premissas do Z.4.4).
-
-**A decisão.** WoM **sem** features (a RQ ao pé da letra, o menor consumo) ou sono leve com FIFO **com** features (a hipótese de validação, recomendada pela análise)? Muda a frase da RQ (`RQ-01`), o Z.4, o `HW-03` e o `FW-07`. Desde 30/10 o custo do WoM no modelo está medido (`ML-11`): −0,07 a −0,10 de κ na base de cabeça.
 
 *Camada no backlog: L0.*
 
@@ -547,7 +531,7 @@ O mesmo protocolo com **celular e travesseiro gravando ao mesmo tempo**. Produz 
 
 ### `FW-05` 🔴
 
-Amostragem bruta para o ML: ≥ 42 Hz, épocas de 30 s. O lado C++ já existe e passa. ⚠️ **Deixou de ser 'configurar a taxa': bloqueado por `ARQ-01`.** Não implemente a taxa antes de o `ARQ-01` estar decidido por escrito.
+Amostragem bruta para o ML, na arquitetura decidida no `ARQ-01` (C2, 30/10): MPU a 50 Hz pela FIFO, DLPF de 21 Hz, ESP32 em sono leve, taxa medida e reamostragem para 32 Hz como o `ml/`. O lado C++ das features já existe e passa.
 
 *Camada no backlog: L1.*
 
@@ -565,7 +549,7 @@ Portar o firmware para a placa sem dependências do Wokwi.
 
 ### `HW-03` 🟡
 
-Wake-on-Motion real: ligar o INT do MPU6050 a um GPIO RTC. Hoje o despertar é por EXT1 num **botão** — andaime de simulação. ⚠️ **Pode deixar de existir, conforme o `ARQ-01`.**
+Wake-on-Motion real: ligar o INT do MPU6050 a um GPIO RTC. Hoje o despertar é por EXT1 num **botão** — andaime de simulação. ⚠️ **30/10: deixou de ser pré-requisito** — com a C2 (`ARQ-01`) o ESP32 acorda por temporizador; o INT vira opcional (alarme de transbordo da FIFO).
 
 *Camada no backlog: L1.*
 

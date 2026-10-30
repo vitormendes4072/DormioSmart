@@ -1,10 +1,10 @@
 # Arquitetura de captação: dispositivo, celular e modos de registro
 
 **Data:** 2026-10-30 · **Itens:** `ARQ-01`, `ML-11`, `APP-02`, `APP-04`, `APP-09`, `DATA-06`,
-`VIA-02` · **Estado:** **registro de análise, nenhuma decisão tomada.** O autor declarou
-inclinação pela arquitetura de sono leve com FIFO no ESP32 (30/10), condicionada ao resultado
-do `ML-11`. Este documento reúne o que se sabe para que a decisão, quando vier, tenha
-procedência.
+`VIA-02` · **Estado:** registro de análise. ✅ **Uma decisão saiu dele em 30/10:** o
+travesseiro usa a arquitetura **C2** (sono leve + FIFO), escolhida pelo autor depois do
+`ML-11` e a confirmar com o orientador (`ARQ-01`, `RQ-01`). **Seguem abertos:** os modos de
+registro (`ARQ-02`) e a redução para 3 features (`ML-12`).
 
 > **Reprodutibilidade.**
 >

@@ -1811,6 +1811,25 @@ DEFEITOS: list[Defeito] = [
         commit="040fe4b",
     ),
     Defeito(
+        data="2026-10-30", area=INFRA, item="ML-11",
+        defeito="O commit do `ML-11` (PR #13) não chegou a `develop`: a PR foi "
+                "mesclada na branch da #12, que já tinha entrado em `develop` 19 s "
+                "antes.",
+        achado_por=INVENTARIO,
+        causa="A #13 foi aberta empilhada, com base na branch da #12, contando "
+              "que o GitHub a redirecionaria para `develop` quando a #12 "
+              "entrasse; o redirecionamento não acontece quando a base é "
+              "mesclada e a PR de cima é mesclada logo em seguida, na base velha.",
+        correcao="O trabalho seguinte partiu da branch que contém o `ML-11` e a "
+                 "PR aponta para `develop`, levando os dois. Regra no `CLAUDE.md`: "
+                 "PR sempre com base em `develop`.",
+        commit="(o commit que introduz esta linha: um commit não cita o próprio "
+               "hash — ver a entrada de 30/10 (ii) do diário)", procedencia="parcial",
+        nota="Achado ao conferir `gh pr view 13` antes de começar o trabalho "
+             "seguinte; nenhum dado se perdeu, mas `develop` ficou sem o `ML-11` "
+             "por algumas horas.",
+    ),
+    Defeito(
         data="2026-10-29", area=DOC, item="DOC-05",
         defeito="A linha do `DOC-05` no backlog dizia que o `CLAUDE.md` está no "
                 "`.gitignore` e que toda correção nele fica fora do git — ele é "
@@ -2246,16 +2265,6 @@ PENDENCIAS: list[Pendencia] = [
     Pendencia("REQ-01", SOFTWARE, "Documentar requisitos: dimensões, conforto, "
               "autonomia, aquecimento, custo, segurança.", "🟡",
               camada_backlog="L0"),
-    Pendencia("ARQ-01 (a, b)", SOFTWARE, "A análise está escrita "
-              "(`docs/DECISAO-ARQ-01-CADENCIA.md`, 29/10, números travados por "
-              "`scripts/estudo_cadencia.py --conferir` no CI). Falta, **depois da "
-              "decisão** (grupo de decisões), registrar a escolha no documento e "
-              "levar as consequências ao Z.4 do `CALCULOS-TCC.md`, ao `FW-07` e ao "
-              "`HW-03`. A parte (c) é medição em placa e está no grupo D.", "🔴",
-              camada_backlog="L0 (a,b) / L1 (c)",
-              nota="É o item que trava a corrente de captação inteira. A análise "
-                   "achou uma terceira arquitetura (sono leve com a FIFO do MPU) "
-                   "que nenhum documento considerava."),
     Pendencia("ML-12", SOFTWARE, "Confirmar a redução para 3 features "
               "(`mag_din_media`, `p_frac`, `d_angulo`) que o `ML-11` achou: "
               "validação aninhada nas três bases, o mesmo com o HMM e, quando "
@@ -2437,19 +2446,6 @@ PENDENCIAS: list[Pendencia] = [
                       "o fluxo de consentimento de responsável, ou (c) manter a "
                       "lacuna declarada. **A defesa de (c) expira no dia em que "
                       "alguém além de você criar conta.**"),
-    Pendencia("ARQ-01 (a) — a escolha", DECISAO, "A cadência escolhe entre o "
-              "vetor de features e o Deep Sleep com WoM: 42 Hz de Nyquist "
-              "atravessam os 40 Hz do modo de baixo consumo. Desde 29/10 há três "
-              "candidatas quantificadas em `docs/DECISAO-ARQ-01-CADENCIA.md`: WoM "
-              "(1,91 mA), contínua com CPU ativa (23,9 mA) e **sono leve com a "
-              "FIFO** (5,31 mA; só circuitos integrados, premissas do Z.4.4).",
-              "🔴", camada_backlog="L0",
-              decisao="WoM **sem** features (a RQ ao pé da letra, o menor consumo) "
-                      "ou sono leve com FIFO **com** features (a hipótese de "
-                      "validação, recomendada pela análise)? Muda a frase da RQ "
-                      "(`RQ-01`), o Z.4, o `HW-03` e o `FW-07`. Desde 30/10 o "
-                      "custo do WoM no modelo está medido (`ML-11`): −0,07 a "
-                      "−0,10 de κ na base de cabeça."),
     Pendencia("ARQ-02 — modos de registro", DECISAO, "Quatro modos analisados "
               "em `docs/ARQUITETURA-DE-CAPTACAO.md`: travesseiro com bateria "
               "máxima (WoM), travesseiro com análise completa (sono leve + FIFO), "
@@ -2572,10 +2568,10 @@ PENDENCIAS: list[Pendencia] = [
               "50 Hz), a taxa real do MPU e a reassociação Wi-Fi (§8 do documento "
               "do `ARQ-01`). **O `ARQ-01` só fecha com (c).**",
               "🔴", camada_backlog="L1"),
-    Pendencia("FW-05", HARDWARE, "Amostragem bruta para o ML: ≥ 42 Hz, épocas de "
-              "30 s. O lado C++ já existe e passa. ⚠️ **Deixou de ser "
-              "'configurar a taxa': bloqueado por `ARQ-01`.** Não implemente a "
-              "taxa antes de o `ARQ-01` estar decidido por escrito.", "🔴",
+    Pendencia("FW-05", HARDWARE, "Amostragem bruta para o ML, na arquitetura "
+              "decidida no `ARQ-01` (C2, 30/10): MPU a 50 Hz pela FIFO, DLPF de "
+              "21 Hz, ESP32 em sono leve, taxa medida e reamostragem para 32 Hz "
+              "como o `ml/`. O lado C++ das features já existe e passa.", "🔴",
               camada_backlog="L1"),
     Pendencia("FW-02", HARDWARE, "Deep Sleep real testado na placa (hoje é mock "
               "do Wokwi).", "🟡", camada_backlog="L1"),
@@ -2583,7 +2579,9 @@ PENDENCIAS: list[Pendencia] = [
               "do Wokwi.", "🟡", camada_backlog="L1"),
     Pendencia("HW-03", HARDWARE, "Wake-on-Motion real: ligar o INT do MPU6050 a "
               "um GPIO RTC. Hoje o despertar é por EXT1 num **botão** — andaime "
-              "de simulação. ⚠️ **Pode deixar de existir, conforme o `ARQ-01`.**",
+              "de simulação. ⚠️ **30/10: deixou de ser pré-requisito** — com a "
+              "C2 (`ARQ-01`) o ESP32 acorda por temporizador; o INT vira opcional "
+              "(alarme de transbordo da FIFO).",
               "🟡", camada_backlog="L1"),
     Pendencia("HW-04", HARDWARE, "Encapsulamento e fixação para uso noturno; "
               "**segurança térmica do LiPo dentro do travesseiro**.", "🔴",
