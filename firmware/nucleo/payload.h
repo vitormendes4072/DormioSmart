@@ -13,6 +13,7 @@
 
 #include <stdint.h>
 
+#include "caracteristicas.h"
 #include "epoca.h"
 #include "relogio.h"
 
@@ -65,7 +66,7 @@ enum ResultadoDeMontagem {
 // Devolve o numero de caracteres escritos, ou 0 se nao coube.
 uint32_t formatar_iso8601_utc(int64_t unix_ms, char *destino, uint32_t tamanho);
 
-// Monta o JSON. `destino` precisa de ~200 bytes com folga.
+// Monta o JSON. `destino` precisa de ~200 bytes com folga, e de ~420 com `f`.
 //
 // `parede` resolve o instante da MEDIÇÃO. Se nao estiver sincronizada, o
 // campo `ts` sai FORA do payload -- e o backend cai no `created_at` do
@@ -79,9 +80,33 @@ uint32_t formatar_iso8601_utc(int64_t unix_ms, char *destino, uint32_t tamanho);
 // deteccao de lacuna do dashboard funcionar por subtracao simples. Com o fim,
 // a primeira epoca da serie apareceria 30 s adiantada; com o instante do
 // pico, o espacamento viraria ruido.
+//
+// ── `f`, `g` e `fs` (contrato §2.6, DATA-07b) ──────────────────────────
+//
+// Com `features` nao nulo, o payload ganha o vetor da epoca: as 6 features em
+// g, na ordem canonica, a direcao da gravidade e a taxa da grade que as
+// produziu. Mas SO quando o vetor e honesto para aquela leitura:
+//
+//   - epoca de nivel 0 (30 s). Epoca degradada e a fusao de varias, e as
+//     features nao fundem (`caracteristicas.h`): o vetor de uma delas
+//     descreveria 30 s de uma leitura que resume 60 ou mais.
+//   - cada valor dentro da faixa do contrato. Uma epoca de movimento violento
+//     pode levar `mag_din_media` acima de 2 g; o backend recusaria a leitura
+//     INTEIRA com 400, e o pico, que e valido, se perderia junto. Sem `f`, a
+//     leitura entra e o vetor daquela epoca e que falta -- perda declarada e
+//     menor.
+//
+// Fora disso o payload sai sem `f`, com PAYLOAD_OK: payload sem `f` continua
+// sendo o payload correto (dispositivo antigo e dispositivo valido).
+// `features_incluidas`, quando nao nulo, diz qual dos dois saiu.
 ResultadoDeMontagem montar_payload(const Epoca &e, const ResolucaoDeParede &parede,
                                    uint64_t mono_do_inicio_da_epoca_ms, char *destino,
-                                   uint32_t tamanho, uint32_t *escritos);
+                                   uint32_t tamanho, uint32_t *escritos,
+                                   const FeaturesDeEpoca *features = 0, float fs_hz = 0.0f,
+                                   bool *features_incluidas = 0);
+
+// O vetor esta dentro das faixas do contrato §2.6? (`g` unitario a 1e-3.)
+bool features_no_contrato(const FeaturesDeEpoca &f, float fs_hz);
 
 }  // namespace dormio
 

@@ -1,5 +1,6 @@
 #include "payload.h"
 
+#include <math.h>
 #include <stdio.h>
 
 namespace dormio {
@@ -59,10 +60,33 @@ uint32_t formatar_iso8601_utc(int64_t unix_ms, char *destino, uint32_t tamanho) 
   return static_cast<uint32_t>(n);
 }
 
+// As faixas do contrato §2.6, as mesmas de `web-app/validacao.py`. A taxa vai
+// ate 200 Hz porque e o teto que o backend aceita; na pratica e a da grade.
+static bool dentro(double v, double minimo, double maximo) {
+  return v == v && v >= minimo && v <= maximo;  // v == v recusa NaN
+}
+
+bool features_no_contrato(const FeaturesDeEpoca &f, float fs_hz) {
+  if (!dentro(fs_hz, 1e-9, 200.0)) return false;
+  if (!dentro(f.enmo_media, 0.0, 1.0) || !dentro(f.enmo_desvio, 0.0, 1.0) ||
+      !dentro(f.enmo_max, 0.0, 16.0) || !dentro(f.mag_din_media, 0.0, 2.0) ||
+      !dentro(f.zcr, 0.0, 1.0) || !dentro(f.p_frac, 0.0, 1.0)) {
+    return false;
+  }
+  if (!dentro(f.gx, -1.0, 1.0) || !dentro(f.gy, -1.0, 1.0) || !dentro(f.gz, -1.0, 1.0)) {
+    return false;
+  }
+  const double norma = sqrt(f.gx * f.gx + f.gy * f.gy + f.gz * f.gz);
+  return fabs(norma - 1.0) <= 1e-3;
+}
+
 ResultadoDeMontagem montar_payload(const Epoca &e, const ResolucaoDeParede &parede,
                                    uint64_t mono_do_inicio_da_epoca_ms, char *destino,
-                                   uint32_t tamanho, uint32_t *escritos) {
+                                   uint32_t tamanho, uint32_t *escritos,
+                                   const FeaturesDeEpoca *features, float fs_hz,
+                                   bool *features_incluidas) {
   if (escritos) *escritos = 0;
+  if (features_incluidas) *features_incluidas = false;
   if (destino == 0 || tamanho < 64) return PAYLOAD_BUFFER_PEQUENO;
 
   if (e.vazia()) return PAYLOAD_EPOCA_VAZIA;
@@ -87,7 +111,7 @@ ResultadoDeMontagem montar_payload(const Epoca &e, const ResolucaoDeParede &pare
     n = snprintf(destino, tamanho,
                  "{\"ax\":%.2f,\"ay\":%.2f,\"az\":%.2f,\"t\":%.1f,\"total\":%.2f,"
                  "\"status\":\"%s\",\"ts\":\"%s\",\"epoca_s\":%u,\"metodo\":\"%s\","
-                 "\"amostras\":%u}",
+                 "\"amostras\":%u",
                  e.pico_ax, e.pico_ay, e.pico_az, e.temp_pico, e.pico_total,
                  classificar(e.pico_total), ts,
                  static_cast<unsigned>(e.duracao_s), METODO_AGREGACAO,
@@ -96,7 +120,7 @@ ResultadoDeMontagem montar_payload(const Epoca &e, const ResolucaoDeParede &pare
     n = snprintf(destino, tamanho,
                  "{\"ax\":%.2f,\"ay\":%.2f,\"az\":%.2f,\"t\":%.1f,\"total\":%.2f,"
                  "\"status\":\"%s\",\"epoca_s\":%u,\"metodo\":\"%s\","
-                 "\"amostras\":%u}",
+                 "\"amostras\":%u",
                  e.pico_ax, e.pico_ay, e.pico_az, e.temp_pico, e.pico_total,
                  classificar(e.pico_total),
                  static_cast<unsigned>(e.duracao_s), METODO_AGREGACAO,
@@ -104,7 +128,31 @@ ResultadoDeMontagem montar_payload(const Epoca &e, const ResolucaoDeParede &pare
   }
 
   if (n < 0 || static_cast<uint32_t>(n) >= tamanho) return PAYLOAD_BUFFER_PEQUENO;
-  if (escritos) *escritos = static_cast<uint32_t>(n);
+  uint32_t usado = static_cast<uint32_t>(n);
+
+  // O vetor da epoca (DATA-07b). Ver as duas condicoes em `payload.h`.
+  const bool incluir = features != 0 && e.nivel == 0 &&
+                       e.duracao_s == DURACAO_EPOCA_BASE_S &&
+                       features_no_contrato(*features, fs_hz);
+  if (incluir) {
+    // %.9g: precisao de float32 com folga. A norma de `g` precisa sobreviver
+    // ao texto dentro de 1e-3, e `enmo_media` de uma noite parada e da ordem
+    // de 1e-4 g -- %.4f arredondaria a feature inteira para zero.
+    const FeaturesDeEpoca &f = *features;
+    const int m = snprintf(destino + usado, tamanho - usado,
+                           ",\"f\":[%.9g,%.9g,%.9g,%.9g,%.9g,%.9g],"
+                           "\"g\":[%.9g,%.9g,%.9g],\"fs\":%.9g",
+                           f.enmo_media, f.enmo_desvio, f.enmo_max, f.mag_din_media, f.zcr,
+                           f.p_frac, f.gx, f.gy, f.gz, static_cast<double>(fs_hz));
+    if (m < 0 || usado + static_cast<uint32_t>(m) >= tamanho) return PAYLOAD_BUFFER_PEQUENO;
+    usado += static_cast<uint32_t>(m);
+  }
+  if (usado + 2 > tamanho) return PAYLOAD_BUFFER_PEQUENO;
+  destino[usado++] = '}';
+  destino[usado] = '\0';
+
+  if (escritos) *escritos = usado;
+  if (features_incluidas) *features_incluidas = incluir;
   return PAYLOAD_OK;
 }
 

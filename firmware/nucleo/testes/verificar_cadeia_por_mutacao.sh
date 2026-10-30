@@ -190,6 +190,25 @@ esperar "16. FIFO no teto deixa de ser transbordo" unidade fifo_mpu.cpp \
   "  (void)0;"
 
 echo
+echo "Sabotadores do PAYLOAD com o vetor (DATA-07b) -- a suite de unidade tem de acusar:"
+
+# As duas condicoes juntas: nivel 0 E 30 s. Cada uma sozinha ja recusa a
+# epoca degradada do teste, entao sabotar so uma nao seria cegueira, seria
+# redundancia -- e o sabotador nao provaria nada.
+DEGRADADA_DE=$(printf '  const bool incluir = features != 0 && e.nivel == 0 &&\n                       e.duracao_s == DURACAO_EPOCA_BASE_S &&')
+DEGRADADA_PARA=$(printf '  const bool incluir = features != 0 &&')
+esperar "17. epoca degradada leva f" unidade payload.cpp \
+  "$DEGRADADA_DE" "$DEGRADADA_PARA"
+
+esperar "18. vetor fora da faixa vai mesmo assim" unidade payload.cpp \
+  "                       features_no_contrato(*features, fs_hz);" \
+  "                       true;"
+
+esperar "19. f com 4 casas decimais (perde 1e-4 g)" unidade payload.cpp \
+  "%.9g,%.9g,%.9g,%.9g,%.9g,%.9g]" \
+  "%.4f,%.9g,%.9g,%.9g,%.9g,%.9g]"
+
+echo
 echo "-----------------------------------------"
 echo "$((total - falhas))/$total como esperado"
 [ $falhas -eq 0 ]

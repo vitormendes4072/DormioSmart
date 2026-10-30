@@ -230,6 +230,52 @@ class Database:
             logger.exception("Falha ao consultar sleep_data do usuario.")
             return []
 
+    #: O Supabase devolve no máximo 1000 linhas por requisição (`max-rows`).
+    #: Uma janela de 24 h de épocas de 30 s são 2880, então a consulta pagina.
+    PAGINA_DE_FEATURES = 1000
+
+    def get_features_do_usuario(self, jwt, usuario_id, device_id, desde, ate):
+        """Linhas COM vetor (DATA-07b) de um dispositivo, por instante de medição.
+
+        Mesma dupla proteção de `get_leituras_do_usuario`: RLS no banco e
+        `.eq(user_id)` na consulta. O recorte é por `captured_at`, não por
+        `created_at`: as features descrevem quando o movimento ACONTECEU, e com
+        o buffer offline a chegada pode ser horas depois.
+
+        Devolve lista (vazia em falha, como o histórico — FIX-01), ou None se
+        a falha foi da consulta, para a rota poder responder 503 em vez de uma
+        noite vazia que pareceria noite sem movimento.
+        """
+        try:
+            client = self.cliente_do_usuario(jwt)
+            if client is None:
+                return None
+            linhas = []
+            inicio = 0
+            while True:
+                resposta = (
+                    client.table("sleep_data")
+                    .select("captured_at, epoca_segundos, enmo_media, enmo_desvio, "
+                            "enmo_max, mag_din_media, zcr, p_frac, g_x, g_y, g_z, "
+                            "fs_features")
+                    .eq("user_id", usuario_id)
+                    .eq("device_id", device_id)
+                    .gte("captured_at", desde)
+                    .lte("captured_at", ate)
+                    .not_.is_("fs_features", "null")
+                    .order("captured_at")
+                    .range(inicio, inicio + self.PAGINA_DE_FEATURES - 1)
+                    .execute()
+                )
+                pagina = resposta.data or []
+                linhas.extend(pagina)
+                if len(pagina) < self.PAGINA_DE_FEATURES:
+                    return linhas
+                inicio += self.PAGINA_DE_FEATURES
+        except Exception:
+            logger.exception("Falha ao consultar as features do usuario.")
+            return None
+
     def apagar_minha_conta(self, jwt):
         """Elimina todo o dado pessoal do titular (SEC-07, LGPD art. 18, VI).
 

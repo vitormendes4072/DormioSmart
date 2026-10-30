@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from flask import g, jsonify, request
 
 import dispositivos
+import features_noite
 import lote
 import perfil
 from auth import extrair_bearer, require_auth
@@ -12,7 +13,7 @@ from database import db
 from consulta import ler_parametros
 from ingestao import CAMINHO_SESSAO, CAMINHO_TOKEN, extrair_device_id, identificar_caminho
 from device_auth import extrair_token, gerar_token, hash_token
-from validacao import validar_captacao, validar_leitura
+from validacao import colunas_de_features, validar_captacao, validar_leitura
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +44,10 @@ logger = logging.getLogger(__name__)
 #
 # 2.6.0 (30/10, API-03) e MINOR: `POST /api/data/lote`, rota nova e opcional.
 # Nada do `/api/data` mudou; um firmware que nunca use o lote continua conforme.
-CONTRATO_DE_DADOS = "2.6.0"
+#
+# 2.7.0 (30/10, DATA-07b) e MINOR: `f`/`g`/`fs` validados e gravados, e
+# `GET /api/features`. Payload sem `f` continua sendo o payload correto.
+CONTRATO_DE_DADOS = "2.7.0"
 
 # Frase exigida no corpo de `DELETE /api/me` (SEC-07). Em portugues e em
 # maiusculas de proposito: tem de ser digitada, e nao pode ser o resultado de
@@ -111,6 +115,52 @@ def init_routes(app):
                 limite=parametros["limite"],
             )
         )
+
+    #: A janela de `/api/features`. Uma noite cabe com folga; acima disso, a
+    #: `inclinacao_rel` passaria a ser contra a postura típica de dias.
+    JANELA_MAXIMA_DE_FEATURES_H = 24
+
+    @app.route('/api/features')
+    @require_auth
+    def get_features():
+        """As oito features por época de uma janela (DATA-07b (e)).
+
+        `device`, `desde` e `ate` são obrigatórios: `inclinacao_rel` é medida
+        contra a postura típica DA JANELA (`g_ref`), então a janela faz parte
+        do resultado e não pode ficar implícita. O "conceito de noite" é do
+        `ESC-01`; até lá, quem pede escolhe, e a resposta devolve o `g_ref` e a
+        janela usados.
+        """
+        parametros, erro = ler_parametros(request.args)
+        if erro:
+            return jsonify({"error": erro}), 400
+        faltando = [n for n, k in (("device", "device_id"), ("desde", "desde"), ("ate", "ate"))
+                    if not parametros[k]]
+        if faltando:
+            return jsonify({"error": "parametros obrigatorios: " + ", ".join(faltando)}), 400
+        desde = features_noite.instante_do_banco(parametros["desde"])
+        ate = features_noite.instante_do_banco(parametros["ate"])
+        if desde.tzinfo is None or ate.tzinfo is None:
+            return jsonify({"error": "'desde' e 'ate' precisam de fuso horario"}), 400
+        if (ate - desde).total_seconds() > JANELA_MAXIMA_DE_FEATURES_H * 3600:
+            return jsonify({"error": f"janela acima de {JANELA_MAXIMA_DE_FEATURES_H} h"}), 400
+
+        linhas = db.get_features_do_usuario(
+            g.jwt, g.usuario_id, parametros["device_id"], desde.isoformat(), ate.isoformat())
+        if linhas is None:
+            return jsonify({"error": "consulta indisponivel"}), 503
+
+        epocas = [e for e in map(features_noite.epoca_da_linha, linhas) if e is not None]
+        saida, g_ref = features_noite.derivar_noite(epocas)
+        return jsonify({
+            "device_id": parametros["device_id"],
+            "desde": desde.isoformat(),
+            "ate": ate.isoformat(),
+            "ordem_features": list(features_noite.ORDEM_FEATURES),
+            "g_ref": g_ref,
+            "lacuna_maxima_s": features_noite.LACUNA_MAXIMA_S,
+            "epocas": saida,
+        })
 
     # --- Dispositivos do usuário (AUTH-05) ---
     #
@@ -474,6 +524,10 @@ def init_routes(app):
             "epoca_segundos":   content.get("epoca_s"),
             "metodo_agregacao": content.get("metodo"),
             "amostras":         content.get("amostras"),
+            # Vetor da época (DATA-07b, contrato §2.6). Uma coluna por feature,
+            # com o NOME dela, e não um array: um array na ordem errada passaria
+            # em toda faixa. Nulos quando a leitura não traz `f`.
+            **colunas_de_features(content),
             # `user_id` e `device_id` NÃO entram aqui (SEC-06). Quem carimba
             # o dono é a função no banco, a partir do token ou do
             # `auth.uid()` do JWT. Antes eram estas duas linhas de Python

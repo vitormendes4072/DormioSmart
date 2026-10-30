@@ -206,6 +206,9 @@ def test_toda_rota_de_usuario_consulta_pelo_cliente_do_usuario():
     PASSA_JWT = {
         "cliente_do_usuario",
         "get_leituras_do_usuario",
+        # DATA-07b (e), 30/10: monta o cliente com `cliente_do_usuario(jwt)`,
+        # como o histórico. Entrou aqui porque este teste acusou a rota nova.
+        "get_features_do_usuario",
         "registrar_leitura_da_sessao",
         "apagar_minha_conta",
     }

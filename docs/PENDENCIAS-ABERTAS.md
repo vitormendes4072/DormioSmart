@@ -49,12 +49,12 @@ linha, não um resumo: resumo é a cópia que diverge.
 
 | Grupo | Itens |
 |---|---:|
-| A — Depende só de software: dá para fazer a qualquer momento | **37** |
+| A — Depende só de software: dá para fazer a qualquer momento | **35** |
 | B — Depende de decisão do Vitor | **10** |
-| C — Depende de ação do Vitor que não é decisão | **7** |
+| C — Depende de ação do Vitor que não é decisão | **8** |
 | D — Bloqueado por hardware ou coleta | **24** |
 | E — Bloqueado por terceiro | **4** |
-| **Total** | **82** |
+| **Total** | **81** |
 
 ⚠️ **Este total não é comparável à contagem do backlog, e a diferença não é
 erro de nenhum dos dois.** São unidades de contagem diferentes: o backlog
@@ -75,7 +75,7 @@ outro item. **Desde 28/10 têm ID no backlog:** `GIT-07`, `INFRA-02` e
 
 ## A — Depende só de software: dá para fazer a qualquer momento
 
-**37 itens.**
+**35 itens.**
 
 ### `CALC-01` 🔴
 
@@ -168,20 +168,6 @@ Escrever `ml/src/carregar/walch.py`. A interface única garante que é só isso.
 ### `ML-08` ⚪
 
 Combinação item 9 + HMM com LOSO interno (N=92). **Provavelmente esforço mal gasto** — a validação externa já mostrou que o ganho do HMM não atravessa coorte. Registrado para não parecer esquecimento.
-
-*Camada no backlog: L0.*
-
-### `DATA-07b (d, e)` 🔴
-
-**(d)** migração e mudança na função de ingestão para persistir o vetor; **(e)** derivação de `inclinacao_rel`/`d_angulo` no servidor. **E o terceiro, que é pré-requisito de qualquer captação útil:** `montar_payload` não emite `f`, `g` e `fs` — o contrato v2.5.1 continua 'declarado, não implementado' do lado do transporte.
-
-*Camada no backlog: L0.*
-
-**Conferência.** Confirmado aberto, nos três. `grep` por `features`/`fs` em `web-app/database.py` devolve vazio; nenhuma migração menciona o vetor; `features_inter_epoca` existe em `ml/src/features.py:194` e **não é referenciada por `web-app/`**.
-
-### `DATA-07d` 🟡
-
-O que resta: **o contrato precisa dizer que o dispositivo não emite `f` de época truncada**, e não diz. Os itens (a), (b) e (c) do achado fecharam em 30/09.
 
 *Camada no backlog: L0.*
 
@@ -423,7 +409,7 @@ iOS: **investigação, não implementação.** Rota A (áudio em background) mud
 
 ## C — Depende de ação do Vitor que não é decisão
 
-**7 itens.**
+**8 itens.**
 
 Nada aqui é decisão: a decisão já foi tomada, ou nunca houve uma.
 São ações que só você pode executar, porque exigem credencial,
@@ -442,6 +428,14 @@ terminal na máquina, ferro de solda ou uma conta num serviço.
 Ligar captcha no painel do Supabase (`Authentication → Settings → Bot and Abuse Protection`). ~5 min, zero código, cobre `signup`/`token`/`recover`. ⚠️ **É mitigação: reduz a taxa, não elimina o oráculo** — e ligar isto **não autoriza mudar uma palavra da X.7**.
 
 *Camada no backlog: L3.*
+
+### `DATA-07f` 🔴
+
+Aplicar `web-app/migrations/010_vetor_de_caracteristicas.sql` no SQL Editor da produção **antes** do release do backend da v2.7.0, e conferir com o diagnóstico (a linha da 010 com as quatro marcas `true`). Na ordem inversa, `f` validado seria descartado pela função antiga, com `201`.
+
+*Camada no backlog: L3.*
+
+**Conferência.** A 010 não quebra o backend de hoje: a gravação sem vetor foi medida contra Postgres 16 com as dez colunas nulas.
 
 ### `INFRA-03 — monitor da produção` 🟡
 
@@ -567,11 +561,11 @@ Análise térmica com **medição real** — `P = V·I`, elevação de temperatu
 
 ### `VAL-01` 🔴
 
-Uma noite captada. 🛑 **Com o firmware como está, a noite sai sem feature nenhuma e o modelo não a consome** — cadência de 0,1 Hz (3 amostras por época), o acumulador recusa a época, e o payload não emite `f`. A ordem correta é `ARQ-01` → `FW-05` → `DATA-07b` (d, e) → **só então** captar.
+Uma noite captada. 🛑 **Com o firmware como está, a noite sai sem feature nenhuma e o modelo não a consome** — cadência de 0,1 Hz (3 amostras por época) e o acumulador recusa a época. O transporte do vetor existe desde 30/10 (`DATA-07b`); o que falta é firmware: `FW-05`, `FW-07` (b) e `FW-08` → **só então** captar.
 
 *Camada no backlog: L1.*
 
-**Conferência.** Confirmado: `INTERVALO_AMOSTRA_MS = 10000` em `envio-continuo.ino:109`, e `montar_payload` sem `f`/`g`/`fs`.
+**Conferência.** Confirmado: `INTERVALO_AMOSTRA_MS = 10000` em `envio-continuo.ino:109`. O `montar_payload` emite `f`/`g`/`fs` desde o `DATA-07b`, mas nenhum sketch o chama com o vetor.
 
 ### `VAL-02` 🔴
 
