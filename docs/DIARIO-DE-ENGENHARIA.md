@@ -4142,6 +4142,66 @@ resultado colado, sem acesso ao banco daqui.
 - `GET https://dormio-smart.vercel.app/health`, 30/10;
 - backlog `DATA-07f`.
 
+---
+
+# 2026-10-30 (viii) — o release para `main`: contrato 2.7.0 no ar
+
+**O problema, como foi entendido no início.** A produção rodava o backend do release de 29/10,
+contrato 2.5.1. Em `develop` estavam o endpoint de lote (`API-03`), o vetor de características
+com `GET /api/features` (`DATA-07b`), a cadeia C2 do firmware (`FW-07` (a)) e o trabalho de
+`ARQ-01`, `ML-11` e `ML-12`. A 010 já estava na produção (`DATA-07f`), então a ordem exigida
+estava cumprida.
+
+**Hipótese de trabalho.** Que o merge não tivesse como dar conflito e que o código novo não
+dependesse de nada que a produção ainda não tivesse: variável de ambiente, dependência,
+configuração de deploy ou objeto do banco.
+
+**O que foi testado, e como.**
+
+- **Antes do merge:**
+  - diff da base comum (`32356ff`) para `main`;
+  - diff de `main` para `develop`: arquivos, variáveis de ambiente lidas no código,
+    `requirements.txt`, `package.json` e `vercel.json`;
+  - toda chamada nova ao banco em `database.py`, `routes.py` e `lote.py`.
+- **O release:** PR #20, `develop` → `main`, mesclada por esta sessão com aprovação do autor,
+  depois dos 9 checks do CI.
+- **Depois do merge:** `/health` consultado daqui até o deploy virar; as duas rotas novas
+  chamadas sem credencial.
+
+**Resultado medido.**
+
+- **Antes:**
+  - o diff da base para `main` é vazio: `main` só tem os commits de merge dos releases;
+  - nenhuma variável de ambiente nova, nenhuma dependência nova; `vercel.json` e frontend sem
+    mudança;
+  - o código novo usa só as colunas da 010 e as funções `registrar_leitura` e
+    `registrar_leitura_da_sessao`, todas na produção.
+- **Depois:**
+  - `/health`: `200`, `"banco": "ok"`, `"contrato_de_dados": "2.7.0"`, na terceira consulta
+    (menos de um minuto depois do merge);
+  - `GET /api/features` e `POST /api/data/lote` sem credencial: `401`. As rotas existem e não
+    respondem a quem não se identifica.
+
+**Adaptação.** Diferente de 29/10, o merge em `main` não foi negado a esta sessão. A conferência
+seguiu o roteiro da primeira entrada de 29/10.
+
+**O que deu errado no caminho.** Nada nesta etapa.
+
+**Risco em aberto.**
+
+- **Não exercitado na produção:**
+  - nenhuma leitura com vetor e nenhum lote foram gravados lá; os dois caminhos estão testados
+    contra Postgres 16 local e com o Supabase mockado, não contra o Supabase;
+  - quem os exercita é o firmware em campo (`FW-07` (b), `FW-08`).
+- **`INFRA-03`:** a primeira execução agendada do monitor (31/10) roda sobre esta versão. É ela
+  que fecha o item.
+
+**Procedência.**
+
+- PR #20 (`fa5f164`);
+- `GET https://dormio-smart.vercel.app/health`, `/api/features` e `/api/data/lote`, 30/10;
+- backlog `API-03`, `DATA-07b`, `DATA-07f` e `INFRA-03`.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
