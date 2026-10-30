@@ -155,6 +155,13 @@ bool filtro_aplicavel(float fs, float corte_hz);
 // significa nada ali, e o chamador ja vai recusar a epoca por tamanho.
 bool filtrar_ida_e_volta(float *v, uint32_t n, float fs, float corte_hz);
 
+// Uma passagem do biquad, no lugar, com o estado inicial em regime permanente
+// -- a mesma de `filtrar_ida_e_volta`, exposta para o anti-aliasing da cadeia
+// C2 (`reamostragem.cpp`), que encadeia DUAS secoes antes de voltar. Exposta
+// e nao copiada: duas copias do mesmo biquad divergiriam na primeira correcao.
+// `reversa` percorre de `n - 1` ate 0. Nao faz nada com `n == 0`.
+void passagem_biquad(float *v, uint32_t n, const CoeficientesBiquad &c, bool reversa);
+
 }  // namespace dormio
 
 #endif  // DORMIO_NUCLEO_FILTRO_H

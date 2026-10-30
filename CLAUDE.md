@@ -237,18 +237,21 @@ custo para rodar:
 
 | Onde | Como rodar | Resultado em 28/10 |
 |---|---|---|
-| Backend (Flask) | `cd web-app && pytest --ignore=tests/rls` | **293 passam** |
+| Backend (Flask) | `cd web-app && pytest --ignore=tests/rls` | **316 passam** ✏️ *(30/10, branch do `API-03`; eram 293 em 28/10)* |
 | Frontend | `cd frontend && npx vitest run` | **418 passam, 27 arquivos** |
 | Tipos e build | `cd frontend && npm run build` (`tsc --noEmit && vite build`) | `tsc` limpo; `vite build` ok (avisa do chunk único — `UI-15`) |
 | RLS (Postgres real) | `DORMIO_RLS_DATABASE_URL=... pytest tests/rls` | **151 passam** contra `postgres:16` em Docker (28/10, com a base imitando os privilégios padrão do Supabase — `SEC-12`) — **pulam** sem a variável, de propósito |
 | Mutação do RLS | `python web-app/tests/rls/verificar_por_mutacao.py` | **32/32 sabotagens detectadas** |
 | Diagnóstico e ordem das migrações | `DORMIO_RLS_DATABASE_URL=... python web-app/tests/migracoes/verificar_migracoes.py` | os 9 estados e a ordem real da produção; 3/3 sabotagens acusadas |
-| ML | `cd ml && .venv/Scripts/python -m pytest testes` | **107 passam** |
+| ML | `cd ml && .venv/Scripts/python -m pytest testes` | **126 passam** ✏️ *(30/10, branch do `FW-07`: +19 do dourado da cadeia C2)* |
 | Mutação do dourado | `cd ml && .venv/Scripts/python testes/verificar_vetor_dourado_por_mutacao.py` | **12/12**, e o ponto cego registrado segue cego |
-| Firmware | `cd firmware/nucleo && make && make sintaxe capacidade mutacao` | **341 + 157 verificações, 0 falhas; 4/4 sketches compilam; mutação 15/15** (em contêiner `gcc:13`) |
+| Firmware | `cd firmware/nucleo && make && make sintaxe capacidade mutacao mutacao-cadeia` | **341 + 157 + 105 + 456 verificações, 0 falhas; 4/4 sketches compilam; mutação 15/15; mutação da cadeia C2 16/16** (em contêiner `gcc:13`) ✏️ *(30/10, `FW-07`: entraram os alvos `c2` e `cadeia`)* |
 | Conferências de documento | `python scripts/<nome>.py --conferir` para `calculos_tcc`, `estudo_buffer`, `conferir_docs_versionados`, `consolidar_registro` | todas passam |
 
-Total: **967 testes** de pytest/vitest + **498 verificações** do núcleo C++.
+Total: **967 testes** de pytest/vitest + **498 verificações** do núcleo C++. ✏️ *30/10: com as
+linhas acima, 316 + 418 + 151 + 126 = **1 011** de pytest/vitest (frontend e RLS não foram
+reexecutados: valem os números de 28/10) e **1 059** verificações do núcleo. A soma de 28/10 com
+a própria tabela daria 969, não 967 — a diferença não foi investigada.*
 
 **Rodando no Windows** — o CI é Ubuntu. Desde 28/10 os scripts e a suíte de ML funcionam no
 Windows sem ajuste (`DOCS-WIN-01`, `DOCS-WIN-02`, `ML-WIN-01`). Resta uma diferença:

@@ -3843,6 +3843,144 @@ de ±2 épocas é empilhado sobre a base concatenada e atravessa a fronteira ent
 - `docs/ARQUITETURA-DE-CAPTACAO.md` §3.4;
 - backlog `ML-12` e `DATA-07e`.
 
+---
+
+# 2026-10-30 (v) — `FW-07`, parte do núcleo: a cadeia C2, da FIFO à grade de 32 Hz
+
+**O problema, como foi entendido no início.** O núcleo C++ já calculava as 6 features a
+partir de 960 amostras numa grade de 32 Hz (`DATA-07b`), mas nada no firmware produzia essa
+grade. Na C2 o sensor entrega outra coisa: blocos da FIFO a ~50 Hz **nominais**, sem carimbo
+de tempo, de um oscilador que erra de −15 a +10 %. O plano aprovado separou o `FW-07` em duas
+partes: (a) o que se escreve e testa no computador, no `firmware/nucleo/`, e (b) o
+`sketch.ino`, que só compila sem a placa e fica para outra PR.
+
+**Hipótese de trabalho.** Que a cadeia do `ml/src/sinal.py::reamostrar` (Butterworth de 4ª
+ordem a 12,8 Hz, fase zero, depois interpolação linear) pudesse ser aplicada **por época**,
+com uma margem de sinal de cada lado, e que a taxa pudesse ser medida por uma regressão da
+contagem acumulada contra o instante de cada drenagem. A dúvida era quanto a margem e a
+estimativa de tempo custariam contra o `ml/`, que filtra a noite inteira com o tempo
+verdadeiro.
+
+**O que foi testado, e como.**
+
+- **Protótipo em Python antes do C++** (scratchpad), 30 sementes × 4 taxas (42,5; 47; 50;
+  55 Hz) × 2 épocas, medindo três coisas separadas:
+  - a margem, com o tempo verdadeiro ("oráculo");
+  - o erro de tempo da regressão;
+  - o efeito de variar o intervalo de despertar.
+- **A referência e o gerador:** `ml/testes/dourado_cadeia_c2.py`. Contém o gerador (sinal da
+  geradora histórica + uma componente de 14–20 Hz para exercitar o anti-aliasing), o
+  `esperado_pelo_pipeline` (o `ml/` com o tempo verdadeiro) e o `cadeia_estilo_firmware` (a
+  conta que o C++ copia).
+- **Os testes Python:** `test_dourado_cadeia_c2.py`, 19 testes. Medem o piso em 400 épocas,
+  conferem as constantes contra o `config.yaml`, provam a margem com o oráculo, conferem as
+  recusas e mostram que cada sabotagem estoura a régua de exatidão. Gravam
+  `vetor_dourado_cadeia_c2.json` (473 KB).
+- **O C++:**
+  - `fifo_mpu.h/.cpp`: registradores e decodificação;
+  - `reamostragem.h/.cpp`: duas seções com Q distintos, ida e volta;
+  - `cadeia_c2.h/.cpp`: regressão, janela, recusas;
+  - `lote.h/.cpp`: envelope e leitura da resposta do `API-03`;
+  - `buffer.h`: `confirmar_entregas` e uma geração que muda quando a fila degrada;
+  - `filtro.h/.cpp`: a passagem do biquad exposta, não copiada.
+- **Testes C++:** `testes_c2.cpp` (105 verificações de unidade) e `testes_cadeia_c2.cpp` (456,
+  a cadeia contra o dourado, com as drenagens entrando uma a uma e os bytes passando pelo
+  decodificador).
+- **Controle positivo:** `verificar_cadeia_por_mutacao.sh` (alvo `make mutacao-cadeia`, e
+  agora no CI). São 16 sabotadores, cada um declarando qual alvo **tem** de acusar.
+- **Suítes completas:** firmware em `gcc:13` (Docker, Windows 11); ML no `ml/.venv`.
+
+**Resultado medido.**
+
+- **A margem resolve as bordas.** Com o tempo verdadeiro, a cadeia por época com 0,5 s de
+  margem dá a mesma grade que o `reamostrar` da noite inteira em **1,5e-6 g**. Sem margem, a
+  borda move `mag_din_media` em até 1 %. Com 1 s, nada melhora.
+- **O que sobra é o relógio.** A regressão erra o instante em até ~5 ms no centro da época.
+  Piso medido em 400 épocas, firmware contra o pipeline:
+
+  | Medida | Piso |
+  |---|---|
+  | `enmo_media`, `enmo_desvio` | 2,2e-5 g |
+  | `enmo_max` | 2,2e-3 g |
+  | `mag_din_media` | 1,12 % |
+  | `zcr` | 8 cruzamentos |
+  | `p_frac` | 11 amostras |
+  | `ĝ` | 0,079° |
+
+- **Cinco das seis sabotagens movem as features menos que o próprio piso.** Só a ausência de
+  anti-aliasing estoura uma régua de validade com folga. Daí as **duas referências** do dourado:
+  - validade, contra o pipeline, com régua larga;
+  - exatidão, contra a mesma conta em Python, com 1e-4 g de grade e 1e-9 s de linha do tempo.
+- **O C++ contra a referência de exatidão:** linha do tempo idêntica (0 s), grade a **9,2e-8
+  g**. Contra o pipeline: `enmo` 9,6e-6 g, `enmo_max` 3,4e-4 g, `mag_din` 0,85 %, `zcr` 0,
+  `p_frac` 7 amostras, `ĝ` 0,065°. Tudo dentro.
+- **Controle positivo: 16/16 sabotadores acusados pelo alvo esperado**, e a árvore limpa
+  passou.
+  - Pelo dourado: taxa nominal, sem anti-aliasing, Q errado, filtro causal, sem meio passo,
+    sem margem, grade deslocada, FIFO little-endian, regressão com todas as drenagens, ±16 g.
+  - Pela unidade: transbordo e taxa que deixam de recusar, lote que confirma pendentes ou
+    aceita pendente no meio, buffer que confirma depois de degradar, FIFO no teto.
+- **Suítes:**
+  - firmware: 341 + 157 + 105 + 456 verificações, 0 falhas; 4/4 sketches compilam; mutação da
+    paridade antiga continua 15/15;
+  - ML: 126 passam (107 + 19).
+- **Memória:** `CadeiaC2` ocupa 23,7 KiB, mais 11,3 KiB de grade. Cabe porque o sono leve
+  preserva a RAM.
+
+**Adaptação.**
+
+- **Um achado de projeto: o despertar trava em fase com a amostragem.** A 50 Hz exatos, 1,7 s
+  são 85 amostras inteiras: toda drenagem cai no mesmo ponto entre duas amostras, e a
+  regressão herda o deslocamento inteiro (até 10 ms) em vez de tirar a média. Variar o
+  intervalo em [0, 20 ms) (`intervalo_de_drenagem_us`) baixou o pior erro de 8,1 para 4,7 ms.
+  A FIFO segue com folga: no pior caso, 95 de 170 amostras.
+- **O meio passo.** A drenagem que deixa a contagem em C acontece, em média, meio passo depois
+  da amostra C−1. Sem esse termo a linha inteira atrasa 10 ms; virou sabotador.
+- **A confirmação do lote ficou mais simples que o previsto.** O servidor para na primeira
+  falha, então `pendentes` é sempre um sufixo, e o dispositivo confirma um **prefixo** da fila,
+  que é a única operação que ela sabe fazer sem furar a série. Resposta incoerente → nada sai
+  (duplicata no servidor, nunca perda aqui).
+- **Um risco que o plano não tinha:** a fila pode degradar com um lote no ar, e as k primeiras
+  épocas deixam de ser as k enviadas. A geração do buffer resolve: lote montado antes de uma
+  fusão não confirma nada.
+- **Textos velhos corrigidos, e um registrado como defeito.** O `README.md` do núcleo e o
+  `capacidade.cpp` ainda diziam que o `sketch.ino` reescrito usaria 128 épocas no RTC (desenho
+  Deep Sleep) e que o `API-03` era item aberto.
+
+**O que deu errado no caminho** (nenhum chegou ao commit):
+
+1. **O gerador cortava as drenagens cedo.** A 42,5 Hz, a última drenagem caía antes do fim da
+   janela, e a época 1 saía recusada. Era o gerador, não o firmware: o firmware espera a
+   drenagem seguinte.
+2. **O primeiro protótipo deu números absurdos com margem de 1 s.** As drenagens depois do fim
+   do registro repetiam a contagem final e entortavam a regressão. Também era do simulador.
+3. **Um teste meu reprovou o filtro sem razão.** Ele media a amplitude de 3 Hz pelo maior valor
+   amostrado (0,998), e a 50 Hz as amostras não caem no pico. Trocado por RMS sobre ciclos
+   inteiros; o filtro passa 3 Hz com 1,0000 e corta 20 Hz a 0,0002.
+4. **O primeiro dourado tinha 1,1 MB.** O `indent=2` punha cada inteiro numa linha. As listas
+   internas foram compactadas: 473 KB.
+
+**Risco em aberto.**
+
+- **Não exercitado:** nada disto rodou num MPU6050. Os registradores, o transbordo e o
+  comportamento real da FIFO esperam a solda (`FW-05`, L1).
+- **Não medido:** o relógio do ESP32 em sono leve. A taxa "medida" herda o erro dele. É a parte
+  (c) do `ARQ-01`, e foi para `docs/LIMITACOES-TCC.md`.
+- **Não feito:** o `sketch.ino` (parte (b) do `FW-07`). Ele tem um risco próprio: um POST que
+  bloqueie mais de ~1,7 s deixa a FIFO transbordar, porque o laço é de uma linha só.
+- **Não transportado:** o payload ainda não leva `f` (`DATA-07b`). A cadeia produz a grade, o
+  acumulador produz as features, e o servidor ainda não as recebe.
+
+**Procedência.**
+
+- `firmware/nucleo/{fifo_mpu,reamostragem,cadeia_c2,lote}.{h,cpp}`, `buffer.h`, `filtro.{h,cpp}`,
+  `testes/testes_c2.cpp`, `testes/testes_cadeia_c2.cpp` e
+  `testes/verificar_cadeia_por_mutacao.sh`, deste commit;
+- `ml/testes/dourado_cadeia_c2.py`, `test_dourado_cadeia_c2.py` e
+  `vetor_dourado_cadeia_c2.json`;
+- `firmware/nucleo/README.md`, seção "A arquitetura C2";
+- backlog `FW-07` e `FW-05`.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

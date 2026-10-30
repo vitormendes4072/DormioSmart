@@ -5,10 +5,15 @@ do payload. **Zero** `#include <Arduino.h>`, zero `WiFi.h`, zero `delay()`.
 
 ```bash
 cd firmware/nucleo
-make            # compila e roda as 341 verificações
+make            # compila e roda a suíte, as paridades e a cadeia C2
 make capacidade # mede quantas horas cabem no buffer
 make sintaxe    # confere se os .ino compilam (stubs do Arduino)
+make mutacao-cadeia  # sabota a cadeia C2 e exige que a suíte acuse
 ```
+
+✏️ *30/10 (`FW-07`): `make` roda quatro alvos — 341 verificações da suíte
+original, 157 da paridade (`dourado`), 105 das peças da C2 (`c2`) e 456 da
+cadeia C2 contra o dourado dela (`cadeia`). Contados em 30/10, `gcc:13`.*
 
 Não há `arduino-cli` nem `platformio` no ambiente. Há `g++`, e para esta
 camada ele basta.
@@ -84,8 +89,13 @@ essa faixa não existe.
 
 **O `envio-continuo` usa 1024 épocas (32 KB de heap)**: uma noite de 8 h em
 resolução cheia, sem degradar uma única vez. A placa não dorme nesse sketch,
-então não há razão para espremer no RTC. O `sketch.ino`, quando for reescrito
-(`FW-07`), precisará das 128 no RTC — o heap não sobrevive ao Deep Sleep.
+então não há razão para espremer no RTC.
+
+✏️ **30/10: esta linha dizia que o `sketch.ino` reescrito (`FW-07`) precisaria
+das 128 épocas no RTC, porque o heap não sobrevive ao Deep Sleep.** A decisão
+do `ARQ-01` (C2) trocou o Deep Sleep por **sono leve, que preserva a RAM**:
+o buffer vai para o heap, e o registro durável para a flash (`FW-08`). A linha
+das 128 no RTC fica na tabela como medida, não como escolha.
 
 Por que `sizeof` no host vale para o ESP32: os campos têm largura fixa e estão
 em ordem decrescente de alinhamento, então não há padding em nenhum dos dois
@@ -101,7 +111,58 @@ que torna a drenagem possível.**
 
 Ainda assim 960 POSTs sequenciais são caros. Daí duas decisões: drenagem em
 rajada limitada (no máximo 3 por volta, e só se houver folga até o próximo
-tick), e o item `API-03` — endpoint de lote no backend.
+tick), e o item `API-03` — endpoint de lote no backend. ✏️ *30/10: o `API-03`
+fechou (`POST /api/data/lote`, até 60 leituras), e o lado do dispositivo é o
+`lote.h`, abaixo.*
+
+## A arquitetura C2 — da FIFO à grade de 32 Hz (`FW-07`, 30/10)
+
+Na C2 (`docs/DECISAO-ARQ-01-CADENCIA.md`) o MPU6050 amostra sozinho a 50 Hz
+**nominais** na FIFO e o ESP32 acorda em sono leve a cada ~1,7 s para
+esvaziá-la. O modelo espera outra coisa: 960 amostras numa grade de 32 Hz por
+época. Entre as duas pontas há três problemas, e um arquivo para cada:
+
+1. **A FIFO não tem carimbo de tempo** e o oscilador do sensor erra até
+   −15/+10 %. `cadeia_c2.h` ajusta uma reta (contagem acumulada × instante da
+   drenagem) e **mede** a taxa, em vez de assumir 50 Hz.
+2. **De ~50 para 32 Hz é decimação.** `reamostragem.h` aplica a cadeia do
+   `ml/src/sinal.py::reamostrar` por época: Butterworth de 4ª ordem a 12,8 Hz,
+   fase zero, na taxa de origem, com 0,5 s de margem de cada lado; depois
+   interpolação linear.
+3. **O que os bytes significam** e quando a leitura não presta (transbordo,
+   desalinhamento): `fifo_mpu.h`.
+
+**Medido em 30/10** (`ml/testes/dourado_cadeia_c2.py`, 50 sementes × 4 taxas):
+com o instante verdadeiro de cada amostra, a cadeia por época dá a mesma grade
+que o `ml/` da noite inteira em 1,5e-6 g — a margem resolve as bordas. O que
+sobra é o **relógio**: a regressão erra o instante em até ~5 ms, e isso move
+`enmo_max` em até 2,2e-3 g e `zcr` em até 8 cruzamentos. Daí o dourado da
+cadeia conferir contra **duas** referências — o pipeline (validade, régua
+larga) e a mesma conta em Python (exatidão, régua de 1e-4 g). O C++ bate com
+a segunda em **9,2e-8 g** e com a linha do tempo dela em 0 s.
+
+**Um achado de projeto, não de código:** a 50 Hz exatos, 1,7 s são 85
+amostras inteiras, e o despertar trava em fase com a amostragem — toda
+drenagem cai no mesmo ponto entre duas amostras e a regressão não tem como
+tirar a média. `intervalo_de_drenagem_us` varia o intervalo em [0, 20 ms) e o
+pior erro de tempo cai de 8,1 para 4,7 ms.
+
+⚠️ **O relógio do ESP32 é tomado como verdadeiro.** Em sono leve ele conta
+por um oscilador interno mais pobre que o cristal; quanto ele erra é a parte
+(c) do `ARQ-01`, e só a placa responde. ⚠️ **Nada disto rodou num MPU6050**:
+o que está verificado é a aritmética, contra o dourado e por mutação.
+
+**Controle positivo** (`make mutacao-cadeia`): 16 sabotadores — taxa nominal
+no lugar da medida, sem anti-aliasing, Q errado, filtro causal, sem meio
+passo, sem margem, grade deslocada, FIFO little-endian, regressão com todas as
+drenagens, escala de ±16 g; e, na suíte de unidade, transbordo e taxa que
+deixam de recusar, lote que confirma pendentes ou aceita pendente no meio,
+buffer que confirma depois de degradar, FIFO no teto que deixa de ser
+transbordo. **16/16 acusados pelo alvo esperado** em 30/10.
+
+**Memória:** `CadeiaC2` ocupa 23,7 KiB (anel de 2304 amostras, área de
+trabalho do filtro, 48 drenagens); a grade de saída são mais 11,3 KiB. Cabe
+porque o sono leve preserva a RAM — não caberia nos 8 KB do RTC.
 
 ## Os arquivos
 
@@ -113,8 +174,14 @@ tick), e o item `API-03` — endpoint de lote no backend.
 | `buffer.h` | Fila de tamanho fixo com degradação no lugar do descarte |
 | `reconexao.h` | Backoff exponencial com teto e jitter determinístico |
 | `payload.h/.cpp` | JSON do contrato v2.0.0, ISO 8601 sem `gmtime` |
+| `filtro.h/.cpp` | Biquad Butterworth ida e volta (`DATA-07b`) |
+| `caracteristicas.h/.cpp` | As 6 features e `g` por época (`DATA-07b`) |
+| `fifo_mpu.h/.cpp` | Registradores da C2 e decodificação da FIFO (`FW-07`) |
+| `reamostragem.h/.cpp` | Anti-aliasing de 4ª ordem e interpolação para 32 Hz (`FW-07`) |
+| `cadeia_c2.h/.cpp` | Taxa medida por regressão e a grade de cada época (`FW-07`) |
+| `lote.h/.cpp` | Envelope e leitura da resposta do `POST /api/data/lote` (`FW-07`) |
 | `capacidade.cpp` | A medição |
-| `testes/` | 341 verificações, incluindo duas noites simuladas de 8 h |
+| `testes/` | Suíte, paridades, peças e cadeia da C2, e os verificadores por mutação |
 
 O núcleo entra nos sketches por `nucleo_amalgama.cpp` — a IDE do Arduino só
 compila arquivos da pasta do sketch, então uma única unidade de tradução

@@ -129,10 +129,13 @@ int main() {
   printf("  Cobre uma noite de 8 h em resolucao CHEIA de 30 s, sem degradar uma vez\n");
   printf("  sequer, e ainda sobra margem. A placa nao dorme nesse sketch, entao nao\n");
   printf("  ha razao para espremer no RTC.\n\n");
-  printf("ESCOLHA PARA O sketch.ino (quando ele for reescrito -- item FW-07):\n");
-  printf("  128 epocas no RTC, porque ali o buffer precisa SOBREVIVER ao Deep Sleep\n");
-  printf("  e o heap nao sobrevive. Uma hora em resolucao cheia, a noite inteira\n");
-  printf("  em resolucao degradada.\n\n");
+  // ✏️ 30/10: esta escolha era "128 epocas no RTC, porque o buffer precisa
+  // sobreviver ao Deep Sleep". O ARQ-01 decidiu a C2, em sono leve, que
+  // preserva a RAM -- e o texto impresso seguiu dizendo o contrario.
+  printf("ESCOLHA PARA O sketch.ino (FW-07, arquitetura C2 do ARQ-01):\n");
+  printf("  heap, como no envio-continuo: em SONO LEVE a RAM sobrevive. O registro\n");
+  printf("  duravel vai para a flash (FW-08). As linhas do RTC acima ficam como\n");
+  printf("  medida -- eram a escolha do desenho antigo, em Deep Sleep.\n\n");
 
   // ══════════════════════════════════════════════════════════════════
   // RECALCULO DA AUTONOMIA DEPOIS DO DATA-07b
@@ -257,7 +260,8 @@ int main() {
   printf("  Mesmo assim %.0f POSTs sequenciais sao caros. Dai duas decisoes:\n", epocas_8h);
   printf("  (a) drenagem em RAJADA LIMITADA, devolvendo o controle ao laco entre\n");
   printf("      pedacos, para a cadencia nao ser comida pela drenagem;\n");
-  printf("  (b) o item API-03 no backlog: endpoint de lote no backend.\n\n");
+  printf("  (b) o endpoint de lote, POST /api/data/lote (API-03, fechado em 30/10),\n");
+  printf("      ate 60 leituras por requisicao; o cliente dele e o lote.h (FW-07).\n\n");
 
   return 0;
 }

@@ -249,7 +249,7 @@ As duas instâncias fecharam em 20/10; **a classe não.** Não há verificação
 
 ### `FW-07` 🔴
 
-Reescrever o `sketch.ino`, que hoje tira **uma amostra por boot** e dorme. Desde a decisão do `ARQ-01` (C2, 30/10): em torno do núcleo, com o ESP32 em **sono leve** (a RAM sobrevive), driver da FIFO do MPU a 50 Hz, estimativa de taxa e reamostragem, buffer no heap e na flash (`FW-08`), e drenagem pelo `POST /api/data/lote` (`API-03`). O núcleo já existe e está testado.
+Parte (b): reescrever o `sketch.ino`, que hoje tira **uma amostra por boot** e dorme, em torno da cadeia C2 que a parte (a) deixou pronta e testada no núcleo (30/10: `fifo_mpu.h`, `reamostragem.h`, `cadeia_c2.h`, `lote.h`). Falta a cola com o hardware: ESP32 em **sono leve**, os registradores da C2, a FIFO lida por I2C em blocos, o despertar com intervalo variado, buffer no heap e na flash (`FW-08`) e drenagem pelo `POST /api/data/lote`. Sem a placa ela só compila; e um POST que bloqueie mais de ~1,7 s deixa a FIFO transbordar.
 
 *Camada no backlog: L0.*
 

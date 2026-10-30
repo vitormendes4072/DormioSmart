@@ -9,6 +9,9 @@
 #   make          compila e roda a suite + a paridade do vetor dourado
 #   make testes   so a suite do nucleo
 #   make dourado  so a paridade contra ml/testes/vetor_dourado.json
+#   make c2       as pecas da arquitetura C2 (FIFO, anti-aliasing, cadeia, lote)
+#   make cadeia   a cadeia C2 inteira contra ml/testes/vetor_dourado_cadeia_c2.json
+#   make mutacao-cadeia  sabota a cadeia C2 e exige que o dourado dela ACUSE
 #   make mutacao  sabota o nucleo e exige que a paridade ACUSE
 #   make capacidade  a medicao de capacidade do buffer
 #   make limpar
@@ -21,9 +24,10 @@ CXX ?= g++
 CXXFLAGS := -std=c++11 -Wall -Wextra -Wpedantic -Wshadow -O2 -g \
             -fno-exceptions -fno-rtti
 
-FONTES := epoca.cpp payload.cpp filtro.cpp caracteristicas.cpp
+FONTES := epoca.cpp payload.cpp filtro.cpp caracteristicas.cpp \
+          fifo_mpu.cpp reamostragem.cpp cadeia_c2.cpp lote.cpp
 CABECALHOS := epoca.h buffer.h cadencia.h reconexao.h relogio.h payload.h \
-              filtro.h caracteristicas.h
+              filtro.h caracteristicas.h fifo_mpu.h reamostragem.h cadeia_c2.h lote.h
 
 # O leitor de JSON NAO esta em FONTES de proposito: ele e instrumento de
 # teste, mora em `testes/` e nao deve embarcar. Se um dia aparecer em FONTES,
@@ -34,10 +38,11 @@ CABECALHOS_TESTE := testes/leitor_json.h
 # O dourado da fronteira A. E gravado pelo pytest do `ml/` e conferido aqui:
 # os dois lados leem o MESMO arquivo, sem etapa de transcodificacao no meio.
 DOURADO := ../../ml/testes/vetor_dourado.json
+DOURADO_CADEIA := ../../ml/testes/vetor_dourado_cadeia_c2.json
 
-.PHONY: todos testes dourado mutacao capacidade limpar
+.PHONY: todos testes dourado c2 cadeia mutacao mutacao-cadeia capacidade limpar
 
-todos: testes dourado
+todos: testes dourado c2 cadeia
 
 testes: bin/testes
 	@./bin/testes
@@ -62,6 +67,23 @@ mutacao: bin/testes_dourado
 capacidade: bin/capacidade
 	@./bin/capacidade
 
+c2: bin/testes_c2
+	@./bin/testes_c2
+
+# Mesma regra do `dourado`: o arquivo vem do ml/, e a falta dele vira
+# instrucao em vez de erro misterioso.
+cadeia: bin/testes_cadeia_c2
+	@test -f $(DOURADO_CADEIA) || { \
+	  echo "  ERRO: $(DOURADO_CADEIA) nao existe."; \
+	  echo "  Rode: cd ../../ml && python -m pytest testes/test_dourado_cadeia_c2.py"; \
+	  exit 1; }
+	@./bin/testes_cadeia_c2 $(DOURADO_CADEIA)
+
+# Fora de `todos` pelo mesmo motivo do `mutacao`: recompila a cadeia uma vez
+# por sabotador.
+mutacao-cadeia:
+	@sh testes/verificar_cadeia_por_mutacao.sh
+
 bin/testes: testes/testes.cpp $(FONTES) $(CABECALHOS)
 	@mkdir -p bin
 	$(CXX) $(CXXFLAGS) -I. testes/testes.cpp $(FONTES) -o $@
@@ -70,6 +92,15 @@ bin/testes_dourado: testes/testes_dourado.cpp $(FONTES) $(CABECALHOS) \
                     $(FONTES_TESTE) $(CABECALHOS_TESTE)
 	@mkdir -p bin
 	$(CXX) $(CXXFLAGS) -I. testes/testes_dourado.cpp $(FONTES) $(FONTES_TESTE) -o $@
+
+bin/testes_c2: testes/testes_c2.cpp $(FONTES) $(CABECALHOS)
+	@mkdir -p bin
+	$(CXX) $(CXXFLAGS) -I. testes/testes_c2.cpp $(FONTES) -o $@
+
+bin/testes_cadeia_c2: testes/testes_cadeia_c2.cpp $(FONTES) $(CABECALHOS) \
+                      $(FONTES_TESTE) $(CABECALHOS_TESTE)
+	@mkdir -p bin
+	$(CXX) $(CXXFLAGS) -I. testes/testes_cadeia_c2.cpp $(FONTES) $(FONTES_TESTE) -o $@
 
 bin/capacidade: capacidade.cpp $(FONTES) $(CABECALHOS)
 	@mkdir -p bin
