@@ -2333,6 +2333,27 @@ DEFEITOS: list[Defeito] = [
              "padrão do `DOC-13`: nada confere um documento contra o fechamento de "
              "um item.",
     ),
+    Defeito(
+        data="2026-10-31", area=UI, item="AUTH-07",
+        defeito="O login na produção voltava para /login: a primeira chamada à API "
+                "depois do login saía sem `Authorization`, recebia 401, e o "
+                "frontend derrubava a sessão recém-criada.",
+        achado_por=USO_REAL,
+        causa="O `AuthProvider` registrava o provedor de token num `useEffect`, e "
+              "os efeitos dos filhos rodam antes dos do pai. Inofensivo enquanto "
+              "nenhuma tela chamava a API no instante do login; deixou de ser com "
+              "o `PerfilProvider` (17/10), que chegou à produção no release de "
+              "29/10. Nenhum teste montava os dois provedores juntos.",
+        correcao="Sessão numa ref atualizada a cada renderização; provedor e "
+                 "callback registrados uma vez, durante a renderização. Quatro "
+                 "testes com os provedores reais, e controle positivo com três "
+                 "sabotagens.",
+        commit="(o commit que introduz esta linha: um commit não cita o próprio "
+               "hash — ver a entrada de 30/10 (iii) do diário)", procedencia="parcial",
+        nota="Dano real: a produção ficou sem login de 29 a 31/10 (até o release "
+             "da correção). Ninguém tinha entrado no site depois do release: o "
+             "monitor do `INFRA-03` confere o `/health`, não o login.",
+    ),
 ]
 
 

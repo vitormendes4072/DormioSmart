@@ -4619,6 +4619,69 @@ GitHub: depende de alguém ler o e-mail de notificação.
 - `scripts/conferir_producao.py`;
 - backlog `INFRA-03`.
 
+---
+
+# 2026-10-31 (vii) — `AUTH-07`: o login que voltava para /login
+
+**O problema, como foi entendido no início.** O autor relatou que, em
+`dormio-smart.vercel.app/login`, o login entrava e voltava em seguida para a tela de login.
+
+**Hipótese de trabalho.** Sem os logs da Vercel (o CLI não está logado nesta máquina) e sem
+entrar na conta do autor, a pista veio do código: qualquer 401 da API dispara o callback de
+sessão expirada (`lib/api.ts`), que limpa a sessão, e o guarda de rota leva ao login. Logo, o
+Supabase aceitava o login, e alguma chamada logo depois recebia 401. Lendo o `AuthContext`, a
+suspeita: o provedor de token era registrado num `useEffect` do pai, e os efeitos dos filhos
+rodam antes.
+
+**O que foi testado, e como.**
+
+- **Reprodução no `vitest`** (teste temporário, apagado), com o `AuthProvider` e o
+  `PerfilProvider` reais, o cliente do Supabase falso e o `fetch` espionado, simulando o
+  `SIGNED_IN`.
+- **Contraprova:** a correção aplicada só no experimento, e desfeita.
+- **A correção de verdade** em `bugfix/AUTH-07-token-antes-dos-filhos`, com quatro testes
+  novos.
+- **Controle positivo:** três sabotagens contra os testes novos — o código antigo de `develop`,
+  a ref sem atualização e o callback de 401 ausente.
+- **Suíte do frontend, `tsc` e `vite build`**, no Windows 11.
+
+**Resultado medido.**
+
+- **Reprodução:** logo depois do login, a única chamada é `GET /api/me/perfil`, e ela sai com
+  `Authorization: null`.
+- **Contraprova:** com o token registrado durante a renderização, a mesma chamada sai com
+  `Bearer …`.
+- **Controle positivo:** o código antigo derruba 2 dos 4 testes; a ref sem atualização derruba
+  3; o callback ausente derruba 1.
+- **Frontend:** 422 testes passam em 28 arquivos (eram 418 em 27); `tsc` e `vite build` limpos.
+
+**Adaptação.** Nenhuma no plano. O callback de sessão expirada também passou a ser registrado
+durante a renderização, pelo mesmo motivo, e tem teste próprio.
+
+**O que deu errado no caminho.**
+
+1. **O defeito ficou dois dias em produção sem ninguém notar.** O código do token é de agosto;
+   ele só passou a falhar quando o `PerfilProvider` (17/10) começou a chamar a API no instante do
+   login, e isso chegou a `main` no release de 29/10. Nenhum teste montava os dois provedores
+   juntos, e a conferência pós-release olhou o `/health` e as rotas sem credencial — nunca um
+   login.
+2. **A primeira contraprova deu falso negativo:** deixei o `useEffect` antigo no experimento, e
+   ele sobrescreveu o provedor novo. Refeita removendo o efeito.
+
+**Risco em aberto.**
+
+- **A correção não está na produção** até um release `develop` → `main`.
+- **Não verificado na produção:** o login de verdade depois do release. A reprodução é com
+  Supabase falso; a confirmação final é o autor entrando no site.
+- **A conferência pós-release não testa login.** Um teste de ponta a ponta com uma conta de
+  teste resolveria, e depende do `INFRA-02` (projeto Supabase de teste).
+
+**Procedência.**
+
+- `frontend/src/contexts/AuthContext.tsx`, `PerfilContext.tsx` e `lib/api.ts`;
+- `frontend/src/contexts/AuthContext.test.tsx`;
+- backlog `AUTH-07`.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
