@@ -201,6 +201,8 @@ mutacao-fila` sabota a fila de 10 maneiras. A ponte com o ESP32 é
 | `lote.h/.cpp` | Envelope e leitura da resposta do `POST /api/data/lote` (`FW-07`) |
 | `registro_flash.h/.cpp` | O registro de 64 B da flash: CRC, instante, marca de entregue (`FW-08`) |
 | `fila_flash.h/.cpp` | Log circular na partição `dormio`, que sobrevive a reset (`FW-08`) |
+| `epoca_c2.h/.cpp` | A `Epoca` de uma época da cadeia C2: pico da grade, temperatura (`FW-07` (b)) |
+| `envio_da_fila.h/.cpp` | Da fila ao lote e de volta: prefixo contíguo, registro sem payload sai da frente (`FW-07` (b)) |
 | `capacidade.cpp` | A medição |
 | `testes/` | Suíte, paridades, peças e cadeia da C2, e os verificadores por mutação |
 

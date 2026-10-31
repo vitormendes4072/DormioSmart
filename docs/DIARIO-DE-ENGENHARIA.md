@@ -4299,6 +4299,94 @@ log circular próprio, e tabela sob medida sem OTA.
 - `.github/workflows/ci.yml`;
 - backlog `FW-08`.
 
+---
+
+# 2026-10-31 (ii) — `FW-07` (b): o `sketch.ino` da C2, em duas tarefas
+
+**O problema, como foi entendido no início.** O `sketch.ino` de produto tirava uma amostra
+por boot e voltava ao Deep Sleep. As peças da C2 já existiam no núcleo, testadas: a FIFO, a
+cadeia que reamostra para 32 Hz, as features, a fila na flash (`FW-08`) e o envio em lote.
+Faltava o programa que as liga no ESP32. O risco registrado no backlog era o envio: a FIFO
+guarda 3,4 s e é esvaziada a cada 1,7 s, e um POST por HTTPS leva de 1 a 3 s.
+
+**Hipótese de trabalho.** Que duas tarefas do FreeRTOS, uma em cada núcleo, resolvessem o
+risco sem mexer na cadeia: a medição continua esvaziando a FIFO no ritmo enquanto o envio
+espera a rede no outro núcleo. O autor aprovou o plano, com a reescrita do `sketch.ino` no
+lugar.
+
+**O que foi testado, e como.**
+
+- **Duas peças novas no núcleo**, porque a leitura das APIs no plano achou uma lacuna:
+  - `epoca_c2.{h,cpp}`: a cadeia entrega a grade, mas ninguém montava a `Epoca` que o payload
+    leva (pico em m/s², eixos, temperatura). 13 verificações em `testes_c2.cpp`;
+  - `envio_da_fila.{h,cpp}`: o lote como prefixo contíguo da fila, e o registro sem payload
+    possível tirado da frente. 12 verificações em `testes_fila_flash.cpp`, sobre a flash
+    simulada do `FW-08`.
+- **O sketch:** `firmware/sketch.ino` reescrito e `firmware/nucleo_amalgama.cpp` novo. Stubs
+  novos para o FreeRTOS, `esp_timer`, o sono leve, e o que faltava em `WiFi` e `HTTPClient`.
+- **A ligação:** o `make sintaxe` passou a compilar o sketch, a amálgama e os stubs em objetos
+  e ligá-los num executável de host.
+- **Controle positivo:**
+  - cinco sabotagens novas: duas na época da grade (`mutacao-cadeia`) e três no envio
+    (`mutacao-fila`);
+  - três estragos no sketch e na amálgama, que o `make sintaxe` tinha de reprovar: um `.cpp`
+    faltando, `guardar` sem o vetor e o POST com tipo errado.
+- **Suítes completas** do firmware em `gcc:13`; conferências de documento no Windows 11.
+
+**Resultado medido.**
+
+- **Núcleo:** 341 + 157 + 128 + 456 + 84 verificações, 0 falhas.
+- **Sintaxe e ligação:** 4/4 sketches compilam, a ponte da flash compila e o `sketch.ino` liga
+  com o núcleo.
+- **Mutação:** 15/15 da paridade, 21/21 da cadeia (com a época da grade), 13/13 da fila (com o
+  envio). Os três estragos do sketch reprovam: o `.cpp` faltando como `undefined reference`, os
+  outros dois como erro de compilação.
+
+**Adaptação.**
+
+- **O pico passou a ser o da grade, não o da leitura bruta.** A grade já passou pelo
+  anti-aliasing de 12,8 Hz, então um pico de uma ou duas leituras chega atenuado. É a escolha
+  que mantém o `total` e as features descrevendo o mesmo sinal; está declarada em
+  `LIMITACOES-TCC.md`.
+- **A temperatura é lida uma vez, ao fechar a época**, porque a FIFO da C2 só leva o
+  acelerômetro.
+- **Épocas recusadas pela cadeia não são gravadas.** No servidor elas aparecem como intervalo
+  entre dois `ts`; o dispositivo as conta no log.
+- **O giroscópio fica em espera** (`PWR_MGMT_2`) e o MPU usa o relógio interno. É o oscilador de
+  −15/+10 % que a cadeia já mede por regressão.
+- **O `FW-07` passou de L0 para L1:** o que falta é a placa (parte (c)).
+
+**O que deu errado no caminho.**
+
+1. **O `make sintaxe` não pegaria uma amálgama incompleta.** Ele só compilava o `.ino`; um
+   `.cpp` esquecido no `nucleo_amalgama.cpp` só apareceria como erro de link na IDE, na frente
+   da placa. Achado ao escrever a amálgama; entrou o passo de ligação, e o controle positivo
+   mostra que ele acusa.
+2. **Três trocas nos stubs falharam** porque os arquivos são CRLF e o script procurava LF. O
+   assert do script recusou em vez de gravar errado, e as trocas foram refeitas respeitando o
+   fim de linha.
+
+**Risco em aberto.**
+
+- **Nada rodou na placa** (`FW-07` (c), L1): a leitura da FIFO por I2C, o despertar do sono
+  leve, a taxa medida, o envio sem transbordo com o Wi-Fi ligado, e o tempo de montagem da fila
+  no boot (`FW-08` (c)).
+- **O Wokwi pode não simular a FIFO do MPU6050** (a documentação dele não diz). O
+  `envio-continuo` segue como o sketch do simulador.
+- **`setInsecure()`** no TLS, como nos outros sketches: o certificado do servidor não é
+  conferido.
+- **Os stubs conferem assinaturas, não comportamento:** as do FreeRTOS e do `esp_timer` foram
+  escritas a partir das do ESP-IDF, e só a IDE de verdade confirma que batem.
+
+**Procedência.**
+
+- `firmware/sketch.ino` e `firmware/nucleo_amalgama.cpp`;
+- `firmware/nucleo/epoca_c2.{h,cpp}`, `envio_da_fila.{h,cpp}` e `Makefile`;
+- `firmware/nucleo/testes/testes_c2.cpp`, `testes_fila_flash.cpp`,
+  `verificar_cadeia_por_mutacao.sh`, `verificar_fila_por_mutacao.sh` e `stubs-arduino/`;
+- `docs/LIMITACOES-TCC.md`;
+- backlog `FW-07`.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

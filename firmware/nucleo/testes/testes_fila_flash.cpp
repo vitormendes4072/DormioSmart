@@ -18,6 +18,7 @@
 #include <string.h>
 
 #include "../caracteristicas.h"
+#include "../envio_da_fila.h"
 #include "../epoca.h"
 #include "../fila_flash.h"
 #include "../payload.h"
@@ -527,6 +528,95 @@ static void testar_payload_do_registro() {
             "monotonico de outra sessao sai SEM ts: o relogio que o datava morreu no reset");
 }
 
+// ── Da fila ao lote, e de volta ───────────────────────────────────────
+
+static uint32_t contar(const char *texto, const char *trecho) {
+  uint32_t n = 0;
+  for (const char *p = strstr(texto, trecho); p; p = strstr(p + 1, trecho)) n++;
+  return n;
+}
+
+static DecisaoDoLote responder(FilaNaFlash *fila, int status, const char *corpo, uint32_t enviadas) {
+  return aplicar_resposta(fila, status, corpo, static_cast<uint32_t>(strlen(corpo)), enviadas);
+}
+
+// Epoca que `montar_payload` recusa: pico fora da faixa fisica.
+static Epoca implausivel(uint32_t indice) {
+  Epoca e = fabricar(indice);
+  e.pico_total = 0.5f;
+  return e;
+}
+
+static void testar_envio_da_fila() {
+  secao("envio -- o lote e o comeco da fila, e a resposta confirma o prefixo");
+  static RegistroDeEpoca rascunho[MAX_LEITURAS_POR_LOTE];
+  static char json[MAX_LEITURAS_POR_LOTE * 520];
+  ResolucaoDeParede parede;
+
+  {
+    FlashSimulada flash(4);
+    FilaNaFlash fila(&flash);
+    fila.montar();
+    gravar(&fila, 0, 3);
+    const PreparoDoLote p = preparar_lote(&fila, parede, rascunho, 60, json, sizeof(json));
+    VERIFICAR(p.no_lote == 3 && p.descartados == 0 && p.tamanho > 0, "tres leituras no lote");
+    VERIFICAR(strncmp(json, "{\"leituras\":[", 13) == 0 && contar(json, "\"ax\"") == 3,
+              "o envelope do API-03 com as tres");
+    VERIFICAR(fila.pendentes() == 3, "preparar nao tira nada da fila");
+    responder(&fila, 200, "{\"aceitas\":[0,1,2],\"pendentes\":[],\"rejeitadas\":[]}", 3);
+    VERIFICAR(fila.pendentes() == 0, "200 com as tres aceitas: a fila esvazia");
+  }
+  {
+    FlashSimulada flash(4);
+    FilaNaFlash fila(&flash);
+    fila.montar();
+    fila.guardar(implausivel(0), 0, no_mono(0));
+    gravar(&fila, 1, 2);
+    const PreparoDoLote p = preparar_lote(&fila, parede, rascunho, 60, json, sizeof(json));
+    VERIFICAR(p.descartados == 1 && p.no_lote == 2, "registro sem payload na FRENTE: sai e e contado");
+    VERIFICAR(fila.pendentes() == 2 && pendentes_contiguos(&fila, 1, 2),
+              "e o lote comeca na epoca seguinte -- a fila nao trava");
+  }
+  {
+    FlashSimulada flash(4);
+    FilaNaFlash fila(&flash);
+    fila.montar();
+    gravar(&fila, 0, 1);
+    fila.guardar(implausivel(1), 0, no_mono(1));
+    gravar(&fila, 2, 1);
+    PreparoDoLote p = preparar_lote(&fila, parede, rascunho, 60, json, sizeof(json));
+    VERIFICAR(p.no_lote == 1 && p.descartados == 0,
+              "registro sem payload no MEIO: o lote para antes dele (prefixo contiguo)");
+    responder(&fila, 200, "{\"aceitas\":[0],\"pendentes\":[],\"rejeitadas\":[]}", 1);
+    p = preparar_lote(&fila, parede, rascunho, 60, json, sizeof(json));
+    VERIFICAR(p.descartados == 1 && p.no_lote == 1 && pendentes_contiguos(&fila, 2, 1),
+              "na volta seguinte ele esta na frente, sai, e a epoca 2 vai");
+  }
+  {
+    FlashSimulada flash(4);
+    FilaNaFlash fila(&flash);
+    fila.montar();
+    gravar(&fila, 0, 3);
+    preparar_lote(&fila, parede, rascunho, 60, json, sizeof(json));
+    responder(&fila, 503, "{\"aceitas\":[],\"pendentes\":[0,1,2],\"rejeitadas\":[]}", 3);
+    VERIFICAR(fila.pendentes() == 3, "503: nada sai da fila");
+    const DecisaoDoLote d =
+        responder(&fila, 200, "{\"aceitas\":[0],\"pendentes\":[1,2],\"rejeitadas\":[]}", 3);
+    VERIFICAR(fila.pendentes() == 2 && pendentes_contiguos(&fila, 1, 2) && d.recuar_depois,
+              "aceita so a primeira: so ela sai, e o resto espera o recuo");
+    responder(&fila, 200, "{\"aceitas\":[0,0],\"pendentes\":[],\"rejeitadas\":[]}", 2);
+    VERIFICAR(fila.pendentes() == 2, "resposta incoerente: nada sai");
+  }
+  {
+    FlashSimulada flash(4);
+    FilaNaFlash fila(&flash);
+    fila.montar();
+    gravar(&fila, 0, 80);
+    const PreparoDoLote p = preparar_lote(&fila, parede, rascunho, 200, json, sizeof(json));
+    VERIFICAR(p.no_lote == MAX_LEITURAS_POR_LOTE, "no maximo 60 por lote, o teto do API-03");
+  }
+}
+
 int main() {
   printf("TESTES DA FILA NA FLASH (FW-08)\n");
   testar_registro();
@@ -539,6 +629,7 @@ int main() {
   testar_corte_no_apagamento();
   testar_releitura();
   testar_payload_do_registro();
+  testar_envio_da_fila();
 
   printf("\n-----------------------------------------\n");
   printf("%d verificacoes, %d falhas\n", total, falhas);

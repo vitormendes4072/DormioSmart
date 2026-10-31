@@ -5,7 +5,7 @@ Firmware embarcado que lê o sensor inercial MPU6050, classifica repouso/movimen
 ## Arquivos
 | Arquivo | Função |
 |---|---|
-| `sketch.ino` | Firmware principal (lógica híbrida simulação/físico) |
+| `sketch.ino` | Firmware de produto, arquitetura C2 (✏️ 31/10, `FW-07` (b)): sono leve, FIFO do MPU a 50 Hz, features por época, fila na flash e envio em lote. **Só compilado e ligado com stubs; não rodou na placa.** |
 | `diagram.json` | Mapeamento do circuito no Wokwi |
 | `libraries.txt` | Bibliotecas utilizadas |
 | `secrets.example.h` | Modelo de credenciais — **copiar para `secrets.h`** |
@@ -104,6 +104,10 @@ copiar o bloco entre as linhas de `=====`.
 
 Sketch de bancada que lê o MPU6050 e envia para a API num intervalo fixo, para sempre.
 **Não dorme, não usa botão, não usa GPIO extra** — só 3V3, GND, SDA=21 e SCL=22.
+
+✏️ *31/10: o `sketch.ino` foi reescrito para a C2 (`FW-07` (b)) e o parágrafo abaixo descreve
+a versão anterior. O de hoje lê a FIFO do MPU, que o Wokwi pode não simular — por isso este
+sketch continua sendo o da bancada e do simulador.*
 
 **Por que não usar o `sketch.ino`.** Ele envia *uma* leitura e dorme esperando sinal no
 GPIO 27, o que exige botão e pull-down de 10 kΩ. Sem eles o pino flutua e `digitalRead`
