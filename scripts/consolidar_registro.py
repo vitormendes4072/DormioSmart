@@ -2272,6 +2272,46 @@ DEFEITOS: list[Defeito] = [
         nota="Dano: superestimava em 9 %. Nenhuma decisão mudou: mais de uma semana "
              "em qualquer das duas tabelas.",
     ),
+    Defeito(
+        data="2026-10-31", area=SEG, item="SEC-11",
+        defeito="A seção X.7 de `LIMITACOES-TCC.md`, texto que vai ao documento "
+                "final, dizia \"Adotou-se proteção contra automação (captcha)\" "
+                "desde 20/10. O captcha nunca foi ligado, e o frontend não tem uma "
+                "linha dele.",
+        achado_por=LEITURA,
+        causa="O parágrafo foi escrito junto com a decisão (B′) do `SEC-08`, no "
+              "tempo verbal de quem já tinha feito, enquanto a ação ficava aberta "
+              "como `SEC-11`. Nada conferia a afirmação do texto contra o estado do "
+              "item.",
+        correcao="Parágrafo reescrito: a mitigação vigente é o limite de taxa por IP "
+                 "do serviço, com fonte; o captcha aparece como avaliado e não "
+                 "adotado, com o motivo.",
+        commit="(o commit que introduz esta linha: um commit não cita o próprio "
+               "hash — ver a entrada de 30/10 (iii) do diário)", procedencia="parcial",
+        nota="Achado ao investigar o próprio `SEC-11`. É o §1 das lições na forma "
+             "mais direta: uma defesa afirmada que não existe, no texto da banca.",
+    ),
+    Defeito(
+        data="2026-10-31", area=SEG, item="SEC-11",
+        defeito="O `SEC-11` mandava ligar o captcha no painel em \"~5 min, sem linha "
+                "de código\", e o backlog o recomendava como a primeira coisa a fazer "
+                "com cinco minutos. Com o captcha ligado o Supabase responde `400` a "
+                "todo login e cadastro sem token, e o frontend não envia token.",
+        achado_por=TERCEIRO,
+        causa="A afirmação saiu da página de configuração do painel, sem ler o guia "
+              "de integração nem o código do servidor. O guia diz que o frontend "
+              "precisa mudar; o código mostra o `400`.",
+        correcao="Item fechado sem fazer, com as fontes (`middleware.go`, `api.go`, o "
+                 "guia de limites de taxa); a linha de conselho do backlog riscada.",
+        commit="(o commit que introduz esta linha: um commit não cita o próprio "
+               "hash — ver a entrada de 30/10 (iii) do diário)", procedencia="parcial",
+        premissa_curta="Que ligar o captcha no painel era uma mudança só de configuração.",
+        premissa="O item foi para L3, \"é por você\", sob a premissa de que não havia "
+                 "software envolvido. Havia: as quatro chamadas de autenticação do "
+                 "frontend.",
+        nota="Dano evitado, não ocorrido: a chave nunca foi ligada. Se tivesse sido, "
+             "a produção perderia login e cadastro até um deploy do frontend.",
+    ),
 ]
 
 
@@ -2556,11 +2596,6 @@ PENDENCIAS: list[Pendencia] = [
                    "zerados, `‖a‖ = 56,5 m/s²` com a placa parada, `−11,6 °C` e "
                    "ruído 30× o normal. O viés de Z, `−1,06 m/s²`, é **89% do "
                    "limiar de movimento inteiro.**"),
-    Pendencia("SEC-11", ACAO, "Ligar captcha no painel do Supabase "
-              "(`Authentication → Settings → Bot and Abuse Protection`). ~5 min, "
-              "zero código, cobre `signup`/`token`/`recover`. ⚠️ **É mitigação: "
-              "reduz a taxa, não elimina o oráculo** — e ligar isto **não "
-              "autoriza mudar uma palavra da X.7**.", "⚠️", camada_backlog="L3"),
     Pendencia("INFRA-03 — monitor da produção", ACAO, "O job que chama o "
               "`/health` de produção a cada 3 dias está em `main` desde o release "
               "de 29/10, e a execução manual passou. Falta a primeira execução "
@@ -2875,7 +2910,7 @@ def gerar_correcoes() -> str:
     instr_lendo = [d for d in instr if d.achado_por in (LEITURA, CALCULO)]
     inst_instr = Counter(d.achado_por for d in instr)
 
-    A("**(1) Exercitar achou mais do que ler, por mais de duas vezes.**")
+    A("**(1) Exercitar achou perto do dobro do que ler.**")
     A(f"Execução, controle positivo e uso real somam **{exercitando} de {total}**")
     A(f"registros ({100*exercitando//total}%). Leitura e cálculo — os dois")
     razao = f"{exercitando / so_lendo:.1f}".replace(".", ",")
@@ -3275,8 +3310,8 @@ def _conferir_prosa() -> list[str]:
 
     so_lendo = inst[LEITURA] + inst[CALCULO]
     exercitando = inst[EXECUCAO] + inst[CONTROLE] + inst[USO_REAL]
-    exige(exercitando > 2 * so_lendo, "derivação (1)",
-          "o título diz 'por mais de duas vezes' e a razão já não passa de 2")
+    exige(1.5 * so_lendo < exercitando < 2.5 * so_lendo, "derivação (1)",
+          "o título diz 'perto do dobro' e a razão saiu de (1,5; 2,5)")
     instr = [d for d in contados if d.instrumento]
     sobram = {(d.item, d.achado_por) for d in instr
               if d.achado_por not in (EXECUCAO, CONTROLE)}

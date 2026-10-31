@@ -4421,6 +4421,82 @@ conta de 5,25 h volta a valer.
 - `firmware/sketch.ino`;
 - backlog `DATA-07e` e `FW-08`.
 
+---
+
+# 2026-10-31 (iv) — `SEC-11` fechado sem fazer, e a X.7 afirmava um captcha que não existe
+
+**O problema, como foi entendido no início.** O `SEC-11` mandava ligar o captcha do Supabase
+"em ~5 minutos de painel, sem linha de código", como mitigação da enumeração de contas do
+`SEC-08`. O backlog o recomendava como a primeira coisa a fazer com cinco minutos livres. Ao
+explicá-lo ao autor, a documentação do Supabase dizia que o frontend precisa mudar, e o autor
+pediu que tudo o que eu não tinha confirmado fosse investigado, e que eu dissesse se o captcha
+vale o custo.
+
+**Hipótese de trabalho.** Que a afirmação "sem linha de código" estava errada, e que o ganho do
+captcha fosse menor do que o item dizia.
+
+**O que foi testado, e como.** Leitura na fonte, sem tocar na produção:
+
+- **o código do `supabase/auth`:** `internal/api/middleware.go` (`verifyCaptcha`,
+  `isIgnoreCaptchaRoute`) e `internal/api/api.go` (quais rotas o usam);
+- **o guia *Rate limits* da autenticação** do Supabase;
+- **o nosso frontend** (`frontend/src/lib/autenticacao.ts`, `perfil.ts`) e o backend
+  (`database.py`), por busca das chamadas de autenticação;
+- **os quatro canais** da seção X.7 de `LIMITACOES-TCC.md`, cruzados com as rotas.
+
+**Resultado medido.**
+
+- **Pedido sem token, com o captcha ligado:** `400 captcha protection: request disallowed (no
+  captcha_token found)`. Só credencial de administrador passa.
+- **Rotas que exigem o token:** `/signup`, `/token` com senha, `/recover`, `/resend`,
+  `/magiclink`, `/otp`. Isentas: a renovação de sessão e o `/user`.
+- **O frontend** chama quatro delas (login, cadastro, reenvio, recuperação) e não tem uma linha de
+  captcha. **Ligar a chave derrubaria o login e o cadastro da produção.** Backend e dispositivo
+  não seriam afetados.
+- **O canal 3 da X.7, a troca de e-mail, passa pelo `/user`**, que o captcha não cobre. Com uma
+  conta, ele enumera ao mesmo custo de hoje: o captcha não encarece a varredura em massa.
+- **Limite de taxa por IP, padrão do Supabase:** 30 pedidos a cada 5 min em `/signup`,
+  `/recover`, `/resend` e `/user`; 150 em `/token`.
+- **A X.7 dizia "Adotou-se proteção contra automação (captcha)"** desde 20/10 (`2fcb0f5`). O
+  captcha nunca foi ligado.
+
+**Adaptação.** O autor decidiu fechar o `SEC-11` sem fazer. A X.7 foi reescrita: a mitigação
+vigente é o limite de taxa, com fonte, e o captcha aparece como avaliado e não adotado, com o
+motivo. Duas referências novas na lista da seção (o guia de limites e o código-fonte).
+
+**O que deu errado no caminho.**
+
+1. **O texto da banca afirmava uma defesa que não existe**, por onze dias. O parágrafo foi
+   escrito no tempo verbal de quem já tinha feito, enquanto a ação ficava aberta. Registrado como
+   defeito.
+2. **O item recomendava uma ação que derrubaria a produção.** A premissa "é só configuração" saiu
+   da página do painel, sem ler o guia de integração nem o código. Registrado como defeito, achado
+   por fonte de terceiro.
+3. **Na minha primeira explicação ao autor, deixei dois pontos como "pela minha leitura"** — o
+   que acontece sem token, e se o captcha cobria todos os canais. Os dois só se resolveram lendo
+   o código. É a regra 6 do §5 das lições: comportamento de serviço se confere na fonte do
+   serviço.
+4. **Os dois defeitos novos derrubaram uma frase gerada:** "exercitar achou mais de duas vezes o
+   que ler". A razão caiu para 2,0 (63 contra 32), e a guarda do gerador acusou. O título foi
+   reescrito para "perto do dobro", junto com a guarda.
+
+**Risco em aberto.**
+
+- **Não conferido daqui: o painel.** Em `Authentication → Attack Protection` o captcha deve
+  aparecer desligado, e em `Rate Limits` os valores padrão. A evidência indireta é que o login
+  funciona sem token.
+- **O código lido é o ramo principal do `supabase/auth`**, não necessariamente a versão exata em
+  produção.
+- **A enumeração continua aberta**, como a X.7 declara. Nada aqui a fecha.
+
+**Procedência.**
+
+- `supabase/auth`: `internal/api/middleware.go` e `internal/api/api.go`;
+- guia *Rate limits* da autenticação do Supabase;
+- `frontend/src/lib/autenticacao.ts`;
+- `docs/LIMITACOES-TCC.md`, seção X.7;
+- backlog `SEC-11` e `SEC-08`.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

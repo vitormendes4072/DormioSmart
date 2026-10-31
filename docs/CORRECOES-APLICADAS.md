@@ -19,15 +19,15 @@ a única coisa aqui que sustenta uma afirmação de método.
 
 ## Resumo quantitativo
 
-**128 correções registradas**, todas sustentadas no repositório.
+**130 correções registradas**, todas sustentadas no repositório.
 
 **A unidade de contagem, dita antes dos números, porque ela decide como
 lê-los.** Uma linha deste arquivo é **uma correção**: um defeito, uma
 causa, uma correção. Em 4 linhas, porém, a causa e a correção foram
 uma só e os defeitos foram vários — `DADOS-02` (10), `REF-01` (4), `GIT-06` (14), `SEC-12` (2) —, e agrupá-las foi deliberado,
 porque separá-las contaria a mesma correção várias vezes. **Contando
-defeito em vez de correção, o total seria 154.** Este
-arquivo usa **128**, que é o número menor e o mais defensável.
+defeito em vez de correção, o total seria 156.** Este
+arquivo usa **130**, que é o número menor e o mais defensável.
 
 **Fora da contagem, e visível:** 1 linha(s) — `ML-04b` —,
 em que a hipótese se confirmou e o que se corrigiu foi a afirmação
@@ -38,27 +38,27 @@ que se podia extrair do resultado, não um defeito. Estão na seção da
 
 | Área | Correções |
 |---|---:|
-| Segurança | 17 |
+| Segurança | 19 |
 | Interface | 23 |
 | Firmware | 18 |
 | Dados e ML | 24 |
 | Documentação | 23 |
 | Infraestrutura | 23 |
-| **Total** | **128** |
+| **Total** | **130** |
 
 ### Por instrumento — o campo que dá valor a este arquivo
 
 | Como foi encontrado | Correções | O que o instrumento é |
 |---|---:|---|
-| **leitura** | 27 | Inspeção do código ou do documento, raciocinando sobre ele. Nada roda, nada se confere contra terceiro. |
+| **leitura** | 28 | Inspeção do código ou do documento, raciocinando sobre ele. Nada roda, nada se confere contra terceiro. |
 | **cálculo** | 4 | Aritmética sobre os próprios números do projeto. O mais barato de todos, e derrubou premissas grandes. |
 | **execução** | 49 | Rodar código do projeto — suíte, job, compilador, script — e a **saída** acusar. O defeito não estava escondido: estava não exercitado. |
 | **controle positivo** | 13 | Provocar o defeito de propósito e exigir que a verificação acuse. Inclui verificação por mutação. **É o único instrumento que mede o alcance de uma verificação.** |
 | **inventário** | 21 | Conferir estado declarado contra estado real: `grep` por símbolo, `git ls-files` contra o disco, varredura de afirmações em documentos. |
-| **terceiro** | 10 | Especificação, documentação oficial, artigo, issue ou API de terceiro. O artefato que decide a resposta está **fora** do repositório. |
+| **terceiro** | 11 | Especificação, documentação oficial, artigo, issue ou API de terceiro. O artefato que decide a resposta está **fora** do repositório. |
 | **dado real** | 3 | Só apareceu com o arquivo ou a medição real em mãos. |
 | **uso real** | 1 | Alguém usou o produto como usuário. |
-| **Total** | **128** | |
+| **Total** | **130** | |
 
 ### As três derivações que os números sustentam
 
@@ -71,10 +71,10 @@ que se podia extrair do resultado, não um defeito. Estão na seção da
 > em tabela nenhuma. **Nenhuma destas três frases é uma taxa de defeitos
 > do projeto; são proporções do que foi achado.**
 
-**(1) Exercitar achou mais do que ler, por mais de duas vezes.**
-Execução, controle positivo e uso real somam **63 de 128**
-registros (49%). Leitura e cálculo — os dois
-instrumentos que não precisam rodar nada — somam **31** (24%). A razão é de **2,0 para 1**.
+**(1) Exercitar achou perto do dobro do que ler.**
+Execução, controle positivo e uso real somam **63 de 130**
+registros (48%). Leitura e cálculo — os dois
+instrumentos que não precisam rodar nada — somam **32** (24%). A razão é de **2,0 para 1**.
 
 Com a ressalva que impede a leitura fácil: isto **não** diz que ler é
 pouco útil. Diz que, neste projeto, leitura e execução acharam classes
@@ -83,8 +83,8 @@ gravar, a medição esperando pela rede, o sketch de uma amostra por boot),
 e a execução achou **alcance** insuficiente. Alcance não se vê lendo, e é
 por isso que a razão é essa e não o contrário.
 
-**(2) 13 correções tinham a causa fora do repositório.**
-Fonte de terceiro e dado real somam **13 de 128** (10%) — defeitos cuja causa não está em nenhuma
+**(2) 14 correções tinham a causa fora do repositório.**
+Fonte de terceiro e dado real somam **14 de 130** (10%) — defeitos cuja causa não está em nenhuma
 linha deste projeto, e que **nenhum teste daqui poderia pegar**: a
 especificação do PostgREST, a unidade do Empatica em `g/64`, o valor de
 uma chave num painel do Supabase, a API do Actions, os coeficientes do
@@ -98,7 +98,7 @@ Supabase de teste**, que deve a quatro itens e desde 28/10 tem item próprio
 **(3) As próprias verificações do projeto estavam defeituosas
 26 vezes — e 24 dessas 26 só apareceram
 rodando ou sabotando.**
-São **26 de 128** registros (20%) em que a coisa errada era um teste, uma
+São **26 de 130** registros (20%) em que a coisa errada era um teste, uma
 guarda de CI, um harness de mutação ou um vetor de referência — não o
 código. A distribuição:
 
@@ -127,9 +127,9 @@ alguém tentou fazer a verificação falhar.
 | Procedência | Correções | O que significa |
 |---|---:|---|
 | `completa` | 117 | Commit **e** artefato reabrível — teste, script, seção de documento. Dá para reconferir sem acreditar em ninguém. |
-| `parcial` | 11 | Só a mensagem de commit, só a entrada de diário, ou correção em arquivo não versionado. Entra porque omitir seria pior, e entra **marcada**. |
+| `parcial` | 13 | Só a mensagem de commit, só a entrada de diário, ou correção em arquivo não versionado. Entra porque omitir seria pior, e entra **marcada**. |
 
-**49 dos 128 defeitos revelaram que a premissa estava
+**50 dos 130 defeitos revelaram que a premissa estava
 errada** — não que o código estava errado. É a seção mais instrutiva deste
 arquivo e tem lugar próprio no fim.
 
@@ -151,9 +151,9 @@ só de código filtra pela coluna de área.
 
 ---
 
-## Segurança — 17 defeitos
+## Segurança — 19 defeitos
 
-*7 controle positivo · 4 terceiro · 3 leitura · 1 dado real · 1 execução · 1 uso real*
+*7 controle positivo · 5 terceiro · 4 leitura · 1 dado real · 1 execução · 1 uso real*
 
 ### 2026-08-20 · `AUTH-03`
 
@@ -350,6 +350,32 @@ só de código filtra pela coluna de área.
 **A correção.** `esquema_base.sql` passa a declarar os padrões medidos na produção; sem a 009 os 14 reprovam, com ela os 151 passam. Teste e dois sabotadores novos para o padrão: mutação 32/32.
 
 **Commit.** `040fe4b` · procedência **completa**
+
+### 2026-10-31 · `SEC-11`
+
+**O defeito.** A seção X.7 de `LIMITACOES-TCC.md`, texto que vai ao documento final, dizia "Adotou-se proteção contra automação (captcha)" desde 20/10. O captcha nunca foi ligado, e o frontend não tem uma linha dele.
+
+**Como foi encontrado.** *leitura* — O parágrafo foi escrito junto com a decisão (B′) do `SEC-08`, no tempo verbal de quem já tinha feito, enquanto a ação ficava aberta como `SEC-11`. Nada conferia a afirmação do texto contra o estado do item.
+
+**A correção.** Parágrafo reescrito: a mitigação vigente é o limite de taxa por IP do serviço, com fonte; o captcha aparece como avaliado e não adotado, com o motivo.
+
+**Nota.** Achado ao investigar o próprio `SEC-11`. É o §1 das lições na forma mais direta: uma defesa afirmada que não existe, no texto da banca.
+
+**Commit.** `(o commit que introduz esta linha: um commit não cita o próprio hash — ver a entrada de 30/10 (iii) do diário)` · procedência **parcial**
+
+### 2026-10-31 · `SEC-11` 🔄
+
+**O defeito.** O `SEC-11` mandava ligar o captcha no painel em "~5 min, sem linha de código", e o backlog o recomendava como a primeira coisa a fazer com cinco minutos. Com o captcha ligado o Supabase responde `400` a todo login e cadastro sem token, e o frontend não envia token.
+
+**Como foi encontrado.** *terceiro* — A afirmação saiu da página de configuração do painel, sem ler o guia de integração nem o código do servidor. O guia diz que o frontend precisa mudar; o código mostra o `400`.
+
+**A correção.** Item fechado sem fazer, com as fontes (`middleware.go`, `api.go`, o guia de limites de taxa); a linha de conselho do backlog riscada.
+
+**🔄 A premissa estava errada.** O item foi para L3, "é por você", sob a premissa de que não havia software envolvido. Havia: as quatro chamadas de autenticação do frontend.
+
+**Nota.** Dano evitado, não ocorrido: a chave nunca foi ligada. Se tivesse sido, a produção perderia login e cadastro até um deploy do frontend.
+
+**Commit.** `(o commit que introduz esta linha: um commit não cita o próprio hash — ver a entrada de 30/10 (iii) do diário)` · procedência **parcial**
 
 ---
 
@@ -1705,8 +1731,9 @@ com competência teria produzido a coisa errada bem feita.
 | 2026-10-16 | `CI-06` | Que eram três, e não quatro, os jobs nunca rodados num runner. |
 | 2026-10-17 | `GIT-05` | Que um aviso escrito no `ROADMAP.md` chega a quem clona. |
 | 2026-10-31 | `FW-08` | Que o tamanho da área de dados da tabela padrão era um dado conhecido e estável. |
+| 2026-10-31 | `SEC-11` | Que ligar o captcha no painel era uma mudança só de configuração. |
 
-**49 de 128.** E a distribuição por instrumento dentro
+**50 de 130.** E a distribuição por instrumento dentro
 deste subconjunto é a parte que vale registrar:
 
 | Instrumento | Premissas derrubadas |
@@ -1714,13 +1741,13 @@ deste subconjunto é a parte que vale registrar:
 | execução | 15 |
 | inventário | 10 |
 | controle positivo | 9 |
+| terceiro | 5 |
 | leitura | 5 |
-| terceiro | 4 |
 | cálculo | 4 |
 | uso real | 1 |
 | dado real | 1 |
 
-**40 das 49 premissas caíram quando alguém saiu
+**41 das 50 premissas caíram quando alguém saiu
 do próprio raciocínio** — rodando, sabotando, conferindo o artefato,
 abrindo a especificação do fornecedor, ou preenchendo o formulário como
 usuário. As outras 9 caíram lendo e calculando, e vale
