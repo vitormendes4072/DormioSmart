@@ -238,7 +238,7 @@ custo para rodar:
 | Onde | Como rodar | Resultado em 28/10 |
 |---|---|---|
 | Backend (Flask) | `cd web-app && pytest --ignore=tests/rls` | **384 passam** ✏️ *(30/10, branch do `DATA-07b`; eram 316 no `API-03` e 293 em 28/10)* |
-| Frontend | `cd frontend && npx vitest run` | **418 passam, 27 arquivos** |
+| Frontend | `cd frontend && npx vitest run` | **422 passam, 28 arquivos** ✏️ *(31/10, `AUTH-07`: +4 do `AuthContext.test.tsx`)* |
 | Tipos e build | `cd frontend && npm run build` (`tsc --noEmit && vite build`) | `tsc` limpo; `vite build` ok (avisa do chunk único — `UI-15`) |
 | RLS (Postgres real) | `DORMIO_RLS_DATABASE_URL=... pytest tests/rls` | **158 passam** contra `postgres:16` em Docker ✏️ *(30/10, `DATA-07b`: +7 da migração 010; eram 151 em 28/10)*, com a base imitando os privilégios padrão do Supabase (`SEC-12`) — **pulam** sem a variável, de propósito |
 | Mutação do RLS | `python web-app/tests/rls/verificar_por_mutacao.py` | **32/32 sabotagens detectadas** |

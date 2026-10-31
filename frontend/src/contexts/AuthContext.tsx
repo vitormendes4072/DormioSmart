@@ -1,5 +1,5 @@
 import type { Session, User } from "@supabase/supabase-js";
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 import { definirCallbackDeSessaoExpirada, definirProvedorDeToken } from "../lib/api";
 import { obterSupabase, problemaDeConfiguracao } from "../lib/supabase";
@@ -32,6 +32,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [carregando, setCarregando] = useState(true);
   const erroDeConfiguracao = problemaDeConfiguracao();
 
+  // Liga a sessao ao cliente de API DURANTE A RENDERIZACAO, e nao num efeito
+  // (AUTH-07). No React os efeitos dos filhos rodam ANTES dos do pai: com o
+  // provedor registrado num `useEffect` daqui, o `PerfilProvider` -- filho, que
+  // busca o perfil no instante em que a sessao aparece -- mandava a primeira
+  // chamada sem `Authorization`, recebia 401, e o callback abaixo derrubava a
+  // sessao recem-criada. Era o login que voltava para /login (31/10).
+  //
+  // A ref e atualizada a cada renderizacao, antes de qualquer efeito de filho,
+  // e o provedor e registrado uma vez e le dela: toda chamada leva o token
+  // atual, inclusive depois da renovacao de uma hora.
+  const sessaoAtual = useRef<Session | null>(sessao);
+  sessaoAtual.current = sessao;
+  useState(() => {
+    definirProvedorDeToken(() => sessaoAtual.current?.access_token ?? null);
+    // 401 vindo da API significa sessao morta no servidor -- mesmo que o
+    // cliente ainda ache que tem uma. Limpar aqui evita o estado em que a
+    // tela parece logada e nada carrega. O guarda de rota faz o resto
+    // (AUTH-04). Registrado aqui pelo mesmo motivo do provedor.
+    definirCallbackDeSessaoExpirada(() => setSessao(null));
+  });
+
   useEffect(() => {
     const supabase = obterSupabase();
     if (!supabase) {
@@ -62,20 +83,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       assinatura.subscription.unsubscribe();
     };
   }, []);
-
-  // 401 vindo da API significa sessao morta no servidor — mesmo que o cliente
-  // ainda ache que tem uma. Limpar aqui evita o estado em que a tela parece
-  // logada e nada carrega. O guarda de rota faz o resto (AUTH-04).
-  useEffect(() => {
-    definirCallbackDeSessaoExpirada(() => setSessao(null));
-  }, []);
-
-  // Liga a sessao ao cliente de API. Fica dentro de efeito para rodar tambem
-  // quando o token e renovado — um provedor que capturasse o JWT uma unica vez
-  // passaria a mandar token expirado depois de uma hora.
-  useEffect(() => {
-    definirProvedorDeToken(() => sessao?.access_token ?? null);
-  }, [sessao]);
 
   const valor = useMemo<ContextoDeAutenticacao>(
     () => ({

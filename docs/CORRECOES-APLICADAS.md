@@ -19,15 +19,15 @@ a única coisa aqui que sustenta uma afirmação de método.
 
 ## Resumo quantitativo
 
-**131 correções registradas**, todas sustentadas no repositório.
+**132 correções registradas**, todas sustentadas no repositório.
 
 **A unidade de contagem, dita antes dos números, porque ela decide como
 lê-los.** Uma linha deste arquivo é **uma correção**: um defeito, uma
 causa, uma correção. Em 4 linhas, porém, a causa e a correção foram
 uma só e os defeitos foram vários — `DADOS-02` (10), `REF-01` (4), `GIT-06` (14), `SEC-12` (2) —, e agrupá-las foi deliberado,
 porque separá-las contaria a mesma correção várias vezes. **Contando
-defeito em vez de correção, o total seria 157.** Este
-arquivo usa **131**, que é o número menor e o mais defensável.
+defeito em vez de correção, o total seria 158.** Este
+arquivo usa **132**, que é o número menor e o mais defensável.
 
 **Fora da contagem, e visível:** 1 linha(s) — `ML-04b` —,
 em que a hipótese se confirmou e o que se corrigiu foi a afirmação
@@ -39,12 +39,12 @@ que se podia extrair do resultado, não um defeito. Estão na seção da
 | Área | Correções |
 |---|---:|
 | Segurança | 19 |
-| Interface | 23 |
+| Interface | 24 |
 | Firmware | 18 |
 | Dados e ML | 24 |
 | Documentação | 24 |
 | Infraestrutura | 23 |
-| **Total** | **131** |
+| **Total** | **132** |
 
 ### Por instrumento — o campo que dá valor a este arquivo
 
@@ -57,8 +57,8 @@ que se podia extrair do resultado, não um defeito. Estão na seção da
 | **inventário** | 21 | Conferir estado declarado contra estado real: `grep` por símbolo, `git ls-files` contra o disco, varredura de afirmações em documentos. |
 | **terceiro** | 11 | Especificação, documentação oficial, artigo, issue ou API de terceiro. O artefato que decide a resposta está **fora** do repositório. |
 | **dado real** | 3 | Só apareceu com o arquivo ou a medição real em mãos. |
-| **uso real** | 1 | Alguém usou o produto como usuário. |
-| **Total** | **131** | |
+| **uso real** | 2 | Alguém usou o produto como usuário. |
+| **Total** | **132** | |
 
 ### As três derivações que os números sustentam
 
@@ -72,7 +72,7 @@ que se podia extrair do resultado, não um defeito. Estão na seção da
 > do projeto; são proporções do que foi achado.**
 
 **(1) Exercitar achou perto do dobro do que ler.**
-Execução, controle positivo e uso real somam **63 de 131**
+Execução, controle positivo e uso real somam **64 de 132**
 registros (48%). Leitura e cálculo — os dois
 instrumentos que não precisam rodar nada — somam **33** (25%). A razão é de **1,9 para 1**.
 
@@ -84,7 +84,7 @@ e a execução achou **alcance** insuficiente. Alcance não se vê lendo, e é
 por isso que a razão é essa e não o contrário.
 
 **(2) 14 correções tinham a causa fora do repositório.**
-Fonte de terceiro e dado real somam **14 de 131** (10%) — defeitos cuja causa não está em nenhuma
+Fonte de terceiro e dado real somam **14 de 132** (10%) — defeitos cuja causa não está em nenhuma
 linha deste projeto, e que **nenhum teste daqui poderia pegar**: a
 especificação do PostgREST, a unidade do Empatica em `g/64`, o valor de
 uma chave num painel do Supabase, a API do Actions, os coeficientes do
@@ -98,7 +98,7 @@ Supabase de teste**, que deve a quatro itens e desde 28/10 tem item próprio
 **(3) As próprias verificações do projeto estavam defeituosas
 26 vezes — e 24 dessas 26 só apareceram
 rodando ou sabotando.**
-São **26 de 131** registros (19%) em que a coisa errada era um teste, uma
+São **26 de 132** registros (19%) em que a coisa errada era um teste, uma
 guarda de CI, um harness de mutação ou um vetor de referência — não o
 código. A distribuição:
 
@@ -127,9 +127,9 @@ alguém tentou fazer a verificação falhar.
 | Procedência | Correções | O que significa |
 |---|---:|---|
 | `completa` | 117 | Commit **e** artefato reabrível — teste, script, seção de documento. Dá para reconferir sem acreditar em ninguém. |
-| `parcial` | 14 | Só a mensagem de commit, só a entrada de diário, ou correção em arquivo não versionado. Entra porque omitir seria pior, e entra **marcada**. |
+| `parcial` | 15 | Só a mensagem de commit, só a entrada de diário, ou correção em arquivo não versionado. Entra porque omitir seria pior, e entra **marcada**. |
 
-**50 dos 131 defeitos revelaram que a premissa estava
+**50 dos 132 defeitos revelaram que a premissa estava
 errada** — não que o código estava errado. É a seção mais instrutiva deste
 arquivo e tem lugar próprio no fim.
 
@@ -379,9 +379,9 @@ só de código filtra pela coluna de área.
 
 ---
 
-## Interface — 23 defeitos
+## Interface — 24 defeitos
 
-*9 execução · 7 leitura · 5 inventário · 2 controle positivo*
+*9 execução · 7 leitura · 5 inventário · 2 controle positivo · 1 uso real*
 
 ### 2026-06-03 · `FIX-06`
 
@@ -630,6 +630,18 @@ só de código filtra pela coluna de área.
 **A correção.** Função e testes apagados — e não mantidos como 'a forma só o nome', porque dois caminhos para o mesmo rótulo convidam as duas redações a divergirem. O comentário que justificava 'Dispositivo desconhecido' migrou para o teste de `descreverRecorte`, onde o rótulo sobreviveu.
 
 **Commit.** `9a40446` · procedência **completa**
+
+### 2026-10-31 · `AUTH-07`
+
+**O defeito.** O login na produção voltava para /login: a primeira chamada à API depois do login saía sem `Authorization`, recebia 401, e o frontend derrubava a sessão recém-criada.
+
+**Como foi encontrado.** *uso real* — O `AuthProvider` registrava o provedor de token num `useEffect`, e os efeitos dos filhos rodam antes dos do pai. Inofensivo enquanto nenhuma tela chamava a API no instante do login; deixou de ser com o `PerfilProvider` (17/10), que chegou à produção no release de 29/10. Nenhum teste montava os dois provedores juntos.
+
+**A correção.** Sessão numa ref atualizada a cada renderização; provedor e callback registrados uma vez, durante a renderização. Quatro testes com os provedores reais, e controle positivo com três sabotagens.
+
+**Nota.** Dano real: a produção ficou sem login de 29 a 31/10 (até o release da correção). Ninguém tinha entrado no site depois do release: o monitor do `INFRA-03` confere o `/health`, não o login.
+
+**Commit.** `(o commit que introduz esta linha: um commit não cita o próprio hash — ver a entrada de 30/10 (iii) do diário)` · procedência **parcial**
 
 ---
 
@@ -1745,7 +1757,7 @@ com competência teria produzido a coisa errada bem feita.
 | 2026-10-31 | `FW-08` | Que o tamanho da área de dados da tabela padrão era um dado conhecido e estável. |
 | 2026-10-31 | `SEC-11` | Que ligar o captcha no painel era uma mudança só de configuração. |
 
-**50 de 131.** E a distribuição por instrumento dentro
+**50 de 132.** E a distribuição por instrumento dentro
 deste subconjunto é a parte que vale registrar:
 
 | Instrumento | Premissas derrubadas |
