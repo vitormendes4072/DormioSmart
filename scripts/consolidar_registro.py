@@ -2606,14 +2606,6 @@ PENDENCIAS: list[Pendencia] = [
                    "zerados, `‖a‖ = 56,5 m/s²` com a placa parada, `−11,6 °C` e "
                    "ruído 30× o normal. O viés de Z, `−1,06 m/s²`, é **89% do "
                    "limiar de movimento inteiro.**"),
-    Pendencia("INFRA-03 — monitor da produção", ACAO, "O job que chama o "
-              "`/health` de produção a cada 3 dias está em `main` desde o release "
-              "de 29/10, e a execução manual passou. Falta a primeira execução "
-              "**agendada** (pelo cron, 31/10) — é ela que fecha o item.", "🟡",
-              camada_backlog="L3",
-              nota="A produção esteve fora do ar até 28/10 sem ninguém saber: o "
-                   "projeto Supabase do plano gratuito pausa depois de uma semana "
-                   "sem uso. Reativado pelo Vitor no mesmo dia."),
     Pendencia("INFRA-02 — projeto Supabase de teste", ACAO, "Criar um projeto Supabase de "
               "teste e rodar um punhado de `curl`. **Fecharia quatro itens de uma "
               "vez:** o ponto cego do `UI-11` (a troca de e-mail exige "

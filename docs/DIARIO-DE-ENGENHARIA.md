@@ -4585,6 +4585,40 @@ aqui, para ela ser olhada antes de entrar no texto.
 - página *MPU-6050* do Arduino Playground (pull-ups, regulador, VCC);
 - backlog `DIAG-01` a `DIAG-04`, `DOC-05` e `HW-02`.
 
+---
+
+# 2026-10-31 (vi) — `INFRA-03` fechado: o monitor da produção rodou sozinho
+
+**O problema, como foi entendido no início.** O `INFRA-03` existe porque a produção ficou fora do
+ar até 28/10 sem ninguém saber: o Supabase do plano gratuito pausa depois de uma semana sem uso.
+O monitor (`.github/workflows/saude-producao.yml`) chama o `/health` a cada 3 dias. Estava em
+`main` desde o release de 29/10, e a execução manual tinha passado; faltava a primeira execução
+**agendada**, que é a que prova que o cron dispara sem ninguém.
+
+**Hipótese de trabalho.** Que o cron rodasse em 31/10 e passasse.
+
+**O que foi testado, e como.** `gh run list --workflow saude-producao.yml` e o log da execução,
+consultados daqui em 31/10 às 18:55 UTC.
+
+**Resultado medido.** Execução `41214122394`, evento `schedule`, em `main`, às **15:17 UTC**:
+sucesso, com a saída *"tentativa 1/3: HTTP 200, banco ok"*.
+
+**Adaptação.** Nenhuma. O cron é `17 9 */3 * *` (09:17 UTC) e o GitHub o disparou seis horas
+depois. O workflow já previa atraso — o minuto 17 foge da hora cheia, que é a mais concorrida —, e
+a folga de 3 dias contra a semana de inatividade do Supabase absorve atrasos dessa ordem.
+
+**O que deu errado no caminho.** Nada nesta etapa.
+
+**Risco em aberto.** O monitor avisa que a produção caiu; ele não a mantém de pé. Se o Supabase
+pausar, alguém ainda precisa reativá-lo no painel. E o aviso chega como falha de workflow no
+GitHub: depende de alguém ler o e-mail de notificação.
+
+**Procedência.**
+
+- execução `41214122394` do workflow `saude-producao.yml`;
+- `scripts/conferir_producao.py`;
+- backlog `INFRA-03`.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
