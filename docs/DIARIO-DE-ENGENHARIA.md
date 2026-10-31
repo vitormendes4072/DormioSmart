@@ -4387,6 +4387,40 @@ lugar.
 - `docs/LIMITACOES-TCC.md`;
 - backlog `FW-07`.
 
+---
+
+# 2026-10-31 (iii) — `DATA-07e` fechado sem ser feito: o `FW-08` o dissolveu
+
+**O problema, como foi entendido no início.** O `DATA-07e` era a dívida de 17/10: quantizar os
+5 floats de pico para o par época + vetor cair de 52 para 40 B, e a cobertura da fila em 32 KiB
+de RAM subir de 5,25 para 6,83 h. Fora adiado de propósito, porque mexe na precisão transmitida
+e na checagem de coerência da §5.1 do contrato.
+
+**Hipótese de trabalho.** Que o motivo do item tivesse deixado de existir: a fila saiu da RAM.
+
+**O que foi testado, e como.** Conferência contra o que já estava medido: `make capacidade`
+(registro da flash de 64 B, 32 704 garantidos = 11,4 dias, 31/10) e o `sketch.ino` da C2, que
+só usa a fila na flash. A cobertura com o registro quantizado (~52 B, ~13,8 dias) é estimativa
+de conta, não medida.
+
+**Resultado medido.** Nenhum número novo. Os que decidem já estavam medidos: 11,4 dias na flash
+contra uma noite de 8 h.
+
+**Adaptação.** O autor decidiu fechar como dissolvido, não fazer. O esquema de quantização fica
+desenhado em `DECISAO-BUFFER-E-FEATURES.md` (Saída 3).
+
+**O que deu errado no caminho.** Nada nesta etapa.
+
+**Risco em aberto.** A fila em RAM (`buffer.h`) continua com o registro de 32 B e é usada pelo
+`envio-continuo`, que não envia features. Se um dia um sketch voltar a guardar o vetor em RAM, a
+conta de 5,25 h volta a valer.
+
+**Procedência.**
+
+- `firmware/nucleo/capacidade.cpp` (`make capacidade`);
+- `firmware/sketch.ino`;
+- backlog `DATA-07e` e `FW-08`.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

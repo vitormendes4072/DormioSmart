@@ -2375,11 +2375,6 @@ PENDENCIAS: list[Pendencia] = [
               "(N=92). **Provavelmente esforço mal gasto** — a validação externa "
               "já mostrou que o ganho do HMM não atravessa coorte. Registrado "
               "para não parecer esquecimento.", "⚪", camada_backlog="L0"),
-    Pendencia("DATA-07e", SOFTWARE, "Quantizar os 5 floats de pico: 52 B → 40 B, "
-              "e a cobertura de 5,25 h → 6,83 h em 32 KiB. Dívida assumida de "
-              "propósito, porque mexe na precisão **transmitida** e na checagem "
-              "de coerência da §5.1 do contrato. Esquema já desenhado, com custo "
-              "medido em κ (u16 custa Δκ ≈ 1e−4).", "🔴", camada_backlog="L0"),
     Pendencia("DATA-06", SOFTWARE, "O limiar viaja com a leitura. **A coluna e o "
               "campo dão para criar já**; o *valor* do limiar do celular depende "
               "do `VIA-02` (grupo D).", "🔴", camada_backlog="L0",
