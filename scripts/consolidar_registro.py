@@ -2248,6 +2248,30 @@ DEFEITOS: list[Defeito] = [
              "impossível para uma inserção de entrada única. **Conferir o "
              "`numstat` antes de commitar foi o que pegou.**",
     ),
+    Defeito(
+        data="2026-10-31", area=DOC, item="FW-08",
+        defeito="O estudo do buffer, o backlog, a pendência gerada e dois documentos "
+                "de decisão diziam que a partição de dados padrão tem **1,5 MiB** e "
+                "cobre **13,7 dias**. A tabela padrão do `arduino-esp32` tem "
+                "0x160000 = **1 408 KiB** de dados.",
+        achado_por=LEITURA,
+        causa="O estudo de 29/09 citou `tools/partitions/default.csv` sem abrir o "
+              "arquivo; o 1,5 MiB virou constante de `estudo_buffer.py` e de "
+              "`capacidade.cpp`, e o 13,7 dias se propagou a partir dali. A "
+              "`--conferir` do estudo testava a conta, não o dado de entrada.",
+        correcao="Constante corrigida para 0x160000 nos dois lugares, com nota. A "
+                 "tabela que o projeto usa passou a ser versionada "
+                 "(`firmware/partitions.csv`) e `make capacidade` mede a cobertura "
+                 "sobre ela, em vez de sobre uma constante.",
+        commit="(o commit que introduz esta linha: um commit não cita o próprio "
+               "hash — ver a entrada de 30/10 (iii) do diário)", procedencia="parcial",
+        premissa_curta="Que o tamanho da área de dados da tabela padrão era um dado conhecido e estável.",
+        premissa="O número entrou como fato de folha e foi tratado como estável, "
+                 "quando depende da versão do pacote `arduino-esp32` — que é "
+                 "justamente o argumento para versionar a tabela.",
+        nota="Dano: superestimava em 9 %. Nenhuma decisão mudou: mais de uma semana "
+             "em qualquer das duas tabelas.",
+    ),
 ]
 
 
@@ -2317,6 +2341,15 @@ PENDENCIAS: list[Pendencia] = [
     Pendencia("REQ-01", SOFTWARE, "Documentar requisitos: dimensões, conforto, "
               "autonomia, aquecimento, custo, segurança.", "🟡",
               camada_backlog="L0"),
+    Pendencia("FW-08 (c)", HARDWARE, "Exercitar na placa a ponte "
+              "`firmware/midia_flash_esp32.h`: gravar com `firmware/partitions.csv`, "
+              "ver `abrir()` achar a partição `dormio`, e medir o tempo da montagem "
+              "(varre 2 MiB no boot) e do apagamento de setor. As partes (a) e (b) "
+              "fecharam em 31/10: a fila na flash existe no núcleo, testada contra "
+              "uma flash NOR simulada com corte de energia em cada byte, e cobre "
+              "**11,4 dias** medidos sobre a tabela versionada.", "🟡",
+              camada_backlog="L1",
+              nota="Quem liga a fila ao laço é o `FW-07` (b)."),
     Pendencia("ML-12 (c)", HARDWARE, "Repetir a comparação 8 × 3 features com "
               "dado do travesseiro, quando o `VIA-01`/`VIA-02` o produzirem. As "
               "partes (a) e (b) fecharam em 30/10: no kappa a redução sobrevive; "
@@ -2338,13 +2371,6 @@ PENDENCIAS: list[Pendencia] = [
               "propósito, porque mexe na precisão **transmitida** e na checagem "
               "de coerência da §5.1 do contrato. Esquema já desenhado, com custo "
               "medido em κ (u16 custa Δκ ≈ 1e−4).", "🔴", camada_backlog="L0"),
-    Pendencia("FW-08", SOFTWARE, "Flash como registro durável, RAM como cache de "
-              "escrita. Decidido e dimensionado desde 29/09: 1,5 MiB, 39 321 "
-              "épocas = **13,7 dias** sem degradar uma vez, desgaste de 3 741 "
-              "anos, energia em centésimos de por cento. **Decidir (a)** LittleFS "
-              "ou NVS e **(b) versionar `partitions.csv`**. ⚠️ Depende do "
-              "`ARQ-01`: o estudo assume o heap de ~300 KiB, que só existe na "
-              "arquitetura contínua.", "🔴", camada_backlog="L0"),
     Pendencia("DATA-06", SOFTWARE, "O limiar viaja com a leitura. **A coluna e o "
               "campo dão para criar já**; o *valor* do limiar do celular depende "
               "do `VIA-02` (grupo D).", "🔴", camada_backlog="L0",
@@ -3018,13 +3044,16 @@ def gerar_correcoes() -> str:
     A("método que sai deste arquivo inteiro, é essa: antes de transpor um número")
     A("para o texto, divida-o por outro.**")
     A("")
-    A(f"E os **{inst_prem[LEITURA]} de leitura** têm um traço comum que vale")
-    A("contra a conclusão apressada de que ler não serve: nos quatro, o que a")
+    A(f"E os **{inst_prem[LEITURA]} de leitura** têm traços que valem contra a")
+    A("conclusão apressada de que ler não serve. Em quatro deles, o que a")
     A("leitura achou não foi um erro de escrita, foi uma **estrutura ausente** —")
     A("a resposta emitida antes da verificação, a conexão dentro do laço de")
     A("amostragem, a amostragem periódica que não existia, o job que não tinha")
     A("como reprovar. Nenhum apareceria rodando, porque em três dos quatro casos")
-    A("**não havia o que rodar**.")
+    A("**não havia o que rodar**. O quinto (`FW-08`, 31/10) é de outra natureza:")
+    A("um número citado de um arquivo de terceiro que ninguém tinha aberto. A")
+    A("conferência do estudo rodava e passava, porque testava a conta, não o")
+    A("dado de entrada — só abrir o arquivo o derrubava.")
     A("")
     A("---")
     A("")
@@ -3270,9 +3299,9 @@ def _conferir_prosa() -> list[str]:
           f"divisão por σ, desigualdade triangular, raiz de banda), e a tabela "
           f"tem {sorted(calc)}")
     lend = {d.item for d in premissas if d.achado_por == LEITURA}
-    exige(lend == {"FIX-02", "HW-05", "FW-07", "CI-05"}, "premissas",
-          f"o parágrafo de leitura descreve quatro estruturas ausentes, e a "
-          f"tabela tem {sorted(lend)}")
+    exige(lend == {"FIX-02", "HW-05", "FW-07", "CI-05", "FW-08"}, "premissas",
+          f"o parágrafo de leitura descreve quatro estruturas ausentes e um "
+          f"dado de terceiro nunca conferido (FW-08), e a tabela tem {sorted(lend)}")
     return erros
 
 

@@ -43,12 +43,15 @@ FLASH_TOTAL_B = 4 * 1024 * 1024
 TEM_PSRAM = False
 
 # Arduino-ESP32, `tools/partitions/default.csv`: esquema padrão de 4 MB =
-# ~1,2 MB de aplicação (app0/app1, duas fatias de OTA) + 1,5 MB de SPIFFS.
-# ⚠️ O repositório NÃO tem `partitions.csv` nem `platformio.ini`: o esquema
-# padrão é o que vale hoje, e trocá-lo é uma decisão a tomar, não um dado.
-PARTICAO_DADOS_PADRAO_B = 1536 * 1024
-# Tabela sob medida sem OTA (o projeto não faz OTA): ~2,8 MB para dados.
-PARTICAO_DADOS_SOB_MEDIDA_B = 2867 * 1024
+# duas fatias de OTA de 1,25 MiB + a área de dados (`spiffs`) + coredump.
+# ✏️ 31/10 (FW-08): conferido no arquivo do `arduino-esp32` (ramo master), a
+# área de dados é **0x160000 = 1 408 KiB**. Este script usava 1 536 KiB
+# (1,5 MiB), número nunca conferido, que superestimava a partição em 9 %.
+PARTICAO_DADOS_PADRAO_B = 0x160000
+# A tabela que o projeto adotou e versiona desde 31/10: `firmware/partitions.csv`,
+# sem OTA, com a partição `dormio` de 2 MiB. Até então este número era uma
+# hipótese de ~2,8 MB; `make capacidade` mede a cobertura sobre a tabela real.
+PARTICAO_DADOS_SOB_MEDIDA_B = 0x200000
 
 # Orçamentos de RAM, de `firmware/nucleo/capacidade.cpp`.
 RTC_SLOW_B = 4096
@@ -176,8 +179,8 @@ def secao_flash() -> None:
           f"{'sem' if not TEM_PSRAM else 'com'} PSRAM.")
     print(f"  Partição de dados no esquema PADRÃO do Arduino-ESP32 (4 MB): "
           f"{PARTICAO_DADOS_PADRAO_B/1024/1024:.1f} MiB.")
-    print(f"  Tabela sob medida, sem OTA: ~{PARTICAO_DADOS_SOB_MEDIDA_B/1024/1024:.1f} MiB.")
-    print("  ⚠️ O repositório não versiona partitions.csv — o padrão é o que vale hoje.")
+    print(f"  Tabela sob medida, sem OTA: {PARTICAO_DADOS_SOB_MEDIDA_B/1024/1024:.1f} MiB.")
+    print("  Desde 31/10 o repositório versiona firmware/partitions.csv (FW-08), a sob medida.")
     print()
     for rotulo, area in [("partição padrão", PARTICAO_DADOS_PADRAO_B),
                          ("tabela sob medida, sem OTA", PARTICAO_DADOS_SOB_MEDIDA_B)]:
@@ -203,8 +206,8 @@ def secao_desgaste() -> None:
         apagamentos_dia = REGISTROS_POR_MINUTO * 60 * 24 / reg_por_setor
         print(f"  {nome} — {t} B por época")
         print(f"     escrita: {b_dia/1024:.0f} KiB/dia = {b_dia*365/1024/1024:.1f} MiB/ano")
-        for rotulo, area in [("padrão 1,5 MiB", PARTICAO_DADOS_PADRAO_B),
-                             ("sob medida 2,8 MiB", PARTICAO_DADOS_SOB_MEDIDA_B)]:
+        for rotulo, area in [("padrão 1,4 MiB", PARTICAO_DADOS_PADRAO_B),
+                             ("sob medida 2,0 MiB", PARTICAO_DADOS_SOB_MEDIDA_B)]:
             for ciclos, tag in [(CICLOS_PE, "100k ciclos"), (CICLOS_PE_PESSIMISTA, " 10k ciclos")]:
                 anos = area * ciclos / b_dia / 365
                 print(f"     {rotulo:20s} {tag}: orçamento {area*ciclos/1024**3:6.1f} GiB "

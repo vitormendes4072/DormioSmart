@@ -306,7 +306,16 @@ jobs:
         working-directory: firmware/nucleo
         run: make mutacao-cadeia
 
+      # FW-08 (31/10): a fila na flash e o que guarda a noite enquanto nao ha
+      # rede. Dez sabotagens plausiveis (CRC curto, pendente apagado, hora
+      # inventada...), cada uma tem de ser acusada pela suite da fila.
+      - name: Mutação da fila na flash (a suíte acusa cada sabotagem)
+        working-directory: firmware/nucleo
+        run: make mutacao-fila
+
       # Nao e teste: e a medicao de quantas horas cabem no buffer, que o
+      # (desde 31/10 tambem le firmware/partitions.csv e reprova se a tabela
+      # for invalida ou nao tiver a particao `dormio` -- FW-08)
       # `firmware/nucleo/README.md` e o backlog citam como numero medido. Rodar
       # junto garante que o numero citado continua sendo o que o codigo produz.
       - name: Capacidade do buffer (a medição que o texto cita)

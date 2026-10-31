@@ -245,7 +245,7 @@ custo para rodar:
 | Diagnóstico e ordem das migrações | `DORMIO_RLS_DATABASE_URL=... python web-app/tests/migracoes/verificar_migracoes.py` | os 10 estados (30/10, com a 010) e a ordem real da produção; 3/3 sabotagens acusadas em 28/10, e a da 010 (função que grava nulo) em 30/10 |
 | ML | `cd ml && .venv/Scripts/python -m pytest testes` | **126 passam** ✏️ *(30/10, branch do `FW-07`: +19 do dourado da cadeia C2)* |
 | Mutação do dourado | `cd ml && .venv/Scripts/python testes/verificar_vetor_dourado_por_mutacao.py` | **12/12**, e o ponto cego registrado segue cego |
-| Firmware | `cd firmware/nucleo && make && make sintaxe capacidade mutacao mutacao-cadeia` | **341 + 157 + 118 + 456 verificações, 0 falhas; 4/4 sketches compilam; mutação 15/15; mutação da cadeia C2 e do payload 19/19** (em contêiner `gcc:13`) ✏️ *(30/10, `FW-07` e `DATA-07b`: entraram os alvos `c2` e `cadeia`)* |
+| Firmware | `cd firmware/nucleo && make && make sintaxe capacidade mutacao mutacao-cadeia mutacao-fila` | **341 + 157 + 118 + 456 + 72 verificações, 0 falhas; 4/4 sketches e a ponte da flash compilam; mutação 15/15; mutação da cadeia C2 e do payload 19/19; mutação da fila 10/10** (em contêiner `gcc:13`) ✏️ *(30/10, `FW-07` e `DATA-07b`: entraram os alvos `c2` e `cadeia`; 31/10, `FW-08`: o alvo `fila`, e o `capacidade` passou a validar `firmware/partitions.csv`)* |
 | Conferências de documento | `python scripts/<nome>.py --conferir` para `calculos_tcc`, `estudo_buffer`, `conferir_docs_versionados`, `consolidar_registro` | todas passam |
 
 Total: **967 testes** de pytest/vitest + **498 verificações** do núcleo C++. ✏️ *30/10: com as

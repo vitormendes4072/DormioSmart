@@ -1,0 +1,23 @@
+# Tabela de particoes do Dormio (FW-08, 31/10). ESP32-WROOM-32, 4 MiB de flash.
+#
+# Versionada de proposito: a particao `dormio` guarda a noite que ainda nao
+# chegou ao servidor, e o tamanho dela e a autonomia sem rede. Com a tabela
+# padrao da IDE esse numero dependia da versao do pacote `arduino-esp32` (a
+# area de dados ja foi 0x170000 e hoje e 0x160000) -- dado de pesquisa nao
+# pode depender disso. O arduino-esp32 usa um `partitions.csv` na pasta do
+# sketch no lugar da tabela padrao.
+#
+# Sem OTA: o projeto nao atualiza firmware pelo ar, entao uma unica fatia de
+# aplicacao (`factory`) basta, e ela fica com 1,94 MiB em vez dos 1,25 MiB da
+# padrao -- folga para Wi-Fi e HTTPS.
+#
+# `dormio` e uma particao de DADOS crua, subtipo 0x40 (o primeiro da faixa
+# livre 0x40-0xFE): sem sistema de arquivos, lida e escrita por
+# `midia_flash_esp32.h` e organizada como log circular por
+# `nucleo/fila_flash.h`. 2 MiB = 512 setores de 4 KiB = 32 768 registros de
+# 64 B; `make capacidade` le esta tabela e mede a cobertura.
+#
+# Name,   Type, SubType, Offset,   Size,     Flags
+nvs,      data, nvs,     0x9000,   0x5000,
+factory,  app,  factory, 0x10000,  0x1F0000,
+dormio,   data, 0x40,    0x200000, 0x200000,

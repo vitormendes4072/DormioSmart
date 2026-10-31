@@ -13,10 +13,14 @@
 // campo, o build quebra antes de esta medicao passar a mentir.
 
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 #include "buffer.h"
 #include "caracteristicas.h"
 #include "epoca.h"
+#include "fila_flash.h"
+#include "registro_flash.h"
 
 using namespace dormio;
 
@@ -50,6 +54,114 @@ static double horas_ate_saturar(uint32_t *nivel_max, uint32_t *epocas_aceitas) {
   *nivel_max = b.estatisticas().nivel_maximo;
   *epocas_aceitas = i;
   return b.horas_cobertas();
+}
+
+// ── A tabela de particoes versionada (FW-08) ──
+//
+// A cobertura da fila na flash sai de `../partitions.csv`, e nao de uma
+// constante copiada para ca: se alguem mudar a tabela, o numero que o texto
+// cita muda junto, e se a tabela ficar invalida esta medicao reprova.
+
+struct Particao {
+  char nome[24];
+  char tipo[12];
+  unsigned long offset;
+  unsigned long tamanho;
+};
+
+static char *aparar(char *t) {
+  while (*t == ' ' || *t == '\t') t++;
+  char *fim = t + strlen(t);
+  while (fim > t && (fim[-1] == ' ' || fim[-1] == '\t' || fim[-1] == '\r' || fim[-1] == '\n')) {
+    *--fim = '\0';
+  }
+  return t;
+}
+
+// Devolve quantas particoes leu, ou -1 se o arquivo nao abriu.
+static int ler_tabela(const char *caminho, Particao *saida, int max) {
+  FILE *f = fopen(caminho, "r");
+  if (!f) return -1;
+  char linha[256];
+  int n = 0;
+  while (n < max && fgets(linha, sizeof(linha), f)) {
+    char *t = aparar(linha);
+    if (*t == '\0' || *t == '#') continue;
+    char *campos[6] = {0, 0, 0, 0, 0, 0};
+    int k = 0;
+    char *p = t;
+    while (k < 6) {
+      campos[k++] = p;
+      char *v = strchr(p, ',');
+      if (!v) break;
+      *v = '\0';
+      p = v + 1;
+    }
+    if (k < 5) continue;
+    Particao &q = saida[n++];
+    snprintf(q.nome, sizeof(q.nome), "%s", aparar(campos[0]));
+    snprintf(q.tipo, sizeof(q.tipo), "%s", aparar(campos[1]));
+    q.offset = strtoul(aparar(campos[3]), 0, 0);
+    q.tamanho = strtoul(aparar(campos[4]), 0, 0);
+  }
+  fclose(f);
+  return n;
+}
+
+// Imprime a cobertura da fila na flash e devolve false se a tabela nao serve.
+static bool medir_fila_na_flash() {
+  printf("FILA NA FLASH (FW-08) -- medida sobre ../partitions.csv\n");
+  printf("-------------------------------------------------------\n");
+  Particao t[16];
+  const int n = ler_tabela("../partitions.csv", t, 16);
+  if (n <= 0) {
+    printf("  ERRO: ../partitions.csv nao foi lida.\n\n");
+    return false;
+  }
+
+  // A tabela tem de ser gravavel: alinhamento, ordem, sem sobreposicao, e
+  // dentro dos 4 MiB do WROOM-32. O que a IDE recusaria, isto recusa antes.
+  bool ok = true;
+  const unsigned long FLASH = 4ul * 1024ul * 1024ul;
+  unsigned long fim_anterior = 0x9000;  // depois do bootloader e da propria tabela
+  const Particao *dados = 0;
+  for (int i = 0; i < n; i++) {
+    const bool app = strcmp(t[i].tipo, "app") == 0;
+    const unsigned long alinhamento = app ? 0x10000ul : 0x1000ul;
+    if (t[i].offset % alinhamento || t[i].tamanho % 0x1000ul || t[i].offset < fim_anterior ||
+        t[i].offset + t[i].tamanho > FLASH) {
+      printf("  ERRO: particao '%s' desalinhada, sobreposta ou fora da flash\n", t[i].nome);
+      ok = false;
+    }
+    fim_anterior = t[i].offset + t[i].tamanho;
+    if (strcmp(t[i].nome, "dormio") == 0) dados = &t[i];
+  }
+  if (!dados) {
+    printf("  ERRO: a tabela nao tem a particao 'dormio'.\n\n");
+    return false;
+  }
+
+  const unsigned long setores = dados->tamanho / TAMANHO_DO_SETOR_BYTES;
+  const unsigned long slots = setores * REGISTROS_POR_SETOR;
+  const unsigned long garantidos = (setores - 1ul) * REGISTROS_POR_SETOR;
+  const double horas = static_cast<double>(garantidos) * DURACAO_EPOCA_BASE_S / 3600.0;
+  printf("  registro          %u B (epoca %u + vetor %u + seq, sessao, instante, CRC)\n",
+         static_cast<unsigned>(sizeof(RegistroDeEpoca)), static_cast<unsigned>(sizeof(Epoca)),
+         static_cast<unsigned>(sizeof(VetorDeFeatures)));
+  printf("  particao dormio   0x%lx B = %lu setores de 4 KiB = %lu registros\n", dados->tamanho,
+         setores, slots);
+  printf("  garantidos        %lu pendentes (um setor fica para a cabeca)\n", garantidos);
+  printf("  cobertura         %.1f h = %.1f dias de epocas de 30 s, SEM degradar\n", horas,
+         horas / 24.0);
+
+  // Para comparar: a tabela padrao do arduino-esp32 (tools/partitions/
+  // default.csv, conferida em 31/10), cuja area de dados e 0x160000.
+  const unsigned long padrao = 0x160000ul / TAMANHO_DO_SETOR_BYTES;
+  const double h_padrao =
+      static_cast<double>((padrao - 1ul) * REGISTROS_POR_SETOR) * DURACAO_EPOCA_BASE_S / 3600.0;
+  printf("  (tabela padrao    0x160000 B -> %.1f h = %.1f dias)\n", h_padrao, h_padrao / 24.0);
+  printf("  tabela            %s\n\n", ok ? "valida" : "INVALIDA");
+  return ok;
 }
 
 int main() {
@@ -173,12 +285,15 @@ int main() {
 
   linha();
   printf("| %-25s | %6s | %6s | %9s | %9s |\n", "registro", "bytes", "epocas",
-         "32 KiB", "1,5 MiB");
+         "32 KiB", "padrao");
   linha();
   for (unsigned i = 0; i < 3; i++) {
     const uint32_t n32 = 32768u / variantes[i].bytes;
     const double h32 = (n32 * 30.0) / 3600.0;
-    const uint32_t nflash = (1536u * 1024u) / variantes[i].bytes;
+    // A area de dados da tabela PADRAO do arduino-esp32 (0x160000, conferida
+    // em 31/10). Ate 31/10 esta conta usava 1536 KiB, nunca conferidos. A
+    // tabela que o projeto de fato usa e medida em `medir_fila_na_flash`.
+    const uint32_t nflash = 0x160000u / variantes[i].bytes;
     const double hflash = (nflash * 30.0) / 3600.0;
     printf("| %-25s | %6u | %6u | %7.2f h | %7.1f h |\n", variantes[i].nome,
            variantes[i].bytes, n32, h32, hflash);
@@ -263,5 +378,5 @@ int main() {
   printf("  (b) o endpoint de lote, POST /api/data/lote (API-03, fechado em 30/10),\n");
   printf("      ate 60 leituras por requisicao; o cliente dele e o lote.h (FW-07).\n\n");
 
-  return 0;
+  return medir_fila_na_flash() ? 0 : 1;
 }

@@ -49,10 +49,10 @@ linha, não um resumo: resumo é a cópia que diverge.
 
 | Grupo | Itens |
 |---|---:|
-| A — Depende só de software: dá para fazer a qualquer momento | **35** |
+| A — Depende só de software: dá para fazer a qualquer momento | **34** |
 | B — Depende de decisão do Vitor | **10** |
 | C — Depende de ação do Vitor que não é decisão | **7** |
-| D — Bloqueado por hardware ou coleta | **24** |
+| D — Bloqueado por hardware ou coleta | **25** |
 | E — Bloqueado por terceiro | **4** |
 | **Total** | **80** |
 
@@ -75,7 +75,7 @@ outro item. **Desde 28/10 têm ID no backlog:** `GIT-07`, `INFRA-02` e
 
 ## A — Depende só de software: dá para fazer a qualquer momento
 
-**35 itens.**
+**34 itens.**
 
 ### `CALC-01` 🔴
 
@@ -174,12 +174,6 @@ Combinação item 9 + HMM com LOSO interno (N=92). **Provavelmente esforço mal 
 ### `DATA-07e` 🔴
 
 Quantizar os 5 floats de pico: 52 B → 40 B, e a cobertura de 5,25 h → 6,83 h em 32 KiB. Dívida assumida de propósito, porque mexe na precisão **transmitida** e na checagem de coerência da §5.1 do contrato. Esquema já desenhado, com custo medido em κ (u16 custa Δκ ≈ 1e−4).
-
-*Camada no backlog: L0.*
-
-### `FW-08` 🔴
-
-Flash como registro durável, RAM como cache de escrita. Decidido e dimensionado desde 29/09: 1,5 MiB, 39 321 épocas = **13,7 dias** sem degradar uma vez, desgaste de 3 741 anos, energia em centésimos de por cento. **Decidir (a)** LittleFS ou NVS e **(b) versionar `partitions.csv`**. ⚠️ Depende do `ARQ-01`: o estudo assume o heap de ~300 KiB, que só existe na arquitetura contínua.
 
 *Camada no backlog: L0.*
 
@@ -469,7 +463,15 @@ SMTP próprio (Resend/Brevo) para 'esqueci minha senha'. Exige criar conta em se
 
 ## D — Bloqueado por hardware ou coleta
 
-**24 itens.**
+**25 itens.**
+
+### `FW-08 (c)` 🟡
+
+Exercitar na placa a ponte `firmware/midia_flash_esp32.h`: gravar com `firmware/partitions.csv`, ver `abrir()` achar a partição `dormio`, e medir o tempo da montagem (varre 2 MiB no boot) e do apagamento de setor. As partes (a) e (b) fecharam em 31/10: a fila na flash existe no núcleo, testada contra uma flash NOR simulada com corte de energia em cada byte, e cobre **11,4 dias** medidos sobre a tabela versionada.
+
+*Camada no backlog: L1.*
+
+**Conferência.** Quem liga a fila ao laço é o `FW-07` (b).
 
 ### `ML-12 (c)` 🟡
 

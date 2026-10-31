@@ -19,15 +19,15 @@ a única coisa aqui que sustenta uma afirmação de método.
 
 ## Resumo quantitativo
 
-**127 correções registradas**, todas sustentadas no repositório.
+**128 correções registradas**, todas sustentadas no repositório.
 
 **A unidade de contagem, dita antes dos números, porque ela decide como
 lê-los.** Uma linha deste arquivo é **uma correção**: um defeito, uma
 causa, uma correção. Em 4 linhas, porém, a causa e a correção foram
 uma só e os defeitos foram vários — `DADOS-02` (10), `REF-01` (4), `GIT-06` (14), `SEC-12` (2) —, e agrupá-las foi deliberado,
 porque separá-las contaria a mesma correção várias vezes. **Contando
-defeito em vez de correção, o total seria 153.** Este
-arquivo usa **127**, que é o número menor e o mais defensável.
+defeito em vez de correção, o total seria 154.** Este
+arquivo usa **128**, que é o número menor e o mais defensável.
 
 **Fora da contagem, e visível:** 1 linha(s) — `ML-04b` —,
 em que a hipótese se confirmou e o que se corrigiu foi a afirmação
@@ -42,15 +42,15 @@ que se podia extrair do resultado, não um defeito. Estão na seção da
 | Interface | 23 |
 | Firmware | 18 |
 | Dados e ML | 24 |
-| Documentação | 22 |
+| Documentação | 23 |
 | Infraestrutura | 23 |
-| **Total** | **127** |
+| **Total** | **128** |
 
 ### Por instrumento — o campo que dá valor a este arquivo
 
 | Como foi encontrado | Correções | O que o instrumento é |
 |---|---:|---|
-| **leitura** | 26 | Inspeção do código ou do documento, raciocinando sobre ele. Nada roda, nada se confere contra terceiro. |
+| **leitura** | 27 | Inspeção do código ou do documento, raciocinando sobre ele. Nada roda, nada se confere contra terceiro. |
 | **cálculo** | 4 | Aritmética sobre os próprios números do projeto. O mais barato de todos, e derrubou premissas grandes. |
 | **execução** | 49 | Rodar código do projeto — suíte, job, compilador, script — e a **saída** acusar. O defeito não estava escondido: estava não exercitado. |
 | **controle positivo** | 13 | Provocar o defeito de propósito e exigir que a verificação acuse. Inclui verificação por mutação. **É o único instrumento que mede o alcance de uma verificação.** |
@@ -58,7 +58,7 @@ que se podia extrair do resultado, não um defeito. Estão na seção da
 | **terceiro** | 10 | Especificação, documentação oficial, artigo, issue ou API de terceiro. O artefato que decide a resposta está **fora** do repositório. |
 | **dado real** | 3 | Só apareceu com o arquivo ou a medição real em mãos. |
 | **uso real** | 1 | Alguém usou o produto como usuário. |
-| **Total** | **127** | |
+| **Total** | **128** | |
 
 ### As três derivações que os números sustentam
 
@@ -72,9 +72,9 @@ que se podia extrair do resultado, não um defeito. Estão na seção da
 > do projeto; são proporções do que foi achado.**
 
 **(1) Exercitar achou mais do que ler, por mais de duas vezes.**
-Execução, controle positivo e uso real somam **63 de 127**
+Execução, controle positivo e uso real somam **63 de 128**
 registros (49%). Leitura e cálculo — os dois
-instrumentos que não precisam rodar nada — somam **30** (23%). A razão é de **2,1 para 1**.
+instrumentos que não precisam rodar nada — somam **31** (24%). A razão é de **2,0 para 1**.
 
 Com a ressalva que impede a leitura fácil: isto **não** diz que ler é
 pouco útil. Diz que, neste projeto, leitura e execução acharam classes
@@ -84,7 +84,7 @@ e a execução achou **alcance** insuficiente. Alcance não se vê lendo, e é
 por isso que a razão é essa e não o contrário.
 
 **(2) 13 correções tinham a causa fora do repositório.**
-Fonte de terceiro e dado real somam **13 de 127** (10%) — defeitos cuja causa não está em nenhuma
+Fonte de terceiro e dado real somam **13 de 128** (10%) — defeitos cuja causa não está em nenhuma
 linha deste projeto, e que **nenhum teste daqui poderia pegar**: a
 especificação do PostgREST, a unidade do Empatica em `g/64`, o valor de
 uma chave num painel do Supabase, a API do Actions, os coeficientes do
@@ -98,7 +98,7 @@ Supabase de teste**, que deve a quatro itens e desde 28/10 tem item próprio
 **(3) As próprias verificações do projeto estavam defeituosas
 26 vezes — e 24 dessas 26 só apareceram
 rodando ou sabotando.**
-São **26 de 127** registros (20%) em que a coisa errada era um teste, uma
+São **26 de 128** registros (20%) em que a coisa errada era um teste, uma
 guarda de CI, um harness de mutação ou um vetor de referência — não o
 código. A distribuição:
 
@@ -127,9 +127,9 @@ alguém tentou fazer a verificação falhar.
 | Procedência | Correções | O que significa |
 |---|---:|---|
 | `completa` | 117 | Commit **e** artefato reabrível — teste, script, seção de documento. Dá para reconferir sem acreditar em ninguém. |
-| `parcial` | 10 | Só a mensagem de commit, só a entrada de diário, ou correção em arquivo não versionado. Entra porque omitir seria pior, e entra **marcada**. |
+| `parcial` | 11 | Só a mensagem de commit, só a entrada de diário, ou correção em arquivo não versionado. Entra porque omitir seria pior, e entra **marcada**. |
 
-**48 dos 127 defeitos revelaram que a premissa estava
+**49 dos 128 defeitos revelaram que a premissa estava
 errada** — não que o código estava errado. É a seção mais instrutiva deste
 arquivo e tem lugar próprio no fim.
 
@@ -1111,9 +1111,9 @@ só de código filtra pela coluna de área.
 
 ---
 
-## Documentação — 22 defeitos
+## Documentação — 23 defeitos
 
-*10 inventário · 8 leitura · 3 terceiro · 1 execução*
+*10 inventário · 9 leitura · 3 terceiro · 1 execução*
 
 ### 2026-06-03 · `(README)`
 
@@ -1366,6 +1366,20 @@ só de código filtra pela coluna de área.
 **Nota.** É o §5 aplicado a quem escrevia o §5: o artefato que eu abri não era o que decidia a resposta, era o vizinho dele.
 
 **Commit.** `c80c2b8` · procedência **completa**
+
+### 2026-10-31 · `FW-08` 🔄
+
+**O defeito.** O estudo do buffer, o backlog, a pendência gerada e dois documentos de decisão diziam que a partição de dados padrão tem **1,5 MiB** e cobre **13,7 dias**. A tabela padrão do `arduino-esp32` tem 0x160000 = **1 408 KiB** de dados.
+
+**Como foi encontrado.** *leitura* — O estudo de 29/09 citou `tools/partitions/default.csv` sem abrir o arquivo; o 1,5 MiB virou constante de `estudo_buffer.py` e de `capacidade.cpp`, e o 13,7 dias se propagou a partir dali. A `--conferir` do estudo testava a conta, não o dado de entrada.
+
+**A correção.** Constante corrigida para 0x160000 nos dois lugares, com nota. A tabela que o projeto usa passou a ser versionada (`firmware/partitions.csv`) e `make capacidade` mede a cobertura sobre ela, em vez de sobre uma constante.
+
+**🔄 A premissa estava errada.** O número entrou como fato de folha e foi tratado como estável, quando depende da versão do pacote `arduino-esp32` — que é justamente o argumento para versionar a tabela.
+
+**Nota.** Dano: superestimava em 9 %. Nenhuma decisão mudou: mais de uma semana em qualquer das duas tabelas.
+
+**Commit.** `(o commit que introduz esta linha: um commit não cita o próprio hash — ver a entrada de 30/10 (iii) do diário)` · procedência **parcial**
 
 ---
 
@@ -1690,8 +1704,9 @@ com competência teria produzido a coisa errada bem feita.
 | 2026-10-16 | `CI-04` | Que a guarda de coleta, medida em 22/09, ainda tinha o piso certo. |
 | 2026-10-16 | `CI-06` | Que eram três, e não quatro, os jobs nunca rodados num runner. |
 | 2026-10-17 | `GIT-05` | Que um aviso escrito no `ROADMAP.md` chega a quem clona. |
+| 2026-10-31 | `FW-08` | Que o tamanho da área de dados da tabela padrão era um dado conhecido e estável. |
 
-**48 de 127.** E a distribuição por instrumento dentro
+**49 de 128.** E a distribuição por instrumento dentro
 deste subconjunto é a parte que vale registrar:
 
 | Instrumento | Premissas derrubadas |
@@ -1699,16 +1714,16 @@ deste subconjunto é a parte que vale registrar:
 | execução | 15 |
 | inventário | 10 |
 | controle positivo | 9 |
+| leitura | 5 |
 | terceiro | 4 |
 | cálculo | 4 |
-| leitura | 4 |
 | uso real | 1 |
 | dado real | 1 |
 
-**40 das 48 premissas caíram quando alguém saiu
+**40 das 49 premissas caíram quando alguém saiu
 do próprio raciocínio** — rodando, sabotando, conferindo o artefato,
 abrindo a especificação do fornecedor, ou preenchendo o formulário como
-usuário. As outras 8 caíram lendo e calculando, e vale
+usuário. As outras 9 caíram lendo e calculando, e vale
 nomeá-las, porque são o contraexemplo da leitura fácil deste arquivo:
 
 - **`DATA-02`** (cálculo) — O critério de movimento era assimétrico: 52% menos sensível para baixo do que para cima.
@@ -1719,6 +1734,7 @@ nomeá-las, porque são o contraexemplo da leitura fácil deste arquivo:
 - **`DATA-07`** (cálculo) — `d_angulo` **não** é a diferença de `inclinacao_rel` entre épocas vizinhas, e guardar só uma das duas não reconstrói a outra.
 - **`FIX-02`** (leitura) — `POST /api/data` respondia **`201 Created` sem gravar**: o dispositivo recebia confirmação de um dado que não existia.
 - **`CI-05`** (leitura) — A prevenção especificada **não podia reprovar**: um job que falha 'quando há arquivo não rastreado em `docs/`' devolveria vazio sempre.
+- **`FW-08`** (leitura) — O estudo do buffer, o backlog, a pendência gerada e dois documentos de decisão diziam que a partição de dados padrão tem **1,5 MiB** e cobre **13,7 dias**. A tabela padrão do `arduino-esp32` tem 0x160000 = **1 408 KiB** de dados.
 
 Os **4 de cálculo** são o detalhe que merece ficar: os
 quatro saíram de **aritmética sobre números que já estavam escritos no
@@ -1729,13 +1745,16 @@ premissa que estava em uso havia semanas. **Se há uma recomendação de
 método que sai deste arquivo inteiro, é essa: antes de transpor um número
 para o texto, divida-o por outro.**
 
-E os **4 de leitura** têm um traço comum que vale
-contra a conclusão apressada de que ler não serve: nos quatro, o que a
+E os **5 de leitura** têm traços que valem contra a
+conclusão apressada de que ler não serve. Em quatro deles, o que a
 leitura achou não foi um erro de escrita, foi uma **estrutura ausente** —
 a resposta emitida antes da verificação, a conexão dentro do laço de
 amostragem, a amostragem periódica que não existia, o job que não tinha
 como reprovar. Nenhum apareceria rodando, porque em três dos quatro casos
-**não havia o que rodar**.
+**não havia o que rodar**. O quinto (`FW-08`, 31/10) é de outra natureza:
+um número citado de um arquivo de terceiro que ninguém tinha aberto. A
+conferência do estudo rodava e passava, porque testava a conta, não o
+dado de entrada — só abrir o arquivo o derrubava.
 
 ---
 
