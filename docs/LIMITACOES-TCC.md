@@ -361,6 +361,13 @@ absoluto, e passam a ser datadas pelo instante de recebimento. A integridade dos
 interrupção de energia foi verificada em simulação da memória, com interrupção em cada byte de
 uma gravação, e não no dispositivo físico.
 
+**Sobre o pico de aceleração transmitido.** ✏️ *(31/10, `FW-07`.)* Na arquitetura adotada, o
+pico de magnitude de cada época, transmitido junto com as características, é calculado sobre a
+série já filtrada (passa-baixas de 12,8 Hz) e reamostrada a 32 Hz, e não sobre as leituras
+brutas a 50 Hz. Um impulso de uma ou duas leituras brutas chega, portanto, atenuado. A escolha
+mantém o pico e as características descrevendo o mesmo sinal; a magnitude da atenuação não foi
+medida no dispositivo.
+
 **Sobre a métrica de acurácia.** Registra-se, por rigor metodológico, que a acurácia global
 não constitui métrica informativa neste domínio. Dado que a proporção de épocas de sono em
 um registro noturno é elevada, um classificador trivial que atribuísse a totalidade das

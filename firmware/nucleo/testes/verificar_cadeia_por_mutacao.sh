@@ -23,7 +23,7 @@ NUCLEO=$(cd "$AQUI/.." && pwd)
 DOURADO="$NUCLEO/../../ml/testes/vetor_dourado_cadeia_c2.json"
 CXX=${CXX:-g++}
 BANDEIRAS="-std=c++11 -w -O2 -fno-exceptions -fno-rtti"
-FONTES="epoca.cpp payload.cpp filtro.cpp caracteristicas.cpp fifo_mpu.cpp reamostragem.cpp cadeia_c2.cpp lote.cpp"
+FONTES="epoca.cpp payload.cpp filtro.cpp caracteristicas.cpp fifo_mpu.cpp reamostragem.cpp cadeia_c2.cpp lote.cpp registro_flash.cpp fila_flash.cpp epoca_c2.cpp envio_da_fila.cpp"
 
 falhas=0
 total=0
@@ -207,6 +207,17 @@ esperar "18. vetor fora da faixa vai mesmo assim" unidade payload.cpp \
 esperar "19. f com 4 casas decimais (perde 1e-4 g)" unidade payload.cpp \
   "%.9g,%.9g,%.9g,%.9g,%.9g,%.9g]" \
   "%.4f,%.9g,%.9g,%.9g,%.9g,%.9g]"
+
+echo
+echo "Sabotadores da EPOCA DA GRADE (FW-07 b) -- a suite de unidade tem de acusar:"
+
+esperar "20. eixos da amostra 0, nao da de pico" unidade epoca_c2.cpp \
+  "  e.pico_ax = gx[i_pico] * GRAVIDADE_MS2;" \
+  "  e.pico_ax = gx[0] * GRAVIDADE_MS2;"
+
+esperar "21. pico em g, sem converter para m/s2" unidade epoca_c2.cpp \
+  "  e.pico_total = sqrtf(m2_pico) * GRAVIDADE_MS2;" \
+  "  e.pico_total = sqrtf(m2_pico);"
 
 echo
 echo "-----------------------------------------"

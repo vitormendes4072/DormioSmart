@@ -28,10 +28,10 @@ CXXFLAGS := -std=c++11 -Wall -Wextra -Wpedantic -Wshadow -O2 -g \
 
 FONTES := epoca.cpp payload.cpp filtro.cpp caracteristicas.cpp \
           fifo_mpu.cpp reamostragem.cpp cadeia_c2.cpp lote.cpp \
-          registro_flash.cpp fila_flash.cpp
+          registro_flash.cpp fila_flash.cpp epoca_c2.cpp envio_da_fila.cpp
 CABECALHOS := epoca.h buffer.h cadencia.h reconexao.h relogio.h payload.h \
               filtro.h caracteristicas.h fifo_mpu.h reamostragem.h cadeia_c2.h lote.h \
-              registro_flash.h fila_flash.h
+              registro_flash.h fila_flash.h epoca_c2.h envio_da_fila.h
 
 # O leitor de JSON NAO esta em FONTES de proposito: ele e instrumento de
 # teste, mora em `testes/` e nao deve embarcar. Se um dia aparecer em FONTES,
@@ -179,3 +179,15 @@ sintaxe: bin/secrets-falso/secrets.h
 	@# seria compilada, que e o defeito que este alvo existe para pegar.
 	@echo "  ../midia_flash_esp32.h"
 	@$(CXX) -std=c++11 -fsyntax-only -Wall -Wextra -x c++ -I$(STUBS) -I.. ../midia_flash_esp32.h
+	@# O sketch de produto (FW-07 b) e LIGADO, nao so compilado: o nucleo entra
+	@# nele por `../nucleo_amalgama.cpp`, e um .cpp esquecido ali so apareceria
+	@# como erro de link na IDE. Com os stubs, o link no host acusa antes.
+	@echo "  ../sketch.ino + ../nucleo_amalgama.cpp (ligacao)"
+	@mkdir -p bin/ligacao
+	@$(CXX) -std=c++11 -c -x c++ -I$(STUBS) -Ibin/secrets-falso -include Arduino.h ../sketch.ino -o bin/ligacao/sketch.o
+	@$(CXX) -std=c++11 -c -I$(STUBS) ../nucleo_amalgama.cpp -o bin/ligacao/amalgama.o
+	@$(CXX) -std=c++11 -c -I$(STUBS) $(STUBS)/stubs.cpp -o bin/ligacao/stubs.o
+	@printf 'void setup();\nint main() { setup(); return 0; }\n' > bin/ligacao/main.cpp
+	@$(CXX) -std=c++11 -c bin/ligacao/main.cpp -o bin/ligacao/main.o
+	@$(CXX) bin/ligacao/sketch.o bin/ligacao/amalgama.o bin/ligacao/stubs.o bin/ligacao/main.o -o bin/ligacao/sketch
+	@echo "  ok -- o sketch de produto liga com o nucleo."

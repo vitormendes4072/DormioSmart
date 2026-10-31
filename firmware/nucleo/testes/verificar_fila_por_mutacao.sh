@@ -14,7 +14,7 @@ AQUI=$(cd "$(dirname "$0")" && pwd)
 NUCLEO=$(cd "$AQUI/.." && pwd)
 CXX=${CXX:-g++}
 BANDEIRAS="-std=c++11 -w -O2 -fno-exceptions -fno-rtti"
-FONTES="epoca.cpp payload.cpp filtro.cpp caracteristicas.cpp fifo_mpu.cpp reamostragem.cpp cadeia_c2.cpp lote.cpp registro_flash.cpp fila_flash.cpp"
+FONTES="epoca.cpp payload.cpp filtro.cpp caracteristicas.cpp fifo_mpu.cpp reamostragem.cpp cadeia_c2.cpp lote.cpp registro_flash.cpp fila_flash.cpp epoca_c2.cpp envio_da_fila.cpp"
 
 falhas=0
 total=0
@@ -130,6 +130,21 @@ esperar "9. o ms arredonda para cima" registro_flash.cpp \
 esperar "10. vetor gravado sem a bandeira" fila_flash.cpp \
   "  if (vetor) r.bandeiras |= REGISTRO_TEM_FEATURES;" \
   "  (void)0;"
+
+echo
+echo "Sabotadores do ENVIO da fila (FW-07 b) -- a mesma suite tem de acusar:"
+
+esperar "11. descarta registro sem payload tambem no meio" envio_da_fila.cpp \
+  "      if (lote.quantidade() == 0 && r != PAYLOAD_BUFFER_PEQUENO) {" \
+  "      if (r != PAYLOAD_BUFFER_PEQUENO) {"
+
+esperar "12. registro sem payload fica na frente da fila" envio_da_fila.cpp \
+  "        if (fila->confirmar(1) == 1) p.descartados++;" \
+  "        p.descartados++;"
+
+esperar "13. confirma o lote inteiro, nao o prefixo aceito" envio_da_fila.cpp \
+  "  if (d.acao == LOTE_CONFIRMAR && d.confirmar > 0) fila->confirmar(d.confirmar);" \
+  "  if (d.acao == LOTE_CONFIRMAR && d.confirmar > 0) fila->confirmar(enviadas);"
 
 echo
 echo "-----------------------------------------"

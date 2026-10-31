@@ -2341,6 +2341,15 @@ PENDENCIAS: list[Pendencia] = [
     Pendencia("REQ-01", SOFTWARE, "Documentar requisitos: dimensões, conforto, "
               "autonomia, aquecimento, custo, segurança.", "🟡",
               camada_backlog="L0"),
+    Pendencia("FW-07 (c)", HARDWARE, "Gravar o `sketch.ino` da C2 na placa e ver, "
+              "no log serial: o I2C ler a FIFO, o sono leve acordar a cada ~1,7 s, a "
+              "taxa medida dentro de ±20 %, épocas fechando com `f`, e o envio de "
+              "10 em 10 min sem transbordo enquanto o Wi-Fi está ligado. As partes "
+              "(a) e (b) estão no núcleo e no sketch desde 31/10, testadas no host; "
+              "o sketch só foi compilado e ligado com stubs.", "🔴",
+              camada_backlog="L1",
+              nota="Anda junto com o `FW-05` e o `FW-08` (c): os três são a mesma "
+                   "sessão de bancada."),
     Pendencia("FW-08 (c)", HARDWARE, "Exercitar na placa a ponte "
               "`firmware/midia_flash_esp32.h`: gravar com `firmware/partitions.csv`, "
               "ver `abrir()` achar a partição `dormio`, e medir o tempo da montagem "
@@ -2430,15 +2439,6 @@ PENDENCIAS: list[Pendencia] = [
               "`ts-prune`) ou script próprio **com controle positivo**, porque o "
               "instrumento é a parte difícil e isso já foi medido.", "🟡",
               camada_backlog="L0"),
-    Pendencia("FW-07", SOFTWARE, "Parte (b): reescrever o `sketch.ino`, que hoje "
-              "tira **uma amostra por boot** e dorme, em torno da cadeia C2 que a "
-              "parte (a) deixou pronta e testada no núcleo (30/10: `fifo_mpu.h`, "
-              "`reamostragem.h`, `cadeia_c2.h`, `lote.h`). Falta a cola com o "
-              "hardware: ESP32 em **sono leve**, os registradores da C2, a FIFO lida "
-              "por I2C em blocos, o despertar com intervalo variado, buffer no heap "
-              "e na flash (`FW-08`) e drenagem pelo `POST /api/data/lote`. Sem a "
-              "placa ela só compila; e um POST que bloqueie mais de ~1,7 s deixa a "
-              "FIFO transbordar.", "🔴", camada_backlog="L0"),
     Pendencia("FW-01", SOFTWARE, "Lógica atividade/repouso por época no firmware. "
               "**Parcialmente coberto:** o `envio-continuo` já classifica por "
               "época de 30 s desde o `HW-05`; falta levar ao `sketch.ino` "

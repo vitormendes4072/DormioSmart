@@ -49,10 +49,10 @@ linha, não um resumo: resumo é a cópia que diverge.
 
 | Grupo | Itens |
 |---|---:|
-| A — Depende só de software: dá para fazer a qualquer momento | **34** |
+| A — Depende só de software: dá para fazer a qualquer momento | **33** |
 | B — Depende de decisão do Vitor | **10** |
 | C — Depende de ação do Vitor que não é decisão | **7** |
-| D — Bloqueado por hardware ou coleta | **25** |
+| D — Bloqueado por hardware ou coleta | **26** |
 | E — Bloqueado por terceiro | **4** |
 | **Total** | **80** |
 
@@ -75,7 +75,7 @@ outro item. **Desde 28/10 têm ID no backlog:** `GIT-07`, `INFRA-02` e
 
 ## A — Depende só de software: dá para fazer a qualquer momento
 
-**34 itens.**
+**33 itens.**
 
 ### `CALC-01` 🔴
 
@@ -224,12 +224,6 @@ Duas partes, não três: **(a)** asserção nomeada por rota — hoje só `/conf
 ### `UI-19 (classe)` 🟡
 
 As duas instâncias fecharam em 20/10; **a classe não.** Não há verificação de alcance no nível do **símbolo** — export que ninguém importa, dentro de arquivo que está no grafo, passa pelo `alcance.test.ts` (arquivo) e pelo `montagem.test.ts` (render). Ferramenta pronta (`knip`, `ts-prune`) ou script próprio **com controle positivo**, porque o instrumento é a parte difícil e isso já foi medido.
-
-*Camada no backlog: L0.*
-
-### `FW-07` 🔴
-
-Parte (b): reescrever o `sketch.ino`, que hoje tira **uma amostra por boot** e dorme, em torno da cadeia C2 que a parte (a) deixou pronta e testada no núcleo (30/10: `fifo_mpu.h`, `reamostragem.h`, `cadeia_c2.h`, `lote.h`). Falta a cola com o hardware: ESP32 em **sono leve**, os registradores da C2, a FIFO lida por I2C em blocos, o despertar com intervalo variado, buffer no heap e na flash (`FW-08`) e drenagem pelo `POST /api/data/lote`. Sem a placa ela só compila; e um POST que bloqueie mais de ~1,7 s deixa a FIFO transbordar.
 
 *Camada no backlog: L0.*
 
@@ -463,7 +457,15 @@ SMTP próprio (Resend/Brevo) para 'esqueci minha senha'. Exige criar conta em se
 
 ## D — Bloqueado por hardware ou coleta
 
-**25 itens.**
+**26 itens.**
+
+### `FW-07 (c)` 🔴
+
+Gravar o `sketch.ino` da C2 na placa e ver, no log serial: o I2C ler a FIFO, o sono leve acordar a cada ~1,7 s, a taxa medida dentro de ±20 %, épocas fechando com `f`, e o envio de 10 em 10 min sem transbordo enquanto o Wi-Fi está ligado. As partes (a) e (b) estão no núcleo e no sketch desde 31/10, testadas no host; o sketch só foi compilado e ligado com stubs.
+
+*Camada no backlog: L1.*
+
+**Conferência.** Anda junto com o `FW-05` e o `FW-08` (c): os três são a mesma sessão de bancada.
 
 ### `FW-08 (c)` 🟡
 
