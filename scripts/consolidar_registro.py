@@ -2312,6 +2312,27 @@ DEFEITOS: list[Defeito] = [
         nota="Dano evitado, não ocorrido: a chave nunca foi ligada. Se tivesse sido, "
              "a produção perderia login e cadastro até um deploy do frontend.",
     ),
+    Defeito(
+        data="2026-10-31", area=DOC, item="DIAG-04",
+        defeito="As figuras do TCC `DIAG-01`, `DIAG-03` e `DIAG-04` não acompanharam a "
+                "C2, a fila na flash, o lote, a `010` e as features: o `DIAG-04` dizia "
+                "que a `002` e a `008` não tinham rodado na produção, e o `DIAG-03` "
+                "descrevia o `envio-continuo` como o laço do produto.",
+        achado_por=LEITURA,
+        causa="O `README` de `docs/diagramas/` tem uma regra de manutenção que lista, "
+              "item por item, quais figuras revisar quando `FW-07`, `API-03`, "
+              "`DATA-07` e `DATA-03` fechassem. Os quatro fecharam entre 28 e 31/10, "
+              "e nenhum fechamento abriu a tabela: a regra estava escrita, nada a "
+              "cobrava.",
+        correcao="As três revisadas, renderizadas e olhadas, com os identificadores "
+                 "conferidos contra o código por script; a tabela da regra marcada com "
+                 "o que já foi revisado e o que ainda vai pedir revisão.",
+        commit="(o commit que introduz esta linha: um commit não cita o próprio "
+               "hash — ver a entrada de 30/10 (iii) do diário)", procedencia="parcial",
+        nota="Dano: nenhum ainda — as figuras não tinham ido ao documento. É o mesmo "
+             "padrão do `DOC-13`: nada confere um documento contra o fechamento de "
+             "um item.",
+    ),
 ]
 
 
@@ -2341,17 +2362,6 @@ PENDENCIAS: list[Pendencia] = [
                    "backlog."),
     Pendencia("CALC-04", SOFTWARE, "Análise elétrica: pull-down, pull-ups do I2C, "
               "níveis 3,3 V, fonte de despertar.", "🟡", camada_backlog="L0"),
-    Pendencia("DIAG-02", SOFTWARE, "Esquemático do circuito; v1 (1 sensor) e v2 "
-              "(2, endereços I2C).", "🟡", camada_backlog="L0",
-              nota="Confirmado aberto: não há `DIAG-02-*.md` em "
-                   "`docs/diagramas/`."),
-    Pendencia("DIAG-04", SOFTWARE, "Sequência do fluxo autenticado + modelo ER. "
-              "Escrito e revisado em 17/10. **Falta só uma coisa:** os três blocos "
-              "mermaid foram validados por **parser**, nunca por **renderização** "
-              "— ninguém olhou as figuras.", "🟡", camada_backlog="L0"),
-    Pendencia("DOC-05", SOFTWARE, "READMEs e `CLAUDE.md`. Falta só o `DIAG-04`. O "
-              "`CLAUDE.md` é versionado desde 27/10 (`DOC-11`).", "🟡",
-              camada_backlog="L0"),
     Pendencia("DOC-06b", SOFTWARE, "**Ler os artigos antes de citá-los** "
               "(referência conferida ≠ artigo lido) e converter para o padrão de "
               "citação do TCC.", "🔴", camada_backlog="L0"),

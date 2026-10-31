@@ -19,15 +19,15 @@ a única coisa aqui que sustenta uma afirmação de método.
 
 ## Resumo quantitativo
 
-**130 correções registradas**, todas sustentadas no repositório.
+**131 correções registradas**, todas sustentadas no repositório.
 
 **A unidade de contagem, dita antes dos números, porque ela decide como
 lê-los.** Uma linha deste arquivo é **uma correção**: um defeito, uma
 causa, uma correção. Em 4 linhas, porém, a causa e a correção foram
 uma só e os defeitos foram vários — `DADOS-02` (10), `REF-01` (4), `GIT-06` (14), `SEC-12` (2) —, e agrupá-las foi deliberado,
 porque separá-las contaria a mesma correção várias vezes. **Contando
-defeito em vez de correção, o total seria 156.** Este
-arquivo usa **130**, que é o número menor e o mais defensável.
+defeito em vez de correção, o total seria 157.** Este
+arquivo usa **131**, que é o número menor e o mais defensável.
 
 **Fora da contagem, e visível:** 1 linha(s) — `ML-04b` —,
 em que a hipótese se confirmou e o que se corrigiu foi a afirmação
@@ -42,15 +42,15 @@ que se podia extrair do resultado, não um defeito. Estão na seção da
 | Interface | 23 |
 | Firmware | 18 |
 | Dados e ML | 24 |
-| Documentação | 23 |
+| Documentação | 24 |
 | Infraestrutura | 23 |
-| **Total** | **130** |
+| **Total** | **131** |
 
 ### Por instrumento — o campo que dá valor a este arquivo
 
 | Como foi encontrado | Correções | O que o instrumento é |
 |---|---:|---|
-| **leitura** | 28 | Inspeção do código ou do documento, raciocinando sobre ele. Nada roda, nada se confere contra terceiro. |
+| **leitura** | 29 | Inspeção do código ou do documento, raciocinando sobre ele. Nada roda, nada se confere contra terceiro. |
 | **cálculo** | 4 | Aritmética sobre os próprios números do projeto. O mais barato de todos, e derrubou premissas grandes. |
 | **execução** | 49 | Rodar código do projeto — suíte, job, compilador, script — e a **saída** acusar. O defeito não estava escondido: estava não exercitado. |
 | **controle positivo** | 13 | Provocar o defeito de propósito e exigir que a verificação acuse. Inclui verificação por mutação. **É o único instrumento que mede o alcance de uma verificação.** |
@@ -58,7 +58,7 @@ que se podia extrair do resultado, não um defeito. Estão na seção da
 | **terceiro** | 11 | Especificação, documentação oficial, artigo, issue ou API de terceiro. O artefato que decide a resposta está **fora** do repositório. |
 | **dado real** | 3 | Só apareceu com o arquivo ou a medição real em mãos. |
 | **uso real** | 1 | Alguém usou o produto como usuário. |
-| **Total** | **130** | |
+| **Total** | **131** | |
 
 ### As três derivações que os números sustentam
 
@@ -72,9 +72,9 @@ que se podia extrair do resultado, não um defeito. Estão na seção da
 > do projeto; são proporções do que foi achado.**
 
 **(1) Exercitar achou perto do dobro do que ler.**
-Execução, controle positivo e uso real somam **63 de 130**
+Execução, controle positivo e uso real somam **63 de 131**
 registros (48%). Leitura e cálculo — os dois
-instrumentos que não precisam rodar nada — somam **32** (24%). A razão é de **2,0 para 1**.
+instrumentos que não precisam rodar nada — somam **33** (25%). A razão é de **1,9 para 1**.
 
 Com a ressalva que impede a leitura fácil: isto **não** diz que ler é
 pouco útil. Diz que, neste projeto, leitura e execução acharam classes
@@ -84,7 +84,7 @@ e a execução achou **alcance** insuficiente. Alcance não se vê lendo, e é
 por isso que a razão é essa e não o contrário.
 
 **(2) 14 correções tinham a causa fora do repositório.**
-Fonte de terceiro e dado real somam **14 de 130** (10%) — defeitos cuja causa não está em nenhuma
+Fonte de terceiro e dado real somam **14 de 131** (10%) — defeitos cuja causa não está em nenhuma
 linha deste projeto, e que **nenhum teste daqui poderia pegar**: a
 especificação do PostgREST, a unidade do Empatica em `g/64`, o valor de
 uma chave num painel do Supabase, a API do Actions, os coeficientes do
@@ -98,7 +98,7 @@ Supabase de teste**, que deve a quatro itens e desde 28/10 tem item próprio
 **(3) As próprias verificações do projeto estavam defeituosas
 26 vezes — e 24 dessas 26 só apareceram
 rodando ou sabotando.**
-São **26 de 130** registros (20%) em que a coisa errada era um teste, uma
+São **26 de 131** registros (19%) em que a coisa errada era um teste, uma
 guarda de CI, um harness de mutação ou um vetor de referência — não o
 código. A distribuição:
 
@@ -127,9 +127,9 @@ alguém tentou fazer a verificação falhar.
 | Procedência | Correções | O que significa |
 |---|---:|---|
 | `completa` | 117 | Commit **e** artefato reabrível — teste, script, seção de documento. Dá para reconferir sem acreditar em ninguém. |
-| `parcial` | 13 | Só a mensagem de commit, só a entrada de diário, ou correção em arquivo não versionado. Entra porque omitir seria pior, e entra **marcada**. |
+| `parcial` | 14 | Só a mensagem de commit, só a entrada de diário, ou correção em arquivo não versionado. Entra porque omitir seria pior, e entra **marcada**. |
 
-**50 dos 130 defeitos revelaram que a premissa estava
+**50 dos 131 defeitos revelaram que a premissa estava
 errada** — não que o código estava errado. É a seção mais instrutiva deste
 arquivo e tem lugar próprio no fim.
 
@@ -1137,9 +1137,9 @@ só de código filtra pela coluna de área.
 
 ---
 
-## Documentação — 23 defeitos
+## Documentação — 24 defeitos
 
-*10 inventário · 9 leitura · 3 terceiro · 1 execução*
+*10 leitura · 10 inventário · 3 terceiro · 1 execução*
 
 ### 2026-06-03 · `(README)`
 
@@ -1404,6 +1404,18 @@ só de código filtra pela coluna de área.
 **🔄 A premissa estava errada.** O número entrou como fato de folha e foi tratado como estável, quando depende da versão do pacote `arduino-esp32` — que é justamente o argumento para versionar a tabela.
 
 **Nota.** Dano: superestimava em 9 %. Nenhuma decisão mudou: mais de uma semana em qualquer das duas tabelas.
+
+**Commit.** `(o commit que introduz esta linha: um commit não cita o próprio hash — ver a entrada de 30/10 (iii) do diário)` · procedência **parcial**
+
+### 2026-10-31 · `DIAG-04`
+
+**O defeito.** As figuras do TCC `DIAG-01`, `DIAG-03` e `DIAG-04` não acompanharam a C2, a fila na flash, o lote, a `010` e as features: o `DIAG-04` dizia que a `002` e a `008` não tinham rodado na produção, e o `DIAG-03` descrevia o `envio-continuo` como o laço do produto.
+
+**Como foi encontrado.** *leitura* — O `README` de `docs/diagramas/` tem uma regra de manutenção que lista, item por item, quais figuras revisar quando `FW-07`, `API-03`, `DATA-07` e `DATA-03` fechassem. Os quatro fecharam entre 28 e 31/10, e nenhum fechamento abriu a tabela: a regra estava escrita, nada a cobrava.
+
+**A correção.** As três revisadas, renderizadas e olhadas, com os identificadores conferidos contra o código por script; a tabela da regra marcada com o que já foi revisado e o que ainda vai pedir revisão.
+
+**Nota.** Dano: nenhum ainda — as figuras não tinham ido ao documento. É o mesmo padrão do `DOC-13`: nada confere um documento contra o fechamento de um item.
 
 **Commit.** `(o commit que introduz esta linha: um commit não cita o próprio hash — ver a entrada de 30/10 (iii) do diário)` · procedência **parcial**
 
@@ -1733,7 +1745,7 @@ com competência teria produzido a coisa errada bem feita.
 | 2026-10-31 | `FW-08` | Que o tamanho da área de dados da tabela padrão era um dado conhecido e estável. |
 | 2026-10-31 | `SEC-11` | Que ligar o captcha no painel era uma mudança só de configuração. |
 
-**50 de 130.** E a distribuição por instrumento dentro
+**50 de 131.** E a distribuição por instrumento dentro
 deste subconjunto é a parte que vale registrar:
 
 | Instrumento | Premissas derrubadas |
