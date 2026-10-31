@@ -349,6 +349,25 @@ estimativa toma como exato o relógio do próprio microcontrolador, que durante 
 a partir de oscilador interno de menor estabilidade; o erro desse relógio não foi medido e
 depende do dispositivo físico.
 
+**Sobre a guarda das épocas na ausência de conexão.** ✏️ *(31/10, `FW-08`.)* As épocas
+calculadas no dispositivo são gravadas em memória flash não volátil antes do envio, e só são
+liberadas após confirmação do servidor. Com a tabela de partições adotada, a capacidade
+garantida é de 32 704 épocas de 30 s, o que corresponde a 272,5 h sem conexão; esgotada essa
+capacidade, as épocas novas são recusadas e contabilizadas, e nenhuma época pendente é
+sobrescrita. Duas perdas são declaradas. Primeiro, o instante de cada época é registrado com
+resolução de um segundo. Segundo, quando o dispositivo é reiniciado antes de sincronizar o
+relógio com a rede, as épocas gravadas naquela sessão conservam a medição, mas não o instante
+absoluto, e passam a ser datadas pelo instante de recebimento. A integridade dos registros após
+interrupção de energia foi verificada em simulação da memória, com interrupção em cada byte de
+uma gravação, e não no dispositivo físico.
+
+**Sobre o pico de aceleração transmitido.** ✏️ *(31/10, `FW-07`.)* Na arquitetura adotada, o
+pico de magnitude de cada época, transmitido junto com as características, é calculado sobre a
+série já filtrada (passa-baixas de 12,8 Hz) e reamostrada a 32 Hz, e não sobre as leituras
+brutas a 50 Hz. Um impulso de uma ou duas leituras brutas chega, portanto, atenuado. A escolha
+mantém o pico e as características descrevendo o mesmo sinal; a magnitude da atenuação não foi
+medida no dispositivo.
+
 **Sobre a métrica de acurácia.** Registra-se, por rigor metodológico, que a acurácia global
 não constitui métrica informativa neste domínio. Dado que a proporção de épocas de sono em
 um registro noturno é elevada, um classificador trivial que atribuísse a totalidade das
@@ -490,16 +509,27 @@ supressão apenas no fluxo de autenticação, mantendo-a ausente no cadastro (AM
 Conclui-se que a limitação decorre da escolha do serviço de identidade — decisão de projeto
 revisável — e não de uma impossibilidade do modelo de cadastro com endereço como identificador.
 
-**Mitigação adotada e o que ela não alcança.** Adotou-se proteção contra automação (*captcha*) nos
-pontos de acesso de cadastro, autenticação e recuperação. Essa medida reduz a **taxa** de
-exploração, tornando economicamente desinteressante a varredura em massa, e **não elimina o
-oráculo**: a consulta sobre um endereço determinado permanece possível ao custo de um desafio, e
-é precisamente essa consulta individual que sustenta os usos de maior gravidade da enumeração. A
-própria referência adotada classifica o *captcha* como medida de defesa em profundidade, e não
-como controle preventivo (OWASP, 2025a). Registra-se, pelo mesmo motivo, que as mensagens
-apresentadas na interface foram redigidas de forma condicional, não nomeando a existência da
-conta, o que fecha o canal diretamente visível ao usuário sem fechar os canais descritos nos itens
-1 a 4, que residem nas respostas do serviço e não na interface.
+**Mitigação vigente e o que ela não alcança.** ✏️ *(31/10, `SEC-11`.)* A única mitigação em
+vigor é a limitação de taxa por endereço de origem aplicada pelo próprio serviço de identidade:
+30 requisições a cada cinco minutos nos pontos de acesso de cadastro, recuperação, reenvio e
+alteração de dados do usuário, e 150 a cada cinco minutos no de autenticação (SUPABASE, 2026e).
+Essa medida reduz a **taxa** de exploração a partir de uma única origem e **não elimina o
+oráculo**: a consulta sobre um endereço determinado permanece possível, e é precisamente essa
+consulta individual que sustenta os usos de maior gravidade da enumeração.
+
+Avaliou-se, e não se adotou, a proteção contra automação (*captcha*) oferecida pelo serviço. A
+leitura do código-fonte do serviço mostra que, uma vez habilitada, ela é exigida nos pontos de
+acesso de cadastro, autenticação por senha e recuperação, mas não no de alteração de dados do
+usuário autenticado, por onde passa o canal 3 (SUPABASE, 2026f). Como esse canal exige apenas uma
+conta e está sujeito ao mesmo limite de taxa do cadastro, a habilitação não elevaria o custo da
+varredura em massa — o único efeito que dela se esperaria, dado que a própria referência adotada a
+classifica como defesa em profundidade, e não como controle preventivo (OWASP, 2025a). Seu custo,
+por outro lado, incluiria a dependência de serviço de terceiro na interface, com tratamento de
+dados do navegador do usuário, e a alteração dos quatro fluxos de autenticação da aplicação
+cliente. Registra-se, por fim, que as mensagens apresentadas na interface foram redigidas de
+forma condicional, não nomeando a existência da conta, o que fecha o canal diretamente visível ao
+usuário sem fechar os canais descritos nos itens 1 a 4, que residem nas respostas do serviço e
+não na interface.
 
 **O que seria necessário para eliminar a limitação.** A correção, distinta das mitigações, exige
 três propriedades simultâneas: resposta idêntica em conteúdo, código de estado e tempo nos dois
@@ -603,9 +633,12 @@ diferentes de tudo o mais no arquivo:
    fechou — seria afirmação falsa, porque a chave não fecha (ver canal 2). Declarar
    não-atendimento de requisito **de Nível 3**, com o custo de fechá-lo precificado, é postura
    defensável; afirmar conformidade que não existe não é.
-3. **Se o captcha (`SEC-11`) for ligado, NADA nesta seção muda** além de já estar escrito no
-   parágrafo "Mitigação adotada". O texto afirma que a medida reduz taxa e não elimina o oráculo.
-   Trocar "limitação declarada" por "mitigado" depois de ligar a chave seria o §1 das lições.
+3. ✏️ **31/10: o captcha (`SEC-11`) foi avaliado e NÃO adotado.** Até esta data o parágrafo de
+   mitigação dizia "Adotou-se proteção contra automação (*captcha*)", e a proteção nunca foi
+   ligada: o texto afirmava uma defesa inexistente. Corrigido para a limitação de taxa, que é o
+   que de fato vigora, com o motivo de o captcha ter ficado de fora (não cobre o canal 3). A
+   regra antiga continua valendo para qualquer mitigação futura: ligar uma chave não autoriza
+   trocar "limitação declarada" por "mitigado".
 
 **Referências novas desta seção, a montar na lista final.** Nenhuma delas estava no arquivo antes,
 e **nenhuma vem de `ML-DATASETS-E-PLANO.md` §0** — a procedência delas é esta lista, e não aquele
@@ -622,6 +655,8 @@ e **nenhuma vem de `ML-DATASETS-E-PLANO.md` §0** — a procedência delas é es
 | (SUPABASE, 2026b) | `supabase/supabase`, *issue* #35844 — `email_exists` na troca de e-mail | registro público, **em aberto** |
 | (SUPABASE, 2026c) | `supabase/auth`, *issue* #2702 — `/recover` distinguível | registro público, **em aberto**, com PR proposto |
 | (SUPABASE, 2026d) | Guia *Identity Linking* — usa o termo *pre-account takeover* | documentação de fornecedor |
+| (SUPABASE, 2026e) | Guia *Rate limits* da autenticação — limites por IP de `/signup`, `/recover`, `/resend`, `/user` (30 a cada 5 min) e `/token` (150 a cada 5 min) | documentação de fornecedor; ✏️ lida em 31/10 |
+| (SUPABASE, 2026f) | `supabase/auth`, código-fonte: `internal/api/middleware.go` (`verifyCaptcha`) e `internal/api/api.go` (rotas que o exigem) | **código-fonte**; ✏️ lido em 31/10 — é a fonte de que o `/user` não passa pelo captcha |
 | (AUTH0, 2026) | Configuração de *tenant* para resposta genérica no cadastro público | documentação/comunidade de fornecedor concorrente |
 | (AMAZON, 2020) | *Prevent user existence errors*, Amazon Cognito — e `UsernameExistsException` no `SignUp` | idem |
 

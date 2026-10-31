@@ -7,12 +7,14 @@
 > **Onde entra no TCC:** capítulo de Desenvolvimento, seção de persistência e segurança
 > (figuras A e B) e seção de autenticação (figura C). A figura B é o que sustenta a
 > seção de conformidade com a LGPD.
-> **Estado do código:** verificado em `2026-09-29` e **revisado em `2026-10-17`**, após
-> as migrações `001` a `008`.
-> **Migrações escritas e NÃO executadas no Supabase:** a `002` (backfill do dono, item
-> `DATA-03`) e a **`008`** (`PERFIL-01`). Os dois diagramas abaixo descrevem o esquema
-> **com a `008` aplicada** — ver a nota ao fim da figura A para o que muda enquanto ela
-> não rodar.
+> **Estado do código:** verificado em `2026-09-29`, revisado em `2026-10-17` e ✏️
+> **atualizado em `2026-10-31`**, após as migrações `001` a `010`: entraram a `009`
+> (privilégios padrão do Supabase), a `010` (as dez colunas do vetor de características) e as
+> rotas `POST /api/data/lote` e `GET /api/features`. Identificadores conferidos contra o
+> código por script, com controle positivo; as três figuras foram renderizadas e olhadas.
+> ✏️ **Na produção, as migrações `001` a `010` estão todas aplicadas** (diagnóstico de 29 e
+> 30/10; a `002` era desnecessária, com zero leituras sem dono). Até 31/10 este cabeçalho
+> dizia que a `002` e a `008` não tinham rodado.
 
 > ✏️ **O que o `PERFIL-01` mudou aqui, e por que este diagrama era o motivo de decidir
 > antes.** O item dizia: *"decidir antes do `DIAG-04`: o modelo ER é material de banca, e
@@ -66,7 +68,7 @@ erDiagram
     }
     SLEEP_DATA {
         bigserial id PK
-        uuid user_id FK "anulavel ate o DATA-03"
+        uuid user_id FK "anulavel no esquema · 0 linhas sem dono"
         uuid device_id FK "anulavel"
         double accel_x_y_z "m/s2"
         double gyro_x_y_z "rad/s · nao alimenta decisao"
@@ -78,6 +80,12 @@ erDiagram
         integer epoca_segundos "nulo = amostra instantanea"
         text metodo_agregacao "obrigatorio se epoca_segundos"
         integer amostras
+        double enmo_media "f0 em g · 010 · nulo = leitura sem vetor"
+        double enmo_desvio_max "f1, f2 em g"
+        double mag_din_media "f3 em g"
+        double zcr_p_frac "f4, f5 adimensionais"
+        double g_x_y_z "direcao unitaria da gravidade"
+        double fs_features "Hz da grade · as dez juntas ou nenhuma"
     }
 ```
 
@@ -88,9 +96,19 @@ uma coluna de um grant de tabela. Com a credencial em outra tabela, sem `GRANT` 
 para `anon`/`authenticated`, ela não é alcançável pelo cliente.
 
 **O que ainda é anulável e por quê:** `sleep_data.user_id` e `device_id` nasceram
-anuláveis porque as linhas coletadas antes da migração `001` não têm dono. O backfill
-está escrito (`migrations/002_backfill_dono_dos_dados.sql`) e **não foi rodado** —
-enquanto isso, o painel de uma conta nova nasce vazio (`DATA-03`).
+anuláveis porque as linhas coletadas antes da migração `001` não teriam dono. ✏️ *31/10:* o
+diagnóstico de produção de 28/10 mediu **zero** leituras sem dono, e o backfill
+(`migrations/002_backfill_dono_dos_dados.sql`) se mostrou desnecessário (`DATA-03`, fechado).
+A coluna continua anulável no esquema.
+
+**A decisão que o ER esconde se não for dita, nº 3: o vetor tem nome, não posição.** As seis
+features e a direção da gravidade chegam do dispositivo como listas (`f`, `g`), na ordem
+canônica do contrato §2.6, e a migração `010` as grava em **dez colunas nomeadas** — trocar a
+ordem de `f` passaria em toda faixa e produziria um modelo errado em silêncio, e com nome a
+ordem vira nome uma vez, no backend (`validacao.colunas_de_features`). A restrição
+`sleep_data_features_tudo_ou_nada` exige as dez preenchidas ou as dez nulas. `inclinacao_rel` e
+`d_angulo` **não têm coluna**: dependem da noite inteira e são derivadas na leitura
+(`web-app/features_noite.py`).
 
 **A decisão que o ER esconde se não for dita, nº 2: o nome existe em dois lugares, e só
 um deles é lido.** `profiles.nome` é a fonte de verdade; `raw_user_meta_data.nome` é o
@@ -110,12 +128,9 @@ inerte isso era invisível; com ela canônica, `GET /api/me/perfil` **repara** a
 semeando pelo metadado. Por isso o ER mostra a relação como `1:1` e o texto diz que ela é
 *semeada*: o esquema garante no máximo uma linha, não que ela exista.
 
-> ⚠️ **Enquanto a migração `008` não for aplicada:** o `check` de 200 em `nome` e o
-> gatilho de `updated_at` **não existem no banco**, e `profiles.updated_at` continua
-> congelado no instante da criação. A rota de perfil funciona sem a `008` — ela grava
-> `nome` e `idade` pelas policies que existem desde a `001`. O que falta é o teto do
-> caminho que não passa pelo Flask (o navegador fala direto com o PostgREST) e a
-> honestidade da coluna de data.
+> ✏️ **31/10: a migração `008` está aplicada na produção** (diagnóstico de 29/10), com o
+> `check` de 200 em `nome` e o gatilho de `updated_at`. Até esta data esta nota descrevia o
+> que faltava enquanto ela não rodasse.
 
 ---
 
@@ -124,15 +139,15 @@ semeando pelo metadado. Por isso o ER mostra a relação como `1:1` e o texto di
 O eixo do diagrama é: **nenhum caminho de escrita recebe o dono como parâmetro**.
 
 ```mermaid
-flowchart TB
+flowchart LR
     subgraph PAPEIS["PAPEIS"]
-        ANON["anon<br/>navegador nao autenticado"]
+        ANON["anon<br/>navegador nao autenticado<br/>EXECUTE em funcao NENHUMA (009)"]
         AUTHD["authenticated<br/>JWT do usuario · auth.uid()"]
         ING["dormio_ingestao<br/>nologin noinherit<br/>sem BYPASSRLS, sem CREATEROLE<br/>NENHUM privilegio de tabela"]
         SRV["service_role<br/>(APOSENTADA da ingestao na v2.4.0)"]
     end
 
-    subgraph FUNCS["FUNCOES security definer (search_path = '')"]
+    subgraph FUNCS["FUNCOES security definer"]
         F1["resolver_dispositivo(token_hash)<br/>-> (id, user_id) · nao devolve o hash"]
         F2["registrar_leitura(token_hash, jsonb)<br/>dono derivado do token, aqui dentro"]
         F3["registrar_leitura_da_sessao(device_id, jsonb)<br/>dono = auth.uid() · confere posse"]
@@ -142,7 +157,7 @@ flowchart TB
         F7["tocar_updated_at()<br/>gatilho da 008 · SEM security definer<br/>SEM execute para papel algum"]
     end
 
-    subgraph TABS["TABELAS (RLS habilitado em todas)"]
+    subgraph TABS["TABELAS com RLS"]
         T1["profiles<br/>select/insert/update/delete own<br/>FONTE DE VERDADE do perfil"]
         T2["devices<br/>select/insert/update/delete own"]
         T3["sleep_data<br/>select own · delete own<br/>SEM policy de insert"]
@@ -180,11 +195,20 @@ flowchart TB
     class SRV futuro;
 ```
 
-**Verificação, não afirmação.** O que o diagrama diz sobre RLS é coberto por **146 testes**
+**Verificação, não afirmação.** O que o diagrama diz sobre RLS é coberto por **158 testes**
 contra um PostgreSQL real (`web-app/tests/rls/`), sem *mock*, incluindo invariantes de
 catálogo (tabela nova sem RLS, `using (true)`, policy para `anon`). A suíte foi verificada
-por mutação: **30 sabotadores** introduzidos, todos detectados
-(`tests/rls/verificar_por_mutacao.py`). *(Eram 105 testes e 18 sabotadores em 29/09.)*
+por mutação: **32 sabotadores** introduzidos, todos detectados
+(`tests/rls/verificar_por_mutacao.py`). *(Eram 105 testes e 18 sabotadores em 29/09, e 146 e
+30 em 17/10.)*
+
+**O que a `009` mudou nesta figura (28/10, `SEC-12`).** No Supabase, toda função que o
+`postgres` cria em `public` nasce com `EXECUTE` **nominal** para `anon` e `authenticated`, e o
+`revoke ... from public` das migrações anteriores não alcança grant nominal: as sete funções
+eram executáveis pela chave pública, confirmado na produção. A `009` tira `EXECUTE` de `anon` em
+todas, deixa `authenticated` só nas quatro desenhadas acima, e muda o privilégio padrão para
+função nova nascer fechada. Os testes de RLS rodam sobre uma base que imita esse padrão do
+Supabase, para que a falha não volte sem ser vista.
 
 **Dois achados de 17/10 que mudam o que esta figura pode afirmar, e os dois vieram da
 verificação por mutação, não da leitura:**
@@ -231,8 +255,8 @@ em nenhum deles.
 ```mermaid
 sequenceDiagram
     autonumber
-    participant ESP as ESP32 (envio-continuo.ino)
-    participant CEL as Navegador (Coletar.tsx)
+    participant ESP as ESP32 (sketch.ino da C2 · envio-continuo.ino)
+    participant CEL as Navegador com sessao (Coletar.tsx, painel)
     participant FL as Flask (routes.py)
     participant PG as PostgreSQL (Supabase)
 
@@ -258,6 +282,16 @@ sequenceDiagram
         FL-->>ESP: 201 — confirmar_entrega() no buffer
     end
 
+    Note over ESP,PG: CAMINHO 1b — o mesmo, em lote (API-03) · o do sketch.ino da C2
+    ESP->>FL: POST /api/data/lote {"leituras": [ate 60]}<br/>X-Device-Token
+    FL->>PG: resolver_dispositivo(token_hash) — UMA vez para o lote
+    loop cada leitura, ate 6 s de orcamento
+        FL->>FL: validar_leitura() + validar_captacao() + vetor f, g, fs (010)
+        FL->>PG: registrar_leitura(token_hash, payload com as dez colunas)
+    end
+    FL-->>ESP: 200 {aceitas, rejeitadas, pendentes}<br/>503 se nada gravou e sobrou pendente
+    ESP->>ESP: confirma na fila SO o prefixo antes do primeiro pendente<br/>(envio_da_fila.h · aplicar_resposta)
+
     Note over CEL,PG: CAMINHO 2 — celular, com sessao
     CEL->>FL: POST /api/data<br/>Authorization: Bearer <JWT> + device_id no corpo
     FL->>PG: validar_token_de_usuario(JWT)
@@ -279,6 +313,17 @@ sequenceDiagram
     PG->>PG: RLS filtra por auth.uid() — nao e codigo Python que filtra
     PG-->>FL: linhas do dono, mais recentes primeiro
     FL-->>CEL: 200 + JSON
+
+    Note over CEL,PG: CAMINHO 3b — as 8 features da noite (DATA-07b) · consumidor: o modelo, nao o painel
+    CEL->>FL: GET /api/features?device_id&desde&ate (janela ate 24 h)<br/>Authorization: Bearer <JWT>
+    FL->>PG: select em sleep_data com o JWT · so linhas com vetor e captured_at<br/>paginado de 1000 em 1000
+    PG->>PG: RLS filtra por auth.uid()
+    alt consulta falhou
+        FL-->>CEL: 503 — nao devolve noite vazia por cima de banco fora do ar
+    else
+        FL->>FL: derivar_noite(): g_ref (mediana geometrica),<br/>inclinacao_rel, d_angulo (nulo depois de buraco > 45 s)
+        FL-->>CEL: 200 + g_ref, ordem_features, epocas
+    end
 
     Note over CEL,PG: CAMINHO 4 — perfil (PERFIL-01) · nome e idade
     CEL->>FL: GET /api/me/perfil<br/>Authorization: Bearer <JWT>

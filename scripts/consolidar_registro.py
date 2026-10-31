@@ -2248,6 +2248,112 @@ DEFEITOS: list[Defeito] = [
              "impossível para uma inserção de entrada única. **Conferir o "
              "`numstat` antes de commitar foi o que pegou.**",
     ),
+    Defeito(
+        data="2026-10-31", area=DOC, item="FW-08",
+        defeito="O estudo do buffer, o backlog, a pendência gerada e dois documentos "
+                "de decisão diziam que a partição de dados padrão tem **1,5 MiB** e "
+                "cobre **13,7 dias**. A tabela padrão do `arduino-esp32` tem "
+                "0x160000 = **1 408 KiB** de dados.",
+        achado_por=LEITURA,
+        causa="O estudo de 29/09 citou `tools/partitions/default.csv` sem abrir o "
+              "arquivo; o 1,5 MiB virou constante de `estudo_buffer.py` e de "
+              "`capacidade.cpp`, e o 13,7 dias se propagou a partir dali. A "
+              "`--conferir` do estudo testava a conta, não o dado de entrada.",
+        correcao="Constante corrigida para 0x160000 nos dois lugares, com nota. A "
+                 "tabela que o projeto usa passou a ser versionada "
+                 "(`firmware/partitions.csv`) e `make capacidade` mede a cobertura "
+                 "sobre ela, em vez de sobre uma constante.",
+        commit="(o commit que introduz esta linha: um commit não cita o próprio "
+               "hash — ver a entrada de 30/10 (iii) do diário)", procedencia="parcial",
+        premissa_curta="Que o tamanho da área de dados da tabela padrão era um dado conhecido e estável.",
+        premissa="O número entrou como fato de folha e foi tratado como estável, "
+                 "quando depende da versão do pacote `arduino-esp32` — que é "
+                 "justamente o argumento para versionar a tabela.",
+        nota="Dano: superestimava em 9 %. Nenhuma decisão mudou: mais de uma semana "
+             "em qualquer das duas tabelas.",
+    ),
+    Defeito(
+        data="2026-10-31", area=SEG, item="SEC-11",
+        defeito="A seção X.7 de `LIMITACOES-TCC.md`, texto que vai ao documento "
+                "final, dizia \"Adotou-se proteção contra automação (captcha)\" "
+                "desde 20/10. O captcha nunca foi ligado, e o frontend não tem uma "
+                "linha dele.",
+        achado_por=LEITURA,
+        causa="O parágrafo foi escrito junto com a decisão (B′) do `SEC-08`, no "
+              "tempo verbal de quem já tinha feito, enquanto a ação ficava aberta "
+              "como `SEC-11`. Nada conferia a afirmação do texto contra o estado do "
+              "item.",
+        correcao="Parágrafo reescrito: a mitigação vigente é o limite de taxa por IP "
+                 "do serviço, com fonte; o captcha aparece como avaliado e não "
+                 "adotado, com o motivo.",
+        commit="(o commit que introduz esta linha: um commit não cita o próprio "
+               "hash — ver a entrada de 30/10 (iii) do diário)", procedencia="parcial",
+        nota="Achado ao investigar o próprio `SEC-11`. É o §1 das lições na forma "
+             "mais direta: uma defesa afirmada que não existe, no texto da banca.",
+    ),
+    Defeito(
+        data="2026-10-31", area=SEG, item="SEC-11",
+        defeito="O `SEC-11` mandava ligar o captcha no painel em \"~5 min, sem linha "
+                "de código\", e o backlog o recomendava como a primeira coisa a fazer "
+                "com cinco minutos. Com o captcha ligado o Supabase responde `400` a "
+                "todo login e cadastro sem token, e o frontend não envia token.",
+        achado_por=TERCEIRO,
+        causa="A afirmação saiu da página de configuração do painel, sem ler o guia "
+              "de integração nem o código do servidor. O guia diz que o frontend "
+              "precisa mudar; o código mostra o `400`.",
+        correcao="Item fechado sem fazer, com as fontes (`middleware.go`, `api.go`, o "
+                 "guia de limites de taxa); a linha de conselho do backlog riscada.",
+        commit="(o commit que introduz esta linha: um commit não cita o próprio "
+               "hash — ver a entrada de 30/10 (iii) do diário)", procedencia="parcial",
+        premissa_curta="Que ligar o captcha no painel era uma mudança só de configuração.",
+        premissa="O item foi para L3, \"é por você\", sob a premissa de que não havia "
+                 "software envolvido. Havia: as quatro chamadas de autenticação do "
+                 "frontend.",
+        nota="Dano evitado, não ocorrido: a chave nunca foi ligada. Se tivesse sido, "
+             "a produção perderia login e cadastro até um deploy do frontend.",
+    ),
+    Defeito(
+        data="2026-10-31", area=DOC, item="DIAG-04",
+        defeito="As figuras do TCC `DIAG-01`, `DIAG-03` e `DIAG-04` não acompanharam a "
+                "C2, a fila na flash, o lote, a `010` e as features: o `DIAG-04` dizia "
+                "que a `002` e a `008` não tinham rodado na produção, e o `DIAG-03` "
+                "descrevia o `envio-continuo` como o laço do produto.",
+        achado_por=LEITURA,
+        causa="O `README` de `docs/diagramas/` tem uma regra de manutenção que lista, "
+              "item por item, quais figuras revisar quando `FW-07`, `API-03`, "
+              "`DATA-07` e `DATA-03` fechassem. Os quatro fecharam entre 28 e 31/10, "
+              "e nenhum fechamento abriu a tabela: a regra estava escrita, nada a "
+              "cobrava.",
+        correcao="As três revisadas, renderizadas e olhadas, com os identificadores "
+                 "conferidos contra o código por script; a tabela da regra marcada com "
+                 "o que já foi revisado e o que ainda vai pedir revisão.",
+        commit="(o commit que introduz esta linha: um commit não cita o próprio "
+               "hash — ver a entrada de 30/10 (iii) do diário)", procedencia="parcial",
+        nota="Dano: nenhum ainda — as figuras não tinham ido ao documento. É o mesmo "
+             "padrão do `DOC-13`: nada confere um documento contra o fechamento de "
+             "um item.",
+    ),
+    Defeito(
+        data="2026-10-31", area=UI, item="AUTH-07",
+        defeito="O login na produção voltava para /login: a primeira chamada à API "
+                "depois do login saía sem `Authorization`, recebia 401, e o "
+                "frontend derrubava a sessão recém-criada.",
+        achado_por=USO_REAL,
+        causa="O `AuthProvider` registrava o provedor de token num `useEffect`, e "
+              "os efeitos dos filhos rodam antes dos do pai. Inofensivo enquanto "
+              "nenhuma tela chamava a API no instante do login; deixou de ser com "
+              "o `PerfilProvider` (17/10), que chegou à produção no release de "
+              "29/10. Nenhum teste montava os dois provedores juntos.",
+        correcao="Sessão numa ref atualizada a cada renderização; provedor e "
+                 "callback registrados uma vez, durante a renderização. Quatro "
+                 "testes com os provedores reais, e controle positivo com três "
+                 "sabotagens.",
+        commit="(o commit que introduz esta linha: um commit não cita o próprio "
+               "hash — ver a entrada de 30/10 (iii) do diário)", procedencia="parcial",
+        nota="Dano real: a produção ficou sem login de 29 a 31/10 (até o release "
+             "da correção). Ninguém tinha entrado no site depois do release: o "
+             "monitor do `INFRA-03` confere o `/health`, não o login.",
+    ),
 ]
 
 
@@ -2277,17 +2383,6 @@ PENDENCIAS: list[Pendencia] = [
                    "backlog."),
     Pendencia("CALC-04", SOFTWARE, "Análise elétrica: pull-down, pull-ups do I2C, "
               "níveis 3,3 V, fonte de despertar.", "🟡", camada_backlog="L0"),
-    Pendencia("DIAG-02", SOFTWARE, "Esquemático do circuito; v1 (1 sensor) e v2 "
-              "(2, endereços I2C).", "🟡", camada_backlog="L0",
-              nota="Confirmado aberto: não há `DIAG-02-*.md` em "
-                   "`docs/diagramas/`."),
-    Pendencia("DIAG-04", SOFTWARE, "Sequência do fluxo autenticado + modelo ER. "
-              "Escrito e revisado em 17/10. **Falta só uma coisa:** os três blocos "
-              "mermaid foram validados por **parser**, nunca por **renderização** "
-              "— ninguém olhou as figuras.", "🟡", camada_backlog="L0"),
-    Pendencia("DOC-05", SOFTWARE, "READMEs e `CLAUDE.md`. Falta só o `DIAG-04`. O "
-              "`CLAUDE.md` é versionado desde 27/10 (`DOC-11`).", "🟡",
-              camada_backlog="L0"),
     Pendencia("DOC-06b", SOFTWARE, "**Ler os artigos antes de citá-los** "
               "(referência conferida ≠ artigo lido) e converter para o padrão de "
               "citação do TCC.", "🔴", camada_backlog="L0"),
@@ -2317,6 +2412,24 @@ PENDENCIAS: list[Pendencia] = [
     Pendencia("REQ-01", SOFTWARE, "Documentar requisitos: dimensões, conforto, "
               "autonomia, aquecimento, custo, segurança.", "🟡",
               camada_backlog="L0"),
+    Pendencia("FW-07 (c)", HARDWARE, "Gravar o `sketch.ino` da C2 na placa e ver, "
+              "no log serial: o I2C ler a FIFO, o sono leve acordar a cada ~1,7 s, a "
+              "taxa medida dentro de ±20 %, épocas fechando com `f`, e o envio de "
+              "10 em 10 min sem transbordo enquanto o Wi-Fi está ligado. As partes "
+              "(a) e (b) estão no núcleo e no sketch desde 31/10, testadas no host; "
+              "o sketch só foi compilado e ligado com stubs.", "🔴",
+              camada_backlog="L1",
+              nota="Anda junto com o `FW-05` e o `FW-08` (c): os três são a mesma "
+                   "sessão de bancada."),
+    Pendencia("FW-08 (c)", HARDWARE, "Exercitar na placa a ponte "
+              "`firmware/midia_flash_esp32.h`: gravar com `firmware/partitions.csv`, "
+              "ver `abrir()` achar a partição `dormio`, e medir o tempo da montagem "
+              "(varre 2 MiB no boot) e do apagamento de setor. As partes (a) e (b) "
+              "fecharam em 31/10: a fila na flash existe no núcleo, testada contra "
+              "uma flash NOR simulada com corte de energia em cada byte, e cobre "
+              "**11,4 dias** medidos sobre a tabela versionada.", "🟡",
+              camada_backlog="L1",
+              nota="Quem liga a fila ao laço é o `FW-07` (b)."),
     Pendencia("ML-12 (c)", HARDWARE, "Repetir a comparação 8 × 3 features com "
               "dado do travesseiro, quando o `VIA-01`/`VIA-02` o produzirem. As "
               "partes (a) e (b) fecharam em 30/10: no kappa a redução sobrevive; "
@@ -2333,18 +2446,6 @@ PENDENCIAS: list[Pendencia] = [
               "(N=92). **Provavelmente esforço mal gasto** — a validação externa "
               "já mostrou que o ganho do HMM não atravessa coorte. Registrado "
               "para não parecer esquecimento.", "⚪", camada_backlog="L0"),
-    Pendencia("DATA-07e", SOFTWARE, "Quantizar os 5 floats de pico: 52 B → 40 B, "
-              "e a cobertura de 5,25 h → 6,83 h em 32 KiB. Dívida assumida de "
-              "propósito, porque mexe na precisão **transmitida** e na checagem "
-              "de coerência da §5.1 do contrato. Esquema já desenhado, com custo "
-              "medido em κ (u16 custa Δκ ≈ 1e−4).", "🔴", camada_backlog="L0"),
-    Pendencia("FW-08", SOFTWARE, "Flash como registro durável, RAM como cache de "
-              "escrita. Decidido e dimensionado desde 29/09: 1,5 MiB, 39 321 "
-              "épocas = **13,7 dias** sem degradar uma vez, desgaste de 3 741 "
-              "anos, energia em centésimos de por cento. **Decidir (a)** LittleFS "
-              "ou NVS e **(b) versionar `partitions.csv`**. ⚠️ Depende do "
-              "`ARQ-01`: o estudo assume o heap de ~300 KiB, que só existe na "
-              "arquitetura contínua.", "🔴", camada_backlog="L0"),
     Pendencia("DATA-06", SOFTWARE, "O limiar viaja com a leitura. **A coluna e o "
               "campo dão para criar já**; o *valor* do limiar do celular depende "
               "do `VIA-02` (grupo D).", "🔴", camada_backlog="L0",
@@ -2404,15 +2505,6 @@ PENDENCIAS: list[Pendencia] = [
               "`ts-prune`) ou script próprio **com controle positivo**, porque o "
               "instrumento é a parte difícil e isso já foi medido.", "🟡",
               camada_backlog="L0"),
-    Pendencia("FW-07", SOFTWARE, "Parte (b): reescrever o `sketch.ino`, que hoje "
-              "tira **uma amostra por boot** e dorme, em torno da cadeia C2 que a "
-              "parte (a) deixou pronta e testada no núcleo (30/10: `fifo_mpu.h`, "
-              "`reamostragem.h`, `cadeia_c2.h`, `lote.h`). Falta a cola com o "
-              "hardware: ESP32 em **sono leve**, os registradores da C2, a FIFO lida "
-              "por I2C em blocos, o despertar com intervalo variado, buffer no heap "
-              "e na flash (`FW-08`) e drenagem pelo `POST /api/data/lote`. Sem a "
-              "placa ela só compila; e um POST que bloqueie mais de ~1,7 s deixa a "
-              "FIFO transbordar.", "🔴", camada_backlog="L0"),
     Pendencia("FW-01", SOFTWARE, "Lógica atividade/repouso por época no firmware. "
               "**Parcialmente coberto:** o `envio-continuo` já classifica por "
               "época de 30 s desde o `HW-05`; falta levar ao `sketch.ino` "
@@ -2535,19 +2627,6 @@ PENDENCIAS: list[Pendencia] = [
                    "zerados, `‖a‖ = 56,5 m/s²` com a placa parada, `−11,6 °C` e "
                    "ruído 30× o normal. O viés de Z, `−1,06 m/s²`, é **89% do "
                    "limiar de movimento inteiro.**"),
-    Pendencia("SEC-11", ACAO, "Ligar captcha no painel do Supabase "
-              "(`Authentication → Settings → Bot and Abuse Protection`). ~5 min, "
-              "zero código, cobre `signup`/`token`/`recover`. ⚠️ **É mitigação: "
-              "reduz a taxa, não elimina o oráculo** — e ligar isto **não "
-              "autoriza mudar uma palavra da X.7**.", "⚠️", camada_backlog="L3"),
-    Pendencia("INFRA-03 — monitor da produção", ACAO, "O job que chama o "
-              "`/health` de produção a cada 3 dias está em `main` desde o release "
-              "de 29/10, e a execução manual passou. Falta a primeira execução "
-              "**agendada** (pelo cron, 31/10) — é ela que fecha o item.", "🟡",
-              camada_backlog="L3",
-              nota="A produção esteve fora do ar até 28/10 sem ninguém saber: o "
-                   "projeto Supabase do plano gratuito pausa depois de uma semana "
-                   "sem uso. Reativado pelo Vitor no mesmo dia."),
     Pendencia("INFRA-02 — projeto Supabase de teste", ACAO, "Criar um projeto Supabase de "
               "teste e rodar um punhado de `curl`. **Fecharia quatro itens de uma "
               "vez:** o ponto cego do `UI-11` (a troca de e-mail exige "
@@ -2854,7 +2933,7 @@ def gerar_correcoes() -> str:
     instr_lendo = [d for d in instr if d.achado_por in (LEITURA, CALCULO)]
     inst_instr = Counter(d.achado_por for d in instr)
 
-    A("**(1) Exercitar achou mais do que ler, por mais de duas vezes.**")
+    A("**(1) Exercitar achou perto do dobro do que ler.**")
     A(f"Execução, controle positivo e uso real somam **{exercitando} de {total}**")
     A(f"registros ({100*exercitando//total}%). Leitura e cálculo — os dois")
     razao = f"{exercitando / so_lendo:.1f}".replace(".", ",")
@@ -3018,13 +3097,16 @@ def gerar_correcoes() -> str:
     A("método que sai deste arquivo inteiro, é essa: antes de transpor um número")
     A("para o texto, divida-o por outro.**")
     A("")
-    A(f"E os **{inst_prem[LEITURA]} de leitura** têm um traço comum que vale")
-    A("contra a conclusão apressada de que ler não serve: nos quatro, o que a")
+    A(f"E os **{inst_prem[LEITURA]} de leitura** têm traços que valem contra a")
+    A("conclusão apressada de que ler não serve. Em quatro deles, o que a")
     A("leitura achou não foi um erro de escrita, foi uma **estrutura ausente** —")
     A("a resposta emitida antes da verificação, a conexão dentro do laço de")
     A("amostragem, a amostragem periódica que não existia, o job que não tinha")
     A("como reprovar. Nenhum apareceria rodando, porque em três dos quatro casos")
-    A("**não havia o que rodar**.")
+    A("**não havia o que rodar**. O quinto (`FW-08`, 31/10) é de outra natureza:")
+    A("um número citado de um arquivo de terceiro que ninguém tinha aberto. A")
+    A("conferência do estudo rodava e passava, porque testava a conta, não o")
+    A("dado de entrada — só abrir o arquivo o derrubava.")
     A("")
     A("---")
     A("")
@@ -3251,8 +3333,8 @@ def _conferir_prosa() -> list[str]:
 
     so_lendo = inst[LEITURA] + inst[CALCULO]
     exercitando = inst[EXECUCAO] + inst[CONTROLE] + inst[USO_REAL]
-    exige(exercitando > 2 * so_lendo, "derivação (1)",
-          "o título diz 'por mais de duas vezes' e a razão já não passa de 2")
+    exige(1.5 * so_lendo < exercitando < 2.5 * so_lendo, "derivação (1)",
+          "o título diz 'perto do dobro' e a razão saiu de (1,5; 2,5)")
     instr = [d for d in contados if d.instrumento]
     sobram = {(d.item, d.achado_por) for d in instr
               if d.achado_por not in (EXECUCAO, CONTROLE)}
@@ -3270,9 +3352,9 @@ def _conferir_prosa() -> list[str]:
           f"divisão por σ, desigualdade triangular, raiz de banda), e a tabela "
           f"tem {sorted(calc)}")
     lend = {d.item for d in premissas if d.achado_por == LEITURA}
-    exige(lend == {"FIX-02", "HW-05", "FW-07", "CI-05"}, "premissas",
-          f"o parágrafo de leitura descreve quatro estruturas ausentes, e a "
-          f"tabela tem {sorted(lend)}")
+    exige(lend == {"FIX-02", "HW-05", "FW-07", "CI-05", "FW-08"}, "premissas",
+          f"o parágrafo de leitura descreve quatro estruturas ausentes e um "
+          f"dado de terceiro nunca conferido (FW-08), e a tabela tem {sorted(lend)}")
     return erros
 
 

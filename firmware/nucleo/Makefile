@@ -10,6 +10,8 @@
 #   make testes   so a suite do nucleo
 #   make dourado  so a paridade contra ml/testes/vetor_dourado.json
 #   make c2       as pecas da arquitetura C2 (FIFO, anti-aliasing, cadeia, lote)
+#   make fila     a fila na flash (FW-08) contra uma flash NOR simulada
+#   make mutacao-fila  sabota a fila e exige que a suite dela ACUSE
 #   make cadeia   a cadeia C2 inteira contra ml/testes/vetor_dourado_cadeia_c2.json
 #   make mutacao-cadeia  sabota a cadeia C2 e exige que o dourado dela ACUSE
 #   make mutacao  sabota o nucleo e exige que a paridade ACUSE
@@ -25,9 +27,11 @@ CXXFLAGS := -std=c++11 -Wall -Wextra -Wpedantic -Wshadow -O2 -g \
             -fno-exceptions -fno-rtti
 
 FONTES := epoca.cpp payload.cpp filtro.cpp caracteristicas.cpp \
-          fifo_mpu.cpp reamostragem.cpp cadeia_c2.cpp lote.cpp
+          fifo_mpu.cpp reamostragem.cpp cadeia_c2.cpp lote.cpp \
+          registro_flash.cpp fila_flash.cpp epoca_c2.cpp envio_da_fila.cpp
 CABECALHOS := epoca.h buffer.h cadencia.h reconexao.h relogio.h payload.h \
-              filtro.h caracteristicas.h fifo_mpu.h reamostragem.h cadeia_c2.h lote.h
+              filtro.h caracteristicas.h fifo_mpu.h reamostragem.h cadeia_c2.h lote.h \
+              registro_flash.h fila_flash.h epoca_c2.h envio_da_fila.h
 
 # O leitor de JSON NAO esta em FONTES de proposito: ele e instrumento de
 # teste, mora em `testes/` e nao deve embarcar. Se um dia aparecer em FONTES,
@@ -40,9 +44,9 @@ CABECALHOS_TESTE := testes/leitor_json.h
 DOURADO := ../../ml/testes/vetor_dourado.json
 DOURADO_CADEIA := ../../ml/testes/vetor_dourado_cadeia_c2.json
 
-.PHONY: todos testes dourado c2 cadeia mutacao mutacao-cadeia capacidade limpar
+.PHONY: todos testes dourado c2 cadeia fila mutacao mutacao-cadeia mutacao-fila capacidade limpar
 
-todos: testes dourado c2 cadeia
+todos: testes dourado c2 cadeia fila
 
 testes: bin/testes
 	@./bin/testes
@@ -70,6 +74,14 @@ capacidade: bin/capacidade
 c2: bin/testes_c2
 	@./bin/testes_c2
 
+fila: bin/testes_fila_flash
+	@./bin/testes_fila_flash
+
+# Fora de `todos`, como as outras mutacoes: recompila a fila uma vez por
+# sabotador.
+mutacao-fila:
+	@sh testes/verificar_fila_por_mutacao.sh
+
 # Mesma regra do `dourado`: o arquivo vem do ml/, e a falta dele vira
 # instrucao em vez de erro misterioso.
 cadeia: bin/testes_cadeia_c2
@@ -96,6 +108,10 @@ bin/testes_dourado: testes/testes_dourado.cpp $(FONTES) $(CABECALHOS) \
 bin/testes_c2: testes/testes_c2.cpp $(FONTES) $(CABECALHOS)
 	@mkdir -p bin
 	$(CXX) $(CXXFLAGS) -I. testes/testes_c2.cpp $(FONTES) -o $@
+
+bin/testes_fila_flash: testes/testes_fila_flash.cpp $(FONTES) $(CABECALHOS)
+	@mkdir -p bin
+	$(CXX) $(CXXFLAGS) -I. testes/testes_fila_flash.cpp $(FONTES) -o $@
 
 bin/testes_cadeia_c2: testes/testes_cadeia_c2.cpp $(FONTES) $(CABECALHOS) \
                       $(FONTES_TESTE) $(CABECALHOS_TESTE)
@@ -158,3 +174,20 @@ sintaxe: bin/secrets-falso/secrets.h
 	    -I$(STUBS) -Ibin/secrets-falso -include Arduino.h "$$s" || exit 1; \
 	done
 	@echo "  ok -- os $(words $(SKETCHES)) sketches compilam."
+	@# A ponte da fila com a flash do ESP32 (FW-08) ainda nao e incluida por
+	@# sketch nenhum -- quem a liga e o FW-07 (b). Sem esta linha ela nunca
+	@# seria compilada, que e o defeito que este alvo existe para pegar.
+	@echo "  ../midia_flash_esp32.h"
+	@$(CXX) -std=c++11 -fsyntax-only -Wall -Wextra -x c++ -I$(STUBS) -I.. ../midia_flash_esp32.h
+	@# O sketch de produto (FW-07 b) e LIGADO, nao so compilado: o nucleo entra
+	@# nele por `../nucleo_amalgama.cpp`, e um .cpp esquecido ali so apareceria
+	@# como erro de link na IDE. Com os stubs, o link no host acusa antes.
+	@echo "  ../sketch.ino + ../nucleo_amalgama.cpp (ligacao)"
+	@mkdir -p bin/ligacao
+	@$(CXX) -std=c++11 -c -x c++ -I$(STUBS) -Ibin/secrets-falso -include Arduino.h ../sketch.ino -o bin/ligacao/sketch.o
+	@$(CXX) -std=c++11 -c -I$(STUBS) ../nucleo_amalgama.cpp -o bin/ligacao/amalgama.o
+	@$(CXX) -std=c++11 -c -I$(STUBS) $(STUBS)/stubs.cpp -o bin/ligacao/stubs.o
+	@printf 'void setup();\nint main() { setup(); return 0; }\n' > bin/ligacao/main.cpp
+	@$(CXX) -std=c++11 -c bin/ligacao/main.cpp -o bin/ligacao/main.o
+	@$(CXX) bin/ligacao/sketch.o bin/ligacao/amalgama.o bin/ligacao/stubs.o bin/ligacao/main.o -o bin/ligacao/sketch
+	@echo "  ok -- o sketch de produto liga com o nucleo."

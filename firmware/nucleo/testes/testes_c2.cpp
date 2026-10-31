@@ -13,6 +13,7 @@
 #include "../buffer.h"
 #include "../cadeia_c2.h"
 #include "../epoca.h"
+#include "../epoca_c2.h"
 #include "../fifo_mpu.h"
 #include "../filtro.h"
 #include "../lote.h"
@@ -412,6 +413,48 @@ static Epoca fabricar(uint32_t indice) {
   return e;
 }
 
+static void testar_epoca_da_grade() {
+  secao("epoca da grade -- o pico e a temperatura da epoca C2 (FW-07 b)");
+  static float gx[AMOSTRAS_NA_GRADE], gy[AMOSTRAS_NA_GRADE], gz[AMOSTRAS_NA_GRADE];
+  for (uint32_t i = 0; i < AMOSTRAS_NA_GRADE; i++) {
+    gx[i] = 0.0f;
+    gy[i] = 0.0f;
+    gz[i] = 1.0f;
+  }
+  gx[700] = 0.3f;
+  gy[700] = 0.4f;
+  gz[700] = 1.2f;  // |a| = 1,3 g
+  const Epoca e = epoca_da_grade(17, gx, gy, gz, AMOSTRAS_NA_GRADE, 24.5f);
+  VERIFICAR(e.indice == 17 && e.duracao_s == 30 && e.nivel == 0 && e.flags == 0,
+            "epoca base, sem bandeira");
+  VERIFICAR(fabs(e.pico_total - 1.3 * GRAVIDADE_MS2) < 1e-4, "pico = maior |a| da grade, em m/s2");
+  VERIFICAR(fabs(e.pico_ax - 0.3 * GRAVIDADE_MS2) < 1e-4 && fabs(e.pico_ay - 0.4 * GRAVIDADE_MS2) < 1e-4 &&
+                fabs(e.pico_az - 1.2 * GRAVIDADE_MS2) < 1e-4,
+            "os eixos sao os da AMOSTRA de pico (a coerencia da secao 5.1 continua valendo)");
+  VERIFICAR(e.amostras == 960 && e.esperadas == 960 && e.temp_pico == 24.5f,
+            "960 pontos da grade, temperatura da epoca");
+
+  gx[700] = 0.0f;
+  gy[700] = 0.0f;
+  gz[700] = 1.0f;
+  const Epoca parado = epoca_da_grade(0, gx, gy, gz, AMOSTRAS_NA_GRADE, 24.5f);
+  VERIFICAR(fabs(parado.pico_total - GRAVIDADE_MS2) < 1e-4 &&
+                strcmp(classificar(parado.pico_total), STATUS_REPOUSO) == 0,
+            "parado a 1 g: total = a gravidade de referencia, e Repouso");
+
+  ResolucaoDeParede parede;
+  char buf[512];
+  uint32_t n = 0;
+  VERIFICAR(montar_payload(e, parede, 0, buf, sizeof(buf), &n) == PAYLOAD_OK,
+            "a epoca da grade vira payload");
+  VERIFICAR(epoca_da_grade(3, gx, gy, gz, 0, 24.5f).vazia(), "sem amostra: epoca vazia");
+
+  VERIFICAR(fabs(temperatura_mpu_c(0) - 36.53f) < 1e-4, "folha: bruto 0 = 36,53 C");
+  VERIFICAR(fabs(temperatura_mpu_c(-5000) - (-5000.0f / 340.0f + 36.53f)) < 1e-4,
+            "folha: bruto / 340 + 36,53");
+  VERIFICAR(inicio_da_epoca_c2_ms(1000000ull, 2) == 61000ull, "epoca 2 comeca 60 s depois da origem");
+}
+
 static void testar_buffer_confirma_o_prefixo() {
   secao("lote + buffer -- confirma o prefixo, e so se a fila nao mudou");
   BufferDeEpocas<16> b;
@@ -553,6 +596,7 @@ int main() {
   testar_resposta_incoerente_nao_apaga_nada();
   testar_buffer_confirma_o_prefixo();
   testar_payload_com_features();
+  testar_epoca_da_grade();
 
   printf("\n-----------------------------------------\n");
   printf("%d verificacoes, %d falhas\n", total, falhas);

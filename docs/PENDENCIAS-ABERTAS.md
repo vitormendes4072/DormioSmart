@@ -49,12 +49,12 @@ linha, não um resumo: resumo é a cópia que diverge.
 
 | Grupo | Itens |
 |---|---:|
-| A — Depende só de software: dá para fazer a qualquer momento | **35** |
+| A — Depende só de software: dá para fazer a qualquer momento | **29** |
 | B — Depende de decisão do Vitor | **10** |
-| C — Depende de ação do Vitor que não é decisão | **7** |
-| D — Bloqueado por hardware ou coleta | **24** |
+| C — Depende de ação do Vitor que não é decisão | **5** |
+| D — Bloqueado por hardware ou coleta | **26** |
 | E — Bloqueado por terceiro | **4** |
-| **Total** | **80** |
+| **Total** | **74** |
 
 ⚠️ **Este total não é comparável à contagem do backlog, e a diferença não é
 erro de nenhum dos dois.** São unidades de contagem diferentes: o backlog
@@ -75,7 +75,7 @@ outro item. **Desde 28/10 têm ID no backlog:** `GIT-07`, `INFRA-02` e
 
 ## A — Depende só de software: dá para fazer a qualquer momento
 
-**35 itens.**
+**29 itens.**
 
 ### `CALC-01` 🔴
 
@@ -100,26 +100,6 @@ Física do acelerômetro: força específica, resolução, ruído, Nyquist — e
 ### `CALC-04` 🟡
 
 Análise elétrica: pull-down, pull-ups do I2C, níveis 3,3 V, fonte de despertar.
-
-*Camada no backlog: L0.*
-
-### `DIAG-02` 🟡
-
-Esquemático do circuito; v1 (1 sensor) e v2 (2, endereços I2C).
-
-*Camada no backlog: L0.*
-
-**Conferência.** Confirmado aberto: não há `DIAG-02-*.md` em `docs/diagramas/`.
-
-### `DIAG-04` 🟡
-
-Sequência do fluxo autenticado + modelo ER. Escrito e revisado em 17/10. **Falta só uma coisa:** os três blocos mermaid foram validados por **parser**, nunca por **renderização** — ninguém olhou as figuras.
-
-*Camada no backlog: L0.*
-
-### `DOC-05` 🟡
-
-READMEs e `CLAUDE.md`. Falta só o `DIAG-04`. O `CLAUDE.md` é versionado desde 27/10 (`DOC-11`).
 
 *Camada no backlog: L0.*
 
@@ -171,18 +151,6 @@ Combinação item 9 + HMM com LOSO interno (N=92). **Provavelmente esforço mal 
 
 *Camada no backlog: L0.*
 
-### `DATA-07e` 🔴
-
-Quantizar os 5 floats de pico: 52 B → 40 B, e a cobertura de 5,25 h → 6,83 h em 32 KiB. Dívida assumida de propósito, porque mexe na precisão **transmitida** e na checagem de coerência da §5.1 do contrato. Esquema já desenhado, com custo medido em κ (u16 custa Δκ ≈ 1e−4).
-
-*Camada no backlog: L0.*
-
-### `FW-08` 🔴
-
-Flash como registro durável, RAM como cache de escrita. Decidido e dimensionado desde 29/09: 1,5 MiB, 39 321 épocas = **13,7 dias** sem degradar uma vez, desgaste de 3 741 anos, energia em centésimos de por cento. **Decidir (a)** LittleFS ou NVS e **(b) versionar `partitions.csv`**. ⚠️ Depende do `ARQ-01`: o estudo assume o heap de ~300 KiB, que só existe na arquitetura contínua.
-
-*Camada no backlog: L0.*
-
 ### `DATA-06` 🔴
 
 O limiar viaja com a leitura. **A coluna e o campo dão para criar já**; o *valor* do limiar do celular depende do `VIA-02` (grupo D).
@@ -230,12 +198,6 @@ Duas partes, não três: **(a)** asserção nomeada por rota — hoje só `/conf
 ### `UI-19 (classe)` 🟡
 
 As duas instâncias fecharam em 20/10; **a classe não.** Não há verificação de alcance no nível do **símbolo** — export que ninguém importa, dentro de arquivo que está no grafo, passa pelo `alcance.test.ts` (arquivo) e pelo `montagem.test.ts` (render). Ferramenta pronta (`knip`, `ts-prune`) ou script próprio **com controle positivo**, porque o instrumento é a parte difícil e isso já foi medido.
-
-*Camada no backlog: L0.*
-
-### `FW-07` 🔴
-
-Parte (b): reescrever o `sketch.ino`, que hoje tira **uma amostra por boot** e dorme, em torno da cadeia C2 que a parte (a) deixou pronta e testada no núcleo (30/10: `fifo_mpu.h`, `reamostragem.h`, `cadeia_c2.h`, `lote.h`). Falta a cola com o hardware: ESP32 em **sono leve**, os registradores da C2, a FIFO lida por I2C em blocos, o despertar com intervalo variado, buffer no heap e na flash (`FW-08`) e drenagem pelo `POST /api/data/lote`. Sem a placa ela só compila; e um POST que bloqueie mais de ~1,7 s deixa a FIFO transbordar.
 
 *Camada no backlog: L0.*
 
@@ -409,7 +371,7 @@ iOS: **investigação, não implementação.** Rota A (áudio em background) mud
 
 ## C — Depende de ação do Vitor que não é decisão
 
-**7 itens.**
+**5 itens.**
 
 Nada aqui é decisão: a decisão já foi tomada, ou nunca houve uma.
 São ações que só você pode executar, porque exigem credencial,
@@ -422,20 +384,6 @@ terminal na máquina, ferro de solda ou uma conta num serviço.
 *Camada no backlog: L3.*
 
 **Conferência.** O contato por jumper produziu, em 25/08, registradores zerados, `‖a‖ = 56,5 m/s²` com a placa parada, `−11,6 °C` e ruído 30× o normal. O viés de Z, `−1,06 m/s²`, é **89% do limiar de movimento inteiro.**
-
-### `SEC-11` ⚠️
-
-Ligar captcha no painel do Supabase (`Authentication → Settings → Bot and Abuse Protection`). ~5 min, zero código, cobre `signup`/`token`/`recover`. ⚠️ **É mitigação: reduz a taxa, não elimina o oráculo** — e ligar isto **não autoriza mudar uma palavra da X.7**.
-
-*Camada no backlog: L3.*
-
-### `INFRA-03 — monitor da produção` 🟡
-
-O job que chama o `/health` de produção a cada 3 dias está em `main` desde o release de 29/10, e a execução manual passou. Falta a primeira execução **agendada** (pelo cron, 31/10) — é ela que fecha o item.
-
-*Camada no backlog: L3.*
-
-**Conferência.** A produção esteve fora do ar até 28/10 sem ninguém saber: o projeto Supabase do plano gratuito pausa depois de uma semana sem uso. Reativado pelo Vitor no mesmo dia.
 
 ### `INFRA-02 — projeto Supabase de teste` 🔴
 
@@ -469,7 +417,23 @@ SMTP próprio (Resend/Brevo) para 'esqueci minha senha'. Exige criar conta em se
 
 ## D — Bloqueado por hardware ou coleta
 
-**24 itens.**
+**26 itens.**
+
+### `FW-07 (c)` 🔴
+
+Gravar o `sketch.ino` da C2 na placa e ver, no log serial: o I2C ler a FIFO, o sono leve acordar a cada ~1,7 s, a taxa medida dentro de ±20 %, épocas fechando com `f`, e o envio de 10 em 10 min sem transbordo enquanto o Wi-Fi está ligado. As partes (a) e (b) estão no núcleo e no sketch desde 31/10, testadas no host; o sketch só foi compilado e ligado com stubs.
+
+*Camada no backlog: L1.*
+
+**Conferência.** Anda junto com o `FW-05` e o `FW-08` (c): os três são a mesma sessão de bancada.
+
+### `FW-08 (c)` 🟡
+
+Exercitar na placa a ponte `firmware/midia_flash_esp32.h`: gravar com `firmware/partitions.csv`, ver `abrir()` achar a partição `dormio`, e medir o tempo da montagem (varre 2 MiB no boot) e do apagamento de setor. As partes (a) e (b) fecharam em 31/10: a fila na flash existe no núcleo, testada contra uma flash NOR simulada com corte de energia em cada byte, e cobre **11,4 dias** medidos sobre a tabela versionada.
+
+*Camada no backlog: L1.*
+
+**Conferência.** Quem liga a fila ao laço é o `FW-07` (b).
 
 ### `ML-12 (c)` 🟡
 

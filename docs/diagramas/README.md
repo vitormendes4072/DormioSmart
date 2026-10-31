@@ -33,7 +33,7 @@ uma proposta de ferramenta. O conjunto entregue cobre as quatro frentes exigidas
 | [`DIAG-03-firmware-e-fluxo-do-dado.md`](DIAG-03-firmware-e-fluxo-do-dado.md) | Fluxo do dado e os pontos onde ele é transformado (amostra → época de 30 s → features → classificação), mais o laço e a máquina de estados do firmware | `DIAG-03`, escopo ampliado |
 | [`DIAG-04-modelo-de-dados-e-seguranca.md`](DIAG-04-modelo-de-dados-e-seguranca.md) | Modelo de dados, RLS e quem acessa o quê com qual privilégio; sequência do fluxo autenticado | `DIAG-04`, escopo ampliado; fecha o resíduo do `DOC-05` |
 | [`DIAG-05-pipeline-de-ml.md`](DIAG-05-pipeline-de-ml.md) | Pipeline experimental de ML: datasets, divisão por sujeito, três braços, validação externa | **novo** — sem item no backlog |
-| — | Esquemático do circuito v1/v2 | `DIAG-02` — **não entregue**, ver abaixo |
+| [`DIAG-02-esquematico.py`](DIAG-02-esquematico.py) | Esquemático do circuito: v1 (um sensor) e v2 (dois, **projeto**) | `DIAG-02` — ✏️ entregue em 31/10, com `schemdraw` em vez de KiCad (ver abaixo) |
 
 ---
 
@@ -85,6 +85,24 @@ que torna legível a seção X.4 de `docs/LIMITACOES-TCC.md`.
 ---
 
 ## `DIAG-02` — o que não cabe em Mermaid, e a alternativa
+
+> ✏️ **31/10: entregue, em `DIAG-02-esquematico.py`, com o `schemdraw`** (biblioteca Python
+> de esquemáticos, licença MIT) — e não com o KiCad recomendado abaixo. O motivo: o KiCad não
+> está na máquina em que o diagrama foi feito, e um `.kicad_sch` escrito à mão e nunca aberto
+> seria um esquemático que ninguém conferiu. O `schemdraw` desenha com símbolos de
+> esquemático a partir de código versionado, e a imagem foi gerada e olhada. Duas folhas: a
+> **v1** (as ligações que o firmware espera: SDA no GPIO 21, SCL no 22, AD0 no GND para
+> `0x68`, INT/XDA/XCL sem ligação, sem o botão e o pull-down do Wokwi) e a **v2** (segundo
+> GY-521 em `0x69`, em caixa tracejada, "PROJETO — não montado"). **Antes de desenhar, o
+> script confere** os pinos e o endereço em `firmware/sketch.ino` e as ligações em
+> `firmware/diagram.json`, e recusa se divergirem — controle positivo: três estragos (SDA,
+> endereço, SCL do Wokwi), três recusas. Gerar:
+> `python docs/diagramas/DIAG-02-esquematico.py` (requer `schemdraw==0.19` e
+> `matplotlib==3.9.2`; a saída vai para `docs/diagramas/saida/`, que o git ignora).
+> ⚠️ **A figura leva uma observação que não é dela resolver:** a página do MPU-6050 no
+> Arduino Playground recomenda 5 V no VCC do GY-521, e o projeto liga em 3V3; não foi
+> conferido para qual trilho vão os pull-ups do módulo, e o ESP32 não tolera 5 V no I2C
+> (`HW-02`). O texto abaixo é o de 29/09, mantido para procedência.
 
 **O esquemático do circuito não foi feito aqui, e não deve ser.** Mermaid desenha grafos:
 nós, arestas e rótulos. Um esquemático elétrico precisa de símbolos normalizados
@@ -143,6 +161,12 @@ texto **fora** dos blocos — títulos, notas, tabelas — está em português a
 
 ## Como gerar as imagens para o documento
 
+✏️ *31/10: as figuras de 31/10 foram renderizadas com a imagem Docker
+`minlag/mermaid-cli:11.4.2` — a mesma de 28/10 —, sem instalar nada no Windows:
+`docker run --rm -v "<pasta>:/data" minlag/mermaid-cli:11.4.2 -i /data/<arquivo>.md -o
+/data/<saida>.png -s 2`. Rótulo de transição de `stateDiagram` não pode ter dois-pontos: o
+parser o lê como separador e reprova ("Parse error").*
+
 ```bash
 # PDF vetorial (preferível: escala sem perder nitidez no A4)
 npx -y @mermaid-js/mermaid-cli -i docs/diagramas/DIAG-01-arquitetura.md -o DIAG-01.pdf
@@ -166,14 +190,22 @@ verdadeira no código, o diagrama está errado, não desatualizado** — e um di
 na banca custa mais que um diagrama ausente. Ao fechar qualquer destes itens, revisar a
 figura correspondente e atualizar a data de conferência no topo do arquivo:
 
+> ✏️ **31/10: esta regra falhou uma vez, e a lição é de alcance.** `FW-07` (b), `API-03`,
+> `DATA-07b` e `DATA-03` fecharam entre 28 e 31/10, e nenhum dos fechamentos revisou as
+> figuras que a tabela abaixo lista — o `DIAG-04` chegou a 31/10 dizendo que a `008` não
+> tinha rodado na produção, e o `DIAG-03` descrevendo o `envio-continuo` como o laço do
+> produto. Revisadas as três em 31/10. A regra estava escrita; nada a cobrava.
+
 | Item aberto | Diagrama afetado |
 |---|---|
-| `FW-07` (reescrita do `sketch.ino`) | `DIAG-01`, `DIAG-03` |
-| `API-03` (endpoint de lote) | `DIAG-01`, `DIAG-03`, `DIAG-04` |
-| `DATA-07` (8 features no contrato) | `DIAG-03`, `DIAG-04` |
-| `DATA-03` (backfill do dono) | `DIAG-04` |
+| ~~`FW-07` (reescrita do `sketch.ino`)~~ ✅ 31/10 | `DIAG-01`, `DIAG-03` — revisados 31/10 |
+| ~~`API-03` (endpoint de lote)~~ ✅ 30/10 | `DIAG-01`, `DIAG-03`, `DIAG-04` — revisados 31/10 |
+| ~~`DATA-07` (8 features no contrato)~~ ✅ 30/10 | `DIAG-03`, `DIAG-04` — revisados 31/10 |
+| ~~`DATA-03` (backfill do dono)~~ ✅ 28/10 | `DIAG-04` — revisado 31/10 |
+| `FW-07` (c), `FW-05` (a placa) | `DIAG-01`, `DIAG-03` (tirar o `NAO EXERCITADO`) |
+| `HW-02` (energia) e a questão do VCC em 5 V | `DIAG-02` |
 | `DATA-06` (limiar por dispositivo) | `DIAG-03` |
 | `UI-10` (tela de exclusão de conta) | `DIAG-04` |
 | `ML-06a`/`ML-06b` (segunda coorte externa) | `DIAG-05` |
-| `VIA-01` (bancada: v1 basta, ou aciona v2?) | `DIAG-02` quando ele existir |
+| `VIA-01` (bancada: v1 basta, ou aciona v2?) | `DIAG-02` (a folha v2 deixa de ser projeto, ou sai) |
 | Etapa 0 (solda) + `VAL-02` (noite real) | `DIAG-01` (nota 5), `DIAG-05` (nota 1) |

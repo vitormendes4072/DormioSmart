@@ -49,3 +49,5 @@ docs/METODOLOGIA.md
 docs/DATASET.md
 docs/HARDWARE.md
 img/MPU6050 Sleep Data Pipeline*
+# Imagens geradas do esquemático (DIAG-02): a fonte é o .py, a figura é material do TCC.
+docs/diagramas/saida/

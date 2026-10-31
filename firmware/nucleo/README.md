@@ -164,6 +164,25 @@ transbordo. **16/16 acusados pelo alvo esperado** em 30/10.
 trabalho do filtro, 48 drenagens); a grade de saída são mais 11,3 KiB. Cabe
 porque o sono leve preserva a RAM — não caberia nos 8 KB do RTC.
 
+## A fila na flash (`FW-08`, 31/10)
+
+A fila em RAM (`buffer.h`) não guarda o vetor, perde tudo num reset e, cheia, funde épocas —
+e época fundida não tem features. `fila_flash.h` grava cada época num registro de 64 B
+(`registro_flash.h`) na partição `dormio` de `firmware/partitions.csv`, em log circular:
+
+- **entregue sem apagar:** a confirmação programa um byte de `0xFF` para `0x00`; só `0x00`
+  conta, então um corte no meio reenvia em vez de perder;
+- **cheia recusa a nova:** o setor só é apagado se não tiver pendente;
+- **sobrevive a reset:** `montar()` relê a partição e reconstrói cabeça e cauda pela `seq`;
+  gravação cortada é recusada pelo CRC e pulada;
+- **instante na gravação:** hora de parede se o relógio já foi sincronizado; senão,
+  monotônico da sessão — e depois de um reset sem sincronia a época vai sem `ts`.
+
+`make capacidade` lê a tabela e mede **32 704 registros = 272,5 h = 11,4 dias**. `make fila`
+testa tudo contra uma flash NOR simulada, com corte de energia em cada byte; `make
+mutacao-fila` sabota a fila de 10 maneiras. A ponte com o ESP32 é
+`firmware/midia_flash_esp32.h`, que por ora só passa pelo `make sintaxe`.
+
 ## Os arquivos
 
 | Arquivo | O quê |
@@ -180,6 +199,10 @@ porque o sono leve preserva a RAM — não caberia nos 8 KB do RTC.
 | `reamostragem.h/.cpp` | Anti-aliasing de 4ª ordem e interpolação para 32 Hz (`FW-07`) |
 | `cadeia_c2.h/.cpp` | Taxa medida por regressão e a grade de cada época (`FW-07`) |
 | `lote.h/.cpp` | Envelope e leitura da resposta do `POST /api/data/lote` (`FW-07`) |
+| `registro_flash.h/.cpp` | O registro de 64 B da flash: CRC, instante, marca de entregue (`FW-08`) |
+| `fila_flash.h/.cpp` | Log circular na partição `dormio`, que sobrevive a reset (`FW-08`) |
+| `epoca_c2.h/.cpp` | A `Epoca` de uma época da cadeia C2: pico da grade, temperatura (`FW-07` (b)) |
+| `envio_da_fila.h/.cpp` | Da fila ao lote e de volta: prefixo contíguo, registro sem payload sai da frente (`FW-07` (b)) |
 | `capacidade.cpp` | A medição |
 | `testes/` | Suíte, paridades, peças e cadeia da C2, e os verificadores por mutação |
 

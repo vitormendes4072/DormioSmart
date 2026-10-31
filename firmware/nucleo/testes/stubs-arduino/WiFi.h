@@ -4,6 +4,7 @@
 
 #define WL_CONNECTED 3
 #define WIFI_STA 1
+#define WIFI_OFF 0
 
 class IPAddressStub {
  public:
@@ -15,6 +16,7 @@ class WiFiStub {
   int status() { return WL_CONNECTED; }
   void begin(const char *, const char *) {}
   void disconnect() {}
+  bool disconnect(bool, bool = false) { return true; }
   void mode(int) {}
   IPAddressStub localIP() { return IPAddressStub(); }
 };

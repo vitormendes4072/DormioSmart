@@ -4142,6 +4142,546 @@ resultado colado, sem acesso ao banco daqui.
 - `GET https://dormio-smart.vercel.app/health`, 30/10;
 - backlog `DATA-07f`.
 
+---
+
+# 2026-10-30 (viii) — o release para `main`: contrato 2.7.0 no ar
+
+**O problema, como foi entendido no início.** A produção rodava o backend do release de 29/10,
+contrato 2.5.1. Em `develop` estavam o endpoint de lote (`API-03`), o vetor de características
+com `GET /api/features` (`DATA-07b`), a cadeia C2 do firmware (`FW-07` (a)) e o trabalho de
+`ARQ-01`, `ML-11` e `ML-12`. A 010 já estava na produção (`DATA-07f`), então a ordem exigida
+estava cumprida.
+
+**Hipótese de trabalho.** Que o merge não tivesse como dar conflito e que o código novo não
+dependesse de nada que a produção ainda não tivesse: variável de ambiente, dependência,
+configuração de deploy ou objeto do banco.
+
+**O que foi testado, e como.**
+
+- **Antes do merge:**
+  - diff da base comum (`32356ff`) para `main`;
+  - diff de `main` para `develop`: arquivos, variáveis de ambiente lidas no código,
+    `requirements.txt`, `package.json` e `vercel.json`;
+  - toda chamada nova ao banco em `database.py`, `routes.py` e `lote.py`.
+- **O release:** PR #20, `develop` → `main`, mesclada por esta sessão com aprovação do autor,
+  depois dos 9 checks do CI.
+- **Depois do merge:** `/health` consultado daqui até o deploy virar; as duas rotas novas
+  chamadas sem credencial.
+
+**Resultado medido.**
+
+- **Antes:**
+  - o diff da base para `main` é vazio: `main` só tem os commits de merge dos releases;
+  - nenhuma variável de ambiente nova, nenhuma dependência nova; `vercel.json` e frontend sem
+    mudança;
+  - o código novo usa só as colunas da 010 e as funções `registrar_leitura` e
+    `registrar_leitura_da_sessao`, todas na produção.
+- **Depois:**
+  - `/health`: `200`, `"banco": "ok"`, `"contrato_de_dados": "2.7.0"`, na terceira consulta
+    (menos de um minuto depois do merge);
+  - `GET /api/features` e `POST /api/data/lote` sem credencial: `401`. As rotas existem e não
+    respondem a quem não se identifica.
+
+**Adaptação.** Diferente de 29/10, o merge em `main` não foi negado a esta sessão. A conferência
+seguiu o roteiro da primeira entrada de 29/10.
+
+**O que deu errado no caminho.** Nada nesta etapa.
+
+**Risco em aberto.**
+
+- **Não exercitado na produção:**
+  - nenhuma leitura com vetor e nenhum lote foram gravados lá; os dois caminhos estão testados
+    contra Postgres 16 local e com o Supabase mockado, não contra o Supabase;
+  - quem os exercita é o firmware em campo (`FW-07` (b), `FW-08`).
+- **`INFRA-03`:** a primeira execução agendada do monitor (31/10) roda sobre esta versão. É ela
+  que fecha o item.
+
+**Procedência.**
+
+- PR #20 (`fa5f164`);
+- `GET https://dormio-smart.vercel.app/health`, `/api/features` e `/api/data/lote`, 30/10;
+- backlog `API-03`, `DATA-07b`, `DATA-07f` e `INFRA-03`.
+
+---
+
+# 2026-10-31 — `FW-08`: a fila na flash, e a partição que tinha 9 % a menos
+
+**O problema, como foi entendido no início.** A fila em RAM (`buffer.h`) guarda só a `Epoca`
+de 32 B. Ela não tem onde pôr o vetor que o `DATA-07b` passou a enviar, perde a noite inteira
+num reset, e quando enche funde épocas — e época fundida não tem features. O estudo de 29/09
+já tinha decidido a saída (flash como registro durável) e deixado duas escolhas em aberto:
+LittleFS ou NVS, e versionar a tabela de partições.
+
+**Hipótese de trabalho.** Que um log circular próprio sobre a partição crua fosse mais simples
+e mais testável que LittleFS ou NVS, e que desse para provar no host, sem placa, que ele
+sobrevive a corte de energia em qualquer ponto. O autor aprovou as duas recomendações do plano:
+log circular próprio, e tabela sob medida sem OTA.
+
+**O que foi testado, e como.**
+
+- **O núcleo:** `registro_flash.{h,cpp}` (registro de 64 B com `static_assert` de tamanho e
+  offsets, CRC-16/CCITT pulando o byte de entregue) e `fila_flash.{h,cpp}` (montagem, guarda,
+  leitura, confirmação, e o caminho do registro ao payload).
+- **A flash simulada** (`testes/testes_fila_flash.cpp`): programa com `antigo & novo` e conta
+  toda tentativa de bit 0 → 1; apaga de 4 KiB em 4 KiB; corta a energia depois de N bytes, no
+  meio de um apagamento, ou "engole" a escrita.
+- **Cenários:** ida e volta; reset com pendentes; fila cheia; 20 000 épocas em 8 setores;
+  corte em cada um dos 65 pontos de uma gravação; confirmação pela metade; apagamento pela
+  metade; chip que engole a escrita; o registro virando o JSON do contrato, com e sem relógio.
+- **A tabela:** `firmware/partitions.csv`; `make capacidade` passou a lê-la e validá-la.
+- **A ponte:** `firmware/midia_flash_esp32.h`, compilada pelo `make sintaxe` com um stub de
+  `esp_partition.h`.
+- **Controle positivo:** `make mutacao-fila` com 10 sabotagens; a ponte com a chamada de escrita
+  estragada; a tabela com três estragos (sobreposição, nome trocado, fim fora da flash).
+- **Suítes completas** do firmware em `gcc:13`; conferências de documento no Windows 11.
+
+**Resultado medido.**
+
+- **A fila:** 72 verificações, 0 falhas. Nenhuma violação de NOR em nenhum cenário. Depois de
+  qualquer corte, nada do que já estava gravado se perde e a fila volta a gravar.
+- **Desgaste:** em 20 000 épocas, os 8 setores ficaram entre 38 e 39 apagamentos.
+- **Capacidade:** 512 setores = 32 768 registros, **32 704 garantidos = 272,5 h = 11,4 dias**.
+  Com a tabela padrão seriam 7,8 dias.
+- **Controle positivo:** 10/10 sabotagens acusadas, depois do conserto abaixo; a ponte estragada
+  reprova o `make sintaxe`; os três estragos da tabela reprovam o `make capacidade`.
+- **Suítes:** 341 + 157 + 118 + 456 + 72 verificações, 0 falhas; 4/4 sketches e a ponte
+  compilam; mutação 15/15, da cadeia 19/19, da fila 10/10.
+
+**Adaptação.**
+
+- **A partição padrão tem 1 408 KiB, não 1,5 MiB.** Conferido no `tools/partitions/default.csv`
+  do `arduino-esp32`: a área de dados é 0x160000. O 1,5 MiB estava no estudo desde 29/09 sem
+  ter sido conferido, e dali foi para o backlog, a pendência e dois documentos de decisão como
+  "13,7 dias". Corrigido nas constantes, anotado nos documentos, registrado como defeito.
+- **O registro tem 64 B, não os 40 do layout D.** A flash exige o que a RAM não exigia: ordem
+  (`seq`), integridade (CRC), a marca de entregue e o instante. Com a partição de 2 MiB, a
+  cobertura continua acima de uma semana.
+- **O instante passou a ser resolvido na gravação.** A fila em RAM data cada época no envio,
+  pelo relógio monotônico, e esse relógio zera num reset. Na flash, o registro grava hora de
+  parede quando o relógio já foi sincronizado; senão, o monotônico da sessão, e depois de um
+  reset sem sincronia a época vai sem `ts`. Resolução de 1 s, porque sobravam 4 B.
+- **O `FW-08` passou de L0 para L1:** o que falta é exercitar a ponte na placa.
+
+**O que deu errado no caminho.**
+
+1. **O controle positivo achou um ponto cego nos testes que eu tinha acabado de escrever.** A
+   sabotagem 7 (procurar a cauda a partir do slot 0, e não da cabeça) passou. Nenhum teste
+   remontava a fila com pendentes atravessando o fim físico da partição, que é justamente o
+   caso em que o slot 0 guarda a época mais nova. Entrou o teste de remontagem com pendentes
+   dando a volta, e a sabotagem passou a ser acusada.
+2. **Uma edição do `Makefile` gravou `\n` literal** no lugar da quebra de linha (escape de
+   shell dentro de Python). O `make` recusou ("No rule to make target"), e a correção foi por
+   script em arquivo.
+3. **O simulador de flash tinha um aviso `-Wreorder`** na ordem de inicialização dos membros.
+   Corrigido antes do commit.
+4. **O parágrafo gerado de `CORRECOES-APLICADAS.md` dizia que toda premissa achada por leitura
+   era uma "estrutura ausente".** O defeito novo do 1,5 MiB não é: é um dado de terceiro nunca
+   conferido. A guarda do gerador acusou, e o parágrafo foi reescrito junto com ela.
+
+**Risco em aberto.**
+
+- **Não exercitado na placa:** a ponte com o ESP32, a tabela gravada de verdade, o tempo de
+  varrer 2 MiB no boot e o tempo de apagar um setor (`FW-08` (c), L1).
+- **Não ligado:** nenhum sketch usa a fila. Quem a liga ao laço é o `FW-07` (b).
+- **CRC de 16 bits:** uma gravação cortada tem chance de 1 em 65 536 de passar como válida.
+- **`DATA-07e`:** o motivo dele (autonomia em RAM) deixou de valer com a flash. Proposto ao
+  autor rebaixar ou fechar; não decidido.
+
+**Procedência.**
+
+- `firmware/nucleo/registro_flash.{h,cpp}`, `fila_flash.{h,cpp}`, `capacidade.cpp` e
+  `Makefile`;
+- `firmware/nucleo/testes/testes_fila_flash.cpp`, `verificar_fila_por_mutacao.sh` e
+  `stubs-arduino/esp_partition.h`;
+- `firmware/partitions.csv` e `firmware/midia_flash_esp32.h`;
+- `scripts/estudo_buffer.py`, `docs/DECISAO-BUFFER-E-FEATURES.md`,
+  `docs/ARQUITETURA-DE-CAPTACAO.md` e `docs/LIMITACOES-TCC.md`;
+- `.github/workflows/ci.yml`;
+- backlog `FW-08`.
+
+---
+
+# 2026-10-31 (ii) — `FW-07` (b): o `sketch.ino` da C2, em duas tarefas
+
+**O problema, como foi entendido no início.** O `sketch.ino` de produto tirava uma amostra
+por boot e voltava ao Deep Sleep. As peças da C2 já existiam no núcleo, testadas: a FIFO, a
+cadeia que reamostra para 32 Hz, as features, a fila na flash (`FW-08`) e o envio em lote.
+Faltava o programa que as liga no ESP32. O risco registrado no backlog era o envio: a FIFO
+guarda 3,4 s e é esvaziada a cada 1,7 s, e um POST por HTTPS leva de 1 a 3 s.
+
+**Hipótese de trabalho.** Que duas tarefas do FreeRTOS, uma em cada núcleo, resolvessem o
+risco sem mexer na cadeia: a medição continua esvaziando a FIFO no ritmo enquanto o envio
+espera a rede no outro núcleo. O autor aprovou o plano, com a reescrita do `sketch.ino` no
+lugar.
+
+**O que foi testado, e como.**
+
+- **Duas peças novas no núcleo**, porque a leitura das APIs no plano achou uma lacuna:
+  - `epoca_c2.{h,cpp}`: a cadeia entrega a grade, mas ninguém montava a `Epoca` que o payload
+    leva (pico em m/s², eixos, temperatura). 13 verificações em `testes_c2.cpp`;
+  - `envio_da_fila.{h,cpp}`: o lote como prefixo contíguo da fila, e o registro sem payload
+    possível tirado da frente. 12 verificações em `testes_fila_flash.cpp`, sobre a flash
+    simulada do `FW-08`.
+- **O sketch:** `firmware/sketch.ino` reescrito e `firmware/nucleo_amalgama.cpp` novo. Stubs
+  novos para o FreeRTOS, `esp_timer`, o sono leve, e o que faltava em `WiFi` e `HTTPClient`.
+- **A ligação:** o `make sintaxe` passou a compilar o sketch, a amálgama e os stubs em objetos
+  e ligá-los num executável de host.
+- **Controle positivo:**
+  - cinco sabotagens novas: duas na época da grade (`mutacao-cadeia`) e três no envio
+    (`mutacao-fila`);
+  - três estragos no sketch e na amálgama, que o `make sintaxe` tinha de reprovar: um `.cpp`
+    faltando, `guardar` sem o vetor e o POST com tipo errado.
+- **Suítes completas** do firmware em `gcc:13`; conferências de documento no Windows 11.
+
+**Resultado medido.**
+
+- **Núcleo:** 341 + 157 + 128 + 456 + 84 verificações, 0 falhas.
+- **Sintaxe e ligação:** 4/4 sketches compilam, a ponte da flash compila e o `sketch.ino` liga
+  com o núcleo.
+- **Mutação:** 15/15 da paridade, 21/21 da cadeia (com a época da grade), 13/13 da fila (com o
+  envio). Os três estragos do sketch reprovam: o `.cpp` faltando como `undefined reference`, os
+  outros dois como erro de compilação.
+
+**Adaptação.**
+
+- **O pico passou a ser o da grade, não o da leitura bruta.** A grade já passou pelo
+  anti-aliasing de 12,8 Hz, então um pico de uma ou duas leituras chega atenuado. É a escolha
+  que mantém o `total` e as features descrevendo o mesmo sinal; está declarada em
+  `LIMITACOES-TCC.md`.
+- **A temperatura é lida uma vez, ao fechar a época**, porque a FIFO da C2 só leva o
+  acelerômetro.
+- **Épocas recusadas pela cadeia não são gravadas.** No servidor elas aparecem como intervalo
+  entre dois `ts`; o dispositivo as conta no log.
+- **O giroscópio fica em espera** (`PWR_MGMT_2`) e o MPU usa o relógio interno. É o oscilador de
+  −15/+10 % que a cadeia já mede por regressão.
+- **O `FW-07` passou de L0 para L1:** o que falta é a placa (parte (c)).
+
+**O que deu errado no caminho.**
+
+1. **O `make sintaxe` não pegaria uma amálgama incompleta.** Ele só compilava o `.ino`; um
+   `.cpp` esquecido no `nucleo_amalgama.cpp` só apareceria como erro de link na IDE, na frente
+   da placa. Achado ao escrever a amálgama; entrou o passo de ligação, e o controle positivo
+   mostra que ele acusa.
+2. **Três trocas nos stubs falharam** porque os arquivos são CRLF e o script procurava LF. O
+   assert do script recusou em vez de gravar errado, e as trocas foram refeitas respeitando o
+   fim de linha.
+
+**Risco em aberto.**
+
+- **Nada rodou na placa** (`FW-07` (c), L1): a leitura da FIFO por I2C, o despertar do sono
+  leve, a taxa medida, o envio sem transbordo com o Wi-Fi ligado, e o tempo de montagem da fila
+  no boot (`FW-08` (c)).
+- **O Wokwi pode não simular a FIFO do MPU6050** (a documentação dele não diz). O
+  `envio-continuo` segue como o sketch do simulador.
+- **`setInsecure()`** no TLS, como nos outros sketches: o certificado do servidor não é
+  conferido.
+- **Os stubs conferem assinaturas, não comportamento:** as do FreeRTOS e do `esp_timer` foram
+  escritas a partir das do ESP-IDF, e só a IDE de verdade confirma que batem.
+
+**Procedência.**
+
+- `firmware/sketch.ino` e `firmware/nucleo_amalgama.cpp`;
+- `firmware/nucleo/epoca_c2.{h,cpp}`, `envio_da_fila.{h,cpp}` e `Makefile`;
+- `firmware/nucleo/testes/testes_c2.cpp`, `testes_fila_flash.cpp`,
+  `verificar_cadeia_por_mutacao.sh`, `verificar_fila_por_mutacao.sh` e `stubs-arduino/`;
+- `docs/LIMITACOES-TCC.md`;
+- backlog `FW-07`.
+
+---
+
+# 2026-10-31 (iii) — `DATA-07e` fechado sem ser feito: o `FW-08` o dissolveu
+
+**O problema, como foi entendido no início.** O `DATA-07e` era a dívida de 17/10: quantizar os
+5 floats de pico para o par época + vetor cair de 52 para 40 B, e a cobertura da fila em 32 KiB
+de RAM subir de 5,25 para 6,83 h. Fora adiado de propósito, porque mexe na precisão transmitida
+e na checagem de coerência da §5.1 do contrato.
+
+**Hipótese de trabalho.** Que o motivo do item tivesse deixado de existir: a fila saiu da RAM.
+
+**O que foi testado, e como.** Conferência contra o que já estava medido: `make capacidade`
+(registro da flash de 64 B, 32 704 garantidos = 11,4 dias, 31/10) e o `sketch.ino` da C2, que
+só usa a fila na flash. A cobertura com o registro quantizado (~52 B, ~13,8 dias) é estimativa
+de conta, não medida.
+
+**Resultado medido.** Nenhum número novo. Os que decidem já estavam medidos: 11,4 dias na flash
+contra uma noite de 8 h.
+
+**Adaptação.** O autor decidiu fechar como dissolvido, não fazer. O esquema de quantização fica
+desenhado em `DECISAO-BUFFER-E-FEATURES.md` (Saída 3).
+
+**O que deu errado no caminho.** Nada nesta etapa.
+
+**Risco em aberto.** A fila em RAM (`buffer.h`) continua com o registro de 32 B e é usada pelo
+`envio-continuo`, que não envia features. Se um dia um sketch voltar a guardar o vetor em RAM, a
+conta de 5,25 h volta a valer.
+
+**Procedência.**
+
+- `firmware/nucleo/capacidade.cpp` (`make capacidade`);
+- `firmware/sketch.ino`;
+- backlog `DATA-07e` e `FW-08`.
+
+---
+
+# 2026-10-31 (iv) — `SEC-11` fechado sem fazer, e a X.7 afirmava um captcha que não existe
+
+**O problema, como foi entendido no início.** O `SEC-11` mandava ligar o captcha do Supabase
+"em ~5 minutos de painel, sem linha de código", como mitigação da enumeração de contas do
+`SEC-08`. O backlog o recomendava como a primeira coisa a fazer com cinco minutos livres. Ao
+explicá-lo ao autor, a documentação do Supabase dizia que o frontend precisa mudar, e o autor
+pediu que tudo o que eu não tinha confirmado fosse investigado, e que eu dissesse se o captcha
+vale o custo.
+
+**Hipótese de trabalho.** Que a afirmação "sem linha de código" estava errada, e que o ganho do
+captcha fosse menor do que o item dizia.
+
+**O que foi testado, e como.** Leitura na fonte, sem tocar na produção:
+
+- **o código do `supabase/auth`:** `internal/api/middleware.go` (`verifyCaptcha`,
+  `isIgnoreCaptchaRoute`) e `internal/api/api.go` (quais rotas o usam);
+- **o guia *Rate limits* da autenticação** do Supabase;
+- **o nosso frontend** (`frontend/src/lib/autenticacao.ts`, `perfil.ts`) e o backend
+  (`database.py`), por busca das chamadas de autenticação;
+- **os quatro canais** da seção X.7 de `LIMITACOES-TCC.md`, cruzados com as rotas.
+
+**Resultado medido.**
+
+- **Pedido sem token, com o captcha ligado:** `400 captcha protection: request disallowed (no
+  captcha_token found)`. Só credencial de administrador passa.
+- **Rotas que exigem o token:** `/signup`, `/token` com senha, `/recover`, `/resend`,
+  `/magiclink`, `/otp`. Isentas: a renovação de sessão e o `/user`.
+- **O frontend** chama quatro delas (login, cadastro, reenvio, recuperação) e não tem uma linha de
+  captcha. **Ligar a chave derrubaria o login e o cadastro da produção.** Backend e dispositivo
+  não seriam afetados.
+- **O canal 3 da X.7, a troca de e-mail, passa pelo `/user`**, que o captcha não cobre. Com uma
+  conta, ele enumera ao mesmo custo de hoje: o captcha não encarece a varredura em massa.
+- **Limite de taxa por IP, padrão do Supabase:** 30 pedidos a cada 5 min em `/signup`,
+  `/recover`, `/resend` e `/user`; 150 em `/token`.
+- **A X.7 dizia "Adotou-se proteção contra automação (captcha)"** desde 20/10 (`2fcb0f5`). O
+  captcha nunca foi ligado.
+
+**Adaptação.** O autor decidiu fechar o `SEC-11` sem fazer. A X.7 foi reescrita: a mitigação
+vigente é o limite de taxa, com fonte, e o captcha aparece como avaliado e não adotado, com o
+motivo. Duas referências novas na lista da seção (o guia de limites e o código-fonte).
+
+**O que deu errado no caminho.**
+
+1. **O texto da banca afirmava uma defesa que não existe**, por onze dias. O parágrafo foi
+   escrito no tempo verbal de quem já tinha feito, enquanto a ação ficava aberta. Registrado como
+   defeito.
+2. **O item recomendava uma ação que derrubaria a produção.** A premissa "é só configuração" saiu
+   da página do painel, sem ler o guia de integração nem o código. Registrado como defeito, achado
+   por fonte de terceiro.
+3. **Na minha primeira explicação ao autor, deixei dois pontos como "pela minha leitura"** — o
+   que acontece sem token, e se o captcha cobria todos os canais. Os dois só se resolveram lendo
+   o código. É a regra 6 do §5 das lições: comportamento de serviço se confere na fonte do
+   serviço.
+4. **Os dois defeitos novos derrubaram uma frase gerada:** "exercitar achou mais de duas vezes o
+   que ler". A razão caiu para 2,0 (63 contra 32), e a guarda do gerador acusou. O título foi
+   reescrito para "perto do dobro", junto com a guarda.
+
+**Risco em aberto.**
+
+- **Não conferido daqui: o painel.** Em `Authentication → Attack Protection` o captcha deve
+  aparecer desligado, e em `Rate Limits` os valores padrão. A evidência indireta é que o login
+  funciona sem token.
+- **O código lido é o ramo principal do `supabase/auth`**, não necessariamente a versão exata em
+  produção.
+- **A enumeração continua aberta**, como a X.7 declara. Nada aqui a fecha.
+
+**Procedência.**
+
+- `supabase/auth`: `internal/api/middleware.go` e `internal/api/api.go`;
+- guia *Rate limits* da autenticação do Supabase;
+- `frontend/src/lib/autenticacao.ts`;
+- `docs/LIMITACOES-TCC.md`, seção X.7;
+- backlog `SEC-11` e `SEC-08`.
+
+---
+
+# 2026-10-31 (v) — as figuras do TCC: o esquemático, e três diagramas que tinham ficado para trás
+
+**O problema, como foi entendido no início.** O `DIAG-02` (esquemático) nunca tinha sido
+começado, e o `DIAG-04` estava escrito mas nunca renderizado. Ao ler os arquivos para o plano,
+apareceu o maior problema: `DIAG-01`, `DIAG-03` e `DIAG-04`, conferidos em 28/10, não
+mostravam nada do que entrou em 30 e 31/10 — a C2, a fila na flash, o envio em lote, a `010`, a
+rota de features. O autor aprovou incluir os três.
+
+**Hipótese de trabalho.** Que as figuras Mermaid pudessem ser atualizadas e conferidas contra o
+código por script, e que o esquemático pudesse ser feito com uma ferramenta que gera a imagem
+aqui, para ela ser olhada antes de entrar no texto.
+
+**O que foi testado, e como.**
+
+- **`DIAG-01`, `DIAG-03`, `DIAG-04`:** reescritos onde o código mudou. Renderizados com a
+  imagem `minlag/mermaid-cli:11.4.2` (a de 28/10), e as sete figuras **olhadas**.
+- **Conferência por script** (em scratchpad): extrai de cada bloco Mermaid os caminhos de
+  arquivo, as chamadas `nome()`, as rotas e as colunas do ER, e procura cada um no código com
+  `git grep`.
+- **`DIAG-02`:** `docs/diagramas/DIAG-02-esquematico.py`, com `schemdraw` 0.19 num ambiente
+  Python separado. Antes de desenhar, o script lê os pinos e o endereço no `sketch.ino` e as
+  ligações no `diagram.json`, e recusa se divergirem.
+- **A fonte do GY-521:** a página do MPU-6050 no Arduino Playground, para os pull-ups e a
+  alimentação.
+- **Controle positivo:**
+  - quatro nomes inventados (arquivo, função, rota, coluna), um por cópia, contra o script de
+    conferência;
+  - três estragos (SDA, endereço, SCL do Wokwi) contra a conferência do esquemático;
+  - o próprio renderizador, que reprovou um rótulo com dois-pontos.
+
+**Resultado medido.**
+
+- **Conferência:** 160 identificadores nos três arquivos, todos achados no código. Os quatro
+  nomes inventados foram acusados.
+- **Renderização:** sete figuras geradas e olhadas. A figura de privilégios (`DIAG-04` B) estava
+  larga demais para uma página (2,7 : 1); com o layout da esquerda para a direita ficou em
+  1,4 : 1.
+- **Esquemático:** duas folhas legíveis. Os três estragos foram recusados com a mensagem da
+  divergência.
+- **Fonte do GY-521:** o módulo tem pull-ups no I2C de 2,2 k ou 10 kΩ, conforme o lote, e um
+  regulador; a página **recomenda 5 V no VCC**, e o projeto liga em 3V3.
+
+**Adaptação.**
+
+- **`schemdraw` em vez do KiCad** que o `README` recomendava: o KiCad não está aqui, e um
+  arquivo do KiCad escrito à mão e nunca aberto seria um esquemático sem conferência.
+- **A v1 não se diz "montada":** o primeiro título dizia "o circuito montado", e o sensor nem
+  foi soldado. Virou "as ligações que o firmware espera".
+- **AD0 ligado ao GND explicitamente**, porque a fonte não confirma o resistor interno do
+  módulo.
+- **`DOC-05` fechou junto**, porque o que faltava nele era o `DIAG-04`.
+- **A questão do VCC foi para o `HW-02`**, com o motivo de não trocar às cegas: se os pull-ups
+  forem para o VCC, 5 V chegariam ao I2C, e o ESP32 não tolera.
+
+**O que deu errado no caminho.**
+
+1. **A regra de manutenção das figuras falhou.** O `README` da pasta lista quais figuras revisar
+   quando `FW-07`, `API-03`, `DATA-07` e `DATA-03` fechassem; os quatro fecharam e ninguém
+   abriu a tabela. O `DIAG-04` chegou a 31/10 dizendo que a `002` e a `008` não tinham rodado.
+   Registrado como defeito.
+2. **Erros meus nas figuras, pegos ao olhar as imagens:**
+   - títulos de bloco cortados pelo renderizador;
+   - a seta do sensor para o `envio-continuo`, faltando no `DIAG-01`;
+   - o participante "Navegador (Coletar.tsx)" nos caminhos de leitura do `DIAG-04`;
+   - dois-pontos num rótulo de estado, que o parser reprovou.
+3. **O primeiro esquemático saiu girado 180°**, porque o `schemdraw` herda a direção da última
+   linha desenhada, com os pinos em ordem invertida e os rótulos sobrepostos. Refeito com
+   direção explícita.
+4. **Escape de `\n` num heredoc** quebrou uma edição do esquemático (o assert recusou). Refeita
+   por arquivo de script, como manda a lição de ontem.
+
+**Risco em aberto.**
+
+- **O esquemático descreve o que o código espera, não a montagem:** só a placa confere.
+- **O VCC do GY-521** (`HW-02`).
+- **A conferência por script vive em scratchpad**, não no CI: uma figura pode envelhecer de
+  novo sem que nada acuse. É o mesmo padrão do `DOC-13`.
+- **`DIAG-05` (pipeline de ML) não foi tocado** nesta sessão.
+
+**Procedência.**
+
+- `docs/diagramas/DIAG-01-arquitetura.md`, `DIAG-03-firmware-e-fluxo-do-dado.md`,
+  `DIAG-04-modelo-de-dados-e-seguranca.md`, `DIAG-02-esquematico.py` e `README.md`;
+- página *MPU-6050* do Arduino Playground (pull-ups, regulador, VCC);
+- backlog `DIAG-01` a `DIAG-04`, `DOC-05` e `HW-02`.
+
+---
+
+# 2026-10-31 (vi) — `INFRA-03` fechado: o monitor da produção rodou sozinho
+
+**O problema, como foi entendido no início.** O `INFRA-03` existe porque a produção ficou fora do
+ar até 28/10 sem ninguém saber: o Supabase do plano gratuito pausa depois de uma semana sem uso.
+O monitor (`.github/workflows/saude-producao.yml`) chama o `/health` a cada 3 dias. Estava em
+`main` desde o release de 29/10, e a execução manual tinha passado; faltava a primeira execução
+**agendada**, que é a que prova que o cron dispara sem ninguém.
+
+**Hipótese de trabalho.** Que o cron rodasse em 31/10 e passasse.
+
+**O que foi testado, e como.** `gh run list --workflow saude-producao.yml` e o log da execução,
+consultados daqui em 31/10 às 18:55 UTC.
+
+**Resultado medido.** Execução `41214122394`, evento `schedule`, em `main`, às **15:17 UTC**:
+sucesso, com a saída *"tentativa 1/3: HTTP 200, banco ok"*.
+
+**Adaptação.** Nenhuma. O cron é `17 9 */3 * *` (09:17 UTC) e o GitHub o disparou seis horas
+depois. O workflow já previa atraso — o minuto 17 foge da hora cheia, que é a mais concorrida —, e
+a folga de 3 dias contra a semana de inatividade do Supabase absorve atrasos dessa ordem.
+
+**O que deu errado no caminho.** Nada nesta etapa.
+
+**Risco em aberto.** O monitor avisa que a produção caiu; ele não a mantém de pé. Se o Supabase
+pausar, alguém ainda precisa reativá-lo no painel. E o aviso chega como falha de workflow no
+GitHub: depende de alguém ler o e-mail de notificação.
+
+**Procedência.**
+
+- execução `41214122394` do workflow `saude-producao.yml`;
+- `scripts/conferir_producao.py`;
+- backlog `INFRA-03`.
+
+---
+
+# 2026-10-31 (vii) — `AUTH-07`: o login que voltava para /login
+
+**O problema, como foi entendido no início.** O autor relatou que, em
+`dormio-smart.vercel.app/login`, o login entrava e voltava em seguida para a tela de login.
+
+**Hipótese de trabalho.** Sem os logs da Vercel (o CLI não está logado nesta máquina) e sem
+entrar na conta do autor, a pista veio do código: qualquer 401 da API dispara o callback de
+sessão expirada (`lib/api.ts`), que limpa a sessão, e o guarda de rota leva ao login. Logo, o
+Supabase aceitava o login, e alguma chamada logo depois recebia 401. Lendo o `AuthContext`, a
+suspeita: o provedor de token era registrado num `useEffect` do pai, e os efeitos dos filhos
+rodam antes.
+
+**O que foi testado, e como.**
+
+- **Reprodução no `vitest`** (teste temporário, apagado), com o `AuthProvider` e o
+  `PerfilProvider` reais, o cliente do Supabase falso e o `fetch` espionado, simulando o
+  `SIGNED_IN`.
+- **Contraprova:** a correção aplicada só no experimento, e desfeita.
+- **A correção de verdade** em `bugfix/AUTH-07-token-antes-dos-filhos`, com quatro testes
+  novos.
+- **Controle positivo:** três sabotagens contra os testes novos — o código antigo de `develop`,
+  a ref sem atualização e o callback de 401 ausente.
+- **Suíte do frontend, `tsc` e `vite build`**, no Windows 11.
+
+**Resultado medido.**
+
+- **Reprodução:** logo depois do login, a única chamada é `GET /api/me/perfil`, e ela sai com
+  `Authorization: null`.
+- **Contraprova:** com o token registrado durante a renderização, a mesma chamada sai com
+  `Bearer …`.
+- **Controle positivo:** o código antigo derruba 2 dos 4 testes; a ref sem atualização derruba
+  3; o callback ausente derruba 1.
+- **Frontend:** 422 testes passam em 28 arquivos (eram 418 em 27); `tsc` e `vite build` limpos.
+
+**Adaptação.** Nenhuma no plano. O callback de sessão expirada também passou a ser registrado
+durante a renderização, pelo mesmo motivo, e tem teste próprio.
+
+**O que deu errado no caminho.**
+
+1. **O defeito ficou dois dias em produção sem ninguém notar.** O código do token é de agosto;
+   ele só passou a falhar quando o `PerfilProvider` (17/10) começou a chamar a API no instante do
+   login, e isso chegou a `main` no release de 29/10. Nenhum teste montava os dois provedores
+   juntos, e a conferência pós-release olhou o `/health` e as rotas sem credencial — nunca um
+   login.
+2. **A primeira contraprova deu falso negativo:** deixei o `useEffect` antigo no experimento, e
+   ele sobrescreveu o provedor novo. Refeita removendo o efeito.
+
+**Risco em aberto.**
+
+- **A correção não está na produção** até um release `develop` → `main`.
+- **Não verificado na produção:** o login de verdade depois do release. A reprodução é com
+  Supabase falso; a confirmação final é o autor entrando no site.
+- **A conferência pós-release não testa login.** Um teste de ponta a ponta com uma conta de
+  teste resolveria, e depende do `INFRA-02` (projeto Supabase de teste).
+
+**Procedência.**
+
+- `frontend/src/contexts/AuthContext.tsx`, `PerfilContext.tsx` e `lib/api.ts`;
+- `frontend/src/contexts/AuthContext.test.tsx`;
+- backlog `AUTH-07`.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

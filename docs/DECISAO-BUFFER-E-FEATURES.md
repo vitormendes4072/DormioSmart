@@ -62,7 +62,7 @@ correto: comparar contra 32 KiB de heap, não contra 4 KiB de RTC.
 | Flash SPI do módulo | **4 MiB** | ESP32-WROOM-32 Datasheet v2.4, §1 |
 | PSRAM | **não existe** | idem — PSRAM é do WROVER, não do WROOM |
 | SRAM interna | 520 KiB | idem |
-| Partição de dados | **1,5 MiB** | `arduino-esp32`, `tools/partitions/default.csv` |
+| Partição de dados | ~~**1,5 MiB**~~ **1 408 KiB** ✏️ *(31/10)* | `arduino-esp32`, `tools/partitions/default.csv` |
 
 > ⚠️ **Correção ao enunciado do estudo.** Os 4 MiB são do chip, mas **não estão
 > disponíveis para dados**. O esquema padrão de 4 MB reserva ~1,2 MB para a
@@ -87,6 +87,15 @@ Com o registro de 40 B da Saída 3, em resolução plena de 30 s:
 | 2,8 MiB flash (sob medida) | 73 395 | 612 h = 25,5 dias |
 
 Duas semanas sem rede, em resolução plena, **sem degradar uma única vez**.
+
+> ✏️ **31/10 (`FW-08`): dois números desta seção mudaram ao implementar.** (1) A área de
+> dados da tabela padrão é **0x160000 = 1 408 KiB**, conferida no arquivo do
+> `arduino-esp32`; os 1,5 MiB acima nunca tinham sido conferidos e superestimavam em 9 %.
+> (2) O projeto adotou e versiona a tabela sob medida (`firmware/partitions.csv`, partição
+> `dormio` de 2 MiB), e o registro implementado tem **64 B**, não 40: leva `seq`, sessão,
+> instante e CRC, que a flash exige para sobreviver a um corte de energia. Medido por
+> `make capacidade`: **32 704 registros garantidos = 272,5 h = 11,4 dias**. A tabela acima
+> fica como estava, para procedência.
 
 ### Desgaste
 
@@ -306,6 +315,8 @@ quantização que torna a Saída 2 gratuita.
 3. **Flash como registro durável, RAM como cache de escrita** — exige decidir a
    tabela de partições e escolher LittleFS ou NVS. É a maior mudança
    arquitetural das três e a que dá a folga de ordens de magnitude.
+   ✏️ *31/10: feito no `FW-08` — log circular próprio sobre partição crua, nem
+   LittleFS nem NVS (`firmware/nucleo/fila_flash.h` explica por quê).*
 
 A Saída 4 do enunciado (reduzir autonomia em RAM) **não é necessária** e não foi
 avaliada em profundidade: com 6,83 h de heap em resolução plena e 13,7 dias em
