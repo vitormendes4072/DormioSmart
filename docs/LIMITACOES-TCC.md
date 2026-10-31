@@ -349,6 +349,18 @@ estimativa toma como exato o relógio do próprio microcontrolador, que durante 
 a partir de oscilador interno de menor estabilidade; o erro desse relógio não foi medido e
 depende do dispositivo físico.
 
+**Sobre a guarda das épocas na ausência de conexão.** ✏️ *(31/10, `FW-08`.)* As épocas
+calculadas no dispositivo são gravadas em memória flash não volátil antes do envio, e só são
+liberadas após confirmação do servidor. Com a tabela de partições adotada, a capacidade
+garantida é de 32 704 épocas de 30 s, o que corresponde a 272,5 h sem conexão; esgotada essa
+capacidade, as épocas novas são recusadas e contabilizadas, e nenhuma época pendente é
+sobrescrita. Duas perdas são declaradas. Primeiro, o instante de cada época é registrado com
+resolução de um segundo. Segundo, quando o dispositivo é reiniciado antes de sincronizar o
+relógio com a rede, as épocas gravadas naquela sessão conservam a medição, mas não o instante
+absoluto, e passam a ser datadas pelo instante de recebimento. A integridade dos registros após
+interrupção de energia foi verificada em simulação da memória, com interrupção em cada byte de
+uma gravação, e não no dispositivo físico.
+
 **Sobre a métrica de acurácia.** Registra-se, por rigor metodológico, que a acurácia global
 não constitui métrica informativa neste domínio. Dado que a proporção de épocas de sono em
 um registro noturno é elevada, um classificador trivial que atribuísse a totalidade das

@@ -175,7 +175,8 @@ Newcastle (0,300).
 3. **Para o `DATA-07e`, a conta não fecha a favor de reduzir.** O ganho seria 8 B por época. A
    flash do `FW-08` já guarda 13,7 dias em resolução plena com o registro de 40 B. Pagar de 1 a
    4 pontos de especificidade por 8 B que não faltam é troca ruim. **A recomendação desta
-   análise é manter as 6 features no dispositivo.**
+   análise é manter as 6 features no dispositivo.** ✏️ *31/10: implementada, a flash guarda
+   11,4 dias com registro de 64 B (`FW-08`); a conclusão não muda.*
 
 **(d) O contexto atravessava a fronteira entre sujeitos.** Em todos os experimentos desde o
 `ML-02`, `empilhar_contexto` rodou sobre a base concatenada, e a janela de ±2 épocas misturava

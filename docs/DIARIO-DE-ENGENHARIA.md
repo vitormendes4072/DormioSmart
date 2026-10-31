@@ -4202,6 +4202,103 @@ seguiu o roteiro da primeira entrada de 29/10.
 - `GET https://dormio-smart.vercel.app/health`, `/api/features` e `/api/data/lote`, 30/10;
 - backlog `API-03`, `DATA-07b`, `DATA-07f` e `INFRA-03`.
 
+---
+
+# 2026-10-31 — `FW-08`: a fila na flash, e a partição que tinha 9 % a menos
+
+**O problema, como foi entendido no início.** A fila em RAM (`buffer.h`) guarda só a `Epoca`
+de 32 B. Ela não tem onde pôr o vetor que o `DATA-07b` passou a enviar, perde a noite inteira
+num reset, e quando enche funde épocas — e época fundida não tem features. O estudo de 29/09
+já tinha decidido a saída (flash como registro durável) e deixado duas escolhas em aberto:
+LittleFS ou NVS, e versionar a tabela de partições.
+
+**Hipótese de trabalho.** Que um log circular próprio sobre a partição crua fosse mais simples
+e mais testável que LittleFS ou NVS, e que desse para provar no host, sem placa, que ele
+sobrevive a corte de energia em qualquer ponto. O autor aprovou as duas recomendações do plano:
+log circular próprio, e tabela sob medida sem OTA.
+
+**O que foi testado, e como.**
+
+- **O núcleo:** `registro_flash.{h,cpp}` (registro de 64 B com `static_assert` de tamanho e
+  offsets, CRC-16/CCITT pulando o byte de entregue) e `fila_flash.{h,cpp}` (montagem, guarda,
+  leitura, confirmação, e o caminho do registro ao payload).
+- **A flash simulada** (`testes/testes_fila_flash.cpp`): programa com `antigo & novo` e conta
+  toda tentativa de bit 0 → 1; apaga de 4 KiB em 4 KiB; corta a energia depois de N bytes, no
+  meio de um apagamento, ou "engole" a escrita.
+- **Cenários:** ida e volta; reset com pendentes; fila cheia; 20 000 épocas em 8 setores;
+  corte em cada um dos 65 pontos de uma gravação; confirmação pela metade; apagamento pela
+  metade; chip que engole a escrita; o registro virando o JSON do contrato, com e sem relógio.
+- **A tabela:** `firmware/partitions.csv`; `make capacidade` passou a lê-la e validá-la.
+- **A ponte:** `firmware/midia_flash_esp32.h`, compilada pelo `make sintaxe` com um stub de
+  `esp_partition.h`.
+- **Controle positivo:** `make mutacao-fila` com 10 sabotagens; a ponte com a chamada de escrita
+  estragada; a tabela com três estragos (sobreposição, nome trocado, fim fora da flash).
+- **Suítes completas** do firmware em `gcc:13`; conferências de documento no Windows 11.
+
+**Resultado medido.**
+
+- **A fila:** 72 verificações, 0 falhas. Nenhuma violação de NOR em nenhum cenário. Depois de
+  qualquer corte, nada do que já estava gravado se perde e a fila volta a gravar.
+- **Desgaste:** em 20 000 épocas, os 8 setores ficaram entre 38 e 39 apagamentos.
+- **Capacidade:** 512 setores = 32 768 registros, **32 704 garantidos = 272,5 h = 11,4 dias**.
+  Com a tabela padrão seriam 7,8 dias.
+- **Controle positivo:** 10/10 sabotagens acusadas, depois do conserto abaixo; a ponte estragada
+  reprova o `make sintaxe`; os três estragos da tabela reprovam o `make capacidade`.
+- **Suítes:** 341 + 157 + 118 + 456 + 72 verificações, 0 falhas; 4/4 sketches e a ponte
+  compilam; mutação 15/15, da cadeia 19/19, da fila 10/10.
+
+**Adaptação.**
+
+- **A partição padrão tem 1 408 KiB, não 1,5 MiB.** Conferido no `tools/partitions/default.csv`
+  do `arduino-esp32`: a área de dados é 0x160000. O 1,5 MiB estava no estudo desde 29/09 sem
+  ter sido conferido, e dali foi para o backlog, a pendência e dois documentos de decisão como
+  "13,7 dias". Corrigido nas constantes, anotado nos documentos, registrado como defeito.
+- **O registro tem 64 B, não os 40 do layout D.** A flash exige o que a RAM não exigia: ordem
+  (`seq`), integridade (CRC), a marca de entregue e o instante. Com a partição de 2 MiB, a
+  cobertura continua acima de uma semana.
+- **O instante passou a ser resolvido na gravação.** A fila em RAM data cada época no envio,
+  pelo relógio monotônico, e esse relógio zera num reset. Na flash, o registro grava hora de
+  parede quando o relógio já foi sincronizado; senão, o monotônico da sessão, e depois de um
+  reset sem sincronia a época vai sem `ts`. Resolução de 1 s, porque sobravam 4 B.
+- **O `FW-08` passou de L0 para L1:** o que falta é exercitar a ponte na placa.
+
+**O que deu errado no caminho.**
+
+1. **O controle positivo achou um ponto cego nos testes que eu tinha acabado de escrever.** A
+   sabotagem 7 (procurar a cauda a partir do slot 0, e não da cabeça) passou. Nenhum teste
+   remontava a fila com pendentes atravessando o fim físico da partição, que é justamente o
+   caso em que o slot 0 guarda a época mais nova. Entrou o teste de remontagem com pendentes
+   dando a volta, e a sabotagem passou a ser acusada.
+2. **Uma edição do `Makefile` gravou `\n` literal** no lugar da quebra de linha (escape de
+   shell dentro de Python). O `make` recusou ("No rule to make target"), e a correção foi por
+   script em arquivo.
+3. **O simulador de flash tinha um aviso `-Wreorder`** na ordem de inicialização dos membros.
+   Corrigido antes do commit.
+4. **O parágrafo gerado de `CORRECOES-APLICADAS.md` dizia que toda premissa achada por leitura
+   era uma "estrutura ausente".** O defeito novo do 1,5 MiB não é: é um dado de terceiro nunca
+   conferido. A guarda do gerador acusou, e o parágrafo foi reescrito junto com ela.
+
+**Risco em aberto.**
+
+- **Não exercitado na placa:** a ponte com o ESP32, a tabela gravada de verdade, o tempo de
+  varrer 2 MiB no boot e o tempo de apagar um setor (`FW-08` (c), L1).
+- **Não ligado:** nenhum sketch usa a fila. Quem a liga ao laço é o `FW-07` (b).
+- **CRC de 16 bits:** uma gravação cortada tem chance de 1 em 65 536 de passar como válida.
+- **`DATA-07e`:** o motivo dele (autonomia em RAM) deixou de valer com a flash. Proposto ao
+  autor rebaixar ou fechar; não decidido.
+
+**Procedência.**
+
+- `firmware/nucleo/registro_flash.{h,cpp}`, `fila_flash.{h,cpp}`, `capacidade.cpp` e
+  `Makefile`;
+- `firmware/nucleo/testes/testes_fila_flash.cpp`, `verificar_fila_por_mutacao.sh` e
+  `stubs-arduino/esp_partition.h`;
+- `firmware/partitions.csv` e `firmware/midia_flash_esp32.h`;
+- `scripts/estudo_buffer.py`, `docs/DECISAO-BUFFER-E-FEATURES.md`,
+  `docs/ARQUITETURA-DE-CAPTACAO.md` e `docs/LIMITACOES-TCC.md`;
+- `.github/workflows/ci.yml`;
+- backlog `FW-08`.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
