@@ -4497,6 +4497,94 @@ motivo. Duas referências novas na lista da seção (o guia de limites e o códi
 - `docs/LIMITACOES-TCC.md`, seção X.7;
 - backlog `SEC-11` e `SEC-08`.
 
+---
+
+# 2026-10-31 (v) — as figuras do TCC: o esquemático, e três diagramas que tinham ficado para trás
+
+**O problema, como foi entendido no início.** O `DIAG-02` (esquemático) nunca tinha sido
+começado, e o `DIAG-04` estava escrito mas nunca renderizado. Ao ler os arquivos para o plano,
+apareceu o maior problema: `DIAG-01`, `DIAG-03` e `DIAG-04`, conferidos em 28/10, não
+mostravam nada do que entrou em 30 e 31/10 — a C2, a fila na flash, o envio em lote, a `010`, a
+rota de features. O autor aprovou incluir os três.
+
+**Hipótese de trabalho.** Que as figuras Mermaid pudessem ser atualizadas e conferidas contra o
+código por script, e que o esquemático pudesse ser feito com uma ferramenta que gera a imagem
+aqui, para ela ser olhada antes de entrar no texto.
+
+**O que foi testado, e como.**
+
+- **`DIAG-01`, `DIAG-03`, `DIAG-04`:** reescritos onde o código mudou. Renderizados com a
+  imagem `minlag/mermaid-cli:11.4.2` (a de 28/10), e as sete figuras **olhadas**.
+- **Conferência por script** (em scratchpad): extrai de cada bloco Mermaid os caminhos de
+  arquivo, as chamadas `nome()`, as rotas e as colunas do ER, e procura cada um no código com
+  `git grep`.
+- **`DIAG-02`:** `docs/diagramas/DIAG-02-esquematico.py`, com `schemdraw` 0.19 num ambiente
+  Python separado. Antes de desenhar, o script lê os pinos e o endereço no `sketch.ino` e as
+  ligações no `diagram.json`, e recusa se divergirem.
+- **A fonte do GY-521:** a página do MPU-6050 no Arduino Playground, para os pull-ups e a
+  alimentação.
+- **Controle positivo:**
+  - quatro nomes inventados (arquivo, função, rota, coluna), um por cópia, contra o script de
+    conferência;
+  - três estragos (SDA, endereço, SCL do Wokwi) contra a conferência do esquemático;
+  - o próprio renderizador, que reprovou um rótulo com dois-pontos.
+
+**Resultado medido.**
+
+- **Conferência:** 160 identificadores nos três arquivos, todos achados no código. Os quatro
+  nomes inventados foram acusados.
+- **Renderização:** sete figuras geradas e olhadas. A figura de privilégios (`DIAG-04` B) estava
+  larga demais para uma página (2,7 : 1); com o layout da esquerda para a direita ficou em
+  1,4 : 1.
+- **Esquemático:** duas folhas legíveis. Os três estragos foram recusados com a mensagem da
+  divergência.
+- **Fonte do GY-521:** o módulo tem pull-ups no I2C de 2,2 k ou 10 kΩ, conforme o lote, e um
+  regulador; a página **recomenda 5 V no VCC**, e o projeto liga em 3V3.
+
+**Adaptação.**
+
+- **`schemdraw` em vez do KiCad** que o `README` recomendava: o KiCad não está aqui, e um
+  arquivo do KiCad escrito à mão e nunca aberto seria um esquemático sem conferência.
+- **A v1 não se diz "montada":** o primeiro título dizia "o circuito montado", e o sensor nem
+  foi soldado. Virou "as ligações que o firmware espera".
+- **AD0 ligado ao GND explicitamente**, porque a fonte não confirma o resistor interno do
+  módulo.
+- **`DOC-05` fechou junto**, porque o que faltava nele era o `DIAG-04`.
+- **A questão do VCC foi para o `HW-02`**, com o motivo de não trocar às cegas: se os pull-ups
+  forem para o VCC, 5 V chegariam ao I2C, e o ESP32 não tolera.
+
+**O que deu errado no caminho.**
+
+1. **A regra de manutenção das figuras falhou.** O `README` da pasta lista quais figuras revisar
+   quando `FW-07`, `API-03`, `DATA-07` e `DATA-03` fechassem; os quatro fecharam e ninguém
+   abriu a tabela. O `DIAG-04` chegou a 31/10 dizendo que a `002` e a `008` não tinham rodado.
+   Registrado como defeito.
+2. **Erros meus nas figuras, pegos ao olhar as imagens:**
+   - títulos de bloco cortados pelo renderizador;
+   - a seta do sensor para o `envio-continuo`, faltando no `DIAG-01`;
+   - o participante "Navegador (Coletar.tsx)" nos caminhos de leitura do `DIAG-04`;
+   - dois-pontos num rótulo de estado, que o parser reprovou.
+3. **O primeiro esquemático saiu girado 180°**, porque o `schemdraw` herda a direção da última
+   linha desenhada, com os pinos em ordem invertida e os rótulos sobrepostos. Refeito com
+   direção explícita.
+4. **Escape de `\n` num heredoc** quebrou uma edição do esquemático (o assert recusou). Refeita
+   por arquivo de script, como manda a lição de ontem.
+
+**Risco em aberto.**
+
+- **O esquemático descreve o que o código espera, não a montagem:** só a placa confere.
+- **O VCC do GY-521** (`HW-02`).
+- **A conferência por script vive em scratchpad**, não no CI: uma figura pode envelhecer de
+  novo sem que nada acuse. É o mesmo padrão do `DOC-13`.
+- **`DIAG-05` (pipeline de ML) não foi tocado** nesta sessão.
+
+**Procedência.**
+
+- `docs/diagramas/DIAG-01-arquitetura.md`, `DIAG-03-firmware-e-fluxo-do-dado.md`,
+  `DIAG-04-modelo-de-dados-e-seguranca.md`, `DIAG-02-esquematico.py` e `README.md`;
+- página *MPU-6050* do Arduino Playground (pull-ups, regulador, VCC);
+- backlog `DIAG-01` a `DIAG-04`, `DOC-05` e `HW-02`.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

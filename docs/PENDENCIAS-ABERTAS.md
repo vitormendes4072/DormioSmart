@@ -49,12 +49,12 @@ linha, não um resumo: resumo é a cópia que diverge.
 
 | Grupo | Itens |
 |---|---:|
-| A — Depende só de software: dá para fazer a qualquer momento | **32** |
+| A — Depende só de software: dá para fazer a qualquer momento | **29** |
 | B — Depende de decisão do Vitor | **10** |
 | C — Depende de ação do Vitor que não é decisão | **6** |
 | D — Bloqueado por hardware ou coleta | **26** |
 | E — Bloqueado por terceiro | **4** |
-| **Total** | **78** |
+| **Total** | **75** |
 
 ⚠️ **Este total não é comparável à contagem do backlog, e a diferença não é
 erro de nenhum dos dois.** São unidades de contagem diferentes: o backlog
@@ -75,7 +75,7 @@ outro item. **Desde 28/10 têm ID no backlog:** `GIT-07`, `INFRA-02` e
 
 ## A — Depende só de software: dá para fazer a qualquer momento
 
-**32 itens.**
+**29 itens.**
 
 ### `CALC-01` 🔴
 
@@ -100,26 +100,6 @@ Física do acelerômetro: força específica, resolução, ruído, Nyquist — e
 ### `CALC-04` 🟡
 
 Análise elétrica: pull-down, pull-ups do I2C, níveis 3,3 V, fonte de despertar.
-
-*Camada no backlog: L0.*
-
-### `DIAG-02` 🟡
-
-Esquemático do circuito; v1 (1 sensor) e v2 (2, endereços I2C).
-
-*Camada no backlog: L0.*
-
-**Conferência.** Confirmado aberto: não há `DIAG-02-*.md` em `docs/diagramas/`.
-
-### `DIAG-04` 🟡
-
-Sequência do fluxo autenticado + modelo ER. Escrito e revisado em 17/10. **Falta só uma coisa:** os três blocos mermaid foram validados por **parser**, nunca por **renderização** — ninguém olhou as figuras.
-
-*Camada no backlog: L0.*
-
-### `DOC-05` 🟡
-
-READMEs e `CLAUDE.md`. Falta só o `DIAG-04`. O `CLAUDE.md` é versionado desde 27/10 (`DOC-11`).
 
 *Camada no backlog: L0.*
 
