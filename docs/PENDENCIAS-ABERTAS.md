@@ -49,12 +49,12 @@ linha, não um resumo: resumo é a cópia que diverge.
 
 | Grupo | Itens |
 |---|---:|
-| A — Depende só de software: dá para fazer a qualquer momento | **33** |
+| A — Depende só de software: dá para fazer a qualquer momento | **32** |
 | B — Depende de decisão do Vitor | **10** |
 | C — Depende de ação do Vitor que não é decisão | **7** |
 | D — Bloqueado por hardware ou coleta | **26** |
 | E — Bloqueado por terceiro | **4** |
-| **Total** | **80** |
+| **Total** | **79** |
 
 ⚠️ **Este total não é comparável à contagem do backlog, e a diferença não é
 erro de nenhum dos dois.** São unidades de contagem diferentes: o backlog
@@ -75,7 +75,7 @@ outro item. **Desde 28/10 têm ID no backlog:** `GIT-07`, `INFRA-02` e
 
 ## A — Depende só de software: dá para fazer a qualquer momento
 
-**33 itens.**
+**32 itens.**
 
 ### `CALC-01` 🔴
 
@@ -168,12 +168,6 @@ Escrever `ml/src/carregar/walch.py`. A interface única garante que é só isso.
 ### `ML-08` ⚪
 
 Combinação item 9 + HMM com LOSO interno (N=92). **Provavelmente esforço mal gasto** — a validação externa já mostrou que o ganho do HMM não atravessa coorte. Registrado para não parecer esquecimento.
-
-*Camada no backlog: L0.*
-
-### `DATA-07e` 🔴
-
-Quantizar os 5 floats de pico: 52 B → 40 B, e a cobertura de 5,25 h → 6,83 h em 32 KiB. Dívida assumida de propósito, porque mexe na precisão **transmitida** e na checagem de coerência da §5.1 do contrato. Esquema já desenhado, com custo medido em κ (u16 custa Δκ ≈ 1e−4).
 
 *Camada no backlog: L0.*
 
