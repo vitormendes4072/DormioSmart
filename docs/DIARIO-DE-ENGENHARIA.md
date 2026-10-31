@@ -4682,6 +4682,59 @@ durante a renderização, pelo mesmo motivo, e tem teste próprio.
 - `frontend/src/contexts/AuthContext.test.tsx`;
 - backlog `AUTH-07`.
 
+---
+
+# 2026-10-31 (viii) — o release da correção do login, confirmado no site
+
+**O problema, como foi entendido no início.** A correção do `AUTH-07` estava em `develop` (PR
+#28) e o site continuava com o login quebrado até um release para `main`.
+
+**Hipótese de trabalho.** Que o release fosse só o frontend, sem dependência de banco nem de
+configuração, e que o bundle publicado pudesse ser conferido daqui.
+
+**O que foi testado, e como.**
+
+- **Antes do merge:** diff da base comum para `main` (vazio) e de `main` para `develop`
+  (arquivos, variáveis de ambiente, `package.json`, `requirements.txt`, `vercel.json`).
+- **O release:** PR #29, `develop` → `main`, mesclada depois dos 9 checks do CI.
+- **Depois do merge:**
+  - o deploy de produção do commit, pela API de deployments do GitHub;
+  - o `/health`;
+  - o bundle JavaScript que o site serve, baixado e procurado pelo trecho do provedor de token.
+- **O login de verdade:** feito pelo autor no site, porque esta sessão não entra com senha.
+
+**Resultado medido.**
+
+- **Antes:** `main` sem conteúdo próprio; nenhuma variável nova; `web-app/` sem mudança. No site,
+  só muda `frontend/src/contexts/AuthContext.tsx`.
+- **Depois:**
+  - deploy de produção `success` para `3618c67`;
+  - `/health` `200`, banco ok, contrato 2.7.0;
+  - o bundle `index-GGc8YIG2.js` contém o código novo — a sessão numa ref, e o provedor e o
+    callback registrados num `useState` de inicialização;
+  - **o autor confirmou: o login funciona.**
+
+**Adaptação.** Nenhuma.
+
+**O que deu errado no caminho.** Nada nesta etapa. O que deu errado foi antes, e está na entrada
+(vii): o release de 29/10 levou o defeito e a conferência dele não fez login.
+
+**Risco em aberto.**
+
+- **A conferência pós-release precisa de um login de verdade.** Ficou como regra no `CLAUDE.md`.
+  Automatizar exige uma conta de teste, o que depende do `INFRA-02`.
+- **Não conferido:** o fluxo de abrir o site já logado (recarregar a página com sessão
+  guardada). Ele passa pelo mesmo caminho corrigido, e é coberto pelo mesmo teste; não foi
+  testado na produção.
+
+**Procedência.**
+
+- PRs #28 e #29 (`3618c67`);
+- deployment de produção `7463178791`;
+- `GET https://dormio-smart.vercel.app/health` e o bundle `index-GGc8YIG2.js`, 31/10;
+- a confirmação do autor;
+- backlog `AUTH-07`.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
