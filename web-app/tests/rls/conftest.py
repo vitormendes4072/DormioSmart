@@ -71,6 +71,10 @@ MIGRACOES_APLICADAS = (
     # funções de gravação. `test_rls_features.py` confere que elas EXTRAEM os
     # campos novos e que o ACL da 009 sobreviveu ao `create or replace`.
     "010_vetor_de_caracteristicas.sql",
+    # A 011 (DATA-08) cria o índice único da época e recria as duas funções com
+    # `on conflict`. `test_rls_idempotencia.py` confere que o reenvio grava uma
+    # linha e devolve o MESMO id, e não nulo.
+    "011_leitura_idempotente.sql",
 )
 
 VARIAVEL = "DORMIO_RLS_DATABASE_URL"

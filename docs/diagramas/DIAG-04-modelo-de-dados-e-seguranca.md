@@ -75,7 +75,7 @@ erDiagram
         double temp "C · so MPU6050"
         double movimento_total "magnitude |a|"
         text status "movimento|repouso — limiar do firmware"
-        timestamptz captured_at "MEDICAO · nulo = nao informado"
+        timestamptz captured_at "MEDICAO · nulo = nao informado · UK parcial com device e epoca (011)"
         timestamptz created_at "RECEBIMENTO"
         integer epoca_segundos "nulo = amostra instantanea"
         text metodo_agregacao "obrigatorio se epoca_segundos"

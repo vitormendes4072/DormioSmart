@@ -15,6 +15,7 @@ Scripts SQL versionados, aplicados **em ordem numérica** no Supabase
 | 008 | `008_perfil_como_fonte_de_verdade.sql` | PERFIL-01 | `profiles` como fonte de verdade: gatilho de `updated_at`, teto de tamanho do nome, papel de cada coluna declarado. |
 | 009 | `009_privilegios_padrao_do_supabase.sql` | SEC-12 | Revoga **nominalmente** o que os privilégios padrão do Supabase dão a `anon`/`authenticated` em funções, e muda o padrão para funções futuras. Pode rodar antes ou depois da 007. |
 | 010 | `010_vetor_de_caracteristicas.sql` | DATA-07b | O vetor de características: dez colunas nomeadas em `sleep_data`, restrição tudo-ou-nada, e as duas funções de gravação recriadas para extraí-las. **Aplicar ANTES do release do backend da v2.7.0** (`DATA-07f`): na ordem inversa, `f` validado seria descartado com `201`. Não quebra o backend anterior. ✅ Aplicada na produção em 30/10, antes do release (diagnóstico com 4 de 4 marcas). |
+| 011 | `011_leitura_idempotente.sql` | DATA-08 | Índice único parcial em `(device_id, captured_at, epoca_segundos)` e as duas funções de gravação com `on conflict`: o reenvio da mesma época devolve o id que já existe, sem duplicar. **Antes de aplicar, rode `CONFERIR-duplicatas-antes-da-011.sql`** (só leitura): com duplicatas já no banco, a 011 PARA com a contagem e não apaga nada. O backend não muda; não precisa de release. Aplicar na produção: `DATA-09`. |
 
 ## Quais estão aplicadas no banco
 

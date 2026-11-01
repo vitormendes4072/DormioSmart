@@ -633,10 +633,14 @@ função serverless.
 | `413` | Mais de 60 leituras |
 | `503` | **Nada** foi gravado e há pendentes: um `200` vazio pareceria sucesso |
 
-⚠️ **Duplicata, não resolvida:** se a resposta se perder depois da gravação, o dispositivo
-reenvia leituras já gravadas. O `/api/data` tem o mesmo risco desde sempre; o lote só o
-concentra. Uma chave de idempotência (por exemplo, dispositivo + `ts`) fica para quando o
-firmware enviar `ts` (contrato v2.0.0).
+✏️ **Duplicata: resolvida no banco pela migração 011 (`DATA-08`, 01/11).** Se a resposta se
+perder depois da gravação, o dispositivo reenvia leituras já gravadas. Desde a 011, a chave
+(dispositivo, `ts`, `epoca_s`) é única em `sleep_data`, e o reenvio da mesma leitura **não
+grava outra linha**: a função devolve o id da que já existe, e a leitura volta como **aceita**
+(no lote, em `aceitas`; no `/api/data`, `201`). Vale para os dois caminhos e entre eles.
+**Não é deduplicada:** leitura sem `ts` (sem o instante da medição não há como saber que é a
+mesma) e leitura sem `epoca_s`. O formato da requisição e da resposta não muda; a versão do
+contrato não muda. *(Até 01/11 este parágrafo dizia "Duplicata, não resolvida".)*
 
 ### 5.1 Regras de validação (SEC-03)
 
