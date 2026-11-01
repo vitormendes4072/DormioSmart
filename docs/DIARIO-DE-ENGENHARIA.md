@@ -5146,6 +5146,80 @@ derrubar o Supabase daqui. Está coberto pelos 17 testes com as exceções reais
 - a confirmação do autor;
 - backlog `AUTH-08`.
 
+---
+
+# 2026-11-01 (viii) — `API-04`: bug do servidor não apaga leitura do dispositivo
+
+**O problema, como foi entendido no início.** Achado A4 da auditoria de 31/10. As rotas
+`/api/data` e `/api/data/lote` tinham um `except Exception` que respondia `400` com `str(e)` no
+corpo. Para o firmware, `400` quer dizer "leitura inválida, não adianta reenviar", e ele a tira
+da fila. Um defeito do servidor apagava uma leitura boa do dispositivo, e o texto interno da
+exceção saía para o cliente. No lote, a exceção num item o punha em `rejeitadas`, com o mesmo
+efeito.
+
+**Hipótese de trabalho.** Que a validação já tratasse toda entrada estranha sem levantar, de modo
+que o `except` genérico só pegasse duas coisas: erro HTTP do próprio Flask (culpa do pedido) e
+bug do servidor. E que o firmware já recuasse num `500`.
+
+**O que foi testado, e como.**
+
+- **Antes de escrever, contra o app local:** JSON quebrado → `400` do Werkzeug; sem
+  `Content-Type` → o Flask levanta `415`, e o `except` trocava por `400`; lista ou número no
+  corpo → `400` da validação, sem exceção.
+- **A correção:** `_resposta_de_falha` em `routes.py` mantém o código do erro HTTP do Flask e
+  responde `500` "erro interno" a qualquer outra exceção, com `logger.exception`. No lote,
+  exceção num item vira pendente, como no `503`.
+- **Testes:** 9 novos no backend; 1 verificação nova no firmware (`500` → recuar sem confirmar),
+  em contêiner `gcc:13`.
+- **Controle positivo:** seis sabotagens, uma de cada vez, com o arquivo restaurado depois.
+
+**Resultado medido.**
+
+- **Backend:** 416 passam (407 + 9). **Firmware:** `make todos` com 341 + 157 + 136 + 456 + 84
+  verificações, 0 falhas.
+- **Controle positivo:**
+  - exceção volta a `400`: 2 falhas;
+  - `str(e)` volta ao corpo: 3;
+  - item com exceção volta a rejeitado: 2;
+  - erro HTTP do Flask vira `500`: 3 (inclusive um teste antigo, de JSON inválido);
+  - sem o `logger.exception`: 1;
+  - firmware confirmando as leituras num `500`: 1.
+
+**Adaptação.**
+
+- **Um teste antigo especificava o comportamento que mudou** (exceção num item → `rejeitadas`,
+  com o texto da exceção). Foi reescrito para a regra nova, mantendo o que protegia: o lote não
+  cai, e a leitura gravada antes aparece em `aceitas`. A mudança está explicada no próprio teste.
+- **O firmware não precisou mudar:** `interpretar_resposta_do_lote` já recuava em qualquer código
+  fora de 200, 413 e 503. Faltava o teste com `500`, e ele entrou.
+- **A decisão de fundo, aprovada pelo autor:** pendente, e não rejeitada. Um item que derrube o
+  servidor sempre trava a fila do dispositivo até a correção; a flash guarda 11 dias, e o log da
+  Vercel mostra a exceção. Rejeitar deixaria a fila andar, mas perderia a leitura para sempre.
+
+**O que deu errado no caminho.**
+
+- **Um comando travou** por um `cat >` sem entrada, esquecido na frente do script; foi parado e
+  refeito por arquivo.
+- **A quarta sabotagem não foi aplicada na primeira rodada:** o texto procurado tinha `\n`, e o
+  `routes.py` usa CRLF. O script parou na asserção, sem rodar nada sabotado; ajustado, ela foi
+  acusada.
+
+**Risco em aberto.**
+
+- **Só chega ao site com um release** para `main`. A conferência depois dele é o `/health` e um
+  login de verdade (regra do `CLAUDE.md`).
+- **O caminho do `envio-continuo`** (uma leitura por `/api/data`) com `500` foi conferido por
+  leitura do código, não por teste.
+- **Item que derruba o servidor sempre** trava a fila daquele dispositivo até a correção: é o
+  custo aceito acima, visível no log.
+
+**Procedência.**
+
+- `web-app/routes.py`; `tests/test_erro_interno_e_500.py` e `tests/test_lote.py`;
+- `firmware/nucleo/testes/testes_c2.cpp` (e `lote.cpp`, sem mudança);
+- `docs/DATA-CONTRACT.md`, §5 e §5.2;
+- backlog `API-04`; `docs/AUDITORIA-2026-10-31.md`, A4.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

@@ -237,7 +237,7 @@ custo para rodar:
 
 | Onde | Como rodar | Resultado em 28/10 |
 |---|---|---|
-| Backend (Flask) | `cd web-app && pytest --ignore=tests/rls` | **407 passam** ✏️ *(01/11, `AUTH-08`: +17; 31/10, `SEC-14`: +6)*; antes **384 passam** ✏️ *(30/10, branch do `DATA-07b`; eram 316 no `API-03` e 293 em 28/10)* |
+| Backend (Flask) | `cd web-app && pytest --ignore=tests/rls` | **416 passam** ✏️ *(01/11, `API-04`: +9; 01/11, `AUTH-08`: +17; 31/10, `SEC-14`: +6)*; antes **384 passam** ✏️ *(30/10, branch do `DATA-07b`; eram 316 no `API-03` e 293 em 28/10)* |
 | Frontend | `cd frontend && npx vitest run` | **424 passam, 28 arquivos** ✏️ *(01/11, `AUTH-08`: +2; 31/10, `AUTH-07`: +4 do `AuthContext.test.tsx`)* |
 | Tipos e build | `cd frontend && npm run build` (`tsc --noEmit && vite build`) | `tsc` limpo; `vite build` ok (avisa do chunk único — `UI-15`) |
 | RLS (Postgres real) | `DORMIO_RLS_DATABASE_URL=... pytest tests/rls` | **164 passam** ✏️ *(01/11, `DATA-08`: +6 da 011)*; antes **158 passam** contra `postgres:16` em Docker ✏️ *(30/10, `DATA-07b`: +7 da migração 010; eram 151 em 28/10)*, com a base imitando os privilégios padrão do Supabase (`SEC-12`) — **pulam** sem a variável, de propósito |
@@ -245,7 +245,7 @@ custo para rodar:
 | Diagnóstico e ordem das migrações | `DORMIO_RLS_DATABASE_URL=... python web-app/tests/migracoes/verificar_migracoes.py` | os 11 estados (01/11, com a 011) e a ordem real da produção; 3/3 sabotagens acusadas em 28/10, e a da 010 (função que grava nulo) em 30/10 |
 | ML | `cd ml && .venv/Scripts/python -m pytest testes` | **126 passam** ✏️ *(30/10, branch do `FW-07`: +19 do dourado da cadeia C2)* |
 | Mutação do dourado | `cd ml && .venv/Scripts/python testes/verificar_vetor_dourado_por_mutacao.py` | **12/12**, e o ponto cego registrado segue cego |
-| Firmware | `cd firmware/nucleo && make && make sintaxe capacidade mutacao mutacao-cadeia mutacao-fila` | **341 + 157 + 135 + 456 + 84 verificações, 0 falhas; 4/4 sketches e a ponte da flash compilam, e o `sketch.ino` liga com o núcleo; mutação 15/15; mutação da cadeia C2, do payload, da época da grade e do rádio 23/23; mutação da fila e do envio 13/13** (em contêiner `gcc:13`, 31/10) ✏️ *(30/10, `FW-07` e `DATA-07b`: entraram os alvos `c2` e `cadeia`; 31/10, `FW-08`: o alvo `fila`, e o `capacidade` passou a validar `firmware/partitions.csv`)* |
+| Firmware | `cd firmware/nucleo && make && make sintaxe capacidade mutacao mutacao-cadeia mutacao-fila` | **341 + 157 + 136 + 456 + 84 verificações, 0 falhas** ✏️ *(01/11, `API-04`: +1 no alvo `c2`)*; **4/4 sketches e a ponte da flash compilam, e o `sketch.ino` liga com o núcleo; mutação 15/15; mutação da cadeia C2, do payload, da época da grade e do rádio 23/23; mutação da fila e do envio 13/13** (em contêiner `gcc:13`, 31/10) ✏️ *(30/10, `FW-07` e `DATA-07b`: entraram os alvos `c2` e `cadeia`; 31/10, `FW-08`: o alvo `fila`, e o `capacidade` passou a validar `firmware/partitions.csv`)* |
 | Conferências de documento | `python scripts/<nome>.py --conferir` para `calculos_tcc`, `estudo_buffer`, `conferir_docs_versionados`, `consolidar_registro` | todas passam |
 
 Total: **967 testes** de pytest/vitest + **498 verificações** do núcleo C++. ✏️ *30/10: com as

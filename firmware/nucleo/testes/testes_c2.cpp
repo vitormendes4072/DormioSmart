@@ -368,6 +368,9 @@ static void testar_resposta_do_lote() {
   VERIFICAR(ler(413, "", 60).acao == LOTE_DIVIDIR, "413: dividir");
   VERIFICAR(ler(401, "{\"erro\":\"token\"}", 3).acao == LOTE_RECUAR, "401: recuar sem apagar");
   VERIFICAR(ler(400, "{}", 3).confirmar == 0, "400: nada sai");
+  // API-04 (01/11): bug do servidor responde 500, e a fila nao pode andar.
+  d = ler(500, "{\"error\":\"erro interno\"}", 3);
+  VERIFICAR(d.acao == LOTE_RECUAR && d.confirmar == 0, "500: recuar sem apagar");
   VERIFICAR(ler(-1, 0, 3).acao == LOTE_RECUAR, "erro de transporte: recuar");
 
   d = ler(200, "{\"aceitas\":[0,1,2],\"pendentes\":[],\"rejeitadas\":[],"
