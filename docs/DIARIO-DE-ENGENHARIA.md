@@ -5042,6 +5042,68 @@ comportamento do reenvio está provado contra Postgres 16 local, não contra o S
 - `GET https://dormio-smart.vercel.app/health`, 01/11;
 - backlog `DATA-09`.
 
+---
+
+# 2026-11-01 (vi) — `AUTH-08`: serviço fora do ar não desloga ninguém
+
+**O problema, como foi entendido no início.** Achados A3, A7 e A9 da auditoria de 31/10.
+`validar_token_de_usuario` e `get_device_by_token_hash` devolviam `None` tanto quando o serviço
+recusava a credencial quanto quando ele falhava, e a rota respondia 401 nos dois casos. O
+frontend trata 401 como sessão morta e desloga: uma falha momentânea do Supabase Auth deslogava
+o usuário. E o 401 limpava a sessão só no React, então recarregar a página a ressuscitava.
+
+**Hipótese de trabalho.** Que a biblioteca separasse os dois casos pelas classes de exceção, e que
+um valor-sentinela levasse a diferença até a rota sem quebrar a regra do `FIX-08` (nenhum método
+da camada de banco levanta).
+
+**O que foi testado, e como.**
+
+- **A biblioteca, antes de escrever:** em `supabase_auth` 2.24, `handle_exception` levanta
+  `AuthRetryableError` para rede e 502/503/504, e `AuthApiError` com o status para respostas 4xx.
+- **A correção:** sentinela `INDISPONIVEL` em `database.py`; `require_auth` e as duas rotas de
+  ingestão respondem 503 a ele; no frontend, `signOut({ scope: "local" })` no callback do 401.
+- **Testes:** 17 novos no backend com as exceções reais da biblioteca, e 2 no frontend.
+- **Controle positivo:** cinco sabotagens.
+- **Suítes:** backend, frontend, `tsc` e build.
+
+**Resultado medido.**
+
+- **Backend:** 407 passam (390 + 17). **Frontend:** 424 (422 + 2); `tsc` e build limpos.
+- **Controle positivo:**
+  - tudo-é-recusa, que é o comportamento antigo: 11 falhas;
+  - tudo-é-falha: 3;
+  - banco do dispositivo de volta a `None`: 3;
+  - sem o `signOut`: 1;
+  - API deslogando também no 503: 1.
+
+**Adaptação.**
+
+- **Três testes antigos especificavam o comportamento que mudou** ("Auth fora do ar → 401",
+  "banco fora → `None`", "`/api/data` com banco fora → 401"). Foram reescritos para a regra nova,
+  mantendo a propriedade que protegiam: nunca levantar, nunca 400 nem 500. A mudança está
+  explicada no texto de cada um.
+- **O sentinela é falso como `None`**, para um chamador antigo que só testasse `if not usuario`
+  continuar negando acesso em vez de concedê-lo.
+- **A validação local do JWT virou o `AUTH-09`**, fora deste item: ela cortaria a chamada remota,
+  mas muda a confiança na revogação.
+
+**O que deu errado no caminho.** Nada nesta etapa.
+
+**Risco em aberto.**
+
+- **Só chega ao site com um release** para `main`. A confirmação depois dele é o `/health` e um
+  login de verdade (regra do `CLAUDE.md`).
+- **A classificação depende da biblioteca:** se uma versão nova do `supabase_auth` mudar as
+  classes de exceção, os 17 testes acusam, porque usam as classes reais.
+
+**Procedência.**
+
+- `web-app/database.py`, `auth.py` e `routes.py`; `tests/test_indisponivel_nao_e_401.py`,
+  `test_resiliencia.py` e `test_auth_usuario.py`;
+- `frontend/src/contexts/AuthContext.tsx` e `AuthContext.test.tsx`;
+- `docs/DATA-CONTRACT.md`;
+- backlog `AUTH-08` e `AUTH-09`; `docs/AUDITORIA-2026-10-31.md`, A3, A7 e A9.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

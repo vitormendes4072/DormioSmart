@@ -9,7 +9,7 @@ import features_noite
 import lote
 import perfil
 from auth import extrair_bearer, require_auth
-from database import db
+from database import INDISPONIVEL, db
 from consulta import ler_parametros
 from ingestao import CAMINHO_SESSAO, CAMINHO_TOKEN, extrair_device_id, identificar_caminho
 from device_auth import extrair_token, gerar_token, hash_token
@@ -440,6 +440,10 @@ def init_routes(app):
 
         token_hash = hash_token(token)
         device = db.get_device_by_token_hash(token_hash)
+        if device is INDISPONIVEL:
+            # O banco falhou ao resolver o token (AUTH-08): 503, para o
+            # firmware recuar e reenviar, e não 401 "nao autorizado".
+            return None, "fonte de dados indisponivel", 503
         if device is None:
             # Ausente, revogado ou desconhecido: a mesma resposta para os
             # três. Não informamos qual é o caso — isso só ajudaria quem
@@ -456,6 +460,8 @@ def init_routes(app):
         """
         jwt = extrair_bearer(request.headers)
         usuario_id = db.validar_token_de_usuario(jwt) if jwt else None
+        if usuario_id is INDISPONIVEL:
+            return None, "servico de autenticacao indisponivel", 503
         if usuario_id is None:
             return None, "sessao invalida ou expirada", 401
 

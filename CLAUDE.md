@@ -237,8 +237,8 @@ custo para rodar:
 
 | Onde | Como rodar | Resultado em 28/10 |
 |---|---|---|
-| Backend (Flask) | `cd web-app && pytest --ignore=tests/rls` | **390 passam** ✏️ *(31/10, `SEC-14`: +6)*; antes **384 passam** ✏️ *(30/10, branch do `DATA-07b`; eram 316 no `API-03` e 293 em 28/10)* |
-| Frontend | `cd frontend && npx vitest run` | **422 passam, 28 arquivos** ✏️ *(31/10, `AUTH-07`: +4 do `AuthContext.test.tsx`)* |
+| Backend (Flask) | `cd web-app && pytest --ignore=tests/rls` | **407 passam** ✏️ *(01/11, `AUTH-08`: +17; 31/10, `SEC-14`: +6)*; antes **384 passam** ✏️ *(30/10, branch do `DATA-07b`; eram 316 no `API-03` e 293 em 28/10)* |
+| Frontend | `cd frontend && npx vitest run` | **424 passam, 28 arquivos** ✏️ *(01/11, `AUTH-08`: +2; 31/10, `AUTH-07`: +4 do `AuthContext.test.tsx`)* |
 | Tipos e build | `cd frontend && npm run build` (`tsc --noEmit && vite build`) | `tsc` limpo; `vite build` ok (avisa do chunk único — `UI-15`) |
 | RLS (Postgres real) | `DORMIO_RLS_DATABASE_URL=... pytest tests/rls` | **164 passam** ✏️ *(01/11, `DATA-08`: +6 da 011)*; antes **158 passam** contra `postgres:16` em Docker ✏️ *(30/10, `DATA-07b`: +7 da migração 010; eram 151 em 28/10)*, com a base imitando os privilégios padrão do Supabase (`SEC-12`) — **pulam** sem a variável, de propósito |
 | Mutação do RLS | `python web-app/tests/rls/verificar_por_mutacao.py` | **32/32 sabotagens detectadas** |

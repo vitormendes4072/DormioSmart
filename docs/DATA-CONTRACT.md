@@ -577,7 +577,7 @@ campo silenciosamente descartado, que é por isso que o backend ainda deve
 | `201` | Persistido e confirmado |
 | `400` | Payload malformado — campo ausente, tipo errado ou fora de faixa (SEC-03) |
 | `401` | `X-Device-Token` ausente, inválido ou revogado |
-| `503` | Backend íntegro, mas o banco não persistiu |
+| `503` | Backend íntegro, mas o banco não persistiu — ou ✏️ *(01/11, `AUTH-08`)* não conseguiu resolver o token (banco fora do ar). Até 01/11 este segundo caso respondia `401`. O firmware trata os dois como "recuar e reenviar" |
 
 `201` só é devolvido se a gravação foi **confirmada** — nunca otimista (FIX-02).
 
@@ -631,7 +631,7 @@ função serverless.
 | `401` | Credencial ausente, inválida ou revogada |
 | `404` | Caminho por sessão: dispositivo inexistente, revogado ou de outra pessoa |
 | `413` | Mais de 60 leituras |
-| `503` | **Nada** foi gravado e há pendentes: um `200` vazio pareceria sucesso |
+| `503` | **Nada** foi gravado e há pendentes: um `200` vazio pareceria sucesso. ✏️ *(01/11, `AUTH-08`)* Também quando a credencial não pôde ser conferida (Auth ou banco fora do ar) — o corpo é `{"error": ...}`, sem as três listas, e o firmware não confirma nada |
 
 ✏️ **Duplicata: resolvida no banco pela migração 011 (`DATA-08`, 01/11).** Se a resposta se
 perder depois da gravação, o dispositivo reenvia leituras já gravadas. Desde a 011, a chave
@@ -787,7 +787,7 @@ mais a linha de `auth.users` quando o privilégio permitir. Irreversível.
 |---|---|
 | `200` | Executado. Corpo traz o recibo — ver abaixo |
 | `400` | `confirmacao` ausente ou diferente da frase exata |
-| `401` | Sessão ausente, expirada ou inválida |
+| `401` | Sessão ausente, expirada ou inválida — **só quando o Auth recusa o token**. ✏️ *(01/11, `AUTH-08`)* Auth fora do ar responde `503` ("servico de autenticacao indisponivel"), e o frontend não desloga |
 | `503` | Nada foi apagado (fonte indisponível) |
 
 Recibo do `200`:

@@ -17,7 +17,7 @@ from functools import wraps
 
 from flask import g, jsonify, request
 
-from database import db
+from database import INDISPONIVEL, db
 
 logger = logging.getLogger(__name__)
 
@@ -48,6 +48,10 @@ def require_auth(rota):
             return jsonify({"error": "autenticacao necessaria"}), 401
 
         usuario_id = db.validar_token_de_usuario(token)
+        if usuario_id is INDISPONIVEL:
+            # O Auth falhou, não recusou (AUTH-08). 503, e não 401: 401 o
+            # frontend trata como sessão morta, e desloga.
+            return jsonify({"error": "servico de autenticacao indisponivel"}), 503
         if usuario_id is None:
             return jsonify({"error": "sessao invalida ou expirada"}), 401
 

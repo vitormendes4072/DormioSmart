@@ -275,13 +275,13 @@ O CI **não roda linter** — não há ESLint nem Ruff/flake8. Pressupõe uma de
 
 **Conferência.** Confirmado aberto: não há `.eslintrc*`, `eslint.config.*`, `ruff.toml` nem `setup.cfg` em lugar nenhum do repositório. A **decisão** de configuração está no grupo B.
 
-### `AUTH-08` 🟡
+### `AUTH-09` ⚪
 
-Falha momentânea do Auth ou do banco não pode virar 401 (que desloga): 401 só quando o serviço recusa a credencial; o resto, 503. No frontend, `signOut` local no callback do 401.
+Validar o JWT localmente, pelo JWKS do projeto, em vez de uma chamada ao Supabase Auth por requisição. Muda a confiança na revogação (token revogado vale até expirar): decidir antes de fazer.
 
 *Camada no backlog: L0.*
 
-**Conferência.** Auditoria de 31/10, A3, A7 e A9.
+**Conferência.** Saído do `AUTH-08`; auditoria de 31/10, A3.
 
 ### `API-04` 🟡
 
