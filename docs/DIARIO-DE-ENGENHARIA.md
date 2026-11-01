@@ -5104,6 +5104,48 @@ da camada de banco levanta).
 - `docs/DATA-CONTRACT.md`;
 - backlog `AUTH-08` e `AUTH-09`; `docs/AUDITORIA-2026-10-31.md`, A3, A7 e A9.
 
+---
+
+# 2026-11-01 (vii) — o release do `AUTH-08`, confirmado no site
+
+**O problema, como foi entendido no início.** A correção do `AUTH-08` estava em `develop` (PR #38)
+e só valia no site depois de um release para `main`.
+
+**Hipótese de trabalho.** Que o release fosse só backend e frontend, sem variável nem dependência
+nova, e que a classificação de recusa e falha funcionasse contra o Supabase de verdade, não só
+contra as exceções simuladas.
+
+**O que foi testado, e como.**
+
+- **Antes do merge:** diff da base comum para `main` (vazio); diff de `main` para `develop` (o
+  código do `AUTH-08` e os arquivos SQL da 011, já aplicados e que o deploy não executa);
+  variáveis de ambiente e dependências.
+- **O release:** PR #39, depois dos 9 checks; deploy de produção acompanhado pela API de
+  deployments.
+- **Depois:** `/health`; `GET /api/sleep-history` com um `Bearer` inválido e sem credencial; e
+  o login de verdade, feito pelo autor.
+
+**Resultado medido.**
+
+- Deploy `success` para `f3ce2bf`; `/health` `200`, banco ok, às 04:39 UTC.
+- `Bearer token-invalido` → **`401`** "sessao invalida ou expirada": o Supabase recusou o token,
+  e a classificação nova o tratou como recusa. Sem credencial → `401`.
+- **O autor confirmou:** o login funciona normalmente.
+
+**Adaptação.** Nenhuma.
+
+**O que deu errado no caminho.** Nada nesta etapa.
+
+**Risco em aberto.** O `503` com o Auth fora do ar não foi exercitado na produção: não há como
+derrubar o Supabase daqui. Está coberto pelos 17 testes com as exceções reais da biblioteca.
+
+**Procedência.**
+
+- PRs #38 e #39 (`f3ce2bf`); deployment de produção `7468653608`;
+- `GET https://dormio-smart.vercel.app/health` e `/api/sleep-history`, 01/11;
+- a confirmação do autor;
+- backlog `AUTH-08`.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
