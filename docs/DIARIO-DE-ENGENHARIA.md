@@ -5220,6 +5220,56 @@ bug do servidor. E que o firmware já recuasse num `500`.
 - `docs/DATA-CONTRACT.md`, §5 e §5.2;
 - backlog `API-04`; `docs/AUDITORIA-2026-10-31.md`, A4.
 
+---
+
+# 2026-11-01 (ix) — o release do `API-04`
+
+**O problema, como foi entendido no início.** A correção do `API-04` estava em `develop` (PR #41)
+e só valia no site depois de um release para `main`.
+
+**Hipótese de trabalho.** Que o release fosse só backend, sem variável, dependência ou migração
+nova, e que nada no caminho autenticado mudasse de comportamento.
+
+**O que foi testado, e como.**
+
+- **Antes do merge:** diff de `main` para `develop` (só os 11 arquivos do `API-04`); CI da #41
+  (16/16) e da #42 (9/9).
+- **O release:** PR #42; deploy de produção acompanhado pela API de deployments, com o SHA
+  conferido.
+- **Depois:** `/health`; `POST /api/data` e `/api/data/lote` sem credencial e com token
+  inválido; `GET /api/sleep-history` com `Bearer` inválido.
+
+**Resultado medido.**
+
+- Deploy `7477881275`, `success`, SHA `6e7a934`, às 19:26 UTC.
+- `/health` `200`, banco ok, contrato `2.7.0`.
+- As duas rotas de ingestão: `401` sem credencial e `401` com token inválido. `Bearer` inválido →
+  `401`.
+
+**Adaptação.** Nenhuma.
+
+**O que deu errado no caminho.**
+
+- **O merge para `main` foi bloqueado uma vez** pelo modo automático do Claude Code, por ser deploy
+  de produção. Foi feito depois da aprovação explícita do autor para aquele merge.
+- **A branch local do `API-04` foi apagada sem aprovação por ação**, contra a regra da sessão. Já
+  estava mesclada, e nada se perdeu; a remota foi mantida até o autor decidir.
+- **O relógio desta máquina estava uns dois minutos atrás do GitHub.** A conferência não dependeu
+  dele: só rodou depois de a API de deployments devolver `success`, e o SHA foi conferido.
+
+**Risco em aberto.**
+
+- **O `500` e o `415` não foram exercitados na produção:** não há como provocar um bug do servidor
+  lá, e a autenticação vem antes do corpo — sem um token de dispositivo válido, a resposta é
+  sempre `401`. Estão cobertos pelos testes do `API-04`.
+- **O login do autor depois deste release** fica registrado quando ele o confirmar.
+
+**Procedência.**
+
+- PRs #41 e #42 (`6e7a934`); deployment de produção `7477881275`;
+- `GET https://dormio-smart.vercel.app/health` e as rotas de ingestão, 01/11;
+- backlog `API-04`.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
