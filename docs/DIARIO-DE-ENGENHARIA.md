@@ -4735,6 +4735,67 @@ configuração, e que o bundle publicado pudesse ser conferido daqui.
 - a confirmação do autor;
 - backlog `AUTH-07`.
 
+---
+
+# 2026-10-31 (ix) — `SEC-14`: a chave de privilégio mínimo nunca tinha funcionado
+
+**O problema, como foi entendido no início.** A auditoria de 31/10 (achado A6) suspeitou que a
+produção gravava com a `service_role`. O autor conferiu na Vercel: não havia
+`SUPABASE_INGESTAO_KEY`. Ao emitir a chave e configurá-la, o `/health` foi a `503`.
+
+**Hipótese de trabalho.** Que o gateway do Supabase confere o `apikey` contra as chaves que ele
+emitiu, e recusa um JWT de papel próprio ali; e que o backend punha a chave de ingestão no
+`apikey`, porque `create_client(url, chave)` a põe nos dois cabeçalhos.
+
+**O que foi testado, e como.**
+
+- **Restauração primeiro:** a variável foi apagada e houve redeploy; o `/health` voltou a `200`.
+- **Diagnóstico** (script em scratchpad, rodado pelo autor na máquina dele): a mesma chamada do
+  `/health` (`rpc/sanidade`) de dois jeitos. Imprime só o tamanho da chave, as claims sem
+  segredo e a resposta do servidor.
+- **A correção** em `database.py`, com seis testes em `tests/test_chave_de_ingestao.py`.
+- **Controle positivo:** os testes contra o código de `develop`.
+- **Suíte do backend**, no Windows 11.
+
+**Resultado medido.**
+
+- **Produção com a chave:** `/health` `503` (`"banco": "consulta falhou"`), 02:43 UTC. Depois da
+  restauração, `200`, 02:48 UTC.
+- **Diagnóstico:** chave com 184 caracteres, `role = dormio_ingestao`. **A)** apikey = ingestão →
+  `401 Invalid API key`. **B)** apikey = anon, Bearer = ingestão → `200 "ok"`.
+- **Testes:** 6 passam; o código antigo derruba 3 (chave no `apikey`, chave fora do
+  `Authorization`, queda silenciosa para a `service_role` sem `anon`). Backend: **390** (384 + 6).
+
+**Adaptação.**
+
+- **Sem `anon`, o backend recusa conectar** em vez de cair para a `service_role`: a configuração
+  pediu privilégio mínimo.
+- **O `README` ganhou o passo do Windows** (`Get-Clipboard`). A mensagem do script pedia
+  `export`, que não existe no PowerShell, e o autor tropeçou nisso duas vezes.
+
+**O que deu errado no caminho.**
+
+1. **O `SEC-06` (privilégio mínimo da ingestão) nunca valeu na produção.** O desenho estava
+   certo no banco, testado contra Postgres real, mas a chave nunca foi emitida, e a forma de
+   usá-la nunca passou pelo gateway. Registrado como defeito.
+2. **A produção ficou cerca de três minutos com o `/health` em `503`** entre ligar a chave e
+   desfazer. O login não foi afetado (ele usa a `anon`).
+3. **Um pedaço do JWT secret apareceu numa captura de tela** enviada nesta conversa, fora das
+   tarjas. A parte coberta mantém o segredo inviável de adivinhar e a conversa não é pública;
+   a decisão de não rotacionar foi registrada como do autor.
+
+**Risco em aberto.**
+
+- **A correção não está na produção** até o release, e a chave só vale depois de reconfigurada
+  (`SEC-14`, L3). Até lá, a ingestão segue com a `service_role`.
+- **A `SUPABASE_SERVICE_ROLE_KEY` continua na Vercel** até a chave de ingestão ser confirmada.
+
+**Procedência.**
+
+- `web-app/database.py` (`cliente_de_ingestao`), `tests/test_chave_de_ingestao.py` e `README.md`;
+- o diagnóstico rodado pelo autor e o `/health` de produção, 31/10;
+- backlog `SEC-14`.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
