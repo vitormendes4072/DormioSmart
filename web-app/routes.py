@@ -3,6 +3,7 @@ import time
 from datetime import datetime, timezone
 
 from flask import g, jsonify, request
+from werkzeug.exceptions import HTTPException
 
 import dispositivos
 import features_noite
@@ -16,6 +17,21 @@ from device_auth import extrair_token, gerar_token, hash_token
 from validacao import colunas_de_features, validar_captacao, validar_leitura
 
 logger = logging.getLogger(__name__)
+
+
+def _resposta_de_falha(e, rota):
+    """Exceção que escapou de uma rota de ingestão (API-04).
+
+    Erro HTTP do próprio Flask (JSON malformado, `Content-Type` errado) é
+    culpa do pedido e mantém o código dele (400, 415). Qualquer outra é bug
+    do servidor: 500, com o detalhe só no log. Até 01/11 as duas viravam
+    400 com `str(e)` no corpo, e o firmware descartava uma leitura válida
+    por causa de um defeito nosso -- além de expor o texto interno.
+    """
+    if isinstance(e, HTTPException):
+        return jsonify({"error": e.name.lower()}), e.code
+    logger.exception("erro interno em %s", rota)
+    return jsonify({"error": "erro interno"}), 500
 
 # Versao do contrato que este backend implementa (docs/DATA-CONTRACT.md).
 #
@@ -592,7 +608,7 @@ def init_routes(app):
 
             return jsonify({"status": "success"}), 201
         except Exception as e:
-            return jsonify({"error": str(e)}), 400
+            return _resposta_de_falha(e, "/api/data")
 
     @app.route('/api/data/lote', methods=['POST'])
     def receive_lote():
@@ -625,12 +641,16 @@ def init_routes(app):
 
                 try:
                     gravado, erro, status = _gravar_leitura(caminho, device, content)
-                except Exception as e:
-                    # Mesma régua do `/api/data`, que responde 400 a exceção de
-                    # leitura malformada. Aqui ela vira rejeição DESTE item: deixar
-                    # a exceção derrubar o lote esconderia as que já foram
-                    # gravadas, e o dispositivo reenviaria todas em duplicata.
-                    gravado, erro, status = False, str(e), 400
+                except Exception:
+                    # Leitura inválida não levanta: `_gravar_leitura` devolve 400.
+                    # Exceção aqui é bug do servidor (API-04), e a leitura pode ser
+                    # boa: vira PENDENTE, como no 503, e não rejeitada -- rejeitada
+                    # o dispositivo descarta para sempre. As anteriores continuam
+                    # em `aceitas`, em vez de a exceção derrubar o lote inteiro.
+                    # Custo: um item que derrube o servidor sempre trava a fila
+                    # até a correção; a flash guarda 11 dias, e o log mostra.
+                    logger.exception("erro interno no item %d do lote", indice)
+                    gravado, erro, status = False, None, 503
                 if gravado:
                     resposta["aceitas"].append(indice)
                 elif status == 503:
@@ -643,4 +663,4 @@ def init_routes(app):
 
             return jsonify(resposta), lote.status_da_resposta(resposta)
         except Exception as e:
-            return jsonify({"error": str(e)}), 400
+            return _resposta_de_falha(e, "/api/data/lote")

@@ -577,6 +577,8 @@ campo silenciosamente descartado, que é por isso que o backend ainda deve
 | `201` | Persistido e confirmado |
 | `400` | Payload malformado — campo ausente, tipo errado ou fora de faixa (SEC-03) |
 | `401` | `X-Device-Token` ausente, inválido ou revogado |
+| `415` | ✏️ *(01/11, `API-04`)* Corpo sem `Content-Type: application/json`. Até 01/11 respondia `400` |
+| `500` | ✏️ *(01/11, `API-04`)* Erro interno do servidor — a leitura pode ser válida, e o firmware **não** a descarta: recua e reenvia. O corpo é só `{"error": "erro interno"}`; o detalhe fica no log. Até 01/11 este caso respondia `400` com o texto da exceção, e o firmware apagava a leitura |
 | `503` | Backend íntegro, mas o banco não persistiu — ou ✏️ *(01/11, `AUTH-08`)* não conseguiu resolver o token (banco fora do ar). Até 01/11 este segundo caso respondia `401`. O firmware trata os dois como "recuar e reenviar" |
 
 `201` só é devolvido se a gravação foi **confirmada** — nunca otimista (FIX-02).
@@ -621,7 +623,8 @@ no array enviado:
 | `pendentes` | não gravadas: o banco falhou ou o tempo acabou | reenvia no próximo lote |
 
 Quando o banco falha numa leitura, o servidor **para ali**: aquela e todas as seguintes voltam
-como pendentes. O mesmo vale quando o trabalho passa de 6 s, para não estourar o limite da
+como pendentes. ✏️ *(01/11, `API-04`)* O mesmo quando uma leitura provoca um erro interno do
+servidor: até 01/11 ela voltava em `rejeitadas`, com o texto da exceção, e o firmware a apagava. O mesmo vale quando o trabalho passa de 6 s, para não estourar o limite da
 função serverless.
 
 | Código | Significado |
@@ -631,6 +634,7 @@ função serverless.
 | `401` | Credencial ausente, inválida ou revogada |
 | `404` | Caminho por sessão: dispositivo inexistente, revogado ou de outra pessoa |
 | `413` | Mais de 60 leituras |
+| `500` | ✏️ *(01/11, `API-04`)* Erro interno fora do processamento das leituras; corpo `{"error": "erro interno"}`, e o firmware não confirma nada |
 | `503` | **Nada** foi gravado e há pendentes: um `200` vazio pareceria sucesso. ✏️ *(01/11, `AUTH-08`)* Também quando a credencial não pôde ser conferida (Auth ou banco fora do ar) — o corpo é `{"error": ...}`, sem as três listas, e o firmware não confirma nada |
 
 ✏️ **Duplicata: resolvida no banco pela migração 011 (`DATA-08`, 01/11).** Se a resposta se

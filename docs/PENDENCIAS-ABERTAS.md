@@ -49,12 +49,12 @@ linha, não um resumo: resumo é a cópia que diverge.
 
 | Grupo | Itens |
 |---|---:|
-| A — Depende só de software: dá para fazer a qualquer momento | **33** |
+| A — Depende só de software: dá para fazer a qualquer momento | **32** |
 | B — Depende de decisão do Vitor | **10** |
 | C — Depende de ação do Vitor que não é decisão | **5** |
 | D — Bloqueado por hardware ou coleta | **26** |
 | E — Bloqueado por terceiro | **4** |
-| **Total** | **78** |
+| **Total** | **77** |
 
 ⚠️ **Este total não é comparável à contagem do backlog, e a diferença não é
 erro de nenhum dos dois.** São unidades de contagem diferentes: o backlog
@@ -75,7 +75,7 @@ outro item. **Desde 28/10 têm ID no backlog:** `GIT-07`, `INFRA-02` e
 
 ## A — Depende só de software: dá para fazer a qualquer momento
 
-**33 itens.**
+**32 itens.**
 
 ### `CALC-01` 🔴
 
@@ -282,14 +282,6 @@ Validar o JWT localmente, pelo JWKS do projeto, em vez de uma chamada ao Supabas
 *Camada no backlog: L0.*
 
 **Conferência.** Saído do `AUTH-08`; auditoria de 31/10, A3.
-
-### `API-04` 🟡
-
-Exceção interna nas rotas de ingestão responde 400 com `str(e)`, e o firmware descarta a leitura. Trocar por 500 genérico com log; no lote, exceção num item vira pendente.
-
-*Camada no backlog: L0.*
-
-**Conferência.** Auditoria de 31/10, A4.
 
 ### `SEC-15` 🟡
 

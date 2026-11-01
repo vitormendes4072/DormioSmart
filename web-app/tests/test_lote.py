@@ -186,17 +186,25 @@ def test_estouro_do_orcamento_de_tempo_devolve_o_resto_como_pendente():
     assert gravar.call_count == 2
 
 
-def test_excecao_numa_leitura_rejeita_so_ela():
+def test_excecao_numa_leitura_deixa_ela_e_as_seguintes_pendentes():
     # Uma exceção inesperada não pode derrubar o lote: as já gravadas sumiriam
     # da resposta e o dispositivo as reenviaria em duplicata.
+    #
+    # ✏️ API-04 (01/11): até aqui este teste exigia a leitura com exceção em
+    # `rejeitadas` -- e rejeitada o firmware DESCARTA. Exceção é bug do
+    # servidor, não leitura ruim: ela e as seguintes ficam pendentes, como no
+    # 503, e o dispositivo reenvia depois da correção. O que o teste protegia
+    # continua: o lote não cai e a gravada antes aparece em `aceitas`.
     with _com_device(), \
          patch.object(database.db, "registrar_leitura",
                       side_effect=[1, RuntimeError("boom"), 1]):
         resp = _post({"leituras": [_LEITURA] * 3})
     corpo = resp.get_json()
     assert resp.status_code == 200
-    assert corpo["aceitas"] == [0, 2]
-    assert corpo["rejeitadas"] == [{"indice": 1, "erro": "boom"}]
+    assert corpo["aceitas"] == [0]
+    assert corpo["pendentes"] == [1, 2]
+    assert corpo["rejeitadas"] == []
+    assert "boom" not in resp.get_data(as_text=True)
 
 
 def test_a_mesma_regra_do_api_data_vale_no_lote():
