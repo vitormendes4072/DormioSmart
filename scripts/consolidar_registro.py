@@ -2668,10 +2668,6 @@ PENDENCIAS: list[Pendencia] = [
               "(`setInsecure()`): o token do dispositivo é capturável numa rede "
               "comprometida. Usar `setCACertBundle` ou a CA raiz; validar na placa.",
               "🟡", camada_backlog="L0", nota="Auditoria de 31/10, A5."),
-    Pendencia("FW-09", SOFTWARE, "Corrida no `sketch.ino`: a medição pode entrar em sono "
-              "leve com o Wi-Fi subindo (o aviso sai antes de `wifi_ativo` ser ligado). "
-              "Ligar a flag antes do aviso.", "🔴", camada_backlog="L0",
-              nota="Auditoria de 31/10, A1; latente, sem placa."),
     Pendencia("FW-10", SOFTWARE, "Sono da medição pelo prazo absoluto (hoje é trabalho + "
               "intervalo) e contadores atômicos entre os dois núcleos.", "⚪",
               camada_backlog="L0", nota="Auditoria de 31/10, A8 e A10; latente."),

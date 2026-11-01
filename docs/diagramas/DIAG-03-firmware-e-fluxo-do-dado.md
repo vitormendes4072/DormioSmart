@@ -35,9 +35,9 @@ flowchart TB
     subgraph MED["MEDICAO · nucleo 1"]
         direction TB
         TM["intervalo_de_drenagem_us()<br/>~1,7 s com variacao de [0, 20 ms)"]
-        TM --> W{"wifi_ativo?"}
-        W -->|nao| SL["esp_light_sleep_start()<br/>sono leve: RAM e I2C sobrevivem"]
-        W -->|sim| VD["vTaskDelay()<br/>acordada, no MESMO ritmo"]
+        TM --> W{"radio.pode_dormir()?"}
+        W -->|sim| SL["esp_light_sleep_start()<br/>sono leve: RAM e I2C sobrevivem"]
+        W -->|nao| VD["vTaskDelay()<br/>acordada, no MESMO ritmo"]
         SL --> DR
         VD --> DR
         DR["drenar(): INT_STATUS + FIFO_COUNT, depois os bytes<br/>em blocos de 120 B · avaliar_fifo()"]
@@ -52,8 +52,8 @@ flowchart TB
         PR -->|sim| FT["acumulador: 6 features + g sobre os 960 pontos<br/>quantizar() · epoca_da_grade()<br/>instante_para_gravar()"]
         FT --> GU["fila.guardar() sob mutex<br/>registro de 64 B na flash"]
         REC --> HE
-        GU --> HE{"passaram 10 min<br/>e o Wi-Fi esta desligado?"}
-        HE -->|sim| NT["xTaskNotifyGive(tarefa_envio)"]
+        GU --> HE{"passaram 10 min<br/>e radio.pedir_envio()?"}
+        HE -->|"sim: o radio ja fica reservado"| NT["xTaskNotifyGive(tarefa_envio)"]
         HE -->|nao| TM
         NT --> TM
     end
@@ -62,19 +62,27 @@ flowchart TB
         direction TB
         TE["ulTaskNotifyTake(): dorme ate a medicao avisar"]
         TE --> PD{"fila ok e<br/>reconexao.deve_tentar()?"}
-        PD -->|nao| TE
-        PD -->|sim| WON["wifi_ativo = true<br/>conectar_wifi(): ate 20 s"]
+        PD -->|nao| LIB["radio.liberar()<br/>devolve o radio sem usar"]
+        LIB --> TE
+        PD -->|sim| WON["conectar_wifi(): ate 20 s"]
         WON --> NTP["sincronizar_relogio(): NTP ate 5 s<br/>parede.sincronizar() sob mutex"]
         NTP --> PL["preparar_lote(): ate 60, prefixo contiguo da fila<br/>registro sem payload possivel sai da frente"]
         PL --> PO["POST /api/data/lote<br/>X-Device-Token"]
         PO --> AP["aplicar_resposta(): confirma na fila<br/>so o prefixo que o servidor aceitou"]
         AP --> MAIS{"mais pendentes, sem recuo,<br/>e menos de 20 lotes?"}
         MAIS -->|sim| PL
-        MAIS -->|nao| OFF["desligar_wifi()<br/>wifi_ativo = false<br/>registrar_sucesso / registrar_falha"]
+        MAIS -->|nao| OFF["desligar_wifi()<br/>radio.liberar()<br/>registrar_sucesso / registrar_falha"]
         OFF --> TE
     end
 
 ```
+
+**Quem reserva o rádio é quem pede (`FW-09`, 01/11).** A medição chama `radio.pedir_envio()`
+antes de avisar o envio, e o rádio já sai reservado: ao voltar ao topo do laço, ela não entra
+em sono leve. Até 01/11 a flag era ligada pela tarefa de envio depois de acordar, e na janela
+entre o aviso e essa linha a medição podia adormecer os dois núcleos com o Wi-Fi subindo
+(achado A1 da auditoria de 31/10). O envio devolve o rádio ao terminar e também quando decide
+não tentar — sem essa devolução, a medição nunca mais dormiria.
 
 **Por que a medição não dorme com o Wi-Fi ligado.** O sono leve desliga o rádio e derrubaria a
 conexão no meio do envio. A FIFO do MPU guarda 3,4 s e é esvaziada a cada 1,7 s; um POST por

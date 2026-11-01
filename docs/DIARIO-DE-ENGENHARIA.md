@@ -4890,6 +4890,55 @@ a auditoria considera superados ou prematuros (Seção 4 do documento).
 - `docs/AUDITORIA-2026-10-31.md`;
 - backlog `DATA-08`, `AUTH-08`, `API-04`, `SEC-15`, `FW-09`, `FW-10` e `SEC-14`.
 
+---
+
+# 2026-11-01 (iii) — `FW-09`: quem pede o rádio o reserva
+
+**O problema, como foi entendido no início.** Achado A1 da auditoria de 31/10: no `sketch.ino`, a
+medição avisava a tarefa de envio e voltava ao topo do laço, onde decidia dormir olhando
+`wifi_ativo` — flag que só a tarefa de envio ligava, depois de acordar no outro núcleo. Na janela,
+a medição chamava `esp_light_sleep_start()`, que adormece os dois núcleos e o rádio no meio do
+`WiFi.begin()`.
+
+**Hipótese de trabalho.** Que a regra pudesse sair do sketch para o núcleo, onde dá para provar no
+host a propriedade que faltava: logo depois do pedido, e antes de a tarefa de envio agir, a
+medição já não dorme.
+
+**O que foi testado, e como.**
+
+- `firmware/nucleo/radio.h` (`CoordenacaoDoRadio`, `std::atomic<bool>`), com 7 verificações em
+  `testes_c2.cpp`.
+- O sketch passou a usá-la: `pedir_envio()` antes do aviso, `pode_dormir()` no topo do laço, e
+  `liberar()` no fim do envio **e no caminho em que ele desiste**, que antes não existia.
+- Controle positivo: duas sabotagens no `mutacao-cadeia` — pedir sem reservar (o defeito de
+  antes) e liberar que não libera.
+- A figura A do `DIAG-03` atualizada e renderizada.
+- Suítes do firmware, `make sintaxe` (com a ligação) e as três mutações, em `gcc:13`.
+
+**Resultado medido.**
+
+- Núcleo: 341 + 157 + **135** + 456 + 84, 0 falhas (+7 em `c2`).
+- Sintaxe 4/4 e o sketch liga com o núcleo.
+- Mutação: cadeia **23/23** (as duas novas acusadas, com 3 e 2 falhas), fila 13/13, paridade 15/15.
+
+**Adaptação.** O plano não previa a devolução no caminho de desistência; ela apareceu ao escrever
+a regra ("quem usa devolve"), e sem ela a medição nunca mais dormiria depois do primeiro envio
+recusado pela política de reconexão.
+
+**O que deu errado no caminho.** Nada nesta etapa.
+
+**Risco em aberto.** Os dois `liberar()` estão no sketch, que só é compilado e ligado: os testes
+provam a regra, não que o sketch a segue. Conferido por leitura; de verdade, na bancada
+(`FW-07` (c)).
+
+**Procedência.**
+
+- `firmware/nucleo/radio.h`, `testes/testes_c2.cpp`, `testes/verificar_cadeia_por_mutacao.sh`,
+  `Makefile`;
+- `firmware/sketch.ino`;
+- `docs/diagramas/DIAG-03-firmware-e-fluxo-do-dado.md`, figura A;
+- backlog `FW-09`; `docs/AUDITORIA-2026-10-31.md`, A1.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
