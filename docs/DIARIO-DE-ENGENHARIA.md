@@ -4796,6 +4796,61 @@ emitiu, e recusa um JWT de papel próprio ali; e que o backend punha a chave de 
 - o diagnóstico rodado pelo autor e o `/health` de produção, 31/10;
 - backlog `SEC-14`.
 
+---
+
+# 2026-11-01 — `SEC-14` fechado: a ingestão roda com privilégio mínimo, e a `service_role` saiu
+
+**O problema, como foi entendido no início.** A correção do `SEC-14` (o cliente de ingestão
+com a `anon` no `apikey`) estava em `develop`. Faltava levá-la à produção, ligar a chave de
+ingestão, confirmar que ela é a que está em uso e tirar a `service_role` da Vercel.
+
+**Hipótese de trabalho.** Que, com a correção no ar, a chave de ingestão fosse aceita, como o
+diagnóstico (arranjo B) tinha mostrado; e que desse para provar que é ela, e não a
+`service_role`, que responde.
+
+**O que foi testado, e como.**
+
+- **Release:** PR #32, `develop` → `main` (`80a56c5`), depois dos 9 checks; deploy de produção
+  `success`, `/health` `200` (a chave ainda não estava configurada).
+- **Ligar a chave:** o autor emitiu uma chave nova, cadastrou em Production e fez redeploy.
+- **Provar que é ela:** com as duas chaves presentes, `/health` chamado daqui e o log de
+  produção lido pelo autor — o aviso de "ALTO PRIVILEGIO" sai quando um processo novo monta o
+  cliente com a `service_role`.
+- **Tirar a `service_role`:** o autor a removeu (Production e Preview) e fez redeploy;
+  `/health` chamado daqui depois de o deployment virar.
+
+**Resultado medido.**
+
+- **Com as duas chaves:** log de produção às 00:16:59 do deployment novo: `POST rpc/sanidade`
+  `HTTP/2 200 OK`, **0 avisos**. A chave de ingestão está em uso.
+- **Sem a `service_role`:** `/health` `200`, banco ok, três vezes, às 00:24:43 (o deploy terminou
+  às 00:23:52). Sem `service_role` nem `SUPABASE_KEY`, o backend não tem para onde cair: o `200`
+  só pode vir da chave de ingestão.
+- `/api/sleep-history` sem login continua `401`.
+
+**Adaptação.** A remoção da `service_role` também alcançou os Previews, que usam o mesmo
+Supabase da produção: deixam de carregar a chave de acesso total, e ficam sem ingestão
+(`503` no `/health`).
+
+**O que deu errado no caminho.** **Duas conferências caíram no deployment anterior.** Chamei o
+`/health` antes de o deploy virar (pelos horários do log de build), e o primeiro log lido pelo
+autor estava vazio por isso. Refeito depois do horário de conclusão; nas duas vezes, a leitura
+do horário do log de build é que mostrou o erro.
+
+**Risco em aberto.**
+
+- **A chave vence em 1 ano** (`--anos 1`): depois disso a ingestão para, com `503` no `/health`,
+  que o monitor do `INFRA-03` acusa. Rotação no `web-app/README.md`.
+- **O `.env` local** continua com a `service_role`, para rodar o backend na máquina; não é
+  versionado.
+
+**Procedência.**
+
+- PRs #31 e #32 (`80a56c5`);
+- `GET https://dormio-smart.vercel.app/health`, 01/11, 00:16 e 00:24;
+- log de produção da Vercel, deployment `GcYsZPUF5`, lido pelo autor;
+- backlog `SEC-14`.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
