@@ -2666,11 +2666,6 @@ PENDENCIAS: list[Pendencia] = [
     Pendencia("FW-10", SOFTWARE, "Sono da medição pelo prazo absoluto (hoje é trabalho + "
               "intervalo) e contadores atômicos entre os dois núcleos.", "⚪",
               camada_backlog="L0", nota="Auditoria de 31/10, A8 e A10; latente."),
-    Pendencia("DATA-09", ACAO, "Aplicar a migração `011` na produção: antes, "
-              "`CONFERIR-duplicatas-antes-da-011.sql` (só leitura) tem de vir zerada; "
-              "depois, o diagnóstico com a 011 em 3 de 3 marcas. Até lá, reenvio grava "
-              "linha duplicada.", "🔴", camada_backlog="L3",
-              nota="O backend não muda: não há ordem com release."),
     Pendencia("INFRA-02 — projeto Supabase de teste", ACAO, "Criar um projeto Supabase de "
               "teste e rodar um punhado de `curl`. **Fecharia quatro itens de uma "
               "vez:** o ponto cego do `UI-11` (a troca de e-mail exige "

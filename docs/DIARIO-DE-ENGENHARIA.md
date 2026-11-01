@@ -5006,6 +5006,42 @@ mudar o backend, logo sem release.
 - `docs/DATA-CONTRACT.md` §5.2; `docs/diagramas/DIAG-04`, figura A;
 - backlog `DATA-08` e `DATA-09`; `docs/AUDITORIA-2026-10-31.md`, A2.
 
+---
+
+# 2026-11-01 (v) — `DATA-09` fechado: a 011 na produção
+
+**O problema, como foi entendido no início.** A migração 011 (`DATA-08`) estava em `develop`.
+Faltava aplicá-la na produção, depois de conferir que não havia duplicatas que impedissem o
+índice.
+
+**Hipótese de trabalho.** Que a produção não tivesse duplicatas — o firmware da C2 nunca rodou, e
+o `envio-continuo` só reenvia em falha —, e que recriar as funções não mexesse nos privilégios da
+chave de ingestão (o `create or replace` preserva o ACL).
+
+**O que foi testado, e como.** O autor rodou no SQL Editor, em ordem, a consulta de conferência,
+a 011 e o diagnóstico, e colou os resultados. O `/health` foi chamado daqui depois.
+
+**Resultado medido.**
+
+- **Conferência:** 0 grupos repetidos, 0 linhas a mais.
+- **Diagnóstico:** a 011 com `aplicada = true`, **3 de 3 marcas**; 001 e 003–010 como antes;
+  0 leituras sem dono.
+- **`/health`:** `200`, banco ok, 04:16 UTC. A chave de ingestão executa a `sanidade()` depois
+  da recriação das funções de gravação.
+
+**Adaptação.** Nenhuma.
+
+**O que deu errado no caminho.** Nada nesta etapa.
+
+**Risco em aberto.** Nenhuma leitura reenviada passou ainda pela 011 na produção: o
+comportamento do reenvio está provado contra Postgres 16 local, não contra o Supabase.
+
+**Procedência.**
+
+- resultados da conferência e do diagnóstico, colados pelo autor em 01/11;
+- `GET https://dormio-smart.vercel.app/health`, 01/11;
+- backlog `DATA-09`.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
