@@ -2655,10 +2655,6 @@ PENDENCIAS: list[Pendencia] = [
               "em vez de uma chamada ao Supabase Auth por requisição. Muda a confiança na "
               "revogação (token revogado vale até expirar): decidir antes de fazer.", "⚪",
               camada_backlog="L0", nota="Saído do `AUTH-08`; auditoria de 31/10, A3."),
-    Pendencia("API-04", SOFTWARE, "Exceção interna nas rotas de ingestão responde 400 "
-              "com `str(e)`, e o firmware descarta a leitura. Trocar por 500 genérico com "
-              "log; no lote, exceção num item vira pendente.", "🟡", camada_backlog="L0",
-              nota="Auditoria de 31/10, A4."),
     Pendencia("SEC-15", SOFTWARE, "TLS do firmware sem conferir o certificado "
               "(`setInsecure()`): o token do dispositivo é capturável numa rede "
               "comprometida. Usar `setCACertBundle` ou a CA raiz; validar na placa.",
