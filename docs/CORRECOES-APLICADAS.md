@@ -19,15 +19,15 @@ a única coisa aqui que sustenta uma afirmação de método.
 
 ## Resumo quantitativo
 
-**132 correções registradas**, todas sustentadas no repositório.
+**133 correções registradas**, todas sustentadas no repositório.
 
 **A unidade de contagem, dita antes dos números, porque ela decide como
 lê-los.** Uma linha deste arquivo é **uma correção**: um defeito, uma
 causa, uma correção. Em 4 linhas, porém, a causa e a correção foram
 uma só e os defeitos foram vários — `DADOS-02` (10), `REF-01` (4), `GIT-06` (14), `SEC-12` (2) —, e agrupá-las foi deliberado,
 porque separá-las contaria a mesma correção várias vezes. **Contando
-defeito em vez de correção, o total seria 158.** Este
-arquivo usa **132**, que é o número menor e o mais defensável.
+defeito em vez de correção, o total seria 159.** Este
+arquivo usa **133**, que é o número menor e o mais defensável.
 
 **Fora da contagem, e visível:** 1 linha(s) — `ML-04b` —,
 em que a hipótese se confirmou e o que se corrigiu foi a afirmação
@@ -38,13 +38,13 @@ que se podia extrair do resultado, não um defeito. Estão na seção da
 
 | Área | Correções |
 |---|---:|
-| Segurança | 19 |
+| Segurança | 20 |
 | Interface | 24 |
 | Firmware | 18 |
 | Dados e ML | 24 |
 | Documentação | 24 |
 | Infraestrutura | 23 |
-| **Total** | **132** |
+| **Total** | **133** |
 
 ### Por instrumento — o campo que dá valor a este arquivo
 
@@ -52,13 +52,13 @@ que se podia extrair do resultado, não um defeito. Estão na seção da
 |---|---:|---|
 | **leitura** | 29 | Inspeção do código ou do documento, raciocinando sobre ele. Nada roda, nada se confere contra terceiro. |
 | **cálculo** | 4 | Aritmética sobre os próprios números do projeto. O mais barato de todos, e derrubou premissas grandes. |
-| **execução** | 49 | Rodar código do projeto — suíte, job, compilador, script — e a **saída** acusar. O defeito não estava escondido: estava não exercitado. |
+| **execução** | 50 | Rodar código do projeto — suíte, job, compilador, script — e a **saída** acusar. O defeito não estava escondido: estava não exercitado. |
 | **controle positivo** | 13 | Provocar o defeito de propósito e exigir que a verificação acuse. Inclui verificação por mutação. **É o único instrumento que mede o alcance de uma verificação.** |
 | **inventário** | 21 | Conferir estado declarado contra estado real: `grep` por símbolo, `git ls-files` contra o disco, varredura de afirmações em documentos. |
 | **terceiro** | 11 | Especificação, documentação oficial, artigo, issue ou API de terceiro. O artefato que decide a resposta está **fora** do repositório. |
 | **dado real** | 3 | Só apareceu com o arquivo ou a medição real em mãos. |
 | **uso real** | 2 | Alguém usou o produto como usuário. |
-| **Total** | **132** | |
+| **Total** | **133** | |
 
 ### As três derivações que os números sustentam
 
@@ -72,9 +72,9 @@ que se podia extrair do resultado, não um defeito. Estão na seção da
 > do projeto; são proporções do que foi achado.**
 
 **(1) Exercitar achou perto do dobro do que ler.**
-Execução, controle positivo e uso real somam **64 de 132**
+Execução, controle positivo e uso real somam **65 de 133**
 registros (48%). Leitura e cálculo — os dois
-instrumentos que não precisam rodar nada — somam **33** (25%). A razão é de **1,9 para 1**.
+instrumentos que não precisam rodar nada — somam **33** (24%). A razão é de **2,0 para 1**.
 
 Com a ressalva que impede a leitura fácil: isto **não** diz que ler é
 pouco útil. Diz que, neste projeto, leitura e execução acharam classes
@@ -84,7 +84,7 @@ e a execução achou **alcance** insuficiente. Alcance não se vê lendo, e é
 por isso que a razão é essa e não o contrário.
 
 **(2) 14 correções tinham a causa fora do repositório.**
-Fonte de terceiro e dado real somam **14 de 132** (10%) — defeitos cuja causa não está em nenhuma
+Fonte de terceiro e dado real somam **14 de 133** (10%) — defeitos cuja causa não está em nenhuma
 linha deste projeto, e que **nenhum teste daqui poderia pegar**: a
 especificação do PostgREST, a unidade do Empatica em `g/64`, o valor de
 uma chave num painel do Supabase, a API do Actions, os coeficientes do
@@ -98,7 +98,7 @@ Supabase de teste**, que deve a quatro itens e desde 28/10 tem item próprio
 **(3) As próprias verificações do projeto estavam defeituosas
 26 vezes — e 24 dessas 26 só apareceram
 rodando ou sabotando.**
-São **26 de 132** registros (19%) em que a coisa errada era um teste, uma
+São **26 de 133** registros (19%) em que a coisa errada era um teste, uma
 guarda de CI, um harness de mutação ou um vetor de referência — não o
 código. A distribuição:
 
@@ -127,9 +127,9 @@ alguém tentou fazer a verificação falhar.
 | Procedência | Correções | O que significa |
 |---|---:|---|
 | `completa` | 117 | Commit **e** artefato reabrível — teste, script, seção de documento. Dá para reconferir sem acreditar em ninguém. |
-| `parcial` | 15 | Só a mensagem de commit, só a entrada de diário, ou correção em arquivo não versionado. Entra porque omitir seria pior, e entra **marcada**. |
+| `parcial` | 16 | Só a mensagem de commit, só a entrada de diário, ou correção em arquivo não versionado. Entra porque omitir seria pior, e entra **marcada**. |
 
-**50 dos 132 defeitos revelaram que a premissa estava
+**51 dos 133 defeitos revelaram que a premissa estava
 errada** — não que o código estava errado. É a seção mais instrutiva deste
 arquivo e tem lugar próprio no fim.
 
@@ -151,9 +151,9 @@ só de código filtra pela coluna de área.
 
 ---
 
-## Segurança — 19 defeitos
+## Segurança — 20 defeitos
 
-*7 controle positivo · 5 terceiro · 4 leitura · 1 dado real · 1 execução · 1 uso real*
+*7 controle positivo · 5 terceiro · 4 leitura · 2 execução · 1 dado real · 1 uso real*
 
 ### 2026-08-20 · `AUTH-03`
 
@@ -374,6 +374,20 @@ só de código filtra pela coluna de área.
 **🔄 A premissa estava errada.** O item foi para L3, "é por você", sob a premissa de que não havia software envolvido. Havia: as quatro chamadas de autenticação do frontend.
 
 **Nota.** Dano evitado, não ocorrido: a chave nunca foi ligada. Se tivesse sido, a produção perderia login e cadastro até um deploy do frontend.
+
+**Commit.** `(o commit que introduz esta linha: um commit não cita o próprio hash — ver a entrada de 30/10 (iii) do diário)` · procedência **parcial**
+
+### 2026-10-31 · `SEC-14` 🔄
+
+**O defeito.** O cliente de ingestão punha a chave do papel `dormio_ingestao` no `apikey`, e o gateway do Supabase a recusa ali (`401 Invalid API key`). A chave de privilégio mínimo do `SEC-06` nunca funcionou, e a produção gravava com a `service_role`.
+
+**Como foi encontrado.** *execução* — `create_client(url, chave)` põe a mesma chave no `apikey` e no `Authorization`. O caminho nunca rodou contra o Supabase de verdade: a chave nunca tinha sido emitida, os testes de RLS falam com o Postgres sem o gateway, e os do backend usam cliente falso.
+
+**A correção.** `anon` no `apikey` e a chave de ingestão no `Authorization`, como o `cliente_do_usuario` já fazia; sem `anon`, o backend recusa conectar em vez de cair para a `service_role`. Seis testes, controle positivo com o código antigo (3 falhas).
+
+**🔄 A premissa estava errada.** O `SEC-06` desenhou a chave como substituta direta da `service_role` no `create_client`, sem conferir como o gateway trata o `apikey`.
+
+**Nota.** Achado ao ligar a chave pela primeira vez: o `/health` de produção foi a 503 por cerca de três minutos, e voltou a 200 ao apagar a variável. Confirmado por diagnóstico que não imprime segredo.
 
 **Commit.** `(o commit que introduz esta linha: um commit não cita o próprio hash — ver a entrada de 30/10 (iii) do diário)` · procedência **parcial**
 
@@ -1756,13 +1770,14 @@ com competência teria produzido a coisa errada bem feita.
 | 2026-10-17 | `GIT-05` | Que um aviso escrito no `ROADMAP.md` chega a quem clona. |
 | 2026-10-31 | `FW-08` | Que o tamanho da área de dados da tabela padrão era um dado conhecido e estável. |
 | 2026-10-31 | `SEC-11` | Que ligar o captcha no painel era uma mudança só de configuração. |
+| 2026-10-31 | `SEC-14` | Que a chave de um papel próprio podia ser usada como chave de cliente do Supabase. |
 
-**50 de 132.** E a distribuição por instrumento dentro
+**51 de 133.** E a distribuição por instrumento dentro
 deste subconjunto é a parte que vale registrar:
 
 | Instrumento | Premissas derrubadas |
 |---|---:|
-| execução | 15 |
+| execução | 16 |
 | inventário | 10 |
 | controle positivo | 9 |
 | terceiro | 5 |
@@ -1771,7 +1786,7 @@ deste subconjunto é a parte que vale registrar:
 | uso real | 1 |
 | dado real | 1 |
 
-**41 das 50 premissas caíram quando alguém saiu
+**42 das 51 premissas caíram quando alguém saiu
 do próprio raciocínio** — rodando, sabotando, conferindo o artefato,
 abrindo a especificação do fornecedor, ou preenchendo o formulário como
 usuário. As outras 9 caíram lendo e calculando, e vale

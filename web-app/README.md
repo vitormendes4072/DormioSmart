@@ -87,6 +87,21 @@ A chave não sai do painel do Supabase — o painel só emite para `anon` e
 `service_role`. É um JWT assinado com o **JWT secret do projeto**, carregando
 `{"role": "dormio_ingestao"}`; o PostgREST faz `SET ROLE` a partir dessa claim.
 
+> ✏️ **31/10 (`SEC-14`): a chave vai no `Authorization`, e a `anon` no `apikey`.** O gateway
+> do Supabase só aceita no `apikey` as chaves que ele emitiu (anon, service_role); com o JWT
+> de papel próprio ali, responde `401 Invalid API key` antes de o pedido chegar ao banco.
+> Medido contra a produção: apikey = ingestão → 401; apikey = anon e Bearer = ingestão →
+> `200`, papel `dormio_ingestao`. Até 31/10 o backend montava o cliente com
+> `create_client(url, chave_de_ingestao)`, que põe a chave nos dois cabeçalhos — e como a
+> chave nunca tinha sido emitida, nada mostrou o defeito até ela ser configurada (o
+> `/health` foi a 503). Por isso a `SUPABASE_ANON_KEY` é **obrigatória** junto com a chave de
+> ingestão: sem ela o backend recusa conectar, em vez de cair para a `service_role`.
+
+**No Windows (PowerShell),** o passo 1 é
+`$env:SUPABASE_JWT_SECRET = (Get-Clipboard).Trim()` com o secret copiado do painel — nem
+`export` (bash) nem o segredo digitado como argumento. Depois:
+`Remove-Item Env:SUPABASE_JWT_SECRET; Set-Clipboard -Value " "`.
+
 ### Emitir (ou rotacionar)
 
 ```bash
@@ -104,6 +119,10 @@ python scripts/emitir_chave_de_ingestao.py --anos 1
 # 4. Redeploy, e conferir:
 python web-app/teste_conexao.py     # deve dizer "papel dormio_ingestao"
 curl -s https://SEU-APP/health      # deve responder 200
+
+# 5. Só depois de o /health responder 200 com a chave de ingestão: remover
+#    SUPABASE_SERVICE_ROLE_KEY da Vercel. O backend só a usa como alternativa
+#    à chave de ingestão (database.py, cliente_de_ingestao).
 ```
 
 ### Se a chave vazou

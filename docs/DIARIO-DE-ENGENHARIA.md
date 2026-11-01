@@ -4682,6 +4682,120 @@ durante a renderização, pelo mesmo motivo, e tem teste próprio.
 - `frontend/src/contexts/AuthContext.test.tsx`;
 - backlog `AUTH-07`.
 
+---
+
+# 2026-10-31 (viii) — o release da correção do login, confirmado no site
+
+**O problema, como foi entendido no início.** A correção do `AUTH-07` estava em `develop` (PR
+#28) e o site continuava com o login quebrado até um release para `main`.
+
+**Hipótese de trabalho.** Que o release fosse só o frontend, sem dependência de banco nem de
+configuração, e que o bundle publicado pudesse ser conferido daqui.
+
+**O que foi testado, e como.**
+
+- **Antes do merge:** diff da base comum para `main` (vazio) e de `main` para `develop`
+  (arquivos, variáveis de ambiente, `package.json`, `requirements.txt`, `vercel.json`).
+- **O release:** PR #29, `develop` → `main`, mesclada depois dos 9 checks do CI.
+- **Depois do merge:**
+  - o deploy de produção do commit, pela API de deployments do GitHub;
+  - o `/health`;
+  - o bundle JavaScript que o site serve, baixado e procurado pelo trecho do provedor de token.
+- **O login de verdade:** feito pelo autor no site, porque esta sessão não entra com senha.
+
+**Resultado medido.**
+
+- **Antes:** `main` sem conteúdo próprio; nenhuma variável nova; `web-app/` sem mudança. No site,
+  só muda `frontend/src/contexts/AuthContext.tsx`.
+- **Depois:**
+  - deploy de produção `success` para `3618c67`;
+  - `/health` `200`, banco ok, contrato 2.7.0;
+  - o bundle `index-GGc8YIG2.js` contém o código novo — a sessão numa ref, e o provedor e o
+    callback registrados num `useState` de inicialização;
+  - **o autor confirmou: o login funciona.**
+
+**Adaptação.** Nenhuma.
+
+**O que deu errado no caminho.** Nada nesta etapa. O que deu errado foi antes, e está na entrada
+(vii): o release de 29/10 levou o defeito e a conferência dele não fez login.
+
+**Risco em aberto.**
+
+- **A conferência pós-release precisa de um login de verdade.** Ficou como regra no `CLAUDE.md`.
+  Automatizar exige uma conta de teste, o que depende do `INFRA-02`.
+- **Não conferido:** o fluxo de abrir o site já logado (recarregar a página com sessão
+  guardada). Ele passa pelo mesmo caminho corrigido, e é coberto pelo mesmo teste; não foi
+  testado na produção.
+
+**Procedência.**
+
+- PRs #28 e #29 (`3618c67`);
+- deployment de produção `7463178791`;
+- `GET https://dormio-smart.vercel.app/health` e o bundle `index-GGc8YIG2.js`, 31/10;
+- a confirmação do autor;
+- backlog `AUTH-07`.
+
+---
+
+# 2026-10-31 (ix) — `SEC-14`: a chave de privilégio mínimo nunca tinha funcionado
+
+**O problema, como foi entendido no início.** A auditoria de 31/10 (achado A6) suspeitou que a
+produção gravava com a `service_role`. O autor conferiu na Vercel: não havia
+`SUPABASE_INGESTAO_KEY`. Ao emitir a chave e configurá-la, o `/health` foi a `503`.
+
+**Hipótese de trabalho.** Que o gateway do Supabase confere o `apikey` contra as chaves que ele
+emitiu, e recusa um JWT de papel próprio ali; e que o backend punha a chave de ingestão no
+`apikey`, porque `create_client(url, chave)` a põe nos dois cabeçalhos.
+
+**O que foi testado, e como.**
+
+- **Restauração primeiro:** a variável foi apagada e houve redeploy; o `/health` voltou a `200`.
+- **Diagnóstico** (script em scratchpad, rodado pelo autor na máquina dele): a mesma chamada do
+  `/health` (`rpc/sanidade`) de dois jeitos. Imprime só o tamanho da chave, as claims sem
+  segredo e a resposta do servidor.
+- **A correção** em `database.py`, com seis testes em `tests/test_chave_de_ingestao.py`.
+- **Controle positivo:** os testes contra o código de `develop`.
+- **Suíte do backend**, no Windows 11.
+
+**Resultado medido.**
+
+- **Produção com a chave:** `/health` `503` (`"banco": "consulta falhou"`), 02:43 UTC. Depois da
+  restauração, `200`, 02:48 UTC.
+- **Diagnóstico:** chave com 184 caracteres, `role = dormio_ingestao`. **A)** apikey = ingestão →
+  `401 Invalid API key`. **B)** apikey = anon, Bearer = ingestão → `200 "ok"`.
+- **Testes:** 6 passam; o código antigo derruba 3 (chave no `apikey`, chave fora do
+  `Authorization`, queda silenciosa para a `service_role` sem `anon`). Backend: **390** (384 + 6).
+
+**Adaptação.**
+
+- **Sem `anon`, o backend recusa conectar** em vez de cair para a `service_role`: a configuração
+  pediu privilégio mínimo.
+- **O `README` ganhou o passo do Windows** (`Get-Clipboard`). A mensagem do script pedia
+  `export`, que não existe no PowerShell, e o autor tropeçou nisso duas vezes.
+
+**O que deu errado no caminho.**
+
+1. **O `SEC-06` (privilégio mínimo da ingestão) nunca valeu na produção.** O desenho estava
+   certo no banco, testado contra Postgres real, mas a chave nunca foi emitida, e a forma de
+   usá-la nunca passou pelo gateway. Registrado como defeito.
+2. **A produção ficou cerca de três minutos com o `/health` em `503`** entre ligar a chave e
+   desfazer. O login não foi afetado (ele usa a `anon`).
+3. **Um pedaço do JWT secret apareceu numa captura de tela** enviada nesta conversa, fora das
+   tarjas. A parte coberta mantém o segredo inviável de adivinhar e a conversa não é pública;
+   a decisão de não rotacionar foi registrada como do autor.
+
+**Risco em aberto.**
+
+- **A correção não está na produção** até o release, e a chave só vale depois de reconfigurada
+  (`SEC-14`, L3). Até lá, a ingestão segue com a `service_role`.
+- **A `SUPABASE_SERVICE_ROLE_KEY` continua na Vercel** até a chave de ingestão ser confirmada.
+
+**Procedência.**
+
+- `web-app/database.py` (`cliente_de_ingestao`), `tests/test_chave_de_ingestao.py` e `README.md`;
+- o diagnóstico rodado pelo autor e o `/health` de produção, 31/10;
+- backlog `SEC-14`.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
