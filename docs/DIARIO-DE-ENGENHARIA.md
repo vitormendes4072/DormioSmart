@@ -4939,6 +4939,73 @@ provam a regra, não que o sketch a segue. Conferido por leitura; de verdade, na
 - `docs/diagramas/DIAG-03-firmware-e-fluxo-do-dado.md`, figura A;
 - backlog `FW-09`; `docs/AUDITORIA-2026-10-31.md`, A1.
 
+---
+
+# 2026-11-01 (iv) — `DATA-08`: a época reenviada não duplica (migração 011)
+
+**O problema, como foi entendido no início.** Achado A2 da auditoria de 31/10: `sleep_data` não
+tinha restrição de unicidade, e o firmware reenvia o que não foi confirmado. Se o servidor
+gravou e a resposta se perdeu, a época virava duas linhas, e em `features_noite` a duplicata
+produz `d_angulo = 0` artificial e puxa o `g_ref`. O contrato já anotava o risco como
+"duplicata, não resolvida".
+
+**Hipótese de trabalho.** Que bastasse o banco: um índice único na chave da época e `on conflict`
+nas duas funções, devolvendo o id existente para o backend contar o reenvio como aceito — sem
+mudar o backend, logo sem release.
+
+**O que foi testado, e como.**
+
+- A migração 011 (as funções derivadas das da 010, só com o `on conflict` e a busca do id) e a
+  consulta `CONFERIR-duplicatas-antes-da-011.sql`, só de leitura.
+- 6 testes em `tests/rls/test_rls_idempotencia.py`, contra `postgres:16` em Docker.
+- **Controle positivo:**
+  - uma 011 sem `on conflict`;
+  - uma 011 que devolve nulo no conflito;
+  - a trava, com duas linhas repetidas inseridas antes da 011;
+  - o diagnóstico de produção num banco com só o índice.
+- Suíte de RLS inteira, verificador de migrações e mutação do RLS.
+
+**Resultado medido.**
+
+- RLS: **164 passam** (158 + 6). Verificador: os 11 estados. Mutação do RLS: 32/32.
+- Sabotagens: sem `on conflict`, 4 testes falham; devolvendo nulo, 3.
+- Trava: a 011 parou com *"DATA-08: 1 grupo(s) de leituras duplicadas"*; 3 linhas antes e
+  depois, índice não criado.
+- Diagnóstico com só o índice: a 011 sai `false`, "1 de 3 marcas", faltando as duas funções.
+
+**Adaptação.**
+
+- **A busca do id existente** era o ponto do plano que mais importava: com `do nothing` puro, a
+  função devolve nulo, o backend responde 503 e o firmware reenviaria para sempre.
+- **A 011 não apaga dado** para conseguir criar o índice: com duplicatas, ela para, e a decisão
+  sobre as linhas repetidas é do autor.
+- **A aplicação na produção virou o `DATA-09` (L3).** Mesmo padrão do `DATA-07f`.
+
+**O que deu errado no caminho.**
+
+1. **Um teste meu supôs o cenário vazio.** O de "sem instante não deduplica" contou 3 linhas em
+   vez de 2: o cenário de teste já traz uma leitura sem `captured_at`. Passou a medir o
+   acréscimo.
+2. **O script da trava não encerrou a transação** que o `begin` da própria migração abriu, e
+   a conferência seguinte falhou com "transaction is aborted". Corrigido com `rollback`
+   explícito; a mensagem da trava já tinha saído certa na primeira rodada.
+
+**Risco em aberto.**
+
+- **A 011 não está na produção** (`DATA-09`). Até lá, reenvio grava duplicata.
+- **Leitura sem `ts` ou sem `epoca_s` não é deduplicada**, como declarado na 011 e no contrato.
+- **Duplicatas que já existam na produção** não são tratadas aqui: a consulta de conferência as
+  mostra, e a 011 não roda enquanto existirem.
+
+**Procedência.**
+
+- `web-app/migrations/011_leitura_idempotente.sql`, `CONFERIR-duplicatas-antes-da-011.sql`,
+  `DIAGNOSTICO-migracoes-aplicadas.sql` e `README.md`;
+- `web-app/tests/rls/test_rls_idempotencia.py` e `conftest.py`;
+  `tests/migracoes/verificar_migracoes.py`;
+- `docs/DATA-CONTRACT.md` §5.2; `docs/diagramas/DIAG-04`, figura A;
+- backlog `DATA-08` e `DATA-09`; `docs/AUDITORIA-2026-10-31.md`, A2.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

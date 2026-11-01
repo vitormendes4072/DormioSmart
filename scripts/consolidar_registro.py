@@ -2651,11 +2651,6 @@ PENDENCIAS: list[Pendencia] = [
                    "zerados, `‖a‖ = 56,5 m/s²` com a placa parada, `−11,6 °C` e "
                    "ruído 30× o normal. O viés de Z, `−1,06 m/s²`, é **89% do "
                    "limiar de movimento inteiro.**"),
-    Pendencia("DATA-08", SOFTWARE, "Deduplicar `sleep_data`: migração 011 com índice "
-              "único parcial `(device_id, captured_at, epoca_segundos)` e `on conflict` nas "
-              "duas funções de gravação. Hoje um reenvio do firmware vira linha duplicada, "
-              "que distorce `d_angulo` e `g_ref`.", "🔴", camada_backlog="L0",
-              nota="Auditoria de 31/10, A2 — `docs/AUDITORIA-2026-10-31.md`."),
     Pendencia("AUTH-08", SOFTWARE, "Falha momentânea do Auth ou do banco não pode virar "
               "401 (que desloga): 401 só quando o serviço recusa a credencial; o resto, 503. "
               "No frontend, `signOut` local no callback do 401.", "🟡", camada_backlog="L0",
@@ -2671,6 +2666,11 @@ PENDENCIAS: list[Pendencia] = [
     Pendencia("FW-10", SOFTWARE, "Sono da medição pelo prazo absoluto (hoje é trabalho + "
               "intervalo) e contadores atômicos entre os dois núcleos.", "⚪",
               camada_backlog="L0", nota="Auditoria de 31/10, A8 e A10; latente."),
+    Pendencia("DATA-09", ACAO, "Aplicar a migração `011` na produção: antes, "
+              "`CONFERIR-duplicatas-antes-da-011.sql` (só leitura) tem de vir zerada; "
+              "depois, o diagnóstico com a 011 em 3 de 3 marcas. Até lá, reenvio grava "
+              "linha duplicada.", "🔴", camada_backlog="L3",
+              nota="O backend não muda: não há ordem com release."),
     Pendencia("INFRA-02 — projeto Supabase de teste", ACAO, "Criar um projeto Supabase de "
               "teste e rodar um punhado de `curl`. **Fecharia quatro itens de uma "
               "vez:** o ponto cego do `UI-11` (a troca de e-mail exige "

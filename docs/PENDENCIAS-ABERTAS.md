@@ -49,9 +49,9 @@ linha, não um resumo: resumo é a cópia que diverge.
 
 | Grupo | Itens |
 |---|---:|
-| A — Depende só de software: dá para fazer a qualquer momento | **34** |
+| A — Depende só de software: dá para fazer a qualquer momento | **33** |
 | B — Depende de decisão do Vitor | **10** |
-| C — Depende de ação do Vitor que não é decisão | **5** |
+| C — Depende de ação do Vitor que não é decisão | **6** |
 | D — Bloqueado por hardware ou coleta | **26** |
 | E — Bloqueado por terceiro | **4** |
 | **Total** | **79** |
@@ -75,7 +75,7 @@ outro item. **Desde 28/10 têm ID no backlog:** `GIT-07`, `INFRA-02` e
 
 ## A — Depende só de software: dá para fazer a qualquer momento
 
-**34 itens.**
+**33 itens.**
 
 ### `CALC-01` 🔴
 
@@ -275,14 +275,6 @@ O CI **não roda linter** — não há ESLint nem Ruff/flake8. Pressupõe uma de
 
 **Conferência.** Confirmado aberto: não há `.eslintrc*`, `eslint.config.*`, `ruff.toml` nem `setup.cfg` em lugar nenhum do repositório. A **decisão** de configuração está no grupo B.
 
-### `DATA-08` 🔴
-
-Deduplicar `sleep_data`: migração 011 com índice único parcial `(device_id, captured_at, epoca_segundos)` e `on conflict` nas duas funções de gravação. Hoje um reenvio do firmware vira linha duplicada, que distorce `d_angulo` e `g_ref`.
-
-*Camada no backlog: L0.*
-
-**Conferência.** Auditoria de 31/10, A2 — `docs/AUDITORIA-2026-10-31.md`.
-
 ### `AUTH-08` 🟡
 
 Falha momentânea do Auth ou do banco não pode virar 401 (que desloga): 401 só quando o serviço recusa a credencial; o resto, 503. No frontend, `signOut` local no callback do 401.
@@ -411,7 +403,7 @@ iOS: **investigação, não implementação.** Rota A (áudio em background) mud
 
 ## C — Depende de ação do Vitor que não é decisão
 
-**5 itens.**
+**6 itens.**
 
 Nada aqui é decisão: a decisão já foi tomada, ou nunca houve uma.
 São ações que só você pode executar, porque exigem credencial,
@@ -424,6 +416,14 @@ terminal na máquina, ferro de solda ou uma conta num serviço.
 *Camada no backlog: L3.*
 
 **Conferência.** O contato por jumper produziu, em 25/08, registradores zerados, `‖a‖ = 56,5 m/s²` com a placa parada, `−11,6 °C` e ruído 30× o normal. O viés de Z, `−1,06 m/s²`, é **89% do limiar de movimento inteiro.**
+
+### `DATA-09` 🔴
+
+Aplicar a migração `011` na produção: antes, `CONFERIR-duplicatas-antes-da-011.sql` (só leitura) tem de vir zerada; depois, o diagnóstico com a 011 em 3 de 3 marcas. Até lá, reenvio grava linha duplicada.
+
+*Camada no backlog: L3.*
+
+**Conferência.** O backend não muda: não há ordem com release.
 
 ### `INFRA-02 — projeto Supabase de teste` 🔴
 
