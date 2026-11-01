@@ -2354,6 +2354,30 @@ DEFEITOS: list[Defeito] = [
              "da correção). Ninguém tinha entrado no site depois do release: o "
              "monitor do `INFRA-03` confere o `/health`, não o login.",
     ),
+    Defeito(
+        data="2026-10-31", area=SEG, item="SEC-14",
+        defeito="O cliente de ingestão punha a chave do papel `dormio_ingestao` no "
+                "`apikey`, e o gateway do Supabase a recusa ali (`401 Invalid API "
+                "key`). A chave de privilégio mínimo do `SEC-06` nunca funcionou, e a "
+                "produção gravava com a `service_role`.",
+        achado_por=EXECUCAO,
+        causa="`create_client(url, chave)` põe a mesma chave no `apikey` e no "
+              "`Authorization`. O caminho nunca rodou contra o Supabase de verdade: a "
+              "chave nunca tinha sido emitida, os testes de RLS falam com o Postgres "
+              "sem o gateway, e os do backend usam cliente falso.",
+        correcao="`anon` no `apikey` e a chave de ingestão no `Authorization`, como o "
+                 "`cliente_do_usuario` já fazia; sem `anon`, o backend recusa conectar "
+                 "em vez de cair para a `service_role`. Seis testes, controle positivo "
+                 "com o código antigo (3 falhas).",
+        commit="(o commit que introduz esta linha: um commit não cita o próprio "
+               "hash — ver a entrada de 30/10 (iii) do diário)", procedencia="parcial",
+        premissa_curta="Que a chave de um papel próprio podia ser usada como chave de cliente do Supabase.",
+        premissa="O `SEC-06` desenhou a chave como substituta direta da `service_role` "
+                 "no `create_client`, sem conferir como o gateway trata o `apikey`.",
+        nota="Achado ao ligar a chave pela primeira vez: o `/health` de produção foi "
+             "a 503 por cerca de três minutos, e voltou a 200 ao apagar a variável. "
+             "Confirmado por diagnóstico que não imprime segredo.",
+    ),
 ]
 
 
@@ -2627,6 +2651,14 @@ PENDENCIAS: list[Pendencia] = [
                    "zerados, `‖a‖ = 56,5 m/s²` com a placa parada, `−11,6 °C` e "
                    "ruído 30× o normal. O viés de Z, `−1,06 m/s²`, é **89% do "
                    "limiar de movimento inteiro.**"),
+    Pendencia("SEC-14 — ligar a chave de ingestão", ACAO, "Depois do release com "
+              "a correção do `cliente_de_ingestao`: cadastrar `SUPABASE_INGESTAO_KEY` "
+              "na Vercel (Production), redeploy, conferir o `/health` em 200, e só "
+              "então remover a `SUPABASE_SERVICE_ROLE_KEY` da Vercel. Até lá a "
+              "ingestão roda com a chave de acesso total.", "🟠",
+              camada_backlog="L3",
+              nota="Passo a passo em `web-app/README.md`, \"Rotação da chave de "
+                   "ingestão\"; no Windows, o secret entra por `Get-Clipboard`."),
     Pendencia("INFRA-02 — projeto Supabase de teste", ACAO, "Criar um projeto Supabase de "
               "teste e rodar um punhado de `curl`. **Fecharia quatro itens de uma "
               "vez:** o ponto cego do `UI-11` (a troca de e-mail exige "

@@ -74,8 +74,32 @@ class Database:
                     "dormio_ingestao e configure SUPABASE_INGESTAO_KEY -- ver "
                     "web-app/README.md, secao 'Rotacao da chave de ingestao'."
                 )
+            if self.ingestao_key and not self.anon_key:
+                # Sem a anon não há como montar o cliente da chave de ingestão
+                # (ver abaixo). Recusar, e não cair para a service_role: a
+                # configuração pediu privilégio mínimo, e trocá-lo em silêncio
+                # por privilégio total seria o contrário do pedido.
+                logger.error(
+                    "SUPABASE_INGESTAO_KEY definida sem SUPABASE_ANON_KEY: a chave de "
+                    "ingestao vai no Authorization e a anon no apikey (SEC-14)."
+                )
+                return None
             try:
-                self._client = create_client(self.url, self.key)
+                if self.ingestao_key:
+                    # A chave de ingestão vai SÓ no `Authorization`; o `apikey`
+                    # leva a anon (SEC-14, 31/10). O gateway do Supabase só
+                    # aceita no `apikey` as chaves que ele emitiu (anon ou
+                    # service_role) e recusa um JWT de papel próprio com
+                    # `401 Invalid API key` antes de o pedido chegar ao banco.
+                    # Medido contra a produção: apikey = ingestão -> 401; apikey
+                    # = anon e Bearer = ingestão -> 200, papel dormio_ingestao.
+                    # É o mesmo arranjo de `cliente_do_usuario`, com o JWT do
+                    # papel no lugar do JWT do usuário.
+                    cliente = create_client(self.url, self.anon_key)
+                    cliente.postgrest.auth(self.ingestao_key)
+                    self._client = cliente
+                else:
+                    self._client = create_client(self.url, self.key)
             except Exception:
                 # exc_info leva o traceback ao log sem interpolar a mensagem do
                 # driver, que pode conter host e credencial.
