@@ -220,6 +220,17 @@ esperar "21. pico em g, sem converter para m/s2" unidade epoca_c2.cpp \
   "  e.pico_total = sqrtf(m2_pico);"
 
 echo
+echo "Sabotadores da COORDENACAO DO RADIO (FW-09) -- a suite de unidade tem de acusar:"
+
+esperar "22. pedir sem reservar (o defeito de ate 01/11)" unidade radio.h \
+  "    return reservado_.compare_exchange_strong(livre, true);" \
+  "    return !reservado_.load();"
+
+esperar "23. liberar que nao libera" unidade radio.h \
+  "  void liberar() { reservado_.store(false); }" \
+  "  void liberar() {}"
+
+echo
 echo "-----------------------------------------"
 echo "$((total - falhas))/$total como esperado"
 [ $falhas -eq 0 ]

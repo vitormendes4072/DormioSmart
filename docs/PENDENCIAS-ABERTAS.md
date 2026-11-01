@@ -49,12 +49,12 @@ linha, não um resumo: resumo é a cópia que diverge.
 
 | Grupo | Itens |
 |---|---:|
-| A — Depende só de software: dá para fazer a qualquer momento | **35** |
+| A — Depende só de software: dá para fazer a qualquer momento | **34** |
 | B — Depende de decisão do Vitor | **10** |
 | C — Depende de ação do Vitor que não é decisão | **5** |
 | D — Bloqueado por hardware ou coleta | **26** |
 | E — Bloqueado por terceiro | **4** |
-| **Total** | **80** |
+| **Total** | **79** |
 
 ⚠️ **Este total não é comparável à contagem do backlog, e a diferença não é
 erro de nenhum dos dois.** São unidades de contagem diferentes: o backlog
@@ -75,7 +75,7 @@ outro item. **Desde 28/10 têm ID no backlog:** `GIT-07`, `INFRA-02` e
 
 ## A — Depende só de software: dá para fazer a qualquer momento
 
-**35 itens.**
+**34 itens.**
 
 ### `CALC-01` 🔴
 
@@ -306,14 +306,6 @@ TLS do firmware sem conferir o certificado (`setInsecure()`): o token do disposi
 *Camada no backlog: L0.*
 
 **Conferência.** Auditoria de 31/10, A5.
-
-### `FW-09` 🔴
-
-Corrida no `sketch.ino`: a medição pode entrar em sono leve com o Wi-Fi subindo (o aviso sai antes de `wifi_ativo` ser ligado). Ligar a flag antes do aviso.
-
-*Camada no backlog: L0.*
-
-**Conferência.** Auditoria de 31/10, A1; latente, sem placa.
 
 ### `FW-10` ⚪
 

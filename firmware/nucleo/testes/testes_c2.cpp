@@ -18,6 +18,7 @@
 #include "../filtro.h"
 #include "../lote.h"
 #include "../payload.h"
+#include "../radio.h"
 #include "../reamostragem.h"
 
 using namespace dormio;
@@ -455,6 +456,26 @@ static void testar_epoca_da_grade() {
   VERIFICAR(inicio_da_epoca_c2_ms(1000000ull, 2) == 61000ull, "epoca 2 comeca 60 s depois da origem");
 }
 
+static void testar_coordenacao_do_radio() {
+  secao("radio -- quem pede o envio reserva o radio antes de avisar (FW-09)");
+  CoordenacaoDoRadio radio;
+  VERIFICAR(radio.pode_dormir(), "no inicio o radio esta livre: a medicao dorme");
+
+  // A propriedade que faltava: entre o aviso e a tarefa de envio acordar, a
+  // medicao ja nao pode dormir. Nada da tarefa de envio roda aqui.
+  VERIFICAR(radio.pedir_envio(), "o primeiro pedido reserva o radio");
+  VERIFICAR(!radio.pode_dormir(),
+            "logo depois do pedido, ANTES de o envio agir, a medicao nao dorme");
+
+  VERIFICAR(!radio.pedir_envio(), "com o radio reservado, outro pedido e recusado (nao avisa de novo)");
+  VERIFICAR(!radio.pode_dormir(), "e o pedido recusado nao libera nada");
+
+  radio.liberar();
+  VERIFICAR(radio.pode_dormir(), "o envio devolve o radio: a medicao volta a dormir");
+  VERIFICAR(radio.pedir_envio(), "e o proximo pedido reserva de novo");
+  radio.liberar();
+}
+
 static void testar_buffer_confirma_o_prefixo() {
   secao("lote + buffer -- confirma o prefixo, e so se a fila nao mudou");
   BufferDeEpocas<16> b;
@@ -597,6 +618,7 @@ int main() {
   testar_buffer_confirma_o_prefixo();
   testar_payload_com_features();
   testar_epoca_da_grade();
+  testar_coordenacao_do_radio();
 
   printf("\n-----------------------------------------\n");
   printf("%d verificacoes, %d falhas\n", total, falhas);
