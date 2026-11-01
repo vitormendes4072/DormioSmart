@@ -50,7 +50,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // cliente ainda ache que tem uma. Limpar aqui evita o estado em que a
     // tela parece logada e nada carrega. O guarda de rota faz o resto
     // (AUTH-04). Registrado aqui pelo mesmo motivo do provedor.
-    definirCallbackDeSessaoExpirada(() => setSessao(null));
+    //
+    // E limpa tambem a sessao GUARDADA pelo Supabase no navegador (AUTH-08):
+    // sem isso, recarregar a pagina ressuscitava a sessao que o servidor ja
+    // recusou, e o 401 se repetia. `scope: "local"` nao chama o servidor --
+    // a sessao ja e invalida la. So o 401 chega aqui: 503 (servico fora do
+    // ar) nao desloga ninguem.
+    definirCallbackDeSessaoExpirada(() => {
+      void obterSupabase()?.auth.signOut({ scope: "local" });
+      setSessao(null);
+    });
   });
 
   useEffect(() => {

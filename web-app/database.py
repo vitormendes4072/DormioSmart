@@ -2,7 +2,48 @@ import logging
 import os
 
 from supabase import create_client
+from supabase_auth.errors import AuthApiError, AuthInvalidJwtError
 from consulta import LIMITE_PADRAO
+
+
+class _Indisponivel:
+    """Valor-sentinela: o serviço FALHOU, ao contrário de RECUSAR (AUTH-08).
+
+    `validar_token_de_usuario` e `get_device_by_token_hash` devolviam `None`
+    nos dois casos, e a rota respondia 401 — que o frontend trata como sessão
+    morta e desloga. Uma falha momentânea do Supabase Auth, ou do banco,
+    deslogava o usuário. Achado A3/A7 da auditoria de 31/10.
+
+    Sentinela, e não exceção, porque o FIX-08 firmou que nenhum método desta
+    camada levanta: todos os chamadores dependem disso. Compare com `is`.
+    """
+
+    def __repr__(self):
+        return "INDISPONIVEL"
+
+    def __bool__(self):
+        # Falso como `None`, para um chamador antigo que só testasse a
+        # veracidade continuar negando acesso em vez de concedê-lo.
+        return False
+
+
+INDISPONIVEL = _Indisponivel()
+
+
+def _auth_recusou(erro):
+    """O Auth RECUSOU a credencial (4xx), ou o serviço falhou?
+
+    `supabase_auth` levanta `AuthApiError` com o status HTTP quando o servidor
+    responde 4xx sobre o token, e `AuthInvalidJwtError` quando o JWT nem é
+    válido. Rede, 502, 503 e 504 viram `AuthRetryableError`; o resto,
+    `AuthUnknownError` ou exceção comum — tudo isso é indisponibilidade.
+    """
+    if isinstance(erro, AuthInvalidJwtError):
+        return True
+    if isinstance(erro, AuthApiError):
+        status = getattr(erro, "status", None)
+        return isinstance(status, int) and 400 <= status < 500
+    return False
 
 # Log de servidor via `logging`, não `print` (FIX-08).
 #
@@ -121,7 +162,12 @@ class Database:
         return self._client_anon
 
     def validar_token_de_usuario(self, jwt):
-        """Valida o JWT no servidor de Auth. Devolve o id do usuario ou None.
+        """Valida o JWT no servidor de Auth.
+
+        Devolve o id do usuario; `None` quando o Auth RECUSA o token; e
+        `INDISPONIVEL` quando o serviço falhou ou o cliente não pôde ser
+        montado (AUTH-08). A rota responde 401 só no primeiro caso de
+        negativa: 401 desloga, e servidor fora do ar não é sessão inválida.
 
         A validacao e remota de proposito: conferir assinatura localmente
         exigiria gerenciar chaves (e acertar o algoritmo), enquanto o Auth ja
@@ -130,14 +176,18 @@ class Database:
         try:
             client = self._get_client_anon()
             if client is None:
-                return None
+                return INDISPONIVEL
             resposta = client.auth.get_user(jwt)
             usuario = getattr(resposta, "user", None)
             return getattr(usuario, "id", None)
-        except Exception:
-            # Token expirado/invalido chega aqui como excecao da lib.
-            logger.info("Token de usuario rejeitado.")
-            return None
+        except Exception as erro:
+            if _auth_recusou(erro):
+                logger.info("Token de usuario rejeitado.")
+                return None
+            # exc_info leva o traceback ao log sem interpolar a mensagem, que
+            # pode conter o host.
+            logger.warning("Auth indisponivel ao validar token.", exc_info=True)
+            return INDISPONIVEL
 
     def nome_do_metadado(self, jwt):
         """Nome gravado em `raw_user_meta_data` no cadastro. None se não houver.
@@ -407,14 +457,17 @@ class Database:
     def get_device_by_token_hash(self, token_hash):
         """Resolve o token de um device (SEC-02).
 
-        Devolve o dict do dispositivo ou None — ausente, revogado ou falha de
-        consulta caem todos em None, e a rota responde 401. Nunca levanta:
-        indisponibilidade do banco não deve virar 500 no caminho de ingestão.
+        Devolve o dict do dispositivo; `None` quando o token não resolve
+        (ausente, revogado, desconhecido), e a rota responde 401; e
+        `INDISPONIVEL` quando a consulta falhou, e a rota responde 503
+        (AUTH-08). Até 01/11 a falha também era `None`, e o banco fora do ar
+        respondia "device nao autorizado". Nunca levanta: indisponibilidade
+        do banco não deve virar 500 no caminho de ingestão.
         """
         try:
             client = self.cliente_de_ingestao()
             if client is None:
-                return None
+                return INDISPONIVEL
             # `resolver_dispositivo()` em vez do antigo select em `devices`: a
             # revogação é aplicada dentro da função e `token_hash` não volta.
             # Era aquele select que obrigava o papel de ingestão a poder LISTAR
@@ -428,7 +481,7 @@ class Database:
             return linhas[0]
         except Exception:
             logger.exception("Falha ao resolver dispositivo.")
-            return None
+            return INDISPONIVEL
 
 
 # Instância única

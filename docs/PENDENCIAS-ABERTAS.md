@@ -49,12 +49,12 @@ linha, não um resumo: resumo é a cópia que diverge.
 
 | Grupo | Itens |
 |---|---:|
-| A — Depende só de software: dá para fazer a qualquer momento | **29** |
+| A — Depende só de software: dá para fazer a qualquer momento | **33** |
 | B — Depende de decisão do Vitor | **10** |
-| C — Depende de ação do Vitor que não é decisão | **6** |
+| C — Depende de ação do Vitor que não é decisão | **5** |
 | D — Bloqueado por hardware ou coleta | **26** |
 | E — Bloqueado por terceiro | **4** |
-| **Total** | **75** |
+| **Total** | **78** |
 
 ⚠️ **Este total não é comparável à contagem do backlog, e a diferença não é
 erro de nenhum dos dois.** São unidades de contagem diferentes: o backlog
@@ -75,7 +75,7 @@ outro item. **Desde 28/10 têm ID no backlog:** `GIT-07`, `INFRA-02` e
 
 ## A — Depende só de software: dá para fazer a qualquer momento
 
-**29 itens.**
+**33 itens.**
 
 ### `CALC-01` 🔴
 
@@ -275,6 +275,38 @@ O CI **não roda linter** — não há ESLint nem Ruff/flake8. Pressupõe uma de
 
 **Conferência.** Confirmado aberto: não há `.eslintrc*`, `eslint.config.*`, `ruff.toml` nem `setup.cfg` em lugar nenhum do repositório. A **decisão** de configuração está no grupo B.
 
+### `AUTH-09` ⚪
+
+Validar o JWT localmente, pelo JWKS do projeto, em vez de uma chamada ao Supabase Auth por requisição. Muda a confiança na revogação (token revogado vale até expirar): decidir antes de fazer.
+
+*Camada no backlog: L0.*
+
+**Conferência.** Saído do `AUTH-08`; auditoria de 31/10, A3.
+
+### `API-04` 🟡
+
+Exceção interna nas rotas de ingestão responde 400 com `str(e)`, e o firmware descarta a leitura. Trocar por 500 genérico com log; no lote, exceção num item vira pendente.
+
+*Camada no backlog: L0.*
+
+**Conferência.** Auditoria de 31/10, A4.
+
+### `SEC-15` 🟡
+
+TLS do firmware sem conferir o certificado (`setInsecure()`): o token do dispositivo é capturável numa rede comprometida. Usar `setCACertBundle` ou a CA raiz; validar na placa.
+
+*Camada no backlog: L0.*
+
+**Conferência.** Auditoria de 31/10, A5.
+
+### `FW-10` ⚪
+
+Sono da medição pelo prazo absoluto (hoje é trabalho + intervalo) e contadores atômicos entre os dois núcleos.
+
+*Camada no backlog: L0.*
+
+**Conferência.** Auditoria de 31/10, A8 e A10; latente.
+
 ---
 
 ## B — Depende de decisão do Vitor
@@ -371,7 +403,7 @@ iOS: **investigação, não implementação.** Rota A (áudio em background) mud
 
 ## C — Depende de ação do Vitor que não é decisão
 
-**6 itens.**
+**5 itens.**
 
 Nada aqui é decisão: a decisão já foi tomada, ou nunca houve uma.
 São ações que só você pode executar, porque exigem credencial,
@@ -384,14 +416,6 @@ terminal na máquina, ferro de solda ou uma conta num serviço.
 *Camada no backlog: L3.*
 
 **Conferência.** O contato por jumper produziu, em 25/08, registradores zerados, `‖a‖ = 56,5 m/s²` com a placa parada, `−11,6 °C` e ruído 30× o normal. O viés de Z, `−1,06 m/s²`, é **89% do limiar de movimento inteiro.**
-
-### `SEC-14 — ligar a chave de ingestão` 🟠
-
-Depois do release com a correção do `cliente_de_ingestao`: cadastrar `SUPABASE_INGESTAO_KEY` na Vercel (Production), redeploy, conferir o `/health` em 200, e só então remover a `SUPABASE_SERVICE_ROLE_KEY` da Vercel. Até lá a ingestão roda com a chave de acesso total.
-
-*Camada no backlog: L3.*
-
-**Conferência.** Passo a passo em `web-app/README.md`, "Rotação da chave de ingestão"; no Windows, o secret entra por `Get-Clipboard`.
 
 ### `INFRA-02 — projeto Supabase de teste` 🔴
 

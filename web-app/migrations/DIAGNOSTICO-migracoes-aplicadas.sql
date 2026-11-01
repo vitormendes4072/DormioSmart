@@ -91,7 +91,16 @@ marcas (migracao, item, marca, presente) as (values
     ('010', 'DATA-07b', 'registrar_leitura extrai o vetor',
         coalesce((select pg_get_functiondef(to_regprocedure('public.registrar_leitura(text,jsonb)')) like '%->> ''fs_features''%'), false)),
     ('010', 'DATA-07b', 'registrar_leitura_da_sessao extrai o vetor',
-        coalesce((select pg_get_functiondef(to_regprocedure('public.registrar_leitura_da_sessao(uuid,jsonb)')) like '%->> ''fs_features''%'), false))
+        coalesce((select pg_get_functiondef(to_regprocedure('public.registrar_leitura_da_sessao(uuid,jsonb)')) like '%->> ''fs_features''%'), false)),
+    -- 011: a época reenviada não duplica. O índice E as duas funções com o
+    -- `on conflict` na chave dele: índice sem a função faria o reenvio ERRAR
+    -- (violação de unicidade) em vez de ser aceito.
+    ('011', 'DATA-08', 'índice sleep_data_epoca_unica',
+        exists (select 1 from pg_indexes where schemaname = 'public' and indexname = 'sleep_data_epoca_unica')),
+    ('011', 'DATA-08', 'registrar_leitura com on conflict',
+        coalesce((select pg_get_functiondef(to_regprocedure('public.registrar_leitura(text,jsonb)')) like '%on conflict (device_id, captured_at, epoca_segundos)%'), false)),
+    ('011', 'DATA-08', 'registrar_leitura_da_sessao com on conflict',
+        coalesce((select pg_get_functiondef(to_regprocedure('public.registrar_leitura_da_sessao(uuid,jsonb)')) like '%on conflict (device_id, captured_at, epoca_segundos)%'), false))
 ),
 esquema as (
     select migracao, min(item) as item,

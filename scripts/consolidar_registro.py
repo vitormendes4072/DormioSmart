@@ -2651,14 +2651,21 @@ PENDENCIAS: list[Pendencia] = [
                    "zerados, `‖a‖ = 56,5 m/s²` com a placa parada, `−11,6 °C` e "
                    "ruído 30× o normal. O viés de Z, `−1,06 m/s²`, é **89% do "
                    "limiar de movimento inteiro.**"),
-    Pendencia("SEC-14 — ligar a chave de ingestão", ACAO, "Depois do release com "
-              "a correção do `cliente_de_ingestao`: cadastrar `SUPABASE_INGESTAO_KEY` "
-              "na Vercel (Production), redeploy, conferir o `/health` em 200, e só "
-              "então remover a `SUPABASE_SERVICE_ROLE_KEY` da Vercel. Até lá a "
-              "ingestão roda com a chave de acesso total.", "🟠",
-              camada_backlog="L3",
-              nota="Passo a passo em `web-app/README.md`, \"Rotação da chave de "
-                   "ingestão\"; no Windows, o secret entra por `Get-Clipboard`."),
+    Pendencia("AUTH-09", SOFTWARE, "Validar o JWT localmente, pelo JWKS do projeto, "
+              "em vez de uma chamada ao Supabase Auth por requisição. Muda a confiança na "
+              "revogação (token revogado vale até expirar): decidir antes de fazer.", "⚪",
+              camada_backlog="L0", nota="Saído do `AUTH-08`; auditoria de 31/10, A3."),
+    Pendencia("API-04", SOFTWARE, "Exceção interna nas rotas de ingestão responde 400 "
+              "com `str(e)`, e o firmware descarta a leitura. Trocar por 500 genérico com "
+              "log; no lote, exceção num item vira pendente.", "🟡", camada_backlog="L0",
+              nota="Auditoria de 31/10, A4."),
+    Pendencia("SEC-15", SOFTWARE, "TLS do firmware sem conferir o certificado "
+              "(`setInsecure()`): o token do dispositivo é capturável numa rede "
+              "comprometida. Usar `setCACertBundle` ou a CA raiz; validar na placa.",
+              "🟡", camada_backlog="L0", nota="Auditoria de 31/10, A5."),
+    Pendencia("FW-10", SOFTWARE, "Sono da medição pelo prazo absoluto (hoje é trabalho + "
+              "intervalo) e contadores atômicos entre os dois núcleos.", "⚪",
+              camada_backlog="L0", nota="Auditoria de 31/10, A8 e A10; latente."),
     Pendencia("INFRA-02 — projeto Supabase de teste", ACAO, "Criar um projeto Supabase de "
               "teste e rodar um punhado de `curl`. **Fecharia quatro itens de uma "
               "vez:** o ponto cego do `UI-11` (a troca de e-mail exige "

@@ -61,6 +61,7 @@
 #include "nucleo/fifo_mpu.h"
 #include "nucleo/fila_flash.h"
 #include "nucleo/reamostragem.h"
+#include "nucleo/radio.h"
 #include "nucleo/reconexao.h"
 #include "nucleo/relogio.h"
 
@@ -116,7 +117,9 @@ static SemaphoreHandle_t mutex_fila;
 static ResolucaoDeParede parede;
 static SemaphoreHandle_t mutex_parede;
 
-static volatile bool wifi_ativo = false;
+// Quem pode usar o radio (FW-09): a medicao o reserva ANTES de avisar o
+// envio, e o envio o devolve. Ver `nucleo/radio.h`.
+static CoordenacaoDoRadio radio;
 static TaskHandle_t tarefa_envio = 0;
 
 static CadeiaC2 cadeia;
@@ -292,7 +295,7 @@ static void tarefa_de_medicao(void *) {
     // Sono leve so com o Wi-Fi desligado: ele derrubaria a conexao. Com o
     // Wi-Fi ligado, espera acordada -- no mesmo ritmo, e e isso que impede a
     // FIFO de transbordar enquanto o POST esta no ar.
-    if (wifi_ativo) {
+    if (!radio.pode_dormir()) {
       vTaskDelay(pdMS_TO_TICKS(intervalo_us / 1000u));
     } else {
       esp_sleep_enable_timer_wakeup(intervalo_us);
@@ -303,7 +306,10 @@ static void tarefa_de_medicao(void *) {
     fechar_epocas();
 
     const uint64_t agora_us = static_cast<uint64_t>(esp_timer_get_time());
-    if (agora_us >= proximo_envio_us && !wifi_ativo && tarefa_envio != 0) {
+    // Reservar o radio ANTES do aviso (FW-09): ate 01/11 a flag era ligada
+    // pela tarefa de envio depois de acordar, e na janela a medicao entrava
+    // em sono leve com o Wi-Fi subindo.
+    if (agora_us >= proximo_envio_us && tarefa_envio != 0 && radio.pedir_envio()) {
       proximo_envio_us = agora_us + INTERVALO_DE_ENVIO_US;
       xTaskNotifyGive(tarefa_envio);
     }
@@ -397,9 +403,13 @@ static void tarefa_de_envio(void *) {
   reconexao.iniciar(agora_ms());
   for (;;) {
     ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
-    if (!fila_ok || !reconexao.deve_tentar(agora_ms())) continue;
+    // A medicao ja reservou o radio ao avisar. Desistir sem devolve-lo
+    // deixaria a medicao acordada para sempre (FW-09).
+    if (!fila_ok || !reconexao.deve_tentar(agora_ms())) {
+      radio.liberar();
+      continue;
+    }
 
-    wifi_ativo = true;
     bool ok = conectar_wifi();
     if (ok) {
       sincronizar_relogio();
@@ -408,7 +418,7 @@ static void tarefa_de_envio(void *) {
       Serial.println("Wi-Fi nao subiu em 20 s (SSID, senha, ou rede de 5 GHz).");
     }
     desligar_wifi();
-    wifi_ativo = false;
+    radio.liberar();  // so depois de o radio estar desligado
 
     if (ok) {
       reconexao.registrar_sucesso(agora_ms());

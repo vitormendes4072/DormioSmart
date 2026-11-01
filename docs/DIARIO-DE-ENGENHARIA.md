@@ -4796,6 +4796,314 @@ emitiu, e recusa um JWT de papel próprio ali; e que o backend punha a chave de 
 - o diagnóstico rodado pelo autor e o `/health` de produção, 31/10;
 - backlog `SEC-14`.
 
+---
+
+# 2026-11-01 — `SEC-14` fechado: a ingestão roda com privilégio mínimo, e a `service_role` saiu
+
+**O problema, como foi entendido no início.** A correção do `SEC-14` (o cliente de ingestão
+com a `anon` no `apikey`) estava em `develop`. Faltava levá-la à produção, ligar a chave de
+ingestão, confirmar que ela é a que está em uso e tirar a `service_role` da Vercel.
+
+**Hipótese de trabalho.** Que, com a correção no ar, a chave de ingestão fosse aceita, como o
+diagnóstico (arranjo B) tinha mostrado; e que desse para provar que é ela, e não a
+`service_role`, que responde.
+
+**O que foi testado, e como.**
+
+- **Release:** PR #32, `develop` → `main` (`80a56c5`), depois dos 9 checks; deploy de produção
+  `success`, `/health` `200` (a chave ainda não estava configurada).
+- **Ligar a chave:** o autor emitiu uma chave nova, cadastrou em Production e fez redeploy.
+- **Provar que é ela:** com as duas chaves presentes, `/health` chamado daqui e o log de
+  produção lido pelo autor — o aviso de "ALTO PRIVILEGIO" sai quando um processo novo monta o
+  cliente com a `service_role`.
+- **Tirar a `service_role`:** o autor a removeu (Production e Preview) e fez redeploy;
+  `/health` chamado daqui depois de o deployment virar.
+
+**Resultado medido.**
+
+- **Com as duas chaves:** log de produção às 00:16:59 do deployment novo: `POST rpc/sanidade`
+  `HTTP/2 200 OK`, **0 avisos**. A chave de ingestão está em uso.
+- **Sem a `service_role`:** `/health` `200`, banco ok, três vezes, às 00:24:43 (o deploy terminou
+  às 00:23:52). Sem `service_role` nem `SUPABASE_KEY`, o backend não tem para onde cair: o `200`
+  só pode vir da chave de ingestão.
+- `/api/sleep-history` sem login continua `401`.
+
+**Adaptação.** A remoção da `service_role` também alcançou os Previews, que usam o mesmo
+Supabase da produção: deixam de carregar a chave de acesso total, e ficam sem ingestão
+(`503` no `/health`).
+
+**O que deu errado no caminho.** **Duas conferências caíram no deployment anterior.** Chamei o
+`/health` antes de o deploy virar (pelos horários do log de build), e o primeiro log lido pelo
+autor estava vazio por isso. Refeito depois do horário de conclusão; nas duas vezes, a leitura
+do horário do log de build é que mostrou o erro.
+
+**Risco em aberto.**
+
+- **A chave vence em 1 ano** (`--anos 1`): depois disso a ingestão para, com `503` no `/health`,
+  que o monitor do `INFRA-03` acusa. Rotação no `web-app/README.md`.
+- **O `.env` local** continua com a `service_role`, para rodar o backend na máquina; não é
+  versionado.
+
+**Procedência.**
+
+- PRs #31 e #32 (`80a56c5`);
+- `GET https://dormio-smart.vercel.app/health`, 01/11, 00:16 e 00:24;
+- log de produção da Vercel, deployment `GcYsZPUF5`, lido pelo autor;
+- backlog `SEC-14`.
+
+---
+
+# 2026-11-01 (ii) — a auditoria de 31/10 vira registro
+
+**O problema, como foi entendido no início.** Em 31/10 o autor pediu uma auditoria técnica de
+código, arquitetura e backlog. Ela foi feita na conversa: dez achados conferidos no código, um
+parecer de arquitetura e a triagem dos 68 itens abertos. Só o achado A6 tinha virado item (o
+`SEC-14`, fechado em 01/11). O resto existia só na conversa — e o autor perguntou, com razão, se
+estava registrado em algum lugar.
+
+**Hipótese de trabalho.** Que o registro precisa separar o que é achado (vira item, com ID) do que
+é recomendação sobre itens existentes (espera decisão do autor e não pode ser aplicado por quem
+recomendou).
+
+**O que foi testado, e como.** Nada novo foi medido. Os números de linha de cada achado foram
+reconferidos no código de `develop` de 01/11 (alguns tinham mudado com a correção do `SEC-14`),
+e o backlog foi recontado linha a linha.
+
+**Resultado medido.** `docs/AUDITORIA-2026-10-31.md` com os achados, as correções, o parecer e a
+triagem; seis itens novos, todos L0: `DATA-08` e `FW-09` (altas), `AUTH-08`, `API-04` e `SEC-15`
+(médias), `FW-10` (baixas). Backlog: 74 abertos (L0 40).
+
+**Adaptação.** A triagem entrou como **proposta**, sem tocar nos itens existentes: remover ou
+rebaixar item é decisão do autor. Os achados baixos foram agrupados por onde moram (`AUTH-08`
+junta A3, A7 e A9; `FW-10` junta A8 e A10), porque cada grupo é uma correção só.
+
+**O que deu errado no caminho.** **A auditoria ficou um dia só na conversa.** É o padrão que o §2
+das lições já descreve — observação solta em vez de item —, e quem o repetiu foi a sessão que
+fez a auditoria. Se a conversa tivesse sido resumida antes deste registro, nove achados e a
+triagem teriam se perdido.
+
+**Risco em aberto.** A triagem pendente: enquanto o autor não decidir, o backlog carrega itens que
+a auditoria considera superados ou prematuros (Seção 4 do documento).
+
+**Procedência.**
+
+- `docs/AUDITORIA-2026-10-31.md`;
+- backlog `DATA-08`, `AUTH-08`, `API-04`, `SEC-15`, `FW-09`, `FW-10` e `SEC-14`.
+
+---
+
+# 2026-11-01 (iii) — `FW-09`: quem pede o rádio o reserva
+
+**O problema, como foi entendido no início.** Achado A1 da auditoria de 31/10: no `sketch.ino`, a
+medição avisava a tarefa de envio e voltava ao topo do laço, onde decidia dormir olhando
+`wifi_ativo` — flag que só a tarefa de envio ligava, depois de acordar no outro núcleo. Na janela,
+a medição chamava `esp_light_sleep_start()`, que adormece os dois núcleos e o rádio no meio do
+`WiFi.begin()`.
+
+**Hipótese de trabalho.** Que a regra pudesse sair do sketch para o núcleo, onde dá para provar no
+host a propriedade que faltava: logo depois do pedido, e antes de a tarefa de envio agir, a
+medição já não dorme.
+
+**O que foi testado, e como.**
+
+- `firmware/nucleo/radio.h` (`CoordenacaoDoRadio`, `std::atomic<bool>`), com 7 verificações em
+  `testes_c2.cpp`.
+- O sketch passou a usá-la: `pedir_envio()` antes do aviso, `pode_dormir()` no topo do laço, e
+  `liberar()` no fim do envio **e no caminho em que ele desiste**, que antes não existia.
+- Controle positivo: duas sabotagens no `mutacao-cadeia` — pedir sem reservar (o defeito de
+  antes) e liberar que não libera.
+- A figura A do `DIAG-03` atualizada e renderizada.
+- Suítes do firmware, `make sintaxe` (com a ligação) e as três mutações, em `gcc:13`.
+
+**Resultado medido.**
+
+- Núcleo: 341 + 157 + **135** + 456 + 84, 0 falhas (+7 em `c2`).
+- Sintaxe 4/4 e o sketch liga com o núcleo.
+- Mutação: cadeia **23/23** (as duas novas acusadas, com 3 e 2 falhas), fila 13/13, paridade 15/15.
+
+**Adaptação.** O plano não previa a devolução no caminho de desistência; ela apareceu ao escrever
+a regra ("quem usa devolve"), e sem ela a medição nunca mais dormiria depois do primeiro envio
+recusado pela política de reconexão.
+
+**O que deu errado no caminho.** Nada nesta etapa.
+
+**Risco em aberto.** Os dois `liberar()` estão no sketch, que só é compilado e ligado: os testes
+provam a regra, não que o sketch a segue. Conferido por leitura; de verdade, na bancada
+(`FW-07` (c)).
+
+**Procedência.**
+
+- `firmware/nucleo/radio.h`, `testes/testes_c2.cpp`, `testes/verificar_cadeia_por_mutacao.sh`,
+  `Makefile`;
+- `firmware/sketch.ino`;
+- `docs/diagramas/DIAG-03-firmware-e-fluxo-do-dado.md`, figura A;
+- backlog `FW-09`; `docs/AUDITORIA-2026-10-31.md`, A1.
+
+---
+
+# 2026-11-01 (iv) — `DATA-08`: a época reenviada não duplica (migração 011)
+
+**O problema, como foi entendido no início.** Achado A2 da auditoria de 31/10: `sleep_data` não
+tinha restrição de unicidade, e o firmware reenvia o que não foi confirmado. Se o servidor
+gravou e a resposta se perdeu, a época virava duas linhas, e em `features_noite` a duplicata
+produz `d_angulo = 0` artificial e puxa o `g_ref`. O contrato já anotava o risco como
+"duplicata, não resolvida".
+
+**Hipótese de trabalho.** Que bastasse o banco: um índice único na chave da época e `on conflict`
+nas duas funções, devolvendo o id existente para o backend contar o reenvio como aceito — sem
+mudar o backend, logo sem release.
+
+**O que foi testado, e como.**
+
+- A migração 011 (as funções derivadas das da 010, só com o `on conflict` e a busca do id) e a
+  consulta `CONFERIR-duplicatas-antes-da-011.sql`, só de leitura.
+- 6 testes em `tests/rls/test_rls_idempotencia.py`, contra `postgres:16` em Docker.
+- **Controle positivo:**
+  - uma 011 sem `on conflict`;
+  - uma 011 que devolve nulo no conflito;
+  - a trava, com duas linhas repetidas inseridas antes da 011;
+  - o diagnóstico de produção num banco com só o índice.
+- Suíte de RLS inteira, verificador de migrações e mutação do RLS.
+
+**Resultado medido.**
+
+- RLS: **164 passam** (158 + 6). Verificador: os 11 estados. Mutação do RLS: 32/32.
+- Sabotagens: sem `on conflict`, 4 testes falham; devolvendo nulo, 3.
+- Trava: a 011 parou com *"DATA-08: 1 grupo(s) de leituras duplicadas"*; 3 linhas antes e
+  depois, índice não criado.
+- Diagnóstico com só o índice: a 011 sai `false`, "1 de 3 marcas", faltando as duas funções.
+
+**Adaptação.**
+
+- **A busca do id existente** era o ponto do plano que mais importava: com `do nothing` puro, a
+  função devolve nulo, o backend responde 503 e o firmware reenviaria para sempre.
+- **A 011 não apaga dado** para conseguir criar o índice: com duplicatas, ela para, e a decisão
+  sobre as linhas repetidas é do autor.
+- **A aplicação na produção virou o `DATA-09` (L3).** Mesmo padrão do `DATA-07f`.
+
+**O que deu errado no caminho.**
+
+1. **Um teste meu supôs o cenário vazio.** O de "sem instante não deduplica" contou 3 linhas em
+   vez de 2: o cenário de teste já traz uma leitura sem `captured_at`. Passou a medir o
+   acréscimo.
+2. **O script da trava não encerrou a transação** que o `begin` da própria migração abriu, e
+   a conferência seguinte falhou com "transaction is aborted". Corrigido com `rollback`
+   explícito; a mensagem da trava já tinha saído certa na primeira rodada.
+
+**Risco em aberto.**
+
+- **A 011 não está na produção** (`DATA-09`). Até lá, reenvio grava duplicata.
+- **Leitura sem `ts` ou sem `epoca_s` não é deduplicada**, como declarado na 011 e no contrato.
+- **Duplicatas que já existam na produção** não são tratadas aqui: a consulta de conferência as
+  mostra, e a 011 não roda enquanto existirem.
+
+**Procedência.**
+
+- `web-app/migrations/011_leitura_idempotente.sql`, `CONFERIR-duplicatas-antes-da-011.sql`,
+  `DIAGNOSTICO-migracoes-aplicadas.sql` e `README.md`;
+- `web-app/tests/rls/test_rls_idempotencia.py` e `conftest.py`;
+  `tests/migracoes/verificar_migracoes.py`;
+- `docs/DATA-CONTRACT.md` §5.2; `docs/diagramas/DIAG-04`, figura A;
+- backlog `DATA-08` e `DATA-09`; `docs/AUDITORIA-2026-10-31.md`, A2.
+
+---
+
+# 2026-11-01 (v) — `DATA-09` fechado: a 011 na produção
+
+**O problema, como foi entendido no início.** A migração 011 (`DATA-08`) estava em `develop`.
+Faltava aplicá-la na produção, depois de conferir que não havia duplicatas que impedissem o
+índice.
+
+**Hipótese de trabalho.** Que a produção não tivesse duplicatas — o firmware da C2 nunca rodou, e
+o `envio-continuo` só reenvia em falha —, e que recriar as funções não mexesse nos privilégios da
+chave de ingestão (o `create or replace` preserva o ACL).
+
+**O que foi testado, e como.** O autor rodou no SQL Editor, em ordem, a consulta de conferência,
+a 011 e o diagnóstico, e colou os resultados. O `/health` foi chamado daqui depois.
+
+**Resultado medido.**
+
+- **Conferência:** 0 grupos repetidos, 0 linhas a mais.
+- **Diagnóstico:** a 011 com `aplicada = true`, **3 de 3 marcas**; 001 e 003–010 como antes;
+  0 leituras sem dono.
+- **`/health`:** `200`, banco ok, 04:16 UTC. A chave de ingestão executa a `sanidade()` depois
+  da recriação das funções de gravação.
+
+**Adaptação.** Nenhuma.
+
+**O que deu errado no caminho.** Nada nesta etapa.
+
+**Risco em aberto.** Nenhuma leitura reenviada passou ainda pela 011 na produção: o
+comportamento do reenvio está provado contra Postgres 16 local, não contra o Supabase.
+
+**Procedência.**
+
+- resultados da conferência e do diagnóstico, colados pelo autor em 01/11;
+- `GET https://dormio-smart.vercel.app/health`, 01/11;
+- backlog `DATA-09`.
+
+---
+
+# 2026-11-01 (vi) — `AUTH-08`: serviço fora do ar não desloga ninguém
+
+**O problema, como foi entendido no início.** Achados A3, A7 e A9 da auditoria de 31/10.
+`validar_token_de_usuario` e `get_device_by_token_hash` devolviam `None` tanto quando o serviço
+recusava a credencial quanto quando ele falhava, e a rota respondia 401 nos dois casos. O
+frontend trata 401 como sessão morta e desloga: uma falha momentânea do Supabase Auth deslogava
+o usuário. E o 401 limpava a sessão só no React, então recarregar a página a ressuscitava.
+
+**Hipótese de trabalho.** Que a biblioteca separasse os dois casos pelas classes de exceção, e que
+um valor-sentinela levasse a diferença até a rota sem quebrar a regra do `FIX-08` (nenhum método
+da camada de banco levanta).
+
+**O que foi testado, e como.**
+
+- **A biblioteca, antes de escrever:** em `supabase_auth` 2.24, `handle_exception` levanta
+  `AuthRetryableError` para rede e 502/503/504, e `AuthApiError` com o status para respostas 4xx.
+- **A correção:** sentinela `INDISPONIVEL` em `database.py`; `require_auth` e as duas rotas de
+  ingestão respondem 503 a ele; no frontend, `signOut({ scope: "local" })` no callback do 401.
+- **Testes:** 17 novos no backend com as exceções reais da biblioteca, e 2 no frontend.
+- **Controle positivo:** cinco sabotagens.
+- **Suítes:** backend, frontend, `tsc` e build.
+
+**Resultado medido.**
+
+- **Backend:** 407 passam (390 + 17). **Frontend:** 424 (422 + 2); `tsc` e build limpos.
+- **Controle positivo:**
+  - tudo-é-recusa, que é o comportamento antigo: 11 falhas;
+  - tudo-é-falha: 3;
+  - banco do dispositivo de volta a `None`: 3;
+  - sem o `signOut`: 1;
+  - API deslogando também no 503: 1.
+
+**Adaptação.**
+
+- **Três testes antigos especificavam o comportamento que mudou** ("Auth fora do ar → 401",
+  "banco fora → `None`", "`/api/data` com banco fora → 401"). Foram reescritos para a regra nova,
+  mantendo a propriedade que protegiam: nunca levantar, nunca 400 nem 500. A mudança está
+  explicada no texto de cada um.
+- **O sentinela é falso como `None`**, para um chamador antigo que só testasse `if not usuario`
+  continuar negando acesso em vez de concedê-lo.
+- **A validação local do JWT virou o `AUTH-09`**, fora deste item: ela cortaria a chamada remota,
+  mas muda a confiança na revogação.
+
+**O que deu errado no caminho.** Nada nesta etapa.
+
+**Risco em aberto.**
+
+- **Só chega ao site com um release** para `main`. A confirmação depois dele é o `/health` e um
+  login de verdade (regra do `CLAUDE.md`).
+- **A classificação depende da biblioteca:** se uma versão nova do `supabase_auth` mudar as
+  classes de exceção, os 17 testes acusam, porque usam as classes reais.
+
+**Procedência.**
+
+- `web-app/database.py`, `auth.py` e `routes.py`; `tests/test_indisponivel_nao_e_401.py`,
+  `test_resiliencia.py` e `test_auth_usuario.py`;
+- `frontend/src/contexts/AuthContext.tsx` e `AuthContext.test.tsx`;
+- `docs/DATA-CONTRACT.md`;
+- backlog `AUTH-08` e `AUTH-09`; `docs/AUDITORIA-2026-10-31.md`, A3, A7 e A9.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

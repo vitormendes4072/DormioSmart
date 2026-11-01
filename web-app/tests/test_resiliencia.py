@@ -72,9 +72,11 @@ def test_get_leituras_do_usuario_degrada_para_lista_vazia():
 
 # --- os demais metodos tambem nao podem levantar -------------------------
 
-def test_get_device_by_token_hash_devolve_none():
+def test_get_device_by_token_hash_nao_levanta():
+    """✏️ 01/11 (AUTH-08): devolvia `None`, igual a token que não resolve; agora
+    a falha é INDISPONIVEL, e a rota responde 503 em vez de 401."""
     with _cliente_explode():
-        assert database.db.get_device_by_token_hash("qualquer") is None
+        assert database.db.get_device_by_token_hash("qualquer") is database.INDISPONIVEL
 
 
 def test_registrar_leitura_devolve_none():
@@ -107,12 +109,13 @@ def test_verificar_conexao_reporta_falha_sem_levantar():
 
 # --- a rota de ingestao degrada com o codigo certo -----------------------
 
-def test_post_data_responde_401_e_nao_400_quando_o_banco_falha():
-    """Token nao resolve por falha de banco -> 401 (nao autorizado), que e o
-    que o firmware sabe tratar. Antes virava 400, sugerindo payload ruim."""
+def test_post_data_responde_503_e_nao_400_nem_401_quando_o_banco_falha():
+    """Banco fora do ar ao resolver o token -> 503: o firmware mantém a época e
+    reenvia. Antes do FIX-08 virava 400 (payload ruim, a época era descartada);
+    até 01/11 virava 401 "nao autorizado", que diz a coisa errada (AUTH-08)."""
     with _cliente_explode():
         resp = _client().post("/api/data", json=_LEITURA, headers=_AUTH)
-    assert resp.status_code == 401
+    assert resp.status_code == 503
 
 
 def test_health_responde_503_e_nunca_500():

@@ -148,7 +148,11 @@ def test_falha_de_banco_devolve_lista_vazia_e_nao_500():
 
 
 def test_validacao_de_token_nunca_levanta():
-    """Auth fora do ar deve virar 401, não 500."""
+    """Auth fora do ar não levanta (não vira 500) e devolve INDISPONIVEL.
+
+    ✏️ 01/11 (AUTH-08): até aqui o esperado era `None`, que a rota transforma
+    em 401 — e 401 desloga o usuário. Uma falha do Auth não é sessão inválida.
+    """
     class ClienteRuim:
         class auth:
             @staticmethod
@@ -156,4 +160,4 @@ def test_validacao_de_token_nunca_levanta():
                 raise RuntimeError("auth indisponivel")
 
     with patch.object(database.db, "_get_client_anon", return_value=ClienteRuim()):
-        assert database.db.validar_token_de_usuario("qualquer") is None
+        assert database.db.validar_token_de_usuario("qualquer") is database.INDISPONIVEL
