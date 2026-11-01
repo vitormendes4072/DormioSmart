@@ -2651,14 +2651,6 @@ PENDENCIAS: list[Pendencia] = [
                    "zerados, `‖a‖ = 56,5 m/s²` com a placa parada, `−11,6 °C` e "
                    "ruído 30× o normal. O viés de Z, `−1,06 m/s²`, é **89% do "
                    "limiar de movimento inteiro.**"),
-    Pendencia("SEC-14 — ligar a chave de ingestão", ACAO, "Depois do release com "
-              "a correção do `cliente_de_ingestao`: cadastrar `SUPABASE_INGESTAO_KEY` "
-              "na Vercel (Production), redeploy, conferir o `/health` em 200, e só "
-              "então remover a `SUPABASE_SERVICE_ROLE_KEY` da Vercel. Até lá a "
-              "ingestão roda com a chave de acesso total.", "🟠",
-              camada_backlog="L3",
-              nota="Passo a passo em `web-app/README.md`, \"Rotação da chave de "
-                   "ingestão\"; no Windows, o secret entra por `Get-Clipboard`."),
     Pendencia("INFRA-02 — projeto Supabase de teste", ACAO, "Criar um projeto Supabase de "
               "teste e rodar um punhado de `curl`. **Fecharia quatro itens de uma "
               "vez:** o ponto cego do `UI-11` (a troca de e-mail exige "
