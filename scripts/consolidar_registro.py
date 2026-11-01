@@ -2651,6 +2651,30 @@ PENDENCIAS: list[Pendencia] = [
                    "zerados, `‖a‖ = 56,5 m/s²` com a placa parada, `−11,6 °C` e "
                    "ruído 30× o normal. O viés de Z, `−1,06 m/s²`, é **89% do "
                    "limiar de movimento inteiro.**"),
+    Pendencia("DATA-08", SOFTWARE, "Deduplicar `sleep_data`: migração 011 com índice "
+              "único parcial `(device_id, captured_at, epoca_segundos)` e `on conflict` nas "
+              "duas funções de gravação. Hoje um reenvio do firmware vira linha duplicada, "
+              "que distorce `d_angulo` e `g_ref`.", "🔴", camada_backlog="L0",
+              nota="Auditoria de 31/10, A2 — `docs/AUDITORIA-2026-10-31.md`."),
+    Pendencia("AUTH-08", SOFTWARE, "Falha momentânea do Auth ou do banco não pode virar "
+              "401 (que desloga): 401 só quando o serviço recusa a credencial; o resto, 503. "
+              "No frontend, `signOut` local no callback do 401.", "🟡", camada_backlog="L0",
+              nota="Auditoria de 31/10, A3, A7 e A9."),
+    Pendencia("API-04", SOFTWARE, "Exceção interna nas rotas de ingestão responde 400 "
+              "com `str(e)`, e o firmware descarta a leitura. Trocar por 500 genérico com "
+              "log; no lote, exceção num item vira pendente.", "🟡", camada_backlog="L0",
+              nota="Auditoria de 31/10, A4."),
+    Pendencia("SEC-15", SOFTWARE, "TLS do firmware sem conferir o certificado "
+              "(`setInsecure()`): o token do dispositivo é capturável numa rede "
+              "comprometida. Usar `setCACertBundle` ou a CA raiz; validar na placa.",
+              "🟡", camada_backlog="L0", nota="Auditoria de 31/10, A5."),
+    Pendencia("FW-09", SOFTWARE, "Corrida no `sketch.ino`: a medição pode entrar em sono "
+              "leve com o Wi-Fi subindo (o aviso sai antes de `wifi_ativo` ser ligado). "
+              "Ligar a flag antes do aviso.", "🔴", camada_backlog="L0",
+              nota="Auditoria de 31/10, A1; latente, sem placa."),
+    Pendencia("FW-10", SOFTWARE, "Sono da medição pelo prazo absoluto (hoje é trabalho + "
+              "intervalo) e contadores atômicos entre os dois núcleos.", "⚪",
+              camada_backlog="L0", nota="Auditoria de 31/10, A8 e A10; latente."),
     Pendencia("INFRA-02 — projeto Supabase de teste", ACAO, "Criar um projeto Supabase de "
               "teste e rodar um punhado de `curl`. **Fecharia quatro itens de uma "
               "vez:** o ponto cego do `UI-11` (a troca de e-mail exige "

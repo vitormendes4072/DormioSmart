@@ -49,12 +49,12 @@ linha, não um resumo: resumo é a cópia que diverge.
 
 | Grupo | Itens |
 |---|---:|
-| A — Depende só de software: dá para fazer a qualquer momento | **29** |
+| A — Depende só de software: dá para fazer a qualquer momento | **35** |
 | B — Depende de decisão do Vitor | **10** |
 | C — Depende de ação do Vitor que não é decisão | **5** |
 | D — Bloqueado por hardware ou coleta | **26** |
 | E — Bloqueado por terceiro | **4** |
-| **Total** | **74** |
+| **Total** | **80** |
 
 ⚠️ **Este total não é comparável à contagem do backlog, e a diferença não é
 erro de nenhum dos dois.** São unidades de contagem diferentes: o backlog
@@ -75,7 +75,7 @@ outro item. **Desde 28/10 têm ID no backlog:** `GIT-07`, `INFRA-02` e
 
 ## A — Depende só de software: dá para fazer a qualquer momento
 
-**29 itens.**
+**35 itens.**
 
 ### `CALC-01` 🔴
 
@@ -274,6 +274,54 @@ O CI **não roda linter** — não há ESLint nem Ruff/flake8. Pressupõe uma de
 *Camada no backlog: L0.*
 
 **Conferência.** Confirmado aberto: não há `.eslintrc*`, `eslint.config.*`, `ruff.toml` nem `setup.cfg` em lugar nenhum do repositório. A **decisão** de configuração está no grupo B.
+
+### `DATA-08` 🔴
+
+Deduplicar `sleep_data`: migração 011 com índice único parcial `(device_id, captured_at, epoca_segundos)` e `on conflict` nas duas funções de gravação. Hoje um reenvio do firmware vira linha duplicada, que distorce `d_angulo` e `g_ref`.
+
+*Camada no backlog: L0.*
+
+**Conferência.** Auditoria de 31/10, A2 — `docs/AUDITORIA-2026-10-31.md`.
+
+### `AUTH-08` 🟡
+
+Falha momentânea do Auth ou do banco não pode virar 401 (que desloga): 401 só quando o serviço recusa a credencial; o resto, 503. No frontend, `signOut` local no callback do 401.
+
+*Camada no backlog: L0.*
+
+**Conferência.** Auditoria de 31/10, A3, A7 e A9.
+
+### `API-04` 🟡
+
+Exceção interna nas rotas de ingestão responde 400 com `str(e)`, e o firmware descarta a leitura. Trocar por 500 genérico com log; no lote, exceção num item vira pendente.
+
+*Camada no backlog: L0.*
+
+**Conferência.** Auditoria de 31/10, A4.
+
+### `SEC-15` 🟡
+
+TLS do firmware sem conferir o certificado (`setInsecure()`): o token do dispositivo é capturável numa rede comprometida. Usar `setCACertBundle` ou a CA raiz; validar na placa.
+
+*Camada no backlog: L0.*
+
+**Conferência.** Auditoria de 31/10, A5.
+
+### `FW-09` 🔴
+
+Corrida no `sketch.ino`: a medição pode entrar em sono leve com o Wi-Fi subindo (o aviso sai antes de `wifi_ativo` ser ligado). Ligar a flag antes do aviso.
+
+*Camada no backlog: L0.*
+
+**Conferência.** Auditoria de 31/10, A1; latente, sem placa.
+
+### `FW-10` ⚪
+
+Sono da medição pelo prazo absoluto (hoje é trabalho + intervalo) e contadores atômicos entre os dois núcleos.
+
+*Camada no backlog: L0.*
+
+**Conferência.** Auditoria de 31/10, A8 e A10; latente.
 
 ---
 
