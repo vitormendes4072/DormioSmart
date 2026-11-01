@@ -4851,6 +4851,45 @@ do horário do log de build é que mostrou o erro.
 - log de produção da Vercel, deployment `GcYsZPUF5`, lido pelo autor;
 - backlog `SEC-14`.
 
+---
+
+# 2026-11-01 (ii) — a auditoria de 31/10 vira registro
+
+**O problema, como foi entendido no início.** Em 31/10 o autor pediu uma auditoria técnica de
+código, arquitetura e backlog. Ela foi feita na conversa: dez achados conferidos no código, um
+parecer de arquitetura e a triagem dos 68 itens abertos. Só o achado A6 tinha virado item (o
+`SEC-14`, fechado em 01/11). O resto existia só na conversa — e o autor perguntou, com razão, se
+estava registrado em algum lugar.
+
+**Hipótese de trabalho.** Que o registro precisa separar o que é achado (vira item, com ID) do que
+é recomendação sobre itens existentes (espera decisão do autor e não pode ser aplicado por quem
+recomendou).
+
+**O que foi testado, e como.** Nada novo foi medido. Os números de linha de cada achado foram
+reconferidos no código de `develop` de 01/11 (alguns tinham mudado com a correção do `SEC-14`),
+e o backlog foi recontado linha a linha.
+
+**Resultado medido.** `docs/AUDITORIA-2026-10-31.md` com os achados, as correções, o parecer e a
+triagem; seis itens novos, todos L0: `DATA-08` e `FW-09` (altas), `AUTH-08`, `API-04` e `SEC-15`
+(médias), `FW-10` (baixas). Backlog: 74 abertos (L0 40).
+
+**Adaptação.** A triagem entrou como **proposta**, sem tocar nos itens existentes: remover ou
+rebaixar item é decisão do autor. Os achados baixos foram agrupados por onde moram (`AUTH-08`
+junta A3, A7 e A9; `FW-10` junta A8 e A10), porque cada grupo é uma correção só.
+
+**O que deu errado no caminho.** **A auditoria ficou um dia só na conversa.** É o padrão que o §2
+das lições já descreve — observação solta em vez de item —, e quem o repetiu foi a sessão que
+fez a auditoria. Se a conversa tivesse sido resumida antes deste registro, nove achados e a
+triagem teriam se perdido.
+
+**Risco em aberto.** A triagem pendente: enquanto o autor não decidir, o backlog carrega itens que
+a auditoria considera superados ou prematuros (Seção 4 do documento).
+
+**Procedência.**
+
+- `docs/AUDITORIA-2026-10-31.md`;
+- backlog `DATA-08`, `AUTH-08`, `API-04`, `SEC-15`, `FW-09`, `FW-10` e `SEC-14`.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
