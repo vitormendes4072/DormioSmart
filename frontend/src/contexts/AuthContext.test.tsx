@@ -18,6 +18,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 type AoMudar = (evento: string, sessao: unknown) => void;
 let aoMudar: AoMudar | null = null;
+// `vi.mock` sobe para o topo do arquivo; o espião precisa subir junto.
+const { signOut } = vi.hoisted(() => ({ signOut: vi.fn(() => Promise.resolve({})) }));
 
 vi.mock("../lib/supabase", () => ({
   problemaDeConfiguracao: () => null,
@@ -28,7 +30,7 @@ vi.mock("../lib/supabase", () => ({
         aoMudar = callback;
         return { data: { subscription: { unsubscribe() {} } } };
       },
-      signOut: () => Promise.resolve({}),
+      signOut,
     },
   }),
 }));
@@ -46,6 +48,7 @@ function perfil() {
 }
 
 beforeEach(() => {
+  signOut.mockClear();
   chamadas = [];
   statusDaResposta = 200;
   vi.stubGlobal(
@@ -133,5 +136,31 @@ describe("AuthProvider liga o token antes dos efeitos dos filhos (AUTH-07)", () 
       await requisitarJson("/api/sleep-history");
     });
     expect(chamadas.at(-1)?.authorization).toBeNull();
+  });
+
+  it("401 limpa tambem a sessao guardada no navegador, sem chamar o servidor (AUTH-08)", async () => {
+    await montar();
+    await evento("SIGNED_IN", sessao("jwt-revogado"));
+    statusDaResposta = 401;
+    await act(async () => {
+      await requisitarJson("/api/sleep-history").catch(() => {});
+    });
+    expect(signOut).toHaveBeenCalledWith({ scope: "local" });
+  });
+
+  it("503 (servico fora do ar) NAO desloga ninguem (AUTH-08)", async () => {
+    await montar();
+    await evento("SIGNED_IN", sessao("jwt-bom"));
+    statusDaResposta = 503;
+    await act(async () => {
+      await requisitarJson("/api/sleep-history").catch(() => {});
+    });
+    expect(signOut).not.toHaveBeenCalled();
+    statusDaResposta = 200;
+    chamadas = [];
+    await act(async () => {
+      await requisitarJson("/api/sleep-history");
+    });
+    expect(chamadas[0]?.authorization).toBe("Bearer jwt-bom");
   });
 });
