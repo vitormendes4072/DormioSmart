@@ -5490,6 +5490,56 @@ faltava incluir os cabeçalhos do FreeRTOS antes dos stubs; corrigidos com `-x n
   `verificar_cadeia_por_mutacao.sh`; `firmware/nucleo/Makefile`; `.github/workflows/ci.yml`;
 - backlog `FW-10` e `FW-07`.
 
+---
+
+# 2026-11-03 (iv) — branches sincronizadas, e o release do `SEC-15` e do `FW-10`
+
+**O problema, como foi entendido no início.** O autor pediu para conferir seis branches locais
+antigas e corrigir o que estivesse fora de sincronia. O `develop` também tinha o `SEC-15`, o
+`FW-10` e o teste do laço fora de `main` — e o agendamento do monitor da produção só roda a partir
+de `main`.
+
+**Hipótese de trabalho.** Que as seis branches já estivessem em `develop`, e que o release não
+mudasse o site (só firmware, docs, scripts e workflows).
+
+**O que foi testado, e como.**
+
+- **As seis branches** (`GIT-01`, `INFRA-03`, `PERFIL-02`, `SEC-12` e as duas do `ARQ-01`, PRs #1–#4,
+  #12 e #13): `git merge-base --is-ancestor` contra `develop` e a contagem de commits fora dele.
+- **Sincronia:** branches locais contra o GitHub, `develop` contra `main` (em commits e em
+  conteúdo), worktrees, alterações soltas, stash e PRs abertas.
+- **O release:** diff `main..develop` filtrado por backend, frontend, `vercel.json`, dependências e
+  migrações; PR #47 depois dos 9 checks; deploy acompanhado pela API de deployments, com o SHA.
+- **Depois:** `/health`, as rotas de ingestão sem credencial e com token inválido, `Bearer`
+  inválido, `conferir_tls_firmware.py --producao` daqui, e o log do monitor disparado pela push em
+  `main`.
+
+**Resultado medido.**
+
+- **As seis branches estavam inteiras em `develop`** (0 commits fora), inclusive a da #13 — que o
+  `CLAUDE.md` registra como mesclada na branch da #12; o conteúdo chegou a `develop` depois.
+  Apagadas aqui e no GitHub, que ficou só com `main` e `develop`.
+- **`main` local estava 162 commits atrás** do GitHub: atualizado. Os 34 commits de `main` fora de
+  `develop` são só os merges dos releases, sem conteúdo (diff `develop...main` vazio).
+- **Release #47** (`95e61e6`): nenhum arquivo do backend nem do frontend; deploy `7527355605`
+  `success`, com o SHA conferido; `/health` `200`, banco ok; as rotas de ingestão `401` sem
+  credencial e com token inválido; `Bearer` inválido `401`.
+- **O monitor rodou a partir de `main`** (execução `41694832434`, disparada pela push): `/health`
+  ok e a cadeia da Vercel aceita contra as raízes do firmware (emissor WR1). Daqui, o mesmo.
+
+**Adaptação.** Nenhuma.
+
+**O que deu errado no caminho.** Nada nesta etapa.
+
+**Risco em aberto.** O release não muda o site, mas a regra do `CLAUDE.md` pede um login de
+verdade depois de todo release; a confirmação do autor fica registrada quando vier.
+
+**Procedência.**
+
+- PR #47 (`95e61e6`); deployment de produção `7527355605`; execução `41694832434` do
+  `saude-producao.yml`;
+- `GET https://dormio-smart.vercel.app/health` e as rotas, 03/11.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
