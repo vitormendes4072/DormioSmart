@@ -5271,6 +5271,92 @@ nova, e que nada no caminho autenticado mudasse de comportamento.
 - a confirmação do autor;
 - backlog `API-04`.
 
+---
+
+# 2026-11-03 (i) — `SEC-15` (a) e (b): o firmware passa a conferir o certificado do servidor
+
+**O problema, como foi entendido no início.** Achado A5 da auditoria de 31/10. O `sketch.ino` e o
+`envio-continuo.ino` usavam `setInsecure()`: o TLS cifrava, mas aceitava qualquer certificado.
+Quem controlasse a rede Wi-Fi podia se passar pelo servidor, ler o `X-Device-Token` e gravar
+noites falsas na conta do dono.
+
+**Hipótese de trabalho.** A auditoria propunha o pacote de certificados do ESP-IDF
+(`setCACertBundle`) ou a CA raiz da Vercel, supondo Let's Encrypt.
+
+**O que foi testado, e como.**
+
+- **A cadeia real:** `openssl s_client` contra `dormio-smart.vercel.app`, com `-showcerts`.
+- **O pacote do ESP-IDF:** documentação do `NetworkClientSecure`, do ESP-IDF e uma PR externa que
+  trata a mudança de assinatura no core 3.0.4. O core ESP32 não está instalado nesta máquina, e o
+  repositório não fixa a versão.
+- **A lista de raízes:** extraída do pacote Mozilla do Git for Windows e conferida contra a
+  produção com `openssl`, confiando só em cada raiz.
+- **A correção:** `firmware/ca_raiz.h` (e a cópia no `envio-continuo/`), `setCACert(CA_RAIZ)` nos
+  dois sketches, `setCACert` no stub, e `scripts/conferir_tls_firmware.py` no CI de documentos e,
+  com `--producao`, no monitor da produção.
+- **Firmware:** `make todos`, `sintaxe`, `capacidade` e as mutações, em contêiner `gcc:13`.
+- **Controle positivo:** seis sabotagens, com os arquivos restaurados depois.
+
+**Resultado medido.**
+
+- **A cadeia não é Let's Encrypt:** `*.vercel.app` → WR1 → **GTS Root R1** (Google Trust
+  Services), com um certificado cruzado por GlobalSign Root CA.
+- **`openssl` contra a produção, confiando só em:**
+  - GTS R1 → `0 (ok)`; GlobalSign Root CA → `0 (ok)`; a lista proposta inteira → `0 (ok)`;
+  - só GTS R4 → `20`; só ISRG X1 → `20` (recusa);
+  - a lista inteira com o nome de host errado → `62 hostname mismatch`.
+- **Firmware:** 341 + 157 + 136 + 456 + 84 verificações, 0 falhas; os 4 sketches compilam, e o
+  `sketch.ino` liga com o núcleo; capacidade e mutações como esperado.
+- **`conferir_tls_firmware.py`:** passa, e com `--producao` aceita a cadeia (emissor WR1).
+- **Controle positivo, 6/6 acusadas:**
+  - `setInsecure()` de volta no `sketch.ino`;
+  - `setCACert` removido do `envio-continuo`;
+  - o `#include "ca_raiz.h"` removido;
+  - a cópia do `envio-continuo` divergente;
+  - um caractere trocado no GTS Root R1 (impressão digital ausente, e um certificado não listado);
+  - o monitor confiando só nas raízes ISRG → cadeia recusada.
+
+**Adaptação.**
+
+- **Lista curta de raízes, e não o pacote do ESP-IDF:** o pacote exige embutir um arquivo no build,
+  e o Arduino IDE 1.8 não faz isso. Fixar o certificado do servidor também foi descartado: vence a
+  cada três meses.
+- **Quatro raízes, e não uma:** GTS R1 (a de hoje), GTS R4 (variante ECDSA do Google), ISRG X1 e X2
+  (Let's Encrypt, a outra CA que a Vercel usa). A GlobalSign Root CA ficou de fora: o certificado
+  cruzado vence em 2028.
+- **O monitor da produção ganhou um passo**, porque o custo da correção é este: se a Vercel trocar
+  para uma CA fora da lista, o dispositivo para de enviar até ser regravado. O aviso precisa chegar
+  antes.
+- **`SEC-15` passou de L0 para L1:** o que falta é a placa, como no `FW-07` e no `FW-08`.
+
+**O que deu errado no caminho.**
+
+- **O gerador do `ca_raiz.h` falhou na primeira vez** por gravar em ASCII um comentário com `──`;
+  regravado em UTF-8, como o resto do firmware.
+- **As sabotagens falharam duas vezes antes de rodar:** os `.ino` usam CRLF, e o texto procurado
+  tinha `\n` (o mesmo tropeço do `API-04`); depois, o console `cp1252` não imprimia o `✗`. Nenhuma
+  rodada aplicou sabotagem pela metade: a asserção parou antes.
+- **O alvo `todos` do firmware não inclui a `sintaxe`**, que é a parte que este item muda; foi
+  rodada à parte.
+
+**Risco em aberto.**
+
+- **O handshake no ESP32 não rodou** — fica na parte (c) do `SEC-15`, na sessão de bancada. O
+  `--producao` usa o OpenSSL do runner, não o `mbedtls`.
+- **Relógio:** se o `mbedtls` do core conferir a validade por data, um ESP32 sem NTP recusa a
+  conexão. O `sketch.ino` sincroniza o NTP antes de enviar, e a falha é segura (o lote volta para a
+  fila); a confirmar na placa (`SEC-15` (c)).
+- **Troca de CA pela Vercel:** o dispositivo para de enviar até ser regravado. O monitor avisa; a
+  limitação está na X.8 de `LIMITACOES-TCC.md`.
+
+**Procedência.**
+
+- `firmware/ca_raiz.h`, `firmware/envio-continuo/ca_raiz.h`, `firmware/sketch.ino`,
+  `firmware/envio-continuo/envio-continuo.ino`, o stub `WiFiClientSecure.h`;
+- `scripts/conferir_tls_firmware.py`; `.github/workflows/ci.yml` e `saude-producao.yml`;
+- `openssl s_client` contra `dormio-smart.vercel.app`, 03/11;
+- `docs/LIMITACOES-TCC.md`, X.8; backlog `SEC-15`; `docs/AUDITORIA-2026-10-31.md`, A5.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

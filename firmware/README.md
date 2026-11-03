@@ -6,6 +6,7 @@ Firmware embarcado que lê o sensor inercial MPU6050, classifica repouso/movimen
 | Arquivo | Função |
 |---|---|
 | `sketch.ino` | Firmware de produto, arquitetura C2 (✏️ 31/10, `FW-07` (b)): sono leve, FIFO do MPU a 50 Hz, features por época, fila na flash e envio em lote. **Só compilado e ligado com stubs; não rodou na placa.** |
+| `ca_raiz.h` | ✏️ *(03/11, `SEC-15`)* As CAs raiz em que o firmware confia para o HTTPS (`setCACert`). **Canônico**; `envio-continuo/ca_raiz.h` é cópia idêntica, conferida por `scripts/conferir_tls_firmware.py` |
 | `diagram.json` | Mapeamento do circuito no Wokwi |
 | `libraries.txt` | Bibliotecas utilizadas |
 | `secrets.example.h` | Modelo de credenciais — **copiar para `secrets.h`** |

@@ -572,6 +572,30 @@ trabalho. O impacto é de divulgação de informação, sobre base de usuários 
 experimental, sem finalidade comercial. Não se afirma, em nenhuma hipótese, ausência de
 enumeração.
 
+### X.8 Limitações de segurança do canal entre o dispositivo e o servidor
+
+O dispositivo transmite as medições ao servidor por HTTPS e se identifica por um token próprio.
+Até a etapa final do desenvolvimento, a conexão era cifrada mas não autenticada: o firmware
+aceitava qualquer certificado apresentado. Um atacante com controle da rede sem fio poderia,
+nessa condição, passar-se pelo servidor, obter o token e gravar medições falsas na conta do
+usuário — um risco à integridade dos dados, mais do que à sua confidencialidade.
+
+**A correção e o que ela fixa.** O firmware passou a validar o certificado do servidor contra uma
+lista de quatro autoridades certificadoras raiz, gravada no próprio firmware. A cadeia do
+provedor de hospedagem foi medida em 03/11/2026: o certificado do servidor é emitido pela
+autoridade intermediária WR1, sob a raiz GTS Root R1. A lista foi conferida contra essa cadeia
+real, confiando exclusivamente em cada raiz: a raiz correta e a lista completa foram aceitas, e
+raízes alheias à cadeia e um nome de servidor incorreto foram recusados.
+
+**A limitação, enunciada.** A confiança é fixada no firmware. Se o provedor passar a emitir
+certificados sob uma autoridade fora da lista, o dispositivo deixa de conseguir transmitir até
+que o firmware seja regravado. Não há perda de dados nesse intervalo — as medições permanecem
+na memória do dispositivo, com capacidade para cerca de onze dias —, e uma verificação
+automática periódica compara a cadeia do provedor com a lista do firmware, para que a troca seja
+detectada antes de afetar o dispositivo. A validação do certificado no microcontrolador
+propriamente dito, incluindo o custo de memória e tempo da verificação e a dependência de um
+relógio sincronizado, ainda não havia sido exercitada em placa quando esta seção foi escrita.
+
 ── FIM DO TEXTO ─────────────────────────────────────────────────────────────
 
 ---

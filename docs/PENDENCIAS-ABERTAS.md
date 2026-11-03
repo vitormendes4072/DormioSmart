@@ -283,13 +283,13 @@ Validar o JWT localmente, pelo JWKS do projeto, em vez de uma chamada ao Supabas
 
 **Conferência.** Saído do `AUTH-08`; auditoria de 31/10, A3.
 
-### `SEC-15` 🟡
+### `SEC-15` 🟠
 
-TLS do firmware sem conferir o certificado (`setInsecure()`): o token do dispositivo é capturável numa rede comprometida. Usar `setCACertBundle` ou a CA raiz; validar na placa.
+O firmware confere o certificado do servidor (`setCACert` com as raízes de `firmware/ca_raiz.h`, 03/11). Resta o handshake na placa: `mbedtls` com essa lista, relógio sem NTP e o custo de RAM e tempo.
 
-*Camada no backlog: L0.*
+*Camada no backlog: L1.*
 
-**Conferência.** Auditoria de 31/10, A5.
+**Conferência.** Auditoria de 31/10, A5; (a) e (b) feitos em 03/11.
 
 ### `FW-10` ⚪
 
