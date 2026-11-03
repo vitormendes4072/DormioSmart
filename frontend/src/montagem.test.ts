@@ -282,6 +282,12 @@ describe("montagem real das telas (UI-17)", PRAZO, () => {
     expect(screen.getByText(/Isto é irreversível/i)).toBeTruthy();
   });
 
+  it("Configurações leva à Política de Privacidade (LGPD-01 (b))", async () => {
+    await montar("/configuracoes");
+    const links = screen.getAllByRole("link", { name: "Política de Privacidade" });
+    expect(links.some((a) => a.getAttribute("href") === "/privacidade")).toBe(true);
+  });
+
   it("a rota /configuracoes existe e passa pelos guardas até o Layout", async () => {
     await montar("/configuracoes");
 

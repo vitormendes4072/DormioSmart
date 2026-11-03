@@ -5959,6 +5959,115 @@ sem alterar dado existente, e que a finalidade nova pudesse ser exercida só por
   `CONSULTA-publico-por-faixa.sql`; `web-app/tests/rls/test_rls_idade_maioridade.py`;
 - backlog `LGPD-05`, `LGPD-06`, `LGPD-07` e `LGPD-08`.
 
+---
+
+# 2026-11-03 (xii) — a `012` na produção e o release do `LGPD-05`/`LGPD-06`
+
+**O problema, como foi entendido no início.** O `LGPD-05`/`LGPD-06` estava em `develop` (PR #53), e
+a migração `012` precisava ir para a produção antes do release que a usa (`LGPD-08`).
+
+**Hipótese de trabalho.** Que nenhum perfil de produção tivesse idade abaixo de 18 (a trava da
+`012` pararia), e que o release mudasse só o cadastro e a validação da idade.
+
+**O que foi testado, e como.**
+
+- **A `012`:** aplicada pelo autor no SQL Editor; depois, o `DIAGNOSTICO-migracoes-aplicadas.sql`.
+- **O release:** diff `main..develop` (código do site em `frontend/src` e `web-app/perfil.py`;
+  nenhuma dependência, variável ou `vercel.json` nova); PR #54 depois dos 9 checks; deploy
+  acompanhado pela API de deployments, com o SHA.
+- **Depois:** `/health`; `PATCH /api/me/perfil` sem credencial; o pacote JavaScript publicado,
+  procurado pelos textos novos; e, pelo autor, um login e uma tentativa de cadastro sem a caixa.
+
+**Resultado medido.**
+
+- **Diagnóstico:** `012 aplicada = true, 2 de 2 marcas`; 001 a 011 continuam aplicadas. A trava não
+  disparou: não havia perfil com idade abaixo de 18.
+- **Deploy `7530061150`, `success`, SHA `7e7140e`.** `/health` `200`, banco ok; `PATCH` sem
+  credencial → `401`; o pacote `index-DhAoYEpi.js` contém "Declaro que tenho 18 anos ou mais", a
+  mensagem de recusa e `maior_de_18_declarado_em`.
+- **O autor confirmou:** o login funciona, e o cadastro sem a caixa é recusado na tela.
+
+**Adaptação.** Nenhuma.
+
+**O que deu errado no caminho.** Nada nesta etapa.
+
+**Risco em aberto.** Os mesmos do `LGPD-05`/`LGPD-06` (diário, 03/11 (xi)): idade autodeclarada;
+proteção de procedimento na consulta agregada; a política ainda não servida dentro do app
+(`LGPD-01` (b)); e o SMTP próprio (`AUTH-06`) antes de qualquer pessoa além do autor usar o sistema.
+
+**Procedência.**
+
+- O diagnóstico colado pelo autor, 03/11; PR #54 (`7e7140e`); deployment de produção `7530061150`;
+- `GET https://dormio-smart.vercel.app/health`, `/api/me/perfil` e o pacote publicado, 03/11;
+- a confirmação do autor; backlog `LGPD-08`.
+
+---
+
+# 2026-11-03 (xiii) — `LGPD-01` (b): a política de privacidade servida dentro do app
+
+**O problema, como foi entendido no início.** A política existia só como documento no repositório:
+o titular não a via, e a finalidade nova da idade (`LGPD-06`) estava declarada num texto que
+ninguém de fora lê. A investigação achou mais dois obstáculos: o controlador e o contato estavam em
+branco (`[CONTROLADOR]`, `[CONTATO]`), e o repositório é público e não pode levar nome de pessoa; e
+o próprio documento dizia "não publicar sem revisão jurídica".
+
+**Hipótese de trabalho.** Que a página pudesse ler o próprio documento no build, em vez de uma
+cópia, e que o controlador pudesse entrar por variável de build, fora do repositório.
+
+**O que foi testado, e como.**
+
+- **A abordagem aprovada:** `/privacidade`, pública e carregada sob demanda; `lib/politica.ts`
+  recorta o trecho entre `── TEXTO` e `── FIM DO TEXTO` e troca os dois marcadores pelas variáveis
+  `VITE_POLITICA_CONTROLADOR` e `VITE_POLITICA_CONTATO` (sem elas, "ainda não informado");
+  `react-markdown` 9.0.1 e `remark-gfm` 4.0.0, sem HTML executável; faixa de versão preliminar;
+  links no cadastro, em Configurações, junto ao campo idade e no rodapé da página inicial.
+- **Testes:** o recorte sobre o documento REAL (as 10 seções, nada das notas, nenhum marcador
+  pendente além dos dois); a página renderizada; os links do cadastro e de Configurações.
+- **Controle positivo:** sete sabotagens.
+- **Build:** tamanho dos pacotes. **Navegador:** a página no servidor local.
+
+**Resultado medido.**
+
+- **Frontend:** 443 passam, 31 arquivos (428 + 15); `tsc` e build limpos.
+- **Sabotagens, 7/7 acusadas:** recorte devolvendo o documento inteiro (2 falhas); contato não
+  trocado (4); sem `remark-gfm` (1); sem o aviso de versão preliminar (1); link do cadastro para
+  outro lugar (1); link de Configurações para outro lugar (1); alcançabilidade ignorando `import`
+  dinâmico (1).
+- **Build:** a política em pacote próprio (`Privacidade-*.js`, 63 kB comprimido), fora do principal.
+- **Navegador:** faixa, títulos, tabelas e "(ainda não informado nesta versão preliminar)" no lugar
+  do controlador.
+
+**Adaptação.**
+
+- **Publicar com a faixa de versão preliminar**, contra a nota do documento: escondida, a política
+  não informava ninguém. A revisão continua no `LGPD-03`.
+- **O teste de alcançabilidade passou a reconhecer `import()` dinâmico.** O comentário dele previa
+  exatamente este falso positivo ("se passar a haver, acusa órfão que não é; alguém vai olhar").
+- **`LGPD-01` passou de L0 para L3:** o que resta, definir o controlador, é do autor.
+- **`SEC-16`, novo:** o `npm audit` mostrou alerta alto no `react-router` instalado — já existia
+  antes deste item, e um dos avisos alcança o uso do app.
+
+**O que deu errado no caminho.**
+
+- **A primeira montagem de `/privacidade` no teste do app inteiro deu raiz vazia:** o `Suspense`
+  tinha fallback nulo, e o carregamento sob demanda ainda não tinha chegado. Virou um "Carregando a
+  política…", que também serve a quem usa.
+
+**Risco em aberto.**
+
+- **O pacote da página carrega o `.md` inteiro, notas internas incluídas** — a tela não as mostra,
+  mas quem abrir o JavaScript as lê. O repositório já é público, então não expõe nada novo.
+- **Sem as variáveis na Vercel, o controlador aparece como "ainda não informado"** (`LGPD-01` (a)).
+- **O build da Vercel precisa enxergar `docs/`**, fora de `frontend/`: a prévia da PR confirma.
+
+**Procedência.**
+
+- `frontend/src/lib/politica.ts`, `pages/Privacidade.tsx`, `App.tsx`, `pages/Register.tsx`,
+  `pages/Settings.tsx`, `components/EditarPerfil.tsx`, `pages/Landing.tsx`, `vite.config.ts`;
+- `frontend/src/lib/politica.test.ts`, `pages/Privacidade.test.tsx`, `Register.test.tsx`,
+  `montagem.test.ts`, `alcance.test.ts`;
+- backlog `LGPD-01` e `SEC-16`.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

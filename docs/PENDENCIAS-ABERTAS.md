@@ -109,14 +109,6 @@ Análise elétrica: pull-down, pull-ups do I2C, níveis 3,3 V, fonte de desperta
 
 *Camada no backlog: L0.*
 
-### `LGPD-01` 🟡
-
-Política de privacidade e termos. Rascunho escrito. Faltam **(b)** a rota e a página que sirvam o texto — isto é software puro. **(a)** controlador e base legal e **(c)** revisão jurídica estão nos grupos B e E.
-
-*Camada no backlog: L0.*
-
-**Conferência.** O item estava inteiro em L0; a conferência o divide, porque as três partes dependem de coisas diferentes.
-
 ### `LGPD-02` 🟡
 
 Não existe política de retenção: nenhum expurgo, nenhum prazo. Implementar um prazo, ou declarar formalmente que não haverá.
@@ -190,6 +182,12 @@ O firmware confere o certificado do servidor (`setCACert` com as raízes de `fir
 *Camada no backlog: L1.*
 
 **Conferência.** Auditoria de 31/10, A5; (a) e (b) feitos em 03/11.
+
+### `SEC-16` 🟡
+
+O `react-router` instalado tem alerta de severidade alta no `npm audit` (um aviso de redirecionamento aberto alcança o uso do app). Atualizar dentro da mesma versão maior e conferir.
+
+*Camada no backlog: L0.*
 
 ---
 
@@ -269,6 +267,14 @@ Nada aqui é decisão: a decisão já foi tomada, ou nunca houve uma.
 São ações que só você pode executar, porque exigem credencial,
 terminal na máquina, ferro de solda ou uma conta num serviço.
 
+### `LGPD-01` 🟡
+
+Política de privacidade: a página `/privacidade` existe desde 03/11 (parte (b)). Resta **(a)**: definir o controlador e o contato e pô-los nas variáveis `VITE_POLITICA_CONTROLADOR` e `VITE_POLITICA_CONTATO` da Vercel. **(c)** revisão jurídica é o LGPD-03.
+
+*Camada no backlog: L3.*
+
+**Conferência.** O item estava inteiro em L0; a conferência o divide, porque as três partes dependem de coisas diferentes.
+
 ### `Etapa 0 — soldar` 🔴
 
 **Soldar os 8 pinos do MPU6050.** Teste de aceitação: pose Z+ com ruído ~0,02. **Trava as camadas L1 e L2 inteiras.**
@@ -284,12 +290,6 @@ Criar um projeto Supabase de teste e rodar um punhado de `curl`. **Fecharia quat
 *Camada no backlog: L3.*
 
 **Conferência.** ⚠️ **Não tem item próprio**, e o diário de 20/10 (iii) registra isso textualmente: 'quatro itens esperando o mesmo objeto, e ele não tem item'. É a terceira sessão seguida em que o instrumento que falta é o mesmo. **Candidato número 1 a item novo.** ✏️ **28/10:** virou o item `INFRA-02`.
-
-### `LGPD-08` 🟡
-
-Aplicar a migração `012` (idade a partir de 18) no SQL Editor, rodar o diagnóstico e fazer o release do LGPD-05/06. Até lá, a produção aceita idade de 0 a 17 e o cadastro não pede a declaração.
-
-*Camada no backlog: L3.*
 
 ### `ML-13` 🟡
 

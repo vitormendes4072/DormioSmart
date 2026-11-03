@@ -59,6 +59,12 @@ describe("cadastro só para maiores de 18 (LGPD-05)", () => {
     expect(Number.isNaN(Date.parse(argumento.options.data.maior_de_18_declarado_em))).toBe(false);
   });
 
+  it("o cadastro leva à Política de Privacidade (LGPD-01 (b))", () => {
+    preencher();
+    const link = screen.getByRole("link", { name: "Política de Privacidade" });
+    expect(link.getAttribute("href")).toBe("/privacidade");
+  });
+
   it("a caixa começa desmarcada", () => {
     preencher();
     expect((screen.getByLabelText(/Declaro que tenho 18 anos ou mais/) as HTMLInputElement).checked).toBe(false);

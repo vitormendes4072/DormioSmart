@@ -2410,11 +2410,11 @@ PENDENCIAS: list[Pendencia] = [
     Pendencia("DOC-06b", SOFTWARE, "**Ler os artigos antes de citá-los** "
               "(referência conferida ≠ artigo lido) e converter para o padrão de "
               "citação do TCC.", "🔴", camada_backlog="L0"),
-    Pendencia("LGPD-01", SOFTWARE, "Política de privacidade e termos. Rascunho "
-              "escrito. Faltam **(b)** a rota e a página que sirvam o texto — "
-              "isto é software puro. **(a)** controlador e base legal e **(c)** "
-              "revisão jurídica estão nos grupos B e E.", "🟡",
-              camada_backlog="L0",
+    Pendencia("LGPD-01", ACAO, "Política de privacidade: a página `/privacidade` "
+              "existe desde 03/11 (parte (b)). Resta **(a)**: definir o controlador e o "
+              "contato e pô-los nas variáveis `VITE_POLITICA_CONTROLADOR` e "
+              "`VITE_POLITICA_CONTATO` da Vercel. **(c)** revisão jurídica é o LGPD-03.",
+              "🟡", camada_backlog="L3",
               nota="O item estava inteiro em L0; a conferência o divide, porque "
                    "as três partes dependem de coisas diferentes."),
     Pendencia("LGPD-02", SOFTWARE, "Não existe política de retenção: nenhum "
@@ -2579,10 +2579,10 @@ PENDENCIAS: list[Pendencia] = [
                    "objeto, e ele não tem item'. É a terceira sessão seguida em "
                    "que o instrumento que falta é o mesmo. **Candidato número 1 a "
                    "item novo.** ✏️ **28/10:** virou o item `INFRA-02`."),
-    Pendencia("LGPD-08", ACAO, "Aplicar a migração `012` (idade a partir de 18) no "
-              "SQL Editor, rodar o diagnóstico e fazer o release do LGPD-05/06. Até "
-              "lá, a produção aceita idade de 0 a 17 e o cadastro não pede a "
-              "declaração.", "🟡", camada_backlog="L3"),
+    Pendencia("SEC-16", SOFTWARE, "O `react-router` instalado tem alerta de severidade "
+              "alta no `npm audit` (um aviso de redirecionamento aberto alcança o uso "
+              "do app). Atualizar dentro da mesma versão maior e conferir.", "🟡",
+              camada_backlog="L0"),
     Pendencia("ML-13", ACAO, "Terceira coorte externa com PSG: DREAMT (PhysioNet, "
               "100 pacientes, Empatica E4). Exige criar a conta no PhysioNet e assinar "
               "o termo de uso restrito; depois, carregador e validação externa como "
