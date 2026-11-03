@@ -352,6 +352,12 @@ export function Landing() {
               <Github className="w-3.5 h-3.5" />
               Código aberto
             </a>
+            <Link
+              to="/privacidade"
+              className="text-xs text-primary hover:text-accent transition-colors duration-200 font-semibold"
+            >
+              Privacidade
+            </Link>
           </div>
           </div>
         </div>

@@ -104,16 +104,24 @@ function resolverRelativo(deArquivo: string, especificador: string): string | nu
 /**
  * Especificadores relativos de um arquivo.
  *
- * Casa `import ... from "./x"`, `import "./x"` e `export ... from "./x"`. Não
- * casa `import()` dinâmico — não há nenhum no projeto hoje, e se passar a
- * haver, o efeito é um falso positivo (acusa órfão que não é), que é o lado
- * seguro de errar: alguém vai olhar.
+ * Casa `import ... from "./x"`, `import "./x"`, `export ... from "./x"` e o
+ * `import("./x")` dinâmico.
+ *
+ * ✏️ 03/11 (`LGPD-01` (b)): até aqui o dinâmico não casava — "não há nenhum no
+ * projeto hoje, e se passar a haver, o efeito é um falso positivo". Passou a
+ * haver (a página `/privacidade`, carregada sob demanda no `App.tsx`), o falso
+ * positivo apareceu como previsto, e alguém olhou.
  */
 function importesRelativos(fonte: string): string[] {
   const achados: string[] = [];
-  const padrao = /(?:from|import)\s*["'](\.[^"']*)["']/g;
-  let m: RegExpExecArray | null;
-  while ((m = padrao.exec(fonte)) !== null) achados.push(m[1]);
+  const padroes = [
+    /(?:from|import)\s*["'](\.[^"']*)["']/g,
+    /import\(\s*["'](\.[^"']*)["']\s*\)/g,
+  ];
+  for (const padrao of padroes) {
+    let m: RegExpExecArray | null;
+    while ((m = padrao.exec(fonte)) !== null) achados.push(m[1]);
+  }
   return achados;
 }
 
