@@ -5245,6 +5245,7 @@ nova, e que nada no caminho autenticado mudasse de comportamento.
 - `/health` `200`, banco ok, contrato `2.7.0`.
 - As duas rotas de ingestão: `401` sem credencial e `401` com token inválido. `Bearer` inválido →
   `401`.
+- **O autor confirmou:** o login continua funcionando normalmente.
 
 **Adaptação.** Nenhuma.
 
@@ -5262,12 +5263,12 @@ nova, e que nada no caminho autenticado mudasse de comportamento.
 - **O `500` e o `415` não foram exercitados na produção:** não há como provocar um bug do servidor
   lá, e a autenticação vem antes do corpo — sem um token de dispositivo válido, a resposta é
   sempre `401`. Estão cobertos pelos testes do `API-04`.
-- **O login do autor depois deste release** fica registrado quando ele o confirmar.
 
 **Procedência.**
 
 - PRs #41 e #42 (`6e7a934`); deployment de produção `7477881275`;
 - `GET https://dormio-smart.vercel.app/health` e as rotas de ingestão, 01/11;
+- a confirmação do autor;
 - backlog `API-04`.
 
 # O que este diário não cobre
