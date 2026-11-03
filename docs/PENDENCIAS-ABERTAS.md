@@ -49,12 +49,12 @@ linha, não um resumo: resumo é a cópia que diverge.
 
 | Grupo | Itens |
 |---|---:|
-| A — Depende só de software: dá para fazer a qualquer momento | **32** |
+| A — Depende só de software: dá para fazer a qualquer momento | **31** |
 | B — Depende de decisão do Vitor | **10** |
 | C — Depende de ação do Vitor que não é decisão | **5** |
 | D — Bloqueado por hardware ou coleta | **26** |
 | E — Bloqueado por terceiro | **4** |
-| **Total** | **77** |
+| **Total** | **76** |
 
 ⚠️ **Este total não é comparável à contagem do backlog, e a diferença não é
 erro de nenhum dos dois.** São unidades de contagem diferentes: o backlog
@@ -75,7 +75,7 @@ outro item. **Desde 28/10 têm ID no backlog:** `GIT-07`, `INFRA-02` e
 
 ## A — Depende só de software: dá para fazer a qualquer momento
 
-**32 itens.**
+**31 itens.**
 
 ### `CALC-01` 🔴
 
@@ -283,21 +283,13 @@ Validar o JWT localmente, pelo JWKS do projeto, em vez de uma chamada ao Supabas
 
 **Conferência.** Saído do `AUTH-08`; auditoria de 31/10, A3.
 
-### `SEC-15` 🟡
+### `SEC-15` 🟠
 
-TLS do firmware sem conferir o certificado (`setInsecure()`): o token do dispositivo é capturável numa rede comprometida. Usar `setCACertBundle` ou a CA raiz; validar na placa.
+O firmware confere o certificado do servidor (`setCACert` com as raízes de `firmware/ca_raiz.h`, 03/11). Resta o handshake na placa: `mbedtls` com essa lista, relógio sem NTP e o custo de RAM e tempo.
 
-*Camada no backlog: L0.*
+*Camada no backlog: L1.*
 
-**Conferência.** Auditoria de 31/10, A5.
-
-### `FW-10` ⚪
-
-Sono da medição pelo prazo absoluto (hoje é trabalho + intervalo) e contadores atômicos entre os dois núcleos.
-
-*Camada no backlog: L0.*
-
-**Conferência.** Auditoria de 31/10, A8 e A10; latente.
+**Conferência.** Auditoria de 31/10, A5; (a) e (b) feitos em 03/11.
 
 ---
 

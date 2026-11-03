@@ -4,6 +4,7 @@
 class WiFiClientSecure {
  public:
   void setInsecure() {}
+  void setCACert(const char *) {}
   void setTimeout(uint32_t) {}
 };
 #endif

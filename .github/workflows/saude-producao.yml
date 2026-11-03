@@ -35,6 +35,8 @@ on:
     paths:
       - '.github/workflows/saude-producao.yml'
       - 'scripts/conferir_producao.py'
+      - 'scripts/conferir_tls_firmware.py'
+      - 'firmware/ca_raiz.h'
 
 jobs:
   producao:
@@ -50,3 +52,12 @@ jobs:
 
       - name: Conferir a produção
         run: python scripts/conferir_producao.py
+
+      # SEC-15 (03/11): o firmware só confia nas raízes de `firmware/ca_raiz.h`.
+      # Se a Vercel trocar para uma CA fora da lista, o dispositivo deixa de
+      # enviar (sem perder dado: a flash guarda 11 dias). Este passo abre TLS
+      # com a produção confiando SÓ nessas raízes, para o aviso chegar antes.
+      # Usa o OpenSSL do runner, não o mbedtls do ESP32.
+      - name: Cadeia da Vercel contra as raízes do firmware
+        if: always()
+        run: python scripts/conferir_tls_firmware.py --producao

@@ -53,6 +53,9 @@
 #include <sys/time.h>
 #include <time.h>
 
+#include <atomic>
+
+#include "ca_raiz.h"
 #include "midia_flash_esp32.h"
 #include "nucleo/cadeia_c2.h"
 #include "nucleo/caracteristicas.h"
@@ -130,15 +133,30 @@ static uint64_t origem_us = 0;
 static RegistroDeEpoca rascunho[MAX_LEITURAS_POR_LOTE];
 static char json_do_lote[MAX_LEITURAS_POR_LOTE * 520];
 
+// Diagnostico para o log -- e para a bancada, onde "0 transbordos em 8 h" vai
+// sair daqui. Cada campo tem um so escritor (a medicao, no nucleo 1, ou o
+// envio, no nucleo 0), mas o envio le todos para imprimir: sem `atomic`, a
+// leitura concorrente e comportamento indefinido em C++ (FW-10). Nenhum
+// incremento se perdia; o log so pode misturar campos de instantes vizinhos,
+// e isso continua -- e diagnostico, nao dado.
 struct Contadores {
-  uint32_t epocas_gravadas;
-  uint32_t sem_features;
-  uint32_t recusadas;
-  uint32_t transbordos;
-  uint32_t falhas_na_fila;
-  uint32_t descartadas_no_envio;
+  std::atomic<uint32_t> epocas_gravadas;
+  std::atomic<uint32_t> sem_features;
+  std::atomic<uint32_t> recusadas;
+  std::atomic<uint32_t> transbordos;
+  std::atomic<uint32_t> falhas_na_fila;
+  std::atomic<uint32_t> descartadas_no_envio;
+  // Drenagens que chegaram ATRASADAS: o trabalho anterior passou do prazo
+  // (FW-10). Na bancada, e a medida direta da folga da FIFO.
+  std::atomic<uint32_t> prazos_estourados;
+  // O maior trabalho de uma volta (drenar + fechar epocas + gravar), em us,
+  // desde o boot. E aqui que o apagamento de setor da flash aparece: a folha
+  // diz ate 400 ms, e so a placa diz quanto e. So a medicao escreve.
+  std::atomic<uint32_t> trabalho_max_us;
 };
-static Contadores contadores = {0, 0, 0, 0, 0, 0};
+// Sem inicializador de proposito: armazenamento estatico ja comeca em zero, e
+// `= {0, ...}` copiaria `atomic`, o que o C++11 do `make sintaxe` recusa.
+static Contadores contadores;
 
 static ResolucaoDeParede copia_da_parede() {
   xSemaphoreTake(mutex_parede, portMAX_DELAY);
@@ -289,23 +307,35 @@ static void fechar_epocas() {
 static void tarefa_de_medicao(void *) {
   uint32_t xorshift = 0x9E3779B9u;
   uint64_t proximo_envio_us = static_cast<uint64_t>(esp_timer_get_time()) + INTERVALO_DE_ENVIO_US;
+  // Dorme ATE o prazo, e nao `intervalo` depois do trabalho (FW-10): o tempo de
+  // drenar, fechar a epoca e gravar na flash nao empurra mais o despertar, e a
+  // FIFO fica com ~1,4 s de folga em vez de ~0,9 s. Ver `cadeia_c2.h`.
+  uint64_t prazo_us =
+      static_cast<uint64_t>(esp_timer_get_time()) + intervalo_de_drenagem_us(&xorshift);
 
   for (;;) {
-    const uint32_t intervalo_us = intervalo_de_drenagem_us(&xorshift);
+    const uint64_t espera_us =
+        espera_ate_o_prazo_us(prazo_us, static_cast<uint64_t>(esp_timer_get_time()));
     // Sono leve so com o Wi-Fi desligado: ele derrubaria a conexao. Com o
     // Wi-Fi ligado, espera acordada -- no mesmo ritmo, e e isso que impede a
     // FIFO de transbordar enquanto o POST esta no ar.
-    if (!radio.pode_dormir()) {
-      vTaskDelay(pdMS_TO_TICKS(intervalo_us / 1000u));
+    if (espera_us == 0) {
+      contadores.prazos_estourados++;  // drena ja, sem dormir
+    } else if (!radio.pode_dormir()) {
+      vTaskDelay(pdMS_TO_TICKS(espera_us / 1000u));
     } else {
-      esp_sleep_enable_timer_wakeup(intervalo_us);
+      esp_sleep_enable_timer_wakeup(espera_us);
       esp_light_sleep_start();
     }
 
+    const uint64_t inicio_us = static_cast<uint64_t>(esp_timer_get_time());
     drenar();
     fechar_epocas();
 
     const uint64_t agora_us = static_cast<uint64_t>(esp_timer_get_time());
+    prazo_us = proximo_prazo_de_drenagem_us(prazo_us, agora_us, intervalo_de_drenagem_us(&xorshift));
+    const uint32_t trabalho_us = static_cast<uint32_t>(agora_us - inicio_us);
+    if (trabalho_us > contadores.trabalho_max_us.load()) contadores.trabalho_max_us.store(trabalho_us);
     // Reservar o radio ANTES do aviso (FW-09): ate 01/11 a flag era ligada
     // pela tarefa de envio depois de acordar, e na janela a medicao entrava
     // em sono leve com o Wi-Fi subindo.
@@ -335,6 +365,14 @@ static void desligar_wifi() {
 
 // NTP a cada volta: o relogio interno anda no sono leve, mas deriva, e e a
 // sincronia que permite gravar hora de parede nas epocas seguintes.
+//
+// A cada sincronia, mede tambem quanto o relogio interno errou (para a
+// bancada, `relogio.h`): contra a sincronia anterior e contra a primeira. So a
+// tarefa de envio le e escreve `primeira_sincronia` e as duas derivas.
+static ResolucaoDeParede primeira_sincronia;
+static DerivaDoRelogio deriva_no_intervalo;
+static DerivaDoRelogio deriva_acumulada;
+
 static void sincronizar_relogio() {
   configTime(0, 0, "pool.ntp.org", "time.nist.gov");  // UTC; o backend guarda UTC
   const uint64_t inicio = agora_ms();
@@ -343,9 +381,23 @@ static void sincronizar_relogio() {
     gettimeofday(&tv, 0);
     if (tv.tv_sec > 1700000000) {  // depois de 2023: o NTP respondeu
       const int64_t unix_ms = static_cast<int64_t>(tv.tv_sec) * 1000 + tv.tv_usec / 1000;
+      const uint64_t mono_ms = agora_ms();
       xSemaphoreTake(mutex_parede, portMAX_DELAY);
-      parede.sincronizar(agora_ms(), unix_ms);
+      deriva_no_intervalo = medir_deriva(parede, mono_ms, unix_ms);
+      parede.sincronizar(mono_ms, unix_ms);
       xSemaphoreGive(mutex_parede);
+      deriva_acumulada = medir_deriva(primeira_sincronia, mono_ms, unix_ms);
+      if (!primeira_sincronia.valida) primeira_sincronia.sincronizar(mono_ms, unix_ms);
+      if (deriva_acumulada.valida) {
+        Serial.printf("[relogio] deriva %+lld ms em %llu s; desde a primeira sincronia %+lld ms "
+                      "em %llu s (%+.0f ppm)\n",
+                      static_cast<long long>(deriva_no_intervalo.deriva_ms),
+                      static_cast<unsigned long long>(deriva_no_intervalo.decorrido_ms / 1000),
+                      static_cast<long long>(deriva_acumulada.deriva_ms),
+                      static_cast<unsigned long long>(deriva_acumulada.decorrido_ms / 1000),
+                      1e6 * static_cast<double>(deriva_acumulada.deriva_ms) /
+                          static_cast<double>(deriva_acumulada.decorrido_ms));
+      }
       return;
     }
     vTaskDelay(pdMS_TO_TICKS(200));
@@ -370,7 +422,10 @@ static bool enviar_pendentes() {
     }
 
     WiFiClientSecure cliente;
-    cliente.setInsecure();  // mesmo regime dos outros sketches; ver SEC-* no backlog
+    // Confere o certificado do servidor contra as raizes de `ca_raiz.h`
+    // (SEC-15). Sem isso, quem controlasse a rede leria o token. Se a Vercel
+    // trocar de CA, o POST falha (-1) e o lote volta para a fila.
+    cliente.setCACert(CA_RAIZ);
     HTTPClient http;
     http.setTimeout(TIMEOUT_POST_MS);
     http.begin(cliente, URL_LOTE);
@@ -429,13 +484,16 @@ static void tarefa_de_envio(void *) {
       reconexao.registrar_falha(agora_ms());
     }
     Serial.printf("[envio] %s; gravadas %u, sem f %u, recusadas %u, transbordos %u, "
-                  "falhas na fila %u, descartadas %u\n",
-                  ok ? "ok" : "FALHOU", static_cast<unsigned>(contadores.epocas_gravadas),
-                  static_cast<unsigned>(contadores.sem_features),
-                  static_cast<unsigned>(contadores.recusadas),
-                  static_cast<unsigned>(contadores.transbordos),
-                  static_cast<unsigned>(contadores.falhas_na_fila),
-                  static_cast<unsigned>(contadores.descartadas_no_envio));
+                  "falhas na fila %u, descartadas %u, prazos estourados %u, "
+                  "trabalho max %u ms\n",
+                  ok ? "ok" : "FALHOU", static_cast<unsigned>(contadores.epocas_gravadas.load()),
+                  static_cast<unsigned>(contadores.sem_features.load()),
+                  static_cast<unsigned>(contadores.recusadas.load()),
+                  static_cast<unsigned>(contadores.transbordos.load()),
+                  static_cast<unsigned>(contadores.falhas_na_fila.load()),
+                  static_cast<unsigned>(contadores.descartadas_no_envio.load()),
+                  static_cast<unsigned>(contadores.prazos_estourados.load()),
+                  static_cast<unsigned>(contadores.trabalho_max_us.load() / 1000u));
   }
 }
 

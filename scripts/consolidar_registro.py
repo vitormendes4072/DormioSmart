@@ -2655,13 +2655,11 @@ PENDENCIAS: list[Pendencia] = [
               "em vez de uma chamada ao Supabase Auth por requisição. Muda a confiança na "
               "revogação (token revogado vale até expirar): decidir antes de fazer.", "⚪",
               camada_backlog="L0", nota="Saído do `AUTH-08`; auditoria de 31/10, A3."),
-    Pendencia("SEC-15", SOFTWARE, "TLS do firmware sem conferir o certificado "
-              "(`setInsecure()`): o token do dispositivo é capturável numa rede "
-              "comprometida. Usar `setCACertBundle` ou a CA raiz; validar na placa.",
-              "🟡", camada_backlog="L0", nota="Auditoria de 31/10, A5."),
-    Pendencia("FW-10", SOFTWARE, "Sono da medição pelo prazo absoluto (hoje é trabalho + "
-              "intervalo) e contadores atômicos entre os dois núcleos.", "⚪",
-              camada_backlog="L0", nota="Auditoria de 31/10, A8 e A10; latente."),
+    Pendencia("SEC-15", SOFTWARE, "O firmware confere o certificado do servidor "
+              "(`setCACert` com as raízes de `firmware/ca_raiz.h`, 03/11). Resta o "
+              "handshake na placa: `mbedtls` com essa lista, relógio sem NTP e o "
+              "custo de RAM e tempo.", "🟠", camada_backlog="L1",
+              nota="Auditoria de 31/10, A5; (a) e (b) feitos em 03/11."),
     Pendencia("INFRA-02 — projeto Supabase de teste", ACAO, "Criar um projeto Supabase de "
               "teste e rodar um punhado de `curl`. **Fecharia quatro itens de uma "
               "vez:** o ponto cego do `UI-11` (a troca de e-mail exige "

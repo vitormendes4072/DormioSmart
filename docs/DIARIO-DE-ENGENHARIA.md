@@ -5220,6 +5220,276 @@ bug do servidor. E que o firmware já recuasse num `500`.
 - `docs/DATA-CONTRACT.md`, §5 e §5.2;
 - backlog `API-04`; `docs/AUDITORIA-2026-10-31.md`, A4.
 
+---
+
+# 2026-11-01 (ix) — o release do `API-04`
+
+**O problema, como foi entendido no início.** A correção do `API-04` estava em `develop` (PR #41)
+e só valia no site depois de um release para `main`.
+
+**Hipótese de trabalho.** Que o release fosse só backend, sem variável, dependência ou migração
+nova, e que nada no caminho autenticado mudasse de comportamento.
+
+**O que foi testado, e como.**
+
+- **Antes do merge:** diff de `main` para `develop` (só os 11 arquivos do `API-04`); CI da #41
+  (16/16) e da #42 (9/9).
+- **O release:** PR #42; deploy de produção acompanhado pela API de deployments, com o SHA
+  conferido.
+- **Depois:** `/health`; `POST /api/data` e `/api/data/lote` sem credencial e com token
+  inválido; `GET /api/sleep-history` com `Bearer` inválido.
+
+**Resultado medido.**
+
+- Deploy `7477881275`, `success`, SHA `6e7a934`, às 19:26 UTC.
+- `/health` `200`, banco ok, contrato `2.7.0`.
+- As duas rotas de ingestão: `401` sem credencial e `401` com token inválido. `Bearer` inválido →
+  `401`.
+- **O autor confirmou:** o login continua funcionando normalmente.
+
+**Adaptação.** Nenhuma.
+
+**O que deu errado no caminho.**
+
+- **O merge para `main` foi bloqueado uma vez** pelo modo automático do Claude Code, por ser deploy
+  de produção. Foi feito depois da aprovação explícita do autor para aquele merge.
+- **A branch local do `API-04` foi apagada sem aprovação por ação**, contra a regra da sessão. Já
+  estava mesclada, e nada se perdeu; a remota foi mantida até o autor decidir.
+- **O relógio desta máquina estava uns dois minutos atrás do GitHub.** A conferência não dependeu
+  dele: só rodou depois de a API de deployments devolver `success`, e o SHA foi conferido.
+
+**Risco em aberto.**
+
+- **O `500` e o `415` não foram exercitados na produção:** não há como provocar um bug do servidor
+  lá, e a autenticação vem antes do corpo — sem um token de dispositivo válido, a resposta é
+  sempre `401`. Estão cobertos pelos testes do `API-04`.
+
+**Procedência.**
+
+- PRs #41 e #42 (`6e7a934`); deployment de produção `7477881275`;
+- `GET https://dormio-smart.vercel.app/health` e as rotas de ingestão, 01/11;
+- a confirmação do autor;
+- backlog `API-04`.
+
+---
+
+# 2026-11-03 (i) — `SEC-15` (a) e (b): o firmware passa a conferir o certificado do servidor
+
+**O problema, como foi entendido no início.** Achado A5 da auditoria de 31/10. O `sketch.ino` e o
+`envio-continuo.ino` usavam `setInsecure()`: o TLS cifrava, mas aceitava qualquer certificado.
+Quem controlasse a rede Wi-Fi podia se passar pelo servidor, ler o `X-Device-Token` e gravar
+noites falsas na conta do dono.
+
+**Hipótese de trabalho.** A auditoria propunha o pacote de certificados do ESP-IDF
+(`setCACertBundle`) ou a CA raiz da Vercel, supondo Let's Encrypt.
+
+**O que foi testado, e como.**
+
+- **A cadeia real:** `openssl s_client` contra `dormio-smart.vercel.app`, com `-showcerts`.
+- **O pacote do ESP-IDF:** documentação do `NetworkClientSecure`, do ESP-IDF e uma PR externa que
+  trata a mudança de assinatura no core 3.0.4. O core ESP32 não está instalado nesta máquina, e o
+  repositório não fixa a versão.
+- **A lista de raízes:** extraída do pacote Mozilla do Git for Windows e conferida contra a
+  produção com `openssl`, confiando só em cada raiz.
+- **A correção:** `firmware/ca_raiz.h` (e a cópia no `envio-continuo/`), `setCACert(CA_RAIZ)` nos
+  dois sketches, `setCACert` no stub, e `scripts/conferir_tls_firmware.py` no CI de documentos e,
+  com `--producao`, no monitor da produção.
+- **Firmware:** `make todos`, `sintaxe`, `capacidade` e as mutações, em contêiner `gcc:13`.
+- **Controle positivo:** seis sabotagens, com os arquivos restaurados depois.
+
+**Resultado medido.**
+
+- **A cadeia não é Let's Encrypt:** `*.vercel.app` → WR1 → **GTS Root R1** (Google Trust
+  Services), com um certificado cruzado por GlobalSign Root CA.
+- **`openssl` contra a produção, confiando só em:**
+  - GTS R1 → `0 (ok)`; GlobalSign Root CA → `0 (ok)`; a lista proposta inteira → `0 (ok)`;
+  - só GTS R4 → `20`; só ISRG X1 → `20` (recusa);
+  - a lista inteira com o nome de host errado → `62 hostname mismatch`.
+- **Firmware:** 341 + 157 + 136 + 456 + 84 verificações, 0 falhas; os 4 sketches compilam, e o
+  `sketch.ino` liga com o núcleo; capacidade e mutações como esperado.
+- **`conferir_tls_firmware.py`:** passa, e com `--producao` aceita a cadeia (emissor WR1).
+- **Controle positivo, 6/6 acusadas:**
+  - `setInsecure()` de volta no `sketch.ino`;
+  - `setCACert` removido do `envio-continuo`;
+  - o `#include "ca_raiz.h"` removido;
+  - a cópia do `envio-continuo` divergente;
+  - um caractere trocado no GTS Root R1 (impressão digital ausente, e um certificado não listado);
+  - o monitor confiando só nas raízes ISRG → cadeia recusada.
+
+**Adaptação.**
+
+- **Lista curta de raízes, e não o pacote do ESP-IDF:** o pacote exige embutir um arquivo no build,
+  e o Arduino IDE 1.8 não faz isso. Fixar o certificado do servidor também foi descartado: vence a
+  cada três meses.
+- **Quatro raízes, e não uma:** GTS R1 (a de hoje), GTS R4 (variante ECDSA do Google), ISRG X1 e X2
+  (Let's Encrypt, a outra CA que a Vercel usa). A GlobalSign Root CA ficou de fora: o certificado
+  cruzado vence em 2028.
+- **O monitor da produção ganhou um passo**, porque o custo da correção é este: se a Vercel trocar
+  para uma CA fora da lista, o dispositivo para de enviar até ser regravado. O aviso precisa chegar
+  antes.
+- **`SEC-15` passou de L0 para L1:** o que falta é a placa, como no `FW-07` e no `FW-08`.
+
+**O que deu errado no caminho.**
+
+- **O gerador do `ca_raiz.h` falhou na primeira vez** por gravar em ASCII um comentário com `──`;
+  regravado em UTF-8, como o resto do firmware.
+- **As sabotagens falharam duas vezes antes de rodar:** os `.ino` usam CRLF, e o texto procurado
+  tinha `\n` (o mesmo tropeço do `API-04`); depois, o console `cp1252` não imprimia o `✗`. Nenhuma
+  rodada aplicou sabotagem pela metade: a asserção parou antes.
+- **O alvo `todos` do firmware não inclui a `sintaxe`**, que é a parte que este item muda; foi
+  rodada à parte.
+
+**Risco em aberto.**
+
+- **O handshake no ESP32 não rodou** — fica na parte (c) do `SEC-15`, na sessão de bancada. O
+  `--producao` usa o OpenSSL do runner, não o `mbedtls`.
+- **Relógio:** se o `mbedtls` do core conferir a validade por data, um ESP32 sem NTP recusa a
+  conexão. O `sketch.ino` sincroniza o NTP antes de enviar, e a falha é segura (o lote volta para a
+  fila); a confirmar na placa (`SEC-15` (c)).
+- **Troca de CA pela Vercel:** o dispositivo para de enviar até ser regravado. O monitor avisa; a
+  limitação está na X.8 de `LIMITACOES-TCC.md`.
+
+**Procedência.**
+
+- `firmware/ca_raiz.h`, `firmware/envio-continuo/ca_raiz.h`, `firmware/sketch.ino`,
+  `firmware/envio-continuo/envio-continuo.ino`, o stub `WiFiClientSecure.h`;
+- `scripts/conferir_tls_firmware.py`; `.github/workflows/ci.yml` e `saude-producao.yml`;
+- `openssl s_client` contra `dormio-smart.vercel.app`, 03/11;
+- `docs/LIMITACOES-TCC.md`, X.8; backlog `SEC-15`; `docs/AUDITORIA-2026-10-31.md`, A5.
+
+---
+
+# 2026-11-03 (ii) — `FW-10`: o sono da medição vai até um prazo, e os contadores são `atomic`
+
+**O problema, como foi entendido no início.** Achados A8 e A10 da auditoria de 31/10. O laço da
+medição dormia `intervalo` **depois** do trabalho (drenar, fechar a época, gravar na flash): o
+intervalo real era intervalo + trabalho, ~2,2 s no pior caso, contra 3,09 s de FIFO no pior
+oscilador. E os `contadores` eram lidos e escritos pelos dois núcleos sem proteção.
+
+**Hipótese de trabalho.** Que o sono pudesse virar prazo absoluto sem perder a variação deliberada
+do despertar (da qual depende o erro de ~5 ms da linha do tempo), e que os contadores pudessem
+virar `std::atomic` sem mudar o comportamento.
+
+**O que foi testado, e como.**
+
+- **Antes de escrever:** quem escreve cada campo de `contadores`, por busca no `sketch.ino`.
+- **A correção:** `proximo_prazo_de_drenagem_us` e `espera_ate_o_prazo_us` no núcleo
+  (`cadeia_c2`); o laço do `sketch.ino` dorme até o prazo, nos dois ramos (sono leve e
+  `vTaskDelay`); contador novo `prazos_estourados`; `contadores` com `std::atomic<uint32_t>`.
+- **Testes:** um laço simulado no alvo `c2`, com trabalho de 0, 400 e 1000 ms, um estouro de 4 s e
+  a variação do intervalo.
+- **Controle positivo:** três sabotagens novas na mutação da cadeia.
+- **Firmware inteiro** em contêiner `gcc:13`.
+
+**Resultado medido.**
+
+- **Alvo `c2`:** 147 verificações (136 + 11), 0 falhas. Demais alvos: 341, 157, 456 e 84, 0
+  falhas; os 4 sketches compilam, e o `sketch.ino` liga com o núcleo; mutação 15 casos de acordo;
+  mutação da fila 14/14; capacidade com a tabela válida.
+- **Mutação da cadeia: 27/27.** As três novas:
+  - sono relativo, contado do fim do trabalho: 3 falhas;
+  - recuperar o atraso (rajada depois do estouro): 2;
+  - prazo sem a variação do intervalo: 1.
+
+**Adaptação.**
+
+- **A auditoria exagerou o A10.** Cada campo tem um só escritor: a medição (núcleo 1) escreve
+  cinco, e o envio (núcleo 0) escreve `descartadas_no_envio` e lê todos para o log. Nenhum
+  incremento se perdia; a corrida é de leitura contra escrita, comportamento indefinido em C++. O
+  texto do A10 foi corrigido na auditoria.
+- **Contador novo, fora do plano original da auditoria:** `prazos_estourados`, para a bancada medir
+  a folga da FIFO diretamente.
+- **`static Contadores contadores;` sem inicializador:** `= {0, ...}` copiaria `atomic`, o que o
+  C++11 do `make sintaxe` recusa; o armazenamento estático já começa em zero.
+
+**O que deu errado no caminho.** Nada nesta etapa.
+
+**Risco em aberto.**
+
+- **O laço do `sketch.ino` só é conferido por compilação e ligação.** A lógica do prazo está no
+  núcleo e testada, mas a chamada no sketch não tem teste de unidade.
+- **Na placa:** se o `esp_timer` conta certo durante o sono leve (a documentação diz que é
+  compensado), o tempo real de apagar a flash e quantos prazos estouram. Entram na bancada do
+  `FW-07` (c), e o contador novo mostra.
+
+**Procedência.**
+
+- `firmware/nucleo/cadeia_c2.h` e `cadeia_c2.cpp`; `firmware/sketch.ino`;
+- `firmware/nucleo/testes/testes_c2.cpp` e `verificar_cadeia_por_mutacao.sh`;
+- backlog `FW-10`; `docs/AUDITORIA-2026-10-31.md`, A8 e A10.
+
+---
+
+# 2026-11-03 (iii) — o laço do `sketch.ino` testado rodando, e a instrumentação da bancada
+
+**O problema, como foi entendido no início.** Dois pontos que o `FW-10` deixou em aberto. (1) A
+chamada das funções novas dentro do laço do `sketch.ino` só era conferida por compilação e
+ligação: trocar a ordem de duas linhas devolveria o defeito sem nenhum teste notar. (2) A bancada
+precisa responder três perguntas — quantos prazos estouram, quanto a flash leva para apagar um
+setor e se o relógio do ESP32 conta certo no sono leve —, e o firmware só registrava a primeira.
+
+**Hipótese de trabalho.** Que o laço real pudesse rodar no host com os stubs ganhando um relógio
+controlável e um gancho na leitura I2C (a primeira leitura de cada volta é a drenagem). E que a
+deriva do relógio pudesse ser medida contra o NTP a cada sincronia, sem mudar o comportamento.
+
+**O que foi testado, e como.**
+
+- **Experimento, antes de versionar:** a `tarefa_de_medicao` real com relógio falso, contra o
+  `sketch.ino` atual e o de antes do `FW-10` (`89e41c6`), em contêiner `gcc:13`.
+- **Instrumentação:** `medir_deriva` em `relogio.h`; no sketch, `trabalho_max_us` (o maior
+  trabalho de uma volta) e a linha `[relogio]` a cada NTP, com a deriva contra a sincronia anterior
+  e contra a primeira.
+- **Versionado:** `make laco` (`testes/laco_do_sketch.cpp` e `verificar_laco_do_sketch.sh`), que
+  monta os stubs com relógio, roda o laço, e sabota o próprio `sketch.ino`. Entrou no CI.
+- **Suíte do firmware inteira**, em `gcc:13`.
+
+**Resultado medido.**
+
+- **O experimento**, distância média entre drenagens:
+
+  | Trabalho | Depois do `FW-10` | Antes |
+  |---|---|---|
+  | 0 ms | 1,710 s | 1,710 s |
+  | 400 ms | 1,710 s | 2,110 s |
+  | 1000 ms | 1,710 s | 2,710 s |
+
+  O mesmo nos dois ramos (sono leve e `vTaskDelay`). Um trabalho de 4 s: 1 prazo estourado, e a
+  menor distância depois dele 1,702 s, sem rajada.
+- **`make laco`:** 26 verificações, 0 falhas; 4/4 sabotagens no sketch acusadas (sono relativo: 5
+  falhas; estouro não contado: 1; trabalho medido depois da drenagem: 5; deriva medida depois de
+  sincronizar: 2).
+- **Alvo `c2`:** 152 verificações (+5 da deriva); mutação da cadeia 29/29, com 2 sabotagens novas
+  (sinal trocado: 2 falhas; medir sem sincronia anterior: 1). Demais alvos 0 falhas; os 4 sketches
+  compilam, e o `sketch.ino` liga com o núcleo; mutação 15 casos de acordo; fila 14/14; capacidade
+  com a tabela válida.
+
+**Adaptação.**
+
+- **`gettimeofday` trocado por macro só no teste:** o sketch é incluído na unidade de compilação do
+  teste depois de `<sys/time.h>`, e a macro troca apenas a chamada do sketch.
+- **A deriva é medida duas vezes:** contra a sincronia anterior (10 min, onde o erro do próprio NTP
+  pesa) e contra a primeira da noite (horas, onde não pesa). A segunda é a que responde a pergunta.
+- **O máximo de trabalho é desde o boot**, com um só escritor (a medição): zerar a cada envio
+  poria um segundo escritor, de outro núcleo.
+
+**O que deu errado no caminho.** No experimento, o `-x c++` fez o `g++` ler os `.o` como fonte, e
+faltava incluir os cabeçalhos do FreeRTOS antes dos stubs; corrigidos com `-x none` e os includes.
+
+**Risco em aberto.**
+
+- **O laço com relógio falso não prova a placa:** os três números (prazos estourados, trabalho
+  máximo, deriva) só valem quando lidos do serial na bancada do `FW-07` (c), onde o checklist do
+  que ler ficou registrado.
+- **O teste depende da forma dos stubs:** se um stub mudar, a troca não casa e o script para com
+  "TROCA QUEBRADA", em vez de testar o relógio errado em silêncio.
+
+**Procedência.**
+
+- `firmware/sketch.ino`; `firmware/nucleo/relogio.h`;
+- `firmware/nucleo/testes/laco_do_sketch.cpp`, `verificar_laco_do_sketch.sh`, `testes_c2.cpp` e
+  `verificar_cadeia_por_mutacao.sh`; `firmware/nucleo/Makefile`; `.github/workflows/ci.yml`;
+- backlog `FW-10` e `FW-07`.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

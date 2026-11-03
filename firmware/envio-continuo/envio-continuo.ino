@@ -78,6 +78,8 @@
 #include <WiFi.h>
 #include <HTTPClient.h>
 #include <WiFiClientSecure.h>
+
+#include "ca_raiz.h"  // copia de firmware/ca_raiz.h (SEC-15)
 #include <Adafruit_MPU6050.h>
 #include <Adafruit_Sensor.h>
 #include <Wire.h>
@@ -291,9 +293,9 @@ static void cuidar_do_relogio(uint64_t agora) {
 // recusada pelo backend -- reenviar um 400 para sempre seria travar a fila).
 static bool postar(const char *payload) {
   WiFiClientSecure client;
-  // Ignora a validacao do certificado do servidor. Ver a nota SEC-05 no
-  // roadmap: para um teste de bancada serve, para o produto nao.
-  client.setInsecure();
+  // Confere o certificado do servidor contra as raizes de `ca_raiz.h`
+  // (SEC-15). Ate 03/11 era `setInsecure()`, que aceitava qualquer um.
+  client.setCACert(CA_RAIZ);
   client.setTimeout(ORCAMENTO_POST_MS / 1000);
 
   HTTPClient http;

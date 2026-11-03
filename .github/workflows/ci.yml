@@ -306,6 +306,14 @@ jobs:
         working-directory: firmware/nucleo
         run: make mutacao-cadeia
 
+      # FW-10 (03/11): o laco REAL do sketch.ino, com relogio falso. O
+      # `sintaxe` so prova que o sketch compila e liga; aqui o prazo da
+      # drenagem, o trabalho maximo e a deriva do relogio rodam de verdade, e
+      # quatro sabotagens no proprio sketch tem de ser acusadas.
+      - name: Laço do sketch com relógio falso (FW-10)
+        working-directory: firmware/nucleo
+        run: make laco
+
       # FW-08 (31/10): a fila na flash e o que guarda a noite enquanto nao ha
       # rede. Dez sabotagens plausiveis (CRC curto, pendente apagado, hora
       # inventada...), cada uma tem de ser acusada pela suite da fila.
@@ -380,3 +388,10 @@ jobs:
       # duas arquiteturas de referencia tem de seguir dando 23,9 e 1,91 mA).
       - name: Estudo de cadencia (ARQ-01)
         run: python scripts/estudo_cadencia.py --conferir
+
+      # SEC-15 (03/11): nenhum sketch volta a `setInsecure()`, as copias de
+      # `firmware/ca_raiz.h` sao identicas e cada raiz tem a impressao digital
+      # esperada. Sem rede: a cadeia real da Vercel e conferida pelo monitor
+      # da producao (`saude-producao.yml`), com `--producao`.
+      - name: TLS do firmware (SEC-15)
+        run: python scripts/conferir_tls_firmware.py
