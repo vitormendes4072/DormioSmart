@@ -26,7 +26,7 @@ from .base import ConjuntoEpocas, Gravacao
 
 __all__ = ["carregar", "processar_gravacoes", "DATASETS", "POSICOES_WEARANIZE"]
 
-DATASETS = ("newcastle", "sintetico", "wearanize")
+DATASETS = ("newcastle", "sintetico", "walch", "wearanize")
 
 #: Posições de sensor do Wearanize+. Só este dataset aceita `posicao=`.
 POSICOES_WEARANIZE = ("cabeca", "pulso", "coxa")
@@ -115,6 +115,11 @@ def carregar(nome: str, cfg: Config | None = None, **opcoes) -> ConjuntoEpocas:
                     degradada" que isola custo de posição de custo de
                     qualidade de sensor (ver `carregar.wearanize`, seção
                     "CONTROLE EXPERIMENTAL")
+    walch :
+        incluir_baixa_taxa : False (padrão) exclui os sujeitos com taxa mediana
+                    abaixo de `taxa_comum_hz` (os dois de 10 Hz); True inclui —
+                    é a análise secundária do ML-06 (ver `carregar.walch`,
+                    ARMADILHA 5)
     newcastle, sintetico :
         nenhuma — passar `posicao=` aqui é erro, e é sinalizado como tal em vez
         de ser ignorado em silêncio.
@@ -147,6 +152,15 @@ def carregar(nome: str, cfg: Config | None = None, **opcoes) -> ConjuntoEpocas:
             pontuador=int(opcoes.get("pontuador", 1)),
             sujeitos=opcoes.get("sujeitos"),
             qualidade=opcoes.get("qualidade", "original"),
+            **({"pasta": opcoes["pasta"]} if "pasta" in opcoes else {}),
+        )
+    elif nome == "walch":
+        desconhecidas = set(opcoes) - {"incluir_baixa_taxa", "pasta"}
+        if desconhecidas:
+            raise TypeError(f"opções desconhecidas para 'walch': {sorted(desconhecidas)}")
+        from .walch import carregar_walch
+        gravacoes = carregar_walch(
+            taxa_minima_hz=None if opcoes.get("incluir_baixa_taxa") else cfg.taxa_comum_hz,
             **({"pasta": opcoes["pasta"]} if "pasta" in opcoes else {}),
         )
     elif nome == "sintetico":

@@ -5757,6 +5757,75 @@ interpolação**, pareadas com rótulos de polissonografia verdadeiros.
 `https://github.com/ojwalch/sleep_classifiers` (`source/sleep_stage.py`); `ml/src/sinal.py` e
 `ml/src/epocas.py`.
 
+---
+
+# 2026-11-03 (ix) — `ML-06`: a coorte Walch rodou; duas previsões e meia se confirmaram
+
+**O problema, como foi entendido no início.** A validação externa do trabalho se apoiava numa
+coorte só (Newcastle). A segunda (Walch et al., 2019) estava declarada como "não executada" por
+um motivo que deixou de valer nesta máquina. O protocolo e a previsão estão nas entradas (vii) e
+(viii), registrados e enviados ao GitHub antes de qualquer época ser processada.
+
+**Hipótese de trabalho.** P1, P2 e P3 da entrada (vii).
+
+**O que foi testado, e como.**
+
+- **Carregador `ml/src/carregar/walch.py`**, com as cinco armadilhas medidas na inspeção; 8
+  testes com arquivos fabricados no formato real; seis sabotagens.
+- **Smoke test no dado real:** o `7749105` fica com 130 de 960 épocas (as 830 sem movimento saem);
+  o `5383425` é excluído por taxa (10 Hz).
+- **`ml04` com `--coorte walch`:** o mesmo modelo, as mesmas quatro configurações, o mesmo
+  bootstrap. **Regressão:** o Newcastle rodado de novo com o `ml04` alterado deu JSON idêntico ao
+  versionado, exceto o carimbo `utc`.
+- **Suíte de ML inteira.**
+
+**Resultado medido.**
+
+- **Sabotagens 6/6 acusadas:** REM como vigília (2 falhas); N4 como não pontuado (2); sem a
+  máscara de época sem dado (2, inclusive o teste que prova que nenhuma época interpolada chega às
+  features); sem ordenar o tempo (1); sem recortar a janela (1); lacuna tolerada de 1 h (1).
+- **Suíte de ML:** 134 passam (126 + 8).
+- **Walch, análise principal** (29 sujeitos, 23 303 épocas, prevalência 0,913), braço pulso:
+  `item9_ctx11` κ = 0,378 [0,316; 0,444], especificidade 0,727 [0,664; 0,787]. Pareado contra
+  `base_ctx2`: janela Δκ +0,032 [+0,006; +0,061], Δesp +0,096 [+0,072; +0,120]; HMM Δκ +0,070
+  [+0,040; +0,103], Δesp −0,042 [−0,076; −0,006].
+- **Análise secundária** (31 sujeitos): as mesmas conclusões, em todos os braços.
+- **Contra a previsão:** P1 confirmada; P2 confirmada; **P3 confirmada na especificidade e não no
+  κ** — o HMM ganhou mais κ que a janela.
+
+**Adaptação.**
+
+- **A X.4 foi reescrita no parágrafo da segunda coorte**, e diz o que falhou: a queda de ~30 pp
+  de especificidade é do Newcastle (na Walch, 0,802 → 0,727); o ganho de κ do HMM depende da
+  coorte. A conclusão que sobra é mais restrita e mais firme: **a janela sobe a especificidade nas
+  duas coortes, e o HMM a derruba nas duas**.
+- **A explicação pela prevalência** (Walch 0,913, perto da do Wearanize+; Newcastle 0,699) é
+  compatível, mas está marcada no texto como leitura posterior ao resultado.
+
+**O que deu errado no caminho.**
+
+- **O primeiro teste de época sem dado estava errado, não o código:** a grade fabricada ia até
+  119,98 s, e a época 90–120 estava coberta. Corrigido o caso, não o carregador.
+- **A branch foi criada a partir do `develop` sem a triagem**, e a entrada do diário colidiria com
+  a da PR #50; recriada a partir da branch da triagem antes do primeiro commit.
+- **A âncora do diário tinha dois espaços a mais** e o primeiro `ed` parou na asserção, sem gravar.
+
+**Risco em aberto.**
+
+- **Com duas coortes, a variação entre coortes ainda é estimada por dois pontos.** A X.4 passa a
+  falar em faixa (0,507 a 0,727), não em valor.
+- **A Walch não tem segunda pontuação manual**, como o Newcastle: a degradação continua sem poder
+  ser decomposta entre método e rotulagem.
+
+**Procedência.**
+
+- `ml/src/carregar/walch.py`, `ml/src/carregar/__init__.py`, `ml/testes/test_walch.py`;
+- `ml/experimentos/ml04_validacao_externa.py`; `ml/experimentos/saida/ml04_validacao_externa_aec203907e6f_walch_principal.json`
+  e `_walch_todos.json`;
+- commits `26bb18f` (previsão) e `f528750` (adendo), anteriores ao resultado;
+- `docs/LIMITACOES-TCC.md`, X.4, e `docs/RESULTADOS-TCC.md`, Y.6 e Y.8 (os dois com os mesmos números);
+  `ml/README.md`, seção `ML-06`; backlog `ML-06a` e `ML-06b`.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

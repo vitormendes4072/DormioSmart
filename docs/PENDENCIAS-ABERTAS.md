@@ -49,12 +49,12 @@ linha, não um resumo: resumo é a cópia que diverge.
 
 | Grupo | Itens |
 |---|---:|
-| A — Depende só de software: dá para fazer a qualquer momento | **18** |
+| A — Depende só de software: dá para fazer a qualquer momento | **17** |
 | B — Depende de decisão do Vitor | **8** |
-| C — Depende de ação do Vitor que não é decisão | **4** |
+| C — Depende de ação do Vitor que não é decisão | **3** |
 | D — Bloqueado por hardware ou coleta | **18** |
 | E — Bloqueado por terceiro | **4** |
-| **Total** | **52** |
+| **Total** | **50** |
 
 ⚠️ **Este total não é comparável à contagem do backlog, e a diferença não é
 erro de nenhum dos dois.** São unidades de contagem diferentes: o backlog
@@ -75,7 +75,7 @@ outro item. **Desde 28/10 têm ID no backlog:** `GIT-07`, `INFRA-02` e
 
 ## A — Depende só de software: dá para fazer a qualquer momento
 
-**18 itens.**
+**17 itens.**
 
 ### `CALC-01` 🔴
 
@@ -130,14 +130,6 @@ Não existe política de retenção: nenhum expurgo, nenhum prazo. Implementar u
 Documentar requisitos: dimensões, conforto, autonomia, aquecimento, custo, segurança.
 
 *Camada no backlog: L0.*
-
-### `ML-06b` 🟡
-
-Escrever `ml/src/carregar/walch.py`. A interface única garante que é só isso. ⚠️ Escrever carregador sem ver o arquivo real produziu as 10 armadilhas já catalogadas: escreva, mas **não confie até rodar**.
-
-*Camada no backlog: L0.*
-
-**Conferência.** Confirmado aberto: `ml/src/carregar/` tem `base.py`, `newcastle.py`, `sintetico.py` e `wearanize.py`. Não há `walch.py`.
 
 ### `DATA-06` 🔴
 
@@ -285,7 +277,7 @@ A decisão de escopo que atravessa o trabalho inteiro.
 
 ## C — Depende de ação do Vitor que não é decisão
 
-**4 itens.**
+**3 itens.**
 
 Nada aqui é decisão: a decisão já foi tomada, ou nunca houve uma.
 São ações que só você pode executar, porque exigem credencial,
@@ -306,12 +298,6 @@ Criar um projeto Supabase de teste e rodar um punhado de `curl`. **Fecharia quat
 *Camada no backlog: L3.*
 
 **Conferência.** ⚠️ **Não tem item próprio**, e o diário de 20/10 (iii) registra isso textualmente: 'quatro itens esperando o mesmo objeto, e ele não tem item'. É a terceira sessão seguida em que o instrumento que falta é o mesmo. **Candidato número 1 a item novo.** ✏️ **28/10:** virou o item `INFRA-02`.
-
-### `ML-06a` 🟡
-
-Baixar o Walch et al. 2019 (PhysioNet `sleep-accel`, 31 sujeitos). **Não é alcançável do ambiente de execução** — precisa ser baixado da sua máquina. Sem ela, a degradação entre coortes é **estimativa pontual, não medida de variabilidade**.
-
-*Camada no backlog: L3.*
 
 ### `AUTH-06` 🟡
 
