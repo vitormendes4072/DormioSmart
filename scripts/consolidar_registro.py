@@ -2660,9 +2660,6 @@ PENDENCIAS: list[Pendencia] = [
               "handshake na placa: `mbedtls` com essa lista, relógio sem NTP e o "
               "custo de RAM e tempo.", "🟠", camada_backlog="L1",
               nota="Auditoria de 31/10, A5; (a) e (b) feitos em 03/11."),
-    Pendencia("FW-10", SOFTWARE, "Sono da medição pelo prazo absoluto (hoje é trabalho + "
-              "intervalo) e contadores atômicos entre os dois núcleos.", "⚪",
-              camada_backlog="L0", nota="Auditoria de 31/10, A8 e A10; latente."),
     Pendencia("INFRA-02 — projeto Supabase de teste", ACAO, "Criar um projeto Supabase de "
               "teste e rodar um punhado de `curl`. **Fecharia quatro itens de uma "
               "vez:** o ponto cego do `UI-11` (a troca de e-mail exige "

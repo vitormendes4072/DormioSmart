@@ -15,6 +15,16 @@ uint32_t intervalo_de_drenagem_us(uint32_t *estado) {
   return INTERVALO_DE_DRENAGEM_US + x % VARIACAO_DA_DRENAGEM_US;
 }
 
+uint64_t proximo_prazo_de_drenagem_us(uint64_t prazo_us, uint64_t agora_us,
+                                      uint32_t intervalo_us) {
+  const uint64_t proximo = prazo_us + intervalo_us;
+  return proximo > agora_us ? proximo : agora_us;
+}
+
+uint64_t espera_ate_o_prazo_us(uint64_t prazo_us, uint64_t agora_us) {
+  return prazo_us > agora_us ? prazo_us - agora_us : 0;
+}
+
 bool ajustar_linha_do_tempo(const double *t_s, const double *acumulado, uint32_t n,
                             LinhaDoTempo *saida) {
   if (t_s == 0 || acumulado == 0 || saida == 0) return false;

@@ -231,6 +231,21 @@ esperar "23. liberar que nao libera" unidade radio.h \
   "  void liberar() {}"
 
 echo
+echo "Sabotadores do PRAZO DA DRENAGEM (FW-10) -- a suite de unidade tem de acusar:"
+
+esperar "24. sono relativo, contado do fim do trabalho" unidade cadeia_c2.cpp \
+  "  const uint64_t proximo = prazo_us + intervalo_us;" \
+  "  const uint64_t proximo = agora_us + intervalo_us;"
+
+esperar "25. recupera o atraso (rajada depois do estouro)" unidade cadeia_c2.cpp \
+  "  return proximo > agora_us ? proximo : agora_us;" \
+  "  return proximo;"
+
+esperar "26. prazo sem a variacao do intervalo" unidade cadeia_c2.cpp \
+  "  const uint64_t proximo = prazo_us + intervalo_us;" \
+  "  const uint64_t proximo = prazo_us + INTERVALO_DE_DRENAGEM_US;"
+
+echo
 echo "-----------------------------------------"
 echo "$((total - falhas))/$total como esperado"
 [ $falhas -eq 0 ]

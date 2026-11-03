@@ -172,6 +172,76 @@ static void testar_intervalo_variado() {
   VERIFICAR(zero != 0, "semente zero nao trava o xorshift em zero");
 }
 
+// O laco da medicao, simulado: dorme ate o prazo, drena, trabalha
+// `trabalho_us[i]` e calcula o proximo prazo -- como o `sketch.ino` (FW-10).
+struct SimulacaoDoLaco {
+  uint64_t drenagens[64];
+  uint32_t n;
+  uint32_t estouros;
+};
+
+static SimulacaoDoLaco simular_laco(const uint64_t *trabalho_us, uint32_t voltas) {
+  SimulacaoDoLaco s;
+  s.n = 0;
+  s.estouros = 0;
+  uint32_t estado = 0x9E3779B9u;
+  uint64_t agora = 0;
+  uint64_t prazo = agora + intervalo_de_drenagem_us(&estado);
+  for (uint32_t i = 0; i < voltas && i < 64; i++) {
+    const uint64_t espera = espera_ate_o_prazo_us(prazo, agora);
+    if (espera == 0) s.estouros++;
+    agora += espera;
+    s.drenagens[s.n++] = agora;
+    agora += trabalho_us[i];
+    prazo = proximo_prazo_de_drenagem_us(prazo, agora, intervalo_de_drenagem_us(&estado));
+  }
+  return s;
+}
+
+static void testar_prazo_da_drenagem() {
+  secao("prazo da drenagem -- o trabalho nao empurra o despertar (FW-10)");
+  // Sono relativo daria intervalo + trabalho; o prazo fixo da o intervalo.
+  const uint64_t trabalhos[] = {0, 400000, 1000000};
+  for (uint32_t t = 0; t < 3; t++) {
+    uint64_t trabalho[40];
+    for (uint32_t i = 0; i < 40; i++) trabalho[i] = trabalhos[t];
+    const SimulacaoDoLaco s = simular_laco(trabalho, 40);
+    const double media = (s.drenagens[s.n - 1] - s.drenagens[0]) / (double)(s.n - 1);
+    VERIFICAR(media >= INTERVALO_DE_DRENAGEM_US &&
+                  media < INTERVALO_DE_DRENAGEM_US + VARIACAO_DA_DRENAGEM_US,
+              "a distancia media entre drenagens e o intervalo, com qualquer trabalho");
+    VERIFICAR(s.estouros == 0, "trabalho menor que o intervalo nao estoura o prazo");
+  }
+
+  // Um trabalho de 4 s (mais de dois intervalos): drena ja, UMA vez, e volta
+  // ao ritmo. Recuperar o atraso faria duas drenagens a 0,1 s uma da outra.
+  uint64_t trabalho[12];
+  for (uint32_t i = 0; i < 12; i++) trabalho[i] = 100000;
+  trabalho[3] = 4000000;
+  const SimulacaoDoLaco s = simular_laco(trabalho, 12);
+  VERIFICAR(s.estouros == 1, "um trabalho longo estoura o prazo uma vez so");
+  uint64_t menor = ~0ull;
+  for (uint32_t i = 5; i < s.n; i++) {
+    const uint64_t d = s.drenagens[i] - s.drenagens[i - 1];
+    if (d < menor) menor = d;
+  }
+  VERIFICAR(menor >= INTERVALO_DE_DRENAGEM_US, "depois do estouro, sem rajada de drenagens");
+
+  // A variacao do despertar continua (cadeia_c2.h, VARIACAO_DA_DRENAGEM_US).
+  uint64_t leve[20];
+  for (uint32_t i = 0; i < 20; i++) leve[i] = 100000;
+  const SimulacaoDoLaco v = simular_laco(leve, 20);
+  bool variou = false;
+  for (uint32_t i = 2; i < v.n; i++) {
+    if (v.drenagens[i] - v.drenagens[i - 1] != v.drenagens[1] - v.drenagens[0]) variou = true;
+  }
+  VERIFICAR(variou, "o prazo carrega a variacao do intervalo");
+
+  VERIFICAR(espera_ate_o_prazo_us(1000, 400) == 600, "espera ate o prazo");
+  VERIFICAR(espera_ate_o_prazo_us(1000, 1000) == 0 && espera_ate_o_prazo_us(1000, 2000) == 0,
+            "prazo vencido: espera zero, sem dar a volta no unsigned");
+}
+
 static void testar_ajuste_da_linha_do_tempo() {
   secao("cadeia -- a regressao recupera taxa e fase");
   // Drenagens perfeitas: a amostra k esta em 0,3 + k/47, e a drenagem que deixa
@@ -612,6 +682,7 @@ int main() {
   testar_o_que_o_antialiasing_deixa_passar();
   testar_interpolacao();
   testar_intervalo_variado();
+  testar_prazo_da_drenagem();
   testar_ajuste_da_linha_do_tempo();
   testar_cadeia_fecha_epoca();
   testar_cadeia_recusa();
