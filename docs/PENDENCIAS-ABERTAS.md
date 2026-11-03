@@ -51,10 +51,10 @@ linha, não um resumo: resumo é a cópia que diverge.
 |---|---:|
 | A — Depende só de software: dá para fazer a qualquer momento | **16** |
 | B — Depende de decisão do Vitor | **7** |
-| C — Depende de ação do Vitor que não é decisão | **5** |
+| C — Depende de ação do Vitor que não é decisão | **4** |
 | D — Bloqueado por hardware ou coleta | **18** |
 | E — Bloqueado por terceiro | **4** |
-| **Total** | **50** |
+| **Total** | **49** |
 
 ⚠️ **Este total não é comparável à contagem do backlog, e a diferença não é
 erro de nenhum dos dois.** São unidades de contagem diferentes: o backlog
@@ -263,7 +263,7 @@ A decisão de escopo que atravessa o trabalho inteiro.
 
 ## C — Depende de ação do Vitor que não é decisão
 
-**5 itens.**
+**4 itens.**
 
 Nada aqui é decisão: a decisão já foi tomada, ou nunca houve uma.
 São ações que só você pode executar, porque exigem credencial,
@@ -284,12 +284,6 @@ Criar um projeto Supabase de teste e rodar um punhado de `curl`. **Fecharia quat
 *Camada no backlog: L3.*
 
 **Conferência.** ⚠️ **Não tem item próprio**, e o diário de 20/10 (iii) registra isso textualmente: 'quatro itens esperando o mesmo objeto, e ele não tem item'. É a terceira sessão seguida em que o instrumento que falta é o mesmo. **Candidato número 1 a item novo.** ✏️ **28/10:** virou o item `INFRA-02`.
-
-### `LGPD-08` 🟡
-
-Aplicar a migração `012` (idade a partir de 18) no SQL Editor, rodar o diagnóstico e fazer o release do LGPD-05/06. Até lá, a produção aceita idade de 0 a 17 e o cadastro não pede a declaração.
-
-*Camada no backlog: L3.*
 
 ### `ML-13` 🟡
 

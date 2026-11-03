@@ -54,7 +54,8 @@
 Até 29/10 esta linha mandava rodar o `DATA-03`, fechado em 28/10.)* **Se tem um fim de semana:** solde. **Se tem um mês sem ferro de solda:** escreva os
 `CALC-*` e `DIAG-*`, que são o que a banca lê.
 
-**Contagem:** 43 itens abertos · **L0: 14** · L1: 13 · L2: 7 · L3: 9. *(Recontado linha a linha em 03/11, e não por delta.)*
+**Contagem:** 42 itens abertos · **L0: 14** · L1: 13 · L2: 7 · L3: 8. *(Recontado linha a linha em 03/11, e não por delta.)*
+*(03/11, sétima parte: fechou `LGPD-08` (L3) — a `012` na produção e o release. L3 9−1 = 8; 14+13+7+8 = 42.)*
 *(03/11, sexta parte: fecharam `LGPD-05` e `LGPD-06` (L0); entrou `LGPD-08` (L3, aplicar a `012` e o release); o `LGPD-07` (menores de idade) foi direto para a seção Pós-banca, fora da contagem. L0 16−2 = 14; L3 8+1 = 9; 14+13+7+9 = 43.)*
 *(03/11, quinta parte: entrou `ML-13` (L3, a DREAMT como terceira coorte externa — espera o termo assinado pelo autor). L3 7+1 = 8; 16+13+7+8 = 44.)*
 *(03/11, quarta parte: fecharam `ML-06a` (L3) e `ML-06b` (L0) — a segunda coorte externa. L0 17−1 = 16; L3 8−1 = 7; 16+13+7+7 = 43.)*
@@ -182,7 +183,7 @@ E um **peso**: 🔴 caminho crítico da defesa · 🟡 importante · ⚪ polimen
        UI-18 · SEC-13 · AUTH-09 · CI-02 · GIT-05
 
    L3  TAMBÉM DEPENDE DE VOCÊ:
-       RQ-01 · HW-02 · LGPD-03 · ESC-01 · ML-13 (DREAMT baixando) · LGPD-08 (aplicar a 012)
+       RQ-01 · HW-02 · LGPD-03 · ESC-01 · ML-13 (DREAMT baixando)
        AUTH-06 · INFRA-02                    ← 03/11: os dois com prioridade maior
 
    ✏️ 03/11: triagem da auditoria de 31/10 — 14 itens fecharam e 11 foram para a seção
@@ -294,7 +295,7 @@ Não aparece nas listas abertas abaixo. Está aqui para o histórico ficar legí
 | **INFRA-02** 🔴 *(novo — 28/10; **L3**)* | ✏️ **03/11 (triagem):** **prioridade subiu**: destrava o teste de login de ponta a ponta e fecha comportamentos de serviço que nenhum teste daqui exercita. **Um projeto Supabase de teste.** Fecharia de uma vez o ponto cego do `UI-11` (confirmação de troca de e-mail), o canal 2 do `SEC-08` (`identities`), o canal 4 / `SEC-09` (`/recover` em domínio real) e o `SEC-10` inteiro — comportamento de serviço que nenhum teste deste repositório alcança. O diário de 20/10 (iii) já dizia *"quatro itens esperando o mesmo objeto, e ele não tem item"*; ficou oito dias sem ter. Exige criar o projeto — por você. | 🔴 |
 | **ESC-01** 🔴 *(novo — 28/10; **L3**, você e o orientador)* | **O conceito de noite.** O trabalho pode afirmar *"a noite de 27/08"* sem afirmar que o dado é sono? Hoje o painel diz "sessão de captação", que é o teto honesto. A discussão está no `ROADMAP.md` (gitignorado) → "O conceito de noite". Era um parágrafo solto no fim da seção L3 — a maior decisão de escopo em aberto sem ID. | 🔴 |
 | **ML-13** ⚪ *(novo — 03/11; **L3**: depende de você assinar o termo)* | **Terceira coorte externa com PSG: DREAMT** (Duke, PhysioNet, versão 2.2.0 de jun/2026). 100 pacientes de clínica do sono (IAH médio 22; 23 com apneia grave), Empatica E4 no pulso a 32 Hz, PSG pontuada por técnicos em épocas de 30 s. Com Newcastle e Walch, seriam **3 coortes externas**: o intervalo de predição passa a existir (multiplicador ~12,7 com k = 3 — ainda largo), e a direção dos efeitos ganha uma terceira repetição. **O que você faz:** criar a conta no PhysioNet e assinar o *PhysioNet Restricted Health Data Use Agreement 1.5.0* em `https://physionet.org/content/dreamt/`. **O que eu faço depois:** download, inspeção, previsão registrada antes de rodar (como no `ML-06`), carregador e `ml04 --coorte dreamt`. A Borazio (2014) foi avaliada e descartada (rótulos fora da grade de 30 s); a BIDSleep fica como análise secundária possível. Ver `ml/README.md`, "Mais coortes", e o diário, 03/11 (x). | 🟡 |
-| **LGPD-08** ⚪ *(novo — 03/11; **L3**)* | **Aplicar a migração `012` na produção e fazer o release.** No SQL Editor do Supabase: `web-app/migrations/012_idade_minima_18.sql`, depois `DIAGNOSTICO-migracoes-aplicadas.sql` (a `012` tem 2 marcas). A trava da `012` para, sem alterar dado, se houver perfil com idade abaixo de 18. Só então o release com o `LGPD-05`/`LGPD-06`, e o login de verdade. **Até lá, a produção ainda aceita idade de 0 a 17** e o cadastro não pede a declaração. | 🟡 |
+| **LGPD-08** ✅ *(03/11: a `012` aplicada pelo autor — diagnóstico `2 de 2 marcas`, 001–011 intactas; release #54 (`7e7140e`, deploy `7530061150`): `/health` 200, o pacote publicado tem a declaração; o autor confirmou o login e a recusa do cadastro sem a caixa)* | **Aplicar a migração `012` na produção e fazer o release.** No SQL Editor do Supabase: `web-app/migrations/012_idade_minima_18.sql`, depois `DIAGNOSTICO-migracoes-aplicadas.sql` (a `012` tem 2 marcas). A trava da `012` para, sem alterar dado, se houver perfil com idade abaixo de 18. Só então o release com o `LGPD-05`/`LGPD-06`, e o login de verdade. **Até lá, a produção ainda aceita idade de 0 a 17** e o cadastro não pede a declaração. | ✅ |
 
 > **A decisão de escopo que continua em aberto e é sua + do orientador:** o trabalho pode
 > afirmar *"a noite de 27/08"* sem afirmar que o dado é sono? Hoje o painel diz "sessão de

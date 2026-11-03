@@ -5959,6 +5959,48 @@ sem alterar dado existente, e que a finalidade nova pudesse ser exercida só por
   `CONSULTA-publico-por-faixa.sql`; `web-app/tests/rls/test_rls_idade_maioridade.py`;
 - backlog `LGPD-05`, `LGPD-06`, `LGPD-07` e `LGPD-08`.
 
+---
+
+# 2026-11-03 (xii) — a `012` na produção e o release do `LGPD-05`/`LGPD-06`
+
+**O problema, como foi entendido no início.** O `LGPD-05`/`LGPD-06` estava em `develop` (PR #53), e
+a migração `012` precisava ir para a produção antes do release que a usa (`LGPD-08`).
+
+**Hipótese de trabalho.** Que nenhum perfil de produção tivesse idade abaixo de 18 (a trava da
+`012` pararia), e que o release mudasse só o cadastro e a validação da idade.
+
+**O que foi testado, e como.**
+
+- **A `012`:** aplicada pelo autor no SQL Editor; depois, o `DIAGNOSTICO-migracoes-aplicadas.sql`.
+- **O release:** diff `main..develop` (código do site em `frontend/src` e `web-app/perfil.py`;
+  nenhuma dependência, variável ou `vercel.json` nova); PR #54 depois dos 9 checks; deploy
+  acompanhado pela API de deployments, com o SHA.
+- **Depois:** `/health`; `PATCH /api/me/perfil` sem credencial; o pacote JavaScript publicado,
+  procurado pelos textos novos; e, pelo autor, um login e uma tentativa de cadastro sem a caixa.
+
+**Resultado medido.**
+
+- **Diagnóstico:** `012 aplicada = true, 2 de 2 marcas`; 001 a 011 continuam aplicadas. A trava não
+  disparou: não havia perfil com idade abaixo de 18.
+- **Deploy `7530061150`, `success`, SHA `7e7140e`.** `/health` `200`, banco ok; `PATCH` sem
+  credencial → `401`; o pacote `index-DhAoYEpi.js` contém "Declaro que tenho 18 anos ou mais", a
+  mensagem de recusa e `maior_de_18_declarado_em`.
+- **O autor confirmou:** o login funciona, e o cadastro sem a caixa é recusado na tela.
+
+**Adaptação.** Nenhuma.
+
+**O que deu errado no caminho.** Nada nesta etapa.
+
+**Risco em aberto.** Os mesmos do `LGPD-05`/`LGPD-06` (diário, 03/11 (xi)): idade autodeclarada;
+proteção de procedimento na consulta agregada; a política ainda não servida dentro do app
+(`LGPD-01` (b)); e o SMTP próprio (`AUTH-06`) antes de qualquer pessoa além do autor usar o sistema.
+
+**Procedência.**
+
+- O diagnóstico colado pelo autor, 03/11; PR #54 (`7e7140e`); deployment de produção `7530061150`;
+- `GET https://dormio-smart.vercel.app/health`, `/api/me/perfil` e o pacote publicado, 03/11;
+- a confirmação do autor; backlog `LGPD-08`.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
