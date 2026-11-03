@@ -52,7 +52,7 @@ WEB = AQUI.parent.parent
 MIG = WEB / "migrations"
 RLS = WEB / "tests" / "rls"
 DIAG = MIG / "DIAGNOSTICO-migracoes-aplicadas.sql"
-ORDEM = ["001", "003", "004", "005", "006", "007", "008", "009", "010", "011"]
+ORDEM = ["001", "003", "004", "005", "006", "007", "008", "009", "010", "011", "012"]
 ARQ = {p.name[:3]: p for p in MIG.glob("0[0-9][0-9]_*.sql")}
 
 ANA = "00000000-0000-0000-0000-00000000000a"
@@ -179,7 +179,8 @@ def verificar_diagnostico(bancos) -> list[str]:
     # própria 007 — que é o que se confere aqui, além de tudo terminar `true`.
     # A 010 (DATA-07b, 30/10) entra depois de tudo, antes do release que a usa.
     # A 011 (DATA-08, 01/11) só mexe no banco; o backend não muda.
-    ordem_real = ["001", "003", "004", "005", "006", "008", "009", "007", "010", "011"]
+    # A 012 (LGPD-05, 03/11) entra antes do release que a usa.
+    ordem_real = ["001", "003", "004", "005", "006", "008", "009", "007", "010", "011", "012"]
     c = montar(bancos, "diagreal", ordem_real)
     cur = c.cursor()
     res = diagnostico(cur)
@@ -296,7 +297,7 @@ def main() -> int:
         for e in erros:
             print("  -", e, file=sys.stderr)
         return 1
-    print("\nOK — o diagnóstico acerta os 11 estados e a 002; 005/006/008/009 não mudam "
+    print("\nOK — o diagnóstico acerta os 12 estados e a 002; 005/006/008/009 não mudam "
           "nada para o código de main; a 007 quebra exatamente as 2 operações de token_hash.")
     return 0
 

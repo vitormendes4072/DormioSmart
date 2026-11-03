@@ -26,6 +26,15 @@
  * como ficar vermelho. Se um dia a idade entrar em cálculo, isso é
  * **finalidade nova** e exige declaração nova ANTES (item `LGPD-06`).
  *
+ * ✏️ **03/11 (`LGPD-06`): a idade ganhou uma SEGUNDA finalidade**, declarada na
+ * política antes do código (seção 3, item 5): conhecer o perfil etário de quem
+ * usa o sistema, **só por contagem agregada por faixa**, com supressão de faixas
+ * pequenas (`web-app/migrations/CONSULTA-publico-por-faixa.sql`). Ela não passa
+ * por este módulo nem por cálculo nenhum. E o serviço passou a ser só para
+ * maiores de 18 (`LGPD-05`): `menorDeIdade` continua aqui como defesa, mas a
+ * validação (frontend, backend e a constraint da migração `012`) não deixa
+ * mais gravar idade abaixo de 18.
+ *
  * ── PROCEDÊNCIA DE CADA NÚMERO (§3 das lições) ───────────────────────────
  *
  * Nenhum limite aqui é clínico, e nenhum foi derivado por este trabalho:

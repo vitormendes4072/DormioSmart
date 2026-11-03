@@ -231,11 +231,14 @@ export function validarNome(texto: string): { ok: true } | { ok: false; motivo: 
  * o art. 18, IV ao alcance de um clique. Por isso "" não é erro de validação:
  * é uma instrução.
  *
- * A faixa espelha a constraint da migração `001` (`idade >= 0 and idade < 150`)
+ * A faixa espelha a constraint da migração `012` (`idade >= 18 and idade < 150`)
  * e a validação de `web-app/perfil.py`. Divergir daqui trocaria uma mensagem
  * útil por um erro de constraint do Postgres.
+ *
+ * ✏️ LGPD-05 (03/11): o mínimo passou de 0 para 18 — o serviço é destinado só
+ * a maiores de idade (seção 2.1 da política). Até aqui, a idade 0 era aceita.
  */
-export const IDADE_MINIMA_DO_PERFIL = 0;
+export const IDADE_MINIMA_DO_PERFIL = 18;
 export const IDADE_MAXIMA_DO_PERFIL = 149;
 
 export function lerIdade(
@@ -255,7 +258,9 @@ export function lerIdade(
   if (valor < IDADE_MINIMA_DO_PERFIL || valor > IDADE_MAXIMA_DO_PERFIL) {
     return {
       ok: false,
-      motivo: `A idade precisa estar entre ${IDADE_MINIMA_DO_PERFIL} e ${IDADE_MAXIMA_DO_PERFIL}.`,
+      motivo:
+        `A idade precisa estar entre ${IDADE_MINIMA_DO_PERFIL} e ${IDADE_MAXIMA_DO_PERFIL}: ` +
+        "o Smart Dormio é destinado apenas a maiores de 18 anos.",
     };
   }
   return { ok: true, valor };

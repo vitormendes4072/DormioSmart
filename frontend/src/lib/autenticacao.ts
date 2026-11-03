@@ -111,11 +111,25 @@ export async function entrar(email: string, senha: string): Promise<ResultadoDeA
   return { ok: true };
 }
 
+/** Frase da recusa quando falta a declaração de maioridade (LGPD-05). */
+export const FALTA_DECLARAR_MAIORIDADE =
+  "Para criar a conta, confirme que você tem 18 anos ou mais.";
+
+/**
+ * Cria a conta. Exige a declaração de ter 18 anos ou mais (LGPD-05, 03/11): o
+ * serviço é destinado só a maiores de idade (seção 2.1 da política). Sem ela,
+ * nem chama o Supabase. Com ela, a data da declaração vai para os metadados da
+ * conta (`raw_user_meta_data.maior_de_18_declarado_em`), como registro de
+ * quando e em que termos a conta foi criada. É autodeclaração, não verificação.
+ */
 export async function cadastrar(
   nome: string,
   email: string,
   senha: string,
+  declarouMaioridade: boolean,
 ): Promise<ResultadoDeAuth> {
+  if (!declarouMaioridade) return { ok: false, mensagem: FALTA_DECLARAR_MAIORIDADE };
+
   const supabase = obterSupabase();
   if (!supabase) return { ok: false, mensagem: SEM_CONFIGURACAO };
 
@@ -131,7 +145,9 @@ export async function cadastrar(
     password: senha,
     // `nome` vai para raw_user_meta_data; o trigger do SEC-04 o copia para
     // a tabela profiles na criacao do usuario.
-    options: { data: { nome: nome.trim() } },
+    options: {
+      data: { nome: nome.trim(), maior_de_18_declarado_em: new Date().toISOString() },
+    },
   });
 
   if (error) return { ok: false, mensagem: traduzirErroDeAuth(error) };
