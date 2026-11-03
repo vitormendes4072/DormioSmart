@@ -6068,6 +6068,47 @@ cópia, e que o controlador pudesse entrar por variável de build, fora do repos
   `montagem.test.ts`, `alcance.test.ts`;
 - backlog `LGPD-01` e `SEC-16`.
 
+---
+
+# 2026-11-03 (xiv) — o release da política de privacidade
+
+**O problema, como foi entendido no início.** A página `/privacidade` (`LGPD-01` (b), PR #56) estava
+em `develop`, e o controlador e o contato dependiam de duas variáveis de build que só o autor podia
+criar na Vercel.
+
+**Hipótese de trabalho.** Que as variáveis criadas antes do release entrassem no build do deploy de
+produção, sem um redeploy à parte.
+
+**O que foi testado, e como.**
+
+- **As variáveis:** criadas pelo autor em Settings → Environment Variables do projeto, tipo Config
+  (não Secret: o valor é público por definição, e Config permite conferi-lo), só em Production. O
+  caminho no painel levou três telas (variáveis da equipe, configurações da equipe, ambientes).
+- **O release:** diff `main..develop` (o frontend e as duas dependências novas; nenhuma migração);
+  PR #57 depois dos 9 checks; deploy acompanhado pela API de deployments.
+- **Depois:** `/health`; `/privacidade`; o pacote `Privacidade-*.js` publicado, procurado pelos
+  valores injetados; e, pelo autor, a página aberta e um login.
+
+**Resultado medido.**
+
+- Deploy `7530696288`, `success`, SHA `242d854`. `/health` `200`; `/privacidade` `200`.
+- O pacote publicado traz o controlador e o contato definidos pelo autor; a seção 1 da página os
+  mostra, e as tabelas saem formatadas (conferido pelo autor, por captura de tela).
+- **O autor confirmou o login.**
+
+**Adaptação.** Nenhuma.
+
+**O que deu errado no caminho.** Nada nesta etapa.
+
+**Risco em aberto.** O controlador definido é o autor sozinho; incluir o orientador, se for o caso,
+e a revisão da política são o `LGPD-03`. O e-mail de contato fica público, por escolha do autor.
+
+**Procedência.**
+
+- PR #57 (`242d854`); deployment de produção `7530696288`;
+- `GET https://dormio-smart.vercel.app/health`, `/privacidade` e o pacote publicado, 03/11;
+- a captura de tela e a confirmação do autor; backlog `LGPD-01`.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
