@@ -5542,6 +5542,62 @@ itens da bancada (`FW-07` (c) e `SEC-15` (c)).
 - `GET https://dormio-smart.vercel.app/health` e as rotas, 03/11;
 - a confirmação do autor.
 
+---
+
+# 2026-11-03 (v) — "esqueci minha senha" levava ao `localhost`: as URLs do Supabase Auth
+
+**O problema, como foi entendido no início.** O autor testou "esqueci minha senha" na produção. O
+e-mail chegou, mas o link abria `http://localhost:3000/#access_token=…&type=recovery`, e o
+navegador não achava a página.
+
+**Hipótese de trabalho.** Que o código pedisse o retorno errado — ou que o Supabase descartasse o
+retorno pedido.
+
+**O que foi testado, e como.**
+
+- **O código:** `recuperarSenha` (`frontend/src/lib/autenticacao.ts`) chama `resetPasswordForEmail`
+  com `redirectTo: ${window.location.origin}/nova-senha` — na produção,
+  `https://dormio-smart.vercel.app/nova-senha`. O site já reconhece o retorno de recuperação
+  (`ehRetornoDeRecuperacao`, em `rotas.ts`) e tem a página `NovaSenha.tsx`.
+- **O link recebido:** `http://localhost:3000/`, **sem** o `/nova-senha` que o código pediu — o
+  sinal de que o Supabase ignorou o `redirectTo` e usou a Site URL.
+- **O registro:** o roadmap já previa "`Site URL` + `Redirect URLs` para localhost, preview e
+  produção" dentro do `AUTH-06`, que estava com prioridade reduzida; nunca tinha sido feito.
+- **A correção, feita pelo autor no painel** (Authentication → URL Configuration): Site URL
+  `https://dormio-smart.vercel.app`; Redirect URLs `https://dormio-smart.vercel.app/**` e
+  `http://localhost:5173/**` (a porta do Vite).
+- **Depois:** um e-mail de recuperação novo; daqui, `GET /nova-senha` na produção.
+
+**Resultado medido.**
+
+- **O autor confirmou:** com o e-mail novo, o link abriu a página de nova senha.
+- `GET https://dormio-smart.vercel.app/nova-senha` → `200`, servindo o app.
+
+**Adaptação.** Nenhuma mudança de código: o defeito era de configuração do Supabase, fora do
+repositório. Fica registrado no `CLAUDE.md` (Deploy), porque nada no repositório o mostraria.
+
+**O que deu errado no caminho.**
+
+- **A configuração nunca foi feita** desde a criação do projeto: o fluxo de recuperação foi
+  testado com dublês no frontend, que não exercitam o Supabase de verdade, e só um teste manual na
+  produção mostrou o defeito.
+- **O link colado na conversa continha um `access_token` e um `refresh_token` válidos** da conta do
+  autor. Não foram usados. A orientação foi encerrar todas as sessões pelo "Sair" do site (que
+  chama `signOut()` com o escopo global padrão) e trocar a senha.
+
+**Risco em aberto.**
+
+- **Previews da Vercel não estão nas Redirect URLs:** num preview, o link volta para a produção.
+- **O e-mail ainda sai em inglês, pelo SMTP padrão do Supabase**, que é limitado e cai em spam:
+  é o resto do `AUTH-06`.
+
+**Procedência.**
+
+- `frontend/src/lib/autenticacao.ts`, `rotas.ts` e `pages/NovaSenha.tsx`;
+- o painel do Supabase (Authentication → URL Configuration), pelo autor, 03/11;
+- a confirmação do autor; `GET https://dormio-smart.vercel.app/nova-senha`, 03/11;
+- backlog `AUTH-06`.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
