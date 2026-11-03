@@ -105,6 +105,33 @@ struct ResolucaoDeParede {
   }
 };
 
+// ── Deriva do relogio monotonico (bancada do FW-07 c) ─────────────────
+//
+// O `esp_timer` e o relogio de toda a cadeia C2, e no sono leve ele conta
+// por um oscilador mais pobre que o cristal. Quanto ele erra so a placa
+// responde. A cada sincronia com o NTP, o firmware compara a hora que a
+// resolucao ANTERIOR preveria com a que o NTP deu:
+//
+//     deriva = ntp - resolver(mono_agora)
+//
+// Positiva: passou mais tempo de verdade do que o relogio interno contou (ele
+// atrasa). Contra a sincronia anterior (10 min) o erro do proprio NTP pesa;
+// contra a PRIMEIRA sincronia da noite, ao longo de horas, nao.
+struct DerivaDoRelogio {
+  bool valida;           // falso sem sincronia anterior, ou sem tempo decorrido
+  int64_t deriva_ms;
+  uint64_t decorrido_ms;  // pelo relogio interno
+};
+
+inline DerivaDoRelogio medir_deriva(const ResolucaoDeParede &anterior, uint64_t mono_agora_ms,
+                                    int64_t ntp_unix_ms) {
+  DerivaDoRelogio d;
+  d.valida = anterior.valida && mono_agora_ms > anterior.mono_referencia_ms;
+  d.decorrido_ms = d.valida ? mono_agora_ms - anterior.mono_referencia_ms : 0;
+  d.deriva_ms = d.valida ? ntp_unix_ms - anterior.resolver(mono_agora_ms) : 0;
+  return d;
+}
+
 }  // namespace dormio
 
 #endif  // DORMIO_NUCLEO_RELOGIO_H
