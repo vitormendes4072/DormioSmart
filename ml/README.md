@@ -407,6 +407,37 @@ sobe a especificidade, o HMM a derruba; o efeito do HMM no κ depende da
 coorte.** E a queda de especificidade de 0,802 para 0,507 é do Newcastle: na
 Walch, 0,727. Texto atualizado em `docs/LIMITACOES-TCC.md`, X.4.
 
+### Mais coortes: o que existe, e a Borazio descartada (03/11)
+
+✏️ **03/11/2026.** Com duas coortes externas não se estima a variação entre
+populações (o intervalo de predição usa *t* com k − 2 graus de liberdade). Uma
+busca por bases públicas com **aceleração bruta + rótulo de PSG por época** deu:
+
+| Base | Situação |
+|---|---|
+| **DREAMT** (Duke, PhysioNet; 100 pacientes, Empatica E4, PSG por técnicos) | **a candidata** — acesso restrito: conta no PhysioNet e termo assinado pelo autor (`ML-13`) |
+| BIDSleep (PhysioNet; 47 saudáveis, 253 noites, Apple Watch) | aberta, mas o rótulo é EEG de faixa (Dreem 2), não PSG — só análise secundária |
+| MESA, HCHS, MrOS, SOF (NSRR) | **não servem**: o actígrafo só gravou contagens de 30 s, sem aceleração bruta |
+| Pennsylvania (NIMH Data Archive) | acordo institucional com o NIH — inviável num TCC |
+| Leicester (Plekhanova 2023), 453 adultos (preprint 2025), SOMNIA (peito) | sem dado público confirmado |
+| Base com sensor **na cama, colchão ou travesseiro** + PSG | **nenhuma encontrada** |
+
+**Borazio et al. (2014)** — 42 pacientes, registrador de pulso a 100 Hz, PSG,
+aberta (uso científico com crédito) — **foi baixada, inspecionada e descartada.**
+O que se mediu nos 47 registros (pacote de 25 MB, SHA-256 `78980268fb1a…`;
+`.npy` sem objetos, lidos sem *pickle*):
+
+- **Serve:** 100 Hz depois de expandir o *run-length encoding* (campo `d`);
+  ~8,75 h por noite; escala inferível de ~30 contagens por g em repouso (8 bits,
+  ~33 mg por degrau, o dobro do E4), sem saturação.
+- **Inviabiliza:** os trechos de rótulo **não caem numa grade de 30 s**. Só 2 a
+  14% ficam a 1 s de um múltiplo de 30 s; num grupo de registros o menor trecho
+  tem 33 a 46 s (uma época "esticada" por fator diferente em cada paciente — os
+  relógios do registrador e da PSG não batem); no outro, centenas de trechos de
+  ~5 s, que nenhuma época de 30 s produz. Há ainda o código 7 ("movimento") e
+  de 1 a 2 h sem rótulo no início. Estimar o fator de cada paciente tornaria o
+  rótulo **inferido por nós** — e validação contra rótulo inferido não se defende.
+
 ---
 
 ## Resultado do ML-02 (dado sintético, 12 sujeitos, 10 800 épocas)

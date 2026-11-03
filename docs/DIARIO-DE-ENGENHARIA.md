@@ -5826,6 +5826,64 @@ um motivo que deixou de valer nesta máquina. O protocolo e a previsão estão n
 - `docs/LIMITACOES-TCC.md`, X.4, e `docs/RESULTADOS-TCC.md`, Y.6 e Y.8 (os dois com os mesmos números);
   `ml/README.md`, seção `ML-06`; backlog `ML-06a` e `ML-06b`.
 
+---
+
+# 2026-11-03 (x) — mais coortes públicas: a busca, a Borazio descartada, e a DREAMT
+
+**O problema, como foi entendido no início.** Com duas coortes externas, o intervalo de predição
+(Higgins, Thompson e Spiegelhalter, 2009) não é definido: ele usa *t* com k − 2 graus de
+liberdade. O autor pediu uma busca profunda por mais coortes públicas confiáveis.
+
+**Hipótese de trabalho.** Que existissem bases abertas com aceleração bruta de pulso e rótulo de
+PSG por época além de Newcastle e Walch.
+
+**O que foi testado, e como.**
+
+- **Busca** em PhysioNet, NSRR, Zenodo, Figshare e OSF, e nas seções de disponibilidade de dados
+  dos artigos de validação de actigrafia; critérios: aceleração bruta, PSG por época, acesso
+  viável e procedência publicada.
+- **Borazio et al. (2014)**, a única aberta com PSG encontrada: baixada (25 259 506 bytes,
+  SHA-256 `78980268fb1a4acac264b7207625da17bafd32b40980839572555794bce36689`), com o cabeçalho
+  dos `.npy` lido **antes** de carregar (arranjos numéricos sem objetos, carregados com
+  `allow_pickle=False`; o script do pacote não foi executado); taxa, escala em repouso,
+  saturação e a duração dos trechos de rótulo, nos 47 registros.
+
+**Resultado medido.**
+
+- **A busca:** DREAMT (PSG, acesso restrito por termo) é a única candidata nova que serve;
+  BIDSleep (aberta) tem rótulo de EEG de faixa, não PSG; MESA, HCHS, MrOS e SOF só têm contagens
+  de 30 s; Pennsylvania exige acordo com o NIH; outras três não têm dado público confirmado.
+  **Nenhuma base com sensor na cama, no colchão ou no travesseiro e PSG foi encontrada.**
+- **Borazio:** 100 Hz depois de expandir o *run-length encoding*; ~8,75 h por noite; ~30
+  contagens por g em repouso (29,0 a 30,3 nos três pacientes medidos), sem saturação. **Mas os
+  trechos de rótulo não caem numa grade de 30 s:** só 2 a 14% ficam a 1 s de um múltiplo de 30 s;
+  num grupo de registros (`025`–`051`, `09b`) o menor trecho tem 33 a 46 s; no outro (`002`–`023`,
+  `08a/b`, `15a/b`…), há 564 trechos entre 5 e 10 s. Código 7 ("movimento") e 1 a 2 h sem rótulo
+  no início das gravações.
+
+**Adaptação.**
+
+- **A Borazio foi descartada como coorte de validação.** O padrão é de relógios fora de sincronia
+  entre o registrador e a PSG, com fator diferente por paciente. Estimar esse fator faria o rótulo
+  ser inferido por este trabalho, e validação contra rótulo inferido não se defende.
+- **A DREAMT virou o `ML-13`, em L3:** o acesso depende de o autor assinar o termo de uso no
+  PhysioNet — ação que envolve a identidade dele.
+
+**O que deu errado no caminho.** O primeiro script de inspeção leu o `pat_inf.npy` (os dados dos
+pacientes) como se fosse um registro, porque o padrão de arquivo `p*.npy` casava com ele; parou num
+erro de índice, sem resultado parcial, e foi corrigido.
+
+**Risco em aberto.** Mesmo com a DREAMT, são 3 coortes externas: o intervalo de predição passa a
+existir, mas com multiplicador ~12,7, largo demais para dizer muito (`ML-13`). A distância entre o
+pulso e o travesseiro continua sem base pública que a meça (X.4).
+
+**Procedência.**
+
+- `ml/README.md`, "Mais coortes"; `ml/dados/bruto/borazio/` (não versionado);
+- `https://ubi29.informatik.uni-siegen.de/usi/data_ichi14.html`, `https://physionet.org/content/dreamt/`,
+  `https://physionet.org/content/bidsleep-dataset/1.0.1/`, `https://sleepdata.org/forum/raw-accelerometer-data-from-actigraphy/1`, 03/11;
+- backlog `ML-13`.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

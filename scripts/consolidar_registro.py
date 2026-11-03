@@ -2592,6 +2592,11 @@ PENDENCIAS: list[Pendencia] = [
                    "objeto, e ele não tem item'. É a terceira sessão seguida em "
                    "que o instrumento que falta é o mesmo. **Candidato número 1 a "
                    "item novo.** ✏️ **28/10:** virou o item `INFRA-02`."),
+    Pendencia("ML-13", ACAO, "Terceira coorte externa com PSG: DREAMT (PhysioNet, "
+              "100 pacientes, Empatica E4). Exige criar a conta no PhysioNet e assinar "
+              "o termo de uso restrito; depois, carregador e validação externa como "
+              "no `ML-06`.", "🟡", camada_backlog="L3",
+              nota="Saído da busca de coortes de 03/11; a Borazio foi descartada."),
     Pendencia("AUTH-06", ACAO, "SMTP próprio (Resend/Brevo). O SMTP padrão do "
               "Supabase só entrega a endereços do time do projeto: sem ele, o "
               "'esqueci minha senha' não chega a nenhum usuário além do autor. "
