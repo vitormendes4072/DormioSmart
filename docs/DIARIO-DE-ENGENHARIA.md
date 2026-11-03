@@ -5598,6 +5598,80 @@ repositório. Fica registrado no `CLAUDE.md` (Deploy), porque nada no repositór
 - a confirmação do autor; `GET https://dormio-smart.vercel.app/nova-senha`, 03/11;
 - backlog `AUTH-06`.
 
+---
+
+# 2026-11-03 (vi) — a triagem do backlog, decidida; a idade fica; a coorte Walch volta a ser alcançável
+
+**O problema, como foi entendido no início.** A Seção 4 da auditoria de 31/10 propunha manter,
+ajustar ou remover itens do backlog, e esperava decisão do autor. O autor aprovou a recomendação,
+com uma exceção — **manter o campo idade**, para conhecer o público do sistema — e pediu duas
+investigações: o que manter a idade exige, e se a defesa precisa da segunda coorte externa
+(Walch et al., 2019; `ML-06a` e `ML-06b`).
+
+**Hipótese de trabalho.** Que a proposta, escrita em 31/10, ainda valesse item por item três dias
+e uma dúzia de PRs depois.
+
+**O que foi testado, e como.**
+
+- **Cada item da proposta contra a linha atual do backlog.**
+- **O SMTP padrão do Supabase**, na documentação oficial (*Send emails with custom SMTP*).
+- **A idade:** as linhas do `LGPD-05` e do `LGPD-06`, as §3, §4 e §5.3 da política de privacidade,
+  o `comment on column` da migração `008` e o cabeçalho de `lib/aplicabilidade.ts`.
+- **A coorte Walch:** a X.4 de `LIMITACOES-TCC.md` e as notas dela; quais coortes o ML usa (`ml/`);
+  e um pedido de cabeçalho à página do PhysioNet, **sem baixar nada**.
+- **A triagem aplicada:** recontagem linha a linha e as conferências de documento.
+
+**Resultado medido.**
+
+- **Uma recomendação da auditoria não valia mais: o `AUTH-06`.** A documentação diz que, sem SMTP
+  próprio, o Supabase **só entrega e-mail a endereços do time do projeto**. O "esqueci minha
+  senha" que funcionou em 03/11 (v) funcionou porque o autor é dono do projeto; para qualquer
+  outro usuário, não sai e-mail. Mantido, com prioridade maior.
+- **Triagem aplicada:** fecharam 14 itens; 11 foram para uma seção nova, **Pós-banca**, fora da
+  contagem e com o texto inteiro; `DATA-06` passou de L0 para L2; oito linhas ganharam a nota do
+  ajuste. **Contagem: 70 → 45** (L0 17, L1 13, L2 7, L3 8), recontada linha a linha. O quadro do
+  topo do backlog, que listava itens recém-fechados, foi refeito.
+- **A idade, com a finalidade nova, exige:** política atualizada **antes** (§3 declara hoje a
+  finalidade "única" de dizer se a faixa do titular está nas coortes citadas; §5.3 diz que o
+  acesso administrativo não é usado para consultar dados fora da manutenção; §10 manda avisar
+  mudança material); depois o `comment on column` da `008` e o cabeçalho de `aplicabilidade.ts`,
+  que repetem a finalidade única; e só então uma consulta **agregada por faixa**, com supressão de
+  faixas pequenas. E o `LGPD-05` muda de natureza: a saída (c) só valia enquanto o autor fosse o
+  único usuário, e conhecer o público pressupõe outros.
+- **A coorte Walch:** o PhysioNet respondeu `200` a partir desta máquina; o projeto é **Open
+  Access**, sob a Open Data Commons Attribution License v1.0, com **2,2 GB** descompactados. O
+  motivo registrado na X.4 para não a ter usado ("indisponibilidade de acesso ao repositório no
+  ambiente de execução") **deixou de valer aqui**. O desenvolvimento usa Wearanize+ (92 sujeitos,
+  acelerômetro na cabeça) e a validação externa usa Newcastle (27 sujeitos, pulso); Walch seria
+  uma segunda coorte de pulso.
+
+**Adaptação.**
+
+- **Pós-banca em vez de apagar:** a auditoria propunha remover os prematuros; ficaram numa seção
+  própria, para o raciocínio não se perder.
+- **A classe do `UI-19`** (código morto no nível do símbolo) foi para o `CI-02`.
+- **`ML-06a` e `ML-06b` não foram tocados**: esperam a decisão do autor.
+
+**O que deu errado no caminho.** Nada nesta etapa. O quadro do topo do backlog listava como
+abertos itens que a triagem fechou — é o `DOC-13` acontecendo de novo, e foi corrigido junto.
+
+**Risco em aberto.**
+
+- **`AUTH-06`:** enquanto não houver SMTP próprio, nenhum usuário além do autor recebe e-mail do
+  sistema.
+- **A idade:** até a política ser atualizada, a finalidade nova **não pode** ser exercida — nem
+  por consulta manual no painel (`LGPD-06`). E a escolha do `LGPD-05` entre (a) e (b) é do autor.
+- **A coorte Walch:** a X.4 afirma um motivo que deixou de ser verdadeiro nesta máquina; se a
+  decisão for não usá-la, o parágrafo precisa dar o motivo real (`ML-06a`).
+
+**Procedência.**
+
+- `docs/AUDITORIA-2026-10-31.md`, Seção 4; `docs/BACKLOG-COMPLETO.md`; `scripts/consolidar_registro.py`;
+- `docs/POLITICA-DE-PRIVACIDADE.md`, §3, §4, §5.3 e §10; `web-app/migrations/008_perfil_como_fonte_de_verdade.sql`;
+  `frontend/src/lib/aplicabilidade.ts`;
+- `docs/LIMITACOES-TCC.md`, X.4; `ml/README.md`;
+- `https://supabase.com/docs/guides/auth/auth-smtp` e `https://physionet.org/content/sleep-accel/1.0.0/`, 03/11.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

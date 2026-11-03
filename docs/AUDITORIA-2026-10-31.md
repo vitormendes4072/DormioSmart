@@ -78,7 +78,15 @@ passa pela tolerância de futuro de 5 min; `fs = 32` está em `(0, 200]`.
 6. **Complexidade justificada:** a fila na flash, o CRC e a montagem depois de corte de energia
    são o mínimo correto para uma noite que sobrevive a reset.
 
-## 4. Triagem do backlog — PROPOSTA, aguardando decisão do autor
+## 4. Triagem do backlog — ✅ DECIDIDA pelo autor em 03/11
+
+> ✏️ **03/11 — aplicada como recomendada, com quatro diferenças em relação à proposta abaixo:**
+> **(1)** o `AUTH-06` foi **mantido, com prioridade maior**: o SMTP padrão do Supabase só entrega
+> a endereços do time do projeto, então o "esqueci minha senha" não chega a nenhum outro
+> usuário; **(2)** o campo idade foi **mantido** (`LGPD-05` e `LGPD-06` continuam, com a decisão
+> registrada nas linhas deles); **(3)** os "prematuros" não foram apagados: foram para a seção
+> **Pós-banca** do backlog, fora da contagem; **(4)** a classe do `UI-19` passou para o `CI-02`.
+> `ML-06a` e `ML-06b` esperam a decisão do autor. Diário, 03/11 (vi).
 
 Base: os 68 itens abertos de 31/10. Nada abaixo foi aplicado.
 

@@ -49,12 +49,12 @@ linha, não um resumo: resumo é a cópia que diverge.
 
 | Grupo | Itens |
 |---|---:|
-| A — Depende só de software: dá para fazer a qualquer momento | **31** |
-| B — Depende de decisão do Vitor | **10** |
-| C — Depende de ação do Vitor que não é decisão | **5** |
-| D — Bloqueado por hardware ou coleta | **26** |
+| A — Depende só de software: dá para fazer a qualquer momento | **18** |
+| B — Depende de decisão do Vitor | **8** |
+| C — Depende de ação do Vitor que não é decisão | **4** |
+| D — Bloqueado por hardware ou coleta | **18** |
 | E — Bloqueado por terceiro | **4** |
-| **Total** | **76** |
+| **Total** | **52** |
 
 ⚠️ **Este total não é comparável à contagem do backlog, e a diferença não é
 erro de nenhum dos dois.** São unidades de contagem diferentes: o backlog
@@ -75,7 +75,7 @@ outro item. **Desde 28/10 têm ID no backlog:** `GIT-07`, `INFRA-02` e
 
 ## A — Depende só de software: dá para fazer a qualquer momento
 
-**31 itens.**
+**18 itens.**
 
 ### `CALC-01` 🔴
 
@@ -109,12 +109,6 @@ Análise elétrica: pull-down, pull-ups do I2C, níveis 3,3 V, fonte de desperta
 
 *Camada no backlog: L0.*
 
-### `DOC-09` 🟡
-
-Diário de engenharia — registro corrente. O intervalo de junho a agosto segue esparso, porque o `HISTORICO.md` que o cobre não é versionado e não pode servir de procedência.
-
-*Camada no backlog: L0.*
-
 ### `LGPD-01` 🟡
 
 Política de privacidade e termos. Rascunho escrito. Faltam **(b)** a rota e a página que sirvam o texto — isto é software puro. **(a)** controlador e base legal e **(c)** revisão jurídica estão nos grupos B e E.
@@ -145,45 +139,17 @@ Escrever `ml/src/carregar/walch.py`. A interface única garante que é só isso.
 
 **Conferência.** Confirmado aberto: `ml/src/carregar/` tem `base.py`, `newcastle.py`, `sintetico.py` e `wearanize.py`. Não há `walch.py`.
 
-### `ML-08` ⚪
-
-Combinação item 9 + HMM com LOSO interno (N=92). **Provavelmente esforço mal gasto** — a validação externa já mostrou que o ganho do HMM não atravessa coorte. Registrado para não parecer esquecimento.
-
-*Camada no backlog: L0.*
-
 ### `DATA-06` 🔴
 
 O limiar viaja com a leitura. **A coluna e o campo dão para criar já**; o *valor* do limiar do celular depende do `VIA-02` (grupo D).
 
-*Camada no backlog: L0.*
+*Camada no backlog: L2.*
 
 **Conferência.** Confirmado aberto: `grep` por `limiar` em `web-app/migrations/*.sql` devolve vazio.
 
-### `SEC-08 (declaração)` 🟠
+### `LGPD-06` 🟡
 
-Decidido em 20/10 — saída (B′). O que resta é **declaração**, e a seção X.7 de `LIMITACOES-TCC.md` já foi escrita. ⚠️ Obrigação de reconferir na semana da entrega: **se as issues #35844 e #2702 forem corrigidas antes, a seção passa a afirmar falha que não existe.**
-
-*Camada no backlog: L0.*
-
-**Conferência.** Marcado ✅ DECIDIDO no backlog **e contado como aberto** na soma de 76. Defensável — há resíduo declarado —, mas o `✅` é exatamente o que o §6 das lições adverte.
-
-### `SEC-09` 🟡
-
-Dois canais de enumeração fora do cadastro (`email_exists` na troca de e-mail; `recuperarSenha`). **Declarado, não corrigível daqui** — os comentários falsos do código já foram corrigidos; o oráculo está na resposta do Supabase.
-
-*Camada no backlog: L0.*
-
-### `SEC-10` 🟠
-
-Pré-sequestro por retenção de credencial. **Não explorável na configuração atual** (com a confirmação desligada não existe estado 'não confirmado' para ocupar): é **pré-condição** de qualquer adoção futura da saída (A), não pendência corrente.
-
-*Camada no backlog: L0.*
-
-**Conferência.** Item de maior severidade declarada do projeto e evidência mais fraca — dois relatos de comunidade, nada medido. A classificação é da **classe**, não da confirmação.
-
-### `LGPD-06` ⚪
-
-Se a idade for usar em cálculo, é finalidade nova e precisa de declaração nova **antes**. Hoje ela decide um texto e não entra em conta nenhuma. ⚠️ Ordem obrigatória: política primeiro, código depois.
+Finalidade nova para a idade, decidida pelo autor em 03/11: conhecer, de forma agregada, o público do sistema. Política primeiro (§3, §5.3, §10), depois o comentário da `008` e o cabeçalho de `aplicabilidade.ts`, e só então uma consulta agregada por faixa.
 
 *Camada no backlog: L0.*
 
@@ -194,58 +160,6 @@ Duas partes, não três: **(a)** asserção nomeada por rota — hoje só `/conf
 *Camada no backlog: L0.*
 
 **Conferência.** ⚠️ **A parte (c) do item é falsa e caiu nesta conferência.** Ela afirma que 'o `montagem.test.ts` não está em nenhum job do `ci.yml` — e nem o `vitest` está: os jobs são `documentos`, `rls` e os do firmware'. O `ci.yml` tem **seis** jobs, e o `frontend` roda `npm test` → `vitest run` desde o commit `01a7faa` (19/08), dois meses antes de a afirmação ser escrita. Medido aqui: `npx vitest run` coleta **418 testes em 27 arquivos**, incluindo `src/montagem.test.ts` (16 testes). O que é verdade é mais estreito e já é o `CI-06`: nenhum job rodou em runner desde 10/09, e o `montagem.test.ts` é posterior a essa data. ✏️ **Esta nota ficou oito dias num arquivo sem commit**, e a parte (c) só foi riscada do backlog em 27/10, por quem a redescobriu do zero sem saber desta.
-
-### `UI-19 (classe)` 🟡
-
-As duas instâncias fecharam em 20/10; **a classe não.** Não há verificação de alcance no nível do **símbolo** — export que ninguém importa, dentro de arquivo que está no grafo, passa pelo `alcance.test.ts` (arquivo) e pelo `montagem.test.ts` (render). Ferramenta pronta (`knip`, `ts-prune`) ou script próprio **com controle positivo**, porque o instrumento é a parte difícil e isso já foi medido.
-
-*Camada no backlog: L0.*
-
-### `FW-01` 🟡
-
-Lógica atividade/repouso por época no firmware. **Parcialmente coberto:** o `envio-continuo` já classifica por época de 30 s desde o `HW-05`; falta levar ao `sketch.ino` (`FW-07`).
-
-*Camada no backlog: L0.*
-
-### `FW-03` 🟡
-
-Empacotamento do dado conforme `DATA-01`.
-
-*Camada no backlog: L0.*
-
-### `HW-01` 🟡
-
-Revisar o BOM: o que é andaime (botão, pull-down de 10 kΩ) e o que é produto. É análise, não montagem.
-
-*Camada no backlog: L0.*
-
-### `APP-03` 🟡
-
-Armazenamento seguro do token. *Reavaliar: com o `APP-08`, o token pode deixar de existir no celular.*
-
-*Camada no backlog: L0.*
-
-### `APP-02` ⚪
-
-Android nativo com foreground service. Fazível hoje; **caro e pós-banca**.
-
-*Camada no backlog: L0.*
-
-### `UI-15` ⚪
-
-Bundle num único chunk; o Vite avisa a cada build. Code splitting por rota resolve.
-
-*Camada no backlog: L0.*
-
-**Conferência.** Confirmado aberto: `vite.config.ts` não tem `manualChunks` nem `rollupOptions`.
-
-### `UI-20` ⚪
-
-Aplicar a linguagem de blueprint também no app autenticado (hoje vive só na landing).
-
-*Camada no backlog: L0.*
-
-**Conferência.** ⚠️ **Item sem ID**, listado com '—' no backlog. Entra na contagem de 46 para a soma fechar, e um item sem ID não dá para citar, fechar nem rastrear. ✏️ **28/10:** ganhou o ID `UI-20`.
 
 ### `GIT-05` 🟡
 
@@ -295,7 +209,7 @@ O firmware confere o certificado do servidor (`setCACert` com as raízes de `fir
 
 ## B — Depende de decisão do Vitor
 
-**10 itens.**
+**8 itens.**
 
 Cada linha traz a decisão em uma frase. Nenhum destes itens anda
 sem uma resposta sua — e nenhum deles exige que você escreva
@@ -341,14 +255,6 @@ Persistência em flash.
 
 *Camada no backlog: L0.*
 
-### `UI-19 (ferramenta)` 🟡
-
-Verificação de alcance no nível do símbolo.
-
-**A decisão.** Ferramenta pronta (`knip` / `ts-prune`, mais uma dependência) ou script próprio (mais código nosso, e o instrumento é a parte difícil — a primeira tentativa sub-relatou código morto)?
-
-*Camada no backlog: L0.*
-
 ### `CI-02 (configuração)` ⚪
 
 Linter.
@@ -375,19 +281,11 @@ A decisão de escopo que atravessa o trabalho inteiro.
 
 **Conferência.** Está num parágrafo solto do backlog, não numa linha de item — é a maior decisão em aberto sem ID próprio. ✏️ **28/10:** virou o item `ESC-01`.
 
-### `APP-04` ⚪
-
-iOS: **investigação, não implementação.** Rota A (áudio em background) muda o escopo declarado e a conversa de LGPD; rota B (`CMSensorRecorder`) é coerente e **não verificada**.
-
-**A decisão.** Vale gastar a investigação antes da banca, sabendo que a rota A muda o escopo declarado do trabalho?
-
-*Camada no backlog: L0.*
-
 ---
 
 ## C — Depende de ação do Vitor que não é decisão
 
-**5 itens.**
+**4 itens.**
 
 Nada aqui é decisão: a decisão já foi tomada, ou nunca houve uma.
 São ações que só você pode executar, porque exigem credencial,
@@ -409,31 +307,25 @@ Criar um projeto Supabase de teste e rodar um punhado de `curl`. **Fecharia quat
 
 **Conferência.** ⚠️ **Não tem item próprio**, e o diário de 20/10 (iii) registra isso textualmente: 'quatro itens esperando o mesmo objeto, e ele não tem item'. É a terceira sessão seguida em que o instrumento que falta é o mesmo. **Candidato número 1 a item novo.** ✏️ **28/10:** virou o item `INFRA-02`.
 
-### `GIT-03` ⚪
-
-Apagar o resíduo de sandbox no `.git`. Nada quebra enquanto ficar: `git fsck` dá exit 0 e os commits funcionam. **Exige um terminal na máquina.**
-
-*Camada no backlog: L0.*
-
-**Conferência.** ⚠️ **Número do backlog defasado.** Ele diz '`.git/_lixo_sandbox/` (57 itens, 240 KB)' e '`.git/_locks_orfaos/` (vazia)'. Medido agora: `_lixo_sandbox/` tem **148 itens** e `_locks_orfaos/` tem **9**. O item não mudou de natureza; o número citado como medido envelheceu — é o §3 das lições no próprio backlog. ✏️ **28/10:** medido de novo (148 itens, 330 KB; 9) e corrigido no backlog.
-
 ### `ML-06a` 🟡
 
 Baixar o Walch et al. 2019 (PhysioNet `sleep-accel`, 31 sujeitos). **Não é alcançável do ambiente de execução** — precisa ser baixado da sua máquina. Sem ela, a degradação entre coortes é **estimativa pontual, não medida de variabilidade**.
 
 *Camada no backlog: L3.*
 
-### `AUTH-06` ⚪
+### `AUTH-06` 🟡
 
-SMTP próprio (Resend/Brevo) para 'esqueci minha senha'. Exige criar conta em serviço externo.
+SMTP próprio (Resend/Brevo). O SMTP padrão do Supabase só entrega a endereços do time do projeto: sem ele, o 'esqueci minha senha' não chega a nenhum usuário além do autor. Exige criar conta em serviço externo.
 
 *Camada no backlog: L3.*
+
+**Conferência.** Triagem de 03/11: mantido, prioridade maior.
 
 ---
 
 ## D — Bloqueado por hardware ou coleta
 
-**26 itens.**
+**18 itens.**
 
 ### `FW-07 (c)` 🔴
 
@@ -463,12 +355,6 @@ Caracterização de 6 posições. Sketch pronto. Produz viés e escala por eixo 
 
 *Camada no backlog: L1.*
 
-### `CAL-02` 🔴
-
-**Repetir** a caracterização depois do `FW-06`. O filtro passou de 260 Hz para 21 Hz, o que muda o ruído de base — e o limiar é definido sobre esse ruído. **Número medido antes disso não transfere.**
-
-*Camada no backlog: L1.*
-
 ### `VIA-01` 🔴
 
 Viabilidade de bancada: 2 min parado → 2 min mexendo a cabeça → 2 min virando o corpo. *Os três blocos se separam?*
@@ -490,24 +376,6 @@ O mesmo protocolo com **celular e travesseiro gravando ao mesmo tempo**. Produz 
 ### `FW-05` 🔴
 
 Amostragem bruta para o ML, na arquitetura decidida no `ARQ-01` (C2, 30/10): MPU a 50 Hz pela FIFO, DLPF de 21 Hz, ESP32 em sono leve, taxa medida e reamostragem para 32 Hz como o `ml/`. O lado C++ das features já existe e passa.
-
-*Camada no backlog: L1.*
-
-### `FW-02` 🟡
-
-Deep Sleep real testado na placa (hoje é mock do Wokwi).
-
-*Camada no backlog: L1.*
-
-### `FW-04` 🟡
-
-Portar o firmware para a placa sem dependências do Wokwi.
-
-*Camada no backlog: L1.*
-
-### `HW-03` 🟡
-
-Wake-on-Motion real: ligar o INT do MPU6050 a um GPIO RTC. Hoje o despertar é por EXT1 num **botão** — andaime de simulação. ⚠️ **30/10: deixou de ser pré-requisito** — com a C2 (`ARQ-01`) o ESP32 acorda por temporizador; o INT vira opcional (alarme de transbordo da FIFO).
 
 *Camada no backlog: L1.*
 
@@ -578,32 +446,6 @@ Onde a inferência roda. Proposta: job em lote no backend Python ao fim de uma s
 Arquitetura v2 — fusão de 2 acelerômetros, **se o `VIA-01` mostrar** que o travesseiro subcapta movimento de corpo. Gatilho, não plano. **Implica rever a redação da RQ.**
 
 *Camada no backlog: L2.*
-
-### `APP-09` 🟡
-
-Continuidade quando o usuário troca celular por sensor. Instrumentos diferentes, limiares diferentes (`DATA-06`).
-
-*Camada no backlog: L2.*
-
-### `UI-14` ⚪
-
-Lista de espera na landing. 🔒 Gatilho: protótipo funcionando **e** `VIA-01`. Não fazer antes.
-
-*Camada no backlog: L2.*
-
-### `APP-05` ⚪
-
-Distribuição (loja ou APK). Depende de `LGPD-02` e `APP-04`.
-
-*Camada no backlog: L2.*
-
-### `PWA-01` 🟡
-
-**Exercitar a instalação de verdade.** O service worker não registra em desenvolvimento, então 'Adicionar à tela inicial' só aparece em produção — e ninguém testou. O comportamento do iOS com `display: standalone` também não foi verificado.
-
-*Camada no backlog: L3.*
-
-**Conferência.** ⚠️ **Reclassificado.** O backlog o põe em L0, e ele não é software que dá para fazer hoje: exige um dispositivo e um deploy de produção para exercitar. `public/sw.js` e `lib/instalacao.ts` existem; o que falta é o teste em aparelho. ✏️ **28/10:** movido para a seção L3 do backlog.
 
 ---
 
