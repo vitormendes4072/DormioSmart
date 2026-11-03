@@ -5672,6 +5672,47 @@ abertos itens que a triagem fechou — é o `DOC-13` acontecendo de novo, e foi 
 - `docs/LIMITACOES-TCC.md`, X.4; `ml/README.md`;
 - `https://supabase.com/docs/guides/auth/auth-smtp` e `https://physionet.org/content/sleep-accel/1.0.0/`, 03/11.
 
+---
+
+# 2026-11-03 (vii) — `ML-06`: a previsão, registrada antes de rodar a coorte Walch
+
+**Por que esta entrada existe sozinha.** O `ML-06` aplica à coorte de Walch et al. (2019) o mesmo
+modelo e o mesmo protocolo da validação externa no Newcastle (`ML-04`). O resultado vai confirmar
+ou não o achado metodológico mais forte do trabalho (X.4). Para que a leitura não se ajuste ao
+número, a previsão e o critério de refutação ficam registrados **neste commit, antes de qualquer
+época da Walch ser processada** — o histórico do git é a prova da ordem.
+
+**O que já se sabia, do Newcastle** (`ml04_validacao_externa_aec203907e6f_esquerdo.json`, braço
+`pulso`, 27 sujeitos): `base_ctx2` κ = 0,265; `item8b_hmm` κ = 0,301 e especificidade de 0,412
+para 0,375; `item9_ctx11` κ = 0,334 [0,254; 0,416] e especificidade 0,507; trivial κ = 0.
+
+**O protocolo, fixado antes:** treino nos 92 sujeitos do Wearanize+ (cache da configuração
+`aec203907e6f`), braço `pulso` como leitura principal (a Walch é de pulso, como o Newcastle);
+teste na Walch sem reajuste de nada (sem scaler no domínio de teste, sem limiar recalibrado, sem
+olhar rótulo antes de medir); normalização por sujeito, que só usa X; as mesmas quatro
+configurações; IC 95% por bootstrap por sujeito; comparação pareada contra `base_ctx2`; o trivial
+"sempre dormindo" medido na própria Walch.
+
+**A previsão.**
+
+- **P1 — o método generaliza:** `item9_ctx11` com o IC 95% do κ inteiramente acima do trivial.
+- **P2 — o ganho da janela atravessa coorte:** `item9_ctx11` contra `base_ctx2`, pareado, com ganho
+  de κ cujo IC exclui zero, e **sem perda significativa de especificidade**.
+- **P3 — o ganho do HMM não atravessa:** `item8b_hmm` contra `base_ctx2`, com Δespecificidade nula
+  ou negativa, e ganho de κ **menor** que o de `item9_ctx11`.
+
+**O critério de refutação.** Se P2 falhar (a janela perde especificidade de forma significativa, ou
+o ganho de κ some), ou se P3 se inverter (o HMM ganha especificidade de forma significativa), o
+achado **não se repete** na segunda coorte, e a X.4 passa a dizer isso, com o número. P1 falhando
+sozinho muda a afirmação de generalização, não a do achado.
+
+**O que fica fora da previsão:** os valores absolutos de κ e de especificidade. A Walch usa outro
+aparelho (Apple Watch), outra taxa e outra população; números menores ou maiores que os do
+Newcastle não confirmam nem refutam nada sozinhos.
+
+**Procedência.** `ml/experimentos/ml04_validacao_externa.py`;
+`ml/experimentos/saida/ml04_validacao_externa_aec203907e6f_esquerdo.json`; `docs/LIMITACOES-TCC.md`, X.4.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
