@@ -94,6 +94,25 @@ const uint32_t VARIACAO_DA_DRENAGEM_US = 20000;
 // Deterministico de proposito: um teste consegue reproduzir a sequencia.
 uint32_t intervalo_de_drenagem_us(uint32_t *estado);
 
+// ── O PRAZO DA DRENAGEM (FW-10) ────────────────────────────────────────
+//
+// Ate 03/11 o laco dormia `intervalo` DEPOIS do trabalho (drenar, fechar a
+// epoca, gravar na flash), e o intervalo real era intervalo + trabalho: ~2,2 s
+// no pior caso (o apagamento de um setor vai a 400 ms pela folha), contra
+// 3,09 s de FIFO no pior oscilador. A regra 1 do `cadencia.h` vale aqui
+// tambem: o prazo e contado do prazo anterior, nunca do fim do trabalho.
+//
+// E a regra 2: atraso nao se recupera. Se o trabalho passou do prazo, a
+// proxima drenagem e JA, uma vez, e o prazo recomeca dali -- sem uma rajada
+// de drenagens seguidas para "alcancar" a grade.
+
+// O proximo prazo: `prazo_us + intervalo_us`, ou `agora_us` se esse ja passou.
+uint64_t proximo_prazo_de_drenagem_us(uint64_t prazo_us, uint64_t agora_us,
+                                      uint32_t intervalo_us);
+
+// Quanto falta ate o prazo; 0 se ele ja chegou (o trabalho estourou).
+uint64_t espera_ate_o_prazo_us(uint64_t prazo_us, uint64_t agora_us);
+
 // O anel guarda ~42 s a 55 Hz: a janela (31 s), a espera pela folga (2,5 s) e
 // mais uns segundos de atraso de processamento. 13,8 KB.
 const uint32_t CAPACIDADE_DE_AMOSTRAS = 2304;

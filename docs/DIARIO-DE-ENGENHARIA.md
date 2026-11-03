@@ -5357,6 +5357,67 @@ noites falsas na conta do dono.
 - `openssl s_client` contra `dormio-smart.vercel.app`, 03/11;
 - `docs/LIMITACOES-TCC.md`, X.8; backlog `SEC-15`; `docs/AUDITORIA-2026-10-31.md`, A5.
 
+---
+
+# 2026-11-03 (ii) — `FW-10`: o sono da medição vai até um prazo, e os contadores são `atomic`
+
+**O problema, como foi entendido no início.** Achados A8 e A10 da auditoria de 31/10. O laço da
+medição dormia `intervalo` **depois** do trabalho (drenar, fechar a época, gravar na flash): o
+intervalo real era intervalo + trabalho, ~2,2 s no pior caso, contra 3,09 s de FIFO no pior
+oscilador. E os `contadores` eram lidos e escritos pelos dois núcleos sem proteção.
+
+**Hipótese de trabalho.** Que o sono pudesse virar prazo absoluto sem perder a variação deliberada
+do despertar (da qual depende o erro de ~5 ms da linha do tempo), e que os contadores pudessem
+virar `std::atomic` sem mudar o comportamento.
+
+**O que foi testado, e como.**
+
+- **Antes de escrever:** quem escreve cada campo de `contadores`, por busca no `sketch.ino`.
+- **A correção:** `proximo_prazo_de_drenagem_us` e `espera_ate_o_prazo_us` no núcleo
+  (`cadeia_c2`); o laço do `sketch.ino` dorme até o prazo, nos dois ramos (sono leve e
+  `vTaskDelay`); contador novo `prazos_estourados`; `contadores` com `std::atomic<uint32_t>`.
+- **Testes:** um laço simulado no alvo `c2`, com trabalho de 0, 400 e 1000 ms, um estouro de 4 s e
+  a variação do intervalo.
+- **Controle positivo:** três sabotagens novas na mutação da cadeia.
+- **Firmware inteiro** em contêiner `gcc:13`.
+
+**Resultado medido.**
+
+- **Alvo `c2`:** 147 verificações (136 + 11), 0 falhas. Demais alvos: 341, 157, 456 e 84, 0
+  falhas; os 4 sketches compilam, e o `sketch.ino` liga com o núcleo; mutação 15 casos de acordo;
+  mutação da fila 14/14; capacidade com a tabela válida.
+- **Mutação da cadeia: 27/27.** As três novas:
+  - sono relativo, contado do fim do trabalho: 3 falhas;
+  - recuperar o atraso (rajada depois do estouro): 2;
+  - prazo sem a variação do intervalo: 1.
+
+**Adaptação.**
+
+- **A auditoria exagerou o A10.** Cada campo tem um só escritor: a medição (núcleo 1) escreve
+  cinco, e o envio (núcleo 0) escreve `descartadas_no_envio` e lê todos para o log. Nenhum
+  incremento se perdia; a corrida é de leitura contra escrita, comportamento indefinido em C++. O
+  texto do A10 foi corrigido na auditoria.
+- **Contador novo, fora do plano original da auditoria:** `prazos_estourados`, para a bancada medir
+  a folga da FIFO diretamente.
+- **`static Contadores contadores;` sem inicializador:** `= {0, ...}` copiaria `atomic`, o que o
+  C++11 do `make sintaxe` recusa; o armazenamento estático já começa em zero.
+
+**O que deu errado no caminho.** Nada nesta etapa.
+
+**Risco em aberto.**
+
+- **O laço do `sketch.ino` só é conferido por compilação e ligação.** A lógica do prazo está no
+  núcleo e testada, mas a chamada no sketch não tem teste de unidade.
+- **Na placa:** se o `esp_timer` conta certo durante o sono leve (a documentação diz que é
+  compensado), o tempo real de apagar a flash e quantos prazos estouram. Entram na bancada do
+  `FW-07` (c), e o contador novo mostra.
+
+**Procedência.**
+
+- `firmware/nucleo/cadeia_c2.h` e `cadeia_c2.cpp`; `firmware/sketch.ino`;
+- `firmware/nucleo/testes/testes_c2.cpp` e `verificar_cadeia_por_mutacao.sh`;
+- backlog `FW-10`; `docs/AUDITORIA-2026-10-31.md`, A8 e A10.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

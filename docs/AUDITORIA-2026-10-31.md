@@ -21,9 +21,9 @@
 | A5 | Média, segurança — 🟠 corrigido no código 03/11 (`SEC-15`; a cadeia real é Google Trust Services, não Let's Encrypt; falta o handshake na placa) | `firmware/sketch.ino:367` (e os outros sketches) | `setInsecure()`: o TLS não confere o certificado. Numa rede comprometida, o `X-Device-Token` é capturável, e com ele se injetam noites falsas na conta do dono. Não havia item. | `SEC-15` |
 | A6 | Média | `web-app/database.py` e a Vercel | A ingestão rodava com a `service_role`: a `SUPABASE_INGESTAO_KEY` não estava configurada — e, ao configurá-la, o gateway a recusava. | `SEC-14` ✅ (01/11) |
 | A7 | Baixa — ✅ corrigido 01/11 | `web-app/database.py:407` | Banco fora do ar responde `401 device nao autorizado`. Sem perda (o firmware recua no 401), mas o diagnóstico engana. | `AUTH-08` |
-| A8 | Baixa, latente | `firmware/sketch.ino`, `tarefa_de_medicao` | O sono conta a partir do fim do processamento: o intervalo real é trabalho + ~1,7 s (o apagamento de um setor da flash vai a 400 ms pela folha). ~2,2 s contra 3,09 s de FIFO no pior oscilador: há margem, e ela encolhe à toa. | `FW-10` |
+| A8 | Baixa, latente — ✅ corrigido 03/11 (`FW-10`) | `firmware/sketch.ino`, `tarefa_de_medicao` | O sono conta a partir do fim do processamento: o intervalo real é trabalho + ~1,7 s (o apagamento de um setor da flash vai a 400 ms pela folha). ~2,2 s contra 3,09 s de FIFO no pior oscilador: há margem, e ela encolhe à toa. | `FW-10` |
 | A9 | Baixa — ✅ corrigido 01/11 | `frontend/src/contexts/AuthContext.tsx:53` | O 401 limpa a sessão no React e não no Supabase: ao recarregar, a sessão volta e repete o 401. | `AUTH-08` |
-| A10 | Baixa | `firmware/sketch.ino:138` | `contadores` escritos pelos dois núcleos sem trava; só o log fica inconsistente. | `FW-10` |
+| A10 | Baixa — ✅ corrigido 03/11 (`FW-10`) | `firmware/sketch.ino:138` | `contadores` escritos pelos dois núcleos sem trava; só o log fica inconsistente. ✏️ *03/11: impreciso — cada campo tem um só escritor; a corrida é a leitura do log (núcleo 0) contra a escrita (núcleo 1). Nenhum incremento se perdia; é comportamento indefinido em C++, e o log pode misturar instantes.* | `FW-10` |
 
 **Consistência entre módulos (conferida):** contrato 2.7.0, validação de `f`/`g`/`fs`, colunas da
 010 e `GET /api/features` batem entre si e com os vetores dourados; `ts` com resolução de segundo
