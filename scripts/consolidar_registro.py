@@ -2579,10 +2579,6 @@ PENDENCIAS: list[Pendencia] = [
                    "objeto, e ele não tem item'. É a terceira sessão seguida em "
                    "que o instrumento que falta é o mesmo. **Candidato número 1 a "
                    "item novo.** ✏️ **28/10:** virou o item `INFRA-02`."),
-    Pendencia("LGPD-08", ACAO, "Aplicar a migração `012` (idade a partir de 18) no "
-              "SQL Editor, rodar o diagnóstico e fazer o release do LGPD-05/06. Até "
-              "lá, a produção aceita idade de 0 a 17 e o cadastro não pede a "
-              "declaração.", "🟡", camada_backlog="L3"),
     Pendencia("ML-13", ACAO, "Terceira coorte externa com PSG: DREAMT (PhysioNet, "
               "100 pacientes, Empatica E4). Exige criar a conta no PhysioNet e assinar "
               "o termo de uso restrito; depois, carregador e validação externa como "
