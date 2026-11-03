@@ -76,13 +76,19 @@ varredura completa registrada nas notas do `LGPD-ELIMINACAO.md`.
 
 # Política de Privacidade — Smart Dormio
 
-**Última atualização:** 17 de outubro de 2026
+**Última atualização:** 3 de novembro de 2026
 
 > **O que mudou nesta revisão** (seção 10 pede que mudança material seja
-> anunciada): a **idade passou a ser coletada**, de forma opcional e com
-> finalidade única declarada na seção 3; a seção 6.3 passou a descrever a tela
-> de correção de nome, idade e e-mail, que existe; e a seção 6.5 passou a
-> registrar que a idade pode ser retirada pelo próprio titular.
+> anunciada): **o serviço passou a ser destinado apenas a maiores de 18 anos**
+> (seção 2.1), com declaração no cadastro; e a idade ganhou **uma segunda
+> finalidade**, conhecer de forma **apenas agregada** o perfil etário de quem usa
+> o sistema (seção 3), com o acesso administrativo correspondente descrito na
+> seção 5.3.
+>
+> *Revisão anterior (17 de outubro de 2026):* a idade passou a ser coletada, de
+> forma opcional; a seção 6.3 passou a descrever a tela de correção de nome,
+> idade e e-mail; e a seção 6.5 passou a registrar que a idade pode ser retirada
+> pelo próprio titular.
 
 O Smart Dormio é um protótipo acadêmico de monitoramento não invasivo de
 movimento durante o sono, desenvolvido como trabalho de conclusão de curso. Esta
@@ -105,6 +111,7 @@ O controlador dos dados é **[CONTROLADOR]**, que pode ser contatado em
 
 | Dado | Quando | Onde fica |
 |---|---|---|
+| **Declaração de ter 18 anos ou mais** | No cadastro, obrigatória, com a data em que foi feita | Serviço de autenticação |
 | **Endereço de e-mail** | No cadastro | Serviço de autenticação |
 | **Senha** | No cadastro | Serviço de autenticação, apenas como *hash* — nunca em texto legível |
 | **Nome** | No cadastro, e corrigível em *Configurações → Conta* | Tabela de perfis |
@@ -118,13 +125,17 @@ O controlador dos dados é **[CONTROLADOR]**, que pode ser contatado em
 > ser. A finalidade está declarada na seção 3, é a única, e o campo é opcional:
 > deixá-lo em branco é um estado normal, e apagá-lo retira o dado (seção 6.5).
 >
-> **Sobre idade de criança ou adolescente (art. 14 da Lei nº 13.709/2018).** A
-> idade é **autodeclarada e não é verificada**, e o sistema **não trata de forma
-> diferente** a idade declarada de menor de 18 anos: não exige consentimento de
-> pai, mãe ou responsável, e não bloqueia o cadastro. Dizer isso é obrigação, e
-> é uma limitação declarada deste protótipo, não uma afirmação de conformidade
-> com aquele artigo. Se o serviço deixar de ser um protótipo acadêmico de um
-> usuário, essa lacuna tem de ser fechada antes.
+> **O serviço é destinado apenas a maiores de 18 anos.** O cadastro exige a
+> declaração de que você tem 18 anos ou mais, e a idade informada em
+> *Configurações → Conta* não pode ser inferior a 18. A idade é **autodeclarada e
+> não é verificada** por documento: o sistema confia na declaração, e esta é uma
+> limitação deste protótipo. Crianças e adolescentes não devem usar o serviço; o
+> tratamento de dados deles exige salvaguardas próprias (art. 14 da Lei nº
+> 13.709/2018), que este protótipo não oferece.
+>
+> *Até 3 de novembro de 2026, esta seção declarava que o sistema não tratava de
+> forma diferente a idade de menor de 18 anos. A lacuna foi fechada restringindo
+> o serviço a maiores de idade.*
 
 ### 2.2 Dados gerados pelo uso
 
@@ -189,9 +200,9 @@ Exclusivamente para:
 2. **Permitir que você exporte** as suas medições;
 3. **Manter sua conta funcionando** — autenticar, associar cada leitura ao seu
    dono, distinguir os seus aparelhos.
-4. **Dizer se a sua idade está na faixa das pesquisas que embasam o trabalho** —
-   e só isso. Esta é a finalidade **única** da idade, e convém ser explícito
-   sobre o que ela não é:
+4. **Dizer se a sua idade está na faixa das pesquisas que embasam o trabalho.**
+   É a primeira das duas finalidades da idade, e convém ser explícito sobre o
+   que ela não é:
 
    - **O que acontece:** o aplicativo compara a idade que você informou com as
      faixas de idade das pesquisas citadas pelo trabalho e mostra **uma frase**
@@ -206,6 +217,14 @@ Exclusivamente para:
      política será atualizada antes (seção 10).
    - **Sem idade informada, a frase simplesmente não aparece**, e nada mais no
      aplicativo muda.
+5. **Conhecer, de forma apenas agregada, o perfil etário de quem usa o
+   sistema** — a segunda finalidade da idade, desde 3 de novembro de 2026. O
+   responsável pelo projeto conta **quantas contas há em cada faixa de idade**
+   (18 a 24, 25 a 34, 35 a 44, 45 a 54, 55 a 64, 65 ou mais, e "não informada").
+   Faixas com menos de cinco pessoas **não são exibidas**, para que ninguém seja
+   identificável pela contagem. Nenhuma idade é consultada pessoa a pessoa, e a
+   contagem não é cruzada com medições nem com nenhum outro dado. Se você não
+   informar a idade, entra apenas na contagem de "não informada".
 
 **Não há nenhum outro uso.** Os dados não são usados para publicidade, não são
 vendidos, não são cedidos, não alimentam perfilamento comercial e não são
@@ -258,7 +277,9 @@ conta do controlador:
 O responsável pelo projeto tem, por necessidade operacional, acesso
 administrativo ao banco de dados, e portanto **acesso técnico aos dados
 armazenados**. Esse acesso não é usado para consultar medições individuais fora
-do que a manutenção do serviço exigir.
+do que a manutenção do serviço exigir. **A idade é consultada apenas de forma
+agregada**, pela contagem por faixa descrita na seção 3, item 5 — nunca por
+pessoa.
 
 ## 6. Seus direitos, e como exercê-los **hoje**
 
@@ -440,6 +461,12 @@ que torne.
 Mudanças materiais — nova categoria de dado, nova finalidade, novo operador —
 serão anunciadas antes de entrarem em vigor. A data no topo indica a última
 revisão.
+
+- **3 de novembro de 2026:** serviço restrito a maiores de 18 anos, com
+  declaração no cadastro (seção 2.1); segunda finalidade da idade, apenas
+  agregada (seção 3, item 5, e seção 5.3).
+- **17 de outubro de 2026:** a idade passou a ser coletada, de forma opcional
+  (seções 2.1, 3, 6.3 e 6.5).
 
 ── FIM DO TEXTO ─────────────────────────────────────────────────────────────
 
