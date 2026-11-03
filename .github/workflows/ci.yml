@@ -380,3 +380,10 @@ jobs:
       # duas arquiteturas de referencia tem de seguir dando 23,9 e 1,91 mA).
       - name: Estudo de cadencia (ARQ-01)
         run: python scripts/estudo_cadencia.py --conferir
+
+      # SEC-15 (03/11): nenhum sketch volta a `setInsecure()`, as copias de
+      # `firmware/ca_raiz.h` sao identicas e cada raiz tem a impressao digital
+      # esperada. Sem rede: a cadeia real da Vercel e conferida pelo monitor
+      # da producao (`saude-producao.yml`), com `--producao`.
+      - name: TLS do firmware (SEC-15)
+        run: python scripts/conferir_tls_firmware.py

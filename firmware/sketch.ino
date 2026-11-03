@@ -53,6 +53,7 @@
 #include <sys/time.h>
 #include <time.h>
 
+#include "ca_raiz.h"
 #include "midia_flash_esp32.h"
 #include "nucleo/cadeia_c2.h"
 #include "nucleo/caracteristicas.h"
@@ -370,7 +371,10 @@ static bool enviar_pendentes() {
     }
 
     WiFiClientSecure cliente;
-    cliente.setInsecure();  // mesmo regime dos outros sketches; ver SEC-* no backlog
+    // Confere o certificado do servidor contra as raizes de `ca_raiz.h`
+    // (SEC-15). Sem isso, quem controlasse a rede leria o token. Se a Vercel
+    // trocar de CA, o POST falha (-1) e o lote volta para a fila.
+    cliente.setCACert(CA_RAIZ);
     HTTPClient http;
     http.setTimeout(TIMEOUT_POST_MS);
     http.begin(cliente, URL_LOTE);
