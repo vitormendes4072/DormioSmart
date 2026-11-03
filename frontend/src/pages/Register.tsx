@@ -118,6 +118,14 @@ export function Register() {
           <span>Declaro que tenho 18 anos ou mais. O Smart Dormio é destinado apenas a maiores de idade.</span>
         </label>
 
+        <p className="text-xs text-muted-foreground">
+          Antes de criar a conta, leia a{" "}
+          <Link to="/privacidade" target="_blank" className="text-primary hover:text-accent transition font-semibold">
+            Política de Privacidade
+          </Link>
+          : ela diz que dados são coletados, para quê, e como exercer seus direitos.
+        </p>
+
         {erro ? (
           <p role="alert" className="text-sm text-destructive">
             {erro}

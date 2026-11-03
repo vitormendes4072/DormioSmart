@@ -51,10 +51,10 @@ linha, não um resumo: resumo é a cópia que diverge.
 |---|---:|
 | A — Depende só de software: dá para fazer a qualquer momento | **16** |
 | B — Depende de decisão do Vitor | **7** |
-| C — Depende de ação do Vitor que não é decisão | **4** |
+| C — Depende de ação do Vitor que não é decisão | **5** |
 | D — Bloqueado por hardware ou coleta | **18** |
 | E — Bloqueado por terceiro | **4** |
-| **Total** | **49** |
+| **Total** | **50** |
 
 ⚠️ **Este total não é comparável à contagem do backlog, e a diferença não é
 erro de nenhum dos dois.** São unidades de contagem diferentes: o backlog
@@ -108,14 +108,6 @@ Análise elétrica: pull-down, pull-ups do I2C, níveis 3,3 V, fonte de desperta
 **Ler os artigos antes de citá-los** (referência conferida ≠ artigo lido) e converter para o padrão de citação do TCC.
 
 *Camada no backlog: L0.*
-
-### `LGPD-01` 🟡
-
-Política de privacidade e termos. Rascunho escrito. Faltam **(b)** a rota e a página que sirvam o texto — isto é software puro. **(a)** controlador e base legal e **(c)** revisão jurídica estão nos grupos B e E.
-
-*Camada no backlog: L0.*
-
-**Conferência.** O item estava inteiro em L0; a conferência o divide, porque as três partes dependem de coisas diferentes.
 
 ### `LGPD-02` 🟡
 
@@ -191,6 +183,12 @@ O firmware confere o certificado do servidor (`setCACert` com as raízes de `fir
 
 **Conferência.** Auditoria de 31/10, A5; (a) e (b) feitos em 03/11.
 
+### `SEC-16` 🟡
+
+O `react-router` instalado tem alerta de severidade alta no `npm audit` (um aviso de redirecionamento aberto alcança o uso do app). Atualizar dentro da mesma versão maior e conferir.
+
+*Camada no backlog: L0.*
+
 ---
 
 ## B — Depende de decisão do Vitor
@@ -263,11 +261,19 @@ A decisão de escopo que atravessa o trabalho inteiro.
 
 ## C — Depende de ação do Vitor que não é decisão
 
-**4 itens.**
+**5 itens.**
 
 Nada aqui é decisão: a decisão já foi tomada, ou nunca houve uma.
 São ações que só você pode executar, porque exigem credencial,
 terminal na máquina, ferro de solda ou uma conta num serviço.
+
+### `LGPD-01` 🟡
+
+Política de privacidade: a página `/privacidade` existe desde 03/11 (parte (b)). Resta **(a)**: definir o controlador e o contato e pô-los nas variáveis `VITE_POLITICA_CONTROLADOR` e `VITE_POLITICA_CONTATO` da Vercel. **(c)** revisão jurídica é o LGPD-03.
+
+*Camada no backlog: L3.*
+
+**Conferência.** O item estava inteiro em L0; a conferência o divide, porque as três partes dependem de coisas diferentes.
 
 ### `Etapa 0 — soldar` 🔴
 

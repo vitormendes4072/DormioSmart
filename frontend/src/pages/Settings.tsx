@@ -9,7 +9,7 @@ import {
   User,
 } from "lucide-react";
 import { useState } from "react";
-import { useNavigate } from "react-router";
+import { Link, useNavigate } from "react-router";
 
 import { EditarPerfil } from "../components/EditarPerfil";
 import { ExcluirConta } from "../components/ExcluirConta";
@@ -193,10 +193,16 @@ function SecaoDados() {
       ) : null}
       {erro ? <p className="text-xs text-destructive mt-3">{erro}</p> : null}
 
-      {/* "Política de privacidade (em elaboração)" ainda não volta: o rascunho
-          existe em docs/POLITICA-DE-PRIVACIDADE.md, mas não há página que o
-          sirva (LGPD-01). Anunciar um link que não abre seria repetir o defeito
-          que tirou o item daqui. */}
+      {/* LGPD-01 (b), 03/11: o link volta porque agora há a página que o
+          serve (`/privacidade`). Antes ele tinha saído daqui por anunciar um
+          link que não abria. */}
+      <p className="text-xs text-muted-foreground mt-3">
+        Como seus dados são tratados, e seus direitos:{" "}
+        <Link to="/privacidade" className="text-primary hover:text-accent transition font-semibold">
+          Política de Privacidade
+        </Link>
+        .
+      </p>
     </Secao>
   );
 }

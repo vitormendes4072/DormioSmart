@@ -1,3 +1,4 @@
+import { Suspense, lazy } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router";
 
 import { RotaDeVisitante, RotaProtegida } from "./components/Guardas";
@@ -10,6 +11,10 @@ import { Login } from "./pages/Login";
 import { NovaSenha } from "./pages/NovaSenha";
 import { Register } from "./pages/Register";
 import { Settings } from "./pages/Settings";
+
+// Sob demanda (LGPD-01 (b)): a política traz o `react-markdown` e o texto
+// inteiro, e não deve pesar no pacote de quem nunca a abre (UI-15).
+const Privacidade = lazy(() => import("./pages/Privacidade"));
 
 /**
  * Rotas do app. Substitui o `useState<Screen>` do prototipo: com URL de
@@ -38,6 +43,17 @@ export default function App() {
         </Route>
 
         <Route path="/nova-senha" element={<NovaSenha />} />
+
+        {/* Pública, fora dos guardas: precisa ser lida ANTES do cadastro
+            (LGPD-01 (b), LGPD art. 9º). */}
+        <Route
+          path="/privacidade"
+          element={
+            <Suspense fallback={<p className="p-6 text-sm text-muted-foreground">Carregando a política…</p>}>
+              <Privacidade />
+            </Suspense>
+          }
+        />
 
         <Route element={<RotaProtegida />}>
           <Route element={<Layout />}>
