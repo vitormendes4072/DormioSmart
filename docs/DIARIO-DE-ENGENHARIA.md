@@ -5526,19 +5526,21 @@ mudasse o site (só firmware, docs, scripts e workflows).
   credencial e com token inválido; `Bearer` inválido `401`.
 - **O monitor rodou a partir de `main`** (execução `41694832434`, disparada pela push): `/health`
   ok e a cadeia da Vercel aceita contra as raízes do firmware (emissor WR1). Daqui, o mesmo.
+- **O autor confirmou:** o login funciona normalmente.
 
 **Adaptação.** Nenhuma.
 
 **O que deu errado no caminho.** Nada nesta etapa.
 
-**Risco em aberto.** O release não muda o site, mas a regra do `CLAUDE.md` pede um login de
-verdade depois de todo release; a confirmação do autor fica registrada quando vier.
+**Risco em aberto.** Nenhum novo: o que este release leva ao firmware só vale na placa, e está nos
+itens da bancada (`FW-07` (c) e `SEC-15` (c)).
 
 **Procedência.**
 
 - PR #47 (`95e61e6`); deployment de produção `7527355605`; execução `41694832434` do
   `saude-producao.yml`;
-- `GET https://dormio-smart.vercel.app/health` e as rotas, 03/11.
+- `GET https://dormio-smart.vercel.app/health` e as rotas, 03/11;
+- a confirmação do autor.
 
 # O que este diário não cobre
 
