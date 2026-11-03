@@ -5713,6 +5713,50 @@ Newcastle não confirmam nem refutam nada sozinhos.
 **Procedência.** `ml/experimentos/ml04_validacao_externa.py`;
 `ml/experimentos/saida/ml04_validacao_externa_aec203907e6f_esquerdo.json`; `docs/LIMITACOES-TCC.md`, X.4.
 
+---
+
+# 2026-11-03 (viii) — `ML-06`: o que a inspeção da Walch encontrou, e o adendo ao protocolo
+
+**Por que esta entrada vem antes do resultado.** O download (577 MB; 2,2 GB descompactados; **125 de
+125 arquivos conferem com o `SHA256SUMS.txt`**) foi inspecionado **só no sinal e nos códigos de
+rótulo — nenhuma métrica de desempenho foi calculada**. A inspeção forçou decisões de protocolo
+que a entrada (vii) não previa; elas ficam registradas aqui, antes de rodar qualquer modelo.
+
+**O que foi medido, nos 31 sujeitos.**
+
+- **Tempo:** o arquivo de movimento começa horas ou **dias antes** da polissonografia (tempos
+  negativos, até −533 391 s); os rótulos começam em 0 e andam de 30 em 30 s, em todos.
+- **Códigos de rótulo:** −1: 438 épocas; 0: 2 429; 1: 1 821; 2: 12 954; 3: 3 329; **4: 356**;
+  5: 5 884. A página do PhysioNet não define o 4; o repositório dos autores
+  (`ojwalch/sleep_classifiers`, `source/sleep_stage.py`) define 4 = N4 e −1 = não pontuado.
+- **Taxa (mediana por sujeito):** cerca de 50 Hz em 24 sujeitos; cerca de 66 Hz em 4; 33 Hz em 1;
+  **10 Hz em 2** (`5383425` e `8258170`). A taxa comum do pipeline é 32 Hz.
+- **Tempo fora de ordem ou repetido:** em 11 sujeitos.
+- **Lacunas acima de 1 s dentro da janela dos rótulos:** em 16 sujeitos, até 1 277 s numa só. E
+  um caso extremo: no `7749105` o movimento **para aos 4 024 s** da polissonografia e só volta
+  depois do fim dela. Um sujeito (`4018081`) não tem movimento até o fim dos rótulos.
+
+**O risco que isso expõe.** `reamostrar` interpola lacunas linearmente (decisão documentada em
+`src/sinal.py`), e depois disso `fatiar_epocas` vê uma grade contínua e não tem como achar a
+lacuna. Sem tratamento, o `7749105` entraria com **cerca de 7 h de sinal inventado por
+interpolação**, pareadas com rótulos de polissonografia verdadeiros.
+
+**O adendo ao protocolo, fixado antes de rodar.**
+
+1. **Rótulos:** 0 → vigília; 1, 2, 3, 4 e 5 → sono; −1 e qualquer outro código → não pontuado (sai).
+2. **Movimento:** recortado à janela dos rótulos, com 60 s de margem; ordenado por tempo; tempo
+   repetido descartado (fica a primeira amostra).
+3. **Época sem dado medido vira não pontuada**, no carregador, antes da reamostragem: se dentro dos
+   30 s houver lacuna maior que 1 s, ou se o movimento não cobrir a época inteira.
+4. **Análise principal sem os 2 sujeitos de 10 Hz:** reamostrar 10 Hz para 32 Hz não cria o
+   conteúdo que as features de frequência leem. **Análise secundária com eles**, relatada ao lado,
+   para que a exclusão não seja escolhida pelo resultado.
+5. **O resto do protocolo é o da entrada (vii)**, e a previsão (P1–P3) não muda.
+
+**Procedência.** `ml/dados/bruto/walch/` (não versionado); `SHA256SUMS.txt` do pacote;
+`https://github.com/ojwalch/sleep_classifiers` (`source/sleep_stage.py`); `ml/src/sinal.py` e
+`ml/src/epocas.py`.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
