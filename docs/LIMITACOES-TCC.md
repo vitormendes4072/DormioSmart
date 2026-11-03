@@ -277,16 +277,45 @@ se reproduz fora da coorte de origem, e apenas a validação externa permitiu di
 ganho atribuível ao método do ganho atribuível à coorte. Essa distinção é registrada como
 recomendação para trabalhos futuros na área, e não apenas como característica deste estudo.
 
-**Número de coortes independentes.** A validação externa apoiou-se em **uma única** coorte
-independente. Estava prevista a utilização de uma segunda base, com acelerometria de punho
-obtida por dispositivo de consumo e rotulagem polissonográfica, o que permitiria distinguir o
-que, na degradação observada, é atribuível à troca de coorte em geral e o que é atribuível às
-particularidades daquela coorte específica. Essa segunda validação **não foi realizada**, por
-indisponibilidade de acesso ao repositório que hospeda a base no ambiente de execução
-empregado. Registra-se explicitamente que se trata de procedimento não executado, e não de
-procedimento executado com resultado desfavorável. Com uma única coorte externa, a magnitude
-da degradação relatada deve ser lida como estimativa pontual, não como medida da variabilidade
-esperada entre coortes.
+**Segunda coorte independente.** A validação externa foi repetida, com o mesmo modelo e o
+mesmo protocolo, sobre uma segunda coorte independente: a base de Walch et al. (2019), com
+acelerometria de punho obtida por dispositivo de consumo, adquirida em outro centro e com
+rotulagem polissonográfica própria. A previsão do resultado e o critério de refutação foram
+registrados antes do processamento, assim como as decisões de protocolo impostas pela inspeção
+dos arquivos: o descarte das épocas sem sinal medido, que a interpolação teria preenchido
+artificialmente, e a exclusão de dois participantes cuja taxa de amostragem (10 Hz) é inferior
+à taxa comum do processamento. Uma análise secundária que inclui esses dois participantes
+conduziu às mesmas conclusões. A análise principal compreendeu 29 participantes, com
+prevalência de sono de 0,913.
+
+Todas as configurações avaliadas permaneceram com o intervalo de confiança de 95% do kappa
+integralmente acima do classificador trivial também na segunda coorte. Na configuração de
+referência — janela de contexto ampliada —, obteve-se kappa de 0,378 (IC 95%: 0,316 a 0,444) e
+especificidade de 0,727 (IC 95%: 0,664 a 0,787).
+
+Dois resultados da segunda coorte condicionam a leitura desta seção. O primeiro diz respeito à
+**magnitude da degradação**: a especificidade, que passara de 0,802 em validação interna para
+0,507 na primeira coorte externa, situou-se em 0,727 na segunda. A perda de aproximadamente
+trinta pontos percentuais relatada acima é, portanto, característica da primeira coorte, e não
+estimativa geral do comportamento do método. Com duas coortes, a especificidade externa variou
+entre 0,507 e 0,727, e é essa faixa — e não um valor isolado — que deve ser lida como
+expectativa em população não observada.
+
+O segundo diz respeito aos **ganhos metodológicos**. A ampliação da janela de contexto
+reproduziu, na segunda coorte, a direção e a magnitude do efeito sobre a especificidade
+(+0,096; IC 95%: +0,072 a +0,120, contra +0,095 na primeira) e manteve ganho de kappa (+0,032;
+IC 95%: +0,006 a +0,061). O modelo oculto de Markov voltou a reduzir a especificidade (−0,042;
+IC 95%: −0,076 a −0,006, contra −0,037 na primeira), mas, diferentemente da primeira coorte,
+apresentou ganho de kappa superior ao da janela ampliada (+0,070; IC 95%: +0,040 a +0,103). A
+previsão registrada antes do processamento — de que esse ganho seria inferior ao da janela —
+**não se confirmou** nesse componente. O resultado é compatível com a explicação proposta
+acima, segundo a qual o modelo de Markov incorpora a prevalência da coorte de desenvolvimento
+(0,895): na segunda coorte, de prevalência próxima (0,913), o ganho de kappa reaparece; na
+primeira (0,699), praticamente desaparece. Registra-se que essa leitura é posterior ao
+resultado e se apoia em apenas duas coortes. A conclusão metodológica que se sustenta nas duas
+é mais restrita e mais firme do que a formulada a partir de uma só: **a ampliação da janela de
+contexto aumentou a especificidade em ambas as coortes, e o modelo de Markov a reduziu em
+ambas; o efeito deste último sobre o kappa depende da coorte.**
 
 **Amostra própria.** As captações realizadas com o protótipo constituem amostra reduzida,
 insuficiente para inferência estatística sobre população. Prestam-se à demonstração de
@@ -774,11 +803,14 @@ um trabalho de graduação que demonstra, com número, por que validação inter
 fazendo afirmação metodológica defensável — e essa afirmação é independente do desempenho
 absoluto do protótipo.
 
-**5. O que continua pendente.** A segunda coorte externa (Walch et al., 2019 — acelerometria
-de punho por dispositivo de consumo, PhysioNet) não foi baixada nem processada: o repositório
-não é alcançável do ambiente de execução. Falta o dado **e** o carregador
-(`ml/src/carregar/walch.py` não existe). O parágrafo "Número de coortes independentes" declara
-isso como não executado, de propósito — se a situação mudar, é esse parágrafo que muda.
+**5. ✏️ 03/11 — a segunda coorte foi feita (`ML-06`).** O parágrafo "Número de coortes
+independentes" virou "Segunda coorte independente", com os números da Walch. **Duas frases da X.4
+ficaram mais fracas, e isso é material para a defesa:** a queda de ~30 pp de especificidade é do
+Newcastle, não do método (na Walch foi de ~7,5 pp); e o HMM **ganhou** κ na Walch, mais que a
+janela — a previsão registrada antes de rodar falhou nesse ponto. O que se manteve nas duas
+coortes: a janela sobe a especificidade, e o HMM a derruba. Os parágrafos anteriores da X.4,
+escritos com uma coorte só, continuam corretos sobre o Newcastle; a leitura geral é a do
+parágrafo novo. Procedência: diário, 03/11 (vii) a (ix); `ml/README.md`, seção `ML-06`.
 
 ---
 

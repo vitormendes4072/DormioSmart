@@ -2410,10 +2410,6 @@ PENDENCIAS: list[Pendencia] = [
     Pendencia("DOC-06b", SOFTWARE, "**Ler os artigos antes de citá-los** "
               "(referência conferida ≠ artigo lido) e converter para o padrão de "
               "citação do TCC.", "🔴", camada_backlog="L0"),
-    Pendencia("DOC-09", SOFTWARE, "Diário de engenharia — registro corrente. O "
-              "intervalo de junho a agosto segue esparso, porque o "
-              "`HISTORICO.md` que o cobre não é versionado e não pode servir de "
-              "procedência.", "🟡", camada_backlog="L0"),
     Pendencia("LGPD-01", SOFTWARE, "Política de privacidade e termos. Rascunho "
               "escrito. Faltam **(b)** a rota e a página que sirvam o texto — "
               "isto é software puro. **(a)** controlador e base legal e **(c)** "
@@ -2459,48 +2455,11 @@ PENDENCIAS: list[Pendencia] = [
               "partes (a) e (b) fecharam em 30/10: no kappa a redução sobrevive; "
               "na especificidade custa de 1 a 5 pontos, e a recomendação é "
               "manter as 6 no dispositivo.", "🟡", camada_backlog="L1"),
-    Pendencia("ML-06b", SOFTWARE, "Escrever `ml/src/carregar/walch.py`. A "
-              "interface única garante que é só isso. ⚠️ Escrever carregador sem "
-              "ver o arquivo real produziu as 10 armadilhas já catalogadas: "
-              "escreva, mas **não confie até rodar**.", "🟡", camada_backlog="L0",
-              nota="Confirmado aberto: `ml/src/carregar/` tem `base.py`, "
-                   "`newcastle.py`, `sintetico.py` e `wearanize.py`. Não há "
-                   "`walch.py`."),
-    Pendencia("ML-08", SOFTWARE, "Combinação item 9 + HMM com LOSO interno "
-              "(N=92). **Provavelmente esforço mal gasto** — a validação externa "
-              "já mostrou que o ganho do HMM não atravessa coorte. Registrado "
-              "para não parecer esquecimento.", "⚪", camada_backlog="L0"),
     Pendencia("DATA-06", SOFTWARE, "O limiar viaja com a leitura. **A coluna e o "
               "campo dão para criar já**; o *valor* do limiar do celular depende "
-              "do `VIA-02` (grupo D).", "🔴", camada_backlog="L0",
+              "do `VIA-02` (grupo D).", "🔴", camada_backlog="L2",
               nota="Confirmado aberto: `grep` por `limiar` em "
                    "`web-app/migrations/*.sql` devolve vazio."),
-    Pendencia("SEC-08 (declaração)", SOFTWARE, "Decidido em 20/10 — saída (B′). O "
-              "que resta é **declaração**, e a seção X.7 de `LIMITACOES-TCC.md` "
-              "já foi escrita. ⚠️ Obrigação de reconferir na semana da entrega: "
-              "**se as issues #35844 e #2702 forem corrigidas antes, a seção "
-              "passa a afirmar falha que não existe.**", "🟠",
-              camada_backlog="L0",
-              nota="Marcado ✅ DECIDIDO no backlog **e contado como aberto** na "
-                   "soma de 76. Defensável — há resíduo declarado —, mas o `✅` é "
-                   "exatamente o que o §6 das lições adverte."),
-    Pendencia("SEC-09", SOFTWARE, "Dois canais de enumeração fora do cadastro "
-              "(`email_exists` na troca de e-mail; `recuperarSenha`). **Declarado, "
-              "não corrigível daqui** — os comentários falsos do código já foram "
-              "corrigidos; o oráculo está na resposta do Supabase.", "🟡",
-              camada_backlog="L0"),
-    Pendencia("SEC-10", SOFTWARE, "Pré-sequestro por retenção de credencial. "
-              "**Não explorável na configuração atual** (com a confirmação "
-              "desligada não existe estado 'não confirmado' para ocupar): é "
-              "**pré-condição** de qualquer adoção futura da saída (A), não "
-              "pendência corrente.", "🟠", camada_backlog="L0",
-              nota="Item de maior severidade declarada do projeto e evidência "
-                   "mais fraca — dois relatos de comunidade, nada medido. A "
-                   "classificação é da **classe**, não da confirmação."),
-    Pendencia("LGPD-06", SOFTWARE, "Se a idade for usar em cálculo, é finalidade "
-              "nova e precisa de declaração nova **antes**. Hoje ela decide um "
-              "texto e não entra em conta nenhuma. ⚠️ Ordem obrigatória: política "
-              "primeiro, código depois.", "⚪", camada_backlog="L0"),
     Pendencia("UI-18", SOFTWARE, "Duas partes, não três: **(a)** asserção nomeada "
               "por rota — hoje só `/configuracoes` tem, e por isso a varredura "
               "cobre rota nova mas **não rota removida**; **(b)** as três "
@@ -2521,38 +2480,6 @@ PENDENCIAS: list[Pendencia] = [
                    "posterior a essa data. ✏️ **Esta nota ficou oito dias num "
                    "arquivo sem commit**, e a parte (c) só foi riscada do backlog "
                    "em 27/10, por quem a redescobriu do zero sem saber desta."),
-    Pendencia("UI-19 (classe)", SOFTWARE, "As duas instâncias fecharam em 20/10; "
-              "**a classe não.** Não há verificação de alcance no nível do "
-              "**símbolo** — export que ninguém importa, dentro de arquivo que "
-              "está no grafo, passa pelo `alcance.test.ts` (arquivo) e pelo "
-              "`montagem.test.ts` (render). Ferramenta pronta (`knip`, "
-              "`ts-prune`) ou script próprio **com controle positivo**, porque o "
-              "instrumento é a parte difícil e isso já foi medido.", "🟡",
-              camada_backlog="L0"),
-    Pendencia("FW-01", SOFTWARE, "Lógica atividade/repouso por época no firmware. "
-              "**Parcialmente coberto:** o `envio-continuo` já classifica por "
-              "época de 30 s desde o `HW-05`; falta levar ao `sketch.ino` "
-              "(`FW-07`).", "🟡", camada_backlog="L0"),
-    Pendencia("FW-03", SOFTWARE, "Empacotamento do dado conforme `DATA-01`.",
-              "🟡", camada_backlog="L0"),
-    Pendencia("HW-01", SOFTWARE, "Revisar o BOM: o que é andaime (botão, "
-              "pull-down de 10 kΩ) e o que é produto. É análise, não montagem.",
-              "🟡", camada_backlog="L0"),
-    Pendencia("APP-03", SOFTWARE, "Armazenamento seguro do token. *Reavaliar: com "
-              "o `APP-08`, o token pode deixar de existir no celular.*", "🟡",
-              camada_backlog="L0"),
-    Pendencia("APP-02", SOFTWARE, "Android nativo com foreground service. "
-              "Fazível hoje; **caro e pós-banca**.", "⚪", camada_backlog="L0"),
-    Pendencia("UI-15", SOFTWARE, "Bundle num único chunk; o Vite avisa a cada "
-              "build. Code splitting por rota resolve.", "⚪", camada_backlog="L0",
-              nota="Confirmado aberto: `vite.config.ts` não tem `manualChunks` "
-                   "nem `rollupOptions`."),
-    Pendencia("UI-20", SOFTWARE, "Aplicar a linguagem de "
-              "blueprint também no app autenticado (hoje vive só na landing).",
-              "⚪", camada_backlog="L0",
-              nota="⚠️ **Item sem ID**, listado com '—' no backlog. Entra na "
-                   "contagem de 46 para a soma fechar, e um item sem ID não dá "
-                   "para citar, fechar nem rastrear. ✏️ **28/10:** ganhou o ID `UI-20`."),
     Pendencia("GIT-05", SOFTWARE, "Reduzir a lista de **8 ponteiros pendurados** "
               "— arquivo por arquivo: versionar, ou parar de citar. O "
               "`ROADMAP.md` é o primeiro a decidir (8 arquivos rastreados o "
@@ -2589,14 +2516,6 @@ PENDENCIAS: list[Pendencia] = [
               decisao="Qual o prazo de retenção, ou se vai declarar "
                       "formalmente que não haverá expurgo. **As duas saídas são "
                       "defensáveis; o silêncio não.**"),
-    Pendencia("LGPD-05", DECISAO, "Idade autodeclarada pode revelar que o titular "
-              "é criança ou adolescente, e o art. 14 impõe tratamento próprio. "
-              "Hoje o sistema não verifica e não trata diferente.", "🟡",
-              camada_backlog="L0",
-              decisao="(a) restringir o cadastro a maiores de 18, (b) implementar "
-                      "o fluxo de consentimento de responsável, ou (c) manter a "
-                      "lacuna declarada. **A defesa de (c) expira no dia em que "
-                      "alguém além de você criar conta.**"),
     Pendencia("ARQ-02 — modos de registro", DECISAO, "Quatro modos analisados "
               "em `docs/ARQUITETURA-DE-CAPTACAO.md`: travesseiro com bateria "
               "máxima (WoM), travesseiro com análise completa (sono leve + FIFO), "
@@ -2611,12 +2530,6 @@ PENDENCIAS: list[Pendencia] = [
                       "esquema é o padrão implícito da IDE, e se a flash vira "
                       "armazenamento de dado de pesquisa o layout dela é parte "
                       "do projeto, não escolha de ferramenta."),
-    Pendencia("UI-19 (ferramenta)", DECISAO, "Verificação de alcance no nível do "
-              "símbolo.", "🟡", camada_backlog="L0",
-              decisao="Ferramenta pronta (`knip` / `ts-prune`, mais uma "
-                      "dependência) ou script próprio (mais código nosso, e o "
-                      "instrumento é a parte difícil — a primeira tentativa "
-                      "sub-relatou código morto)?"),
     Pendencia("CI-02 (configuração)", DECISAO, "Linter.", "⚪",
               camada_backlog="L0",
               decisao="Qual configuração de ESLint/Ruff adotar, e quantos "
@@ -2636,12 +2549,6 @@ PENDENCIAS: list[Pendencia] = [
               nota="Está num parágrafo solto do backlog, não numa linha de item — "
                    "é a maior decisão em aberto sem ID próprio. ✏️ **28/10:** virou "
                    "o item `ESC-01`."),
-    Pendencia("APP-04", DECISAO, "iOS: **investigação, não implementação.** Rota "
-              "A (áudio em background) muda o escopo declarado e a conversa de "
-              "LGPD; rota B (`CMSensorRecorder`) é coerente e **não "
-              "verificada**.", "⚪", camada_backlog="L0",
-              decisao="Vale gastar a investigação antes da banca, sabendo que a "
-                      "rota A muda o escopo declarado do trabalho?"),
 
     # ───────── C — AÇÃO DO VITOR QUE NÃO É DECISÃO ───────────────────────
     Pendencia("Etapa 0 — soldar", ACAO, "**Soldar os 8 pinos do MPU6050.** Teste "
@@ -2672,34 +2579,25 @@ PENDENCIAS: list[Pendencia] = [
                    "objeto, e ele não tem item'. É a terceira sessão seguida em "
                    "que o instrumento que falta é o mesmo. **Candidato número 1 a "
                    "item novo.** ✏️ **28/10:** virou o item `INFRA-02`."),
-    Pendencia("GIT-03", ACAO, "Apagar o resíduo de sandbox no `.git`. Nada quebra "
-              "enquanto ficar: `git fsck` dá exit 0 e os commits funcionam. "
-              "**Exige um terminal na máquina.**", "⚪", camada_backlog="L0",
-              nota="⚠️ **Número do backlog defasado.** Ele diz "
-                   "'`.git/_lixo_sandbox/` (57 itens, 240 KB)' e "
-                   "'`.git/_locks_orfaos/` (vazia)'. Medido agora: "
-                   "`_lixo_sandbox/` tem **148 itens** e `_locks_orfaos/` tem "
-                   "**9**. O item não mudou de natureza; o número citado como "
-                   "medido envelheceu — é o §3 das lições no próprio backlog. "
-                   "✏️ **28/10:** medido de novo (148 itens, 330 KB; 9) e corrigido "
-                   "no backlog."),
-    Pendencia("ML-06a", ACAO, "Baixar o Walch et al. 2019 (PhysioNet "
-              "`sleep-accel`, 31 sujeitos). **Não é alcançável do ambiente de "
-              "execução** — precisa ser baixado da sua máquina. Sem ela, a "
-              "degradação entre coortes é **estimativa pontual, não medida de "
-              "variabilidade**.", "🟡", camada_backlog="L3"),
-    Pendencia("AUTH-06", ACAO, "SMTP próprio (Resend/Brevo) para 'esqueci minha "
-              "senha'. Exige criar conta em serviço externo.", "⚪",
-              camada_backlog="L3"),
+    Pendencia("LGPD-08", ACAO, "Aplicar a migração `012` (idade a partir de 18) no "
+              "SQL Editor, rodar o diagnóstico e fazer o release do LGPD-05/06. Até "
+              "lá, a produção aceita idade de 0 a 17 e o cadastro não pede a "
+              "declaração.", "🟡", camada_backlog="L3"),
+    Pendencia("ML-13", ACAO, "Terceira coorte externa com PSG: DREAMT (PhysioNet, "
+              "100 pacientes, Empatica E4). Exige criar a conta no PhysioNet e assinar "
+              "o termo de uso restrito; depois, carregador e validação externa como "
+              "no `ML-06`.", "🟡", camada_backlog="L3",
+              nota="Saído da busca de coortes de 03/11; a Borazio foi descartada."),
+    Pendencia("AUTH-06", ACAO, "SMTP próprio (Resend/Brevo). O SMTP padrão do "
+              "Supabase só entrega a endereços do time do projeto: sem ele, o "
+              "'esqueci minha senha' não chega a nenhum usuário além do autor. "
+              "Exige criar conta em serviço externo.", "🟡",
+              camada_backlog="L3", nota="Triagem de 03/11: mantido, prioridade maior."),
 
     # ───────── D — BLOQUEADO POR HARDWARE OU COLETA ──────────────────────
     Pendencia("CAL-01", HARDWARE, "Caracterização de 6 posições. Sketch pronto. "
               "Produz viés e escala por eixo desta unidade.", "🔴",
               camada_backlog="L1"),
-    Pendencia("CAL-02", HARDWARE, "**Repetir** a caracterização depois do "
-              "`FW-06`. O filtro passou de 260 Hz para 21 Hz, o que muda o ruído "
-              "de base — e o limiar é definido sobre esse ruído. **Número medido "
-              "antes disso não transfere.**", "🔴", camada_backlog="L1"),
     Pendencia("VIA-01", HARDWARE, "Viabilidade de bancada: 2 min parado → 2 min "
               "mexendo a cabeça → 2 min virando o corpo. *Os três blocos se "
               "separam?*", "🔴", camada_backlog="L1"),
@@ -2720,16 +2618,6 @@ PENDENCIAS: list[Pendencia] = [
               "21 Hz, ESP32 em sono leve, taxa medida e reamostragem para 32 Hz "
               "como o `ml/`. O lado C++ das features já existe e passa.", "🔴",
               camada_backlog="L1"),
-    Pendencia("FW-02", HARDWARE, "Deep Sleep real testado na placa (hoje é mock "
-              "do Wokwi).", "🟡", camada_backlog="L1"),
-    Pendencia("FW-04", HARDWARE, "Portar o firmware para a placa sem dependências "
-              "do Wokwi.", "🟡", camada_backlog="L1"),
-    Pendencia("HW-03", HARDWARE, "Wake-on-Motion real: ligar o INT do MPU6050 a "
-              "um GPIO RTC. Hoje o despertar é por EXT1 num **botão** — andaime "
-              "de simulação. ⚠️ **30/10: deixou de ser pré-requisito** — com a "
-              "C2 (`ARQ-01`) o ESP32 acorda por temporizador; o INT vira opcional "
-              "(alarme de transbordo da FIFO).",
-              "🟡", camada_backlog="L1"),
     Pendencia("HW-04", HARDWARE, "Encapsulamento e fixação para uso noturno; "
               "**segurança térmica do LiPo dentro do travesseiro**.", "🔴",
               camada_backlog="L1"),
@@ -2778,24 +2666,6 @@ PENDENCIAS: list[Pendencia] = [
               "o `VIA-01` mostrar** que o travesseiro subcapta movimento de "
               "corpo. Gatilho, não plano. **Implica rever a redação da RQ.**",
               "🟡", camada_backlog="L2"),
-    Pendencia("APP-09", HARDWARE, "Continuidade quando o usuário troca celular "
-              "por sensor. Instrumentos diferentes, limiares diferentes "
-              "(`DATA-06`).", "🟡", camada_backlog="L2"),
-    Pendencia("UI-14", HARDWARE, "Lista de espera na landing. 🔒 Gatilho: "
-              "protótipo funcionando **e** `VIA-01`. Não fazer antes.", "⚪",
-              camada_backlog="L2"),
-    Pendencia("APP-05", HARDWARE, "Distribuição (loja ou APK). Depende de "
-              "`LGPD-02` e `APP-04`.", "⚪", camada_backlog="L2"),
-    Pendencia("PWA-01", HARDWARE, "**Exercitar a instalação de verdade.** O "
-              "service worker não registra em desenvolvimento, então 'Adicionar à "
-              "tela inicial' só aparece em produção — e ninguém testou. O "
-              "comportamento do iOS com `display: standalone` também não foi "
-              "verificado.", "🟡", camada_backlog="L3",
-              nota="⚠️ **Reclassificado.** O backlog o põe em L0, e ele não é "
-                   "software que dá para fazer hoje: exige um dispositivo e um "
-                   "deploy de produção para exercitar. `public/sw.js` e "
-                   "`lib/instalacao.ts` existem; o que falta é o teste em "
-                   "aparelho. ✏️ **28/10:** movido para a seção L3 do backlog."),
 
     # ───────── E — BLOQUEADO POR TERCEIRO ────────────────────────────────
     Pendencia("RQ-01", TERCEIRO_G, "Confirmar RQ e hipótese com o **orientador "

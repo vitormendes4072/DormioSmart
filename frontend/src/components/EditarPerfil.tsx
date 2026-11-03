@@ -191,8 +191,9 @@ export function EditarPerfil() {
         />
         <p className="text-xs text-muted-foreground">
           Usada para dizer se a sua idade está dentro da faixa das pesquisas em que este
-          método foi validado. Não entra em cálculo nenhum, e apagar o campo retira o
-          dado.
+          método foi validado, e, só em contagens por faixa de idade, para conhecer o
+          público do Smart Dormio — nunca pessoa a pessoa. Não entra em cálculo nenhum, e
+          apagar o campo retira o dado.
         </p>
       </div>
 

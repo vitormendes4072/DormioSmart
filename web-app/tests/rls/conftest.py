@@ -75,6 +75,11 @@ MIGRACOES_APLICADAS = (
     # `on conflict`. `test_rls_idempotencia.py` confere que o reenvio grava uma
     # linha e devolve o MESMO id, e não nulo.
     "011_leitura_idempotente.sql",
+    # A 012 (LGPD-05/06, 03/11) troca a restrição de `profiles.idade` para
+    # `>= 18` e declara as duas finalidades no comentário da coluna.
+    # `test_rls_idade_maioridade.py` confere a restrição, a trava e a consulta
+    # agregada (`CONSULTA-publico-por-faixa.sql`).
+    "012_idade_minima_18.sql",
 )
 
 VARIAVEL = "DORMIO_RLS_DATABASE_URL"

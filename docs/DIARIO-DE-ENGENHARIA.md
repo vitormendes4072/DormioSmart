@@ -5490,6 +5490,475 @@ faltava incluir os cabeçalhos do FreeRTOS antes dos stubs; corrigidos com `-x n
   `verificar_cadeia_por_mutacao.sh`; `firmware/nucleo/Makefile`; `.github/workflows/ci.yml`;
 - backlog `FW-10` e `FW-07`.
 
+---
+
+# 2026-11-03 (iv) — branches sincronizadas, e o release do `SEC-15` e do `FW-10`
+
+**O problema, como foi entendido no início.** O autor pediu para conferir seis branches locais
+antigas e corrigir o que estivesse fora de sincronia. O `develop` também tinha o `SEC-15`, o
+`FW-10` e o teste do laço fora de `main` — e o agendamento do monitor da produção só roda a partir
+de `main`.
+
+**Hipótese de trabalho.** Que as seis branches já estivessem em `develop`, e que o release não
+mudasse o site (só firmware, docs, scripts e workflows).
+
+**O que foi testado, e como.**
+
+- **As seis branches** (`GIT-01`, `INFRA-03`, `PERFIL-02`, `SEC-12` e as duas do `ARQ-01`, PRs #1–#4,
+  #12 e #13): `git merge-base --is-ancestor` contra `develop` e a contagem de commits fora dele.
+- **Sincronia:** branches locais contra o GitHub, `develop` contra `main` (em commits e em
+  conteúdo), worktrees, alterações soltas, stash e PRs abertas.
+- **O release:** diff `main..develop` filtrado por backend, frontend, `vercel.json`, dependências e
+  migrações; PR #47 depois dos 9 checks; deploy acompanhado pela API de deployments, com o SHA.
+- **Depois:** `/health`, as rotas de ingestão sem credencial e com token inválido, `Bearer`
+  inválido, `conferir_tls_firmware.py --producao` daqui, e o log do monitor disparado pela push em
+  `main`.
+
+**Resultado medido.**
+
+- **As seis branches estavam inteiras em `develop`** (0 commits fora), inclusive a da #13 — que o
+  `CLAUDE.md` registra como mesclada na branch da #12; o conteúdo chegou a `develop` depois.
+  Apagadas aqui e no GitHub, que ficou só com `main` e `develop`.
+- **`main` local estava 162 commits atrás** do GitHub: atualizado. Os 34 commits de `main` fora de
+  `develop` são só os merges dos releases, sem conteúdo (diff `develop...main` vazio).
+- **Release #47** (`95e61e6`): nenhum arquivo do backend nem do frontend; deploy `7527355605`
+  `success`, com o SHA conferido; `/health` `200`, banco ok; as rotas de ingestão `401` sem
+  credencial e com token inválido; `Bearer` inválido `401`.
+- **O monitor rodou a partir de `main`** (execução `41694832434`, disparada pela push): `/health`
+  ok e a cadeia da Vercel aceita contra as raízes do firmware (emissor WR1). Daqui, o mesmo.
+- **O autor confirmou:** o login funciona normalmente.
+
+**Adaptação.** Nenhuma.
+
+**O que deu errado no caminho.** Nada nesta etapa.
+
+**Risco em aberto.** Nenhum novo: o que este release leva ao firmware só vale na placa, e está nos
+itens da bancada (`FW-07` (c) e `SEC-15` (c)).
+
+**Procedência.**
+
+- PR #47 (`95e61e6`); deployment de produção `7527355605`; execução `41694832434` do
+  `saude-producao.yml`;
+- `GET https://dormio-smart.vercel.app/health` e as rotas, 03/11;
+- a confirmação do autor.
+
+---
+
+# 2026-11-03 (v) — "esqueci minha senha" levava ao `localhost`: as URLs do Supabase Auth
+
+**O problema, como foi entendido no início.** O autor testou "esqueci minha senha" na produção. O
+e-mail chegou, mas o link abria `http://localhost:3000/#access_token=…&type=recovery`, e o
+navegador não achava a página.
+
+**Hipótese de trabalho.** Que o código pedisse o retorno errado — ou que o Supabase descartasse o
+retorno pedido.
+
+**O que foi testado, e como.**
+
+- **O código:** `recuperarSenha` (`frontend/src/lib/autenticacao.ts`) chama `resetPasswordForEmail`
+  com `redirectTo: ${window.location.origin}/nova-senha` — na produção,
+  `https://dormio-smart.vercel.app/nova-senha`. O site já reconhece o retorno de recuperação
+  (`ehRetornoDeRecuperacao`, em `rotas.ts`) e tem a página `NovaSenha.tsx`.
+- **O link recebido:** `http://localhost:3000/`, **sem** o `/nova-senha` que o código pediu — o
+  sinal de que o Supabase ignorou o `redirectTo` e usou a Site URL.
+- **O registro:** o roadmap já previa "`Site URL` + `Redirect URLs` para localhost, preview e
+  produção" dentro do `AUTH-06`, que estava com prioridade reduzida; nunca tinha sido feito.
+- **A correção, feita pelo autor no painel** (Authentication → URL Configuration): Site URL
+  `https://dormio-smart.vercel.app`; Redirect URLs `https://dormio-smart.vercel.app/**` e
+  `http://localhost:5173/**` (a porta do Vite).
+- **Depois:** um e-mail de recuperação novo; daqui, `GET /nova-senha` na produção.
+
+**Resultado medido.**
+
+- **O autor confirmou:** com o e-mail novo, o link abriu a página de nova senha.
+- `GET https://dormio-smart.vercel.app/nova-senha` → `200`, servindo o app.
+
+**Adaptação.** Nenhuma mudança de código: o defeito era de configuração do Supabase, fora do
+repositório. Fica registrado no `CLAUDE.md` (Deploy), porque nada no repositório o mostraria.
+
+**O que deu errado no caminho.**
+
+- **A configuração nunca foi feita** desde a criação do projeto: o fluxo de recuperação foi
+  testado com dublês no frontend, que não exercitam o Supabase de verdade, e só um teste manual na
+  produção mostrou o defeito.
+- **O link colado na conversa continha um `access_token` e um `refresh_token` válidos** da conta do
+  autor. Não foram usados. A orientação foi encerrar todas as sessões pelo "Sair" do site (que
+  chama `signOut()` com o escopo global padrão) e trocar a senha.
+
+**Risco em aberto.**
+
+- **Previews da Vercel não estão nas Redirect URLs:** num preview, o link volta para a produção.
+- **O e-mail ainda sai em inglês, pelo SMTP padrão do Supabase**, que é limitado e cai em spam:
+  é o resto do `AUTH-06`.
+
+**Procedência.**
+
+- `frontend/src/lib/autenticacao.ts`, `rotas.ts` e `pages/NovaSenha.tsx`;
+- o painel do Supabase (Authentication → URL Configuration), pelo autor, 03/11;
+- a confirmação do autor; `GET https://dormio-smart.vercel.app/nova-senha`, 03/11;
+- backlog `AUTH-06`.
+
+---
+
+# 2026-11-03 (vi) — a triagem do backlog, decidida; a idade fica; a coorte Walch volta a ser alcançável
+
+**O problema, como foi entendido no início.** A Seção 4 da auditoria de 31/10 propunha manter,
+ajustar ou remover itens do backlog, e esperava decisão do autor. O autor aprovou a recomendação,
+com uma exceção — **manter o campo idade**, para conhecer o público do sistema — e pediu duas
+investigações: o que manter a idade exige, e se a defesa precisa da segunda coorte externa
+(Walch et al., 2019; `ML-06a` e `ML-06b`).
+
+**Hipótese de trabalho.** Que a proposta, escrita em 31/10, ainda valesse item por item três dias
+e uma dúzia de PRs depois.
+
+**O que foi testado, e como.**
+
+- **Cada item da proposta contra a linha atual do backlog.**
+- **O SMTP padrão do Supabase**, na documentação oficial (*Send emails with custom SMTP*).
+- **A idade:** as linhas do `LGPD-05` e do `LGPD-06`, as §3, §4 e §5.3 da política de privacidade,
+  o `comment on column` da migração `008` e o cabeçalho de `lib/aplicabilidade.ts`.
+- **A coorte Walch:** a X.4 de `LIMITACOES-TCC.md` e as notas dela; quais coortes o ML usa (`ml/`);
+  e um pedido de cabeçalho à página do PhysioNet, **sem baixar nada**.
+- **A triagem aplicada:** recontagem linha a linha e as conferências de documento.
+
+**Resultado medido.**
+
+- **Uma recomendação da auditoria não valia mais: o `AUTH-06`.** A documentação diz que, sem SMTP
+  próprio, o Supabase **só entrega e-mail a endereços do time do projeto**. O "esqueci minha
+  senha" que funcionou em 03/11 (v) funcionou porque o autor é dono do projeto; para qualquer
+  outro usuário, não sai e-mail. Mantido, com prioridade maior.
+- **Triagem aplicada:** fecharam 14 itens; 11 foram para uma seção nova, **Pós-banca**, fora da
+  contagem e com o texto inteiro; `DATA-06` passou de L0 para L2; oito linhas ganharam a nota do
+  ajuste. **Contagem: 70 → 45** (L0 17, L1 13, L2 7, L3 8), recontada linha a linha. O quadro do
+  topo do backlog, que listava itens recém-fechados, foi refeito.
+- **A idade, com a finalidade nova, exige:** política atualizada **antes** (§3 declara hoje a
+  finalidade "única" de dizer se a faixa do titular está nas coortes citadas; §5.3 diz que o
+  acesso administrativo não é usado para consultar dados fora da manutenção; §10 manda avisar
+  mudança material); depois o `comment on column` da `008` e o cabeçalho de `aplicabilidade.ts`,
+  que repetem a finalidade única; e só então uma consulta **agregada por faixa**, com supressão de
+  faixas pequenas. E o `LGPD-05` muda de natureza: a saída (c) só valia enquanto o autor fosse o
+  único usuário, e conhecer o público pressupõe outros.
+- **A coorte Walch:** o PhysioNet respondeu `200` a partir desta máquina; o projeto é **Open
+  Access**, sob a Open Data Commons Attribution License v1.0, com **2,2 GB** descompactados. O
+  motivo registrado na X.4 para não a ter usado ("indisponibilidade de acesso ao repositório no
+  ambiente de execução") **deixou de valer aqui**. O desenvolvimento usa Wearanize+ (92 sujeitos,
+  acelerômetro na cabeça) e a validação externa usa Newcastle (27 sujeitos, pulso); Walch seria
+  uma segunda coorte de pulso.
+
+**Adaptação.**
+
+- **Pós-banca em vez de apagar:** a auditoria propunha remover os prematuros; ficaram numa seção
+  própria, para o raciocínio não se perder.
+- **A classe do `UI-19`** (código morto no nível do símbolo) foi para o `CI-02`.
+- **`ML-06a` e `ML-06b` não foram tocados**: esperam a decisão do autor.
+
+**O que deu errado no caminho.** Nada nesta etapa. O quadro do topo do backlog listava como
+abertos itens que a triagem fechou — é o `DOC-13` acontecendo de novo, e foi corrigido junto.
+
+**Risco em aberto.**
+
+- **`AUTH-06`:** enquanto não houver SMTP próprio, nenhum usuário além do autor recebe e-mail do
+  sistema.
+- **A idade:** até a política ser atualizada, a finalidade nova **não pode** ser exercida — nem
+  por consulta manual no painel (`LGPD-06`). E a escolha do `LGPD-05` entre (a) e (b) é do autor.
+- **A coorte Walch:** a X.4 afirma um motivo que deixou de ser verdadeiro nesta máquina; se a
+  decisão for não usá-la, o parágrafo precisa dar o motivo real (`ML-06a`).
+
+**Procedência.**
+
+- `docs/AUDITORIA-2026-10-31.md`, Seção 4; `docs/BACKLOG-COMPLETO.md`; `scripts/consolidar_registro.py`;
+- `docs/POLITICA-DE-PRIVACIDADE.md`, §3, §4, §5.3 e §10; `web-app/migrations/008_perfil_como_fonte_de_verdade.sql`;
+  `frontend/src/lib/aplicabilidade.ts`;
+- `docs/LIMITACOES-TCC.md`, X.4; `ml/README.md`;
+- `https://supabase.com/docs/guides/auth/auth-smtp` e `https://physionet.org/content/sleep-accel/1.0.0/`, 03/11.
+
+---
+
+# 2026-11-03 (vii) — `ML-06`: a previsão, registrada antes de rodar a coorte Walch
+
+**Por que esta entrada existe sozinha.** O `ML-06` aplica à coorte de Walch et al. (2019) o mesmo
+modelo e o mesmo protocolo da validação externa no Newcastle (`ML-04`). O resultado vai confirmar
+ou não o achado metodológico mais forte do trabalho (X.4). Para que a leitura não se ajuste ao
+número, a previsão e o critério de refutação ficam registrados **neste commit, antes de qualquer
+época da Walch ser processada** — o histórico do git é a prova da ordem.
+
+**O que já se sabia, do Newcastle** (`ml04_validacao_externa_aec203907e6f_esquerdo.json`, braço
+`pulso`, 27 sujeitos): `base_ctx2` κ = 0,265; `item8b_hmm` κ = 0,301 e especificidade de 0,412
+para 0,375; `item9_ctx11` κ = 0,334 [0,254; 0,416] e especificidade 0,507; trivial κ = 0.
+
+**O protocolo, fixado antes:** treino nos 92 sujeitos do Wearanize+ (cache da configuração
+`aec203907e6f`), braço `pulso` como leitura principal (a Walch é de pulso, como o Newcastle);
+teste na Walch sem reajuste de nada (sem scaler no domínio de teste, sem limiar recalibrado, sem
+olhar rótulo antes de medir); normalização por sujeito, que só usa X; as mesmas quatro
+configurações; IC 95% por bootstrap por sujeito; comparação pareada contra `base_ctx2`; o trivial
+"sempre dormindo" medido na própria Walch.
+
+**A previsão.**
+
+- **P1 — o método generaliza:** `item9_ctx11` com o IC 95% do κ inteiramente acima do trivial.
+- **P2 — o ganho da janela atravessa coorte:** `item9_ctx11` contra `base_ctx2`, pareado, com ganho
+  de κ cujo IC exclui zero, e **sem perda significativa de especificidade**.
+- **P3 — o ganho do HMM não atravessa:** `item8b_hmm` contra `base_ctx2`, com Δespecificidade nula
+  ou negativa, e ganho de κ **menor** que o de `item9_ctx11`.
+
+**O critério de refutação.** Se P2 falhar (a janela perde especificidade de forma significativa, ou
+o ganho de κ some), ou se P3 se inverter (o HMM ganha especificidade de forma significativa), o
+achado **não se repete** na segunda coorte, e a X.4 passa a dizer isso, com o número. P1 falhando
+sozinho muda a afirmação de generalização, não a do achado.
+
+**O que fica fora da previsão:** os valores absolutos de κ e de especificidade. A Walch usa outro
+aparelho (Apple Watch), outra taxa e outra população; números menores ou maiores que os do
+Newcastle não confirmam nem refutam nada sozinhos.
+
+**Procedência.** `ml/experimentos/ml04_validacao_externa.py`;
+`ml/experimentos/saida/ml04_validacao_externa_aec203907e6f_esquerdo.json`; `docs/LIMITACOES-TCC.md`, X.4.
+
+---
+
+# 2026-11-03 (viii) — `ML-06`: o que a inspeção da Walch encontrou, e o adendo ao protocolo
+
+**Por que esta entrada vem antes do resultado.** O download (577 MB; 2,2 GB descompactados; **125 de
+125 arquivos conferem com o `SHA256SUMS.txt`**) foi inspecionado **só no sinal e nos códigos de
+rótulo — nenhuma métrica de desempenho foi calculada**. A inspeção forçou decisões de protocolo
+que a entrada (vii) não previa; elas ficam registradas aqui, antes de rodar qualquer modelo.
+
+**O que foi medido, nos 31 sujeitos.**
+
+- **Tempo:** o arquivo de movimento começa horas ou **dias antes** da polissonografia (tempos
+  negativos, até −533 391 s); os rótulos começam em 0 e andam de 30 em 30 s, em todos.
+- **Códigos de rótulo:** −1: 438 épocas; 0: 2 429; 1: 1 821; 2: 12 954; 3: 3 329; **4: 356**;
+  5: 5 884. A página do PhysioNet não define o 4; o repositório dos autores
+  (`ojwalch/sleep_classifiers`, `source/sleep_stage.py`) define 4 = N4 e −1 = não pontuado.
+- **Taxa (mediana por sujeito):** cerca de 50 Hz em 24 sujeitos; cerca de 66 Hz em 4; 33 Hz em 1;
+  **10 Hz em 2** (`5383425` e `8258170`). A taxa comum do pipeline é 32 Hz.
+- **Tempo fora de ordem ou repetido:** em 11 sujeitos.
+- **Lacunas acima de 1 s dentro da janela dos rótulos:** em 16 sujeitos, até 1 277 s numa só. E
+  um caso extremo: no `7749105` o movimento **para aos 4 024 s** da polissonografia e só volta
+  depois do fim dela. Um sujeito (`4018081`) não tem movimento até o fim dos rótulos.
+
+**O risco que isso expõe.** `reamostrar` interpola lacunas linearmente (decisão documentada em
+`src/sinal.py`), e depois disso `fatiar_epocas` vê uma grade contínua e não tem como achar a
+lacuna. Sem tratamento, o `7749105` entraria com **cerca de 7 h de sinal inventado por
+interpolação**, pareadas com rótulos de polissonografia verdadeiros.
+
+**O adendo ao protocolo, fixado antes de rodar.**
+
+1. **Rótulos:** 0 → vigília; 1, 2, 3, 4 e 5 → sono; −1 e qualquer outro código → não pontuado (sai).
+2. **Movimento:** recortado à janela dos rótulos, com 60 s de margem; ordenado por tempo; tempo
+   repetido descartado (fica a primeira amostra).
+3. **Época sem dado medido vira não pontuada**, no carregador, antes da reamostragem: se dentro dos
+   30 s houver lacuna maior que 1 s, ou se o movimento não cobrir a época inteira.
+4. **Análise principal sem os 2 sujeitos de 10 Hz:** reamostrar 10 Hz para 32 Hz não cria o
+   conteúdo que as features de frequência leem. **Análise secundária com eles**, relatada ao lado,
+   para que a exclusão não seja escolhida pelo resultado.
+5. **O resto do protocolo é o da entrada (vii)**, e a previsão (P1–P3) não muda.
+
+**Procedência.** `ml/dados/bruto/walch/` (não versionado); `SHA256SUMS.txt` do pacote;
+`https://github.com/ojwalch/sleep_classifiers` (`source/sleep_stage.py`); `ml/src/sinal.py` e
+`ml/src/epocas.py`.
+
+---
+
+# 2026-11-03 (ix) — `ML-06`: a coorte Walch rodou; duas previsões e meia se confirmaram
+
+**O problema, como foi entendido no início.** A validação externa do trabalho se apoiava numa
+coorte só (Newcastle). A segunda (Walch et al., 2019) estava declarada como "não executada" por
+um motivo que deixou de valer nesta máquina. O protocolo e a previsão estão nas entradas (vii) e
+(viii), registrados e enviados ao GitHub antes de qualquer época ser processada.
+
+**Hipótese de trabalho.** P1, P2 e P3 da entrada (vii).
+
+**O que foi testado, e como.**
+
+- **Carregador `ml/src/carregar/walch.py`**, com as cinco armadilhas medidas na inspeção; 8
+  testes com arquivos fabricados no formato real; seis sabotagens.
+- **Smoke test no dado real:** o `7749105` fica com 130 de 960 épocas (as 830 sem movimento saem);
+  o `5383425` é excluído por taxa (10 Hz).
+- **`ml04` com `--coorte walch`:** o mesmo modelo, as mesmas quatro configurações, o mesmo
+  bootstrap. **Regressão:** o Newcastle rodado de novo com o `ml04` alterado deu JSON idêntico ao
+  versionado, exceto o carimbo `utc`.
+- **Suíte de ML inteira.**
+
+**Resultado medido.**
+
+- **Sabotagens 6/6 acusadas:** REM como vigília (2 falhas); N4 como não pontuado (2); sem a
+  máscara de época sem dado (2, inclusive o teste que prova que nenhuma época interpolada chega às
+  features); sem ordenar o tempo (1); sem recortar a janela (1); lacuna tolerada de 1 h (1).
+- **Suíte de ML:** 134 passam (126 + 8).
+- **Walch, análise principal** (29 sujeitos, 23 303 épocas, prevalência 0,913), braço pulso:
+  `item9_ctx11` κ = 0,378 [0,316; 0,444], especificidade 0,727 [0,664; 0,787]. Pareado contra
+  `base_ctx2`: janela Δκ +0,032 [+0,006; +0,061], Δesp +0,096 [+0,072; +0,120]; HMM Δκ +0,070
+  [+0,040; +0,103], Δesp −0,042 [−0,076; −0,006].
+- **Análise secundária** (31 sujeitos): as mesmas conclusões, em todos os braços.
+- **Contra a previsão:** P1 confirmada; P2 confirmada; **P3 confirmada na especificidade e não no
+  κ** — o HMM ganhou mais κ que a janela.
+
+**Adaptação.**
+
+- **A X.4 foi reescrita no parágrafo da segunda coorte**, e diz o que falhou: a queda de ~30 pp
+  de especificidade é do Newcastle (na Walch, 0,802 → 0,727); o ganho de κ do HMM depende da
+  coorte. A conclusão que sobra é mais restrita e mais firme: **a janela sobe a especificidade nas
+  duas coortes, e o HMM a derruba nas duas**.
+- **A explicação pela prevalência** (Walch 0,913, perto da do Wearanize+; Newcastle 0,699) é
+  compatível, mas está marcada no texto como leitura posterior ao resultado.
+
+**O que deu errado no caminho.**
+
+- **O primeiro teste de época sem dado estava errado, não o código:** a grade fabricada ia até
+  119,98 s, e a época 90–120 estava coberta. Corrigido o caso, não o carregador.
+- **A branch foi criada a partir do `develop` sem a triagem**, e a entrada do diário colidiria com
+  a da PR #50; recriada a partir da branch da triagem antes do primeiro commit.
+- **A âncora do diário tinha dois espaços a mais** e o primeiro `ed` parou na asserção, sem gravar.
+
+**Risco em aberto.**
+
+- **Com duas coortes, a variação entre coortes ainda é estimada por dois pontos.** A X.4 passa a
+  falar em faixa (0,507 a 0,727), não em valor.
+- **A Walch não tem segunda pontuação manual**, como o Newcastle: a degradação continua sem poder
+  ser decomposta entre método e rotulagem.
+
+**Procedência.**
+
+- `ml/src/carregar/walch.py`, `ml/src/carregar/__init__.py`, `ml/testes/test_walch.py`;
+- `ml/experimentos/ml04_validacao_externa.py`; `ml/experimentos/saida/ml04_validacao_externa_aec203907e6f_walch_principal.json`
+  e `_walch_todos.json`;
+- commits `26bb18f` (previsão) e `f528750` (adendo), anteriores ao resultado;
+- `docs/LIMITACOES-TCC.md`, X.4, e `docs/RESULTADOS-TCC.md`, Y.6 e Y.8 (os dois com os mesmos números);
+  `ml/README.md`, seção `ML-06`; backlog `ML-06a` e `ML-06b`.
+
+---
+
+# 2026-11-03 (x) — mais coortes públicas: a busca, a Borazio descartada, e a DREAMT
+
+**O problema, como foi entendido no início.** Com duas coortes externas, o intervalo de predição
+(Higgins, Thompson e Spiegelhalter, 2009) não é definido: ele usa *t* com k − 2 graus de
+liberdade. O autor pediu uma busca profunda por mais coortes públicas confiáveis.
+
+**Hipótese de trabalho.** Que existissem bases abertas com aceleração bruta de pulso e rótulo de
+PSG por época além de Newcastle e Walch.
+
+**O que foi testado, e como.**
+
+- **Busca** em PhysioNet, NSRR, Zenodo, Figshare e OSF, e nas seções de disponibilidade de dados
+  dos artigos de validação de actigrafia; critérios: aceleração bruta, PSG por época, acesso
+  viável e procedência publicada.
+- **Borazio et al. (2014)**, a única aberta com PSG encontrada: baixada (25 259 506 bytes,
+  SHA-256 `78980268fb1a4acac264b7207625da17bafd32b40980839572555794bce36689`), com o cabeçalho
+  dos `.npy` lido **antes** de carregar (arranjos numéricos sem objetos, carregados com
+  `allow_pickle=False`; o script do pacote não foi executado); taxa, escala em repouso,
+  saturação e a duração dos trechos de rótulo, nos 47 registros.
+
+**Resultado medido.**
+
+- **A busca:** DREAMT (PSG, acesso restrito por termo) é a única candidata nova que serve;
+  BIDSleep (aberta) tem rótulo de EEG de faixa, não PSG; MESA, HCHS, MrOS e SOF só têm contagens
+  de 30 s; Pennsylvania exige acordo com o NIH; outras três não têm dado público confirmado.
+  **Nenhuma base com sensor na cama, no colchão ou no travesseiro e PSG foi encontrada.**
+- **Borazio:** 100 Hz depois de expandir o *run-length encoding*; ~8,75 h por noite; ~30
+  contagens por g em repouso (29,0 a 30,3 nos três pacientes medidos), sem saturação. **Mas os
+  trechos de rótulo não caem numa grade de 30 s:** só 2 a 14% ficam a 1 s de um múltiplo de 30 s;
+  num grupo de registros (`025`–`051`, `09b`) o menor trecho tem 33 a 46 s; no outro (`002`–`023`,
+  `08a/b`, `15a/b`…), há 564 trechos entre 5 e 10 s. Código 7 ("movimento") e 1 a 2 h sem rótulo
+  no início das gravações.
+
+**Adaptação.**
+
+- **A Borazio foi descartada como coorte de validação.** O padrão é de relógios fora de sincronia
+  entre o registrador e a PSG, com fator diferente por paciente. Estimar esse fator faria o rótulo
+  ser inferido por este trabalho, e validação contra rótulo inferido não se defende.
+- **A DREAMT virou o `ML-13`, em L3:** o acesso depende de o autor assinar o termo de uso no
+  PhysioNet — ação que envolve a identidade dele.
+
+**O que deu errado no caminho.** O primeiro script de inspeção leu o `pat_inf.npy` (os dados dos
+pacientes) como se fosse um registro, porque o padrão de arquivo `p*.npy` casava com ele; parou num
+erro de índice, sem resultado parcial, e foi corrigido.
+
+**Risco em aberto.** Mesmo com a DREAMT, são 3 coortes externas: o intervalo de predição passa a
+existir, mas com multiplicador ~12,7, largo demais para dizer muito (`ML-13`). A distância entre o
+pulso e o travesseiro continua sem base pública que a meça (X.4).
+
+**Procedência.**
+
+- `ml/README.md`, "Mais coortes"; `ml/dados/bruto/borazio/` (não versionado);
+- `https://ubi29.informatik.uni-siegen.de/usi/data_ichi14.html`, `https://physionet.org/content/dreamt/`,
+  `https://physionet.org/content/bidsleep-dataset/1.0.1/`, `https://sleepdata.org/forum/raw-accelerometer-data-from-actigraphy/1`, 03/11;
+- backlog `ML-13`.
+
+---
+
+# 2026-11-03 (xi) — `LGPD-05` e `LGPD-06`: só maiores de 18, e a idade com uma finalidade agregada
+
+**O problema, como foi entendido no início.** O autor decidiu manter o campo idade para conhecer o
+público do sistema. Isso abria duas frentes: o `LGPD-06` (finalidade nova exige política nova
+ANTES) e o `LGPD-05` (a saída "manter a lacuna sobre menores declarada" só valia enquanto o autor
+fosse o único usuário). Perguntado se menores poderiam usar, o levantamento (LGPD art. 14, Enunciado
+CD/ANPD nº 1/2023, ECA Digital — Lei 15.211/2025, por fontes secundárias) mostrou custo alto:
+verificação de idade confiável, supervisão parental e Comitê de Ética em pesquisa. O autor escolheu
+a saída (a), só maiores de 18, e o público menor como item pós-banca.
+
+**Hipótese de trabalho.** Que a restrição pudesse valer nas três camadas (frontend, backend e banco)
+sem alterar dado existente, e que a finalidade nova pudesse ser exercida só por contagem agregada.
+
+**O que foi testado, e como.**
+
+- **A ordem:** a política foi alterada e commitada primeiro (`942aad3`: §2.1, §3 item 5, §5.3 e
+  §10), antes de qualquer código.
+- **O cadastro:** caixa obrigatória "Declaro que tenho 18 anos ou mais"; `cadastrar` recusa sem ela,
+  antes de chamar o Supabase, e com ela registra a data em
+  `raw_user_meta_data.maior_de_18_declarado_em`. Primeiro teste de componente da tela de cadastro
+  (`Register.test.tsx`).
+- **A idade:** mínimo 18 em `lib/perfil.ts`, em `perfil.py` e na migração `012` (restrição
+  `profiles_idade_maioridade`, com trava que PARA sem alterar dado se houver menor gravado, e o
+  comentário da coluna com as duas finalidades). O texto junto ao campo idade diz o uso agregado.
+- **A consulta agregada:** `CONSULTA-publico-por-faixa.sql`, só leitura, faixas com menos de 5
+  suprimidas e sem linha de total (que permitiria recuperar uma faixa suprimida por subtração).
+- **Postgres real** em contêiner `postgres:16`: suíte de RLS, mutação do RLS e o verificador de
+  migrações; backend, frontend, `tsc` e build.
+- **Controle positivo:** sete sabotagens, nas quatro camadas.
+
+**Resultado medido.**
+
+- **Backend** 417 (416 + 1); **frontend** 428 em 29 arquivos (424 + 4); `tsc` e build limpos;
+  **RLS** 174 (164 + 10); **mutação do RLS** 32/32; o verificador acerta os **12 estados** e a
+  ordem real da produção, agora com a `012`.
+- **Sabotagens, 7/7 acusadas:** frontend aceitando idade 0; cadastro sem exigir a declaração;
+  cadastro sem registrar a data dela; backend aceitando 0; banco aceitando 0; trava da `012`
+  desligada; consulta sem a supressão de faixa pequena.
+
+**Adaptação.**
+
+- **Três testes antigos especificavam o mínimo 0** — `lerIdade("0")` válido, `validar_idade(0)`
+  válido e a idade 0 aceita pelo banco — e foram reescritos para a regra nova.
+- **Um teste de "espelho" não espelhava nada:** `test_a_faixa_de_idade_espelha_a_constraint_da_migracao_001`
+  comparava o backend com números escritos no próprio teste. Agora ele **lê a restrição da `012`** e
+  reprova se o arquivo e o backend divergirem.
+- **Um item novo em L3, `LGPD-08`:** aplicar a `012` na produção e fazer o release — como o
+  `DATA-08`/`DATA-09`. O `LGPD-07` (menores de idade) foi direto para a seção Pós-banca.
+
+**O que deu errado no caminho.**
+
+- **O teste de componente acumulava a tela de um caso no outro** (o projeto não ativa a limpeza
+  automática da Testing Library): `cleanup` em `afterEach`.
+- **O teste de RLS foi escrito primeiro contra uma *fixture* que não existia e com `psycopg`**, quando
+  a suíte usa `psycopg2`; reescrito com uma conexão própria em transação, desfeita no fim de cada caso.
+
+**Risco em aberto.**
+
+- **A idade é autodeclarada**, no cadastro e no campo: ninguém verifica. A política diz isso.
+- **A proteção da consulta agregada é de procedimento:** o administrador tem acesso técnico à
+  coluna. O arquivo SQL declara isso.
+- **A política ainda não é servida dentro do app** (`LGPD-01` (b)): a finalidade está declarada num
+  documento que o usuário não vê; o texto junto ao campo idade cobre isso só em parte.
+- **Nada disso vale na produção antes do `LGPD-08`.**
+
+**Procedência.**
+
+- `docs/POLITICA-DE-PRIVACIDADE.md` (commit `942aad3`); `frontend/src/lib/autenticacao.ts`,
+  `pages/Register.tsx` e `Register.test.tsx`, `lib/perfil.ts`, `lib/aplicabilidade.ts`,
+  `components/EditarPerfil.tsx`; `web-app/perfil.py`; `web-app/migrations/012_idade_minima_18.sql` e
+  `CONSULTA-publico-por-faixa.sql`; `web-app/tests/rls/test_rls_idade_maioridade.py`;
+- backlog `LGPD-05`, `LGPD-06`, `LGPD-07` e `LGPD-08`.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

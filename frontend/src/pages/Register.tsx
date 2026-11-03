@@ -12,6 +12,7 @@ export function Register() {
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
   const [mostrarSenha, setMostrarSenha] = useState(false);
+  const [maiorDeIdade, setMaiorDeIdade] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [aguardandoConfirmacao, setAguardandoConfirmacao] = useState(false);
@@ -22,7 +23,7 @@ export function Register() {
 
     setErro(null);
     setEnviando(true);
-    const resultado = await cadastrar(nome, email, senha);
+    const resultado = await cadastrar(nome, email, senha, maiorDeIdade);
     setEnviando(false);
 
     if (!resultado.ok) {
@@ -102,6 +103,20 @@ export function Register() {
             </button>
           </div>
         </div>
+
+        {/* LGPD-05 (03/11): o serviço é só para maiores de 18. A caixa é
+            obrigatória — sem ela, `cadastrar` recusa antes de chamar o Supabase. */}
+        <label htmlFor="declara-maioridade" className="flex items-start gap-2 text-sm text-muted-foreground">
+          <input
+            id="declara-maioridade"
+            type="checkbox"
+            required
+            checked={maiorDeIdade}
+            onChange={(e) => setMaiorDeIdade(e.target.checked)}
+            className="mt-0.5"
+          />
+          <span>Declaro que tenho 18 anos ou mais. O Smart Dormio é destinado apenas a maiores de idade.</span>
+        </label>
 
         {erro ? (
           <p role="alert" className="text-sm text-destructive">
