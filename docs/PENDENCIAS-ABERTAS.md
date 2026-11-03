@@ -49,12 +49,12 @@ linha, não um resumo: resumo é a cópia que diverge.
 
 | Grupo | Itens |
 |---|---:|
-| A — Depende só de software: dá para fazer a qualquer momento | **17** |
-| B — Depende de decisão do Vitor | **8** |
-| C — Depende de ação do Vitor que não é decisão | **4** |
+| A — Depende só de software: dá para fazer a qualquer momento | **16** |
+| B — Depende de decisão do Vitor | **7** |
+| C — Depende de ação do Vitor que não é decisão | **5** |
 | D — Bloqueado por hardware ou coleta | **18** |
 | E — Bloqueado por terceiro | **4** |
-| **Total** | **51** |
+| **Total** | **50** |
 
 ⚠️ **Este total não é comparável à contagem do backlog, e a diferença não é
 erro de nenhum dos dois.** São unidades de contagem diferentes: o backlog
@@ -75,7 +75,7 @@ outro item. **Desde 28/10 têm ID no backlog:** `GIT-07`, `INFRA-02` e
 
 ## A — Depende só de software: dá para fazer a qualquer momento
 
-**17 itens.**
+**16 itens.**
 
 ### `CALC-01` 🔴
 
@@ -139,12 +139,6 @@ O limiar viaja com a leitura. **A coluna e o campo dão para criar já**; o *val
 
 **Conferência.** Confirmado aberto: `grep` por `limiar` em `web-app/migrations/*.sql` devolve vazio.
 
-### `LGPD-06` 🟡
-
-Finalidade nova para a idade, decidida pelo autor em 03/11: conhecer, de forma agregada, o público do sistema. Política primeiro (§3, §5.3, §10), depois o comentário da `008` e o cabeçalho de `aplicabilidade.ts`, e só então uma consulta agregada por faixa.
-
-*Camada no backlog: L0.*
-
 ### `UI-18` 🟡
 
 Duas partes, não três: **(a)** asserção nomeada por rota — hoje só `/configuracoes` tem, e por isso a varredura cobre rota nova mas **não rota removida**; **(b)** as três afirmações condicionais de honestidade científica (`AvisoDeLacuna`, `NotaDeInferencia`, `NotaDeEscopo`), uma asserção por condição com o par negativo de cada.
@@ -201,7 +195,7 @@ O firmware confere o certificado do servidor (`setCACert` com as raízes de `fir
 
 ## B — Depende de decisão do Vitor
 
-**8 itens.**
+**7 itens.**
 
 Cada linha traz a decisão em uma frase. Nenhum destes itens anda
 sem uma resposta sua — e nenhum deles exige que você escreva
@@ -220,14 +214,6 @@ Controlador e base legal da política de privacidade.
 Política de retenção.
 
 **A decisão.** Qual o prazo de retenção, ou se vai declarar formalmente que não haverá expurgo. **As duas saídas são defensáveis; o silêncio não.**
-
-*Camada no backlog: L0.*
-
-### `LGPD-05` 🟡
-
-Idade autodeclarada pode revelar que o titular é criança ou adolescente, e o art. 14 impõe tratamento próprio. Hoje o sistema não verifica e não trata diferente.
-
-**A decisão.** (a) restringir o cadastro a maiores de 18, (b) implementar o fluxo de consentimento de responsável, ou (c) manter a lacuna declarada. **A defesa de (c) expira no dia em que alguém além de você criar conta.**
 
 *Camada no backlog: L0.*
 
@@ -277,7 +263,7 @@ A decisão de escopo que atravessa o trabalho inteiro.
 
 ## C — Depende de ação do Vitor que não é decisão
 
-**4 itens.**
+**5 itens.**
 
 Nada aqui é decisão: a decisão já foi tomada, ou nunca houve uma.
 São ações que só você pode executar, porque exigem credencial,
@@ -298,6 +284,12 @@ Criar um projeto Supabase de teste e rodar um punhado de `curl`. **Fecharia quat
 *Camada no backlog: L3.*
 
 **Conferência.** ⚠️ **Não tem item próprio**, e o diário de 20/10 (iii) registra isso textualmente: 'quatro itens esperando o mesmo objeto, e ele não tem item'. É a terceira sessão seguida em que o instrumento que falta é o mesmo. **Candidato número 1 a item novo.** ✏️ **28/10:** virou o item `INFRA-02`.
+
+### `LGPD-08` 🟡
+
+Aplicar a migração `012` (idade a partir de 18) no SQL Editor, rodar o diagnóstico e fazer o release do LGPD-05/06. Até lá, a produção aceita idade de 0 a 17 e o cadastro não pede a declaração.
+
+*Camada no backlog: L3.*
 
 ### `ML-13` 🟡
 

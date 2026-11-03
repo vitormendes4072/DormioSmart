@@ -5884,6 +5884,81 @@ pulso e o travesseiro continua sem base pública que a meça (X.4).
   `https://physionet.org/content/bidsleep-dataset/1.0.1/`, `https://sleepdata.org/forum/raw-accelerometer-data-from-actigraphy/1`, 03/11;
 - backlog `ML-13`.
 
+---
+
+# 2026-11-03 (xi) — `LGPD-05` e `LGPD-06`: só maiores de 18, e a idade com uma finalidade agregada
+
+**O problema, como foi entendido no início.** O autor decidiu manter o campo idade para conhecer o
+público do sistema. Isso abria duas frentes: o `LGPD-06` (finalidade nova exige política nova
+ANTES) e o `LGPD-05` (a saída "manter a lacuna sobre menores declarada" só valia enquanto o autor
+fosse o único usuário). Perguntado se menores poderiam usar, o levantamento (LGPD art. 14, Enunciado
+CD/ANPD nº 1/2023, ECA Digital — Lei 15.211/2025, por fontes secundárias) mostrou custo alto:
+verificação de idade confiável, supervisão parental e Comitê de Ética em pesquisa. O autor escolheu
+a saída (a), só maiores de 18, e o público menor como item pós-banca.
+
+**Hipótese de trabalho.** Que a restrição pudesse valer nas três camadas (frontend, backend e banco)
+sem alterar dado existente, e que a finalidade nova pudesse ser exercida só por contagem agregada.
+
+**O que foi testado, e como.**
+
+- **A ordem:** a política foi alterada e commitada primeiro (`942aad3`: §2.1, §3 item 5, §5.3 e
+  §10), antes de qualquer código.
+- **O cadastro:** caixa obrigatória "Declaro que tenho 18 anos ou mais"; `cadastrar` recusa sem ela,
+  antes de chamar o Supabase, e com ela registra a data em
+  `raw_user_meta_data.maior_de_18_declarado_em`. Primeiro teste de componente da tela de cadastro
+  (`Register.test.tsx`).
+- **A idade:** mínimo 18 em `lib/perfil.ts`, em `perfil.py` e na migração `012` (restrição
+  `profiles_idade_maioridade`, com trava que PARA sem alterar dado se houver menor gravado, e o
+  comentário da coluna com as duas finalidades). O texto junto ao campo idade diz o uso agregado.
+- **A consulta agregada:** `CONSULTA-publico-por-faixa.sql`, só leitura, faixas com menos de 5
+  suprimidas e sem linha de total (que permitiria recuperar uma faixa suprimida por subtração).
+- **Postgres real** em contêiner `postgres:16`: suíte de RLS, mutação do RLS e o verificador de
+  migrações; backend, frontend, `tsc` e build.
+- **Controle positivo:** sete sabotagens, nas quatro camadas.
+
+**Resultado medido.**
+
+- **Backend** 417 (416 + 1); **frontend** 428 em 29 arquivos (424 + 4); `tsc` e build limpos;
+  **RLS** 174 (164 + 10); **mutação do RLS** 32/32; o verificador acerta os **12 estados** e a
+  ordem real da produção, agora com a `012`.
+- **Sabotagens, 7/7 acusadas:** frontend aceitando idade 0; cadastro sem exigir a declaração;
+  cadastro sem registrar a data dela; backend aceitando 0; banco aceitando 0; trava da `012`
+  desligada; consulta sem a supressão de faixa pequena.
+
+**Adaptação.**
+
+- **Três testes antigos especificavam o mínimo 0** — `lerIdade("0")` válido, `validar_idade(0)`
+  válido e a idade 0 aceita pelo banco — e foram reescritos para a regra nova.
+- **Um teste de "espelho" não espelhava nada:** `test_a_faixa_de_idade_espelha_a_constraint_da_migracao_001`
+  comparava o backend com números escritos no próprio teste. Agora ele **lê a restrição da `012`** e
+  reprova se o arquivo e o backend divergirem.
+- **Um item novo em L3, `LGPD-08`:** aplicar a `012` na produção e fazer o release — como o
+  `DATA-08`/`DATA-09`. O `LGPD-07` (menores de idade) foi direto para a seção Pós-banca.
+
+**O que deu errado no caminho.**
+
+- **O teste de componente acumulava a tela de um caso no outro** (o projeto não ativa a limpeza
+  automática da Testing Library): `cleanup` em `afterEach`.
+- **O teste de RLS foi escrito primeiro contra uma *fixture* que não existia e com `psycopg`**, quando
+  a suíte usa `psycopg2`; reescrito com uma conexão própria em transação, desfeita no fim de cada caso.
+
+**Risco em aberto.**
+
+- **A idade é autodeclarada**, no cadastro e no campo: ninguém verifica. A política diz isso.
+- **A proteção da consulta agregada é de procedimento:** o administrador tem acesso técnico à
+  coluna. O arquivo SQL declara isso.
+- **A política ainda não é servida dentro do app** (`LGPD-01` (b)): a finalidade está declarada num
+  documento que o usuário não vê; o texto junto ao campo idade cobre isso só em parte.
+- **Nada disso vale na produção antes do `LGPD-08`.**
+
+**Procedência.**
+
+- `docs/POLITICA-DE-PRIVACIDADE.md` (commit `942aad3`); `frontend/src/lib/autenticacao.ts`,
+  `pages/Register.tsx` e `Register.test.tsx`, `lib/perfil.ts`, `lib/aplicabilidade.ts`,
+  `components/EditarPerfil.tsx`; `web-app/perfil.py`; `web-app/migrations/012_idade_minima_18.sql` e
+  `CONSULTA-publico-por-faixa.sql`; `web-app/tests/rls/test_rls_idade_maioridade.py`;
+- backlog `LGPD-05`, `LGPD-06`, `LGPD-07` e `LGPD-08`.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

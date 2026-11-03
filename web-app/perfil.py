@@ -55,10 +55,12 @@ ALTERAVEIS = ("nome", "idade")
 # nenhum dos dois — ver o cabeçalho da migração para o porquê da assimetria.
 NOME_MAXIMO = 120
 
-# Faixa de `idade`. ESPELHA a constraint da migração `001`
-# (`idade >= 0 and idade < 150`) e não a redefine: divergir daqui produziria
+# Faixa de `idade`. ESPELHA a constraint da migração `012`
+# (`idade >= 18 and idade < 150`) e não a redefine: divergir daqui produziria
 # erro de constraint do Postgres em vez de 400 com mensagem útil.
-IDADE_MINIMA = 0
+# ✏️ LGPD-05 (03/11): o mínimo passou de 0 para 18 — o serviço é só para
+# maiores de idade (seção 2.1 da política de privacidade).
+IDADE_MINIMA = 18
 IDADE_MAXIMA = 149
 
 

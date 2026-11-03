@@ -100,7 +100,17 @@ marcas (migracao, item, marca, presente) as (values
     ('011', 'DATA-08', 'registrar_leitura com on conflict',
         coalesce((select pg_get_functiondef(to_regprocedure('public.registrar_leitura(text,jsonb)')) like '%on conflict (device_id, captured_at, epoca_segundos)%'), false)),
     ('011', 'DATA-08', 'registrar_leitura_da_sessao com on conflict',
-        coalesce((select pg_get_functiondef(to_regprocedure('public.registrar_leitura_da_sessao(uuid,jsonb)')) like '%on conflict (device_id, captured_at, epoca_segundos)%'), false))
+        coalesce((select pg_get_functiondef(to_regprocedure('public.registrar_leitura_da_sessao(uuid,jsonb)')) like '%on conflict (device_id, captured_at, epoca_segundos)%'), false)),
+    -- 012: idade a partir de 18. A restrição nova E a antiga fora: as duas
+    -- juntas aceitariam só >= 18 também, mas a antiga de pé indica 012 pela metade.
+    ('012', 'LGPD-05', 'restrição profiles_idade_maioridade',
+        exists (select 1 from pg_constraint where conname = 'profiles_idade_maioridade')),
+    ('012', 'LGPD-05', 'sem restrição de idade a partir de 0',
+        to_regclass('public.profiles') is not null and not exists (
+            select 1 from pg_constraint
+             where conrelid = to_regclass('public.profiles') and contype = 'c'
+               and conname <> 'profiles_idade_maioridade'
+               and pg_get_constraintdef(oid) ilike '%idade%'))
 ),
 esquema as (
     select migracao, min(item) as item,

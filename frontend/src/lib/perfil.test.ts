@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   IDADE_MAXIMA_DO_PERFIL,
+  IDADE_MINIMA_DO_PERFIL,
   NOME_MAXIMO_DO_PERFIL,
   atualizarPerfil,
   buscarPerfil,
@@ -168,12 +169,23 @@ describe("lerIdade", () => {
   });
 
   it("aceita inteiro escrito como inteiro", () => {
-    expect(lerIdade("0")).toEqual({ ok: true, valor: 0 });
+    expect(lerIdade("18")).toEqual({ ok: true, valor: 18 });
     expect(lerIdade(" 22 ")).toEqual({ ok: true, valor: 22 });
     expect(lerIdade(String(IDADE_MAXIMA_DO_PERFIL))).toEqual({
       ok: true,
       valor: IDADE_MAXIMA_DO_PERFIL,
     });
+  });
+
+  it("recusa menor de 18 (LGPD-05) e diz por que", () => {
+    // ✏️ 03/11: ate aqui, "0" era aceito e este teste o afirmava. O servico
+    // passou a ser so para maiores de idade (secao 2.1 da politica).
+    for (const menor of ["0", "1", "17"]) {
+      const lida = lerIdade(menor);
+      expect(lida.ok, menor).toBe(false);
+      if (!lida.ok) expect(lida.motivo).toContain("maiores de 18");
+    }
+    expect(IDADE_MINIMA_DO_PERFIL).toBe(18);
   });
 
   it("recusa o que o Number() aceitaria e ninguem digitou", () => {

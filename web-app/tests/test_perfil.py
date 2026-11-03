@@ -292,6 +292,8 @@ def test_o_dono_gravado_e_o_do_jwt_e_nao_o_do_corpo():
         "30",          # texto que parece numero
         30.0,          # float, inclusive redondo
         -1,
+        0,             # ✏️ LGPD-05 (03/11): até aqui, 0 e 1 eram válidos
+        17,
         150,
         [30],
     ],
@@ -308,7 +310,7 @@ def test_idade_booleana_nao_vira_um_ano():
     assert perfil.validar_idade(True) == (None, "idade deve ser um numero inteiro ou nulo")
 
 
-@pytest.mark.parametrize("valor", [0, 1, 22, 149, None])
+@pytest.mark.parametrize("valor", [18, 22, 149, None])
 def test_idade_valida_passa(valor):
     idade, erro = perfil.validar_idade(valor)
     assert erro is None
@@ -450,7 +452,21 @@ def test_gravar_devolve_so_os_campos_da_interface():
     }
 
 
-def test_a_faixa_de_idade_espelha_a_constraint_da_migracao_001():
+def test_a_faixa_de_idade_espelha_a_constraint_da_migracao_012():
     """Divergir daqui trocaria um 400 com mensagem útil por um erro de
-    constraint do Postgres. O par é `idade >= 0 and idade < 150`."""
-    assert (perfil.IDADE_MINIMA, perfil.IDADE_MAXIMA) == (0, 149)
+    constraint do Postgres.
+
+    ✏️ 03/11 (`LGPD-05`): até aqui o par vinha escrito no teste (`0, 149`, da
+    `001`) e não lia migração nenhuma — "espelhar" era afirmação. Agora a
+    restrição é LIDA da `012`, e uma divergência entre o arquivo e o backend
+    reprova aqui."""
+    import re
+    from pathlib import Path
+
+    sql = (Path(__file__).resolve().parents[1] / "migrations" / "012_idade_minima_18.sql").read_text(
+        encoding="utf-8")
+    m = re.search(r"check \(idade is null or \(idade >= (\d+) and idade < (\d+)\)\)", sql)
+    assert m, "restrição de idade não encontrada na 012"
+    minimo, teto = int(m.group(1)), int(m.group(2))
+    assert (perfil.IDADE_MINIMA, perfil.IDADE_MAXIMA) == (minimo, teto - 1)
+    assert perfil.IDADE_MINIMA == 18

@@ -2460,11 +2460,6 @@ PENDENCIAS: list[Pendencia] = [
               "do `VIA-02` (grupo D).", "🔴", camada_backlog="L2",
               nota="Confirmado aberto: `grep` por `limiar` em "
                    "`web-app/migrations/*.sql` devolve vazio."),
-    Pendencia("LGPD-06", SOFTWARE, "Finalidade nova para a idade, decidida pelo "
-              "autor em 03/11: conhecer, de forma agregada, o público do sistema. "
-              "Política primeiro (§3, §5.3, §10), depois o comentário da `008` e o "
-              "cabeçalho de `aplicabilidade.ts`, e só então uma consulta agregada "
-              "por faixa.", "🟡", camada_backlog="L0"),
     Pendencia("UI-18", SOFTWARE, "Duas partes, não três: **(a)** asserção nomeada "
               "por rota — hoje só `/configuracoes` tem, e por isso a varredura "
               "cobre rota nova mas **não rota removida**; **(b)** as três "
@@ -2521,14 +2516,6 @@ PENDENCIAS: list[Pendencia] = [
               decisao="Qual o prazo de retenção, ou se vai declarar "
                       "formalmente que não haverá expurgo. **As duas saídas são "
                       "defensáveis; o silêncio não.**"),
-    Pendencia("LGPD-05", DECISAO, "Idade autodeclarada pode revelar que o titular "
-              "é criança ou adolescente, e o art. 14 impõe tratamento próprio. "
-              "Hoje o sistema não verifica e não trata diferente.", "🟡",
-              camada_backlog="L0",
-              decisao="(a) restringir o cadastro a maiores de 18, (b) implementar "
-                      "o fluxo de consentimento de responsável, ou (c) manter a "
-                      "lacuna declarada. **A defesa de (c) expira no dia em que "
-                      "alguém além de você criar conta.**"),
     Pendencia("ARQ-02 — modos de registro", DECISAO, "Quatro modos analisados "
               "em `docs/ARQUITETURA-DE-CAPTACAO.md`: travesseiro com bateria "
               "máxima (WoM), travesseiro com análise completa (sono leve + FIFO), "
@@ -2592,6 +2579,10 @@ PENDENCIAS: list[Pendencia] = [
                    "objeto, e ele não tem item'. É a terceira sessão seguida em "
                    "que o instrumento que falta é o mesmo. **Candidato número 1 a "
                    "item novo.** ✏️ **28/10:** virou o item `INFRA-02`."),
+    Pendencia("LGPD-08", ACAO, "Aplicar a migração `012` (idade a partir de 18) no "
+              "SQL Editor, rodar o diagnóstico e fazer o release do LGPD-05/06. Até "
+              "lá, a produção aceita idade de 0 a 17 e o cadastro não pede a "
+              "declaração.", "🟡", camada_backlog="L3"),
     Pendencia("ML-13", ACAO, "Terceira coorte externa com PSG: DREAMT (PhysioNet, "
               "100 pacientes, Empatica E4). Exige criar a conta no PhysioNet e assinar "
               "o termo de uso restrito; depois, carregador e validação externa como "
