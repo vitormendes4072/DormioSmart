@@ -5418,6 +5418,78 @@ virar `std::atomic` sem mudar o comportamento.
 - `firmware/nucleo/testes/testes_c2.cpp` e `verificar_cadeia_por_mutacao.sh`;
 - backlog `FW-10`; `docs/AUDITORIA-2026-10-31.md`, A8 e A10.
 
+---
+
+# 2026-11-03 (iii) — o laço do `sketch.ino` testado rodando, e a instrumentação da bancada
+
+**O problema, como foi entendido no início.** Dois pontos que o `FW-10` deixou em aberto. (1) A
+chamada das funções novas dentro do laço do `sketch.ino` só era conferida por compilação e
+ligação: trocar a ordem de duas linhas devolveria o defeito sem nenhum teste notar. (2) A bancada
+precisa responder três perguntas — quantos prazos estouram, quanto a flash leva para apagar um
+setor e se o relógio do ESP32 conta certo no sono leve —, e o firmware só registrava a primeira.
+
+**Hipótese de trabalho.** Que o laço real pudesse rodar no host com os stubs ganhando um relógio
+controlável e um gancho na leitura I2C (a primeira leitura de cada volta é a drenagem). E que a
+deriva do relógio pudesse ser medida contra o NTP a cada sincronia, sem mudar o comportamento.
+
+**O que foi testado, e como.**
+
+- **Experimento, antes de versionar:** a `tarefa_de_medicao` real com relógio falso, contra o
+  `sketch.ino` atual e o de antes do `FW-10` (`89e41c6`), em contêiner `gcc:13`.
+- **Instrumentação:** `medir_deriva` em `relogio.h`; no sketch, `trabalho_max_us` (o maior
+  trabalho de uma volta) e a linha `[relogio]` a cada NTP, com a deriva contra a sincronia anterior
+  e contra a primeira.
+- **Versionado:** `make laco` (`testes/laco_do_sketch.cpp` e `verificar_laco_do_sketch.sh`), que
+  monta os stubs com relógio, roda o laço, e sabota o próprio `sketch.ino`. Entrou no CI.
+- **Suíte do firmware inteira**, em `gcc:13`.
+
+**Resultado medido.**
+
+- **O experimento**, distância média entre drenagens:
+
+  | Trabalho | Depois do `FW-10` | Antes |
+  |---|---|---|
+  | 0 ms | 1,710 s | 1,710 s |
+  | 400 ms | 1,710 s | 2,110 s |
+  | 1000 ms | 1,710 s | 2,710 s |
+
+  O mesmo nos dois ramos (sono leve e `vTaskDelay`). Um trabalho de 4 s: 1 prazo estourado, e a
+  menor distância depois dele 1,702 s, sem rajada.
+- **`make laco`:** 26 verificações, 0 falhas; 4/4 sabotagens no sketch acusadas (sono relativo: 5
+  falhas; estouro não contado: 1; trabalho medido depois da drenagem: 5; deriva medida depois de
+  sincronizar: 2).
+- **Alvo `c2`:** 152 verificações (+5 da deriva); mutação da cadeia 29/29, com 2 sabotagens novas
+  (sinal trocado: 2 falhas; medir sem sincronia anterior: 1). Demais alvos 0 falhas; os 4 sketches
+  compilam, e o `sketch.ino` liga com o núcleo; mutação 15 casos de acordo; fila 14/14; capacidade
+  com a tabela válida.
+
+**Adaptação.**
+
+- **`gettimeofday` trocado por macro só no teste:** o sketch é incluído na unidade de compilação do
+  teste depois de `<sys/time.h>`, e a macro troca apenas a chamada do sketch.
+- **A deriva é medida duas vezes:** contra a sincronia anterior (10 min, onde o erro do próprio NTP
+  pesa) e contra a primeira da noite (horas, onde não pesa). A segunda é a que responde a pergunta.
+- **O máximo de trabalho é desde o boot**, com um só escritor (a medição): zerar a cada envio
+  poria um segundo escritor, de outro núcleo.
+
+**O que deu errado no caminho.** No experimento, o `-x c++` fez o `g++` ler os `.o` como fonte, e
+faltava incluir os cabeçalhos do FreeRTOS antes dos stubs; corrigidos com `-x none` e os includes.
+
+**Risco em aberto.**
+
+- **O laço com relógio falso não prova a placa:** os três números (prazos estourados, trabalho
+  máximo, deriva) só valem quando lidos do serial na bancada do `FW-07` (c), onde o checklist do
+  que ler ficou registrado.
+- **O teste depende da forma dos stubs:** se um stub mudar, a troca não casa e o script para com
+  "TROCA QUEBRADA", em vez de testar o relógio errado em silêncio.
+
+**Procedência.**
+
+- `firmware/sketch.ino`; `firmware/nucleo/relogio.h`;
+- `firmware/nucleo/testes/laco_do_sketch.cpp`, `verificar_laco_do_sketch.sh`, `testes_c2.cpp` e
+  `verificar_cadeia_por_mutacao.sh`; `firmware/nucleo/Makefile`; `.github/workflows/ci.yml`;
+- backlog `FW-10` e `FW-07`.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

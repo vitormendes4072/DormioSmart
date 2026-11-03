@@ -20,6 +20,7 @@
 #include "../payload.h"
 #include "../radio.h"
 #include "../reamostragem.h"
+#include "../relogio.h"
 
 using namespace dormio;
 
@@ -240,6 +241,21 @@ static void testar_prazo_da_drenagem() {
   VERIFICAR(espera_ate_o_prazo_us(1000, 400) == 600, "espera ate o prazo");
   VERIFICAR(espera_ate_o_prazo_us(1000, 1000) == 0 && espera_ate_o_prazo_us(1000, 2000) == 0,
             "prazo vencido: espera zero, sem dar a volta no unsigned");
+}
+
+static void testar_deriva_do_relogio() {
+  secao("deriva do relogio -- o que a bancada le a cada NTP");
+  ResolucaoDeParede p;
+  VERIFICAR(!medir_deriva(p, 1000, 1758000000000LL).valida, "sem sincronia anterior, sem medida");
+
+  p.sincronizar(1000000, 1758000000000LL);
+  // 600 s no relogio interno; o NTP diz que passaram 600,06 s: atrasou 60 ms.
+  const DerivaDoRelogio d = medir_deriva(p, 1600000, 1758000600060LL);
+  VERIFICAR(d.valida && d.decorrido_ms == 600000, "decorrido pelo relogio interno");
+  VERIFICAR(d.deriva_ms == 60, "relogio interno atrasado: deriva positiva");
+  const DerivaDoRelogio a = medir_deriva(p, 1600000, 1758000599950LL);
+  VERIFICAR(a.deriva_ms == -50, "relogio interno adiantado: deriva negativa");
+  VERIFICAR(!medir_deriva(p, 1000000, 1758000000000LL).valida, "sem tempo decorrido, sem medida");
 }
 
 static void testar_ajuste_da_linha_do_tempo() {
@@ -683,6 +699,7 @@ int main() {
   testar_interpolacao();
   testar_intervalo_variado();
   testar_prazo_da_drenagem();
+  testar_deriva_do_relogio();
   testar_ajuste_da_linha_do_tempo();
   testar_cadeia_fecha_epoca();
   testar_cadeia_recusa();

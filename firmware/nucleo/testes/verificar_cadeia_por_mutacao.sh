@@ -246,6 +246,17 @@ esperar "26. prazo sem a variacao do intervalo" unidade cadeia_c2.cpp \
   "  const uint64_t proximo = prazo_us + INTERVALO_DE_DRENAGEM_US;"
 
 echo
+echo "Sabotadores da DERIVA DO RELOGIO (instrumentacao da bancada) -- a suite de unidade tem de acusar:"
+
+esperar "27. deriva com o sinal trocado" unidade relogio.h \
+  "  d.deriva_ms = d.valida ? ntp_unix_ms - anterior.resolver(mono_agora_ms) : 0;" \
+  "  d.deriva_ms = d.valida ? anterior.resolver(mono_agora_ms) - ntp_unix_ms : 0;"
+
+esperar "28. mede sem sincronia anterior" unidade relogio.h \
+  "  d.valida = anterior.valida && mono_agora_ms > anterior.mono_referencia_ms;" \
+  "  d.valida = mono_agora_ms > anterior.mono_referencia_ms;"
+
+echo
 echo "-----------------------------------------"
 echo "$((total - falhas))/$total como esperado"
 [ $falhas -eq 0 ]

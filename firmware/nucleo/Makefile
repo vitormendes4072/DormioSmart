@@ -96,6 +96,11 @@ cadeia: bin/testes_cadeia_c2
 mutacao-cadeia:
 	@sh testes/verificar_cadeia_por_mutacao.sh
 
+# O laco REAL do sketch.ino, com relogio falso (FW-10): o `sintaxe` so prova
+# que ele compila e liga. Sabota o sketch e confere que o teste acusa.
+laco:
+	@sh testes/verificar_laco_do_sketch.sh
+
 bin/testes: testes/testes.cpp $(FONTES) $(CABECALHOS)
 	@mkdir -p bin
 	$(CXX) $(CXXFLAGS) -I. testes/testes.cpp $(FONTES) -o $@
@@ -138,7 +143,7 @@ limpar:
 
 STUBS := testes/stubs-arduino
 
-.PHONY: sintaxe
+.PHONY: sintaxe laco
 
 # `secrets.h` e ignorado pelo git de proposito (credencial nao se versiona), e
 # o sketch o inclui. Para a verificacao de sintaxe rodar em qualquer clone,
