@@ -43,6 +43,19 @@ do Newcastle (van Hees et al. 2015) também especifica o não dominante — que
 o dataset não identifica arquivo a arquivo. `--punho esquerdo` (padrão) fixa
 um lado para não misturar dois registros do mesmo sujeito na mesma medida;
 `--punho ambos` mede os dois e serve para dimensionar quanto o lado importa.
+
+Segunda coorte: Walch et al. (2019) — ML-06
+----------------------------------------------------------------
+    python -m experimentos.ml04_validacao_externa --coorte walch --preparar
+    python -m experimentos.ml04_validacao_externa --coorte walch --rodar
+    python -m experimentos.ml04_validacao_externa --coorte walch --rodar --incluir-baixa-taxa
+
+O mesmo modelo, as mesmas configurações e o mesmo protocolo, com outro destino:
+Apple Watch no pulso, 31 sujeitos, outro centro. A previsão e o adendo ao
+protocolo foram registrados ANTES de rodar (diário, 03/11 (vii) e (viii)). A
+análise principal exclui os 2 sujeitos de 10 Hz; `--incluir-baixa-taxa` é a
+secundária. Os números do Newcastle não mudam com esta opção: o caminho dele é
+o mesmo de antes.
 """
 
 from __future__ import annotations
@@ -77,6 +90,7 @@ from experimentos.ml03b_ablacao import (                                   # noq
 )
 
 PASTA_FEATURES = RAIZ / "dados" / "processado" / "newcastle_features"
+PASTA_FEATURES_WALCH = RAIZ / "dados" / "processado" / "walch_features"
 
 #: As configurações comparadas. A chave vira coluna na tabela de saída.
 #: `contexto`: nº de épocas vizinhas empilhadas. `hmm`: Viterbi por cima.
@@ -204,6 +218,59 @@ def carregar_features_newcastle(cfg, punho: str):
     return np.concatenate(Xs), np.concatenate(ys), np.concatenate(ids)
 
 
+def _variante_walch(incluir_baixa_taxa: bool) -> str:
+    return "todos" if incluir_baixa_taxa else "principal"
+
+
+def preparar_walch(cfg, incluir_baixa_taxa: bool) -> int:
+    """Features da Walch, um .npz por sujeito. O mesmo caminho do Newcastle:
+    reamostrar -> fatiar -> features, e só as épocas pontuadas. As épocas sem
+    dado medido já chegam como −1 do carregador (ARMADILHA 4 de
+    `src/carregar/walch.py`) e saem aqui, como as não pontuadas."""
+    from src.carregar.walch import carregar_walch
+
+    PASTA_FEATURES_WALCH.mkdir(parents=True, exist_ok=True)
+    feitas = 0
+    taxa_min = None if incluir_baixa_taxa else cfg.taxa_comum_hz
+    variante = _variante_walch(incluir_baixa_taxa)
+    for gr in carregar_walch(taxa_minima_hz=taxa_min):
+        alvo = PASTA_FEATURES_WALCH / f"{cfg.hash}_{variante}_{gr.id_sujeito}.npz"
+        if alvo.exists():
+            continue
+        t, a = reamostrar(gr.t, gr.a, cfg.taxa_comum_hz, cfg.corte_antialiasing_frac_nyquist)
+        a_ep, idx = fatiar_epocas(t, a, gr.t0_rotulo, int(gr.rotulos.shape[0]),
+                                  cfg.epoca_s, cfg.taxa_comum_hz)
+        y_ep = gr.rotulos[idx]
+        ok = y_ep >= 0
+        if a_ep.shape[0] == 0 or not ok.any():
+            print(f"  {gr.id_sujeito}: nenhuma época pontuada com dado — pulado", file=sys.stderr)
+            continue
+        X, _ = features_de_epoca(a_ep, fs=cfg.taxa_comum_hz)
+        np.savez_compressed(alvo, X=X[ok], y=y_ep[ok], id=gr.id_sujeito,
+                            taxa_origem_hz=gr.meta["taxa_origem_hz"],
+                            epocas_sem_dado=gr.meta["epocas_sem_dado"])
+        feitas += 1
+        print(f"  {gr.id_sujeito}: {int(ok.sum())} épocas ({gr.meta['epocas_sem_dado']} sem dado, "
+              f"{gr.meta['taxa_origem_hz']:.1f} Hz) -> {alvo.name}", file=sys.stderr)
+    return feitas
+
+
+def carregar_features_walch(cfg, incluir_baixa_taxa: bool):
+    variante = _variante_walch(incluir_baixa_taxa)
+    arquivos = sorted(PASTA_FEATURES_WALCH.glob(f"{cfg.hash}_{variante}_*.npz"))
+    if not arquivos:
+        raise FileNotFoundError(
+            f"Nenhuma feature da Walch ({variante}) em {PASTA_FEATURES_WALCH}. "
+            "Rode --coorte walch --preparar antes.")
+    Xs, ys, ids = [], [], []
+    for caminho in arquivos:
+        d = np.load(caminho, allow_pickle=True)
+        Xs.append(d["X"])
+        ys.append(d["y"].astype(int))
+        ids.append(np.full(d["y"].shape[0], str(d["id"]), dtype=object))
+    return np.concatenate(Xs), np.concatenate(ys), np.concatenate(ids)
+
+
 # =========================================================================
 # Fase 2 — treinar no Wearanize+ inteiro, aplicar ao Newcastle a frio
 # =========================================================================
@@ -228,11 +295,17 @@ def _trivial(y, ids, seed):
     return avaliar_por_sujeito(y, np.ones_like(y), ids, metricas=METRICAS, seed=seed)
 
 
-def rodar(cfg, seed: int, punho: str, destino: Path) -> dict:
+def rodar(cfg, seed: int, punho: str, destino: Path, coorte: str = "newcastle",
+          incluir_baixa_taxa: bool = False) -> dict:
     sujeitos = sujeitos_com_posicoes(["cabeca", "pulso"])
     base = _base_wearanize(sujeitos, cfg)
 
-    X_ncl_bruto, y_ncl, ids_ncl = carregar_features_newcastle(cfg, punho)
+    # Os nomes `_ncl` ficam: o Newcastle foi a primeira coorte, e o caminho
+    # dele não muda. Com `coorte="walch"` eles carregam a Walch.
+    if coorte == "walch":
+        X_ncl_bruto, y_ncl, ids_ncl = carregar_features_walch(cfg, incluir_baixa_taxa)
+    else:
+        X_ncl_bruto, y_ncl, ids_ncl = carregar_features_newcastle(cfg, punho)
     # Normalização por sujeito: é função só de X, não usa rótulo nenhum, e é
     # por isso que pode ser aplicada ao domínio de teste sem vazamento — foi
     # a conclusão do item 5 da ablação, e é o que torna a transferência a
@@ -240,25 +313,30 @@ def rodar(cfg, seed: int, punho: str, destino: Path) -> dict:
     X_ncl = normalizar_por_sujeito(X_ncl_bruto, ids_ncl)
 
     n_suj_ncl = len(set(ids_ncl.tolist()))
-    print(f"Newcastle: {X_ncl.shape[0]} épocas · {n_suj_ncl} sujeitos · "
+    print(f"{coorte}: {X_ncl.shape[0]} épocas · {n_suj_ncl} sujeitos · "
           f"prevalência de sono {y_ncl.mean():.3f}", file=sys.stderr)
     print(f"Wearanize+ (treino): {len(sujeitos)} sujeitos", file=sys.stderr)
 
     trivial = _trivial(y_ncl, ids_ncl, seed)
-    print(f"\n[âncora] trivial 'sempre dormindo' NO NEWCASTLE: "
+    print(f"\n[âncora] trivial 'sempre dormindo' NA COORTE ({coorte}): "
           f"kappa={trivial.media['kappa']:.3f}  espec={trivial.media['especificidade']:.3f}  "
           f"acur={trivial.media['acuracia']:.3f}")
 
     resultado = {
-        "experimento": "ML-04 -- validacao externa (treina Wearanize+, testa Newcastle)",
+        "experimento": (f"ML-04 -- validacao externa (treina Wearanize+, testa {coorte})"
+                        if coorte != "newcastle" else
+                        "ML-04 -- validacao externa (treina Wearanize+, testa Newcastle)"),
         "hash_config": cfg.hash, "seed": seed,
         "utc": datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ"),
         "treino": {"dataset": "wearanize", "n_sujeitos": len(sujeitos),
                    "reajuste_no_teste": "nenhum"},
-        "teste": {"dataset": "newcastle", "punho": punho, "n_sujeitos": n_suj_ncl,
+        "teste": {"dataset": coorte,
+                  **({"punho": punho} if coorte == "newcastle" else
+                     {"variante": _variante_walch(incluir_baixa_taxa)}),
+                  "n_sujeitos": n_suj_ncl,
                   "n_epocas": int(X_ncl.shape[0]),
                   "prevalencia_sono": float(y_ncl.mean())},
-        "trivial_no_newcastle": trivial.dict(),
+        f"trivial_no_{coorte}": trivial.dict(),
         "resultados": {},
     }
 
@@ -267,7 +345,7 @@ def rodar(cfg, seed: int, punho: str, destino: Path) -> dict:
         yw = base[nome_braco]["y"]
         idw = base[nome_braco]["id"]
         resultado["resultados"][nome_braco] = {}
-        print(f"\n=== treino: {nome_braco} -> teste: newcastle ({punho}) ===")
+        print(f"\n=== treino: {nome_braco} -> teste: {coorte} ===")
 
         for nome_cfg, opcoes in CONFIGS.items():
             ctx = int(opcoes["contexto"])
@@ -448,6 +526,10 @@ def main() -> int:
                     help="extrai features do Newcastle (retomável; repita até COMPLETO)")
     ap.add_argument("--rodar", action="store_true")
     ap.add_argument("--punho", choices=("esquerdo", "direito", "ambos"), default="esquerdo")
+    ap.add_argument("--coorte", choices=("newcastle", "walch"), default="newcastle",
+                    help="destino da validação externa (ML-06: walch)")
+    ap.add_argument("--incluir-baixa-taxa", action="store_true",
+                    help="walch: inclui os 2 sujeitos de 10 Hz (análise secundária)")
     ap.add_argument("--orcamento-s", type=float, default=75.0)
     ap.add_argument("--exceto", nargs="*", default=[],
                     help="IDs a pular nesta passada (ex.: ncl034, cujo .bin de 282 MB "
@@ -458,6 +540,23 @@ def main() -> int:
 
     cfg = carregar_config()
     fixar_seed(cfg.seed)
+
+    if args.coorte == "walch":
+        if args.preparar:
+            feitas = preparar_walch(cfg, args.incluir_baixa_taxa)
+            print(f"\n+{feitas} sujeitos extraídos — COMPLETO")
+            return 0
+        destino = (RAIZ / "experimentos" / "saida" / f"ml04_validacao_externa_{cfg.hash}_walch_"
+                   f"{_variante_walch(args.incluir_baixa_taxa)}.json")
+        if args.rodar:
+            rodar(cfg, cfg.seed, args.punho, destino, coorte="walch",
+                  incluir_baixa_taxa=args.incluir_baixa_taxa)
+            comparar(destino)
+            return 0
+        if args.comparar:
+            comparar(destino)
+            return 0
+        ap.error("com --coorte walch: --preparar, --rodar ou --comparar")
 
     if args.preparar:
         feitas, existentes, rejeitadas = preparar(

@@ -2455,13 +2455,6 @@ PENDENCIAS: list[Pendencia] = [
               "partes (a) e (b) fecharam em 30/10: no kappa a redução sobrevive; "
               "na especificidade custa de 1 a 5 pontos, e a recomendação é "
               "manter as 6 no dispositivo.", "🟡", camada_backlog="L1"),
-    Pendencia("ML-06b", SOFTWARE, "Escrever `ml/src/carregar/walch.py`. A "
-              "interface única garante que é só isso. ⚠️ Escrever carregador sem "
-              "ver o arquivo real produziu as 10 armadilhas já catalogadas: "
-              "escreva, mas **não confie até rodar**.", "🟡", camada_backlog="L0",
-              nota="Confirmado aberto: `ml/src/carregar/` tem `base.py`, "
-                   "`newcastle.py`, `sintetico.py` e `wearanize.py`. Não há "
-                   "`walch.py`."),
     Pendencia("DATA-06", SOFTWARE, "O limiar viaja com a leitura. **A coluna e o "
               "campo dão para criar já**; o *valor* do limiar do celular depende "
               "do `VIA-02` (grupo D).", "🔴", camada_backlog="L2",
@@ -2599,11 +2592,6 @@ PENDENCIAS: list[Pendencia] = [
                    "objeto, e ele não tem item'. É a terceira sessão seguida em "
                    "que o instrumento que falta é o mesmo. **Candidato número 1 a "
                    "item novo.** ✏️ **28/10:** virou o item `INFRA-02`."),
-    Pendencia("ML-06a", ACAO, "Baixar o Walch et al. 2019 (PhysioNet "
-              "`sleep-accel`, 31 sujeitos). **Não é alcançável do ambiente de "
-              "execução** — precisa ser baixado da sua máquina. Sem ela, a "
-              "degradação entre coortes é **estimativa pontual, não medida de "
-              "variabilidade**.", "🟡", camada_backlog="L3"),
     Pendencia("AUTH-06", ACAO, "SMTP próprio (Resend/Brevo). O SMTP padrão do "
               "Supabase só entrega a endereços do time do projeto: sem ele, o "
               "'esqueci minha senha' não chega a nenhum usuário além do autor. "

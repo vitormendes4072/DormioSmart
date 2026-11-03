@@ -5672,6 +5672,160 @@ abertos itens que a triagem fechou — é o `DOC-13` acontecendo de novo, e foi 
 - `docs/LIMITACOES-TCC.md`, X.4; `ml/README.md`;
 - `https://supabase.com/docs/guides/auth/auth-smtp` e `https://physionet.org/content/sleep-accel/1.0.0/`, 03/11.
 
+---
+
+# 2026-11-03 (vii) — `ML-06`: a previsão, registrada antes de rodar a coorte Walch
+
+**Por que esta entrada existe sozinha.** O `ML-06` aplica à coorte de Walch et al. (2019) o mesmo
+modelo e o mesmo protocolo da validação externa no Newcastle (`ML-04`). O resultado vai confirmar
+ou não o achado metodológico mais forte do trabalho (X.4). Para que a leitura não se ajuste ao
+número, a previsão e o critério de refutação ficam registrados **neste commit, antes de qualquer
+época da Walch ser processada** — o histórico do git é a prova da ordem.
+
+**O que já se sabia, do Newcastle** (`ml04_validacao_externa_aec203907e6f_esquerdo.json`, braço
+`pulso`, 27 sujeitos): `base_ctx2` κ = 0,265; `item8b_hmm` κ = 0,301 e especificidade de 0,412
+para 0,375; `item9_ctx11` κ = 0,334 [0,254; 0,416] e especificidade 0,507; trivial κ = 0.
+
+**O protocolo, fixado antes:** treino nos 92 sujeitos do Wearanize+ (cache da configuração
+`aec203907e6f`), braço `pulso` como leitura principal (a Walch é de pulso, como o Newcastle);
+teste na Walch sem reajuste de nada (sem scaler no domínio de teste, sem limiar recalibrado, sem
+olhar rótulo antes de medir); normalização por sujeito, que só usa X; as mesmas quatro
+configurações; IC 95% por bootstrap por sujeito; comparação pareada contra `base_ctx2`; o trivial
+"sempre dormindo" medido na própria Walch.
+
+**A previsão.**
+
+- **P1 — o método generaliza:** `item9_ctx11` com o IC 95% do κ inteiramente acima do trivial.
+- **P2 — o ganho da janela atravessa coorte:** `item9_ctx11` contra `base_ctx2`, pareado, com ganho
+  de κ cujo IC exclui zero, e **sem perda significativa de especificidade**.
+- **P3 — o ganho do HMM não atravessa:** `item8b_hmm` contra `base_ctx2`, com Δespecificidade nula
+  ou negativa, e ganho de κ **menor** que o de `item9_ctx11`.
+
+**O critério de refutação.** Se P2 falhar (a janela perde especificidade de forma significativa, ou
+o ganho de κ some), ou se P3 se inverter (o HMM ganha especificidade de forma significativa), o
+achado **não se repete** na segunda coorte, e a X.4 passa a dizer isso, com o número. P1 falhando
+sozinho muda a afirmação de generalização, não a do achado.
+
+**O que fica fora da previsão:** os valores absolutos de κ e de especificidade. A Walch usa outro
+aparelho (Apple Watch), outra taxa e outra população; números menores ou maiores que os do
+Newcastle não confirmam nem refutam nada sozinhos.
+
+**Procedência.** `ml/experimentos/ml04_validacao_externa.py`;
+`ml/experimentos/saida/ml04_validacao_externa_aec203907e6f_esquerdo.json`; `docs/LIMITACOES-TCC.md`, X.4.
+
+---
+
+# 2026-11-03 (viii) — `ML-06`: o que a inspeção da Walch encontrou, e o adendo ao protocolo
+
+**Por que esta entrada vem antes do resultado.** O download (577 MB; 2,2 GB descompactados; **125 de
+125 arquivos conferem com o `SHA256SUMS.txt`**) foi inspecionado **só no sinal e nos códigos de
+rótulo — nenhuma métrica de desempenho foi calculada**. A inspeção forçou decisões de protocolo
+que a entrada (vii) não previa; elas ficam registradas aqui, antes de rodar qualquer modelo.
+
+**O que foi medido, nos 31 sujeitos.**
+
+- **Tempo:** o arquivo de movimento começa horas ou **dias antes** da polissonografia (tempos
+  negativos, até −533 391 s); os rótulos começam em 0 e andam de 30 em 30 s, em todos.
+- **Códigos de rótulo:** −1: 438 épocas; 0: 2 429; 1: 1 821; 2: 12 954; 3: 3 329; **4: 356**;
+  5: 5 884. A página do PhysioNet não define o 4; o repositório dos autores
+  (`ojwalch/sleep_classifiers`, `source/sleep_stage.py`) define 4 = N4 e −1 = não pontuado.
+- **Taxa (mediana por sujeito):** cerca de 50 Hz em 24 sujeitos; cerca de 66 Hz em 4; 33 Hz em 1;
+  **10 Hz em 2** (`5383425` e `8258170`). A taxa comum do pipeline é 32 Hz.
+- **Tempo fora de ordem ou repetido:** em 11 sujeitos.
+- **Lacunas acima de 1 s dentro da janela dos rótulos:** em 16 sujeitos, até 1 277 s numa só. E
+  um caso extremo: no `7749105` o movimento **para aos 4 024 s** da polissonografia e só volta
+  depois do fim dela. Um sujeito (`4018081`) não tem movimento até o fim dos rótulos.
+
+**O risco que isso expõe.** `reamostrar` interpola lacunas linearmente (decisão documentada em
+`src/sinal.py`), e depois disso `fatiar_epocas` vê uma grade contínua e não tem como achar a
+lacuna. Sem tratamento, o `7749105` entraria com **cerca de 7 h de sinal inventado por
+interpolação**, pareadas com rótulos de polissonografia verdadeiros.
+
+**O adendo ao protocolo, fixado antes de rodar.**
+
+1. **Rótulos:** 0 → vigília; 1, 2, 3, 4 e 5 → sono; −1 e qualquer outro código → não pontuado (sai).
+2. **Movimento:** recortado à janela dos rótulos, com 60 s de margem; ordenado por tempo; tempo
+   repetido descartado (fica a primeira amostra).
+3. **Época sem dado medido vira não pontuada**, no carregador, antes da reamostragem: se dentro dos
+   30 s houver lacuna maior que 1 s, ou se o movimento não cobrir a época inteira.
+4. **Análise principal sem os 2 sujeitos de 10 Hz:** reamostrar 10 Hz para 32 Hz não cria o
+   conteúdo que as features de frequência leem. **Análise secundária com eles**, relatada ao lado,
+   para que a exclusão não seja escolhida pelo resultado.
+5. **O resto do protocolo é o da entrada (vii)**, e a previsão (P1–P3) não muda.
+
+**Procedência.** `ml/dados/bruto/walch/` (não versionado); `SHA256SUMS.txt` do pacote;
+`https://github.com/ojwalch/sleep_classifiers` (`source/sleep_stage.py`); `ml/src/sinal.py` e
+`ml/src/epocas.py`.
+
+---
+
+# 2026-11-03 (ix) — `ML-06`: a coorte Walch rodou; duas previsões e meia se confirmaram
+
+**O problema, como foi entendido no início.** A validação externa do trabalho se apoiava numa
+coorte só (Newcastle). A segunda (Walch et al., 2019) estava declarada como "não executada" por
+um motivo que deixou de valer nesta máquina. O protocolo e a previsão estão nas entradas (vii) e
+(viii), registrados e enviados ao GitHub antes de qualquer época ser processada.
+
+**Hipótese de trabalho.** P1, P2 e P3 da entrada (vii).
+
+**O que foi testado, e como.**
+
+- **Carregador `ml/src/carregar/walch.py`**, com as cinco armadilhas medidas na inspeção; 8
+  testes com arquivos fabricados no formato real; seis sabotagens.
+- **Smoke test no dado real:** o `7749105` fica com 130 de 960 épocas (as 830 sem movimento saem);
+  o `5383425` é excluído por taxa (10 Hz).
+- **`ml04` com `--coorte walch`:** o mesmo modelo, as mesmas quatro configurações, o mesmo
+  bootstrap. **Regressão:** o Newcastle rodado de novo com o `ml04` alterado deu JSON idêntico ao
+  versionado, exceto o carimbo `utc`.
+- **Suíte de ML inteira.**
+
+**Resultado medido.**
+
+- **Sabotagens 6/6 acusadas:** REM como vigília (2 falhas); N4 como não pontuado (2); sem a
+  máscara de época sem dado (2, inclusive o teste que prova que nenhuma época interpolada chega às
+  features); sem ordenar o tempo (1); sem recortar a janela (1); lacuna tolerada de 1 h (1).
+- **Suíte de ML:** 134 passam (126 + 8).
+- **Walch, análise principal** (29 sujeitos, 23 303 épocas, prevalência 0,913), braço pulso:
+  `item9_ctx11` κ = 0,378 [0,316; 0,444], especificidade 0,727 [0,664; 0,787]. Pareado contra
+  `base_ctx2`: janela Δκ +0,032 [+0,006; +0,061], Δesp +0,096 [+0,072; +0,120]; HMM Δκ +0,070
+  [+0,040; +0,103], Δesp −0,042 [−0,076; −0,006].
+- **Análise secundária** (31 sujeitos): as mesmas conclusões, em todos os braços.
+- **Contra a previsão:** P1 confirmada; P2 confirmada; **P3 confirmada na especificidade e não no
+  κ** — o HMM ganhou mais κ que a janela.
+
+**Adaptação.**
+
+- **A X.4 foi reescrita no parágrafo da segunda coorte**, e diz o que falhou: a queda de ~30 pp
+  de especificidade é do Newcastle (na Walch, 0,802 → 0,727); o ganho de κ do HMM depende da
+  coorte. A conclusão que sobra é mais restrita e mais firme: **a janela sobe a especificidade nas
+  duas coortes, e o HMM a derruba nas duas**.
+- **A explicação pela prevalência** (Walch 0,913, perto da do Wearanize+; Newcastle 0,699) é
+  compatível, mas está marcada no texto como leitura posterior ao resultado.
+
+**O que deu errado no caminho.**
+
+- **O primeiro teste de época sem dado estava errado, não o código:** a grade fabricada ia até
+  119,98 s, e a época 90–120 estava coberta. Corrigido o caso, não o carregador.
+- **A branch foi criada a partir do `develop` sem a triagem**, e a entrada do diário colidiria com
+  a da PR #50; recriada a partir da branch da triagem antes do primeiro commit.
+- **A âncora do diário tinha dois espaços a mais** e o primeiro `ed` parou na asserção, sem gravar.
+
+**Risco em aberto.**
+
+- **Com duas coortes, a variação entre coortes ainda é estimada por dois pontos.** A X.4 passa a
+  falar em faixa (0,507 a 0,727), não em valor.
+- **A Walch não tem segunda pontuação manual**, como o Newcastle: a degradação continua sem poder
+  ser decomposta entre método e rotulagem.
+
+**Procedência.**
+
+- `ml/src/carregar/walch.py`, `ml/src/carregar/__init__.py`, `ml/testes/test_walch.py`;
+- `ml/experimentos/ml04_validacao_externa.py`; `ml/experimentos/saida/ml04_validacao_externa_aec203907e6f_walch_principal.json`
+  e `_walch_todos.json`;
+- commits `26bb18f` (previsão) e `f528750` (adendo), anteriores ao resultado;
+- `docs/LIMITACOES-TCC.md`, X.4, e `docs/RESULTADOS-TCC.md`, Y.6 e Y.8 (os dois com os mesmos números);
+  `ml/README.md`, seção `ML-06`; backlog `ML-06a` e `ML-06b`.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

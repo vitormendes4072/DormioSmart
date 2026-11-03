@@ -638,15 +638,51 @@ reproduz fora da coorte de origem, e **apenas a validação externa permitiu dis
 atribuível ao método do ganho atribuível à coorte**. Essa conclusão é independente do
 desempenho absoluto do dispositivo: vale qualquer que seja o valor de kappa obtido.
 
-**Uma única coorte externa.** A validação externa apoiou-se em uma coorte independente apenas.
-Estava prevista a utilização de uma segunda base, com acelerometria de punho obtida por
-dispositivo de consumo e rotulagem polissonográfica, o que permitiria distinguir o que, na
-degradação observada, é atribuível à troca de coorte em geral e o que é atribuível às
-particularidades daquela coorte específica. Essa segunda validação **não foi executada**, por
-indisponibilidade de acesso ao repositório que hospeda a base no ambiente de execução
-empregado; não há, portanto, resultado desfavorável a relatar, e sim procedimento não
-realizado. Com uma única coorte externa, a magnitude da degradação relatada deve ser lida como
-estimativa pontual, e não como medida da variabilidade esperada entre coortes.
+**Segunda coorte independente.** Para distinguir o que, na degradação observada, é atribuível à
+troca de coorte em geral e o que é particularidade da coorte de Newcastle, o mesmo modelo foi
+aplicado, com o mesmo protocolo, à base de Walch et al. (2019): acelerometria de punho obtida por
+dispositivo de consumo, outro centro e rotulagem polissonográfica própria. A previsão do
+resultado e o critério de refutação foram registrados antes do processamento. A inspeção dos
+arquivos impôs duas decisões, também registradas antes: o descarte das épocas sem sinal medido,
+que a interpolação teria preenchido artificialmente, e a exclusão de dois participantes cuja
+taxa de amostragem (10 Hz) é inferior à taxa comum do processamento. A análise principal
+compreendeu **29 participantes** e 23 303 épocas, com prevalência de sono de 0,913; a análise
+secundária, com os 31 participantes, conduziu às mesmas conclusões.
+
+| Treino | Configuração | Kappa | Especificidade |
+|---|---|---|---|
+| — | **Trivial, medido na coorte de Walch** | **0,000** | **0,000** |
+| Punho | Base (±2 épocas) | 0,346 [0,295 a 0,399] | 0,631 [0,570 a 0,694] |
+| Punho | Com modelo de Markov | 0,416 [0,354 a 0,476] | 0,589 [0,509 a 0,670] |
+| Punho | **Contexto ±11** | **0,378** [0,316 a 0,444] | **0,727** [0,664 a 0,787] |
+| Punho | Contexto ±11 e Markov | 0,390 [0,326 a 0,460] | 0,637 [0,573 a 0,698] |
+
+Todas as configurações, nos três braços de treino, permaneceram com o intervalo de confiança do
+kappa integralmente acima do classificador trivial. A especificidade da configuração de
+referência, que passara de 0,802 em validação interna para 0,507 na coorte de Newcastle,
+situou-se em **0,727** na de Walch: a perda de aproximadamente trinta pontos percentuais
+relatada acima é característica da primeira coorte, e não estimativa geral. Com duas coortes,
+a especificidade externa variou entre 0,507 e 0,727, e é essa faixa que se adota como
+expectativa em população não observada.
+
+| Braço de punho, contra a base | Δ kappa (Walch) | Δ kappa (Newcastle) | Δ especificidade (Walch) | Δ especificidade (Newcastle) |
+|---|---|---|---|---|
+| Modelo de Markov | +0,070 [+0,040 a +0,103] | +0,036 | **−0,042** [−0,076 a −0,006] | **−0,037** |
+| Contexto ±11 | +0,032 [+0,006 a +0,061] | +0,069 | **+0,096** [+0,072 a +0,120] | **+0,095** |
+
+A ampliação da janela de contexto reproduziu, na segunda coorte, a direção e a magnitude do
+efeito sobre a especificidade, e manteve ganho de kappa. O modelo de Markov voltou a reduzir a
+especificidade, mas apresentou ganho de kappa superior ao da janela — o que **contraria** a
+previsão registrada antes do processamento, de que esse ganho seria inferior. O resultado é
+compatível com a explicação proposta para a assimetria, uma vez que a prevalência da coorte de
+Walch (0,913) é próxima da coorte de desenvolvimento (0,895), e a de Newcastle (0,699) não é;
+essa leitura, porém, é posterior ao resultado e apoia-se em duas coortes. A conclusão
+metodológica que as duas sustentam é, por isso, mais restrita que a formulada a partir de uma
+só: **a ampliação da janela aumentou a especificidade em ambas as coortes, e o modelo de Markov
+a reduziu em ambas; o efeito deste último sobre o kappa depende da coorte.** A afirmação de que
+a validação interna seria insuficiente para a seleção de modelo permanece: em validação
+interna, o modelo de Markov não apresentava custo de especificidade, e nas duas coortes
+externas apresentou.
 
 ### Y.7 Efeito da lateralidade do sensor
 
@@ -722,21 +758,23 @@ Reunindo o que foi medido:
    margem disponível.
 6. Entre as modificações avaliadas, a ampliação da janela de contexto para aproximadamente
    onze minutos é a única que melhora kappa e especificidade simultaneamente, e é a única cujo
-   ganho se reproduz em coorte independente. Com ela, o desempenho interno alcança 75,0% da
+   ganho de especificidade se reproduz nas duas coortes independentes; o modelo de Markov
+   reduziu a especificidade em ambas, e seu efeito sobre o kappa variou entre elas. Com ela, o desempenho interno alcança 75,0% da
    margem disponível no braço de cabeça e 67,6% no braço de punho.
 7. O desempenho em coorte independente é kappa de 0,334 [0,254 a 0,416] e especificidade de
-   0,507 [0,442 a 0,576], acima do classificador trivial da própria coorte e substancialmente
-   inferior ao desempenho interno. É esta a estimativa que se adota como defensável. Não há
-   teto de concordância medido naquela coorte, de modo que este valor não é expresso como
-   fração de margem alguma.
+   0,507 [0,442 a 0,576] na coorte de Newcastle, e kappa de 0,378 [0,316 a 0,444] e
+   especificidade de 0,727 [0,664 a 0,787] na de Walch, acima do classificador trivial de cada
+   coorte e inferior ao desempenho interno. A faixa entre as duas é a estimativa que se adota
+   como defensável. Não há teto de concordância medido nessas coortes, de modo que esses valores
+   não são expressos como fração de margem alguma.
 8. O lado do corpo em que o sensor é acoplado não produziu efeito distinguível de zero em
    nenhuma das vinte e quatro comparações realizadas.
 
 O que permanece **não medido**, e é declarado como tal: o comportamento do dispositivo
 desenvolvido neste trabalho em placa, uma vez que a validação em hardware depende de etapa não
 concluída; o custo do acoplamento mecânico através de um travesseiro, distinto do custo da
-posição anatômica medido em Y.3; a segunda coorte externa prevista; e o teto de concordância
-entre pontuadores na coorte externa, que permitiria decompor a degradação relatada em Y.6 entre
+posição anatômica medido em Y.3; e o teto de concordância entre pontuadores nas coortes
+externas, que permitiria decompor a degradação relatada em Y.6 entre
 perda de desempenho do método e diferença de concordância da rotulagem de referência. Nenhum
 desses procedimentos foi executado com resultado desfavorável — nenhum foi executado.
 
@@ -1025,11 +1063,21 @@ verificáveis nos JSONs (`teste.prevalencia_sono` e `prevalencia_sono.cabeca`). 
 o que está no JSON, e ter dois números para a mesma quantidade em duas seções do mesmo TCC é o
 tipo de coisa que a banca encontra.
 
-**Sobre o Walch.** Segunda coorte externa prevista, PhysioNet `sleep-accel`, 31 participantes.
-**Não foi executada:** falta o dado *e* o carregador (`ml/src/carregar/walch.py` não existe) —
-o repositório não é alcançável do ambiente de execução. O texto de Y.6 declara "não foi
-executada", e essa redação é deliberada. Não a troque por nada que sugira tentativa
-malsucedida.
+**Sobre o Walch — ✏️ executada em 03/11 (`ML-06`).** Tudo em
+`ml04_validacao_externa_aec203907e6f_walch_principal.json` (29 participantes) e `..._walch_todos.json`
+(31, análise secundária), reproduzido por
+`python -m experimentos.ml04_validacao_externa --coorte walch --rodar [--incluir-baixa-taxa]`:
+
+| Número no texto | Chave |
+|---|---|
+| 29 participantes, 23 303 épocas, prevalência 0,913 | `teste.n_sujeitos`, `teste.n_epocas`, `teste.prevalencia_sono` |
+| a tabela de κ e especificidade | `resultados.pulso.<config>.media/.ic95_*` |
+| **κ 0,378 [0,316 a 0,444] e espec. 0,727 [0,664 a 0,787]** | `resultados.pulso.item9_ctx11` |
+| os Δ pareados | saída do `--comparar` (calculada do `por_sujeito`, não gravada) |
+
+A previsão (P1–P3) e o adendo de protocolo estão nos commits `26bb18f` e `f528750`, anteriores ao
+resultado, e no diário, 03/11 (vii) e (viii). **A mesma mudança foi feita na X.4 do
+`LIMITACOES-TCC.md`** — as duas seções têm de continuar dizendo os mesmos números.
 
 ### Y.7 — lateralidade (n = 26 pareado)
 

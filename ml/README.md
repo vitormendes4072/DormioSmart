@@ -347,14 +347,65 @@ percentuais mais de vigília. Com o pontuador 1 como referência a especificidad
 0,958; com o pontuador 2, 0,520 — mesmo par de pontuações. κ e acurácia não se movem. Sempre
 diga qual é a referência.
 
-### O que falta: Walch
+## ML-06 — a segunda coorte externa: Walch et al. (2019)
 
-O Walch et al. 2019 (Apple Watch, 31 sujeitos, PhysioNet `sleep-accel`) era a
-segunda coorte independente prevista, e **não foi feito**: o servidor do
-PhysioNet não é alcançável do ambiente desta sessão (o proxy devolve 403 no
-túnel TLS). Falta baixar o dado **e** escrever `src/carregar/walch.py` — a
-interface única já garante que só isso é preciso, mas nada disso está
-escrito. Não confundir com "rodou e deu ruim": não rodou.
+✏️ **03/11/2026.** Até aqui esta seção dizia "O que falta: Walch" — o PhysioNet
+não era alcançável do ambiente de execução daquela sessão. Desta máquina ele é.
+
+> Dado: PhysioNet `sleep-accel` 1.0.0, Open Access, **Open Data Commons
+> Attribution License v1.0** — citar Walch, O. (2019), DOI `10.13026/hmhs-py35`,
+> e Walch et al., *Sleep* 42(12), zsz180, DOI `10.1093/sleep/zsz180`. 577 MB
+> zipado; 125/125 arquivos conferem com o `SHA256SUMS.txt`. Descompactar em
+> `dados/bruto/walch/`.
+
+```bash
+python -m experimentos.ml04_validacao_externa --coorte walch --preparar
+python -m experimentos.ml04_validacao_externa --coorte walch --rodar
+python -m experimentos.ml04_validacao_externa --coorte walch --rodar --incluir-baixa-taxa
+```
+
+**A previsão foi registrada antes de rodar** (diário, 03/11 (vii), commit
+`26bb18f`), e o adendo de protocolo que a inspeção forçou também (03/11 (viii),
+`f528750`). As cinco armadilhas do dado estão no topo de `src/carregar/walch.py`
+— a mais séria: lacunas de até ~7 h que `reamostrar` preencheria por
+interpolação; as épocas sem dado medido saem no carregador.
+
+Treino: os mesmos 92 do Wearanize+. Teste: **29 sujeitos** (os 2 de 10 Hz
+excluídos; com eles, 31, e as conclusões não mudam). Prevalência de sono
+**0,913**.
+
+| treino | configuração | κ | espec. |
+|---|---|---:|---:|
+| — | **trivial "sempre dormindo" na Walch** | **0,000** | **0,000** |
+| pulso | base (±2) | 0,346 [0,295, 0,399] | 0,631 |
+| pulso | + HMM (8b) | 0,416 [0,354, 0,476] | 0,589 |
+| pulso | **contexto ±11 (9)** | **0,378 [0,316, 0,444]** | **0,727** |
+| pulso | ±11 + HMM | 0,390 | 0,637 |
+
+Pareado, contra a base (±2), braço pulso — ao lado do Newcastle:
+
+| | Δκ Walch | Δκ Newcastle | Δespec. Walch | Δespec. Newcastle |
+|---|---|---|---|---|
+| + HMM (8b) | **+0,070 [+0,040, +0,103]** | +0,036 | **−0,042 [−0,076, −0,006]** | −0,037 |
+| contexto ±11 (9) | +0,032 [+0,006, +0,061] | +0,069 | **+0,096 [+0,072, +0,120]** | +0,095 |
+
+**O que confirma e o que não confirma a previsão:**
+
+1. **P1 — confirmada.** Todas as configurações, nos três braços, acima do
+   trivial.
+2. **P2 — confirmada.** A janela ±11 ganha κ e **ganha especificidade**, com a
+   mesma magnitude do Newcastle (+0,096 contra +0,095).
+3. **P3 — confirmada na especificidade, NÃO no κ.** O HMM volta a custar
+   especificidade, mas aqui ganha **mais** κ que a janela. A explicação de antes
+   (a matriz de transição carrega a prevalência do Wearanize+, ~0,90) é
+   compatível: a Walch tem prevalência parecida (0,913), o Newcastle não
+   (0,699). Mas essa leitura veio **depois** do número, com duas coortes só.
+
+**O que muda na conclusão do ML-04:** "o item 8b é um ganho de coorte" fica
+restrito à especificidade. A frase que as duas coortes sustentam: **a janela
+sobe a especificidade, o HMM a derruba; o efeito do HMM no κ depende da
+coorte.** E a queda de especificidade de 0,802 para 0,507 é do Newcastle: na
+Walch, 0,727. Texto atualizado em `docs/LIMITACOES-TCC.md`, X.4.
 
 ---
 
