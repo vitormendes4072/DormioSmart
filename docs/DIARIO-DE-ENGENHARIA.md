@@ -6427,6 +6427,45 @@ a página o renderiza; isso é do `Privacidade.test.tsx` e do `montagem.test.ts`
 **Procedência.** Branch `chore/UI-22-raw-no-servidor-real`; `frontend/src/raw.test.ts`; backlog
 `UI-21`, `UI-22`; diário 03/11 (xx).
 
+---
+
+# 2026-11-03 (xxii) — `INFRA-04`: o gunicorn sai, e a stack documentada volta a bater
+
+**O problema, como foi entendido no início.** O `gunicorn` estava no `web-app/requirements.txt` e na
+stack do `CLAUDE.md` e do `README.md`, sem rodar em lugar nenhum: a Vercel serve o backend pelo
+`@vercel/python`. Ele só aparecia nos avisos do `pip-audit` (`CI-08`, entrada (xvii)).
+
+**Hipótese de trabalho.** Que nada dependesse dele: nem os testes, nem o import do `app`, nem
+documento do TCC.
+
+**O que foi testado, e como.** Busca por `gunicorn`, `wsgi` e `Procfile` no repositório e nos
+documentos locais não versionados (`DOCUMENTO-TCC.md`, `ROADMAP.md`, `METODOLOGIA.md`,
+`HARDWARE.md`, roteiro). Depois de tirá-lo do `requirements.txt`: ambiente Python 3.11 limpo,
+instalado só do arquivo, conferido que o pacote **não** está presente; os testes do backend; o
+`import app` como a Vercel faz; o `pip-audit`. A linha de stack do `README.md` foi refeita contra o
+`frontend/package.json`, o `web-app/requirements.txt` e o `ml/requirements.txt`.
+
+**Resultado medido.** Gunicorn só no `requirements.txt`, no `CLAUDE.md` e no `README.md` (mais o
+histórico no diário, no backlog e no comentário do workflow, que ficam). Nenhum documento local o
+cita — o texto do TCC não muda. Sem ele: **417 testes passam**, `import app` devolve o `Flask`,
+`pip-audit` sem aviso. A stack do `README.md` dizia "Tailwind + Chart.js": o gráfico é **Recharts**,
+e faltavam React, TypeScript, Vite, o ML e o vitest.
+
+**Adaptação.** Ao ler o `README.md` inteiro para corrigir a stack, apareceram mais cinco
+afirmações velhas — a principal, mandar preencher a `SUPABASE_SERVICE_ROLE_KEY`, que a produção
+não usa desde o `SEC-14`. Ficaram fora deste item, que era a stack: viraram o `DOC-14`, porque
+reescrever instruções de instalação pede executá-las numa cópia limpa antes, e isso não estava no
+plano.
+
+**O que deu errado no caminho.** Nada nesta etapa.
+
+**Risco em aberto.** Só depois do release: a Vercel instala o `requirements.txt` sem o gunicorn, e
+a conferência é o `/health` e o login. Se o backend um dia sair da Vercel, um servidor WSGI volta a
+ser necessário — está escrito no `CLAUDE.md`. O README segue com o resto envelhecido: `DOC-14`.
+
+**Procedência.** Branch `chore/INFRA-04-remover-gunicorn`; `web-app/requirements.txt`,
+`README.md`, `CLAUDE.md`; backlog `INFRA-04`, `DOC-14`.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

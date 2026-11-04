@@ -16,7 +16,7 @@ Como é um TCC, decisões precisam de validade científica. A pergunta de pesqui
 
 **Stack:**
 - **Firmware:** C++ · Arduino · ESP32 · MPU6050 · Wokwi (Fase 1) → placa física (Fase 2). O núcleo (`firmware/nucleo/`) é C++ puro, testado no host com `g++`.
-- **Web-app (backend):** Python · Flask 3.1 · Supabase (Postgres + Auth, com RLS) · Gunicorn · deploy no Vercel
+- **Web-app (backend):** Python · Flask 3.1 · Supabase (Postgres + Auth, com RLS) · deploy no Vercel (pelo `@vercel/python`; ✏️ *03/11, `INFRA-04`: o Gunicorn constava aqui e no `requirements.txt` sem rodar em lugar nenhum — saiu. Backend fora da Vercel volta a precisar de um servidor WSGI*)
 - **Frontend:** React 18 · TypeScript · Vite · vitest · `@supabase/supabase-js`
 - **ML:** Python 3.11 · numpy · pandas · scipy · scikit-learn — versões **pinadas** em `ml/requirements.txt`. O bloco de ML está fechado (ver backlog, "Concluído").
 

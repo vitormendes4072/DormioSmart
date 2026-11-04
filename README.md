@@ -44,8 +44,10 @@ vercel.json # configuração de deploy
 
 ## 🛠️ Stack
 **Firmware:** C++ · Arduino · ESP32 · MPU6050 · Wokwi  
-**Web-app:** Python 3.11 · Flask · Supabase (PostgreSQL) · Gunicorn · Vercel · Tailwind + Chart.js  
-**Qualidade:** pytest · GitHub Actions (CI)
+**Backend:** Python 3.11 · Flask · Supabase (PostgreSQL + Auth, com RLS) · Vercel  
+**Frontend:** React 18 · TypeScript · Vite · Tailwind CSS · Recharts · React Router  
+**ML:** Python 3.11 · numpy · pandas · scipy · scikit-learn  
+**Qualidade:** pytest · vitest · GitHub Actions (CI)
 
 ## ▶️ Como rodar (web-app)
 ```bash
