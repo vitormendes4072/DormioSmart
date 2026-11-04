@@ -1,6 +1,18 @@
+import path from 'path'
+
 import { defineConfig } from 'vitest/config'
 
 export default defineConfig({
+  // SEC-17 (03/11): a página /privacidade importa `docs/POLITICA-DE-PRIVACIDADE.md?raw`.
+  // Desde o vite 6.4 o carregador dos testes confere o caminho COM a query
+  // (`…md?raw`), e uma liberação do arquivo nunca casa com ele — só a da
+  // pasta. Sem isto, `Privacidade.test.tsx` e a montagem do /dashboard caem
+  // com "Denied ID". A liberação é só dos testes: o `vite.config.ts` segue
+  // liberando o arquivo, e só ele, para o servidor de desenvolvimento, que
+  // serve a página com o vite 6.4.5 (conferido em 03/11).
+  server: {
+    fs: { allow: [path.resolve(__dirname), path.resolve(__dirname, '../docs')] },
+  },
   test: {
     // `node` é o padrão porque é o que 26 dos 27 arquivos precisam: funções
     // puras e o cliente de API com fetch mockado.
