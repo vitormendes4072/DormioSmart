@@ -6246,6 +6246,40 @@ muda a stack descrita e ficou para decisão do autor.
 `.github/workflows/auditoria-dependencias.yml`; execução de sabotagem `41749478900` (branch
 `ci/sabotagem-CI-08`, não mesclada); backlog `DOC-13`, `CI-08`, `SEC-17`.
 
+---
+
+# 2026-11-03 (xviii) — o release do `DOC-13` e do `CI-08`
+
+**O problema, como foi entendido no início.** O `DOC-13` e o `CI-08` estavam em `develop` (PR #62).
+As versões corrigidas do backend só valiam na produção, e o agendamento da auditoria só rodava,
+depois do release para `main`.
+
+**Hipótese de trabalho.** Que a troca de Flask, python-dotenv e gunicorn não mudasse nada visível,
+já que os 417 testes do backend passaram com as versões novas e a Vercel não usa o gunicorn.
+
+**O que foi testado, e como.** Diff `main..develop` (só o `requirements.txt` muda a produção); PR #63
+com 13 checks, as duas auditorias incluídas; deploy acompanhado pela API de deployments; depois,
+`/health`, as rotas de ingestão e de perfil sem credencial e com `Bearer` inválido, `/privacidade`;
+a auditoria disparada à mão a partir de `main`; e um login do autor.
+
+**Resultado medido.** Deploy `7534968706`, `success`, SHA `f754b96`. `/health` `200`, banco ok,
+contrato `2.7.0`; `PATCH /api/me/perfil`, `POST /api/data/lote` e `GET /api/features` → `401` sem
+credencial, `Bearer` inválido → `401`; `/privacidade` `200`. Auditoria a partir de `main`: execução
+`41751583490`, os dois jobs verdes. **O autor confirmou o login.**
+
+**Adaptação.** Nenhuma.
+
+**O que deu errado no caminho.** Nada nesta etapa.
+
+**Risco em aberto.** A versão dos pacotes que a Vercel instalou não é visível de fora: o que garante
+o Flask 3.1.3 é o `requirements.txt` de `main`, não uma medição na produção. O agendamento semanal
+ainda não rodou sozinho — a primeira execução agendada é a da próxima segunda-feira. `SEC-17` segue
+aberto.
+
+**Procedência.** PRs #62 e #63 (`f754b96`); deployment de produção `7534968706`; execução
+`41751583490`; as rotas de `https://dormio-smart.vercel.app`, 03/11; a confirmação do autor; backlog
+`CI-08`.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
