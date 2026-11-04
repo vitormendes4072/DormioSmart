@@ -124,11 +124,12 @@ npm ci
 npm run dev
 ```
 
-**Testes:**
+**Testes** (cada linha a partir da raiz do repositório):
 ```bash
+pip install pytest
 cd web-app && python -m pytest tests/ --ignore=tests/rls   # backend, Supabase mockado
-cd frontend && npm test                                     # frontend (vitest)
-cd ml && python -m pytest testes                            # ML (pede ml/requirements.txt)
+cd frontend && npm test                                     # frontend (vitest), depois do npm ci
+pip install -r ml/requirements.txt && cd ml && python -m pytest testes   # ML
 ```
 Há ainda a suíte de RLS contra um Postgres de verdade, os testes do núcleo do firmware (`make`
 em `firmware/nucleo/`) e as conferências de documento — todos rodam no CI, e a tabela com os
