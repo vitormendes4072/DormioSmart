@@ -6729,6 +6729,57 @@ depende dos autores colarem. O resto do texto do TCC com a arquitetura antiga é
 §4.2; inserção fora do repositório em `documento/INSERCAO-CALC-01-ENERGIA-C2.md`; Produto 5 lido
 em 04/11; backlog `CALC-01`, `DOC-16`.
 
+---
+
+# 2026-11-04 (v) — `CALC-02`: a física da medição travada no CI e levada ao texto
+
+**O problema, como foi entendido no início.** O item pedia a física do acelerômetro — força
+específica, resolução, ruído, Nyquist — e o porquê de 21 Hz e não 260 Hz. O levantamento mostrou
+que o conteúdo **já existia** no Z.1 de `CALCULOS-TCC.md`, atualizado para a C2 e coerente com o
+firmware, mas que metade dos números dele não estava travada por nenhuma conferência, e que a
+6.4.3 do texto do TCC (Produto 5) estava atrás: sem ruído, sem a justificativa do filtro, e com
+uma frase que contradiz o cálculo — "faixas menores ofereceriam resolução mais fina".
+
+**Hipótese de trabalho.** Que o Z.1 estivesse certo e bastasse travá-lo, ligando-o ao firmware
+para que uma mudança de configuração do sensor não deixasse o texto justificando o que não roda.
+
+**O que foi testado, e como.** Asserções novas em `scripts/calculos_tcc.py` para cada número do Z.1
+que não estava travado. Leitura, pelo script, da configuração que o `sketch.ino` grava no sensor
+(`nucleo/fifo_mpu.h`: `C2_DLPF_CFG`, `C2_SMPLRT_DIV`, `C2_ACCEL_CONFIG`), convertida pelas tabelas
+do Register Map em banda, taxa e fundo de escala, e das chamadas da biblioteca nos dois sketches
+de bancada. Quatro sabotagens: DLPF de 44 Hz e ±4 g no `fifo_mpu.h`, filtro de 44 Hz no
+`envio-continuo.ino`, densidade de ruído de 300 µg/√Hz no script. A 6.4.3 do Produto 5 lida
+no Drive para montar a inserção, e a numeração das equações do texto levantada antes de escrever.
+
+**Resultado medido.** O firmware dá **21 Hz, 50 Hz e ±8 g**, como o Z.1 diz. Todas as asserções
+passam. Sabotagens **4/4**, cada uma pela asserção certa: a do DLPF derrubou a banda e a condição
+"taxa acima do Nyquist do filtro"; a do fundo de escala, só ela; a do sketch de bancada apontou o
+arquivo; a da densidade derrubou os σ e as razões contra a quantização — e não o fator
+√(260/21), que não depende dela, como devia.
+
+**Adaptação.** Uma frase do Z.1 dizia que "a biblioteca empregada adota, por omissão, 260 Hz"; o
+firmware do dispositivo não usa a biblioteca — grava o registrador —, e a frase foi precisada. Na
+inserção, a relação σ = eₙ · √B ficou no corpo do texto, sem número, para não renumerar as
+Equações 8 a 10 da 6.4.4 e as citações a elas.
+
+**O que deu errado no caminho.** O `conferir()` do `calculos_tcc.py` não tinha a função
+`verdade` que o do `estudo_cadencia.py` tem; a primeira execução quebrou com `NameError` e ela foi
+acrescentada no mesmo molde. **E o achado maior, fora do plano:** antes de abrir o PR, conferido o
+`ci.yml`, o `calculos_tcc.py --conferir` **nunca rodou no CI** — nem o `estudo_buffer.py --conferir`.
+Só o `estudo_cadencia.py` estava no job `documentos`. O `CLAUDE.md` listava os três como conferências
+que "passam", o que era verdade só quando alguém os rodava à mão; e as travas deste item não
+travariam nada, e a inserção para o Produto 5 dizia "travada no CI". Os dois entraram no job — é o
+§1 das lições de novo: alcance de verificação afirmado, não conferido.
+
+**Risco em aberto.** O σ a 21 Hz continua **calculado** a partir de uma densidade especificada em
+outra configuração; a medição é do `CAL-01`, depois da solda. A banda da actigrafia
+(0,25–3,5 Hz) entra no texto do TCC sem citação lida — a inserção avisa (`DOC-06b`). Colar a
+inserção é com os autores.
+
+**Procedência.** Branch `feature/CALC-02-fisica-da-medicao`; `scripts/calculos_tcc.py`;
+`docs/CALCULOS-TCC.md` (Z.1.4 e procedência); inserção fora do repositório em
+`documento/INSERCAO-CALC-02-FISICA-DA-MEDICAO.md`; Produto 5 lido em 04/11; backlog `CALC-02`.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
