@@ -6162,6 +6162,34 @@ numa dependência só aparece quando alguém rodar à mão.
   `frontend/src/pages/Login.tsx` e `Login.test.tsx`;
 - PR #59; backlog `SEC-16`.
 
+---
+
+# 2026-11-03 (xvi) — o release do `SEC-16`
+
+**O problema, como foi entendido no início.** O `SEC-16` estava em `develop` (PR #59) e só valia no
+site depois do release.
+
+**Hipótese de trabalho.** Que o release mudasse só o roteador e a validação do login, sem efeito no
+resto do site.
+
+**O que foi testado, e como.** Diff `main..develop` (só `frontend/`: as dependências e quatro arquivos
+de código e teste); PR #60 depois dos 9 checks; deploy acompanhado pela API de deployments; depois,
+`/health`, `/privacidade`, `PATCH /api/me/perfil` sem credencial, o pacote publicado e um login do
+autor.
+
+**Resultado medido.** Deploy `7534293060`, `success`, SHA `87622ce`. `/health` `200`, banco ok;
+`/privacidade` `200`; `PATCH` sem credencial → `401`; a validação nova (`destinoSeguro`) no pacote
+publicado. **O autor confirmou o login.**
+
+**Adaptação.** Nenhuma.
+
+**O que deu errado no caminho.** Nada nesta etapa.
+
+**Risco em aberto.** O CI não roda `npm audit` (diário, 03/11 (xv)).
+
+**Procedência.** PRs #59 e #60 (`87622ce`); deployment de produção `7534293060`; as rotas e o pacote
+de `https://dormio-smart.vercel.app`, 03/11; a confirmação do autor; backlog `SEC-16`.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
