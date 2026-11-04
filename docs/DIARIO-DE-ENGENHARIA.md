@@ -6466,6 +6466,145 @@ ser necessário — está escrito no `CLAUDE.md`. O README segue com o resto env
 **Procedência.** Branch `chore/INFRA-04-remover-gunicorn`; `web-app/requirements.txt`,
 `README.md`, `CLAUDE.md`; backlog `INFRA-04`, `DOC-14`.
 
+---
+
+# 2026-11-03 (xxiii) — o release do `INFRA-04`, do `SEC-17`, do `UI-21` e do `UI-22`
+
+**O problema, como foi entendido no início.** Quatro itens em `develop` (PRs #64 a #68). Só o
+`INFRA-04` mudava o que a Vercel instala (o `requirements.txt` sem o gunicorn); o `SEC-17` trocava a
+ferramenta de build; os outros dois eram testes.
+
+**Hipótese de trabalho.** Que o backend subisse sem o gunicorn na Vercel e que o site publicado não
+mudasse, porque o build local com o vite novo saiu idêntico byte a byte ao de antes.
+
+**O que foi testado, e como.** Diff `main..develop`; PR #69 com 13 checks; deploy acompanhado pela
+API de deployments; depois, `/health`, as rotas de perfil e de ingestão sem credencial e com
+`Bearer` inválido, `/privacidade`, o nome do pacote publicado, e um login do autor. Tentativa de
+comparar o pacote com o do deploy anterior pelas URLs de cada deploy.
+
+**Resultado medido.** Deploy `7536039508`, `success`, SHA `9d19ec1`. `/health` `200`, banco ok —
+o backend sobe na Vercel sem o gunicorn; rotas sem credencial e `Bearer` inválido → `401`;
+`/privacidade` `200`. **O autor confirmou o login.** O pacote publicado é `index-BZZthQcI.js`,
+diferente do build local (`index-MJqm7df1.js`) — esperado, porque o build da Vercel inclui as
+variáveis do controlador da política.
+
+**Adaptação.** Nenhuma.
+
+**O que deu errado no caminho.** A comparação com o deploy anterior não foi possível: as URLs de
+cada deploy respondem `200` com a página de login da Vercel, não com o site. Fica registrado como
+não medido, em vez de dado por igual.
+
+**Risco em aberto.** Que o pacote publicado não mudou é inferência (build local idêntico + as
+mesmas variáveis), não medição na produção. O `DOC-14` segue aberto.
+
+**Procedência.** PRs #64 a #69 (`9d19ec1`); deployment de produção `7536039508`; as rotas de
+`https://dormio-smart.vercel.app`, 03/11; a confirmação do autor; backlog `INFRA-04`, `SEC-17`,
+`UI-21`, `UI-22`.
+
+---
+
+# 2026-11-03 (xxiv) — `DOC-14`: o README reescrito, executado e com o painel de hoje
+
+**O problema, como foi entendido no início.** O `README.md` é a primeira coisa que a banca lê, e o
+`INFRA-04` mostrou que ele envelheceu além da stack. O Vitor pediu revisão completa, inclusive das
+imagens.
+
+**Hipótese de trabalho.** Que bastasse reescrever as seções contra o código; e que a imagem do
+painel viesse de uma conta de demonstração alimentada pelo `fake_sensor.py`, criada pelo autor.
+
+**O que foi testado, e como.** Cada seção medida contra o código: as rotas de `routes.py` (13, não
+4), as rotas do `App.tsx`, os `.env.example`, os `package.json` e `requirements.txt`, os
+documentos versionados, a imagem (`img/dashboard.jpeg`, de 03/06). O README novo foi **executado
+num clone limpo**, comando por comando: instalação e subida do backend sem chaves, os testes do
+backend, do frontend e do ML, `npm ci` e servidor de desenvolvimento, e o simulador contra a produção
+com token inválido. Os 22 links relativos conferidos por script contra `git ls-files` (inclusive
+âncoras), com três sabotagens. Para a imagem: o modo demonstração já existente (`DEMO-01`,
+`/dashboard?demo=1`) e captura com o Edge sem interface, a 1920 × 1500.
+
+**Resultado medido.** No clone limpo: backend sobe e responde `503` ("consulta falhou") sem chaves,
+como o README diz; **417, 466 e 134 testes**; o servidor de desenvolvimento serve `/` e
+`/privacidade`; o simulador chega à produção e recebe `401` (`device nao autorizado`). Links: 22
+certos; as sabotagens — arquivo inexistente, âncora inexistente e `docs/METODOLOGIA.md`, que existe
+no disco mas é gitignorado — reprovaram, **3/3**. A imagem antiga era de **outra aplicação** (o
+painel em Flask/Tailwind, com "Movimento Detectado!"); saiu. A nova é o painel React real com os
+dados sintéticos do modo demonstração e a faixa "MODO DEMONSTRAÇÃO" dentro do quadro.
+
+**Adaptação.** Três. (1) Criar conta na produção, mesmo de teste, está fora do que o assistente faz;
+a captura veio do modo demonstração, que não precisa de conta nem sai da máquina. (2) O modo
+demonstração **não funcionava**: o `/dashboard?demo=1` caía no `/login`. Pelo histórico, o
+`DEMO-01` é de 19/08 e o guarda de rotas (`AUTH-04`) de 20/08 — a demo está quebrada desde o dia
+seguinte ao que nasceu, e nada notou. Para não ampliar o escopo, o guarda foi liberado
+**temporariamente** na cópia local, a captura tirada e o arquivo restaurado (conferido com
+`git diff --quiet`); a correção definitiva é o `DEMO-02`. (3) Ao capturar a página inicial
+publicada, ela descrevia a arquitetura antiga (Deep Sleep, envio a cada evento, validação por
+dataset pendente): não entrou no README, e virou o `UI-23`. Os READMEs de `web-app/` e
+`firmware/` mostraram marcadores da versão antiga numa busca: `DOC-15`.
+
+**O que deu errado no caminho.** A execução no clone pegou um erro do README novo, não do velho: as
+instruções mandavam rodar os testes sem instalar o `pytest`, que não está no `requirements.txt`.
+Corrigido e reexecutado. O primeiro teste do simulador não imprimiu nada — o `timeout` matava o
+processo antes de o Python esvaziar a saída; com `-u` apareceu o `401`. A primeira captura pelo
+Edge não gerou arquivo, porque o caminho curto do Windows (`VITOR-~1`) não foi aceito; com o caminho
+longo, gerou. E a captura pelo painel do navegador do app saía reduzida (800 px, JPEG), por isso o
+Edge.
+
+**Risco em aberto.** A imagem mostra "Conta não autenticada" na barra lateral — efeito de a demo
+rodar sem sessão; honesto, mas é o `DEMO-02` que decide se a demo deve parecer logada. O que
+depende de chave real do Supabase (login, dados reais) não foi exercitado no clone limpo, e o README
+diz isso. `DEMO-02`, `UI-23` e `DOC-15` abertos.
+
+**Procedência.** Branch `docs/DOC-14-readme`; `README.md`, `img/painel-demonstracao.png`,
+`web-app/fake_sensor.py`; backlog `DOC-14`, `DEMO-02`, `UI-23`, `DOC-15`.
+
+---
+
+# 2026-11-04 — `DEMO-02`, `UI-23` e `DOC-15`: a demo, a página inicial e os READMEs das pastas
+
+**O problema, como foi entendido no início.** Os três itens que a revisão do README (`DOC-14`)
+abriu: o modo demonstração quebrado desde 20/08 pelo guarda de rotas; a página inicial do site
+descrevendo a arquitetura abandonada em 30/10; e os READMEs de `web-app/` e `firmware/` com
+trechos da versão antiga.
+
+**Hipótese de trabalho.** Que o guarda pudesse liberar a demo sem risco para a produção, porque
+`estaEmModoDemo` já é falso fora do build de desenvolvimento; que os textos da página inicial
+fossem só texto; que os READMEs pudessem ser conferidos contra o código como no `DOC-14`.
+
+**O que foi testado, e como.** `Guardas.test.tsx`: a rota e o guarda reais, sessão falsa, quatro
+casos, inclusive `DEV` falso por `vi.stubEnv`; sabotagens tirando a liberação e tirando a
+salvaguarda de `demo.ts`. Depois, o build de produção servido com `vite preview` e
+`/dashboard?demo=1` aberto no navegador. `Landing.test.tsx`: o texto **renderizado** da página,
+procurando os termos da arquitetura antiga e exigindo os da C2; sabotagem devolvendo a frase do
+Deep Sleep. READMEs: cada afirmação contra o código — `routes.py` (códigos de resposta),
+`database.py` (a alternativa da `service_role`), `sketch.ino` (o sono leve acorda só por
+`esp_sleep_enable_timer_wakeup`), todos os `.ino` (nenhum usa o GPIO 27 nem `MODO_SIMULADOR`) — e
+links pelo script do `DOC-14`. Suíte inteira e build.
+
+**Resultado medido.** Guarda: 4/4 testes, sabotagens **2/2**, cada uma no teste certo. **No build
+de produção, `?demo=1` foi ao `/login`, sem faixa**; no servidor de desenvolvimento, o painel abriu
+com a faixa. Página inicial: 5/5 testes; a sabotagem derrubou 3. READMEs: 4 e 7 links certos,
+sabotagem 3/3. Frontend: **475 testes, 35 arquivos**; build limpo.
+
+**Adaptação.** O `web-app/README.md` documentava a `service_role` como "*fallback* até a de cima
+existir", e o código ainda tem esse caminho (`database.py`): ficou descrita como alternativa só
+de desenvolvimento local, que não existe na Vercel desde o `SEC-14`. Tirar o código não era deste
+item.
+
+**O que deu errado no caminho.** O verificador de links do `DOC-14` acusou falha em todo link dos
+READMEs das pastas, inclusive nos certos. Dois defeitos dele, um atrás do outro: comparava
+`../docs/...` com a lista do `git ls-files`, que é relativa à raiz; corrigido isso, o
+`git ls-files` rodava dentro da subpasta e devolvia caminhos relativos a ela. Com o README da raiz
+os dois eram invisíveis. Corrigido (caminho resolvido a partir da raiz, `ls-files` na raiz) e
+sabotado de novo nas pastas.
+
+**Risco em aberto.** Em modo demonstração, o painel ainda chama `GET /api/devices`, que no
+servidor de desenvolvimento sem backend responde `500` no console — o painel aparece, mas a demo
+não é inteiramente local. A página inicial nova só vale no site depois do release. As instruções
+do Wokwi no `firmware/README.md` não foram executadas e estão marcadas assim.
+
+**Procedência.** Branch `feature/DEMO-02-UI-23-DOC-15`; `frontend/src/components/Guardas.tsx` e
+`Guardas.test.tsx`, `frontend/src/pages/Landing.tsx` e `Landing.test.tsx`, `web-app/README.md`,
+`firmware/README.md`; backlog `DEMO-02`, `UI-23`, `DOC-15`.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
