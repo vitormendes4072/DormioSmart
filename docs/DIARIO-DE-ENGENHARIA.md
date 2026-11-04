@@ -6466,6 +6466,41 @@ ser necessário — está escrito no `CLAUDE.md`. O README segue com o resto env
 **Procedência.** Branch `chore/INFRA-04-remover-gunicorn`; `web-app/requirements.txt`,
 `README.md`, `CLAUDE.md`; backlog `INFRA-04`, `DOC-14`.
 
+---
+
+# 2026-11-03 (xxiii) — o release do `INFRA-04`, do `SEC-17`, do `UI-21` e do `UI-22`
+
+**O problema, como foi entendido no início.** Quatro itens em `develop` (PRs #64 a #68). Só o
+`INFRA-04` mudava o que a Vercel instala (o `requirements.txt` sem o gunicorn); o `SEC-17` trocava a
+ferramenta de build; os outros dois eram testes.
+
+**Hipótese de trabalho.** Que o backend subisse sem o gunicorn na Vercel e que o site publicado não
+mudasse, porque o build local com o vite novo saiu idêntico byte a byte ao de antes.
+
+**O que foi testado, e como.** Diff `main..develop`; PR #69 com 13 checks; deploy acompanhado pela
+API de deployments; depois, `/health`, as rotas de perfil e de ingestão sem credencial e com
+`Bearer` inválido, `/privacidade`, o nome do pacote publicado, e um login do autor. Tentativa de
+comparar o pacote com o do deploy anterior pelas URLs de cada deploy.
+
+**Resultado medido.** Deploy `7536039508`, `success`, SHA `9d19ec1`. `/health` `200`, banco ok —
+o backend sobe na Vercel sem o gunicorn; rotas sem credencial e `Bearer` inválido → `401`;
+`/privacidade` `200`. **O autor confirmou o login.** O pacote publicado é `index-BZZthQcI.js`,
+diferente do build local (`index-MJqm7df1.js`) — esperado, porque o build da Vercel inclui as
+variáveis do controlador da política.
+
+**Adaptação.** Nenhuma.
+
+**O que deu errado no caminho.** A comparação com o deploy anterior não foi possível: as URLs de
+cada deploy respondem `200` com a página de login da Vercel, não com o site. Fica registrado como
+não medido, em vez de dado por igual.
+
+**Risco em aberto.** Que o pacote publicado não mudou é inferência (build local idêntico + as
+mesmas variáveis), não medição na produção. O `DOC-14` segue aberto.
+
+**Procedência.** PRs #64 a #69 (`9d19ec1`); deployment de produção `7536039508`; as rotas de
+`https://dormio-smart.vercel.app`, 03/11; a confirmação do autor; backlog `INFRA-04`, `SEC-17`,
+`UI-21`, `UI-22`.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
