@@ -6556,6 +6556,55 @@ diz isso. `DEMO-02`, `UI-23` e `DOC-15` abertos.
 **Procedência.** Branch `docs/DOC-14-readme`; `README.md`, `img/painel-demonstracao.png`,
 `web-app/fake_sensor.py`; backlog `DOC-14`, `DEMO-02`, `UI-23`, `DOC-15`.
 
+---
+
+# 2026-11-04 — `DEMO-02`, `UI-23` e `DOC-15`: a demo, a página inicial e os READMEs das pastas
+
+**O problema, como foi entendido no início.** Os três itens que a revisão do README (`DOC-14`)
+abriu: o modo demonstração quebrado desde 20/08 pelo guarda de rotas; a página inicial do site
+descrevendo a arquitetura abandonada em 30/10; e os READMEs de `web-app/` e `firmware/` com
+trechos da versão antiga.
+
+**Hipótese de trabalho.** Que o guarda pudesse liberar a demo sem risco para a produção, porque
+`estaEmModoDemo` já é falso fora do build de desenvolvimento; que os textos da página inicial
+fossem só texto; que os READMEs pudessem ser conferidos contra o código como no `DOC-14`.
+
+**O que foi testado, e como.** `Guardas.test.tsx`: a rota e o guarda reais, sessão falsa, quatro
+casos, inclusive `DEV` falso por `vi.stubEnv`; sabotagens tirando a liberação e tirando a
+salvaguarda de `demo.ts`. Depois, o build de produção servido com `vite preview` e
+`/dashboard?demo=1` aberto no navegador. `Landing.test.tsx`: o texto **renderizado** da página,
+procurando os termos da arquitetura antiga e exigindo os da C2; sabotagem devolvendo a frase do
+Deep Sleep. READMEs: cada afirmação contra o código — `routes.py` (códigos de resposta),
+`database.py` (a alternativa da `service_role`), `sketch.ino` (o sono leve acorda só por
+`esp_sleep_enable_timer_wakeup`), todos os `.ino` (nenhum usa o GPIO 27 nem `MODO_SIMULADOR`) — e
+links pelo script do `DOC-14`. Suíte inteira e build.
+
+**Resultado medido.** Guarda: 4/4 testes, sabotagens **2/2**, cada uma no teste certo. **No build
+de produção, `?demo=1` foi ao `/login`, sem faixa**; no servidor de desenvolvimento, o painel abriu
+com a faixa. Página inicial: 5/5 testes; a sabotagem derrubou 3. READMEs: 4 e 7 links certos,
+sabotagem 3/3. Frontend: **475 testes, 35 arquivos**; build limpo.
+
+**Adaptação.** O `web-app/README.md` documentava a `service_role` como "*fallback* até a de cima
+existir", e o código ainda tem esse caminho (`database.py`): ficou descrita como alternativa só
+de desenvolvimento local, que não existe na Vercel desde o `SEC-14`. Tirar o código não era deste
+item.
+
+**O que deu errado no caminho.** O verificador de links do `DOC-14` acusou falha em todo link dos
+READMEs das pastas, inclusive nos certos. Dois defeitos dele, um atrás do outro: comparava
+`../docs/...` com a lista do `git ls-files`, que é relativa à raiz; corrigido isso, o
+`git ls-files` rodava dentro da subpasta e devolvia caminhos relativos a ela. Com o README da raiz
+os dois eram invisíveis. Corrigido (caminho resolvido a partir da raiz, `ls-files` na raiz) e
+sabotado de novo nas pastas.
+
+**Risco em aberto.** Em modo demonstração, o painel ainda chama `GET /api/devices`, que no
+servidor de desenvolvimento sem backend responde `500` no console — o painel aparece, mas a demo
+não é inteiramente local. A página inicial nova só vale no site depois do release. As instruções
+do Wokwi no `firmware/README.md` não foram executadas e estão marcadas assim.
+
+**Procedência.** Branch `feature/DEMO-02-UI-23-DOC-15`; `frontend/src/components/Guardas.tsx` e
+`Guardas.test.tsx`, `frontend/src/pages/Landing.tsx` e `Landing.test.tsx`, `web-app/README.md`,
+`firmware/README.md`; backlog `DEMO-02`, `UI-23`, `DOC-15`.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
