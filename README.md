@@ -22,6 +22,12 @@ Trabalho de Conclusão de Curso em Engenharia da Computação (Centro Universit�
 Aplicação em produção: **https://dormio-smart.vercel.app** — página inicial, cadastro,
 painel, coleta pelo celular e a [política de privacidade](https://dormio-smart.vercel.app/privacidade).
 
+![Painel do Smart Dormio, em modo demonstração](img/painel-demonstracao.png)
+
+*O painel real, com **dados sintéticos** do modo demonstração (`frontend/src/lib/demo.ts`), que
+só existe no servidor de desenvolvimento e põe a faixa vermelha em toda captura — nenhuma
+medição de pessoa aparece aqui. Capturado em 03/11/2026.*
+
 ## 📌 Estado do projeto — em 03/11/2026
 
 | Parte | Estado |

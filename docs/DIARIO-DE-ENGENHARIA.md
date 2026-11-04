@@ -6501,6 +6501,61 @@ mesmas variáveis), não medição na produção. O `DOC-14` segue aberto.
 `https://dormio-smart.vercel.app`, 03/11; a confirmação do autor; backlog `INFRA-04`, `SEC-17`,
 `UI-21`, `UI-22`.
 
+---
+
+# 2026-11-03 (xxiv) — `DOC-14`: o README reescrito, executado e com o painel de hoje
+
+**O problema, como foi entendido no início.** O `README.md` é a primeira coisa que a banca lê, e o
+`INFRA-04` mostrou que ele envelheceu além da stack. O Vitor pediu revisão completa, inclusive das
+imagens.
+
+**Hipótese de trabalho.** Que bastasse reescrever as seções contra o código; e que a imagem do
+painel viesse de uma conta de demonstração alimentada pelo `fake_sensor.py`, criada pelo autor.
+
+**O que foi testado, e como.** Cada seção medida contra o código: as rotas de `routes.py` (13, não
+4), as rotas do `App.tsx`, os `.env.example`, os `package.json` e `requirements.txt`, os
+documentos versionados, a imagem (`img/dashboard.jpeg`, de 03/06). O README novo foi **executado
+num clone limpo**, comando por comando: instalação e subida do backend sem chaves, os testes do
+backend, do frontend e do ML, `npm ci` e servidor de desenvolvimento, e o simulador contra a produção
+com token inválido. Os 22 links relativos conferidos por script contra `git ls-files` (inclusive
+âncoras), com três sabotagens. Para a imagem: o modo demonstração já existente (`DEMO-01`,
+`/dashboard?demo=1`) e captura com o Edge sem interface, a 1920 × 1500.
+
+**Resultado medido.** No clone limpo: backend sobe e responde `503` ("consulta falhou") sem chaves,
+como o README diz; **417, 466 e 134 testes**; o servidor de desenvolvimento serve `/` e
+`/privacidade`; o simulador chega à produção e recebe `401` (`device nao autorizado`). Links: 22
+certos; as sabotagens — arquivo inexistente, âncora inexistente e `docs/METODOLOGIA.md`, que existe
+no disco mas é gitignorado — reprovaram, **3/3**. A imagem antiga era de **outra aplicação** (o
+painel em Flask/Tailwind, com "Movimento Detectado!"); saiu. A nova é o painel React real com os
+dados sintéticos do modo demonstração e a faixa "MODO DEMONSTRAÇÃO" dentro do quadro.
+
+**Adaptação.** Três. (1) Criar conta na produção, mesmo de teste, está fora do que o assistente faz;
+a captura veio do modo demonstração, que não precisa de conta nem sai da máquina. (2) O modo
+demonstração **não funcionava**: o `/dashboard?demo=1` caía no `/login`. Pelo histórico, o
+`DEMO-01` é de 19/08 e o guarda de rotas (`AUTH-04`) de 20/08 — a demo está quebrada desde o dia
+seguinte ao que nasceu, e nada notou. Para não ampliar o escopo, o guarda foi liberado
+**temporariamente** na cópia local, a captura tirada e o arquivo restaurado (conferido com
+`git diff --quiet`); a correção definitiva é o `DEMO-02`. (3) Ao capturar a página inicial
+publicada, ela descrevia a arquitetura antiga (Deep Sleep, envio a cada evento, validação por
+dataset pendente): não entrou no README, e virou o `UI-23`. Os READMEs de `web-app/` e
+`firmware/` mostraram marcadores da versão antiga numa busca: `DOC-15`.
+
+**O que deu errado no caminho.** A execução no clone pegou um erro do README novo, não do velho: as
+instruções mandavam rodar os testes sem instalar o `pytest`, que não está no `requirements.txt`.
+Corrigido e reexecutado. O primeiro teste do simulador não imprimiu nada — o `timeout` matava o
+processo antes de o Python esvaziar a saída; com `-u` apareceu o `401`. A primeira captura pelo
+Edge não gerou arquivo, porque o caminho curto do Windows (`VITOR-~1`) não foi aceito; com o caminho
+longo, gerou. E a captura pelo painel do navegador do app saía reduzida (800 px, JPEG), por isso o
+Edge.
+
+**Risco em aberto.** A imagem mostra "Conta não autenticada" na barra lateral — efeito de a demo
+rodar sem sessão; honesto, mas é o `DEMO-02` que decide se a demo deve parecer logada. O que
+depende de chave real do Supabase (login, dados reais) não foi exercitado no clone limpo, e o README
+diz isso. `DEMO-02`, `UI-23` e `DOC-15` abertos.
+
+**Procedência.** Branch `docs/DOC-14-readme`; `README.md`, `img/painel-demonstracao.png`,
+`web-app/fake_sensor.py`; backlog `DOC-14`, `DEMO-02`, `UI-23`, `DOC-15`.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
