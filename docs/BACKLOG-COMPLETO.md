@@ -57,6 +57,7 @@ Até 29/10 esta linha mandava rodar o `DATA-03`, fechado em 28/10.)* **Se tem um
 `CALC-*` e `DIAG-*`, que são o que a banca lê.
 
 **Contagem:** 41 itens abertos · **L0: 12** · L1: 13 · L2: 7 · L3: 9. *(Recontado linha a linha em 03/11, e não por delta; desde o `DOC-13`, o CI reconta.)*
+*(04/11, terceira parte: fechou `CALC-01` (L0); entrou `DOC-16` (L0, o resto do texto do TCC com o Deep Sleep). L0 12−1+1 = 12; 41.)*
 *(04/11, segunda parte: entrou e fechou `DEMO-03`. Contagem inalterada: 41.)*
 *(04/11: fecharam `DEMO-02`, `UI-23` e `DOC-15` (L0). L0 15−3 = 12; 12+13+7+9 = 41.)*
 *(03/11, décima quinta parte: fechou `DOC-14` (L0); entraram `DEMO-02`, `UI-23` e `DOC-15` (L0). L0 13−1+3 = 15; 15+13+7+9 = 44.)*
@@ -191,7 +192,7 @@ E um **peso**: 🔴 caminho crítico da defesa · 🟡 importante · ⚪ polimen
                     └─────────────────────────────────────────────┘
 
    L0  EM PARALELO, SEM DEPENDER DE NADA DISSO:
-       CALC-01..04 · REQ-01 · LGPD-02 · DOC-06b
+       CALC-02..04 · REQ-01 · LGPD-02 · DOC-06b · DOC-16
        UI-18 · SEC-13 · AUTH-09 · CI-02 · GIT-05
 
    L3  TAMBÉM DEPENDE DE VOCÊ:
@@ -327,7 +328,8 @@ diagrama** — que é o que a banca lê.
 
 | Item | O quê | Peso |
 |---|---|:---:|
-| **CALC-01** | ✏️ **03/11 (triagem):** **refazer para a C2** — sono leve, drenagem a 1,7 s, Wi-Fi a cada 10 min e escrita na flash; o modelo de Deep Sleep e Wake-on-Motion não existe mais. Modelo de energia/autonomia: corrente por estado, duty cycle, `I_média = (I_ativo·t_ativo + I_sleep·t_sleep)/(t_ativo+t_sleep)`, `autonomia = C_bateria/I_média`. Quantifica o "baixo consumo" e **expõe o limite do DevKit V1** → embasa o `HW-02`. É predição; a medição é `VAL-02`. | 🔴 |
+| **CALC-01** ✅ *(04/11: `scripts/estudo_cadencia.py` ganhou a C2 **como implementada**, lendo do firmware o envio a cada 10 min e a drenagem a 1,7 s; envio completo (Wi-Fi, NTP, TLS, POST) como estimativa de 2–8 s; gravação na flash. Referência: **2,68 mA** (2,35–3,34; varredura 1,88–5,81), 746 h com 2 000 mA·h, 255 J por noite. **Nenhuma parcela passa de 30 %** — a hipótese de que o rádio seguiria dominando caiu (25 %). Com placa de 1 mA, +37 %. `CALCULOS-TCC.md`: Z.4.4c nova, tabela da C2 em Z.4.5, Z.4.6 reescrita para a fila na flash (11,4 dias), Z.4.7 com a estimativa do envio. 3/3 sabotagens, duas delas no próprio firmware. Inserção para o Produto 5 em `documento/INSERCAO-CALC-01-ENERGIA-C2.md`, fora do repositório; **colar é com os autores**)* | ✏️ **03/11 (triagem):** **refazer para a C2** — sono leve, drenagem a 1,7 s, Wi-Fi a cada 10 min e escrita na flash; o modelo de Deep Sleep e Wake-on-Motion não existe mais. Modelo de energia/autonomia: corrente por estado, duty cycle, `I_média = (I_ativo·t_ativo + I_sleep·t_sleep)/(t_ativo+t_sleep)`, `autonomia = C_bateria/I_média`. Quantifica o "baixo consumo" e **expõe o limite do DevKit V1** → embasa o `HW-02`. É predição; a medição é `VAL-02`. | 🔴 |
+| **DOC-16** 🟡 *(novo — 04/11, achado do `CALC-01`)* | **O texto do TCC (Produto 5) ainda descreve o Deep Sleep com despertar por movimento fora da 6.4.1.** Medido no "Copy of Produto 5" em 04/11: a Justificativa (dimensão ambiental: "*Deep Sleep* … *wake-on-motion*"), a 5.4 (o sensor "apoiar uma estratégia de despertar"), a 5.5 inteira ("Baixo Consumo Energético e Modo *Deep Sleep*") e a 5.6 ("circuito de *wake-up*"). Contradizem a 6.4.1 nova do `CALC-01`. A 6.4.2 (o botão no GPIO27) é do `CALC-04`. **Proposta:** arquivo de inserção com o texto atual ao lado do novo, como no `CALC-01`; a 5.5 vira fundamentação do sono leve com a fila do sensor. | 🟡 |
 | **CALC-02** | Física do acelerômetro: força específica, `\|a\| = √(ax²+ay²+az²)`, resolução (±8g/16 bits ≈ 0,244 mg/LSB), ruído, Nyquist. **Com um número a mais para explicar:** por que 21 Hz, e não 260 Hz (`FW-06`). | 🔴 |
 | **CALC-03** | Índice de atividade (actigrafia): métrica por época e derivação do limiar `g ± k·σ`. ~~Boa parte já está resolvida pelo `ML-01` — o item virou *transpor para o texto*, não *decidir*.~~ ✏️ **28/10 (`GIT-06`)**: frase desmentida pelo próprio item em 29/09 — a derivação `g ± k·σ` **não gera** o 1,2 m/s² (seria k = 67), e a seção Z.2.3 do `CALCULOS-TCC.md` foi recortada para demonstrar por quê. O que resta é texto, mas não é transposição. | 🔴 |
 | **CALC-04** | ✏️ **03/11 (triagem):** **sem o pull-down de 10 kΩ** (era andaime do Wokwi); centrar em pull-ups do I2C, 3V3 × 5 V no VCC e níveis lógicos — a questão real é a do `DIAG-02`. Análise elétrica: pull-down 10 kΩ (`I = V/R ≈ 0,33 mA`, `P ≈ 1,1 mW`), pull-ups do I2C, níveis 3,3 V, fonte de despertar. | 🟡 |
@@ -566,7 +568,7 @@ Se só houver tempo para uma sequência, é esta:
    os dois estão escritos e testados no host; o que falta agora é a placa (`FW-07` (c), `FW-08` (c)).*
 6. **`DASH-04` + `VAL-02`** — a noite na tela e os números medidos.
 
-**Em paralelo, sem esperar nada:** `CALC-01..04`, ~~`DIAG-02` e `DIAG-04`~~ ✅ 31/10, ~~`LGPD-01`~~ (03/11: passou a L3, espera a definição do controlador), ~~`FW-07` (b)~~ ✅ 31/10, ~~`DATA-07b`~~ ✅ 30/10.
+**Em paralelo, sem esperar nada:** ~~`CALC-01`~~ ✅ 04/11, `CALC-02..04`, ~~`DIAG-02` e `DIAG-04`~~ ✅ 31/10, ~~`LGPD-01`~~ (03/11: passou a L3, espera a definição do controlador), ~~`FW-07` (b)~~ ✅ 31/10, ~~`DATA-07b`~~ ✅ 30/10.
 
 > 🔴 **O que mudou no caminho crítico em 17/10.** O `DATA-07b` fechou (a), (b) e (c) — o
 > firmware sabe calcular as features — e ao fechar **expôs três coisas que agora estão entre

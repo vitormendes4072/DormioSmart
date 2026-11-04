@@ -6672,6 +6672,63 @@ site no próximo release.
 **Procedência.** Branch `bugfix/DEMO-03-demo-sem-api`; `frontend/src/hooks/useDispositivos.ts` e
 `useDispositivos.test.ts`; backlog `DEMO-03`; diário 04/11.
 
+---
+
+# 2026-11-04 (iv) — `CALC-01`: o modelo de energia com a C2 que o firmware implementou
+
+**O problema, como foi entendido no início.** O capítulo de modelos quantitativos
+(`CALCULOS-TCC.md`, Z.4) já tinha a C2 desde o `ARQ-01` (30/10), mas escrita antes do firmware:
+entrega por época ou "um lote por hora", com 1 s de rádio por entrega, e a autonomia de
+armazenamento da fila antiga na RAM (32 B, 8,53 h). O `sketch.ino` fixou outra coisa: lote a cada
+10 min, cada envio religando o Wi-Fi, e a época gravada na flash (64 B). E o texto do TCC
+(Produto 5, 6.4.1) estava ainda mais atrás: Deep Sleep, ciclo de dois estados.
+
+**Hipótese de trabalho.** Registrada antes de rodar: a corrente da C2 implementada ficaria entre o
+lote por hora (2,03 mA) e o envio por época (5,31 mA), e **o rádio continuaria a maior parcela**.
+
+**O que foi testado, e como.** Um cenário novo em `scripts/estudo_cadencia.py` que **lê do
+firmware** o intervalo de envio (`INTERVALO_DE_ENVIO_US`, `sketch.ino`) e o de drenagem
+(`INTERVALO_DE_DRENAGEM_US`, `nucleo/cadeia_c2.h`); o envio completo como estimativa em faixa
+(2, 4, 8 s); a gravação na flash como estimativa (programação, apagamento de setor a cada 64
+registros, corrente); a decomposição por parcela; a varredura de todos os parâmetros; a energia de
+uma noite. Asserções no `--conferir`, que roda no CI. Três sabotagens: o envio a 5 min **no
+próprio `sketch.ino`**, a drenagem a 1,6 s **no núcleo**, e a premissa do envio no script. O texto
+do Produto 5 lido pelo conector do Drive para montar a inserção.
+
+**Resultado medido.** Referência: **2,68 mA** (2,35 a 3,34 mA conforme o envio; 1,88 a 5,81 mA na
+varredura) — dentro da faixa prevista. **A segunda metade da hipótese caiu:** o rádio é **25 %**,
+e as outras parcelas são do mesmo tamanho — transdutor 22 %, sono leve 29 %, esvaziar a FIFO 24 %;
+a flash, 0,5 %. Nenhuma passa de 30 %. Com a placa: 1 mA de consumo fixo acrescenta 37 %, e 3 mA
+já superam os circuitos integrados. Autonomia de referência com 2 000 mA·h: 746 h; 255 J numa
+noite de 8 h. A drenagem do modelo (85 amostras / 50 Hz) bate com a do firmware. Sabotagens
+**3/3**: a do envio derrubou 11 asserções; a da drenagem acusou exatamente a divergência
+firmware × modelo.
+
+**Adaptação.** Três. (1) A conclusão do capítulo mudou de forma: até aqui, "agregar envios é a
+alavanca"; com o lote de 10 min, a alavanca está gasta e nenhuma mudança isolada tira mais que um
+quarto — o que **reforça** a de que o consumo fixo da placa decide (`HW-02`). (2) O texto do TCC
+não estava no `DOCUMENTO-TCC.md` (parado no Produto 3): foi lido no Drive. Há dois documentos
+candidatos ("Produto 5", 10/09, e "Copy of Produto 5", 30/09) com a mesma 6.4.1; a inserção diz
+isso e deixa a escolha com os autores. (3) Ao ler o Produto 5, quatro outros trechos ainda falam
+de Deep Sleep e despertar por movimento: viraram o `DOC-16`.
+
+**O que deu errado no caminho.** O primeiro texto dizia que os limites de espera de um envio
+"somam 28 s" (20 s de Wi-Fi + 8 s de POST); conferido no `sketch.ino`, o envio também sincroniza o
+relógio por NTP, com 5 s, e manda até 20 lotes por conexão — corrigido para 33 s. A inserção citava
+a 6.4.2 como `CALC-03` e o trecho do "circuito de *wake-up*" como 5.7; são o `CALC-04` e a 5.6.
+E o primeiro script de edição, longo, num heredoc, foi recusado pelo shell; foi para um arquivo.
+Ao fechar o item, o conferidor do `DOC-13` reprovou o backlog: o `CALC-01` seguia citado sem
+riscar no caminho crítico — o que ele existe para pegar.
+
+**Risco em aberto.** Nada disto é medição: o envio completo, a corrente de sono leve na placa e o
+consumo fixo da placa seguem estimados — é o `VAL-02`, depois da solda. A inserção no Produto 5
+depende dos autores colarem. O resto do texto do TCC com a arquitetura antiga é o `DOC-16`.
+
+**Procedência.** Branch `feature/CALC-01-energia-c2`; `scripts/estudo_cadencia.py`;
+`docs/CALCULOS-TCC.md` (Z.4.4b a Z.4.7, procedência); nota em `docs/DECISAO-ARQ-01-CADENCIA.md`
+§4.2; inserção fora do repositório em `documento/INSERCAO-CALC-01-ENERGIA-C2.md`; Produto 5 lido
+em 04/11; backlog `CALC-01`, `DOC-16`.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
