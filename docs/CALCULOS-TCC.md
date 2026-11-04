@@ -191,8 +191,10 @@ de movimento brusco.
 #### Z.1.4 Largura de banda e taxa de amostragem
 
 O componente dispõe de filtro digital passa-baixa programável entre 5 Hz e 260 Hz, e de taxa
-de saída programável entre 4 Hz e 1 000 Hz (*especificação*). A biblioteca empregada adota,
-por omissão, a configuração de 260 Hz. O trabalho adota **21 Hz**, e a justificativa é
+de saída programável entre 4 Hz e 1 000 Hz (*especificação*). A biblioteca de acesso ao
+componente empregada nos programas de bancada adota, por omissão, a configuração de 260 Hz. O
+trabalho adota **21 Hz** — configurado explicitamente nos programas de bancada e gravado
+diretamente no registrador de configuração pelo firmware do dispositivo —, e a justificativa é
 quantitativa em três frentes.
 
 **Primeira — o conteúdo do sinal.** Movimento corporal em cama é fenômeno de poucos hertz. A
@@ -823,6 +825,16 @@ repositório foi **reconferido** antes de entrar aqui.
 > capacidade da fila sai de `make capacidade` (`firmware/nucleo/README.md`). A hipótese registrada
 > antes do cálculo — "o rádio continua a maior parcela" — **não se confirmou**: 25 %, empatado
 > com as outras três.
+
+> ✏️ **04/11 (`CALC-02`).** Os números do Z.1 que ainda não estavam travados — os σ por banda, o fator
+> √(260/21) = 3,52, o ruído de quantização (0,0176 e 0,0705 mg) e as razões de 104× e 26×, as taxas de
+> 42 e 520 Hz e as 1 260 e 15 600 amostras por época — entraram no `conferir()` de
+> `scripts/calculos_tcc.py`. O script também **lê do firmware** a configuração do sensor: os
+> registradores que o `sketch.ino` grava (`nucleo/fifo_mpu.h`: `DLPF_CFG = 4` → 21 Hz,
+> `SMPLRT_DIV = 19` → 50 Hz, `AFS_SEL = 2` → ±8 g) e as chamadas da biblioteca nos dois sketches de
+> bancada. 4/4 sabotagens (DLPF e fundo de escala no firmware, filtro num sketch de bancada,
+> densidade de ruído no script). O σ a 21 Hz segue **calculado**, não medido: a medição é do
+> `CAL-01`, depois da solda.
 
 ### Os três cálculos que já existiam, e o resultado da conferência
 

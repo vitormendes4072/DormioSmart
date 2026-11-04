@@ -389,6 +389,16 @@ jobs:
       - name: Estudo de cadencia (ARQ-01)
         run: python scripts/estudo_cadencia.py --conferir
 
+      # CALC-02 (04/11): os modelos quantitativos do TCC (`docs/CALCULOS-TCC.md`)
+      # e a configuracao do sensor lida do firmware. Ate aqui este `--conferir`
+      # e o do buffer so rodavam a mao -- o CLAUDE.md os listava como
+      # conferencias, e nenhum job os executava.
+      - name: Modelos quantitativos (CALC-01 a CALC-04)
+        run: python scripts/calculos_tcc.py --conferir
+
+      - name: Estudo do buffer
+        run: python scripts/estudo_buffer.py --conferir
+
       # SEC-15 (03/11): nenhum sketch volta a `setInsecure()`, as copias de
       # `firmware/ca_raiz.h` sao identicas e cada raiz tem a impressao digital
       # esperada. Sem rede: a cadeia real da Vercel e conferida pelo monitor
