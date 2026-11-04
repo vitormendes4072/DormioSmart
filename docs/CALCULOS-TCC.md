@@ -836,6 +836,11 @@ repositório foi **reconferido** antes de entrar aqui.
 > densidade de ruído no script). O σ a 21 Hz segue **calculado**, não medido: a medição é do
 > `CAL-01`, depois da solda.
 
+> ✏️ **04/11 (`CALC-03`).** Entraram no `conferir()` de `scripts/calculos_tcc.py` o k ≈ 67, os limiares de
+> 3σ e 5σ e as razões de 13,35× e 22,25×, o σ em m/s², os 73 % da norma L1 e o piso de 0,638 mg; e o
+> script passou a **ler o limiar** em `firmware/nucleo/payload.h` (rótulo), `firmware/nucleo/caracteristicas.h`
+> e `ml/src/features.py` (`p_frac`), e a lista `NOMES_FEATURES`. 3/3 sabotagens.
+
 ### Os três cálculos que já existiam, e o resultado da conferência
 
 O enunciado da tarefa avisava que três contas já haviam sido feitas informalmente ao longo do
@@ -921,7 +926,7 @@ características, e o limiar sobreviveu apenas como parâmetro de uma delas. Iss
 ausência da derivação em consequência de uma decisão de projeto, que é defensável, em vez de
 lacuna, que não é.
 
-**Consequência para o backlog:** o `CALC-03` pode ser fechado. O que restou dele —
+**Consequência para o backlog:** o `CALC-03` pode ser fechado. ✏️ *Fechado em 04/11: os números do Z.2 e o limiar, lido nos três lugares em que o sistema o usa, ficaram travados no `--conferir`.* O que restou dele —
 *calibrar* o limiar — não é cálculo, é o `VIA-01`/`CAL-01`, e já está lá.
 
 🔧 **2. O `CALC-04` estava enunciado com um erro de natureza, e o texto o corrige.**
