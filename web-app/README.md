@@ -13,17 +13,21 @@ devolve ao aplicativo — cada usuário vendo apenas as próprias.
 ## Dois caminhos, credenciais diferentes
 
 ```
-ESP32 ──POST /api/data────────▶ Flask ──service_role──▶ Supabase
-        X-Device-Token                                      ▲
-                                                            │ RLS
-App ────GET /api/sleep-history─▶ Flask ──JWT do usuário─────┘
+ESP32 ──POST /api/data(/lote)──▶ Flask ──chave dormio_ingestao──▶ funções do banco
+        X-Device-Token                                                │
+                                                                      ▼
+App ────GET /api/... ───────────▶ Flask ──JWT do usuário──▶ Supabase (tabelas com RLS)
         Authorization: Bearer
 ```
 
 A separação é deliberada:
 
-- **Ingestão** não tem sessão de usuário, então o RLS não se aplica. O backend usa a
-  `service_role` e autentica o **dispositivo** por token.
+- **Ingestão** não tem sessão de usuário. O backend autentica o **dispositivo** por token e
+  grava pela chave do papel `dormio_ingestao` (`SEC-06`, na produção desde o `SEC-14`), que
+  só tem `EXECUTE` em três funções e **nenhum privilégio de tabela** — ver "Rotação da chave
+  de ingestão" abaixo. ✏️ *03/11 (`DOC-15`): até aqui este diagrama dizia `service_role`.*
+- **A coleta pelo celular** usa as mesmas rotas de ingestão, com a sessão do usuário em vez
+  do token de dispositivo.
 - **Leitura** tem sessão. O backend repassa o JWT do usuário ao Supabase, e quem filtra é o
   **RLS no banco** — não um `if` em Python que alguém pode esquecer numa consulta futura.
 
@@ -41,6 +45,10 @@ A separação é deliberada:
 | `POST` | `/api/devices` | `Bearer <JWT>` | `201` com o token **exibido uma única vez** |
 | `PATCH` | `/api/devices/<id>` | `Bearer <JWT>` | `200` · `404` |
 | `POST` | `/api/devices/<id>/revogar` | `Bearer <JWT>` | `200` · `404` |
+| `POST` | `/api/devices/celular` | `Bearer <JWT>` | `200` o dispositivo "celular" que já existia · `201` criado agora · `503` (`APP-08`) |
+| `GET` | `/api/me/perfil` | `Bearer <JWT>` | `200` com o perfil (criado na primeira leitura, `perfil_criado_agora`) · `503` |
+| `PATCH` | `/api/me/perfil` | `Bearer <JWT>` | `200` · `400` valor inválido · `503` (`PERFIL-01`) |
+| `DELETE` | `/api/me` | `Bearer <JWT>` | `200` com o recibo da eliminação · `400` sem o corpo de confirmação · `503` (LGPD, migração `006`) |
 | `GET` | `/health` | nenhuma | `200` saudável · `503` banco indisponível |
 
 O contrato do dado que trafega está em [`../docs/DATA-CONTRACT.md`](../docs/DATA-CONTRACT.md).
@@ -52,17 +60,19 @@ O contrato do dado que trafega está em [`../docs/DATA-CONTRACT.md`](../docs/DAT
 ```bash
 cd web-app
 pip install -r requirements.txt
-cp .env.example .env      # e preencha os três valores
+cp .env.example .env      # e preencha SUPABASE_URL, SUPABASE_ANON_KEY e SUPABASE_INGESTAO_KEY
 python app.py             # http://127.0.0.1:5000
 ```
 
 Sem o `.env` o serviço sobe, mas não conecta: `/health` responde **503** dizendo
-`"credenciais ausentes"`, e a leitura devolve lista vazia em vez de quebrar.
+`"credenciais ausentes"`. Com o `.env.example` copiado sem preencher, responde **503** com
+`"consulta falhou"` (medido num clone limpo em 03/11).
 
-Para gerar leituras sem hardware, com o servidor no ar:
+Para gerar leituras sem hardware, com o servidor no ar e o token de um dispositivo pareado:
 
 ```bash
-python fake_sensor.py
+export DORMIO_DEVICE_TOKEN="<token>"   # Windows: $env:DORMIO_DEVICE_TOKEN="<token>"
+python fake_sensor.py                  # DORMIO_API_URL troca o destino (padrão: o local)
 ```
 
 ### Variáveis de ambiente
@@ -71,7 +81,7 @@ python fake_sensor.py
 |---|---|
 | `SUPABASE_URL` | URL do projeto |
 | `SUPABASE_INGESTAO_KEY` | chave da ingestão — papel `dormio_ingestao`, **privilégio mínimo** |
-| `SUPABASE_SERVICE_ROLE_KEY` | *fallback* — ignora RLS, acesso total. Só até a de cima existir |
+| `SUPABASE_SERVICE_ROLE_KEY` | *alternativa só para desenvolvimento local* — ignora o RLS, acesso total, e o backend avisa no log enquanto estiver caindo nela. **Não existe na Vercel desde 01/11** (`SEC-14`) |
 | `SUPABASE_ANON_KEY` | chave publicável — valida o JWT e monta o cliente do usuário |
 
 ---
@@ -182,10 +192,16 @@ web-app/
 ├── routes.py            # rotas da API
 ├── auth.py              # require_auth — valida o JWT do usuário
 ├── device_auth.py       # token de dispositivo: geração e hash SHA-256
+├── ingestao.py          # qual caminho de credencial (token ou sessão) a leitura usa
+├── lote.py              # POST /api/data/lote: até 60 leituras, resultado por leitura
 ├── dispositivos.py      # operações de devices sob o RLS do usuário
+├── perfil.py            # leitura e correção do perfil
+├── consulta.py          # parâmetros do histórico (limite, filtros)
+├── features_noite.py    # as duas features angulares que só o servidor calcula (DATA-07b)
 ├── validacao.py         # validação da leitura antes de persistir
 ├── database.py          # camada Supabase
 ├── fake_sensor.py       # simulador de leituras
+├── teste_conexao.py     # confere a credencial em uso contra o Supabase
 ├── migrations/          # SQL versionado
-└── tests/               # pytest
+└── tests/               # pytest (tests/rls/ fala com um Postgres de verdade)
 ```

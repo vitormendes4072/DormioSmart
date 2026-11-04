@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { Navigate, Outlet, useLocation } from "react-router";
 
 import { useAuth } from "../contexts/AuthContext";
+import { estaEmModoDemo } from "../lib/demo";
 import { decidirDestino } from "../lib/rotas";
 
 function Aguardando() {
@@ -18,6 +19,12 @@ function Aguardando() {
 export function RotaProtegida({ children }: { children?: ReactNode }) {
   const { sessao, carregando } = useAuth();
   const local = useLocation();
+
+  // DEMO-02 (03/11): o modo demonstração (`?demo=1`, DEMO-01) existe para
+  // capturar o painel sem conta. Este guarda nasceu um dia depois dele (AUTH-04)
+  // e o mandava para o login, em silêncio, desde 20/08. `estaEmModoDemo` já é
+  // falso fora do build de desenvolvimento: na produção nada muda.
+  if (estaEmModoDemo(local.search)) return <>{children ?? <Outlet />}</>;
 
   const destino = decidirDestino({
     carregando,
