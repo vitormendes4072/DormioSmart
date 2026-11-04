@@ -6637,6 +6637,41 @@ só no servidor de desenvolvimento.
 pacote de `https://dormio-smart.vercel.app`, 04/11; o README da `main`; a confirmação do autor;
 backlog `DOC-14`, `DEMO-02`, `UI-23`, `DOC-15`.
 
+---
+
+# 2026-11-04 (iii) — `DEMO-03`: a demonstração deixa de chamar a API
+
+**O problema, como foi entendido no início.** O risco que a entrada de 04/11 deixou em aberto: em
+modo demonstração o painel pedia `GET /api/devices`, e o servidor de desenvolvimento sem backend
+respondia `500` no console. Ficou registrado só no diário — e a prática 2 do `CLAUDE.md` pede que
+todo risco em aberto aponte um item do backlog. O Vitor apontou.
+
+**Hipótese de trabalho.** Que fosse o `useDispositivos` sem a verificação que o `useHistorico` já
+tem, e que bastasse devolver a lista vazia em demo — o mesmo efeito na tela que a falha silenciosa
+já produzia, sem o pedido.
+
+**O que foi testado, e como.** `useDispositivos.test.ts`, com `listarDispositivos` falso: em demo
+não é chamado; fora dela, é, e a lista chega; com `DEV` falso, `?demo=1` não desliga a busca.
+Sabotagem tirando o retorno da demo. Suíte inteira e build. No servidor de desenvolvimento,
+`/dashboard?demo=1`: os pedidos de rede e o console, **depois de o painel estar na tela**.
+
+**Resultado medido.** 3/3 testes; a sabotagem derrubou o teste da demo, **1/1**. Frontend **478
+testes, 36 arquivos**; build limpo. No navegador, com o painel e a faixa na tela: **zero pedidos a
+`/api`**, console sem erro.
+
+**Adaptação.** Nenhuma.
+
+**O que deu errado no caminho.** A primeira leitura da rede, feita logo depois de abrir a página,
+deu "zero pedidos" — mas o painel ainda não tinha renderizado (o vite estava reotimizando as
+dependências depois do build). Zero pedidos de uma página vazia não prova nada; a medição foi
+repetida com o painel na tela.
+
+**Risco em aberto.** Nenhum novo. A mudança só vale fora da produção (a demo é falsa lá) e entra no
+site no próximo release.
+
+**Procedência.** Branch `bugfix/DEMO-03-demo-sem-api`; `frontend/src/hooks/useDispositivos.ts` e
+`useDispositivos.test.ts`; backlog `DEMO-03`; diário 04/11.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
