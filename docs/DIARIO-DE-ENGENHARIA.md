@@ -6068,6 +6068,100 @@ cópia, e que o controlador pudesse entrar por variável de build, fora do repos
   `montagem.test.ts`, `alcance.test.ts`;
 - backlog `LGPD-01` e `SEC-16`.
 
+---
+
+# 2026-11-03 (xiv) — o release da política de privacidade
+
+**O problema, como foi entendido no início.** A página `/privacidade` (`LGPD-01` (b), PR #56) estava
+em `develop`, e o controlador e o contato dependiam de duas variáveis de build que só o autor podia
+criar na Vercel.
+
+**Hipótese de trabalho.** Que as variáveis criadas antes do release entrassem no build do deploy de
+produção, sem um redeploy à parte.
+
+**O que foi testado, e como.**
+
+- **As variáveis:** criadas pelo autor em Settings → Environment Variables do projeto, tipo Config
+  (não Secret: o valor é público por definição, e Config permite conferi-lo), só em Production. O
+  caminho no painel levou três telas (variáveis da equipe, configurações da equipe, ambientes).
+- **O release:** diff `main..develop` (o frontend e as duas dependências novas; nenhuma migração);
+  PR #57 depois dos 9 checks; deploy acompanhado pela API de deployments.
+- **Depois:** `/health`; `/privacidade`; o pacote `Privacidade-*.js` publicado, procurado pelos
+  valores injetados; e, pelo autor, a página aberta e um login.
+
+**Resultado medido.**
+
+- Deploy `7530696288`, `success`, SHA `242d854`. `/health` `200`; `/privacidade` `200`.
+- O pacote publicado traz o controlador e o contato definidos pelo autor; a seção 1 da página os
+  mostra, e as tabelas saem formatadas (conferido pelo autor, por captura de tela).
+- **O autor confirmou o login.**
+
+**Adaptação.** Nenhuma.
+
+**O que deu errado no caminho.** Nada nesta etapa.
+
+**Risco em aberto.** O controlador definido é o autor sozinho; incluir o orientador, se for o caso,
+e a revisão da política são o `LGPD-03`. O e-mail de contato fica público, por escolha do autor.
+
+**Procedência.**
+
+- PR #57 (`242d854`); deployment de produção `7530696288`;
+- `GET https://dormio-smart.vercel.app/health`, `/privacidade` e o pacote publicado, 03/11;
+- a captura de tela e a confirmação do autor; backlog `LGPD-01`.
+
+---
+
+# 2026-11-03 (xv) — `SEC-16`: `react-router` atualizado, e o destino pós-login validado
+
+**O problema, como foi entendido no início.** Ao instalar o `react-markdown` (`LGPD-01` (b)), o
+`npm audit` mostrou alerta de severidade alta no `react-router` 7.13.0 instalado — já existente.
+
+**Hipótese de trabalho.** Que a maior parte dos avisos fosse de recursos que o app não usa, e que a
+atualização dentro da versão maior 7 não mudasse comportamento.
+
+**O que foi testado, e como.**
+
+- **Os avisos:** `npm audit --json`. Doze, todos com correção a partir da 7.18.2. Dez são do modo
+  *framework*/servidor (RSC, SSR, `__manifest`, *single-fetch*, *turbo-stream*, *actions*,
+  *prerender*), que o app não usa; um é de lentidão no casamento de rotas; e um — redirecionamento
+  aberto por barra invertida em `<Link>`/`useNavigate` (GHSA-wrjc-x8rr-h8h6) — alcança o uso do app.
+- **Onde o app navega para destino vindo de fora:** busca por `navigate(`, `<Navigate` e `to={`.
+  Um caso: o `Login` navegava para `state.de`, sem validação. O valor só é escrito pelo guarda de
+  rotas, a partir das rotas protegidas (fixas) — não explorável hoje, mas sem defesa.
+- **A versão:** datas de publicação pelo `npm view`. A 7.18.4 (15/09) corrige tudo e tinha sete
+  semanas; a 7.18.5 tinha uma.
+- **A correção:** `react-router` 7.18.4, versão fixa; `destinoSeguro` em `lib/rotas.ts` (só caminho
+  que começa com `/` e não com `//` nem `/\`, sem caractere de controle), usado pelo `Login`.
+- **Testes:** 16 casos da função e 3 do `Login` renderizado (`Login.test.tsx`), com a navegação real
+  pelo `MemoryRouter`. **Controle positivo:** quatro sabotagens. **Navegador:** servidor local.
+
+**Resultado medido.**
+
+- `npm audit --omit=dev`: **0 vulnerabilidades**. Antes de qualquer código novo, a suíte com a versão
+  nova: 443 passam, `tsc` limpo — a atualização não quebrou nada.
+- **Frontend:** 462 passam, 32 arquivos (443 + 19); `tsc` e build limpos.
+- **Sabotagens, 4/4 acusadas:** `destinoSeguro` aceitando qualquer texto (14 falhas); sem recusar a
+  barra invertida (1); sem recusar caractere de controle (2); `Login` sem passar pela função (1).
+- **Navegador:** `/configuracoes` sem sessão leva a `/login` com `de: "/configuracoes"` guardado; a
+  política carrega; console sem erro.
+
+**Adaptação.** Nenhuma em relação ao plano.
+
+**O que deu errado no caminho.** **O primeiro teste da barra invertida estava errado, não a
+função:** o caractere foi escrito no teste como `"/\evil.example"` com uma barra só, e em
+JavaScript `\e` vira `e` — o teste conferia `"/evil.example"`, um caminho interno válido. Corrigido
+o teste; a função não mudou. E a sessão parou uma vez no meio, por limite de uso, com o código já
+numa PR (#59) e o registro por fazer.
+
+**Risco em aberto.** **Só vale no site depois do release.** O CI não roda `npm audit`: um aviso novo
+numa dependência só aparece quando alguém rodar à mão.
+
+**Procedência.**
+
+- `frontend/package.json` e `package-lock.json`; `frontend/src/lib/rotas.ts` e `rotas.test.ts`;
+  `frontend/src/pages/Login.tsx` e `Login.test.tsx`;
+- PR #59; backlog `SEC-16`.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
