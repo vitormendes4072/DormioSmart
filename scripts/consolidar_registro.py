@@ -2579,10 +2579,6 @@ PENDENCIAS: list[Pendencia] = [
                    "objeto, e ele não tem item'. É a terceira sessão seguida em "
                    "que o instrumento que falta é o mesmo. **Candidato número 1 a "
                    "item novo.** ✏️ **28/10:** virou o item `INFRA-02`."),
-    Pendencia("SEC-16", SOFTWARE, "O `react-router` instalado tem alerta de severidade "
-              "alta no `npm audit` (um aviso de redirecionamento aberto alcança o uso "
-              "do app). Atualizar dentro da mesma versão maior e conferir.", "🟡",
-              camada_backlog="L0"),
     Pendencia("ML-13", ACAO, "Terceira coorte externa com PSG: DREAMT (PhysioNet, "
               "100 pacientes, Empatica E4). Exige criar a conta no PhysioNet e assinar "
               "o termo de uso restrito; depois, carregador e validação externa como "

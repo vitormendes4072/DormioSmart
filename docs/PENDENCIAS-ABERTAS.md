@@ -49,12 +49,12 @@ linha, não um resumo: resumo é a cópia que diverge.
 
 | Grupo | Itens |
 |---|---:|
-| A — Depende só de software: dá para fazer a qualquer momento | **16** |
+| A — Depende só de software: dá para fazer a qualquer momento | **15** |
 | B — Depende de decisão do Vitor | **7** |
 | C — Depende de ação do Vitor que não é decisão | **5** |
 | D — Bloqueado por hardware ou coleta | **18** |
 | E — Bloqueado por terceiro | **4** |
-| **Total** | **50** |
+| **Total** | **49** |
 
 ⚠️ **Este total não é comparável à contagem do backlog, e a diferença não é
 erro de nenhum dos dois.** São unidades de contagem diferentes: o backlog
@@ -75,7 +75,7 @@ outro item. **Desde 28/10 têm ID no backlog:** `GIT-07`, `INFRA-02` e
 
 ## A — Depende só de software: dá para fazer a qualquer momento
 
-**16 itens.**
+**15 itens.**
 
 ### `CALC-01` 🔴
 
@@ -182,12 +182,6 @@ O firmware confere o certificado do servidor (`setCACert` com as raízes de `fir
 *Camada no backlog: L1.*
 
 **Conferência.** Auditoria de 31/10, A5; (a) e (b) feitos em 03/11.
-
-### `SEC-16` 🟡
-
-O `react-router` instalado tem alerta de severidade alta no `npm audit` (um aviso de redirecionamento aberto alcança o uso do app). Atualizar dentro da mesma versão maior e conferir.
-
-*Camada no backlog: L0.*
 
 ---
 
