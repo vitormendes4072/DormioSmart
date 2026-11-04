@@ -395,3 +395,9 @@ jobs:
       # da producao (`saude-producao.yml`), com `--producao`.
       - name: TLS do firmware (SEC-15)
         run: python scripts/conferir_tls_firmware.py
+
+      # DOC-13 (03/11): o resumo do topo do backlog (contagem, quadro em uma
+      # tela, caminho critico) bate com as linhas da tabela. O quadro listou
+      # itens fechados duas vezes sem que nada acusasse.
+      - name: Resumo do backlog (DOC-13)
+        run: python scripts/conferir_backlog.py --conferir

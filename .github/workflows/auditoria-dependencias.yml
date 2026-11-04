@@ -1,0 +1,84 @@
+name: Auditoria de dependências
+
+# CI-08 — vulnerabilidade conhecida numa dependência de produção reprova.
+#
+# Em 03/11 o `SEC-16` achou o `react-router` 7.13.0 com avisos publicados havia
+# semanas, e só porque alguém rodou `npm audit` à mão. Na mesma semana, o
+# `pip-audit` achou o Flask, o python-dotenv e o gunicorn atrás das versões
+# corrigidas. Este workflow roda as duas auditorias quando as dependências
+# mudam e, toda semana, contra avisos novos sobre as mesmas versões.
+#
+# O QUE CONFERE:
+#   - frontend: `npm audit --omit=dev --audit-level=high` — só o que vai para o
+#     pacote publicado, e só alto ou crítico. As ferramentas de teste e build
+#     (vitest, esbuild) ficam de fora: não chegam ao navegador de ninguém.
+#   - backend: `pip-audit` sobre `web-app/requirements.txt`, qualquer severidade.
+#
+# ⚠️ O QUE ESTE ARQUIVO NÃO GARANTE:
+#   - `schedule` só roda a partir de `main`. Até o release que leva este
+#     arquivo, a auditoria semanal não existe; push e PR já valem.
+#   - A base de avisos é a do registro do npm e a do PyPI/OSV. Aviso que ainda
+#     não foi publicado lá não reprova nada.
+#   - Reprovar não corrige: abre o trabalho de subir a versão e rodar os testes.
+
+on:
+  schedule:
+    # Segunda-feira, 10:41 UTC. Minuto quebrado de propósito, como no monitor
+    # da produção: o GitHub atrasa os agendamentos em hora cheia.
+    - cron: '41 10 * * 1'
+  push:
+    paths:
+      - 'frontend/package.json'
+      - 'frontend/package-lock.json'
+      - 'web-app/requirements.txt'
+      - '.github/workflows/auditoria-dependencias.yml'
+  pull_request:
+    branches:
+      - develop
+      - main
+    paths:
+      - 'frontend/package.json'
+      - 'frontend/package-lock.json'
+      - 'web-app/requirements.txt'
+      - '.github/workflows/auditoria-dependencias.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  frontend:
+    name: npm audit (produção, alto ou crítico)
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Configurar Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+
+      # O `npm audit` lê o lockfile; não precisa instalar nada.
+      - name: Auditar
+        working-directory: frontend
+        run: npm audit --omit=dev --audit-level=high
+
+  backend:
+    name: pip-audit (web-app)
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Configurar Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+
+      # Versão fixa: a ferramenta que audita não muda por baixo da auditoria.
+      - name: Instalar pip-audit
+        run: pip install pip-audit==2.10.1
+
+      - name: Auditar
+        run: pip-audit -r web-app/requirements.txt
