@@ -6334,6 +6334,46 @@ servidor de desenvolvimento recusa — o sintoma aparece no `npm run dev`, não 
 `package-lock.json`, `vitest.config.ts`; `.github/workflows/auditoria-dependencias.yml`; backlog
 `SEC-17`, `CI-08`.
 
+---
+
+# 2026-11-03 (xx) — `UI-21`: o `?raw` conferido contra a liberação do servidor de desenvolvimento
+
+**O problema, como foi entendido no início.** O risco em aberto da entrada (xix): o
+`vitest.config.ts` libera `docs/` inteira e o `vite.config.ts` só o arquivo da política. Um segundo
+documento importado com `?raw` passaria no CI e no build e só quebraria no `npm run dev`.
+
+**Hipótese de trabalho.** Que um teste estático bastasse: achar os `?raw` dos módulos da aplicação
+e conferir cada um contra o `server.fs.allow` do servidor de desenvolvimento. Liberar `docs/` também
+no servidor de desenvolvimento foi descartado, por decisão do Vitor: desfaria o "só ele" do
+`LGPD-01` (b) sem ganho além de simetria.
+
+**O que foi testado, e como.** `frontend/src/raw.test.ts` importa o `vite.config.ts`, lê a lista e
+aplica a regra do vite (arquivo igual, ou pasta que o contém); arquivos de teste ficam de fora, porque
+só rodam no vitest. Imprime o que achou e reprova se não achar nada (catraca). Três sabotagens:
+`docs/LGPD-ELIMINACAO.md?raw` importado em `lib/politica.ts` sem liberar; a política tirada da lista do
+`vite.config.ts`; a expressão da busca trocada para não casar com nada.
+
+**Resultado medido.** A busca acha exatamente um: `pages/Privacidade.tsx →
+docs/POLITICA-DE-PRIVACIDADE.md`. Sabotagens **3/3**: as duas primeiras derrubam "todo arquivo
+importado com ?raw está liberado", a terceira derruba a catraca — e, sem a catraca, o outro teste
+teria passado sem conferir nada. Suíte: **464 testes, 33 arquivos**; `tsc` limpo.
+
+**Adaptação.** Nenhuma.
+
+**O que deu errado no caminho.** A primeira tentativa da terceira sabotagem não se aplicou: o `sed`
+não casou com a linha, ela ficou igual, e o "2 passed" que saiu não provava nada. Notado porque o
+`grep` logo depois mostrou a linha intacta; refeita com Python, conferindo a troca antes de rodar.
+Desta vez as sabotagens foram desfeitas a partir de cópias, e não com `git checkout` — o arquivo do
+teste ainda não estava commitado, que é o que apagou uma alteração na entrada (xix).
+
+**Risco em aberto.** O teste confere a lista, não o servidor: que o servidor de desenvolvimento
+sirva a página foi medido à mão, no navegador, em 03/11. Um `?raw` escrito fora do padrão
+`from "…?raw"` (um `import()` dinâmico, por exemplo) não seria achado — a catraca só garante que o
+de hoje é.
+
+**Procedência.** Branch `chore/UI-21-raw-liberado-no-dev`; `frontend/src/raw.test.ts`; backlog
+`UI-21`; diário 03/11 (xix).
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
