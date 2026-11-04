@@ -6605,6 +6605,38 @@ do Wokwi no `firmware/README.md` não foram executadas e estão marcadas assim.
 `Guardas.test.tsx`, `frontend/src/pages/Landing.tsx` e `Landing.test.tsx`, `web-app/README.md`,
 `firmware/README.md`; backlog `DEMO-02`, `UI-23`, `DOC-15`.
 
+---
+
+# 2026-11-04 (ii) — o release do `DOC-14`, do `DEMO-02`, do `UI-23` e do `DOC-15`
+
+**O problema, como foi entendido no início.** Quatro itens em `develop` (PRs #70 a #72): a página
+inicial nova só valia no site, e o README novo só aparecia na página do GitHub, depois do release.
+
+**Hipótese de trabalho.** Que a página inicial publicada mostrasse os textos novos e que a
+liberação do modo demonstração não chegasse à produção — o que o build local já tinha mostrado.
+
+**O que foi testado, e como.** PR #73 com 9 checks; deploy acompanhado pela API de deployments;
+depois, `/health`, as rotas sem credencial, `/privacidade`, o pacote publicado (procurando os
+textos novos e os termos antigos), a página inicial e `/dashboard?demo=1` no navegador, o
+`README.md` da `main` pela API do GitHub, e um login do autor.
+
+**Resultado medido.** Deploy `7537089021`, `success`, SHA `31cfb7d`. `/health` `200`, banco ok;
+rotas sem credencial → `401`; `/privacidade` `200`. No pacote publicado, "fica em sono leve" e
+"A cada 10 minutos" aparecem, "Deep Sleep" e "Wake-on-Motion" não; a página no navegador confirma.
+**`/dashboard?demo=1` na produção foi ao `/login`, sem faixa.** O README da `main` tem a seção de
+estado e a imagem nova. **O autor confirmou o login.**
+
+**Adaptação.** Nenhuma.
+
+**O que deu errado no caminho.** Nada nesta etapa.
+
+**Risco em aberto.** A chamada a `/api/devices` no modo demonstração (diário de 04/11) segue —
+só no servidor de desenvolvimento.
+
+**Procedência.** PRs #70 a #73 (`31cfb7d`); deployment de produção `7537089021`; a página e o
+pacote de `https://dormio-smart.vercel.app`, 04/11; o README da `main`; a confirmação do autor;
+backlog `DOC-14`, `DEMO-02`, `UI-23`, `DOC-15`.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
