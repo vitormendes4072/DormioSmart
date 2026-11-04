@@ -111,8 +111,8 @@ WoM (87 %): passado o modo de sono, quem decide é o número de transmissões.
 
 > ✏️ *04/11 (`CALC-01`): o firmware implementou **um lote a cada 10 min**, com conexão, NTP e TLS a
 > cada envio, e a época gravada na flash. Com envio de 4 s (estimativa, faixa de 2 a 8 s), a C2
-> implementada dá **2,68 mA** (2,35–3,34 mA), e nenhuma parcela passa de 30 %: o rádio deixa de
-> dominar. Os números estão em `CALCULOS-TCC.md`, Z.4.4c, e saem do mesmo `estudo_cadencia.py`.*
+> implementada dá **2,28 mA** (1,95–2,94 mA), e nenhuma parcela domina: o rádio deixa de
+> dominar. ✏️ *04/11 (`CALC-04`): era 2,68 mA, calculado com o I2C a 100 kHz; o firmware usa 400 kHz.* Os números estão em `CALCULOS-TCC.md`, Z.4.4c, e saem do mesmo `estudo_cadencia.py`.*
 
 | | A | B | C1 | C2 |
 |---|---:|---:|---:|---:|

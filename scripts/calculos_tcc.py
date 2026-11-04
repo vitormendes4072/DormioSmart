@@ -286,6 +286,27 @@ def corrente_pullup_linha_baixa_a(r_ohm: float, v: float = V_LOGICA_V) -> float:
 # CALC-01 — energia e autonomia
 # ══════════════════════════════════════════════════════════════════════════
 
+
+# CALC-04 (04/11): o barramento como o firmware o usa. O GY-521 traz os
+# pull-ups no próprio módulo, de 2,2 kΩ ou 10 kΩ conforme o lote (DIAG-02); o
+# `sketch.ino` usa 400 kHz. Tempo de subida máximo da especificação I2C.
+R_PULLUP_MODULO_OHM = (2200.0, 10000.0)
+T_SUBIDA_MAX_S = {100e3: 1000e-9, 400e3: 300e-9}
+
+
+def capacitancia_maxima_pf(r_ohm: float, i2c_hz: float) -> float:
+    """Maior capacitância de barramento que cumpre o tempo de subida."""
+    return T_SUBIDA_MAX_S[i2c_hz] / (math.log(0.7 / 0.3) * r_ohm) * 1e12
+
+
+def clock_i2c_do_firmware() -> float:
+    import re
+    texto = (RAIZ / "firmware/sketch.ino").read_text(encoding="utf-8")
+    m = re.search(r"Wire\.setClock\((\d+)\)", texto)
+    if not m:
+        raise SystemExit("Wire.setClock(...) não encontrado em firmware/sketch.ino")
+    return float(m.group(1))
+
 def corrente_media_a(estados: list[tuple[str, float, float]]) -> float:
     """I_média = Σ(I_i·t_i) / Σ(t_i). `estados` = [(nome, I em A, t em s)]."""
     carga = sum(i * t for _, i, t in estados)
@@ -608,6 +629,30 @@ def conferir() -> int:
     nomes = nomes_das_features_do_ml()
     eq("número de características (ml/)", len(nomes), 8, 0, "ml/src/features.py")
     verdade(f"p_frac entre as características ({nomes})", "p_frac" in nomes)
+
+    # CALC-04 (04/11): o barramento I2C do produto, lido do firmware, e a janela
+    # de pull-up para os dois lotes do GY-521 nas duas frequências.
+    z3 = "CALCULOS-TCC Z.3"
+    sk = "firmware/sketch.ino"
+    eq("I2C do firmware (Hz)", clock_i2c_do_firmware(), 400e3, 0, sk)
+    eq("SDA do firmware", _constante_c(sk, "PINO_SDA"), 21, 0, sk)
+    eq("SCL do firmware", _constante_c(sk, "PINO_SCL"), 22, 0, sk)
+    eq("R mínimo do pull-up (Ω)", pullup_minimo_ohm(), 967.0, 1.0, z3)
+    eq("C máx., 2,2 kΩ a 400 kHz (pF)", capacitancia_maxima_pf(2200.0, 400e3), 161.0, 0.5, z3)
+    eq("C máx., 10 kΩ a 400 kHz (pF)", capacitancia_maxima_pf(10000.0, 400e3), 35.0, 0.5, z3)
+    eq("C máx., 2,2 kΩ a 100 kHz (pF)", capacitancia_maxima_pf(2200.0, 100e3), 536.5, 0.1, z3)
+    eq("C máx., 10 kΩ a 100 kHz (pF)", capacitancia_maxima_pf(10000.0, 100e3), 118.0, 0.5, z3)
+    eq("pull-up 2,2 kΩ, linha baixa (mA)", corrente_pullup_linha_baixa_a(2200.0) * 1e3, 1.318, 0.001, z3)
+    eq("pull-up 10 kΩ, linha baixa (mA)", corrente_pullup_linha_baixa_a(10000.0) * 1e3, 0.290, 0.001, z3)
+    verdade("os dois lotes acima do R mínimo",
+            min(R_PULLUP_MODULO_OHM) > pullup_minimo_ohm())
+    verdade("lote de 10 kΩ a 400 kHz não cabe em 50 pF",
+            capacitancia_maxima_pf(10000.0, 400e3) < 50.0)
+    # v2 (dois GY-521 no mesmo barramento): os pull-ups dos módulos em paralelo.
+    eq("v2, 2,2 kΩ ∥ 2,2 kΩ (Ω)", 1 / (2 / 2200.0), 1100.0, 0.5, z3)
+    verdade("v2 com 2,2 kΩ ainda acima do R mínimo", 1 / (2 / 2200.0) > pullup_minimo_ohm())
+    eq("v2, 10 kΩ ∥ 10 kΩ: C máx. a 400 kHz (pF)",
+       capacitancia_maxima_pf(1 / (2 / 10000.0), 400e3), 70.8, 0.1, z3)
 
     # docs/BACKLOG-COMPLETO.md, CALC-04
     eq("pull-down I", corrente_pulldown_a() * 1e3, 0.33, 0.005,

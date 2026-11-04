@@ -6827,6 +6827,22 @@ valor do limiar segue provisório (`VIA-01`/`CAL-01`). O ENMO entra no texto sem
 `documento/INSERCAO-CALC-03-INDICE-DE-ATIVIDADE.md`; `firmware/nucleo/epoca_c2.cpp` lido; Produto 5
 lido em 04/11; backlog `CALC-03`, `DOC-16`, `VIA-01`.
 
+# 2026-11-04 — `CALC-04`: interfaces elétricas e correção da energia
+
+**O problema, como foi entendido no início.** A Z.3 e a seção 6.4.2 do TCC ainda descreviam o botão e o despertar da arquitetura anterior. Era preciso analisar o I2C e a alimentação do GY-521 na C2.
+
+**Hipótese de trabalho.** A análise elétrica poderia ser atualizada sem alterar a estimativa de energia recém-publicada no `CALC-01`.
+
+**O que foi testado, e como.** Leitura do `sketch.ino` e dos cálculos; execução no computador local de `python scripts/calculos_tcc.py --conferir` e `python scripts/estudo_cadencia.py --conferir`. Na retomada, o pytest de ML teve 37 erros de preparação por acesso negado à pasta temporária no sandbox; a repetição fora dele passou 134 testes. O frontend também precisou sair do sandbox por erro de inicialização do esbuild; passou 478 testes. A sessão anterior relatou três sabotagens: frequência, pino e pull-up de referência; não foram reexecutadas nesta retomada.
+
+**Resultado medido.** O firmware configura 400 kHz, enquanto o modelo usava 100 kHz. Com 2,2 kΩ, a referência calculada passa de 2,68 para 2,28 mA, 878 h para 2 000 mA·h e 217 J em 8 h; são estimativas, não medições físicas. Os limites calculados de capacitância para 2,2 e 10 kΩ são 161 e 35 pF a 400 kHz, e 536 e 118 pF a 100 kHz.
+
+**Adaptação.** A Z.3 foi reescrita, o modelo passou a ler a frequência do firmware e considerar os dois valores de pull-up; a Z.4 e as inserções para as seções 6.4.1 e 6.4.2 foram atualizadas. A hipótese de que o cálculo anterior permaneceria correto caiu.
+
+**Risco em aberto.** A resistência, o trilho e a capacitância da montagem não foram medidos; o teste de bancada é `HW-08` e a escolha do VCC é `HW-02`. O consumo depende das premissas do modelo e a medição real é `VAL-02`.
+
+**Procedência.** `scripts/calculos_tcc.py`, `scripts/estudo_cadencia.py`, `docs/CALCULOS-TCC.md`, `docs/DECISAO-ARQ-01-CADENCIA.md`, `firmware/sketch.ino` e as inserções locais em `documento/`.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
