@@ -6246,6 +6246,226 @@ muda a stack descrita e ficou para decisão do autor.
 `.github/workflows/auditoria-dependencias.yml`; execução de sabotagem `41749478900` (branch
 `ci/sabotagem-CI-08`, não mesclada); backlog `DOC-13`, `CI-08`, `SEC-17`.
 
+---
+
+# 2026-11-03 (xviii) — o release do `DOC-13` e do `CI-08`
+
+**O problema, como foi entendido no início.** O `DOC-13` e o `CI-08` estavam em `develop` (PR #62).
+As versões corrigidas do backend só valiam na produção, e o agendamento da auditoria só rodava,
+depois do release para `main`.
+
+**Hipótese de trabalho.** Que a troca de Flask, python-dotenv e gunicorn não mudasse nada visível,
+já que os 417 testes do backend passaram com as versões novas e a Vercel não usa o gunicorn.
+
+**O que foi testado, e como.** Diff `main..develop` (só o `requirements.txt` muda a produção); PR #63
+com 13 checks, as duas auditorias incluídas; deploy acompanhado pela API de deployments; depois,
+`/health`, as rotas de ingestão e de perfil sem credencial e com `Bearer` inválido, `/privacidade`;
+a auditoria disparada à mão a partir de `main`; e um login do autor.
+
+**Resultado medido.** Deploy `7534968706`, `success`, SHA `f754b96`. `/health` `200`, banco ok,
+contrato `2.7.0`; `PATCH /api/me/perfil`, `POST /api/data/lote` e `GET /api/features` → `401` sem
+credencial, `Bearer` inválido → `401`; `/privacidade` `200`. Auditoria a partir de `main`: execução
+`41751583490`, os dois jobs verdes. **O autor confirmou o login.**
+
+**Adaptação.** Nenhuma.
+
+**O que deu errado no caminho.** Nada nesta etapa.
+
+**Risco em aberto.** A versão dos pacotes que a Vercel instalou não é visível de fora: o que garante
+o Flask 3.1.3 é o `requirements.txt` de `main`, não uma medição na produção. O agendamento semanal
+ainda não rodou sozinho — a primeira execução agendada é a da próxima segunda-feira. `SEC-17` segue
+aberto.
+
+**Procedência.** PRs #62 e #63 (`f754b96`); deployment de produção `7534968706`; execução
+`41751583490`; as rotas de `https://dormio-smart.vercel.app`, 03/11; a confirmação do autor; backlog
+`CI-08`.
+
+---
+
+# 2026-11-03 (xix) — `SEC-17`: as ferramentas de teste e build atualizadas
+
+**O problema, como foi entendido no início.** O `npm audit` sem `--omit=dev` achava 7 avisos nas
+ferramentas de teste e build (`tinypool` crítico, `source-map-js` alto, `esbuild`, `vite-node` e
+`@vitest/mocker` moderados), fora da auditoria do `CI-08` de propósito.
+
+**Hipótese de trabalho.** Que o `npm audit fix` sem `--force` resolvesse boa parte, e que sobrasse o
+`vitest`, de versão maior. E que o `vite`, por gerar o pacote do site, pudesse mudar o que vai para
+a produção.
+
+**O que foi testado, e como.** Numa cópia fora do repositório, o `npm audit fix` sem `--force`.
+Depois, na branch: suíte e build **antes** (462 testes; pacote guardado); `npm audit fix`; `vite`
+6.4.5 e `vitest` 4.1.12 com versão fixa; suíte, `tsc`, build comparado byte a byte com o de antes;
+o servidor de desenvolvimento com `/`, `/login` e `/privacidade` no navegador do app. Sabotagens
+com o vitest novo: `destinoSeguro` aceitando caminho sem barra, `montagem.test.ts` sem a diretiva
+`jsdom`, um módulo órfão em `src/components/`, e o `vitest.config.ts` sem a liberação de `docs/`.
+Para a auditoria ampliada: o lockfile de antes, com o comando antigo e com o novo.
+
+**Resultado medido.** O `audit fix` sem `--force` resolveu **1 de 7** (`source-map-js` 1.2.2): o
+`vite` está com versão fixa e o `vitest` precisava de duas versões maiores — o 3.2.7 ainda traz o
+`tinypool` vulnerável. Com 6.4.5 e 4.1.12: `npm audit` completo **0**; o `tinypool` saiu da árvore.
+**462 testes, 32 arquivos**, como antes; `tsc` limpo; o `dist/` **idêntico byte a byte** ao de
+antes — a troca não muda nada que vai para o site. As três páginas abriram no servidor de
+desenvolvimento. Sabotagens **4/4**: 4 casos do `destinoSeguro`, 4 da montagem, o órfão e o
+arquivo da política caíram. No lockfile antigo, `--omit=dev` passa (saída 0) e o comando novo
+reprova (saída 1).
+
+**Adaptação.** O plano previa só subir versões. Com o vitest 4, `Privacidade.test.tsx` e a
+montagem do `/dashboard` caíram com `Denied ID …/POLITICA-DE-PRIVACIDADE.md?raw`: desde o vite 6.4
+o carregador dos testes confere o caminho **com a query**, e uma liberação de arquivo nunca casa
+com `…md?raw` — só a de pasta. Confirmado liberando `docs/` por um instante (os 22 testes dos dois
+arquivos passaram). A liberação de `docs/` ficou só no `vitest.config.ts`; o `vite.config.ts`
+segue liberando o arquivo, e só ele. A auditoria do `CI-08` passou de `--omit=dev` para todas
+as dependências, por decisão do Vitor no plano.
+
+**O que deu errado no caminho.** Três coisas. (1) Tentei primeiro exportar a lista do
+`vite.config.ts` para o `vitest.config.ts` — a falha continuou, porque o problema não era a lista
+faltar, era a query no caminho; só lendo o código do vite (`isServerAccessDeniedForTransform`) a
+causa apareceu. (2) Supus que o servidor de desenvolvimento também quebraria a `/privacidade`; não
+quebra — o navegador pede `/@fs/…?import&raw` e recebe `200`. A suposição estava no relato antes
+de ser medida e foi corrigida pela medição. (3) A sabotagem da liberação foi desfeita com
+`git checkout` do arquivo, que levou junto a alteração ainda não commitada; refeita, e a suíte
+voltou a 462.
+
+**Risco em aberto.** O `vitest.config.ts` libera `docs/` inteira para os testes; o servidor de
+desenvolvimento não. Se outro documento passar a ser importado com `?raw`, os testes aceitam e o
+servidor de desenvolvimento recusa — o sintoma aparece no `npm run dev`, não no CI.
+
+**Procedência.** Branch `chore/SEC-17-ferramentas-de-teste-e-build`; `frontend/package.json`,
+`package-lock.json`, `vitest.config.ts`; `.github/workflows/auditoria-dependencias.yml`; backlog
+`SEC-17`, `CI-08`.
+
+---
+
+# 2026-11-03 (xx) — `UI-21`: o `?raw` conferido contra a liberação do servidor de desenvolvimento
+
+**O problema, como foi entendido no início.** O risco em aberto da entrada (xix): o
+`vitest.config.ts` libera `docs/` inteira e o `vite.config.ts` só o arquivo da política. Um segundo
+documento importado com `?raw` passaria no CI e no build e só quebraria no `npm run dev`.
+
+**Hipótese de trabalho.** Que um teste estático bastasse: achar os `?raw` dos módulos da aplicação
+e conferir cada um contra o `server.fs.allow` do servidor de desenvolvimento. Liberar `docs/` também
+no servidor de desenvolvimento foi descartado, por decisão do Vitor: desfaria o "só ele" do
+`LGPD-01` (b) sem ganho além de simetria.
+
+**O que foi testado, e como.** `frontend/src/raw.test.ts` importa o `vite.config.ts`, lê a lista e
+aplica a regra do vite (arquivo igual, ou pasta que o contém); arquivos de teste ficam de fora, porque
+só rodam no vitest. Imprime o que achou e reprova se não achar nada (catraca). Três sabotagens:
+`docs/LGPD-ELIMINACAO.md?raw` importado em `lib/politica.ts` sem liberar; a política tirada da lista do
+`vite.config.ts`; a expressão da busca trocada para não casar com nada.
+
+**Resultado medido.** A busca acha exatamente um: `pages/Privacidade.tsx →
+docs/POLITICA-DE-PRIVACIDADE.md`. Sabotagens **3/3**: as duas primeiras derrubam "todo arquivo
+importado com ?raw está liberado", a terceira derruba a catraca — e, sem a catraca, o outro teste
+teria passado sem conferir nada. Suíte: **464 testes, 33 arquivos**; `tsc` limpo.
+
+**Adaptação.** Nenhuma.
+
+**O que deu errado no caminho.** A primeira tentativa da terceira sabotagem não se aplicou: o `sed`
+não casou com a linha, ela ficou igual, e o "2 passed" que saiu não provava nada. Notado porque o
+`grep` logo depois mostrou a linha intacta; refeita com Python, conferindo a troca antes de rodar.
+Desta vez as sabotagens foram desfeitas a partir de cópias, e não com `git checkout` — o arquivo do
+teste ainda não estava commitado, que é o que apagou uma alteração na entrada (xix).
+
+**Risco em aberto.** O teste confere a lista, não o servidor: que o servidor de desenvolvimento
+sirva a página foi medido à mão, no navegador, em 03/11. Um `?raw` escrito fora do padrão
+`from "…?raw"` (um `import()` dinâmico, por exemplo) não seria achado — a catraca só garante que o
+de hoje é.
+
+**Procedência.** Branch `chore/UI-21-raw-liberado-no-dev`; `frontend/src/raw.test.ts`; backlog
+`UI-21`; diário 03/11 (xix).
+
+---
+
+# 2026-11-03 (xxi) — `UI-22`: o `?raw` conferido contra o servidor de verdade
+
+**O problema, como foi entendido no início.** Os dois limites que a entrada (xx) declarou no
+`UI-21`: a busca só achava `from "…?raw"`, e o teste conferia a lista do `vite.config.ts` com uma
+cópia da regra do vite escrita à mão, não o servidor. Na análise apareceu um terceiro: o vite confere
+do mesmo jeito `?url` e `?inline` (`isServerAccessDeniedForTransform`), que a busca não via.
+
+**Hipótese de trabalho.** Que bastasse alargar a busca e trocar a cópia da regra por um pedido HTTP
+ao servidor de desenvolvimento, exigindo `200`.
+
+**O que foi testado, e como.** Busca nova: qualquer texto entre aspas ou crases terminado em
+`?raw`, `?url` ou `?inline`; `import.meta.glob` reprova, porque não deixa o caminho escrito. O teste
+sobe o servidor com o `vite.config.ts` (`createServer`, porta livre, sem HMR nem pré-otimização) e
+pede `/@fs/…?import&<query>` para cada achado. Antes das sabotagens, uma sonda fora do teste pediu
+três arquivos: a política, um que não existe e um de `docs/` fora da lista. Sabotagens: `import()`
+dinâmico de `docs/LGPD-ELIMINACAO.md?raw`; o mesmo com `?url` em template string; `import()` de um
+caminho inexistente; um `import.meta.glob`; a política tirada da lista do `vite.config.ts`.
+
+**Resultado medido.** A sonda: política → `200`, `text/markdown`, o conteúdo; **inexistente → `200`,
+`text/html`, o `index.html` da aplicação**; fora da lista → `403`. Por isso o teste exige o corpo
+igual ao arquivo em disco, e não só o status. Sabotagens **5/5**, cada uma pela mensagem certa: os
+dois imports de outro documento → `403`, o inexistente → "arquivo não existe", o `glob` derruba o
+seu teste, a política fora da lista → o servidor recusa. Suíte: **465 testes, 33 arquivos**; `tsc`
+limpo; o servidor sobe e responde em menos de 100 ms.
+
+✏️ *Mesmo dia, antes do merge, a pedido do Vitor: avaliado o limite que restava, o caminho montado em
+execução. Medido com sabotagens temporárias: um template com variável
+(`` import(`../docs/${nome}.md?raw`) ``) **já reprova** ("arquivo não existe"); a concatenação
+(`import(base + "?raw")`) passava no teste e **no build, sem aviso** (com `@vite-ignore`), o documento
+**não entrava no pacote** — o publicado tinha `import(Sp+"?raw")`, que o navegador pediria em tempo de
+execução — e os testes de página não pegariam, porque o vitest resolve. Era defeito de produção, não
+só divergência de desenvolvimento. Entrou um quarto teste: texto entre aspas que **começa** com a
+query reprova. Sabotagens 2/2 (`?raw` e `?url` concatenados); suíte **466**. Uma primeira tentativa
+de medir o build não valeu: a alteração na página não se aplicou e o build podou o código sabotado;
+refeita com a troca conferida.*
+
+**Adaptação.** O plano previa exigir só `200`. A sonda mostrou que `200` passa para arquivo que não
+existe, e o teste passou a comparar o corpo.
+
+**O que deu errado no caminho.** A primeira versão da sonda falhou duas vezes antes de rodar: o
+heredoc do shell comeu a barra invertida de uma expressão regular, e o script, fora de `frontend/`,
+não achava o pacote `vite`. Rodou como `node -e` de dentro de `frontend/`.
+
+**Risco em aberto.** A concatenação simples reprova (ver a nota acima); um caminho montado de forma
+mais elaborada — a query guardada numa variável — continua fora da busca, e está escrito no próprio
+teste. O teste prova que o servidor serve o arquivo, não que
+a página o renderiza; isso é do `Privacidade.test.tsx` e do `montagem.test.ts`.
+
+**Procedência.** Branch `chore/UI-22-raw-no-servidor-real`; `frontend/src/raw.test.ts`; backlog
+`UI-21`, `UI-22`; diário 03/11 (xx).
+
+---
+
+# 2026-11-03 (xxii) — `INFRA-04`: o gunicorn sai, e a stack documentada volta a bater
+
+**O problema, como foi entendido no início.** O `gunicorn` estava no `web-app/requirements.txt` e na
+stack do `CLAUDE.md` e do `README.md`, sem rodar em lugar nenhum: a Vercel serve o backend pelo
+`@vercel/python`. Ele só aparecia nos avisos do `pip-audit` (`CI-08`, entrada (xvii)).
+
+**Hipótese de trabalho.** Que nada dependesse dele: nem os testes, nem o import do `app`, nem
+documento do TCC.
+
+**O que foi testado, e como.** Busca por `gunicorn`, `wsgi` e `Procfile` no repositório e nos
+documentos locais não versionados (`DOCUMENTO-TCC.md`, `ROADMAP.md`, `METODOLOGIA.md`,
+`HARDWARE.md`, roteiro). Depois de tirá-lo do `requirements.txt`: ambiente Python 3.11 limpo,
+instalado só do arquivo, conferido que o pacote **não** está presente; os testes do backend; o
+`import app` como a Vercel faz; o `pip-audit`. A linha de stack do `README.md` foi refeita contra o
+`frontend/package.json`, o `web-app/requirements.txt` e o `ml/requirements.txt`.
+
+**Resultado medido.** Gunicorn só no `requirements.txt`, no `CLAUDE.md` e no `README.md` (mais o
+histórico no diário, no backlog e no comentário do workflow, que ficam). Nenhum documento local o
+cita — o texto do TCC não muda. Sem ele: **417 testes passam**, `import app` devolve o `Flask`,
+`pip-audit` sem aviso. A stack do `README.md` dizia "Tailwind + Chart.js": o gráfico é **Recharts**,
+e faltavam React, TypeScript, Vite, o ML e o vitest.
+
+**Adaptação.** Ao ler o `README.md` inteiro para corrigir a stack, apareceram mais cinco
+afirmações velhas — a principal, mandar preencher a `SUPABASE_SERVICE_ROLE_KEY`, que a produção
+não usa desde o `SEC-14`. Ficaram fora deste item, que era a stack: viraram o `DOC-14`, porque
+reescrever instruções de instalação pede executá-las numa cópia limpa antes, e isso não estava no
+plano.
+
+**O que deu errado no caminho.** Nada nesta etapa.
+
+**Risco em aberto.** Só depois do release: a Vercel instala o `requirements.txt` sem o gunicorn, e
+a conferência é o `/health` e o login. Se o backend um dia sair da Vercel, um servidor WSGI volta a
+ser necessário — está escrito no `CLAUDE.md`. O README segue com o resto envelhecido: `DOC-14`.
+
+**Procedência.** Branch `chore/INFRA-04-remover-gunicorn`; `web-app/requirements.txt`,
+`README.md`, `CLAUDE.md`; backlog `INFRA-04`, `DOC-14`.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

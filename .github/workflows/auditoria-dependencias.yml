@@ -9,14 +9,17 @@ name: Auditoria de dependências
 # mudam e, toda semana, contra avisos novos sobre as mesmas versões.
 #
 # O QUE CONFERE:
-#   - frontend: `npm audit --omit=dev --audit-level=high` — só o que vai para o
-#     pacote publicado, e só alto ou crítico. As ferramentas de teste e build
-#     (vitest, esbuild) ficam de fora: não chegam ao navegador de ninguém.
+#   - frontend: `npm audit --audit-level=high` — alto ou crítico, em TODAS as
+#     dependências. ✏️ 03/11 (`SEC-17`): até aqui era `--omit=dev`, só o que
+#     vai para o pacote publicado. As ferramentas de teste e build não chegam
+#     ao navegador de ninguém, mas rodam na máquina de quem desenvolve e no CI
+#     — e acumularam 7 avisos (`tinypool` crítico) sem que nada reprovasse.
+#     Limpas no `SEC-17`, passaram a ser conferidas também.
 #   - backend: `pip-audit` sobre `web-app/requirements.txt`, qualquer severidade.
 #
 # ⚠️ O QUE ESTE ARQUIVO NÃO GARANTE:
-#   - `schedule` só roda a partir de `main`. Até o release que leva este
-#     arquivo, a auditoria semanal não existe; push e PR já valem.
+#   - `schedule` só roda a partir de `main` (está lá desde o release #63,
+#     03/11; a execução manual `41751583490` passou).
 #   - A base de avisos é a do registro do npm e a do PyPI/OSV. Aviso que ainda
 #     não foi publicado lá não reprova nada.
 #   - Reprovar não corrige: abre o trabalho de subir a versão e rodar os testes.
@@ -48,7 +51,7 @@ permissions:
 
 jobs:
   frontend:
-    name: npm audit (produção, alto ou crítico)
+    name: npm audit (alto ou crítico)
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout
@@ -62,7 +65,7 @@ jobs:
       # O `npm audit` lê o lockfile; não precisa instalar nada.
       - name: Auditar
         working-directory: frontend
-        run: npm audit --omit=dev --audit-level=high
+        run: npm audit --audit-level=high
 
   backend:
     name: pip-audit (web-app)
