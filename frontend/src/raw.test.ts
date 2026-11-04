@@ -28,8 +28,10 @@
  *
  * ── O QUE NÃO PROVA ─────────────────────────────────────────────────────
  *
- * Um caminho montado em tempo de execução (`import(variavel + "?raw")`) não
- * é achado. Arquivos de teste ficam de fora: rodam só no vitest. E prova que
+ * A concatenação simples (`import(base + "?raw")`) reprova por teste próprio;
+ * um caminho montado de forma mais elaborada (a query guardada numa variável,
+ * por exemplo) não é achado — isso já é contornar de propósito, não descuido.
+ * Arquivos de teste ficam de fora: rodam só no vitest. E prova que
  * o servidor SERVE o arquivo, não que a página o renderiza — isso é do
  * `Privacidade.test.tsx` e do `montagem.test.ts`.
  */
@@ -93,6 +95,16 @@ describe("?raw/?url/?inline x servidor de desenvolvimento (UI-21, UI-22)", () =>
         ACHADOS.map((a) => `  ${a.modulo} -> ${relative(FRONTEND, a.arquivo)}?${a.query}`).join("\n"),
     );
     expect(ACHADOS.length).toBeGreaterThan(0);
+  });
+
+  // `import(base + "?raw")`: a busca acima não vê caminho nenhum, o build passa
+  // sem aviso (com `@vite-ignore`), o documento NÃO entra no pacote e o
+  // navegador pede o caminho em tempo de execução — quebra no site publicado,
+  // e os testes de página não pegam, porque o vitest resolve (medido em 03/11).
+  // Texto que COMEÇA com a query só faz sentido colado a outro: é a assinatura.
+  it("nenhum módulo monta o caminho colando a query (import(x + \"?raw\"))", () => {
+    const colados = MODULOS.filter((m) => /["'`]\?(raw|url|inline)["'`]/.test(readFileSync(m, "utf-8")));
+    expect(colados.map((m) => relative(SRC, m))).toEqual([]);
   });
 
   it("nenhum módulo usa import.meta.glob, que esconde o caminho da busca", () => {

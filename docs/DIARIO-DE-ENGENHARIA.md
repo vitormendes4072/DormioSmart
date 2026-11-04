@@ -6401,6 +6401,17 @@ dois imports de outro documento → `403`, o inexistente → "arquivo não exist
 seu teste, a política fora da lista → o servidor recusa. Suíte: **465 testes, 33 arquivos**; `tsc`
 limpo; o servidor sobe e responde em menos de 100 ms.
 
+✏️ *Mesmo dia, antes do merge, a pedido do Vitor: avaliado o limite que restava, o caminho montado em
+execução. Medido com sabotagens temporárias: um template com variável
+(`` import(`../docs/${nome}.md?raw`) ``) **já reprova** ("arquivo não existe"); a concatenação
+(`import(base + "?raw")`) passava no teste e **no build, sem aviso** (com `@vite-ignore`), o documento
+**não entrava no pacote** — o publicado tinha `import(Sp+"?raw")`, que o navegador pediria em tempo de
+execução — e os testes de página não pegariam, porque o vitest resolve. Era defeito de produção, não
+só divergência de desenvolvimento. Entrou um quarto teste: texto entre aspas que **começa** com a
+query reprova. Sabotagens 2/2 (`?raw` e `?url` concatenados); suíte **466**. Uma primeira tentativa
+de medir o build não valeu: a alteração na página não se aplicou e o build podou o código sabotado;
+refeita com a troca conferida.*
+
 **Adaptação.** O plano previa exigir só `200`. A sonda mostrou que `200` passa para arquivo que não
 existe, e o teste passou a comparar o corpo.
 
@@ -6408,8 +6419,9 @@ existe, e o teste passou a comparar o corpo.
 heredoc do shell comeu a barra invertida de uma expressão regular, e o script, fora de `frontend/`,
 não achava o pacote `vite`. Rodou como `node -e` de dentro de `frontend/`.
 
-**Risco em aberto.** Caminho montado em tempo de execução (`import(variavel + "?raw")`) continua
-fora da busca — está escrito no próprio teste. O teste prova que o servidor serve o arquivo, não que
+**Risco em aberto.** A concatenação simples reprova (ver a nota acima); um caminho montado de forma
+mais elaborada — a query guardada numa variável — continua fora da busca, e está escrito no próprio
+teste. O teste prova que o servidor serve o arquivo, não que
 a página o renderiza; isso é do `Privacidade.test.tsx` e do `montagem.test.ts`.
 
 **Procedência.** Branch `chore/UI-22-raw-no-servidor-real`; `frontend/src/raw.test.ts`; backlog
