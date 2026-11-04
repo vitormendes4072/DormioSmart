@@ -1,16 +1,34 @@
 # Firmware — Smart Dormio (ESP32 + MPU6050)
 
-Firmware embarcado que lê o sensor inercial MPU6050, classifica repouso/movimento (limiar simétrico — ver `docs/DATA-CONTRACT.md`), empacota os dados em JSON e os envia para a API web via HTTPS. Na **Fase 1** roda em simulação (Wokwi); na **Fase 2**, na placa física.
+O firmware lê o MPU6050 e envia os dados para a API web por HTTPS. Na arquitetura adotada em
+30/10 (**C2**, [`ARQ-01`](../docs/DECISAO-ARQ-01-CADENCIA.md)), o ESP32 fica em **sono leve**,
+lê em rajadas a memória interna (FIFO) do sensor a 50 Hz, calcula as features de cada época de
+30 s, guarda as épocas numa fila na flash e envia em lote a cada 10 minutos.
+
+> ⚠️ **Estado em 03/11/2026:** o `sketch.ino` da C2 **só foi compilado e ligado contra stubs**
+> do Arduino, e o núcleo roda nos testes do computador ([`nucleo/`](nucleo/README.md)). **Nada
+> disso rodou numa placa ainda** — espera a solda. ✏️ *03/11 (`DOC-15`): até aqui este README
+> descrevia o firmware anterior (Deep Sleep, despertar por botão no GPIO 27, a flag
+> `MODO_SIMULADOR`), que não existe mais em nenhum `.ino`.*
 
 ## Arquivos
-| Arquivo | Função |
+
+| Arquivo ou pasta | Função |
 |---|---|
-| `sketch.ino` | Firmware de produto, arquitetura C2 (✏️ 31/10, `FW-07` (b)): sono leve, FIFO do MPU a 50 Hz, features por época, fila na flash e envio em lote. **Só compilado e ligado com stubs; não rodou na placa.** |
+| `sketch.ino` | **Firmware de produto**, arquitetura C2 (`FW-07` (b)): duas tarefas FreeRTOS — medição no núcleo 1 (sono leve, FIFO, features por época) e envio no núcleo 0 (lote a cada 10 min). **Só compilado e ligado com stubs; não rodou na placa.** |
+| `nucleo/` | A lógica que não depende do Arduino (FIFO, cadeia C2, features, fila, lote, payload, reconexão), em C++ puro, **testada no computador** com `make`. Ver [`nucleo/README.md`](nucleo/README.md) |
+| `nucleo_amalgama.cpp` | Traz o `nucleo/` para dentro do build do `sketch.ino` (a IDE só compila o que está na pasta do sketch) |
+| `midia_flash_esp32.h` | A partição `dormio` da flash vista pela fila do núcleo (`FW-08`) — a única parte da fila que depende do ESP32 |
+| `partitions.csv` | Tabela de partições com a `dormio` (2 MiB) para a fila |
 | `ca_raiz.h` | ✏️ *(03/11, `SEC-15`)* As CAs raiz em que o firmware confia para o HTTPS (`setCACert`). **Canônico**; `envio-continuo/ca_raiz.h` é cópia idêntica, conferida por `scripts/conferir_tls_firmware.py` |
-| `diagram.json` | Mapeamento do circuito no Wokwi |
-| `libraries.txt` | Bibliotecas utilizadas |
+| `envio-continuo/` | Sketch de bancada **e do Wokwi**: lê e envia a intervalo fixo, sem dormir (ver abaixo) |
+| `caracterizacao/` | Sketch de bancada: viés e escala de cada eixo (ver abaixo) |
+| `diagnostico-i2c/` | Sketch de bancada: o barramento I2C está confiável? (ver abaixo) |
+| `diagram.json` | O circuito no Wokwi (Fase 1) |
+| `libraries.txt` | Bibliotecas do Wokwi |
 | `secrets.example.h` | Modelo de credenciais — **copiar para `secrets.h`** |
 | `secrets.h` | Credenciais reais — **ignorado pelo git, nunca versionar** |
+| `sincronizar-secrets.sh` | Mantém as cópias do `secrets.h` iguais ao canônico (ver abaixo) |
 
 ## Credenciais (obrigatório antes de compilar)
 
@@ -37,7 +55,7 @@ o monitor serial diz exatamente isso quando acontece.
 > (aba de arquivos), já que o git não o traz junto. Ao gravar tela para o devlog,
 > **não deixe essa aba aberta.**
 
-## Pinagem (Fase 1 — Wokwi)
+## Pinagem
 
 | Componente | Pino ESP32 | Função |
 | :--- | :--- | :--- |
@@ -45,39 +63,40 @@ o monitor serial diz exatamente isso quando acontece.
 | MPU6050 GND | GND | Referência comum |
 | MPU6050 SDA | GPIO 21 | Barramento I2C (dados) |
 | MPU6050 SCL | GPIO 22 | Barramento I2C (clock) |
-| Botão | 3V3 ↔ GPIO 27 | **Andaime de simulação** — representa o evento de despertar |
-| Resistor 10 kΩ | GPIO 27 ↔ GND | Pull-down do botão (garante LOW estável durante o sono) |
 
-O **GPIO 27** foi escolhido por pertencer ao domínio RTC (RTC_GPIO17), requisito para o despertar por EXT1 a partir do Deep Sleep, e por ser isolado dos pinos de *bootstrapping*.
+Na C2 o firmware só usa o I2C: o sono leve acorda por temporizador para esvaziar a FIFO, sem
+pino de interrupção. O esquemático está em
+[`docs/diagramas/DIAG-02-esquematico.py`](../docs/diagramas/DIAG-02-esquematico.py).
 
-> **Botão e resistor são andaime de simulação** (Fase 1). No dispositivo físico (Fase 2), o despertar passa a vir da interrupção do próprio MPU6050.
+**O circuito do Wokwi (Fase 1)** ainda tem um **botão no GPIO 27 com pull-down de 10 kΩ**: era
+o andaime de simulação do despertar por Deep Sleep do firmware anterior. Nenhum sketch atual o
+usa; o `diagram.json` não foi alterado.
 
-![Circuito](../img/circuito.png)
-
-## Lógica híbrida (simulação × físico)
-
-O Wokwi tem limitações: não emula o Deep Sleep nativo do ESP32 (o `esp_deep_sleep_start()` com I2C ativo causa reset) nem o pino de interrupção (INT) do MPU6050. Para contornar, o firmware usa uma flag de compilação:
-
-```cpp
-// true  = validar a lógica no Wokwi (evita o crash do simulador)
-// false = gravar na placa ESP32 real
-#define MODO_SIMULADOR true
-```
-
-- **`true` (Simulação):** o sono é "mockado" — o código monitora o botão e faz um *soft reset* (`ESP.restart()`) ao detectar o clique, emulando o despertar.
-- **`false` (Físico — Fase 2):** usa `esp_deep_sleep_start()` com despertar por máscara de bits **EXT1**. A substituição do botão pela **interrupção real do MPU6050 (Wake-on-Motion)** é alvo da Fase 2 e ainda não está implementada.
+![Circuito da Fase 1 no Wokwi](../img/circuito.png)
 
 ## Baixo consumo (nota honesta)
 
-O **núcleo** do ESP32 suporta Deep Sleep da ordem de microampères. A placa **DevKit V1**, porém, mantém regulador de tensão e conversor USB-serial alimentados, elevando o consumo de repouso para a ordem de miliampères. O consumo real será **medido no protótipo** na Fase 2; a avaliação de uma placa de menor consumo faz parte dessa etapa.
+O ESP32 dorme em sono leve entre as rajadas, porque o sono leve preserva a RAM — e o buffer da
+época precisa sobreviver (no Deep Sleep, não sobrevive; ver `nucleo/README.md`). O consumo
+estimado da C2 está no [`ARQ-01`](../docs/DECISAO-ARQ-01-CADENCIA.md); **o medido não existe
+ainda**. A placa **DevKit V1** mantém regulador e conversor USB-serial alimentados, o que pesa
+em qualquer modo de sono; a medição e a avaliação de uma placa de menor consumo são da Fase 2.
 
-## Como rodar (Wokwi)
+## Como rodar
 
-1. Abra a pasta `firmware/` no [Wokwi](https://wokwi.com).
-2. Crie o arquivo `secrets.h` no projeto (ver "Credenciais" acima).
-3. Mantenha `#define MODO_SIMULADOR true`.
-4. Inicie a simulação; o console exibe o ciclo de leitura e o estado de repouso.
-5. Clique no botão do diagrama para emular o despertar por movimento.
+**Testes do núcleo, no computador** (precisa de `g++` e `make`; no Windows, em contêiner —
+ver a seção "Testes" do [`CLAUDE.md`](../CLAUDE.md#testes)):
+```bash
+cd firmware/nucleo && make
+```
+
+**No Wokwi (Fase 1):** abra a pasta `firmware/` no [Wokwi](https://wokwi.com) com o sketch
+`envio-continuo/` — o `sketch.ino` lê a FIFO do MPU, que o simulador pode não emular. Crie o
+`secrets.h` no projeto (ver "Credenciais"). ⚠️ *Esta instrução não foi executada em 03/11: o
+Wokwi não roda daqui. Os passos de antes (abrir com o `sketch.ino` e clicar no botão para
+emular o despertar) eram do firmware anterior.*
+
+**Na placa:** o `sketch.ino`, com a tabela de partições `partitions.csv`. Ainda não foi feito.
 
 ## `caracterizacao/` — instrumento de bancada (CALC-02)
 
