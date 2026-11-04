@@ -238,7 +238,7 @@ custo para rodar:
 | Onde | Como rodar | Resultado em 28/10 |
 |---|---|---|
 | Backend (Flask) | `cd web-app && pytest --ignore=tests/rls` | **417 passam** ✏️ *(03/11, `LGPD-05`: +1; 01/11, `API-04`: +9; 01/11, `AUTH-08`: +17; 31/10, `SEC-14`: +6)*; antes **384 passam** ✏️ *(30/10, branch do `DATA-07b`; eram 316 no `API-03` e 293 em 28/10)* |
-| Frontend | `cd frontend && npx vitest run` | **462 passam, 32 arquivos** ✏️ *(03/11, `SEC-16`: +19, com o `Login.test.tsx`; 03/11, `LGPD-01` (b): +15, com `politica.test.ts` e `Privacidade.test.tsx`; 03/11, `LGPD-05`: +4, com o `Register.test.tsx`; 01/11, `AUTH-08`: +2; 31/10, `AUTH-07`: +4 do `AuthContext.test.tsx`)* |
+| Frontend | `cd frontend && npx vitest run` | **462 passam, 32 arquivos** ✏️ *(03/11, `SEC-17`: com **vitest 4.1.12** e vite 6.4.5 — mesma contagem; o `vitest.config.ts` libera `docs/` para o `?raw` da política; 03/11, `SEC-16`: +19, com o `Login.test.tsx`; 03/11, `LGPD-01` (b): +15, com `politica.test.ts` e `Privacidade.test.tsx`; 03/11, `LGPD-05`: +4, com o `Register.test.tsx`; 01/11, `AUTH-08`: +2; 31/10, `AUTH-07`: +4 do `AuthContext.test.tsx`)* |
 | Tipos e build | `cd frontend && npm run build` (`tsc --noEmit && vite build`) | `tsc` limpo; `vite build` ok (avisa do chunk único — `UI-15`) |
 | RLS (Postgres real) | `DORMIO_RLS_DATABASE_URL=... pytest tests/rls` | **174 passam** ✏️ *(03/11, `LGPD-05`/`LGPD-06`: +10 da 012 e da consulta agregada; 01/11, `DATA-08`: +6 da 011)*; antes **158 passam** contra `postgres:16` em Docker ✏️ *(30/10, `DATA-07b`: +7 da migração 010; eram 151 em 28/10)*, com a base imitando os privilégios padrão do Supabase (`SEC-12`) — **pulam** sem a variável, de propósito |
 | Mutação do RLS | `python web-app/tests/rls/verificar_por_mutacao.py` | **32/32 sabotagens detectadas** |
@@ -260,7 +260,7 @@ Windows sem ajuste (`DOCS-WIN-01`, `DOCS-WIN-02`, `ML-WIN-01`). Resta uma difere
 - Script novo que imprima símbolo fora do `cp1252` (✓ ✗ ⓘ ĝ σ) precisa de
   `sys.stdout.reconfigure(encoding="utf-8")` — é o que os quatro já corrigidos fazem.
 
-**Auditoria de dependências** (`CI-08`, 03/11): `.github/workflows/auditoria-dependencias.yml` — `npm audit --omit=dev --audit-level=high` e `pip-audit` sobre `web-app/requirements.txt`, quando as dependências mudam e toda segunda-feira (o agendamento só a partir de `main`). Dependência nova ou versão nova passa por ele; para rodar à mão: `cd frontend && npm audit --omit=dev` e `pip-audit -r web-app/requirements.txt`.
+**Auditoria de dependências** (`CI-08`, 03/11): `.github/workflows/auditoria-dependencias.yml` — `npm audit --audit-level=high` (✏️ *03/11, `SEC-17`: com as ferramentas de teste e build; até ali `--omit=dev`*) e `pip-audit` sobre `web-app/requirements.txt`, quando as dependências mudam e toda segunda-feira (o agendamento só a partir de `main`). Dependência nova ou versão nova passa por ele; para rodar à mão: `cd frontend && npm audit` e `pip-audit -r web-app/requirements.txt`.
 
 **CI:** `.github/workflows/ci.yml`, seis jobs: `test` (backend), `rls` (matriz Postgres 14 e
 16, mais mutação na 16), `frontend` (vitest, tsc, vite), `ml`, `firmware` e `documentos`.

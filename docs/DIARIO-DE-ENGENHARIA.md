@@ -6280,6 +6280,60 @@ aberto.
 `41751583490`; as rotas de `https://dormio-smart.vercel.app`, 03/11; a confirmação do autor; backlog
 `CI-08`.
 
+---
+
+# 2026-11-03 (xix) — `SEC-17`: as ferramentas de teste e build atualizadas
+
+**O problema, como foi entendido no início.** O `npm audit` sem `--omit=dev` achava 7 avisos nas
+ferramentas de teste e build (`tinypool` crítico, `source-map-js` alto, `esbuild`, `vite-node` e
+`@vitest/mocker` moderados), fora da auditoria do `CI-08` de propósito.
+
+**Hipótese de trabalho.** Que o `npm audit fix` sem `--force` resolvesse boa parte, e que sobrasse o
+`vitest`, de versão maior. E que o `vite`, por gerar o pacote do site, pudesse mudar o que vai para
+a produção.
+
+**O que foi testado, e como.** Numa cópia fora do repositório, o `npm audit fix` sem `--force`.
+Depois, na branch: suíte e build **antes** (462 testes; pacote guardado); `npm audit fix`; `vite`
+6.4.5 e `vitest` 4.1.12 com versão fixa; suíte, `tsc`, build comparado byte a byte com o de antes;
+o servidor de desenvolvimento com `/`, `/login` e `/privacidade` no navegador do app. Sabotagens
+com o vitest novo: `destinoSeguro` aceitando caminho sem barra, `montagem.test.ts` sem a diretiva
+`jsdom`, um módulo órfão em `src/components/`, e o `vitest.config.ts` sem a liberação de `docs/`.
+Para a auditoria ampliada: o lockfile de antes, com o comando antigo e com o novo.
+
+**Resultado medido.** O `audit fix` sem `--force` resolveu **1 de 7** (`source-map-js` 1.2.2): o
+`vite` está com versão fixa e o `vitest` precisava de duas versões maiores — o 3.2.7 ainda traz o
+`tinypool` vulnerável. Com 6.4.5 e 4.1.12: `npm audit` completo **0**; o `tinypool` saiu da árvore.
+**462 testes, 32 arquivos**, como antes; `tsc` limpo; o `dist/` **idêntico byte a byte** ao de
+antes — a troca não muda nada que vai para o site. As três páginas abriram no servidor de
+desenvolvimento. Sabotagens **4/4**: 4 casos do `destinoSeguro`, 4 da montagem, o órfão e o
+arquivo da política caíram. No lockfile antigo, `--omit=dev` passa (saída 0) e o comando novo
+reprova (saída 1).
+
+**Adaptação.** O plano previa só subir versões. Com o vitest 4, `Privacidade.test.tsx` e a
+montagem do `/dashboard` caíram com `Denied ID …/POLITICA-DE-PRIVACIDADE.md?raw`: desde o vite 6.4
+o carregador dos testes confere o caminho **com a query**, e uma liberação de arquivo nunca casa
+com `…md?raw` — só a de pasta. Confirmado liberando `docs/` por um instante (os 22 testes dos dois
+arquivos passaram). A liberação de `docs/` ficou só no `vitest.config.ts`; o `vite.config.ts`
+segue liberando o arquivo, e só ele. A auditoria do `CI-08` passou de `--omit=dev` para todas
+as dependências, por decisão do Vitor no plano.
+
+**O que deu errado no caminho.** Três coisas. (1) Tentei primeiro exportar a lista do
+`vite.config.ts` para o `vitest.config.ts` — a falha continuou, porque o problema não era a lista
+faltar, era a query no caminho; só lendo o código do vite (`isServerAccessDeniedForTransform`) a
+causa apareceu. (2) Supus que o servidor de desenvolvimento também quebraria a `/privacidade`; não
+quebra — o navegador pede `/@fs/…?import&raw` e recebe `200`. A suposição estava no relato antes
+de ser medida e foi corrigida pela medição. (3) A sabotagem da liberação foi desfeita com
+`git checkout` do arquivo, que levou junto a alteração ainda não commitada; refeita, e a suíte
+voltou a 462.
+
+**Risco em aberto.** O `vitest.config.ts` libera `docs/` inteira para os testes; o servidor de
+desenvolvimento não. Se outro documento passar a ser importado com `?raw`, os testes aceitam e o
+servidor de desenvolvimento recusa — o sintoma aparece no `npm run dev`, não no CI.
+
+**Procedência.** Branch `chore/SEC-17-ferramentas-de-teste-e-build`; `frontend/package.json`,
+`package-lock.json`, `vitest.config.ts`; `.github/workflows/auditoria-dependencias.yml`; backlog
+`SEC-17`, `CI-08`.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
