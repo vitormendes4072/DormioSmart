@@ -12,6 +12,8 @@
 
 ## Estado do projeto, em uma dúzia de linhas
 
+> ✏️ *03/11 (`DOC-13`): esta seção é **texto de contexto, datado** — cita itens fechados de propósito, para contar a história. O estado **conferido** é o da contagem, do quadro e do caminho crítico, que `scripts/conferir_backlog.py --conferir` confronta com as linhas no CI.*
+
 1. **O bloco de ML está fechado.** Pipeline reprodutível, baselines medidos, matriz de
    transferência N=92, ablação das hipóteses, quatro otimizações e validação externa em
    coorte independente. 70 testes passando *(em 22/09; 107 em 28/10)*.
@@ -535,18 +537,18 @@ Se só houver tempo para uma sequência, é esta:
    001–009 aplicadas). ✏️ *(29/10: este passo seguiu aqui como o primeiro do caminho crítico
    um dia depois de fechado.)*
 2. **Soldar** (L3). Tudo abaixo espera.
-3. **`CAL-01` + `CAL-02`** — calibrar a unidade *depois* do `FW-06`, senão o número não vale.
+3. **`CAL-01`** (~~`CAL-02`~~, fundido nele em 03/11) — calibrar a unidade *depois* do `FW-06`, senão o número não vale.
 4. **`VIA-01` + `VIA-02`** — um dia de bancada que produz a viabilidade, o limiar do celular
    e o grupo de controle.
 5. **`VAL-01`** — uma noite real captada. O painel já aguenta. 🛑 **Mas o firmware não:** sem
-   a corrente `ARQ-01` → `FW-05` → `DATA-07b` (d, e) + payload com `f`, a noite vem **sem
+   a corrente `ARQ-01` → `FW-05` → ~~`DATA-07b` (d, e)~~ + payload com `f`, a noite vem **sem
    feature nenhuma** e o modelo não a consome. Ver o aviso no próprio `VAL-01`. ✏️ *30/10: o
    `DATA-07b` fechou (o payload leva `f`, o servidor grava e deriva); o que resta da corrente é
    firmware — `FW-07` (b), o sketch, e `FW-08`, a fila que guarda o vetor até o envio.* ✏️ *31/10:
    os dois estão escritos e testados no host; o que falta agora é a placa (`FW-07` (c), `FW-08` (c)).*
 6. **`DASH-04` + `VAL-02`** — a noite na tela e os números medidos.
 
-**Em paralelo, sem esperar nada:** `CALC-01..04`, `DIAG-02` e `DIAG-04`, `LGPD-01`, ~~`FW-07` (b)~~ ✅ 31/10, ~~`DATA-07b`~~ ✅ 30/10.
+**Em paralelo, sem esperar nada:** `CALC-01..04`, ~~`DIAG-02` e `DIAG-04`~~ ✅ 31/10, ~~`LGPD-01`~~ (03/11: passou a L3, espera a definição do controlador), ~~`FW-07` (b)~~ ✅ 31/10, ~~`DATA-07b`~~ ✅ 30/10.
 
 > 🔴 **O que mudou no caminho crítico em 17/10.** O `DATA-07b` fechou (a), (b) e (c) — o
 > firmware sabe calcular as features — e ao fechar **expôs três coisas que agora estão entre
