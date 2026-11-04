@@ -6374,6 +6374,47 @@ de hoje é.
 **Procedência.** Branch `chore/UI-21-raw-liberado-no-dev`; `frontend/src/raw.test.ts`; backlog
 `UI-21`; diário 03/11 (xix).
 
+---
+
+# 2026-11-03 (xxi) — `UI-22`: o `?raw` conferido contra o servidor de verdade
+
+**O problema, como foi entendido no início.** Os dois limites que a entrada (xx) declarou no
+`UI-21`: a busca só achava `from "…?raw"`, e o teste conferia a lista do `vite.config.ts` com uma
+cópia da regra do vite escrita à mão, não o servidor. Na análise apareceu um terceiro: o vite confere
+do mesmo jeito `?url` e `?inline` (`isServerAccessDeniedForTransform`), que a busca não via.
+
+**Hipótese de trabalho.** Que bastasse alargar a busca e trocar a cópia da regra por um pedido HTTP
+ao servidor de desenvolvimento, exigindo `200`.
+
+**O que foi testado, e como.** Busca nova: qualquer texto entre aspas ou crases terminado em
+`?raw`, `?url` ou `?inline`; `import.meta.glob` reprova, porque não deixa o caminho escrito. O teste
+sobe o servidor com o `vite.config.ts` (`createServer`, porta livre, sem HMR nem pré-otimização) e
+pede `/@fs/…?import&<query>` para cada achado. Antes das sabotagens, uma sonda fora do teste pediu
+três arquivos: a política, um que não existe e um de `docs/` fora da lista. Sabotagens: `import()`
+dinâmico de `docs/LGPD-ELIMINACAO.md?raw`; o mesmo com `?url` em template string; `import()` de um
+caminho inexistente; um `import.meta.glob`; a política tirada da lista do `vite.config.ts`.
+
+**Resultado medido.** A sonda: política → `200`, `text/markdown`, o conteúdo; **inexistente → `200`,
+`text/html`, o `index.html` da aplicação**; fora da lista → `403`. Por isso o teste exige o corpo
+igual ao arquivo em disco, e não só o status. Sabotagens **5/5**, cada uma pela mensagem certa: os
+dois imports de outro documento → `403`, o inexistente → "arquivo não existe", o `glob` derruba o
+seu teste, a política fora da lista → o servidor recusa. Suíte: **465 testes, 33 arquivos**; `tsc`
+limpo; o servidor sobe e responde em menos de 100 ms.
+
+**Adaptação.** O plano previa exigir só `200`. A sonda mostrou que `200` passa para arquivo que não
+existe, e o teste passou a comparar o corpo.
+
+**O que deu errado no caminho.** A primeira versão da sonda falhou duas vezes antes de rodar: o
+heredoc do shell comeu a barra invertida de uma expressão regular, e o script, fora de `frontend/`,
+não achava o pacote `vite`. Rodou como `node -e` de dentro de `frontend/`.
+
+**Risco em aberto.** Caminho montado em tempo de execução (`import(variavel + "?raw")`) continua
+fora da busca — está escrito no próprio teste. O teste prova que o servidor serve o arquivo, não que
+a página o renderiza; isso é do `Privacidade.test.tsx` e do `montagem.test.ts`.
+
+**Procedência.** Branch `chore/UI-22-raw-no-servidor-real`; `frontend/src/raw.test.ts`; backlog
+`UI-21`, `UI-22`; diário 03/11 (xx).
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

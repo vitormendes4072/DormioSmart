@@ -1,5 +1,5 @@
 /**
- * Todo arquivo importado com `?raw` está liberado no servidor de desenvolvimento? (UI-21)
+ * Todo arquivo importado com `?raw`/`?url`/`?inline` é servido pelo servidor de desenvolvimento? (UI-21, UI-22)
  *
  * ── POR QUE EXISTE ──────────────────────────────────────────────────────
  *
@@ -10,29 +10,40 @@
  * por isso o `vitest.config.ts` libera a pasta `docs/` inteira (SEC-17).
  *
  * As duas listas divergem de propósito, e a divergência tem um modo de falha
- * silencioso: um segundo documento importado com `?raw` passaria nos testes
- * (pasta liberada) e no build (que não aplica a lista), e só quebraria no
- * `npm run dev`, com um 403. Este teste fecha isso: cada `?raw` de um módulo
- * da aplicação tem de estar coberto pela lista do `vite.config.ts`.
+ * silencioso: um segundo documento importado assim passaria nos testes (pasta
+ * liberada) e no build (que não aplica a lista), e só quebraria no
+ * `npm run dev`, com um 403. Este teste fecha isso.
  *
- * ── O QUE PROVA, E O QUE NÃO ────────────────────────────────────────────
+ * ── COMO ────────────────────────────────────────────────────────────────
  *
- * Prova: o caminho de cada `?raw` está, ou está dentro de, uma entrada do
- * `server.fs.allow` do servidor de desenvolvimento — a mesma regra do vite
- * (arquivo igual, ou pasta que o contém). **Não** prova que o servidor serve
- * a página: isso foi conferido à mão em 03/11, no navegador. Arquivos de teste
- * ficam de fora, porque rodam só no vitest.
+ * 1. Acha, nos módulos da aplicação, todo texto entre aspas ou crases que
+ *    termine em `?raw`, `?url` ou `?inline` — as queries que o vite confere
+ *    contra a lista. Pega `import x from`, `import()` dinâmico e template
+ *    string. `import.meta.glob` não deixa o caminho escrito: reprova o uso,
+ *    para que quem o introduzir decida como conferir.
+ * 2. Sobe o servidor de desenvolvimento DE VERDADE, com o `vite.config.ts`,
+ *    numa porta livre, e pede cada arquivo como o navegador pede
+ *    (`/@fs/…?import&raw`). Exige `200`. Quem decide é o vite, não uma cópia
+ *    da regra escrita aqui (UI-22: a versão do UI-21 reimplementava a regra).
+ *
+ * ── O QUE NÃO PROVA ─────────────────────────────────────────────────────
+ *
+ * Um caminho montado em tempo de execução (`import(variavel + "?raw")`) não
+ * é achado. Arquivos de teste ficam de fora: rodam só no vitest. E prova que
+ * o servidor SERVE o arquivo, não que a página o renderiza — isso é do
+ * `Privacidade.test.tsx` e do `montagem.test.ts`.
  */
-import { readFileSync, readdirSync, statSync } from "node:fs";
-import { dirname, join, relative, resolve, sep } from "node:path";
+import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
+import type { AddressInfo } from "node:net";
+import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { describe, expect, it } from "vitest";
-
-import configuracao from "../vite.config";
+import { createServer, type ViteDevServer } from "vite";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 const SRC = resolve(dirname(fileURLToPath(import.meta.url)));
-const IMPORT_RAW = /from\s+["']([^"']+)\?raw["']/g;
+const FRONTEND = resolve(SRC, "..");
+const IMPORT_COM_QUERY = /["'`]([^"'`\n]+)\?(raw|url|inline)["'`]/g;
 
 function modulosDaAplicacao(dir: string, achados: string[] = []): string[] {
   for (const nome of readdirSync(dir)) {
@@ -46,36 +57,64 @@ function modulosDaAplicacao(dir: string, achados: string[] = []): string[] {
   return achados;
 }
 
-function importsRaw(): { modulo: string; arquivo: string }[] {
-  return modulosDaAplicacao(SRC).flatMap((modulo) =>
-    [...readFileSync(modulo, "utf-8").matchAll(IMPORT_RAW)].map((m) => ({
-      modulo: relative(SRC, modulo),
-      arquivo: resolve(dirname(modulo), m[1]),
-    })),
-  );
-}
+const MODULOS = modulosDaAplicacao(SRC);
 
-// A regra do vite (`isUriInFilePath`): o mesmo arquivo, ou uma pasta que o contém.
-function liberado(arquivo: string, lista: string[]): boolean {
-  return lista.some((entrada) => arquivo === entrada || arquivo.startsWith(entrada + sep));
-}
+const ACHADOS = MODULOS.flatMap((modulo) =>
+  [...readFileSync(modulo, "utf-8").matchAll(IMPORT_COM_QUERY)].map((m) => ({
+    modulo: relative(SRC, modulo),
+    arquivo: resolve(dirname(modulo), m[1]),
+    query: m[2],
+  })),
+);
 
-describe("?raw x server.fs.allow do servidor de desenvolvimento (UI-21)", () => {
-  const lista = (configuracao.server?.fs?.allow ?? []).map((e) => resolve(e));
-  const achados = importsRaw();
+describe("?raw/?url/?inline x servidor de desenvolvimento (UI-21, UI-22)", () => {
+  let servidor: ViteDevServer;
+  let base: string;
 
-  it("acha os imports ?raw (catraca: a busca não pode ficar cega)", () => {
+  beforeAll(async () => {
+    servidor = await createServer({
+      configFile: join(FRONTEND, "vite.config.ts"),
+      root: FRONTEND,
+      logLevel: "silent",
+      server: { port: 0, strictPort: false, hmr: false },
+      optimizeDeps: { noDiscovery: true, include: [] },
+    });
+    await servidor.listen();
+    base = `http://localhost:${(servidor.httpServer!.address() as AddressInfo).port}`;
+  }, 30_000);
+
+  afterAll(async () => {
+    await servidor?.close();
+  });
+
+  it("acha os imports com query (catraca: a busca não pode ficar cega)", () => {
     console.info(
-      "?raw nos módulos da aplicação:\n" +
-        achados.map((a) => `  ${a.modulo} -> ${relative(resolve(SRC, ".."), a.arquivo)}`).join("\n"),
+      "imports com query nos módulos da aplicação:\n" +
+        ACHADOS.map((a) => `  ${a.modulo} -> ${relative(FRONTEND, a.arquivo)}?${a.query}`).join("\n"),
     );
-    expect(achados.length).toBeGreaterThan(0);
+    expect(ACHADOS.length).toBeGreaterThan(0);
   });
 
-  it("todo arquivo importado com ?raw está liberado no vite.config.ts", () => {
-    const fora = achados
-      .filter((a) => !liberado(a.arquivo, lista))
-      .map((a) => `${a.modulo} importa ${a.arquivo}, fora do server.fs.allow`);
-    expect(fora).toEqual([]);
+  it("nenhum módulo usa import.meta.glob, que esconde o caminho da busca", () => {
+    const comGlob = MODULOS.filter((m) => readFileSync(m, "utf-8").includes("import.meta.glob"));
+    expect(comGlob.map((m) => relative(SRC, m))).toEqual([]);
   });
+
+  // `200` sozinho não basta: para um caminho que não existe, o vite responde
+  // `200` com o `index.html` da aplicação (medido em 03/11). Por isso o corpo
+  // tem de ser o arquivo — e o arquivo tem de existir.
+  it("o servidor de desenvolvimento serve cada arquivo achado, com o conteúdo dele", async () => {
+    const falhas = await Promise.all(
+      ACHADOS.map(async (a) => {
+        const nome = `${a.modulo} -> ${relative(FRONTEND, a.arquivo)}?${a.query}`;
+        if (!existsSync(a.arquivo)) return `${nome}: arquivo não existe`;
+        const caminho = a.arquivo.replace(/\\/g, "/").replace(/^\/?/, "/");
+        const resposta = await fetch(`${base}/@fs${caminho}?import&${a.query}`);
+        if (resposta.status !== 200) return `${nome}: ${resposta.status}`;
+        const corpo = await resposta.text();
+        return corpo === readFileSync(a.arquivo, "utf-8") ? null : `${nome}: 200, mas o corpo não é o arquivo`;
+      }),
+    );
+    expect(falhas.filter(Boolean)).toEqual([]);
+  }, 30_000);
 });
