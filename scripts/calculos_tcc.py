@@ -162,6 +162,38 @@ def sketches_de_bancada_em(chamada: str) -> list[str]:
             if chamada not in (RAIZ / s).read_text(encoding="utf-8")]
 
 
+# ══════════════════════════════════════════════════════════════════════════
+# CALC-03 — o limiar e as características, lidos de onde o sistema os usa
+# ══════════════════════════════════════════════════════════════════════════
+#
+# O limiar de 1,2 m/s² vive em três lugares: o rótulo Repouso/Movimento da
+# época (`nucleo/payload.h`), o parâmetro da característica `p_frac` no
+# firmware (`nucleo/caracteristicas.h`) e no `ml/` (`src/features.py`). O Z.2
+# afirma que são o MESMO limiar e que as características são oito; lido aqui,
+# um que divirja reprova.
+
+def _expressao_numerica(arquivo: str, nome: str) -> float:
+    """Avalia `NOME = <número> [/ <número>]` (C++ ou Python), sem `eval`."""
+    import re
+    texto = (RAIZ / arquivo).read_text(encoding="utf-8")
+    m = re.search(rf"\b{nome}(?:\s*:\s*[\w\[\], .]+)?\s*=\s*([\d.]+)f?\s*(?:/\s*([\d.]+)f?)?\s*[;\n]",
+                  texto)
+    if not m:
+        raise SystemExit(f"{nome} não encontrado (ou não é número / número) em {arquivo}")
+    v = float(m.group(1))
+    return v / float(m.group(2)) if m.group(2) else v
+
+
+def nomes_das_features_do_ml() -> list[str]:
+    """A tupla `NOMES_FEATURES` de `ml/src/features.py`, lida como texto."""
+    import re
+    texto = (RAIZ / "ml/src/features.py").read_text(encoding="utf-8")
+    m = re.search(r"NOMES_FEATURES[^=]*=\s*\((.*?)\)", texto, re.S)
+    if not m:
+        raise SystemExit("NOMES_FEATURES não encontrado em ml/src/features.py")
+    return re.findall(r'"([a-z_]+)"', m.group(1))
+
+
 def resolucao_mg_por_lsb(fundo_de_escala_g: int) -> float:
     """Passo de quantização, em mg/LSB, a partir do fator de escala da folha."""
     return 1000.0 / MPU_LSB_POR_G[fundo_de_escala_g]
@@ -548,6 +580,34 @@ def conferir() -> int:
     for chamada in ("MPU6050_BAND_21_HZ", "MPU6050_RANGE_8_G"):
         faltam = sketches_de_bancada_em(chamada)
         verdade(f"sketches de bancada com {chamada} (faltam: {faltam})", not faltam)
+
+    # CALC-03 (04/11): os números do Z.2 que não estavam travados, e o limiar e
+    # as características lidos de onde o sistema os usa.
+    z2 = "CALCULOS-TCC Z.2"
+    s21_ms2 = sigma_termico_mg(21.0) * 1e-3 * GRAVIDADE_PADRAO_MS2
+    eq("σ 21 Hz em m/s²", s21_ms2, 0.0180, 0.00005, z2)
+    eq("k implicado pelo limiar", k_implicado_pelo_limiar(LIMIAR_MOVIMENTO_MS2,
+       sigma_termico_mg(21.0)), 67.0, 0.5, z2)
+    eq("limiar de ruído a 3 σ (m/s²)", 3 * s21_ms2, 0.054, 0.0005, z2)
+    eq("limiar de ruído a 5 σ (m/s²)", 5 * s21_ms2, 0.090, 0.0005, z2)
+    eq("limiar em uso / 5 σ", LIMIAR_MOVIMENTO_MS2 / (5 * s21_ms2), 13.35, 0.01, z2)
+    eq("limiar em uso / 3 σ", LIMIAR_MOVIMENTO_MS2 / (3 * s21_ms2), 22.25, 0.01, z2)
+    eq("norma L1: √3 − 1 (%)", (math.sqrt(3) - 1) * 100, 73.0, 0.5, z2)
+    eq("piso do ENMO, 16 Hz (mg)", piso_enmo_gaussiano_mg(sigma_termico_mg(16.0)),
+       0.638, 0.0005, z2)
+    eq("limiar do rótulo (payload.h)",
+       _expressao_numerica("firmware/nucleo/payload.h", "LIMIAR_MOVIMENTO_MS2"),
+       LIMIAR_MOVIMENTO_MS2, 1e-6, "firmware/nucleo/payload.h")
+    eq("limiar do p_frac, firmware (g)",
+       _expressao_numerica("firmware/nucleo/caracteristicas.h", "LIMIAR_P_FRAC_G"),
+       LIMIAR_MOVIMENTO_MS2 / GRAVIDADE_PADRAO_MS2, 1e-6,
+       "firmware/nucleo/caracteristicas.h")
+    eq("limiar do p_frac, ml/ (g)",
+       _expressao_numerica("ml/src/features.py", "LIMIAR_P_FRAC_G"),
+       LIMIAR_MOVIMENTO_MS2 / GRAVIDADE_PADRAO_MS2, 1e-9, "ml/src/features.py")
+    nomes = nomes_das_features_do_ml()
+    eq("número de características (ml/)", len(nomes), 8, 0, "ml/src/features.py")
+    verdade(f"p_frac entre as características ({nomes})", "p_frac" in nomes)
 
     # docs/BACKLOG-COMPLETO.md, CALC-04
     eq("pull-down I", corrente_pulldown_a() * 1e3, 0.33, 0.005,

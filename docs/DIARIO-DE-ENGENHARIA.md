@@ -6780,6 +6780,53 @@ inserção é com os autores.
 `docs/CALCULOS-TCC.md` (Z.1.4 e procedência); inserção fora do repositório em
 `documento/INSERCAO-CALC-02-FISICA-DA-MEDICAO.md`; Produto 5 lido em 04/11; backlog `CALC-02`.
 
+---
+
+# 2026-11-04 (vi) — `CALC-03`: o índice de atividade travado e a 6.4.4 do TCC refeita
+
+**O problema, como foi entendido no início.** O item pedia o índice de atividade e a derivação do
+limiar `g ± k·σ`. O Z.2 de `CALCULOS-TCC.md` já entregava o índice (as oito características
+invariantes a rotação) e já demonstrava que a derivação não se sustenta — o limiar em uso, de
+1,2 m/s², equivale a ~67 σ. Faltava travar e levar ao texto. A 6.4.4 do Produto 5, lida no Drive,
+descrevia um sistema que não existe mais: índice sobre uma "janela ativa" por despertar, limiar
+`μ + k·σ` com k = 3, detecção em dois níveis com o sensor acordando o processador do Deep Sleep.
+
+**Hipótese de trabalho.** Que o Z.2 estivesse certo e que o limiar fosse o mesmo nos três lugares
+em que o sistema o usa.
+
+**O que foi testado, e como.** Asserções novas em `scripts/calculos_tcc.py` para os números do Z.2
+que não estavam travados (k, 3σ e 5σ, as razões, σ em m/s², a norma L1, o piso do ENMO). Leitura,
+pelo script, do limiar em `payload.h`, `caracteristicas.h` e `ml/src/features.py`, e da lista
+`NOMES_FEATURES`. Três sabotagens: limiar de 1,5 no `payload.h`; o g do `ml/` trocado de 9,80665
+para 9,81 (o limiar muda na quarta casa); uma característica a menos na lista. Antes de escrever o
+texto, o código do pico da época (`epoca_c2.cpp`) foi lido.
+
+**Resultado medido.** O limiar é o mesmo nos três lugares (1,2 m/s²; 1,2/9,80665 g); as
+características são oito. k = 66,7; 3σ a 5σ dão 0,054 a 0,090 m/s², 22,25× a 13,35× abaixo do
+limiar. Sabotagens **3/3**, cada uma pela asserção do arquivo sabotado.
+
+**Adaptação.** A 6.4.4 nova mantém as Equações 8 a 10 com outro conteúdo — a intensidade da época,
+o ENMO e k = L/σ — e diz por que o limiar não precisa vir do ruído: quem decide sono e vigília é o
+classificador, e o limiar só parametriza uma das oito características. A 6.5 do texto (o ciclo de
+Deep Sleep, que cita as Equações 9 e 10) ficou fora e entrou no `DOC-16`.
+
+**O que deu errado no caminho.** Duas coisas. As asserções das razões foram escritas com 13,3 e
+22,2 e tolerância de 0,05; os valores são 13,35 e 22,25 e reprovaram — o texto ("de treze a vinte
+e duas vezes") estava certo, a asserção é que estava apertada errado. E o primeiro texto da
+inserção dizia que a época é representada pela "amostra de maior afastamento do repouso"; lido o
+`epoca_c2.cpp`, é a de **maior módulo** — um afastamento para baixo de g só conta se nenhuma outra
+amostra for maior. Corrigido, e virou ressalva no texto.
+
+**Risco em aberto.** Essa diferença do rótulo não é defeito de código (o contrato define "pico da
+magnitude"), mas afeta o rótulo do painel: anexada ao `VIA-01`, que mostra na bancada se importa. O
+valor do limiar segue provisório (`VIA-01`/`CAL-01`). O ENMO entra no texto sem citação lida
+(`DOC-06b`). Até o `DOC-16`, a 6.5 do texto contradiz a 6.4.4 nova.
+
+**Procedência.** Branch `feature/CALC-03-indice-de-atividade`; `scripts/calculos_tcc.py`;
+`docs/CALCULOS-TCC.md` (🔧 1 e procedência); inserção fora do repositório em
+`documento/INSERCAO-CALC-03-INDICE-DE-ATIVIDADE.md`; `firmware/nucleo/epoca_c2.cpp` lido; Produto 5
+lido em 04/11; backlog `CALC-03`, `DOC-16`, `VIA-01`.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
