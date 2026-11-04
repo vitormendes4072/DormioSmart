@@ -6190,6 +6190,62 @@ publicado. **O autor confirmou o login.**
 **Procedência.** PRs #59 e #60 (`87622ce`); deployment de produção `7534293060`; as rotas e o pacote
 de `https://dormio-smart.vercel.app`, 03/11; a confirmação do autor; backlog `SEC-16`.
 
+---
+
+# 2026-11-03 (xvii) — `DOC-13` e `CI-08`: o resumo do backlog conferido, e as dependências auditadas
+
+**O problema, como foi entendido no início.** Duas pontas de infraestrutura. O resumo do topo do
+backlog (contagem, quadro em uma tela, caminho crítico) é escrito à mão e já listou itens fechados
+como pendentes duas vezes (`DOC-13`). E nenhum CI confere as dependências contra avisos publicados:
+o `SEC-16` achou o `react-router` com 12 avisos porque alguém rodou `npm audit` à mão.
+
+**Hipótese de trabalho.** Que a regra proposta no `DOC-13` ("ID fechado citado nas seções de
+resumo") servisse como estava; e que as dependências do backend estivessem limpas, já que só o
+frontend tinha sido auditado.
+
+**O que foi testado, e como.** A regra literal medida antes de escrever: **161 acusações** (Estado
+108, Quadro 28, Caminho 25), quase todas prosa histórica legítima. Foi estreitada a três conferências
+estruturadas em `scripts/conferir_backlog.py --conferir`: recontagem por camada contra a linha
+**Contagem**; o quadro tem de listar exatamente os abertos de cada camada; nenhum fechado ou
+pós-banca sem riscar nos passos do caminho crítico. A seção "Estado" ficou de fora, com nota no
+topo dizendo isso. Quatro sabotagens em cópias (`--arquivo`): contagem +1, `DIAG-02` no quadro do L0,
+`GIT-05` tirado do quadro, `CAL-02` de volta ao caminho crítico. Depois, `npm audit --omit=dev
+--audit-level=high` e `pip-audit` 2.10.1 (num ambiente descartável), nesta máquina, e o workflow
+novo `auditoria-dependencias.yml` exercido por uma branch descartável (`ci/sabotagem-CI-08`) com
+`react-router` 7.13.0 e gunicorn 21.2.0.
+
+**Resultado medido.** Primeira execução do conferidor: **4 divergências** no caminho crítico
+(`CAL-02` e `DATA-07b`, `DIAG-02` e `DIAG-04`, todos fechados), corrigidas; contagem e quadro
+batiam. Sabotagens **4/4**, cada uma com a mensagem que nomeia o item. `npm audit` de produção:
+**0**. `pip-audit`: **4 avisos em 3 pacotes** — Flask 3.1.2 (CVE-2026-27205, `Vary: Cookie` na
+`session`), python-dotenv 1.2.1 (CVE-2026-28684, `set_key` segue link simbólico), gunicorn 21.2.0
+(CVE-2024-1135 e CVE-2024-6827, contrabando de requisição). Nenhum explorável aqui: a Vercel roda
+pelo `@vercel/python` e o gunicorn não aparece fora do `requirements.txt`; o backend não usa a
+`session` do Flask nem o `set_key`. Por decisão do Vitor os três subiram (3.1.3, 1.2.2, 22.0.0):
+**417 testes do backend passam** em Python 3.11 limpo, e o `pip-audit` sai sem aviso. Na sabotagem,
+os dois jobs do workflow reprovaram (execução `41749478900`): o `npm audit` listou os avisos do
+`react-router` (faixa até 7.18.1; o 7.18.4 em uso fica fora), o `pip-audit` os dois do gunicorn.
+
+**Adaptação.** A regra do `DOC-13` mudou de "ID fechado citado" para três conferências
+estruturadas — a literal acusaria 161 menções e ensinaria a ignorar o alarme. O plano aprovado
+previa parar se o `pip-audit` acusasse: parou, os avisos foram levados ao Vitor com a análise de
+alcance, e a decisão foi subir as versões em vez de ignorar os IDs.
+
+**O que deu errado no caminho.** A primeira tentativa da sabotagem do quadro não acusou: o
+`replace` pegou a primeira ocorrência de `DOC-13` no arquivo, que era a nota nova no topo do
+"Estado", fora do quadro. O defeito era da sabotagem, não do script; refeita dentro do quadro,
+acusou. E o primeiro script de sabotagem quebrou ao imprimir `✗` no console `cp1252` — o
+`PYTHONIOENCODING=utf-8` resolveu (o script em si já reconfigura a saída).
+
+**Risco em aberto.** O agendamento semanal só roda a partir de `main` (vale depois do release). As
+ferramentas de teste e build têm 7 avisos (`tinypool` crítico, `source-map-js` alto), fora do
+workflow de propósito — `SEC-17`. O gunicorn segue no `requirements.txt` sem ser usado; tirá-lo
+muda a stack descrita e ficou para decisão do autor.
+
+**Procedência.** Branch `chore/DOC-13-conferir-backlog-e-auditoria`; `scripts/conferir_backlog.py`;
+`.github/workflows/auditoria-dependencias.yml`; execução de sabotagem `41749478900` (branch
+`ci/sabotagem-CI-08`, não mesclada); backlog `DOC-13`, `CI-08`, `SEC-17`.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
