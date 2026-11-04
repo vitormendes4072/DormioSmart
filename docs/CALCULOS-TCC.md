@@ -648,9 +648,9 @@ resulta (*cálculo* sobre *especificação* e *estimativa*):
 | Despertar por movimento | 1,91 mA |
 
 A arquitetura reduz a corrente da amostragem contínua por um fator de **4,5** e preserva o
-vetor de características. Nela, o rádio responde por 63 % da corrente média, de modo que a
-agregação das entregas em lote, uma por hora, reduz a corrente a 2,03 mA — da ordem do
-despertar por movimento com entrega por evento. A varredura dos parâmetros estimados produz
+vetor de características. Com uma entrega por época, o rádio responde por 63 % da corrente
+média, de modo que a agregação das entregas em lote é a alavanca seguinte; a seção Z.4.4c
+quantifica a agregação efetivamente adotada. A varredura dos parâmetros estimados produz
 corrente entre 3,20 mA e 18,55 mA, e a ordem entre as três arquiteturas se mantém em toda a
 faixa de consumo fixo da placa examinada em Z.4.5.
 
@@ -662,6 +662,49 @@ avaliadores humanos (*medição*). Pesadas as duas grandezas, **adota-se a amost
 sono leve e fila do transdutor**. A latência de despertar do sono leve, a corrente desse modo
 na placa e o comportamento da fila ao longo de uma noite não foram medidos, e constam como
 parâmetros desta predição (Z.4.7).
+
+#### Z.4.4c A arquitetura adotada, com os parâmetros do firmware
+
+O firmware construído fixa três parâmetros que a comparação anterior deixava em aberto
+(*especificação de projeto*, lida do código-fonte). O processador esvazia a fila do transdutor
+a cada **1,7 s**, o que confere com as 85 amostras de meia fila a 50 Hz. As épocas são
+entregues em **lote a cada 10 minutos**, isto é, seis entregas por hora. E cada entrega é
+completa: o rádio é ligado, associa-se ao ponto de acesso, sincroniza o relógio, negocia a
+sessão cifrada, envia o lote e é desligado — o sono leve não mantém a conexão sem fio. Além disso, cada época é gravada
+num registro de 64 bytes da memória *flash* antes do envio.
+
+A duração de uma entrega completa não é especificação e não foi medida: entra como
+**estimativa em faixa**, de 2 s a 8 s, com 4 s como referência. A gravação na *flash* também
+entra como estimativa em faixa, por depender do componente de memória do módulo. Sob as demais
+premissas de Z.4.4, obtém-se (*cálculo* sobre *especificação* e *estimativa*):
+
+| Duração de uma entrega | I<sub>média</sub> (só circuitos integrados) | Parcela do rádio | Autonomia, 2 000 mA·h |
+|---:|---:|---:|---:|
+| 2 s | 2,35 mA | 14 % | 851 h |
+| **4 s** | **2,68 mA** | **25 %** | **746 h** |
+| 8 s | 3,34 mA | 40 % | 599 h |
+
+O valor de referência situa-se, como esperado, entre a entrega por época (5,31 mA) e a entrega
+horária (2,03 mA) de Z.4.4b. A varredura de todos os parâmetros estimados produz corrente entre
+**1,88 mA e 5,81 mA**.
+
+O resultado que esta seção acrescenta não é o valor, e sim a sua composição. Decompondo a
+corrente de referência:
+
+| Parcela | Corrente | Fração |
+|---|---:|---:|
+| Transdutor, sempre ligado a 50 Hz | 0,600 mA | 22,4 % |
+| Processador em sono leve | 0,770 mA | 28,7 % |
+| Processador acordado, esvaziando a fila | 0,629 mA | 23,5 % |
+| Rádio, entrega a cada 10 min | 0,667 mA | 24,9 % |
+| Gravação na *flash* | 0,014 mA | 0,5 % |
+
+**Nenhuma parcela domina.** Com a entrega por época, o rádio respondia por 63 % e a agregação
+em lote era a alavanca; agregada a dez minutos, essa alavanca está gasta, e as quatro parcelas
+restantes têm a mesma ordem de grandeza. Segue-se que nenhuma alteração isolada da política
+de sono, da cadência de esvaziamento ou do intervalo de entrega reduz a corrente média em mais
+do que cerca de um quarto. A gravação na *flash*, por sua vez, é desprezível em toda a faixa
+estimada.
 
 #### Z.4.5 O que a placa de desenvolvimento faz com o modelo
 
@@ -682,6 +725,20 @@ esse consumo como parâmetro e varrendo a faixa declarada:
 Invertendo a relação, obtém-se o consumo fixo que reduz a vantagem a um dado fator
 (*cálculo*): basta **0,54 mA** para que a razão caia de 12,5× para 10×, **3,6 mA** para que
 caia a 5× e **20,1 mA** para que caia a 2×.
+
+Para a arquitetura adotada, com os parâmetros do firmware (Z.4.4c), o mesmo exercício dá:
+
+| Consumo fixo da placa | I<sub>média</sub> | Autonomia, 2 000 mA·h |
+|---:|---:|---:|
+| 0 (somente circuitos integrados) | 2,68 mA | 746 h |
+| 1 mA | 3,68 mA | 544 h |
+| 5 mA | 7,68 mA | 260 h |
+| 10 mA | 12,68 mA | 158 h |
+| 20 mA | 22,68 mA | 88 h |
+
+Como a corrente dos circuitos integrados é de apenas 2,68 mA, **um consumo fixo de 1 mA já
+acrescenta 37 %**, e um de 3 mA a ultrapassa. Na arquitetura adotada, o consumo fixo da placa
+deixa de ser um parâmetro entre outros e passa a ser, potencialmente, a maior parcela.
 
 A leitura correta desse quadro é precisa, e convém não exagerá-la. O consumo fixo da placa
 **não inverte o sinal da vantagem**: a arquitetura de sono continua sendo a melhor em toda a
@@ -704,23 +761,21 @@ Distinta da autonomia energética, e independentemente medida, está a autonomia
 Diferentemente dos valores da seção anterior, esta grandeza foi **medida**, por execução do
 próprio código de armazenamento em ambiente de teste, e não estimada.
 
-O registro de época ocupa **32 bytes**, tamanho travado por asserção de compilação. Daí
-resultam, em resolução plena de 30 s:
+Na arquitetura adotada, cada época — com o vetor de características — é gravada num registro de
+**64 bytes**, com verificação de integridade, numa partição dedicada de **2 MiB** da memória
+*flash*, organizada como registro circular. A leitura da tabela de partições pelo próprio
+código de armazenamento mede **32 704 registros, ou 272,5 h — 11,4 dias** de épocas de 30 s sem
+nenhuma entrega (*medição*). Uma noite de oito horas ocupa menos de 3 % da partição.
 
-| Orçamento de memória | Épocas | Cobertura em resolução plena |
-|---|---:|---:|
-| 4 KiB — memória de tempo real, sobrevive ao sono profundo | 128 | 1,07 h |
-| 6 KiB — memória de tempo real, limite prático | 192 | 1,60 h |
-| 32 KiB — memória dinâmica | 1 024 | **8,53 h** |
-| 128 KiB — memória dinâmica, orçamento amplo | 4 096 | 34,1 h |
-
-A configuração adotada no sketch de bancada emprega 1 024 épocas, o que cobre uma noite de
-oito horas **sem degradar a resolução uma única vez**. Registra-se que a política de
-armazenamento adotada, ao atingir a ocupação limite, **funde épocas adjacentes em vez de
-descartá-las**, de modo que o que se perde ao ultrapassar a capacidade é resolução temporal, e
-não cobertura — e que essa fusão **não introduz erro de agregação**, por ser o método de
-resumo o máximo da magnitude, que é associativo: o máximo de duas épocas adjacentes de 30 s
-é, exatamente, o máximo da época de 60 s que as cobre.
+Três propriedades da fila, verificadas em ambiente de teste contra uma memória *flash*
+simulada com interrupção de energia em cada byte gravado, importam para a autonomia. A
+confirmação de entrega **não apaga** o registro, apenas o marca, de modo que uma interrupção
+durante o envio leva ao reenvio, e não à perda. Com a partição cheia, **a época nova é
+recusada** — nenhum registro pendente é sobrescrito. E a fila **sobrevive à reinicialização**
+do processador, sendo reconstruída a partir da própria partição. ✏️ *Até 04/11 esta seção
+descrevia a fila anterior, na memória dinâmica, com registro de 32 bytes, 8,53 h em 32 KiB e
+fusão de épocas adjacentes ao encher; a fila foi substituída porque a época fundida não carrega
+o vetor de características.*
 
 #### Z.4.7 Faixa de validade
 
@@ -731,6 +786,12 @@ arquiteturas, não antecipa autonomia. **(iii)** A relação autonomia = C/I ign
 corrente de descarga sobre a capacidade efetiva da bateria, a tensão de corte do circuito de
 proteção e a dependência da capacidade com a temperatura; para correntes baixas em relação à
 capacidade nominal, como é o caso, a aproximação é razoável, mas ela é aproximação.
+A duração de uma entrega completa — associação ao ponto de acesso, sessão cifrada e envio —
+é a terceira estimativa, e a que mais pesa na arquitetura adotada: entre 2 s e 8 s, a corrente
+média vai de 2,35 mA a 3,34 mA. O próprio firmware admite entregas bem mais longas — os limites
+de espera de associação, sincronização do relógio e envio somam 33 s, e uma mesma conexão envia
+até 20 lotes quando há épocas acumuladas —, de modo que uma rede de qualidade ruim, ou um período
+sem rede seguido da descarga do acumulado, fica fora da faixa examinada.
 **(iv)** As correntes transcritas são especificação a 25 °C; um dispositivo alojado no
 interior de um travesseiro opera acima da temperatura ambiente, e a caracterização térmica
 está registrada como trabalho não executado. **(v)** O consumo fixo da placa, que a seção
@@ -753,6 +814,15 @@ repositório foi **reconferido** antes de entrar aqui.
 > kappa, de `ml/experimentos/ml11_ablacao_features.py` (`saida/ml11_ablacao_features.json`).
 > Folhas de dados: PS-MPU-6000A-00 Rev. 3.2 (FIFO, taxa, tolerância do oscilador) e ESP-IDF v6.1
 > (sono leve). Análise completa: `docs/DECISAO-ARQ-01-CADENCIA.md`.
+
+> ✏️ **04/11 (`CALC-01`, refeito para a C2 como implementada).** Entraram a seção Z.4.4c, a tabela da
+> C2 em Z.4.5, a nova Z.4.6 (fila na *flash*) e a estimativa da entrega em Z.4.7. Os números saem
+> de `scripts/estudo_cadencia.py`, que **lê do firmware** o intervalo de envio
+> (`INTERVALO_DE_ENVIO_US`, `sketch.ino`) e o de esvaziamento (`INTERVALO_DE_DRENAGEM_US`,
+> `nucleo/cadeia_c2.h`): se o código mudar, o `--conferir` reprova (3/3 sabotagens em 04/11). A
+> capacidade da fila sai de `make capacidade` (`firmware/nucleo/README.md`). A hipótese registrada
+> antes do cálculo — "o rádio continua a maior parcela" — **não se confirmou**: 25 %, empatado
+> com as outras três.
 
 ### Os três cálculos que já existiam, e o resultado da conferência
 
@@ -789,7 +859,11 @@ arquivo não virar uma terceira versão divergente dos mesmos números.
 | 400 µg/√Hz | **Especificação**, e a condição importa | Idem, §6.2: **a 10 Hz, AFS_SEL = 0 (±2 g), ODR = 1 kHz**, valor típico. O projeto usa ±8 g e filtro de 21 Hz — a transposição está declarada no texto |
 | Correntes por modo do ESP32 | **Especificação** | Espressif, ESP32 Series Datasheet, Tabela 4-2. Condição: **consumo do chip**, não do módulo nem da placa |
 | σ por banda, pisos de ENMO, janela do pull-up, k = 67, razão √(260/21) | **Cálculo** | `scripts/calculos_tcc.py` |
-| Capacidade do buffer (1,07 h / 8,53 h / 960 POSTs) | **Medição** | `firmware/nucleo/capacidade.cpp`, via `make capacidade`; `sizeof(Epoca)` travado por `static_assert` |
+| Capacidade do buffer (1,07 h / 8,53 h / 960 POSTs) | **Medição** | `firmware/nucleo/capacidade.cpp`, via `make capacidade`; `sizeof(Epoca)` travado por `static_assert`. ✏️ *04/11: é a fila anterior, na RAM; saiu do texto (Z.4.6)* |
+| Capacidade da fila na *flash* (32 704 registros, 272,5 h, 11,4 dias) | **Medição** | `make capacidade`, lendo `firmware/partitions.csv`; registro de 64 B (`registro_flash.h`) |
+| Intervalo de entrega (10 min) e de esvaziamento (1,7 s) | **Especificação de projeto** | Lidos do firmware por `scripts/estudo_cadencia.py` |
+| Duração de uma entrega completa (2–8 s) | **Estimativa em faixa** | Nenhuma medição; limites de espera do firmware: 20 s (Wi-Fi) + 5 s (NTP) + 8 s (POST), até 20 lotes por conexão |
+| Tempos e corrente da gravação na *flash* | **Estimativa em faixa** | Ordem de grandeza de folhas de memória NOR SPI; o resultado é < 1 % em toda a faixa |
 | Invariância a rotação das features; 73 % da L1; 6 % residual | **Medição** | `ml/testes/test_vetor_dourado.py::test_features_invariantes_a_rotacao` |
 | Corrente de rádio (100–240 mA) | **Estimativa em faixa** | ⚠️ ver 🔧 3 |
 | Consumo fixo da placa (1–20 mA) | **Estimativa em faixa** | ⚠️ ver 🔧 3 |
@@ -801,6 +875,7 @@ arquivo não virar uma terceira versão divergente dos mesmos números.
 ```bash
 python3 scripts/calculos_tcc.py            # relatório completo + conferência
 python3 scripts/calculos_tcc.py --conferir # só a conferência
+python3 scripts/estudo_cadencia.py         # Z.4.4b e Z.4.4c, com a C2 implementada
 
 cd firmware/nucleo && make capacidade      # a capacidade do buffer, medida
 cd ml && python -m pytest testes/test_vetor_dourado.py -k invariantes

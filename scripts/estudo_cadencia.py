@@ -325,6 +325,139 @@ PLACAS_A = (0.0, 1e-3, 5e-3, 10e-3)
 
 
 # ══════════════════════════════════════════════════════════════════════════
+# CALC-01 — a C2 como o `sketch.ino` a implementou (04/11)
+# ══════════════════════════════════════════════════════════════════════════
+#
+# O C2 acima é o de 30/10, anterior ao firmware: um envio por época (ou "um
+# lote por hora") de 1 s de rádio. O `sketch.ino` (FW-07 (b)) fixou outra
+# coisa: um lote a cada 10 min, e cada envio LIGA o Wi-Fi, associa, faz TLS e
+# o POST e DESLIGA (`WiFi.mode(WIFI_OFF)`). E grava cada época na flash
+# (FW-08). Os parâmetros que o firmware fixa são LIDOS do firmware, não
+# copiados: se o código mudar, o `--conferir` reprova.
+
+RAIZ = Path(__file__).resolve().parent.parent
+
+
+def _constante_do_firmware(arquivo: str, nome: str) -> int:
+    """Valor inteiro de uma constante C++ (`... NOME = 10ull * 60ull * ...;`)."""
+    import re
+    texto = (RAIZ / arquivo).read_text(encoding="utf-8")
+    m = re.search(rf"\b{nome}\s*=\s*([^;]+);", texto)
+    if not m:
+        raise SystemExit(f"constante {nome} não encontrada em {arquivo}")
+    expr = re.sub(r"(\d+)u?ll?\b", r"\1", m.group(1))
+    if not re.fullmatch(r"[\d\s*]+", expr):
+        raise SystemExit(f"{nome} em {arquivo} não é produto de inteiros: {expr!r}")
+    return math.prod(int(x) for x in expr.split("*"))
+
+
+INTERVALO_DE_ENVIO_S = _constante_do_firmware(
+    "firmware/sketch.ino", "INTERVALO_DE_ENVIO_US") / 1e6
+INTERVALO_DE_DRENAGEM_S = _constante_do_firmware(
+    "firmware/nucleo/cadeia_c2.h", "INTERVALO_DE_DRENAGEM_US") / 1e6
+POSTS_POR_H_IMPL = 3600.0 / INTERVALO_DE_ENVIO_S             # 6
+
+# ⚠️ NAO_CONFERIDO: duração de um envio inteiro — ligar o rádio, associar ao
+# ponto de acesso, obter endereço, sincronizar o relógio (NTP, a cada envio),
+# negociar o TLS (o firmware confere a cadeia, SEC-15) e o POST do lote. Não há
+# medição; a faixa é estimativa. O teto do próprio firmware é bem maior
+# (TIMEOUT_WIFI_MS 20 s + TIMEOUT_NTP_MS 5 s + TIMEOUT_POST_MS 8 s, e até
+# LOTES_POR_VOLTA = 20 lotes por conexão): rede ruim, ou a descarga do que
+# acumulou sem rede, custa mais que o pior caso da faixa — dito no texto.
+NAO_CONFERIDO_T_ENVIO_S = (2.0, 4.0, 8.0)
+T_ENVIO_REF_S = NAO_CONFERIDO_T_ENVIO_S[1]
+
+# --- Flash (FW-08): um registro de 64 B por época --------------------------
+# 64 B por registro (`registro_flash.h`); setor de apagamento de 4 KiB, logo um
+# apagamento a cada 64 registros. ⚠️ NAO_CONFERIDO: tempos e corrente da flash
+# SPI do módulo (a memória varia por lote do módulo; ordem de grandeza de
+# folhas de NOR SPI comuns: programação de página ~0,7–3 ms, apagamento de
+# setor ~45–400 ms, ~25 mA). Faixas largas, de propósito: o ponto é mostrar
+# que o termo é pequeno, não estimá-lo bem.
+BYTES_REGISTRO_FLASH = 64
+BYTES_SETOR_FLASH = 4096
+NAO_CONFERIDO_T_PROGRAMA_S = (0.7e-3, 3e-3)
+NAO_CONFERIDO_T_APAGA_SETOR_S = (45e-3, 400e-3)
+NAO_CONFERIDO_I_FLASH_A = (15e-3, 25e-3)
+EPOCAS_POR_H = 3600.0 / EPOCA_S
+
+
+def corrente_da_flash_a(t_prog_s: float = NAO_CONFERIDO_T_PROGRAMA_S[1],
+                        t_apaga_s: float = NAO_CONFERIDO_T_APAGA_SETOR_S[1],
+                        i_flash_a: float = NAO_CONFERIDO_I_FLASH_A[1],
+                        i_esp_a: float = I_ESP_REF_A) -> float:
+    """Acréscimo médio por gravar a época na flash, sobre o sono leve.
+
+    Durante a escrita a CPU está acordada (I_esp) e a flash consome I_flash; o
+    acréscimo é sobre o que o sono leve gastaria no mesmo intervalo.
+    """
+    apagamentos_h = EPOCAS_POR_H * BYTES_REGISTRO_FLASH / BYTES_SETOR_FLASH
+    t_h = EPOCAS_POR_H * t_prog_s + apagamentos_h * t_apaga_s
+    return (i_esp_a + i_flash_a - ESP32_I_LIGHT_SLEEP_A) * t_h / 3600.0
+
+
+def c2_impl(i_placa_a: float = 0.0, t_envio_s: float = T_ENVIO_REF_S,
+            i_rf_a: float = I_RF_REF_A, flash_a: float | None = None,
+            **kw) -> float:
+    """A C2 do `sketch.ino`: lote a cada 10 min, envio com conexão, flash."""
+    if flash_a is None:
+        flash_a = corrente_da_flash_a()
+    return arq_c2(i_placa_a, posts_por_h=POSTS_POR_H_IMPL, t_post_s=t_envio_s,
+                  i_rf_a=i_rf_a, **kw) + flash_a
+
+
+# Equação 3 do texto do TCC (Produto 5, 6.4.1): E = V_alim · I · t. A tensão de
+# 3,3 V e a noite de 8 h são as do próprio texto; ficam aqui para a inserção do
+# CALC-01 citar a energia da C2 com número saído do script.
+V_ALIM_REF_V = 3.3
+NOITE_S = 8 * 3600.0
+
+
+def energia_da_noite_j(i_media_a: float) -> float:
+    return V_ALIM_REF_V * i_media_a * NOITE_S
+
+
+def decomposicao_c2_impl(t_envio_s: float = T_ENVIO_REF_S) -> dict[str, float]:
+    """Parcelas da corrente média (A), premissas de referência, sem placa.
+
+    Soma igual a `c2_impl(t_envio_s=...)` — o `--conferir` trava isso.
+    """
+    ativo, _ = fracoes_c2()
+    t_ativo = ativo * 3600.0
+    t_rf = POSTS_POR_H_IMPL * t_envio_s
+    t_sono = 3600.0 - t_ativo - t_rf
+    return {
+        "transdutor (sempre ligado, 50 Hz)": i_sensor_normal_a(),
+        "ESP32 em sono leve": ESP32_I_LIGHT_SLEEP_A * t_sono / 3600.0,
+        "ESP32 acordado esvaziando a FIFO":
+            (I_ESP_REF_A + I_PULLUP_TRAFEGO_A) * t_ativo / 3600.0,
+        "rádio (envio a cada 10 min)": I_RF_REF_A * t_rf / 3600.0,
+        "flash (uma época por registro)": corrente_da_flash_a(),
+    }
+
+
+def varredura_c2_impl() -> tuple[float, float]:
+    """Mínimo e máximo sobre todos os parâmetros em faixa, flash incluída."""
+    flashes = [corrente_da_flash_a(tp, ta, i_f)
+               for tp in NAO_CONFERIDO_T_PROGRAMA_S
+               for ta in NAO_CONFERIDO_T_APAGA_SETOR_S
+               for i_f in NAO_CONFERIDO_I_FLASH_A]
+    vals = []
+    for i_esp in ESP32_I_MODEM_SLEEP_80MHZ_A:
+        for i_rf in NAO_CONFERIDO_I_RF_A:
+            for t_env in NAO_CONFERIDO_T_ENVIO_S:
+                for t_d in NAO_CONFERIDO_T_DESPERTAR_S:
+                    for f in I2C_HZ:
+                        for t_p in NAO_CONFERIDO_T_PROC_AMOSTRA_S:
+                            base = c2_impl(t_envio_s=t_env, i_rf_a=i_rf,
+                                           flash_a=0.0, i_esp_a=i_esp,
+                                           t_despertar_s=t_d, i2c_hz=f,
+                                           t_proc_amostra_s=t_p)
+                            vals += [base + min(flashes), base + max(flashes)]
+    return min(vals), max(vals)
+
+
+# ══════════════════════════════════════════════════════════════════════════
 # Relatório
 # ══════════════════════════════════════════════════════════════════════════
 
@@ -402,7 +535,31 @@ def relatorio() -> None:
                     ("C2", lambda p: arq_c2(p, POSTS_POR_H_LOTE))):
         print(f"  {nome:<3} {f(0.0) * 1e3:6.2f} mA")
 
+    _t("CALC-01 · a C2 como o sketch.ino a implementou")
+    print(f"  lido do firmware: envio a cada {INTERVALO_DE_ENVIO_S:.0f} s "
+          f"({POSTS_POR_H_IMPL:.0f}/h), drenagem a {INTERVALO_DE_DRENAGEM_S:.2f} s "
+          f"(o modelo: {amostras_c2()} amostras / {FS_FIFO_REF_HZ:.0f} Hz = "
+          f"{amostras_c2() / FS_FIFO_REF_HZ:.2f} s)")
+    for t in NAO_CONFERIDO_T_ENVIO_S:
+        i = c2_impl(t_envio_s=t)
+        print(f"  envio de {t:3.0f} s [ESTIM]: {i * 1e3:5.2f} mA → "
+              f"{autonomia_h(CAPACIDADE_REF_MAH, i):5.0f} h; rádio "
+              f"{fracao_radio(i, POSTS_POR_H_IMPL, t_post_s=t) * 100:3.0f} %")
+    d = decomposicao_c2_impl()
+    total = sum(d.values())
+    print(f"  parcelas, envio de {T_ENVIO_REF_S:.0f} s:")
+    for nome, v in d.items():
+        print(f"    {nome:<36} {v * 1e3:6.3f} mA  {v / total * 100:5.1f} %")
+    lo, hi = varredura_c2_impl()
+    print(f"  varredura de todos os parâmetros em faixa: [{lo * 1e3:.2f}; "
+          f"{hi * 1e3:.2f}] mA")
+
     _t("(a) · o consumo fixo da placa, somado  [PARÂM]")
+    print("  I_placa   | C2 implementada | autonomia (2 000 mA·h)")
+    for p in PLACAS_A + (20e-3,):
+        i = c2_impl(p)
+        print(f"  {p * 1e3:5.1f} mA | {i * 1e3:8.2f} mA     | "
+              f"{autonomia_h(CAPACIDADE_REF_MAH, i):6.0f} h")
     print("  I_placa   |      A |      B |     C1 |     C2 |  B/C2 | C2/A")
     for p in PLACAS_A:
         a, b, c1, c2 = arq_a(p), arq_b(p), arq_c1(p), arq_c2(p)
@@ -482,6 +639,42 @@ def conferir() -> int:
     eq("B/A placa 10 mA", arq_b(10e-3) / arq_a(10e-3), 2.85, 0.01)
     eq("B/C2 placa 5 mA", arq_b(5e-3) / arq_c2(5e-3), 2.80, 0.01)
     eq("C2/A placa 5 mA", arq_c2(5e-3) / arq_a(5e-3), 1.49, 0.01)
+
+    # CALC-01: a C2 implementada. Os dois primeiros cruzam o modelo com o
+    # firmware — se o `sketch.ino` mudar o envio ou o núcleo mudar a drenagem,
+    # o texto do Z.4.4b deixa de valer.
+    eq("envio do firmware (s)", INTERVALO_DE_ENVIO_S, 600.0, 0)
+    eq("drenagem: firmware = modelo (s)", INTERVALO_DE_DRENAGEM_S,
+       amostras_c2() / FS_FIFO_REF_HZ, 1e-9)
+    eq("C2 implementada (mA)", c2_impl() * 1e3, 2.68, 0.01)
+    eq("C2 impl., envio de 2 s (mA)", c2_impl(t_envio_s=2.0) * 1e3, 2.35, 0.01)
+    eq("C2 impl., envio de 8 s (mA)", c2_impl(t_envio_s=8.0) * 1e3, 3.34, 0.01)
+    eq("C2 impl. → autonomia (h)", autonomia_h(CAPACIDADE_REF_MAH, c2_impl()),
+       746.0, 1.0)
+    eq("rádio na C2 impl. (%)",
+       fracao_radio(c2_impl(), POSTS_POR_H_IMPL, t_post_s=T_ENVIO_REF_S) * 100,
+       24.9, 0.1)
+    d = decomposicao_c2_impl()
+    eq("parcelas somam a C2 impl.", sum(d.values()), c2_impl(), 1e-12)
+    verdade("nenhuma parcela passa de 30 %",
+            max(d.values()) / sum(d.values()) < 0.30)
+    verdade("flash abaixo de 1 %",
+            d["flash (uma época por registro)"] / sum(d.values()) < 0.01)
+    lo, hi = varredura_c2_impl()
+    eq("C2 impl. mínimo (mA)", lo * 1e3, 1.88, 0.01)
+    eq("C2 impl. máximo (mA)", hi * 1e3, 5.81, 0.01)
+    verdade("C2 impl. entre o lote por hora e o envio por época",
+            arq_c2(posts_por_h=POSTS_POR_H_LOTE) < c2_impl() < arq_c2())
+    for p in PLACAS_A:
+        verdade(f"A < C2 impl. < B com placa {p * 1e3:.0f} mA",
+                arq_a(p) < c2_impl(p) < arq_b(p))
+    eq("C2 impl. com placa de 1 mA", c2_impl(1e-3) * 1e3, 3.68, 0.01)
+    eq("C2 impl. com placa de 20 mA", c2_impl(20e-3) * 1e3, 22.68, 0.01)
+    eq("energia de 8 h, C2 impl. (J)", energia_da_noite_j(c2_impl()), 255.0, 0.5)
+    eq("C2 impl. → autonomia com 1 000 mA·h (h)", autonomia_h(1000.0, c2_impl()),
+       373.0, 0.5)
+    eq("energia de 8 h, placa de 1 mA (J)", energia_da_noite_j(c2_impl(1e-3)),
+       350.0, 0.5)
 
     if falhas:
         print("DIVERGÊNCIAS (o documento manda até prova em contrário):")
