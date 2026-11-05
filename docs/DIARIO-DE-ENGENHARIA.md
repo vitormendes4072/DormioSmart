@@ -7095,6 +7095,44 @@ dependem de serem lidos. As pastas de nível de cima em `.codex/worktrees/` fica
 **Procedência.** Comandos desta sessão em 05/11; `ml/dados/processado/ml15_reproducao/` e
 `ml16/` (locais, ignorados); `ROADMAP.md` (local); `docs/LICOES-APRENDIDAS.md` §5 e §6.
 
+---
+
+# 2026-11-05 (iv) — `AGENTS.md`: regras para dois agentes em paralelo
+
+**O problema, como foi entendido no início.** Desde 04/11 o projeto tem dois agentes de código
+trabalhando ao mesmo tempo (o Codex e o Claude Code). A primeira rodada de integração (PRs #79–#84)
+mostrou o custo de não haver regra comum: conflitos em todo merge nos mesmos documentos (diário,
+backlog, contagem, tabela de testes do `CLAUDE.md`), notas de contagem calculadas sobre bases
+diferentes, o campo "O que deu errado no caminho" ausente ou fora do lugar em sete entradas, e uma
+cópia de evidência que seguiu uma junction para os dados brutos (entrada (iii)).
+
+**Hipótese de trabalho.** Que um `AGENTS.md` na raiz — que o Codex lê automaticamente — com a
+divisão por área, a sincronia com `develop` antes da revisão e as regras dos arquivos de conflito
+garantido reduzisse esses conflitos, sem duplicar o `CLAUDE.md` (que continua valendo e vence onde
+divergirem).
+
+**O que foi testado, e como.** O texto conferido contra o `CLAUDE.md` (Gitflow estrito, práticas
+não negociáveis, arquivos locais) e contra as lições §5 e §6; as três conferências de documentos
+rodadas na branch.
+
+**Resultado medido.** `AGENTS.md` com 20 regras em seis grupos: antes do trabalho, divisão, branches
+e PRs, arquivos de conflito garantido, o que conta como verificado, dados locais e texto do TCC. O
+`CLAUDE.md` passa a apontá-lo entre os documentos de leitura obrigatória.
+
+**Adaptação.** A primeira versão da regra 8 permitia "PRs empilhadas"; o `CLAUDE.md` exige que toda
+PR aponte para `develop`. A regra foi reescrita: a branch pode partir de outra PR aberta, mas a PR
+aponta para `develop`, com a ordem de merge no corpo.
+
+**O que deu errado no caminho.** A leitura cruzada achou uma divergência antiga no próprio
+`CLAUDE.md`: a prática 1 dizia "os sete campos fixos" do diário, e as entradas têm oito desde que
+"O que deu errado no caminho" virou campo fixo. Corrigido com nota datada.
+
+**Risco em aberto.** As regras dependem de serem lidas e seguidas; nenhuma é verificada por script.
+A divisão por área é de partida e muda conforme o autor indicar os itens.
+
+**Procedência.** `AGENTS.md`; `CLAUDE.md` (documentos de referência e prática 1); entradas
+2026-11-05 (i) e (iii); `docs/LICOES-APRENDIDAS.md` §5 e §6.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
