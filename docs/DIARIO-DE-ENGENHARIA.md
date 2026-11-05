@@ -6827,6 +6827,22 @@ valor do limiar segue provisório (`VIA-01`/`CAL-01`). O ENMO entra no texto sem
 `documento/INSERCAO-CALC-03-INDICE-DE-ATIVIDADE.md`; `firmware/nucleo/epoca_c2.cpp` lido; Produto 5
 lido em 04/11; backlog `CALC-03`, `DOC-16`, `VIA-01`.
 
+# 2026-11-04 — `API-05`: ordem cronológica dos limites de consulta
+
+**O problema, como foi entendido no início.** A validação compartilhada do histórico e das features comparava `desde` e `ate` como texto ISO. Com fusos diferentes, uma janela válida podia ser recusada e uma invertida aceita.
+
+**Hipótese de trabalho.** Comparar objetos `datetime` corrige a ordem sem alterar o formato dos parâmetros nem o filtro por `created_at` do histórico. Duas datas sem fuso continuam aceitas no histórico; misturá-las com datas com fuso é ambíguo e passa a ser recusado.
+
+**O que foi testado, e como.** Na worktree independente de `develop`, Windows, `python -m pytest web-app/tests/test_comparacao_de_datas.py -q --tb=line -p no:cacheprovider` antes da correção. Depois, `python -m pytest web-app/tests/ -q --ignore=web-app/tests/rls -p no:cacheprovider --tb=short`. Autenticação e consultas são dubladas nas provas HTTP; não houve acesso ao banco nem a dados pessoais.
+
+**Resultado medido.** Dos 36 novos casos, 20 falharam e 16 passaram no código antigo. Após trocar a comparação textual por `datetime` e recusar fusos misturados, os 36 passaram; a suíte do backend passou 453 testes. Os casos percorrem offsets diferentes, instantes iguais, passagem de dia, frações de segundo, ambiguidade, limites isolados e formato preservado. Nas duas rotas, intervalos recusados não chamam o método de consulta. A execução vermelha foi o controle deliberado antes da correção, não uma regressão da solução.
+
+**Adaptação.** Não foi necessário converter os parâmetros devolvidos para UTC: a comparação de objetos com fuso considera os offsets, preservando o formato consumido pela camada de dados. Os novos testes ficaram em arquivo próprio para exercitar a mesma matriz na função e nas duas rotas.
+
+**Risco em aberto.** Clientes que misturavam limite com fuso e limite sem fuso recebem 400; o contrato agora declara isso. Datas sem fuso no histórico continuam dependentes da interpretação da fonte; não foi atribuída uma zona implicitamente. A escolha de `created_at` versus `captured_at` e a paginação do histórico são achados separados da inspeção, fora desta correção. A contribuição ao TCC é preservar a integridade do recorte temporal dos registros de movimento; não amplia a afirmação científica de sono.
+
+**Procedência.** Branch `bugfix/API-05-comparacao-de-datas`; `web-app/consulta.py`, `web-app/tests/test_comparacao_de_datas.py`, contrato §6.1 e backlog `API-05`.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
