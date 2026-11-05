@@ -75,3 +75,23 @@ def test_verificador_recusa_capturas_incompletas(tmp_path):
     from ferramentas.conferir_predicoes_ml17 import conferir
     with pytest.raises(ValueError, match='incompletas'):
         conferir(tmp_path)
+
+
+def test_limite_angular_legado_e_explicito_e_nao_aceita_outros_desvios():
+    import numpy as np
+    from ferramentas.censo_contexto_ml17 import conferir_entrada
+    a = dict(X=np.zeros((2, 8)), y=np.array([0, 1]), id=np.array(['a', 'a']))
+    b = {**a, 'X': a['X'].copy()}
+    b['X'][0, 6] = 1e-14
+    with pytest.raises(ValueError, match='difere em X'):
+        conferir_entrada(a, b)
+    assert conferir_entrada(a, b, 3e-14) is None
+    b['X'][0, 0] = 1e-15
+    with pytest.raises(ValueError, match='difere em X'):
+        conferir_entrada(a, b, 3e-14)
+    b['X'][0, 0] = 0
+    b['X'][0, 6] = 4e-14
+    with pytest.raises(ValueError, match='difere em X'):
+        conferir_entrada(a, b, 3e-14)
+    with pytest.raises(ValueError, match='limite angular'):
+        conferir_entrada(a, b, 1e-10)

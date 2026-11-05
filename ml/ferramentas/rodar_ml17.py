@@ -104,6 +104,19 @@ def worker(pasta, versao, grupo):
     e._carregar_base_com_cache = lambda *a, **kw: base
     e.PASTA_FEATURES = cache / 'newcastle_features_ml17-v1'
     e.PASTA_FEATURES_WALCH = cache / 'walch_features_ml17-v1'
+    def hash_entrada(X, y, ids):
+        h = hashlib.sha256(np.asarray(X, dtype='<f8').tobytes())
+        h.update(np.asarray(y, dtype='<i8').tobytes())
+        h.update(json.dumps(np.asarray(ids).tolist()).encode())
+        return dict(sha256=h.hexdigest(), n_epocas=len(y), n_features=X.shape[1])
+    entradas = {'wearanize/' + n: hash_entrada(b['X'], b['y'], b['id']) for n, b in base.items()}
+    if grupo == 'lados':
+        for lado in ('esquerdo', 'direito'):
+            entradas['newcastle/' + lado] = hash_entrada(*e.carregar_features_newcastle(cfg, lado)[:3])
+    elif grupo == 'newcastle':
+        entradas[grupo] = hash_entrada(*e.carregar_features_newcastle(cfg, 'esquerdo')[:3])
+    elif grupo.startswith('walch'):
+        entradas[grupo] = hash_entrada(*e.carregar_features_walch(cfg, grupo == 'walch_todos')[:3])
     destino = raiz / 'experimentos/saida/ml17_rodada'
     destino.mkdir(parents=True, exist_ok=True)
     capturas_arquivo = destino / f'{grupo}_capturas.json'
@@ -149,6 +162,7 @@ def worker(pasta, versao, grupo):
     estado = dict(status='concluido', segundos=time.time()-inicio, versao=versao, grupo=grupo,
                   utc_inicio=utc_inicio, utc_fim=datetime.now(timezone.utc).isoformat(),
                   codigo=m['fontes'][versao]['commit'], python=sys.version,
+                  hash_entradas=entradas,
                   bibliotecas={n: importlib.metadata.version(n) for n in
                                ('numpy', 'scipy', 'pandas', 'scikit-learn', 'threadpoolctl')},
                   pools=pools, n_avisos=len(avisos), n_capturas=len(capturas),

@@ -7173,6 +7173,26 @@ A divisão por área é de partida e muda conforme o autor indicar os itens.
 
 **Procedência.** origin/develop d429d43e1b7bafacae67fbebb9a328942d63efff; branch bugfix/ML-17-fronteiras-contexto; docs/PLANO-ML-17-FRONTEIRAS-CONTEXTO.md; docs/ML-17-CODIGO-E-TESTES.md; fontes/testes desta PR; JUnit antes.xml/depois.xml em ml/dados/processado/ml17/; manifesto ML-15 mantido; entrada ML-12 de 30/10 (iv).
 
+---
+
+# 2026-11-05 (vii) — ML-17: entradas comuns e protocolo antes das rodadas
+
+**O problema, como foi entendido no início.** Segunda PR da ML-17, dependente da #91: medir o efeito da correção com fontes congelados, entradas iguais e dispersão por participante/célula. O autor exigiu informar o censo antes das rodadas.
+
+**Hipótese de trabalho.** Uma comparação com os mesmos X/y/IDs nas duas versões isola a correção de contexto/segmentação, mesmo se a regeneração apresentar diferença numérica frente ao cache histórico. A magnitude do efeito nas métricas ainda não é conhecida.
+
+**O que foi testado, e como.** Windows local, Python 3.11.9. CI da #91 verde. Regeneração de Wearanize, Newcastle e Walch por caminhos externos explícitos. Comparação de entradas e censo de épocas/vetores ±2/±11, testes das guardas de execução, comparador, verificador independente e limite angular. Código antigo d429d43 e corrigido 3273431 fixados; executor e hashes serão congelados antes do ajuste. Protocolo em docs/ML-17-PROTOCOLO-RODADAS.md, comunicado ao autor antes de treinar.
+
+**Resultado medido.** Censo: nos três braços Wearanize, 385/2.090 de 87.795 épocas mudam em ±2/±11; Newcastle esquerdo 104/572 de 30.440; direito 100/550 de 29.385; Walch principal 347/1.489 de 23.303; todos 367/1.599 de 25.250. Mudanças estruturais e numéricas coincidem. Wearanize/Walch exatos contra legado; Newcastle difere apenas nos ângulos, máximo 2,842170943040401e-14 graus, médias absolutas 6,221342976485442e-17 / 6,588159205405496e-17 nas oito features. O protocolo registra dispersão por participante. Suíte completa 224 passou antes do último teste do limite; oito testes do executor/comparador/limite e o teste do censo passam. Ainda nenhuma métrica das rodadas reais foi produzida.
+
+**Adaptação.** As duas versões usarão o mesmo cache reconstruído, com hashes das entradas carregadas conferidos antes/depois. Não se declara reprodução bit a bit dos caches históricos. Padrão do censo continua exato; opção angular explícita, limitada a 3e-14 graus nas duas colunas, registra o desvio frente ao legado. Demais colunas, rótulos, IDs/ordem e igualdade entre rodadas permanecem exatos. A causa do arredondamento não foi determinada. O protocolo foi congelado antes dos resultados, sem alterar P1–P3 ou o código dos dourados.
+
+**O que deu errado no caminho.** A preparação Walch recebeu inicialmente a pasta acima de labels/ e parou com FileNotFoundError; a pasta real do pacote foi identificada e passada explicitamente. A primeira conferência exata acusou corretamente a pequena divergência nas features Newcastle e bloqueou a execução; os desvios foram quantificados antes da escolha de entradas comuns. Nenhum bruto/cache histórico foi sobrescrito.
+
+**Risco em aberto.** Rodadas e relatório ainda pendentes; ML-17 e ML-13 abertas. Diferenças nas predições não precisam se limitar às épocas de fronteira, pois o modelo é reajustado. Caches/logs/execuções ficam em ml/dados/processado/ml17/, ignorado; brutos permanecem no armazenamento original do projeto, sem cópia/junction nova. Caminhos absolutos informados ao autor. Avaliação DREAMT continua bloqueada pela ML-17 e eventual adendo.
+
+**Procedência.** PR #91, fonte corrigido 3273431b6ebec4e3889bd3f01c3593b32dc0137e; fonte antigo d429d43e1b7bafacae67fbebb9a328942d63efff; branch bugfix/ML-17-rodadas-comparadas; docs/ML-17-PROTOCOLO-RODADAS.md; ferramentas rodar_ml17/comparar_ml17/conferir_predicoes_ml17/censo_contexto_ml17; evidência privada censo.json/divergencia_entradas.json e logs de preparação.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

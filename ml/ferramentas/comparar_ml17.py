@@ -69,6 +69,11 @@ def carregar_resultados(pasta, versao):
 
 
 def comparar_rodada(pasta):
+    for grupo in ('newcastle', 'walch_principal', 'walch_todos', 'lados', 'otimizacoes'):
+        estados = [json.loads((pasta / f'{v}_{grupo}.json').read_text(encoding='utf-8'))
+                   for v in ('antes', 'depois')]
+        if any(e['status'] != 'concluido' for e in estados) or estados[0]['hash_entradas'] != estados[1]['hash_entradas']:
+            raise ValueError('execuções incompletas ou entradas antes/depois diferentes')
     a, b = (carregar_resultados(pasta, v) for v in ('antes', 'depois'))
     if set(a) != set(b):
         raise ValueError('células diferentes')
