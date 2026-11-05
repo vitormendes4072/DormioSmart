@@ -907,3 +907,13 @@ JSONs; a análise ampliada de 92 participantes não é reprodução dessas coort
 Foram reaproveitados caches de features, o que limita a afirmação à reprodução dos
 treinamentos e avaliações sobre essas entradas. Procedência e alcance em
 [REPRODUCAO-ML-15.md](REPRODUCAO-ML-15.md); investigação residual registrada no ML-16.
+
+
+**Atualização de rastreabilidade (ML-16, 05/11/2026).** A investigação das lacunas
+registradas na ML-15 foi concluída: coortes piloto 10/7 reconstruídas reproduzem os
+resultados; L1/mediana dos vetores unitários por componente reproduz os sintéticos
+antigos; a matriz sem scaler coincide integralmente com o histórico ao usar oito
+threads nativas. O ajuste continua sem convergência e a condição numérica é parte
+da procedência. São reconstruções verificadas, sem recuperar os arquivos/listas
+originais ausentes nem prometer igualdade em outra arquitetura. Evidências,
+controles e limites em [RASTREABILIDADE-ML-16.md](RASTREABILIDADE-ML-16.md).

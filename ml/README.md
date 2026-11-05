@@ -38,7 +38,9 @@ correção; dez casos adicionais verificam o instrumento de auditoria.
 copiados. Os resultados centrais e externos foram reproduzidos; há ressalvas para
 logística sem scaler, snapshots sintéticos antigos e coortes piloto Wearanize.
 O F1 complementar verificou 9.687 matrizes em 132 avaliações e quantificou os zeros
-antes excluídos. Históricos preservados; investigação residual no ML-16.
+antes excluídos. Históricos preservados. A investigação ML-16 foi concluída com
+coortes/definições reconstruídas e controle das threads nativas; veja
+[RASTREABILIDADE-ML-16.md](../docs/RASTREABILIDADE-ML-16.md).
 
 Relatório, comandos, ambiente e limites:
 [REPRODUCAO-ML-15.md](../docs/REPRODUCAO-ML-15.md). Evidências em

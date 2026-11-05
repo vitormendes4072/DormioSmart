@@ -1194,3 +1194,13 @@ Não se afirma igualdade de todo o histórico: a ablação sem scaler não conve
 dois snapshots sintéticos antigos divergem e as coortes piloto Wearanize de 10/7
 participantes não foram identificadas. Detalhes e evidências em
 [REPRODUCAO-ML-15.md](REPRODUCAO-ML-15.md); pendências de procedência no ML-16.
+
+
+**Atualização de rastreabilidade (ML-16, 05/11/2026).** A investigação das lacunas
+registradas na ML-15 foi concluída: coortes piloto 10/7 reconstruídas reproduzem os
+resultados; L1/mediana dos vetores unitários por componente reproduz os sintéticos
+antigos; a matriz sem scaler coincide integralmente com o histórico ao usar oito
+threads nativas. O ajuste continua sem convergência e a condição numérica é parte
+da procedência. São reconstruções verificadas, sem recuperar os arquivos/listas
+originais ausentes nem prometer igualdade em outra arquitetura. Evidências,
+controles e limites em [RASTREABILIDADE-ML-16.md](RASTREABILIDADE-ML-16.md).
