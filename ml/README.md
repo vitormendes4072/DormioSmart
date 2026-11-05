@@ -7,6 +7,50 @@
 
 ---
 
+## Correção de F1 — ML-14 (04/11/2026)
+
+O avaliador calcula F1 pelas contagens: 2TP/(2TP + FP + FN). Sem acertos,
+mas com falsos positivos ou falsos negativos, o valor é zero e entra na
+agregação entre sujeitos. NaN fica reservado à ausência da classe tanto na
+verdade quanto na predição. As demais métricas mantêm suas regras de
+indefinição; especificidade sem vigília verdadeira continua indefinida.
+
+A auditoria dos resultados históricos preserva os originais, registra seus
+hashes com finais de linha normalizados para LF e recalcula apenas os valores para os quais há matriz de confusão.
+Não reconstrói média ou IC sem a evidência por sujeito. O snapshot usa JSON
+estrito (null com estado explícito para NaN legado) e é conferido pela suíte.
+
+~~~bash
+# A partir da raiz do repositório:
+python ml/ferramentas/auditar_f1.py
+python ml/ferramentas/auditar_f1.py --conferir
+~~~
+
+Snapshot: ml/experimentos/saida/ml14_auditoria_f1.json. No estado desta
+correção: 21 divergências entre 94 valores recalculáveis, em 7 dos 18 arquivos.
+Suíte de ML: 155 testes passaram no Windows com Python 3.11.9 e as versões
+fixadas em requirements.txt. Seis dos 11 novos casos de F1 falharam antes da
+correção; dez casos adicionais verificam o instrumento de auditoria.
+
+## Reprodução dos experimentos — ML-15 (05/11/2026)
+
+15 execuções concluídas com treinos novos, saídas isoladas e caches de features
+copiados. Os resultados centrais e externos foram reproduzidos; há ressalvas para
+logística sem scaler, snapshots sintéticos antigos e coortes piloto Wearanize.
+O F1 complementar verificou 9.687 matrizes em 132 avaliações e quantificou os zeros
+antes excluídos. Históricos preservados. A investigação ML-16 foi concluída com
+coortes/definições reconstruídas e controle das threads nativas; veja
+[RASTREABILIDADE-ML-16.md](../docs/RASTREABILIDADE-ML-16.md).
+
+Relatório, comandos, ambiente e limites:
+[REPRODUCAO-ML-15.md](../docs/REPRODUCAO-ML-15.md). Evidências em
+`experimentos/saida/ml15/`; comparação conferível sem baixar dados ou treinar:
+
+```sh
+# A partir da raiz do repositório:
+python ml/ferramentas/comparar_reproducao.py --novos ml/experimentos/saida/ml15/resultados --saida ml/experimentos/saida/ml15/comparacao.json --conferir
+```
+
 ## Estado (2026-09-21)
 
 | Item | Estado |

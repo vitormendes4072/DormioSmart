@@ -6605,6 +6605,415 @@ do Wokwi no `firmware/README.md` não foram executadas e estão marcadas assim.
 `Guardas.test.tsx`, `frontend/src/pages/Landing.tsx` e `Landing.test.tsx`, `web-app/README.md`,
 `firmware/README.md`; backlog `DEMO-02`, `UI-23`, `DOC-15`.
 
+---
+
+# 2026-11-04 (ii) — o release do `DOC-14`, do `DEMO-02`, do `UI-23` e do `DOC-15`
+
+**O problema, como foi entendido no início.** Quatro itens em `develop` (PRs #70 a #72): a página
+inicial nova só valia no site, e o README novo só aparecia na página do GitHub, depois do release.
+
+**Hipótese de trabalho.** Que a página inicial publicada mostrasse os textos novos e que a
+liberação do modo demonstração não chegasse à produção — o que o build local já tinha mostrado.
+
+**O que foi testado, e como.** PR #73 com 9 checks; deploy acompanhado pela API de deployments;
+depois, `/health`, as rotas sem credencial, `/privacidade`, o pacote publicado (procurando os
+textos novos e os termos antigos), a página inicial e `/dashboard?demo=1` no navegador, o
+`README.md` da `main` pela API do GitHub, e um login do autor.
+
+**Resultado medido.** Deploy `7537089021`, `success`, SHA `31cfb7d`. `/health` `200`, banco ok;
+rotas sem credencial → `401`; `/privacidade` `200`. No pacote publicado, "fica em sono leve" e
+"A cada 10 minutos" aparecem, "Deep Sleep" e "Wake-on-Motion" não; a página no navegador confirma.
+**`/dashboard?demo=1` na produção foi ao `/login`, sem faixa.** O README da `main` tem a seção de
+estado e a imagem nova. **O autor confirmou o login.**
+
+**Adaptação.** Nenhuma.
+
+**O que deu errado no caminho.** Nada nesta etapa.
+
+**Risco em aberto.** A chamada a `/api/devices` no modo demonstração (diário de 04/11) segue —
+só no servidor de desenvolvimento.
+
+**Procedência.** PRs #70 a #73 (`31cfb7d`); deployment de produção `7537089021`; a página e o
+pacote de `https://dormio-smart.vercel.app`, 04/11; o README da `main`; a confirmação do autor;
+backlog `DOC-14`, `DEMO-02`, `UI-23`, `DOC-15`.
+
+---
+
+# 2026-11-04 (iii) — `DEMO-03`: a demonstração deixa de chamar a API
+
+**O problema, como foi entendido no início.** O risco que a entrada de 04/11 deixou em aberto: em
+modo demonstração o painel pedia `GET /api/devices`, e o servidor de desenvolvimento sem backend
+respondia `500` no console. Ficou registrado só no diário — e a prática 2 do `CLAUDE.md` pede que
+todo risco em aberto aponte um item do backlog. O Vitor apontou.
+
+**Hipótese de trabalho.** Que fosse o `useDispositivos` sem a verificação que o `useHistorico` já
+tem, e que bastasse devolver a lista vazia em demo — o mesmo efeito na tela que a falha silenciosa
+já produzia, sem o pedido.
+
+**O que foi testado, e como.** `useDispositivos.test.ts`, com `listarDispositivos` falso: em demo
+não é chamado; fora dela, é, e a lista chega; com `DEV` falso, `?demo=1` não desliga a busca.
+Sabotagem tirando o retorno da demo. Suíte inteira e build. No servidor de desenvolvimento,
+`/dashboard?demo=1`: os pedidos de rede e o console, **depois de o painel estar na tela**.
+
+**Resultado medido.** 3/3 testes; a sabotagem derrubou o teste da demo, **1/1**. Frontend **478
+testes, 36 arquivos**; build limpo. No navegador, com o painel e a faixa na tela: **zero pedidos a
+`/api`**, console sem erro.
+
+**Adaptação.** Nenhuma.
+
+**O que deu errado no caminho.** A primeira leitura da rede, feita logo depois de abrir a página,
+deu "zero pedidos" — mas o painel ainda não tinha renderizado (o vite estava reotimizando as
+dependências depois do build). Zero pedidos de uma página vazia não prova nada; a medição foi
+repetida com o painel na tela.
+
+**Risco em aberto.** Nenhum novo. A mudança só vale fora da produção (a demo é falsa lá) e entra no
+site no próximo release.
+
+**Procedência.** Branch `bugfix/DEMO-03-demo-sem-api`; `frontend/src/hooks/useDispositivos.ts` e
+`useDispositivos.test.ts`; backlog `DEMO-03`; diário 04/11.
+
+---
+
+# 2026-11-04 (iv) — `CALC-01`: o modelo de energia com a C2 que o firmware implementou
+
+**O problema, como foi entendido no início.** O capítulo de modelos quantitativos
+(`CALCULOS-TCC.md`, Z.4) já tinha a C2 desde o `ARQ-01` (30/10), mas escrita antes do firmware:
+entrega por época ou "um lote por hora", com 1 s de rádio por entrega, e a autonomia de
+armazenamento da fila antiga na RAM (32 B, 8,53 h). O `sketch.ino` fixou outra coisa: lote a cada
+10 min, cada envio religando o Wi-Fi, e a época gravada na flash (64 B). E o texto do TCC
+(Produto 5, 6.4.1) estava ainda mais atrás: Deep Sleep, ciclo de dois estados.
+
+**Hipótese de trabalho.** Registrada antes de rodar: a corrente da C2 implementada ficaria entre o
+lote por hora (2,03 mA) e o envio por época (5,31 mA), e **o rádio continuaria a maior parcela**.
+
+**O que foi testado, e como.** Um cenário novo em `scripts/estudo_cadencia.py` que **lê do
+firmware** o intervalo de envio (`INTERVALO_DE_ENVIO_US`, `sketch.ino`) e o de drenagem
+(`INTERVALO_DE_DRENAGEM_US`, `nucleo/cadeia_c2.h`); o envio completo como estimativa em faixa
+(2, 4, 8 s); a gravação na flash como estimativa (programação, apagamento de setor a cada 64
+registros, corrente); a decomposição por parcela; a varredura de todos os parâmetros; a energia de
+uma noite. Asserções no `--conferir`, que roda no CI. Três sabotagens: o envio a 5 min **no
+próprio `sketch.ino`**, a drenagem a 1,6 s **no núcleo**, e a premissa do envio no script. O texto
+do Produto 5 lido pelo conector do Drive para montar a inserção.
+
+**Resultado medido.** Referência: **2,68 mA** (2,35 a 3,34 mA conforme o envio; 1,88 a 5,81 mA na
+varredura) — dentro da faixa prevista. **A segunda metade da hipótese caiu:** o rádio é **25 %**,
+e as outras parcelas são do mesmo tamanho — transdutor 22 %, sono leve 29 %, esvaziar a FIFO 24 %;
+a flash, 0,5 %. Nenhuma passa de 30 %. Com a placa: 1 mA de consumo fixo acrescenta 37 %, e 3 mA
+já superam os circuitos integrados. Autonomia de referência com 2 000 mA·h: 746 h; 255 J numa
+noite de 8 h. A drenagem do modelo (85 amostras / 50 Hz) bate com a do firmware. Sabotagens
+**3/3**: a do envio derrubou 11 asserções; a da drenagem acusou exatamente a divergência
+firmware × modelo.
+
+**Adaptação.** Três. (1) A conclusão do capítulo mudou de forma: até aqui, "agregar envios é a
+alavanca"; com o lote de 10 min, a alavanca está gasta e nenhuma mudança isolada tira mais que um
+quarto — o que **reforça** a de que o consumo fixo da placa decide (`HW-02`). (2) O texto do TCC
+não estava no `DOCUMENTO-TCC.md` (parado no Produto 3): foi lido no Drive. Há dois documentos
+candidatos ("Produto 5", 10/09, e "Copy of Produto 5", 30/09) com a mesma 6.4.1; a inserção diz
+isso e deixa a escolha com os autores. (3) Ao ler o Produto 5, quatro outros trechos ainda falam
+de Deep Sleep e despertar por movimento: viraram o `DOC-16`.
+
+**O que deu errado no caminho.** O primeiro texto dizia que os limites de espera de um envio
+"somam 28 s" (20 s de Wi-Fi + 8 s de POST); conferido no `sketch.ino`, o envio também sincroniza o
+relógio por NTP, com 5 s, e manda até 20 lotes por conexão — corrigido para 33 s. A inserção citava
+a 6.4.2 como `CALC-03` e o trecho do "circuito de *wake-up*" como 5.7; são o `CALC-04` e a 5.6.
+E o primeiro script de edição, longo, num heredoc, foi recusado pelo shell; foi para um arquivo.
+Ao fechar o item, o conferidor do `DOC-13` reprovou o backlog: o `CALC-01` seguia citado sem
+riscar no caminho crítico — o que ele existe para pegar.
+
+**Risco em aberto.** Nada disto é medição: o envio completo, a corrente de sono leve na placa e o
+consumo fixo da placa seguem estimados — é o `VAL-02`, depois da solda. A inserção no Produto 5
+depende dos autores colarem. O resto do texto do TCC com a arquitetura antiga é o `DOC-16`.
+
+**Procedência.** Branch `feature/CALC-01-energia-c2`; `scripts/estudo_cadencia.py`;
+`docs/CALCULOS-TCC.md` (Z.4.4b a Z.4.7, procedência); nota em `docs/DECISAO-ARQ-01-CADENCIA.md`
+§4.2; inserção fora do repositório em `documento/INSERCAO-CALC-01-ENERGIA-C2.md`; Produto 5 lido
+em 04/11; backlog `CALC-01`, `DOC-16`.
+
+---
+
+# 2026-11-04 (v) — `CALC-02`: a física da medição travada no CI e levada ao texto
+
+**O problema, como foi entendido no início.** O item pedia a física do acelerômetro — força
+específica, resolução, ruído, Nyquist — e o porquê de 21 Hz e não 260 Hz. O levantamento mostrou
+que o conteúdo **já existia** no Z.1 de `CALCULOS-TCC.md`, atualizado para a C2 e coerente com o
+firmware, mas que metade dos números dele não estava travada por nenhuma conferência, e que a
+6.4.3 do texto do TCC (Produto 5) estava atrás: sem ruído, sem a justificativa do filtro, e com
+uma frase que contradiz o cálculo — "faixas menores ofereceriam resolução mais fina".
+
+**Hipótese de trabalho.** Que o Z.1 estivesse certo e bastasse travá-lo, ligando-o ao firmware
+para que uma mudança de configuração do sensor não deixasse o texto justificando o que não roda.
+
+**O que foi testado, e como.** Asserções novas em `scripts/calculos_tcc.py` para cada número do Z.1
+que não estava travado. Leitura, pelo script, da configuração que o `sketch.ino` grava no sensor
+(`nucleo/fifo_mpu.h`: `C2_DLPF_CFG`, `C2_SMPLRT_DIV`, `C2_ACCEL_CONFIG`), convertida pelas tabelas
+do Register Map em banda, taxa e fundo de escala, e das chamadas da biblioteca nos dois sketches
+de bancada. Quatro sabotagens: DLPF de 44 Hz e ±4 g no `fifo_mpu.h`, filtro de 44 Hz no
+`envio-continuo.ino`, densidade de ruído de 300 µg/√Hz no script. A 6.4.3 do Produto 5 lida
+no Drive para montar a inserção, e a numeração das equações do texto levantada antes de escrever.
+
+**Resultado medido.** O firmware dá **21 Hz, 50 Hz e ±8 g**, como o Z.1 diz. Todas as asserções
+passam. Sabotagens **4/4**, cada uma pela asserção certa: a do DLPF derrubou a banda e a condição
+"taxa acima do Nyquist do filtro"; a do fundo de escala, só ela; a do sketch de bancada apontou o
+arquivo; a da densidade derrubou os σ e as razões contra a quantização — e não o fator
+√(260/21), que não depende dela, como devia.
+
+**Adaptação.** Uma frase do Z.1 dizia que "a biblioteca empregada adota, por omissão, 260 Hz"; o
+firmware do dispositivo não usa a biblioteca — grava o registrador —, e a frase foi precisada. Na
+inserção, a relação σ = eₙ · √B ficou no corpo do texto, sem número, para não renumerar as
+Equações 8 a 10 da 6.4.4 e as citações a elas.
+
+**O que deu errado no caminho.** O `conferir()` do `calculos_tcc.py` não tinha a função
+`verdade` que o do `estudo_cadencia.py` tem; a primeira execução quebrou com `NameError` e ela foi
+acrescentada no mesmo molde. **E o achado maior, fora do plano:** antes de abrir o PR, conferido o
+`ci.yml`, o `calculos_tcc.py --conferir` **nunca rodou no CI** — nem o `estudo_buffer.py --conferir`.
+Só o `estudo_cadencia.py` estava no job `documentos`. O `CLAUDE.md` listava os três como conferências
+que "passam", o que era verdade só quando alguém os rodava à mão; e as travas deste item não
+travariam nada, e a inserção para o Produto 5 dizia "travada no CI". Os dois entraram no job — é o
+§1 das lições de novo: alcance de verificação afirmado, não conferido.
+
+**Risco em aberto.** O σ a 21 Hz continua **calculado** a partir de uma densidade especificada em
+outra configuração; a medição é do `CAL-01`, depois da solda. A banda da actigrafia
+(0,25–3,5 Hz) entra no texto do TCC sem citação lida — a inserção avisa (`DOC-06b`). Colar a
+inserção é com os autores.
+
+**Procedência.** Branch `feature/CALC-02-fisica-da-medicao`; `scripts/calculos_tcc.py`;
+`docs/CALCULOS-TCC.md` (Z.1.4 e procedência); inserção fora do repositório em
+`documento/INSERCAO-CALC-02-FISICA-DA-MEDICAO.md`; Produto 5 lido em 04/11; backlog `CALC-02`.
+
+---
+
+# 2026-11-04 (vi) — `CALC-03`: o índice de atividade travado e a 6.4.4 do TCC refeita
+
+**O problema, como foi entendido no início.** O item pedia o índice de atividade e a derivação do
+limiar `g ± k·σ`. O Z.2 de `CALCULOS-TCC.md` já entregava o índice (as oito características
+invariantes a rotação) e já demonstrava que a derivação não se sustenta — o limiar em uso, de
+1,2 m/s², equivale a ~67 σ. Faltava travar e levar ao texto. A 6.4.4 do Produto 5, lida no Drive,
+descrevia um sistema que não existe mais: índice sobre uma "janela ativa" por despertar, limiar
+`μ + k·σ` com k = 3, detecção em dois níveis com o sensor acordando o processador do Deep Sleep.
+
+**Hipótese de trabalho.** Que o Z.2 estivesse certo e que o limiar fosse o mesmo nos três lugares
+em que o sistema o usa.
+
+**O que foi testado, e como.** Asserções novas em `scripts/calculos_tcc.py` para os números do Z.2
+que não estavam travados (k, 3σ e 5σ, as razões, σ em m/s², a norma L1, o piso do ENMO). Leitura,
+pelo script, do limiar em `payload.h`, `caracteristicas.h` e `ml/src/features.py`, e da lista
+`NOMES_FEATURES`. Três sabotagens: limiar de 1,5 no `payload.h`; o g do `ml/` trocado de 9,80665
+para 9,81 (o limiar muda na quarta casa); uma característica a menos na lista. Antes de escrever o
+texto, o código do pico da época (`epoca_c2.cpp`) foi lido.
+
+**Resultado medido.** O limiar é o mesmo nos três lugares (1,2 m/s²; 1,2/9,80665 g); as
+características são oito. k = 66,7; 3σ a 5σ dão 0,054 a 0,090 m/s², 22,25× a 13,35× abaixo do
+limiar. Sabotagens **3/3**, cada uma pela asserção do arquivo sabotado.
+
+**Adaptação.** A 6.4.4 nova mantém as Equações 8 a 10 com outro conteúdo — a intensidade da época,
+o ENMO e k = L/σ — e diz por que o limiar não precisa vir do ruído: quem decide sono e vigília é o
+classificador, e o limiar só parametriza uma das oito características. A 6.5 do texto (o ciclo de
+Deep Sleep, que cita as Equações 9 e 10) ficou fora e entrou no `DOC-16`.
+
+**O que deu errado no caminho.** Duas coisas. As asserções das razões foram escritas com 13,3 e
+22,2 e tolerância de 0,05; os valores são 13,35 e 22,25 e reprovaram — o texto ("de treze a vinte
+e duas vezes") estava certo, a asserção é que estava apertada errado. E o primeiro texto da
+inserção dizia que a época é representada pela "amostra de maior afastamento do repouso"; lido o
+`epoca_c2.cpp`, é a de **maior módulo** — um afastamento para baixo de g só conta se nenhuma outra
+amostra for maior. Corrigido, e virou ressalva no texto.
+
+**Risco em aberto.** Essa diferença do rótulo não é defeito de código (o contrato define "pico da
+magnitude"), mas afeta o rótulo do painel: anexada ao `VIA-01`, que mostra na bancada se importa. O
+valor do limiar segue provisório (`VIA-01`/`CAL-01`). O ENMO entra no texto sem citação lida
+(`DOC-06b`). Até o `DOC-16`, a 6.5 do texto contradiz a 6.4.4 nova.
+
+**Procedência.** Branch `feature/CALC-03-indice-de-atividade`; `scripts/calculos_tcc.py`;
+`docs/CALCULOS-TCC.md` (🔧 1 e procedência); inserção fora do repositório em
+`documento/INSERCAO-CALC-03-INDICE-DE-ATIVIDADE.md`; `firmware/nucleo/epoca_c2.cpp` lido; Produto 5
+lido em 04/11; backlog `CALC-03`, `DOC-16`, `VIA-01`.
+
+# 2026-11-04 — `CALC-04`: interfaces elétricas e correção da energia
+
+**O problema, como foi entendido no início.** A Z.3 e a seção 6.4.2 do TCC ainda descreviam o botão e o despertar da arquitetura anterior. Era preciso analisar o I2C e a alimentação do GY-521 na C2.
+
+**Hipótese de trabalho.** A análise elétrica poderia ser atualizada sem alterar a estimativa de energia recém-publicada no `CALC-01`.
+
+**O que foi testado, e como.** Leitura do `sketch.ino` e dos cálculos; execução no computador local de `python scripts/calculos_tcc.py --conferir` e `python scripts/estudo_cadencia.py --conferir`. Na retomada, o pytest de ML teve 37 erros de preparação por acesso negado à pasta temporária no sandbox; a repetição fora dele passou 134 testes. O frontend também precisou sair do sandbox por erro de inicialização do esbuild; passou 478 testes. A sessão anterior relatou três sabotagens: frequência, pino e pull-up de referência; não foram reexecutadas nesta retomada. ✏️ *05/11, na revisão das PRs #79–#84: reexecutadas sobre o commit `2cbf715`, **3/3** — I2C a 100 kHz no `sketch.ino` reprova nos dois scripts (1 e 16 asserções), SDA no GPIO 19 reprova no `calculos_tcc`, pull-up de referência em 4,7 kΩ reprova no `estudo_cadencia` (7 asserções); arquivos restaurados e conferidos.*
+
+**Resultado medido.** O firmware configura 400 kHz, enquanto o modelo usava 100 kHz. Com 2,2 kΩ, a referência calculada passa de 2,68 para 2,28 mA, 878 h para 2 000 mA·h e 217 J em 8 h; são estimativas, não medições físicas. Os limites calculados de capacitância para 2,2 e 10 kΩ são 161 e 35 pF a 400 kHz, e 536 e 118 pF a 100 kHz.
+
+**Adaptação.** A Z.3 foi reescrita, o modelo passou a ler a frequência do firmware e considerar os dois valores de pull-up; a Z.4 e as inserções para as seções 6.4.1 e 6.4.2 foram atualizadas. A hipótese de que o cálculo anterior permaneceria correto caiu.
+
+**O que deu errado no caminho.** Na sessão que começou o item: a primeira asserção da capacitância máxima com 2,2 kΩ a 100 kHz foi escrita com 537 pF, valor de uma conta de bolso com 0,847 arredondado; o script dá 536,5 e a asserção reprovou até ser corrigida. A primeira versão da sabotagem do pull-up de referência teria **passado**: o lote altera a corrente média em só 0,01 mA, abaixo da tolerância — foi preciso travar a parcela "acordado esvaziando a FIFO" para que a sabotagem acusasse. Duas edições por heredoc falharam na escapagem de barras invertidas e foram refeitas pela ferramenta de edição. E a retomada não reexecutou as sabotagens (ver acima), o que só foi feito na revisão.
+
+**Risco em aberto.** A resistência, o trilho e a capacitância da montagem não foram medidos; o teste de bancada é `HW-08` e a escolha do VCC é `HW-02`. O consumo depende das premissas do modelo e a medição real é `VAL-02`.
+
+**Procedência.** `scripts/calculos_tcc.py`, `scripts/estudo_cadencia.py`, `docs/CALCULOS-TCC.md`, `docs/DECISAO-ARQ-01-CADENCIA.md`, `firmware/sketch.ino` e as inserções locais em `documento/`.
+
+# 2026-11-04 — `API-05`: ordem cronológica dos limites de consulta
+
+**O problema, como foi entendido no início.** A validação compartilhada do histórico e das features comparava `desde` e `ate` como texto ISO. Com fusos diferentes, uma janela válida podia ser recusada e uma invertida aceita.
+
+**Hipótese de trabalho.** Comparar objetos `datetime` corrige a ordem sem alterar o formato dos parâmetros nem o filtro por `created_at` do histórico. Duas datas sem fuso continuam aceitas no histórico; misturá-las com datas com fuso é ambíguo e passa a ser recusado.
+
+**O que foi testado, e como.** Na worktree independente de `develop`, Windows, `python -m pytest web-app/tests/test_comparacao_de_datas.py -q --tb=line -p no:cacheprovider` antes da correção. Depois, `python -m pytest web-app/tests/ -q --ignore=web-app/tests/rls -p no:cacheprovider --tb=short`. Autenticação e consultas são dubladas nas provas HTTP; não houve acesso ao banco nem a dados pessoais.
+
+**Resultado medido.** Dos 36 novos casos, 20 falharam e 16 passaram no código antigo. Após trocar a comparação textual por `datetime` e recusar fusos misturados, os 36 passaram; a suíte do backend passou 453 testes. Os casos percorrem offsets diferentes, instantes iguais, passagem de dia, frações de segundo, ambiguidade, limites isolados e formato preservado. Nas duas rotas, intervalos recusados não chamam o método de consulta. A execução vermelha foi o controle deliberado antes da correção, não uma regressão da solução.
+
+**Adaptação.** Não foi necessário converter os parâmetros devolvidos para UTC: a comparação de objetos com fuso considera os offsets, preservando o formato consumido pela camada de dados. Os novos testes ficaram em arquivo próprio para exercitar a mesma matriz na função e nas duas rotas.
+
+**O que deu errado no caminho.** Nada registrado nesta etapa. A execução vermelha dos 20 casos foi o controle deliberado antes da correção (ver "Resultado medido"), não uma falha do trabalho.
+
+**Risco em aberto.** Clientes que misturavam limite com fuso e limite sem fuso recebem 400; o contrato agora declara isso. Datas sem fuso no histórico continuam dependentes da interpretação da fonte; não foi atribuída uma zona implicitamente. A escolha de `created_at` versus `captured_at` e a paginação do histórico são achados separados da inspeção, fora desta correção. A contribuição ao TCC é preservar a integridade do recorte temporal dos registros de movimento; não amplia a afirmação científica de sono.
+
+**Procedência.** Branch `bugfix/API-05-comparacao-de-datas`; `web-app/consulta.py`, `web-app/tests/test_comparacao_de_datas.py`, contrato §6.1 e backlog `API-05`.
+
+# 2026-11-04 — UI-24: resultado antigo não substitui o histórico atual
+
+**O problema, como foi entendido no início.** Ao trocar de dispositivo ou filtro, cada chamada pendente do useHistorico podia publicar seu resultado ao terminar. Uma resposta antiga substituía o histórico novo; um erro antigo também apagava dados, e o finally antigo encerrava o indicador de carregamento de outro pedido.
+
+**Hipótese de trabalho.** Identificar cada carregamento e invalidá-lo no cleanup permite que só o pedido mais recente publique estado. A identidade precisa cobrir recarga manual, e o ciclo setup/cleanup/setup do Strict Mode precisa reativar o hook.
+
+**O que foi testado, e como.** Em worktree independente de origin/develop, no Windows, npm test -- --run src/hooks/useHistorico.test.ts montou o hook real em jsdom. Promessas controladas resolveram/rejeitaram pedidos fora de ordem. Depois da correção, npm test -- --run executou a suíte do frontend. Não houve rede real nos testes do hook.
+
+**Resultado medido.** No código antigo, 9 dos 11 novos casos falharam: dados/erro fora de ordem, indicador de carregamento prematuro, recarga manual, troca de janela, callback retido após desmontagem e primeiro efeito do Strict Mode. Após a correção, os 11 passaram, e a suíte completa passou 489 testes em 37 arquivos. O build de produção (TypeScript e Vite) também passou, mantendo o aviso de chunk acima de 500 kB. O modo demo continua sem chamada à API. Os testes das duas ordens de término comprovam que dados novos permanecem e que carregamento novo não termina por causa de pedido antigo.
+
+**Adaptação.** Uma flag por efeito não basta para duas recargas do mesmo filtro: foi usado contador de gerações, além do estado ativo. Leituras, erro e finally verificam a mesma identidade.
+
+**O que deu errado no caminho.** A primeira tentativa de executar npm após editar o hook foi feita na raiz, onde não há package.json (ENOENT); o comando foi corrigido para a pasta frontend, sem alterar dependências.
+
+**Risco em aberto.** A chamada antiga continua no transporte; o hook apenas descarta sua publicação. O tratamento de autenticação do cliente de API, inclusive o callback global de 401, permanece fora dessa guarda. jsdom não prova layout ou comportamento de rede real. Para o TCC, a correção protege a correspondência entre o filtro selecionado e os registros exibidos; não altera o critério de movimento nem as afirmações científicas.
+
+**Procedência.** Branch bugfix/UI-24-respostas-antigas-historico; frontend/src/hooks/useHistorico.ts, frontend/src/hooks/useHistorico.test.ts e backlog UI-24.
+
+# 2026-11-04 — ML-14: falha completa não sai da média de F1
+
+**O problema, como foi entendido no início.** O avaliador calculava F1 a partir de precisão e recall e produzia NaN quando deveria produzir zero. A agregação excluía esses sujeitos. RESULTADOS-TCC tratava o NaN histórico do trivial como divisão por zero legítima.
+
+**Hipótese de trabalho.** A fórmula direta pelas contagens distingue erro de classificação de ausência da classe: 2TP/(2TP + FP + FN). Denominador positivo sem acertos dá zero; denominador zero permanece NaN.
+
+**O que foi testado, e como.** Worktree independente de origin/develop, Windows, Python 3.11.9 do ambiente pinado local: numpy 2.2.6, pandas 2.3.3, scipy 1.15.3, scikit-learn 1.7.2, PyYAML 6.0.3 e pytest 9.1.1. Antes da correção: pytest testes/test_avaliar.py. Depois: pytest testes. Onze novos casos de F1 incluem comparação com scikit-learn para os 64 pares de sequências binárias de três épocas e prova de média, desvio e bootstrap. Dez casos auditam o instrumento, incluindo alteração deliberada da fonte para tornar o snapshot obsoleto. Comando da auditoria: python ml/ferramentas/auditar_f1.py --conferir, a partir da raiz.
+
+**Resultado medido.** No avaliador antigo, 6 dos 11 novos casos falharam; depois passaram. A suíte completa passou 155 testes. A auditoria recalculou 94 valores em 18 arquivos, encontrou 21 divergências em 7 arquivos, todas NaN que deveriam ser zero. Não houve campos de F1 sem matriz de confusão nesses arquivos. O snapshot novo é JSON estrito e registra os caminhos, valores e hashes do texto UTF-8 com fins de linha LF; os JSONs históricos não foram reescritos.
+
+**Adaptação.** Não foi necessário alterar a agregação para incluir zero: ela já excluía apenas NaN. A correção é na origem da métrica. A explicação documental do NaN foi corrigida sem atribuir o defeito a falta de previsões apenas. A revisão identificou que o checkout Windows usa CRLF e o Linux usa LF: os hashes passaram a normalizar os finais de linha. Remover deliberadamente a normalização fez a asserção de equivalência de hashes reprovar, confirmando o mecanismo.
+
+**O que deu errado no caminho.** A primeira tentativa de adicionar os testes usou ml/testes a partir da própria pasta ml, dando caminho inexistente; apenas os sete testes antigos rodaram nessa tentativa. Corrigido o caminho antes da execução vermelha com os casos novos. A primeira fixture do teste de hashes continha escapes literais em vez de quebras de linha e falhou ao ler o JSON; corrigida, passou. Uma execução direcionada também usou testes/ a partir da raiz e foi corrigida para ml/testes/.
+
+**Risco em aberto.** A auditoria não reestima ICs nem prova a ausência de impacto em experimentos não representados pelas contagens salvas; não houve retreino. As regras de indefinição de sensibilidade, especificidade e kappa continuam as mesmas. NaN legítimo continua possível no avaliador e nos arquivos históricos; o snapshot novo o representa explicitamente. Para o TCC, a correção evita que um sujeito com falha de classificação seja excluído como se sua métrica fosse indefinida.
+
+**Procedência.** Branch bugfix/ML-14-f1-sem-acertos; ml/src/avaliar.py, ml/testes/test_avaliar.py, ml/ferramentas/auditar_f1.py, ml/testes/test_auditar_f1.py e ml/experimentos/saida/ml14_auditoria_f1.json; RESULTADOS-TCC, README do ml/ e backlog ML-14.
+
+# 2026-11-04 — ML-15: reprodução controlada dos experimentos principais (em execução)
+
+**O problema, como foi entendido no início.** A ML-14 corrigiu F1 e seis checkpoints permitiram reavaliar previsões existentes, mas isso não era uma reprodução abrangente dos experimentos principais do TCC.
+
+**Hipótese de trabalho.** Com o mesmo ambiente, configuração e coorte, é possível repetir os treinamentos e comparar resultados. Diferenças de coorte, de versão do pipeline e de métrica precisam de classificações distintas.
+
+**O que foi testado, e como.** Execução local Windows em cópia isolada dos scripts da ML-14. Bibliotecas pinadas; configuração aec203907e6f, seed 20260910; dois processos. Dados brutos somente lidos, caches copiados e diretório de saída inicialmente vazio. Checkpoints antigos não foram copiados. ML-03 e baselines Wearanize usam o cache de features via adaptador que recompõe contexto por participante; os treinamentos são novos. Um manifesto registra fontes, ambiente e referências. O comparador passou controles de valor alterado, NaN, igualdade e listas.
+
+**Resultado medido.** Execução ainda em andamento. Baseline sintético reproduziu os dois registros históricos mais recentes fora das três correções de F1; dois registros mais antigos têm outras diferenças cuja origem não foi isolada. O baseline Newcastle concluiu a extração e o treinamento e bateu com o histórico fora das três correções de F1. Os números consolidados e as demais famílias serão registrados ao concluir.
+
+**Adaptação.** O baseline Wearanize histórico tem 10 participantes na cabeça e 7 no pulso, sem lista identificável no JSON. Os caches atuais têm 92 participantes comuns aos três braços: as rodadas de baseline nessa coorte são marcadas como ampliadas, não como reprodução daquelas coortes antigas. O parâmetro de threads nativas foi fixado em 1 por processo e fica registrado como condição de execução.
+
+**O que deu errado no caminho.** Nada registrado até este ponto da execução.
+
+**Risco em aberto.** Os experimentos não concluídos permanecem no item ML-15. Caches de features não equivalem a refazer toda a extração bruta. Rodadas com coorte distinta não permitem atribuir diferenças somente ao F1. Resultados antigos e dados brutos permanecem preservados.
+
+**Procedência.** Branch feature/ML-15-reproducao, dependente da ML-14; manifesto, estado, comparação e logs locais em ml/dados/processado/ml15_reproducao; relatório final pendente no mesmo item.
+
+# 2026-11-05 — ML-15: 15 execuções concluídas e limites históricos separados
+
+**O problema, como foi entendido no início.** Era preciso terminar a reprodução iniciada em 04/11 e verificar se a correção de F1 alterava resultados além dos seis checkpoints antes reavaliados. A maior ablação permaneceu ativa durante a madrugada.
+
+**Hipótese de trabalho.** Resultados com mesmas entradas e código deveriam coincidir; diferenças de avaliação, população e instabilidade numérica não podem ser atribuídas umas às outras. O kappa usado na escolha dos modelos não depende da correção de F1.
+
+**O que foi testado, e como.** Windows, Python 3.11.9, bibliotecas pinadas; 15 tarefas com código da ML-14 e saídas/checkpoints novos. A ablação concluiu em 21.894,9 s. Conferidos hashes de 25 fontes e 114 caches copiados contra as fontes locais. Comparador com tolerância absoluta/relativa 1e-10, hashes textuais normalizados para LF e exclusão de novas saídas parciais. F1 complementar reconstruiu matrizes por participante usando suportes reais, validando contagens inteiras, acurácia, especificidade e kappa. Controle independente de 552 matrizes contra previsões dos seis checkpoints antigos passou. Instrumentos têm controles de métrica alterada, NaN, coorte diferente, vetor incompleto, relatório vazio, fonte alterada e tentativa de reutilizar saída histórica.
+
+**Resultado medido.** As 15 tarefas concluíram com código zero. Transferência, otimizações, três validações externas, lateralidade, métricas do teto interavaliador, quantização e ML-11/ML-12 reproduziram os campos comparados. Newcastle e os dois snapshots sintéticos de 14/09 diferiram somente nos três F1 de vigília corrigidos. F1 complementar: 9.687 matrizes em 132 avaliações; oito zeros antes excluídos em sete avaliações não triviais, além de 363 ocorrências em seis grupos triviais. Na transferência cabeça → cabeça E4, F1 de sono médio passou de 0,4714552822 (91 válidos) para 0,4663307682 (92) ao comparar as fórmulas sobre as mesmas classificações novas. A variante sem scaler emitiu 276 avisos de convergência; maior diferença de kappa médio de 0,004545. A referência da ablação e os itens 1, 3, 4 e 5 reproduziram o histórico. O arquivo antigo da ablação era parcial e não continha suas otimizações finais. 167 testes de ML passaram, incluindo 12 controles novos; comparação salva e resumo do backlog conferidos.
+
+**Adaptação.** O comparador passou a sinalizar referência histórica parcial sem descartá-la, permitindo conferir os itens completos nela. O campo utc_notas ausente no novo teto interavaliador é metadado, não divergência de métricas. Dois snapshots sintéticos de 11/09 divergem por causa não isolada; baselines Wearanize novos de 92 participantes são coortes ampliadas, não reprodução dos pilotos 10/7.
+
+**O que deu errado no caminho.** A primeira tentativa restrita de pytest falhou ao acessar seu diretório temporário; a execução com permissões de teste passou. Durante a continuidade também houve uma edição não executada porque a revisão automática atingiu limite de uso; após a retomada, o workspace passou a permitir as edições locais. Nenhum resultado foi inferido daquele comando recusado.
+
+**Risco em aberto.** O ML-16 carrega a recuperação de IDs dos pilotos, a procedência dos snapshots sintéticos antigos e a causa da divergência sem scaler. Não foi aumentado max_iter nem mudado solver para forçar coincidência. Caches reaproveitados não validam novamente toda a extração bruta; estas bases públicas continuam sem validar o sensor no travesseiro (ML-12(c)/VIA-01). Para o TCC, a reprodução sustenta os resultados centrais e torna explícito onde a procedência histórica ainda não permite igualdade estrita. Sem merge automático.
+
+**Procedência.** Branch feature/ML-15-reproducao a partir de 72f954286633f3b197d9bab454f622d67885814b (ML-14, PR #82). docs/REPRODUCAO-ML-15.md; ml/experimentos/saida/ml15/ (15 resultados, manifesto, execução, comparação e F1 complementar); ml/ferramentas/comparar_reproducao.py, reconstruir_f1.py, rodada_reproducao.py e executar_reproducao.py; testes dos instrumentos, README do ML, RESULTADOS-TCC, LIMITACOES-TCC e backlog ML-15/ML-16. Dados e logs permanecem locais e ignorados.
+
+# 2026-11-05 — ML-16: pilotos, sintéticos e condição numérica reconstruídos
+
+**O problema, como foi entendido no início.** A reprodução ML-15 deixara três lacunas de procedência: IDs dos pilotos Wearanize 10/7, sintéticos de 11/09 divergentes e variante sem scaler sem igualdade numérica. O usuário aprovou investigar as três, preservando os parâmetros e os históricos.
+
+**Hipótese de trabalho.** A seleção canônica do baixador poderia recuperar uma coorte compatível; as duas correções de features descritas no histórico poderiam explicar os sintéticos; a condição numérica da execução poderia afetar o ajuste sem convergência. Nenhuma hipótese foi aceita apenas por coincidência de contagem ou por leitura do código.
+
+**O que foi testado, e como.** Worktree isolada baseada em 63a4223 (ML-15), com nova branch feature/ML-16-rastreabilidade. Python 3.11.9, bibliotecas pinadas, cache copiado e dados brutos apenas lidos. Consultados Git, diário, logs antigos, backup interno disponível e 90 commits sem referência. Primeiros dez IDs do participants.tsv usados em novas extrações e treinamentos. Controles sintéticos alteraram separadamente norma L1/L2 e referência geométrica/mediana por componente, inclusive a normalização dos vetores. Controle reduzido de uma/oito threads manteve cache, ordem, seed e max_iter=300; três modelos e nove células em sub-005. Reexecução completa da variante com oito threads nos 92 participantes. Comparação de todos os campos e vetores com tolerância absoluta/relativa 1e-10. Instrumentos incluem sabotagens de métrica, NaN, threads, referência adulterada e mudança de arquivo sem mudança dos números.
+
+**Resultado medido.** Cabeça: dez participantes, 9.471 épocas, 8.706 sono/765 vigília. Pulso: sete participantes, 6.958 épocas, 6.249 sono/709 vigília. Todos os campos comparados dos pilotos reproduzidos, fora de três F1 de vigília corrigidos em cada arquivo. L1 + mediana dos vetores unitários por componente reproduz os sintéticos de 11/09; apenas uma dessas mudanças não reproduz. Definições atuais reproduzem os dois registros de 14/09. Controle reduzido: uma thread coincide com a ML-15 em 27/27 métricas; oito threads coincidem com o histórico em 27/27. Matriz completa com oito threads: zero diferenças nas nove células, incluindo médias, desvios, ICs e vetores dos 92 participantes. Foram emitidos 276 avisos; duração registrada de 12.438,0 s. Auditoria das sete comparações e controles passou; 177 testes de ML passaram, incluindo dez novos controles.
+
+**Adaptação.** A mediana dos vetores brutos não reproduziu o sintético antigo; a dos unitários reproduziu, e as tentativas intermediárias ficaram no manifesto. O primeiro JSON sintético publicava cinco métodos com dois nomes antigos: a comparação declara os aliases e esse escopo, sem fingir que os sete métodos já estavam lá. Os pools são carregados antes de aplicar o limite de threads e os valores efetivos são registrados. threadpoolctl 3.6.0 já instalado ganhou pin explícito, sem atualização.
+
+**O que deu errado no caminho.** A restrição da sessão inicialmente negou escrita e leitura dos metadados Git na nova worktree; as operações foram realizadas com a autorização apropriada. A primeira junction ampla de dados foi restringida aos brutos antes das execuções, com cache copiado, preservando o processamento original.
+
+**Risco em aberto.** A lista de participantes da execução original, o fonte anterior às correções e o número histórico de threads não foram recuperados. Foram obtidas reconstruções consistentes com o procedimento e os resultados, não inventados documentos de origem. Igualdade neste ambiente não garante igualdade em outra arquitetura; a variante sem scaler continua não convergida. Esses limites foram declarados e restringem o uso dos registros, sem novo trabalho obrigatório para sustentar os resultados centrais. Hardware e validação do travesseiro continuam nos itens próprios, não foram resolvidos por esta investigação. ML-16 fechado pela reprodução e delimitação da procedência; sem merge automático.
+
+**Procedência.** docs/RASTREABILIDADE-ML-16.md; ml/experimentos/saida/ml16/ (sete resultados, controles, manifesto e auditoria); ml/ferramentas/rastrear_ml16.py e auditar_ml16.py; testes de ambos; requisitos pinados, backlog, README e notas de atualização de REPRODUCAO-ML-15, RESULTADOS-TCC e LIMITACOES-TCC. Base dependente das PRs #82/#83; fontes, métricas históricas e arquivos dessas branches preservados.
+
+---
+
+# 2026-11-05 — revisão e integração das PRs #79 a #84
+
+**O problema, como foi entendido no início.** Enquanto o limite de uso desta sessão estava
+esgotado, o autor seguiu o projeto com outra ferramenta, aprovando cada trabalho: seis PRs abertas
+para `develop` — `CALC-04` (a retomada do trabalho deixado aqui), `API-05`, `UI-24` e a cadeia
+`ML-14` → `ML-15` → `ML-16`. O pedido foi revisá-las antes de qualquer merge, conferindo os
+relatórios, os diffs e as ferramentas de auditoria.
+
+**Hipótese de trabalho.** Que as afirmações dos relatos e dos relatórios se sustentassem quando
+**executadas**, e não só lidas; e que a integração das seis, com o diário e o backlog de cada uma,
+fechasse nas conferências.
+
+**O que foi testado, e como.** Por PR: suítes em ambiente limpo; os testes novos contra o código de
+`develop`, para conferir que falham sem a correção; as três sabotagens do `CALC-04` sobre o commit
+da PR. Para ML, um verificador **independente** do F1 pelas contagens e um comparador
+**independente** dos JSONs histórico × novo, folha a folha, sem reaproveitar as ferramentas
+revisadas; as reconstruções da `ML-16` comparadas da mesma forma. Os campos do diário de cada
+entrada, por script. A integração simulada numa worktree descartável e depois feita em `develop`,
+na ordem das PRs, com conferências a cada merge.
+
+**Resultado medido.** `CALC-04`: sabotagens **3/3**. `API-05`: 453 testes; **20 dos 36** casos
+novos falham com o `consulta.py` de `develop`; nenhum cliente manda `desde`/`ate`. `UI-24`: 489
+testes, build limpo; **9 dos 11** novos falham com o hook de `develop`. `ML-14`: o verificador
+independente confirma **94 valores, 21 divergências em 7 de 18 arquivos**. `ML-15`: ML-03, ML-04,
+otimizações, ML-12 e ML-05 com **zero diferença** em milhares de valores; as 2 056 diferenças da
+ablação ficam **todas** no item 2 (sem scaler). `ML-16`: pilotos e sintéticos batem; **com 8
+threads, o item 2 reproduz o histórico em 2 637 valores, zero diferenças**. Integrado: 7
+conferências de documento, 453 + 177 + 489 testes, build; CI de `develop` verde; as seis PRs
+marcadas como mescladas.
+
+**Adaptação.** As sete entradas de diário das PRs não tinham o campo "O que deu errado no
+caminho" — a maioria relatava os erros dentro de "Adaptação"; as frases foram **movidas** para o
+campo, nas próprias branches, antes do merge. A `ML-15` citava só a diferença de kappa **médio** da
+variante sem scaler (0,0045); por participante ela chega a 0,17 de kappa e 0,23 de
+especificidade, e isso entrou em `LIMITACOES-TCC.md`: um resultado que depende do número de threads
+não sustenta casas decimais. As notas de contagem das branches paralelas ganharam uma nota de
+conciliação no backlog.
+
+**O que deu errado no caminho.** Três coisas, todas de ferramenta minha. O resolvedor de
+conflitos por união, escrito para o diário e o backlog, primeiro não casou nenhum bloco: os
+arquivos são CRLF e a expressão esperava LF — e a simulação seguiu com marcadores de conflito
+commitados (era descartável; refeita). Na integração real, o mesmo resolvedor **perdeu o fechamento
+do `ML-16`**: quando a mesma linha vinha dos dois lados, ele mantinha a de `develop`, e a da #84 era
+a fechada. Na simulação isso não apareceu porque a #84 entrava de uma vez. Quem pegou foi o
+`conferir_backlog` (39 declarado × 40 recontado, `ML-16` aberto fora do quadro), antes do push; a
+linha foi restaurada da #84 dentro do próprio merge, ainda local, e um verificador de "linhas que
+cada PR mudou × `develop`" confirmou que nada mais se perdeu. E um comando de conferência foi
+recusado pelo verificador de segurança do terminal por sintaxe ambígua, e foi refeito como script.
+
+**Risco em aberto.** A `API-05` e a `UI-24` mudam o comportamento do site: valem depois do
+release, com o login. A variante sem scaler continua não convergida e dependente de threads —
+declarado em `LIMITACOES-TCC.md`. A pasta `esquemaEletrico/` (três imagens do circuito) está não
+rastreada na raiz do repositório principal, e não foi tocada.
+
+**Procedência.** PRs #79 a #84, mescladas em `develop` (`b844647`); commits de ajuste nas branches
+`035c829`, `7e873c3`, `88a0a1a`, `94765bb`, `a766a3a`, `6b2bac6`; relatórios
+`docs/REPRODUCAO-ML-15.md` e `docs/RASTREABILIDADE-ML-16.md`; conferências e comparadores
+independentes rodados nesta máquina em 05/11.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

@@ -834,12 +834,26 @@ nossa no texto, e precisa continuar marcado** — é o tipo de conta que a banca
 refazer, e atribuí-la aos autores dos artigos seria atribuir-lhes conclusão que eles não
 tiram.
 
-**Sobre a degeneração.** O texto afirma que os valores são *exatamente* os do trivial, não
-próximos. Isso é verificável: nos três JSONs de `ml02_*` as três chaves têm os mesmos `vp`,
-`vn`, `fp`, `fn`. É uma afirmação forte e ela se sustenta — mas note que `f1_vigilia` sai
-`NaN` nessas linhas (divisão por zero, nenhuma época predita como vigília), e **`NaN` em JSON
-não é JSON válido em sentido estrito**. Se algum dia esses arquivos passarem por um parser
-mais rigoroso que o do Python, é aí que vai quebrar.
+**Sobre a degeneração e a correção do F1 (ML-14, 04/11/2026).** A identidade
+com o trivial continua verificável pelas contagens vp, vn, fp e fn dos JSONs
+ml02: as previsões degeneradas têm as mesmas contagens. Os valores históricos
+de f1_vigilia registrados como NaN nesses casos, porém, eram um erro do
+avaliador, não uma indefinição legítima: quando há vigília verdadeira e
+nenhum acerto de vigília, F1 é zero. A implementação passou a calcular
+F1 diretamente como 2TP/(2TP + FP + FN), mantendo NaN apenas quando a classe
+não aparece nem na verdade nem na predição (denominador zero).
+
+A auditoria reproduzível está em ml/ferramentas/auditar_f1.py; a saída
+ml/experimentos/saida/ml14_auditoria_f1.json confere 94 valores reconstruíveis
+em 18 arquivos, encontra 21 divergências em 7 arquivos e registra cada valor
+recalculado (zero), caminho e hash SHA-256 da fonte (UTF-8, fins de linha LF). Os arquivos históricos
+foram preservados. A auditoria não retreina modelos nem reestima médias e
+intervalos sem contagens por sujeito ou predições disponíveis. Estes números
+descrevem os arquivos inspecionados, não uma revisão integral dos experimentos.
+
+Os NaN permanecem nos JSONs originais e não são JSON estrito. O relatório
+novo usa null e um estado explícito para representar o NaN legado; os
+comandos para regenerá-lo e conferi-lo estão no README do ml/.
 
 ### Y.1.4 — teto de concordância entre pontuadores
 
@@ -1168,3 +1182,25 @@ você colar as duas seções sem os `n`, vira erro aparente de transcrição.
 - **Não afirma nada sobre o protótipo em placa.** Nenhum número deste capítulo foi medido no
   dispositivo. Todo ele é sobre bases públicas de acelerometria com rotulagem
   polissonográfica, e a seção Y.8 declara isso.
+
+
+**Reconferência por execução (ML-15, 05/11/2026).** Foram concluídas 15 execuções
+com treinamentos novos e entradas de features preservadas em cópia isolada. Os
+resultados centrais de transferência, otimizações, validação externa, lateralidade,
+teto interavaliador, quantização e ML-11/ML-12 foram reproduzidos. O F1 complementar
+verificou 9.687 matrizes em 132 avaliações e quantificou zeros antes excluídos,
+inclusive na transferência cabeça → cabeça E4. Isso não muda os kappas publicados.
+Não se afirma igualdade de todo o histórico: a ablação sem scaler não convergiu,
+dois snapshots sintéticos antigos divergem e as coortes piloto Wearanize de 10/7
+participantes não foram identificadas. Detalhes e evidências em
+[REPRODUCAO-ML-15.md](REPRODUCAO-ML-15.md); pendências de procedência no ML-16.
+
+
+**Atualização de rastreabilidade (ML-16, 05/11/2026).** A investigação das lacunas
+registradas na ML-15 foi concluída: coortes piloto 10/7 reconstruídas reproduzem os
+resultados; L1/mediana dos vetores unitários por componente reproduz os sintéticos
+antigos; a matriz sem scaler coincide integralmente com o histórico ao usar oito
+threads nativas. O ajuste continua sem convergência e a condição numérica é parte
+da procedência. São reconstruções verificadas, sem recuperar os arquivos/listas
+originais ausentes nem prometer igualdade em outra arquitetura. Evidências,
+controles e limites em [RASTREABILIDADE-ML-16.md](RASTREABILIDADE-ML-16.md).

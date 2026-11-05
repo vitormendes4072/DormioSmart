@@ -102,7 +102,13 @@ def ler_parametros(args):
         parametros[nome] = instante
 
     if parametros["desde"] and parametros["ate"]:
-        if parametros["desde"] > parametros["ate"]:
+        # API-05: a ordem lexicográfica não acompanha os instantes quando
+        # os offsets diferem (nem ao omitir a fração de segundo).
+        desde = datetime.fromisoformat(parametros["desde"])
+        ate = datetime.fromisoformat(parametros["ate"])
+        if (desde.utcoffset() is None) != (ate.utcoffset() is None):
+            return None, "'desde' e 'ate' devem ambos ter fuso horario ou ambos nao ter"
+        if desde > ate:
             return None, "'desde' e posterior a 'ate'"
 
     bruto = args.get("limite")

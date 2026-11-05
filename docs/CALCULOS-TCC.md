@@ -191,8 +191,10 @@ de movimento brusco.
 #### Z.1.4 Largura de banda e taxa de amostragem
 
 O componente dispõe de filtro digital passa-baixa programável entre 5 Hz e 260 Hz, e de taxa
-de saída programável entre 4 Hz e 1 000 Hz (*especificação*). A biblioteca empregada adota,
-por omissão, a configuração de 260 Hz. O trabalho adota **21 Hz**, e a justificativa é
+de saída programável entre 4 Hz e 1 000 Hz (*especificação*). A biblioteca de acesso ao
+componente empregada nos programas de bancada adota, por omissão, a configuração de 260 Hz. O
+trabalho adota **21 Hz** — configurado explicitamente nos programas de bancada e gravado
+diretamente no registrador de configuração pelo firmware do dispositivo —, e a justificativa é
 quantitativa em três frentes.
 
 **Primeira — o conteúdo do sinal.** Movimento corporal em cama é fenômeno de poucos hertz. A
@@ -403,113 +405,95 @@ do índice, e não ajuste posterior.
 
 ### Z.3 Modelo elétrico das interfaces
 
-#### Z.3.1 O ramo de acionamento por botão
+> ✏️ *04/11 (`CALC-04`): reescrita para a arquitetura adotada. Saíram o ramo do botão com
+> *pull-down* de 10 kΩ e a fonte de despertar por interrupção do sensor — andaime da simulação e
+> arquitetura anterior (`HW-01`, `ARQ-01`); o firmware da C2 não usa nenhum dos dois. A janela do
+> *pull-up* passou de um valor hipotético de 4,7 kΩ para os dois valores que o módulo traz, na
+> frequência que o firmware usa.*
 
-O protótipo de bancada inclui um botão com resistor de 10 kΩ em configuração *pull-down*,
-alimentado em 3,3 V. Com o contato fechado, o ramo conduz (*cálculo*)
+O dispositivo tem uma única interface elétrica com o transdutor: o barramento I²C. O despertar do
+microcontrolador é por temporizador, a cada 1,7 s (seção Z.4.4b), de modo que nenhum pino de
+interrupção é ligado e não há ramo de acionamento a analisar.
 
-> I = V / R = 3,3 / 10 000 = **0,330 mA** e P = V² / R = **1,089 mW**
+#### Z.3.1 O barramento como o firmware o configura
 
-Duas observações são necessárias para que esse número não seja mal empregado. **A primeira**
-é que se trata de um **valor de pico, não de média**: com o contato aberto — a condição
-predominante — o ramo não conduz, e sua contribuição para o balanço energético da seção Z.4 é
-proporcional à fração de tempo em que o botão permanece pressionado, que é desprezível. **A
-segunda** é que este ramo é **instrumento de simulação, e não parte do produto**: ele existe
-para emular, em ambiente de simulação, o sinal de despertar que, no dispositivo real, provém
-da própria interrupção de movimento do acelerômetro. A análise é apresentada por
-completude do levantamento elétrico da bancada, e o ramo não integra o modelo de consumo do
-dispositivo.
+As linhas de dados e de relógio do barramento são ligadas aos pinos 21 e 22 do microcontrolador,
+e o firmware opera o barramento no **modo rápido, a 400 kHz** (*especificação de projeto*, lida
+do código-fonte). O módulo de avaliação empregado traz os resistores de polarização no próprio
+módulo, de **2,2 kΩ ou 10 kΩ conforme o lote** (*especificação de terceiros*, a confirmar com
+ohmímetro no exemplar), e nenhum resistor externo é acrescentado.
 
-#### Z.3.2 O barramento I²C e a janela admissível de resistência de polarização
+#### Z.3.2 A janela admissível de resistência de polarização
 
-A comunicação entre microcontrolador e sensor emprega barramento I²C, cujas linhas são de
-dreno aberto e exigem resistores de polarização para o nível alto. O valor desses resistores
-não é livre: ele é limitado **por baixo** pela capacidade de dreno dos dispositivos e **por
-cima** pelo tempo de subida do barramento.
+As linhas do barramento são de dreno aberto e exigem resistores de polarização para o nível
+alto. O valor desses resistores é limitado **por baixo** pela capacidade de dreno dos
+dispositivos e **por cima** pelo tempo de subida do barramento.
 
-**Limite inferior.** O dispositivo que impõe o nível baixo precisa levar a linha até a tensão
-de saída em nível baixo especificada. Com dreno de 3 mA a 0,4 V (*especificação*, §6.6 da
-folha de dados do componente), resulta (*cálculo*)
+**Limite inferior.** O dispositivo que impõe o nível baixo precisa levar a linha até a tensão de
+saída em nível baixo especificada. Com dreno de 3 mA a 0,4 V (*especificação*, §6.6 da folha de
+dados do componente), resulta (*cálculo*)
 
 > R<sub>mín</sub> = (V<sub>DD</sub> − V<sub>OL</sub>) / I<sub>OL</sub> = (3,3 − 0,4) / 0,003 ≈ **967 Ω**
 
+Os dois valores do módulo estão acima desse limite.
+
 **Limite superior.** A especificação I²C limita o tempo de subida entre 0,3·V<sub>DD</sub> e
-0,7·V<sub>DD</sub> a 1 000 ns no modo padrão (100 kHz) e a 300 ns no modo rápido (400 kHz).
-Para a subida exponencial de constante RC, esse trecho corresponde a ln(0,7/0,3)·RC =
-0,847·RC, de onde (*cálculo*)
+0,7·V<sub>DD</sub> a 1 000 ns no modo padrão (100 kHz) e a 300 ns no modo rápido (400 kHz). Para
+a subida exponencial de constante RC, esse trecho corresponde a ln(0,7/0,3)·RC = 0,847·RC. Fixada
+a resistência, obtém-se a **maior capacitância de barramento** admissível (*cálculo*):
 
-> R<sub>máx</sub> = t<sub>r</sub> / (0,847 · C<sub>b</sub>)
+> C<sub>b,máx</sub> = t<sub>r</sub> / (0,847 · R)
 
-com C<sub>b</sub> a capacitância total do barramento. Os valores resultantes:
-
-| Capacitância do barramento | Modo padrão (100 kHz) | Modo rápido (400 kHz) |
+| Resistência do módulo | Modo padrão (100 kHz) | Modo rápido (400 kHz, o do firmware) |
 |---:|---:|---:|
-| 50 pF | 23,60 kΩ | 7,08 kΩ |
-| 100 pF | 11,80 kΩ | 3,54 kΩ |
-| 200 pF | — | 1,77 kΩ |
+| 2,2 kΩ | 536 pF | **161 pF** |
+| 10 kΩ | 118 pF | **35 pF** |
 
-O modelo explica dois comportamentos observáveis. **Primeiro**, por que a resistência de
-polarização usualmente embarcada nos módulos de avaliação, da ordem de alguns quilo-ohms,
-satisfaz simultaneamente os dois limites nas duas velocidades para capacitâncias típicas de
-montagem em placa de ensaio. **Segundo**, e de utilidade diagnóstica direta, por que uma
-montagem pode operar sem falhas a 100 kHz e falhar a 400 kHz: a janela admissível estreita-se
-por um fator superior a três ao mudar de modo, e uma polarização fraca, ou uma capacitância
-elevada por condutores longos, atravessa o limite superior no modo rápido antes de
-atravessá-lo no modo padrão. O procedimento de diagnóstico do barramento adotado neste
-trabalho — repetir o mesmo conjunto de verificações nas duas velocidades — apoia-se
-precisamente nessa assimetria.
+O resultado tem consequência direta sobre a montagem. Com o módulo de 2,2 kΩ, a operação a
+400 kHz admite até 161 pF, folga ampla para um módulo ligado por condutores curtos. Com o módulo
+de 10 kΩ, o limite cai a **35 pF** — valor que a capacitância de entrada dos dois dispositivos,
+somada à de uma placa de ensaio e de condutores de alguns centímetros, facilmente excede. Nessa
+condição, o barramento opera fora da especificação no modo rápido e dentro dela no modo padrão,
+o que explica o padrão de falha "erros só a 400 kHz" que o procedimento de diagnóstico do
+barramento adotado neste trabalho foi construído para identificar, repetindo o mesmo conjunto de
+verificações nas duas velocidades. A janela admissível estreita-se por um fator superior a três
+ao passar do modo padrão ao rápido. **A resistência do módulo é, por isso, a primeira medição da
+bancada**: com 10 kΩ, ou se opera a 100 kHz, ou se acrescentam resistores externos em paralelo.
 
-Registra-se a consequência energética, que a seção Z.4 incorpora: enquanto uma linha é
-mantida em nível baixo, a corrente que atravessa o resistor de polarização vale
-(V<sub>DD</sub> − V<sub>OL</sub>)/R, o que dá 0,617 mA por linha com resistência de 4,7 kΩ, ou
-1,234 mA nas duas linhas simultaneamente (*cálculo*). Esse valor é **maior que o consumo do
-próprio acelerômetro** em modo de acelerômetro exclusivo, apresentado na seção Z.4, e é
-frequentemente omitido dos balanços energéticos.
+**Consequência energética.** Enquanto uma linha é mantida em nível baixo, a corrente que
+atravessa o resistor de polarização vale (V<sub>DD</sub> − V<sub>OL</sub>)/R: **1,318 mA** por
+linha com 2,2 kΩ e **0,290 mA** com 10 kΩ (*cálculo*). Esse consumo só existe durante o tráfego.
+No dispositivo, o barramento trafega apenas ao esvaziar a fila do transdutor, e a 400 kHz isso
+ocupa uma fração pequena do tempo: a escolha entre os dois módulos altera a corrente média da
+arquitetura adotada em apenas 0,01 mA (seção Z.4.4c).
 
-#### Z.3.3 Compatibilidade de níveis lógicos
+#### Z.3.3 Compatibilidade de níveis lógicos e a tensão de alimentação do módulo
 
 O sensor especifica limiares de entrada proporcionais à sua tensão de referência lógica:
-V<sub>IH</sub> ≥ 0,7·V<sub>LOGIC</sub> e V<sub>IL</sub> ≤ 0,3·V<sub>LOGIC</sub>
-(*especificação*). Com referência lógica em 3,3 V, os limiares valem 2,31 V e 0,99 V, ambos
-folgadamente atendidos pelas saídas do microcontrolador, que opera na mesma tensão.
+V<sub>IH</sub> ≥ 0,7·V<sub>LOGIC</sub> e V<sub>IL</sub> ≤ 0,3·V<sub>LOGIC</sub> (*especificação*).
+Com referência lógica em 3,3 V, os limiares valem 2,31 V e 0,99 V, ambos folgadamente atendidos
+pelas saídas do microcontrolador, que opera na mesma tensão.
 
-Cabe, contudo, um registro que a leitura direta da folha de dados não fornece: **em barramento
-de dreno aberto, o nível alto não é imposto por nenhum dos dispositivos, e sim pela tensão a
-que os resistores de polarização estão referenciados**. A compatibilidade de níveis é, por
-conseguinte, uma propriedade da montagem, não dos componentes. Se os resistores de
-polarização do módulo estiverem referenciados à entrada de alimentação não regulada, e esta
-for de 5 V, as entradas do microcontrolador — especificadas para 3,3 V — serão submetidas a
-5 V, ainda que ambos os circuitos integrados sejam compatíveis entre si. A montagem adotada
-neste trabalho alimenta o módulo a partir da saída regulada de 3,3 V do microcontrolador,
-condição sob a qual a questão não se coloca; a verificação da tensão de referência dos
-resistores de polarização é, ainda assim, item do procedimento de conferência de montagem.
+Em barramento de dreno aberto, contudo, **o nível alto não é imposto por nenhum dos dispositivos,
+e sim pela tensão a que os resistores de polarização estão referenciados**. A compatibilidade de
+níveis é uma propriedade da montagem, não dos componentes. A montagem adotada alimenta o módulo
+a partir da saída regulada de 3,3 V do microcontrolador, condição sob a qual o barramento fica em
+3,3 V qualquer que seja a referência dos resistores. Há, porém, uma recomendação de terceiros
+para alimentar esse módulo em 5 V, porque o regulador do próprio módulo pode deixar a tensão do
+sensor baixa demais quando alimentado em 3,3 V. Antes de adotá-la, é indispensável conferir no
+exemplar a que trilho os resistores de polarização estão ligados: **se estiverem ligados à
+entrada de alimentação do módulo, 5 V chegariam às linhas do barramento, que o microcontrolador
+não tolera**. A decisão pertence à etapa de definição de alimentação do protótipo (`HW-02`).
 
-#### Z.3.4 A fonte de despertar
+#### Z.3.4 Faixa de validade
 
-Na configuração de bancada, o despertar do microcontrolador é produzido por transição em
-pino de entrada de uso geral com retenção em domínio de tempo real, acionada pelo botão
-descrito em Z.3.1. Na configuração de produto, essa função cabe à **saída de interrupção do
-próprio acelerômetro**, configurada para detecção de movimento, que dispensa o botão e o
-resistor associado.
-
-A substituição tem consequência que ultrapassa a economia de dois componentes, e é
-desenvolvida em Z.4.3: o modo de detecção de movimento do acelerômetro opera com **taxa de
-atualização limitada a 40 Hz**, inferior à taxa mínima de amostragem derivada em Z.1.4, de
-modo que as duas arquiteturas — despertar por movimento e amostragem contínua por época — são
-**mutuamente exclusivas** nos termos em que foram especificadas.
-
-#### Z.3.5 Faixa de validade
-
-**(i)** Todos os valores pressupõem alimentação de 3,3 V; em 5 V, os limiares proporcionais
-deslocam-se e a corrente pelos resistores de polarização cresce na mesma proporção. **(ii)**
-A capacitância do barramento é **estimativa**: ela depende do comprimento dos condutores, do
-número de dispositivos e da montagem, e a tabela de Z.3.2 é por isso apresentada como função
-dela, e não como valor único. A medição direta do tempo de subida com osciloscópio substitui
-toda a tabela e é o procedimento recomendado. **(iii)** A resistência dos polarizadores
-embarcados no módulo de avaliação empregado **não é especificação de fabricante** e deve ser
-verificada com ohmímetro no exemplar em uso. **(iv)** O modelo de subida exponencial supõe
-carga puramente resistiva-capacitiva; polarização ativa ou aceleradores de subida, se
-presentes, invalidam-no.
+**(i)** Todos os valores pressupõem barramento em 3,3 V. **(ii)** A capacitância do barramento é
+desconhecida — depende dos condutores, da placa de ensaio e da montagem —, e a tabela de Z.3.2 é
+por isso apresentada como limite, e não como verificação; a medição direta do tempo de subida com
+osciloscópio substitui toda a tabela. **(iii)** A resistência dos polarizadores do módulo **não é
+especificação de fabricante**: os dois valores vêm de fonte de terceiros e devem ser medidos com
+ohmímetro no exemplar em uso. **(iv)** O modelo de subida exponencial supõe carga puramente
+resistiva-capacitiva.
 
 ### Z.4 Modelo de consumo e autonomia
 
@@ -590,7 +574,7 @@ amostragem, e não uma ineficiência de implementação — e que ele é consequ
 escolha de banda documentada em Z.1.4, o que ilustra o acoplamento entre os modelos deste
 capítulo.
 
-Da segunda impossibilidade decorre a incompatibilidade anunciada em Z.3.4. A arquitetura de
+Da segunda impossibilidade decorre uma incompatibilidade de arquitetura. A arquitetura de
 **despertar por movimento** exige que o acelerômetro permaneça em modo de baixo consumo, e
 esse modo não atinge a taxa que a extração de características requer. As duas arquiteturas
 não se combinam: o despertar por movimento é compatível com o registro de **eventos** de
@@ -648,9 +632,9 @@ resulta (*cálculo* sobre *especificação* e *estimativa*):
 | Despertar por movimento | 1,91 mA |
 
 A arquitetura reduz a corrente da amostragem contínua por um fator de **4,5** e preserva o
-vetor de características. Nela, o rádio responde por 63 % da corrente média, de modo que a
-agregação das entregas em lote, uma por hora, reduz a corrente a 2,03 mA — da ordem do
-despertar por movimento com entrega por evento. A varredura dos parâmetros estimados produz
+vetor de características. Com uma entrega por época, o rádio responde por 63 % da corrente
+média, de modo que a agregação das entregas em lote é a alavanca seguinte; a seção Z.4.4c
+quantifica a agregação efetivamente adotada. A varredura dos parâmetros estimados produz
 corrente entre 3,20 mA e 18,55 mA, e a ordem entre as três arquiteturas se mantém em toda a
 faixa de consumo fixo da placa examinada em Z.4.5.
 
@@ -662,6 +646,55 @@ avaliadores humanos (*medição*). Pesadas as duas grandezas, **adota-se a amost
 sono leve e fila do transdutor**. A latência de despertar do sono leve, a corrente desse modo
 na placa e o comportamento da fila ao longo de uma noite não foram medidos, e constam como
 parâmetros desta predição (Z.4.7).
+
+#### Z.4.4c A arquitetura adotada, com os parâmetros do firmware
+
+O firmware construído fixa três parâmetros que a comparação anterior deixava em aberto
+(*especificação de projeto*, lida do código-fonte). O processador esvazia a fila do transdutor
+a cada **1,7 s**, o que confere com as 85 amostras de meia fila a 50 Hz. As épocas são
+entregues em **lote a cada 10 minutos**, isto é, seis entregas por hora. E cada entrega é
+completa: o rádio é ligado, associa-se ao ponto de acesso, sincroniza o relógio, negocia a
+sessão cifrada, envia o lote e é desligado — o sono leve não mantém a conexão sem fio. Além disso, cada época é gravada
+num registro de 64 bytes da memória *flash* antes do envio. O barramento que liga o
+transdutor ao processador opera a **400 kHz**, também lido do código-fonte (seção Z.3.1). ✏️ *04/11
+(`CALC-04`): a primeira versão desta seção calculou o esvaziamento da fila a 100 kHz e com
+resistores de polarização de 4,7 kΩ, o que dava 2,68 mA; os números abaixo foram corrigidos.*
+
+A duração de uma entrega completa não é especificação e não foi medida: entra como
+**estimativa em faixa**, de 2 s a 8 s, com 4 s como referência. A gravação na *flash* também
+entra como estimativa em faixa, por depender do componente de memória do módulo. Sob as demais
+premissas de Z.4.4, obtém-se (*cálculo* sobre *especificação* e *estimativa*):
+
+| Duração de uma entrega | I<sub>média</sub> (só circuitos integrados) | Parcela do rádio | Autonomia, 2 000 mA·h |
+|---:|---:|---:|---:|
+| 2 s | 1,95 mA | 17 % | 1 027 h |
+| **4 s** | **2,28 mA** | **29 %** | **878 h** |
+| 8 s | 2,94 mA | 45 % | 680 h |
+
+O valor de referência situa-se, como esperado, entre a entrega por época (5,31 mA) e a entrega
+horária (2,03 mA) de Z.4.4b. A varredura de todos os parâmetros estimados — incluindo os dois
+valores de resistência de polarização do módulo, que alteram o resultado em apenas 0,01 mA —
+produz corrente entre **1,88 mA e 5,19 mA**.
+
+O resultado que esta seção acrescenta não é o valor, e sim a sua composição. Decompondo a
+corrente de referência:
+
+| Parcela | Corrente | Fração |
+|---|---:|---:|
+| Transdutor, sempre ligado a 50 Hz | 0,600 mA | 26,3 % |
+| Processador em sono leve | 0,787 mA | 34,5 % |
+| Processador acordado, esvaziando a fila | 0,212 mA | 9,3 % |
+| Rádio, entrega a cada 10 min | 0,667 mA | 29,3 % |
+| Gravação na *flash* | 0,014 mA | 0,6 % |
+
+**Nenhuma parcela domina.** Com a entrega por época, o rádio respondia por 63 % e a agregação
+em lote era a alavanca; agregada a dez minutos, essa alavanca está gasta. As três maiores
+parcelas — o processador em sono leve, o rádio e o transdutor — têm a mesma ordem de grandeza,
+e a maior delas responde por cerca de um terço. Segue-se que nenhuma alteração isolada da
+política de sono, do intervalo de entrega ou do modo do transdutor reduz a corrente média em
+mais do que cerca de um terço; o esvaziamento da fila, que a 400 kHz ocupa pouco tempo, pesa
+menos de um décimo. A gravação na *flash*, por sua vez, é desprezível em toda a faixa
+estimada.
 
 #### Z.4.5 O que a placa de desenvolvimento faz com o modelo
 
@@ -682,6 +715,20 @@ esse consumo como parâmetro e varrendo a faixa declarada:
 Invertendo a relação, obtém-se o consumo fixo que reduz a vantagem a um dado fator
 (*cálculo*): basta **0,54 mA** para que a razão caia de 12,5× para 10×, **3,6 mA** para que
 caia a 5× e **20,1 mA** para que caia a 2×.
+
+Para a arquitetura adotada, com os parâmetros do firmware (Z.4.4c), o mesmo exercício dá:
+
+| Consumo fixo da placa | I<sub>média</sub> | Autonomia, 2 000 mA·h |
+|---:|---:|---:|
+| 0 (somente circuitos integrados) | 2,28 mA | 878 h |
+| 1 mA | 3,28 mA | 610 h |
+| 5 mA | 7,28 mA | 275 h |
+| 10 mA | 12,28 mA | 163 h |
+| 20 mA | 22,28 mA | 90 h |
+
+Como a corrente dos circuitos integrados é de apenas 2,28 mA, **um consumo fixo de 1 mA já
+acrescenta 44 %**, e um de 3 mA a ultrapassa. Na arquitetura adotada, o consumo fixo da placa
+deixa de ser um parâmetro entre outros e passa a ser, potencialmente, a maior parcela.
 
 A leitura correta desse quadro é precisa, e convém não exagerá-la. O consumo fixo da placa
 **não inverte o sinal da vantagem**: a arquitetura de sono continua sendo a melhor em toda a
@@ -704,23 +751,21 @@ Distinta da autonomia energética, e independentemente medida, está a autonomia
 Diferentemente dos valores da seção anterior, esta grandeza foi **medida**, por execução do
 próprio código de armazenamento em ambiente de teste, e não estimada.
 
-O registro de época ocupa **32 bytes**, tamanho travado por asserção de compilação. Daí
-resultam, em resolução plena de 30 s:
+Na arquitetura adotada, cada época — com o vetor de características — é gravada num registro de
+**64 bytes**, com verificação de integridade, numa partição dedicada de **2 MiB** da memória
+*flash*, organizada como registro circular. A leitura da tabela de partições pelo próprio
+código de armazenamento mede **32 704 registros, ou 272,5 h — 11,4 dias** de épocas de 30 s sem
+nenhuma entrega (*medição*). Uma noite de oito horas ocupa menos de 3 % da partição.
 
-| Orçamento de memória | Épocas | Cobertura em resolução plena |
-|---|---:|---:|
-| 4 KiB — memória de tempo real, sobrevive ao sono profundo | 128 | 1,07 h |
-| 6 KiB — memória de tempo real, limite prático | 192 | 1,60 h |
-| 32 KiB — memória dinâmica | 1 024 | **8,53 h** |
-| 128 KiB — memória dinâmica, orçamento amplo | 4 096 | 34,1 h |
-
-A configuração adotada no sketch de bancada emprega 1 024 épocas, o que cobre uma noite de
-oito horas **sem degradar a resolução uma única vez**. Registra-se que a política de
-armazenamento adotada, ao atingir a ocupação limite, **funde épocas adjacentes em vez de
-descartá-las**, de modo que o que se perde ao ultrapassar a capacidade é resolução temporal, e
-não cobertura — e que essa fusão **não introduz erro de agregação**, por ser o método de
-resumo o máximo da magnitude, que é associativo: o máximo de duas épocas adjacentes de 30 s
-é, exatamente, o máximo da época de 60 s que as cobre.
+Três propriedades da fila, verificadas em ambiente de teste contra uma memória *flash*
+simulada com interrupção de energia em cada byte gravado, importam para a autonomia. A
+confirmação de entrega **não apaga** o registro, apenas o marca, de modo que uma interrupção
+durante o envio leva ao reenvio, e não à perda. Com a partição cheia, **a época nova é
+recusada** — nenhum registro pendente é sobrescrito. E a fila **sobrevive à reinicialização**
+do processador, sendo reconstruída a partir da própria partição. ✏️ *Até 04/11 esta seção
+descrevia a fila anterior, na memória dinâmica, com registro de 32 bytes, 8,53 h em 32 KiB e
+fusão de épocas adjacentes ao encher; a fila foi substituída porque a época fundida não carrega
+o vetor de características.*
 
 #### Z.4.7 Faixa de validade
 
@@ -731,6 +776,12 @@ arquiteturas, não antecipa autonomia. **(iii)** A relação autonomia = C/I ign
 corrente de descarga sobre a capacidade efetiva da bateria, a tensão de corte do circuito de
 proteção e a dependência da capacidade com a temperatura; para correntes baixas em relação à
 capacidade nominal, como é o caso, a aproximação é razoável, mas ela é aproximação.
+A duração de uma entrega completa — associação ao ponto de acesso, sessão cifrada e envio —
+é a terceira estimativa, e a que mais pesa na arquitetura adotada: entre 2 s e 8 s, a corrente
+média vai de 1,95 mA a 2,94 mA. O próprio firmware admite entregas bem mais longas — os limites
+de espera de associação, sincronização do relógio e envio somam 33 s, e uma mesma conexão envia
+até 20 lotes quando há épocas acumuladas —, de modo que uma rede de qualidade ruim, ou um período
+sem rede seguido da descarga do acumulado, fica fora da faixa examinada.
 **(iv)** As correntes transcritas são especificação a 25 °C; um dispositivo alojado no
 interior de um travesseiro opera acima da temperatura ambiente, e a caracterização térmica
 está registrada como trabalho não executado. **(v)** O consumo fixo da placa, que a seção
@@ -754,6 +805,40 @@ repositório foi **reconferido** antes de entrar aqui.
 > Folhas de dados: PS-MPU-6000A-00 Rev. 3.2 (FIFO, taxa, tolerância do oscilador) e ESP-IDF v6.1
 > (sono leve). Análise completa: `docs/DECISAO-ARQ-01-CADENCIA.md`.
 
+> ✏️ **04/11 (`CALC-01`, refeito para a C2 como implementada).** Entraram a seção Z.4.4c, a tabela da
+> C2 em Z.4.5, a nova Z.4.6 (fila na *flash*) e a estimativa da entrega em Z.4.7. Os números saem
+> de `scripts/estudo_cadencia.py`, que **lê do firmware** o intervalo de envio
+> (`INTERVALO_DE_ENVIO_US`, `sketch.ino`) e o de esvaziamento (`INTERVALO_DE_DRENAGEM_US`,
+> `nucleo/cadeia_c2.h`): se o código mudar, o `--conferir` reprova (3/3 sabotagens em 04/11). A
+> capacidade da fila sai de `make capacidade` (`firmware/nucleo/README.md`). A hipótese registrada
+> antes do cálculo — "o rádio continua a maior parcela" — **não se confirmou**: 25 %, empatado
+> com as outras três. ✏️ *04/11 (`CALC-04`): **corrigido.** O cálculo usou o I2C a 100 kHz e
+> pull-ups de 4,7 kΩ; o firmware usa 400 kHz (`Wire.setClock`, agora lido pelo script) e o módulo
+> traz 2,2 ou 10 kΩ. A referência passou de 2,68 para **2,28 mA**; a maior parcela é o sono leve
+> (34,5 %), o rádio 29 %, a fila 9 %. A conclusão — nenhuma parcela domina, a placa decide — fica.*
+
+> ✏️ **04/11 (`CALC-02`).** Os números do Z.1 que ainda não estavam travados — os σ por banda, o fator
+> √(260/21) = 3,52, o ruído de quantização (0,0176 e 0,0705 mg) e as razões de 104× e 26×, as taxas de
+> 42 e 520 Hz e as 1 260 e 15 600 amostras por época — entraram no `conferir()` de
+> `scripts/calculos_tcc.py`. O script também **lê do firmware** a configuração do sensor: os
+> registradores que o `sketch.ino` grava (`nucleo/fifo_mpu.h`: `DLPF_CFG = 4` → 21 Hz,
+> `SMPLRT_DIV = 19` → 50 Hz, `AFS_SEL = 2` → ±8 g) e as chamadas da biblioteca nos dois sketches de
+> bancada. 4/4 sabotagens (DLPF e fundo de escala no firmware, filtro num sketch de bancada,
+> densidade de ruído no script). O σ a 21 Hz segue **calculado**, não medido: a medição é do
+> `CAL-01`, depois da solda.
+
+> ✏️ **04/11 (`CALC-03`).** Entraram no `conferir()` de `scripts/calculos_tcc.py` o k ≈ 67, os limiares de
+> 3σ e 5σ e as razões de 13,35× e 22,25×, o σ em m/s², os 73 % da norma L1 e o piso de 0,638 mg; e o
+> script passou a **ler o limiar** em `firmware/nucleo/payload.h` (rótulo), `firmware/nucleo/caracteristicas.h`
+> e `ml/src/features.py` (`p_frac`), e a lista `NOMES_FEATURES`. 3/3 sabotagens.
+
+> ✏️ **04/11 (`CALC-04`).** Z.3 reescrita para o barramento do produto. Entraram no `conferir()` de
+> `scripts/calculos_tcc.py` a frequência e os pinos do I2C **lidos do `sketch.ino`**, o R mínimo, a
+> capacitância máxima para 2,2 e 10 kΩ a 100 e 400 kHz (536/161 e 118/35 pF) e as correntes de
+> linha baixa. O `estudo_cadencia.py` passou a ler a mesma frequência e a tratar o pull-up como faixa
+> — o que corrigiu o `CALC-01` (2,68 → 2,28 mA). 3/3 sabotagens: o I2C a 100 kHz no `sketch.ino`
+> (reprova nos dois scripts), o SDA no GPIO 19, o pull-up de referência em 4,7 kΩ.
+
 ### Os três cálculos que já existiam, e o resultado da conferência
 
 O enunciado da tarefa avisava que três contas já haviam sido feitas informalmente ao longo do
@@ -772,7 +857,7 @@ script, e **as três batem**:
 | Custo de drenar 8 h | idem | 960 POSTs | 960 | ✅ |
 | Identidade da acurácia, Li 2025 | `RESULTADOS-TCC.md` Y.1.3 e §0.2 | p = 0,878 | 0,878 | ✅ |
 | Identidade da acurácia, Walch 2019 | idem | p = 0,910 | 0,910 | ✅ |
-| Pull-down, corrente e potência | `BACKLOG-COMPLETO.md` `CALC-04` | 0,33 mA / 1,1 mW | 0,330 mA / 1,089 mW | ✅ |
+| Pull-down, corrente e potência | `BACKLOG-COMPLETO.md` `CALC-04` | 0,33 mA / 1,1 mW | 0,330 mA / 1,089 mW | ✅ ✏️ *04/11: o ramo saiu do texto (Z.3); a asserção fica, sobre o cálculo* |
 | Resolução em ±8 g | `ML-DATASETS` §2.1 e `SINTESE` | 0,244 mg/LSB | 0,2441 | ✅ |
 | Limiar em g | `ml/src/features.py` | ≈ 0,1224 g | 0,12237 | ✅ |
 
@@ -789,7 +874,11 @@ arquivo não virar uma terceira versão divergente dos mesmos números.
 | 400 µg/√Hz | **Especificação**, e a condição importa | Idem, §6.2: **a 10 Hz, AFS_SEL = 0 (±2 g), ODR = 1 kHz**, valor típico. O projeto usa ±8 g e filtro de 21 Hz — a transposição está declarada no texto |
 | Correntes por modo do ESP32 | **Especificação** | Espressif, ESP32 Series Datasheet, Tabela 4-2. Condição: **consumo do chip**, não do módulo nem da placa |
 | σ por banda, pisos de ENMO, janela do pull-up, k = 67, razão √(260/21) | **Cálculo** | `scripts/calculos_tcc.py` |
-| Capacidade do buffer (1,07 h / 8,53 h / 960 POSTs) | **Medição** | `firmware/nucleo/capacidade.cpp`, via `make capacidade`; `sizeof(Epoca)` travado por `static_assert` |
+| Capacidade do buffer (1,07 h / 8,53 h / 960 POSTs) | **Medição** | `firmware/nucleo/capacidade.cpp`, via `make capacidade`; `sizeof(Epoca)` travado por `static_assert`. ✏️ *04/11: é a fila anterior, na RAM; saiu do texto (Z.4.6)* |
+| Capacidade da fila na *flash* (32 704 registros, 272,5 h, 11,4 dias) | **Medição** | `make capacidade`, lendo `firmware/partitions.csv`; registro de 64 B (`registro_flash.h`) |
+| Intervalo de entrega (10 min) e de esvaziamento (1,7 s) | **Especificação de projeto** | Lidos do firmware por `scripts/estudo_cadencia.py` |
+| Duração de uma entrega completa (2–8 s) | **Estimativa em faixa** | Nenhuma medição; limites de espera do firmware: 20 s (Wi-Fi) + 5 s (NTP) + 8 s (POST), até 20 lotes por conexão |
+| Tempos e corrente da gravação na *flash* | **Estimativa em faixa** | Ordem de grandeza de folhas de memória NOR SPI; o resultado é < 1 % em toda a faixa |
 | Invariância a rotação das features; 73 % da L1; 6 % residual | **Medição** | `ml/testes/test_vetor_dourado.py::test_features_invariantes_a_rotacao` |
 | Corrente de rádio (100–240 mA) | **Estimativa em faixa** | ⚠️ ver 🔧 3 |
 | Consumo fixo da placa (1–20 mA) | **Estimativa em faixa** | ⚠️ ver 🔧 3 |
@@ -801,6 +890,7 @@ arquivo não virar uma terceira versão divergente dos mesmos números.
 ```bash
 python3 scripts/calculos_tcc.py            # relatório completo + conferência
 python3 scripts/calculos_tcc.py --conferir # só a conferência
+python3 scripts/estudo_cadencia.py         # Z.4.4b e Z.4.4c, com a C2 implementada
 
 cd firmware/nucleo && make capacidade      # a capacidade do buffer, medida
 cd ml && python -m pytest testes/test_vetor_dourado.py -k invariantes
@@ -834,7 +924,7 @@ características, e o limiar sobreviveu apenas como parâmetro de uma delas. Iss
 ausência da derivação em consequência de uma decisão de projeto, que é defensável, em vez de
 lacuna, que não é.
 
-**Consequência para o backlog:** o `CALC-03` pode ser fechado. O que restou dele —
+**Consequência para o backlog:** o `CALC-03` pode ser fechado. ✏️ *Fechado em 04/11: os números do Z.2 e o limiar, lido nos três lugares em que o sistema o usa, ficaram travados no `--conferir`.* O que restou dele —
 *calibrar* o limiar — não é cálculo, é o `VIA-01`/`CAL-01`, e já está lá.
 
 🔧 **2. O `CALC-04` estava enunciado com um erro de natureza, e o texto o corrige.**
@@ -848,7 +938,8 @@ Isso importa porque o número tem tamanho suficiente para poluir o `CALC-01`: 0,
 comparável ao consumo do acelerômetro em modo normal (500 µA) e seria, se somado como
 corrente permanente, um erro de balanço energético de ordem relevante. Some-se que o botão é
 **andaime de simulação** (`HW-01`), e o valor correto a levar para o modelo de energia do
-produto é **zero**. Z.3.1 diz as três coisas.
+produto é **zero**. Z.3.1 diz as três coisas. ✏️ *04/11 (`CALC-04`): o ramo saiu do texto — a C2 não
+usa botão nem pull-down, e a Z.3 passou a tratar só o barramento I2C.*
 
 🔧 **3. O `CALC-01` foi entregue com dois parâmetros abertos, de propósito.**
 
@@ -911,7 +1002,7 @@ causa é de banda, e não de implementação.
 ## Checklist antes de colar no documento
 
 - [ ] Substituir `Z` pelo número da seção e ajustar as remissões internas
-      (`Z.1.4`, `Z.2.1`, `Z.3.4`, `Z.4.3` são referenciadas cruzadamente dentro do texto).
+      (`Z.1.4`, `Z.2.1`, `Z.3.1`, `Z.4.3`, `Z.4.4c` são referenciadas cruzadamente dentro do texto).
 - [ ] Trocar as remissões em prosa — "a seção de metodologia", "a validação do protótipo
       físico", "a caracterização de bancada" — pelos números de seção do próprio TCC.
 - [ ] **Abrir as duas folhas de dados antes de citá-las.** As condições de medição estão
