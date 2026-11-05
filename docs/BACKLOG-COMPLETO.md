@@ -57,6 +57,7 @@ Até 29/10 esta linha mandava rodar o `DATA-03`, fechado em 28/10.)* **Se tem um
 `CALC-*` e `DIAG-*`, que são o que a banca lê.
 
 **Contagem:** 39 itens abertos · **L0: 9** · L1: 14 · L2: 7 · L3: 9. *(Recontado linha a linha em 03/11, e não por delta; desde o `DOC-13`, o CI reconta.)*
+*(05/11, integração das PRs #79–#84: a contagem acima foi **reconferida pelo `conferir_backlog.py` sobre o resultado integrado** — 39 abertos · L0 9 · L1 14 · L2 7 · L3 9. As notas de `API-05`, `UI-24` e `ML-14` a `ML-16` abaixo foram escritas em branches paralelas, sobre uma base sem o `CALC-04`: os totais intermediários que elas citam ("40 abertos, L0 11", por exemplo) valiam naquela base, não na sequência integrada. Saldo da integração: `CALC-04` fecha e `HW-08` entra; `API-05`, `UI-24`, `ML-14`, `ML-15` e `ML-16` abrem e fecham.)*
 *(04/11, sexta parte: fechou `CALC-04` (L0) e entrou `HW-08` (L1). L0 10−1 = 9; L1 13+1 = 14; 9+14+7+9 = 39.)*
 *(04/11, API-05: item registrado e fechado em L0; a quantidade de itens abertos não muda.)*
 *(04/11, UI-24: item registrado e fechado em L0; contagem de itens abertos inalterada.)*

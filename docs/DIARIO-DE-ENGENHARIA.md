@@ -6953,6 +6953,67 @@ lido em 04/11; backlog `CALC-03`, `DOC-16`, `VIA-01`.
 
 **Procedência.** docs/RASTREABILIDADE-ML-16.md; ml/experimentos/saida/ml16/ (sete resultados, controles, manifesto e auditoria); ml/ferramentas/rastrear_ml16.py e auditar_ml16.py; testes de ambos; requisitos pinados, backlog, README e notas de atualização de REPRODUCAO-ML-15, RESULTADOS-TCC e LIMITACOES-TCC. Base dependente das PRs #82/#83; fontes, métricas históricas e arquivos dessas branches preservados.
 
+---
+
+# 2026-11-05 — revisão e integração das PRs #79 a #84
+
+**O problema, como foi entendido no início.** Enquanto o limite de uso desta sessão estava
+esgotado, o autor seguiu o projeto com outra ferramenta, aprovando cada trabalho: seis PRs abertas
+para `develop` — `CALC-04` (a retomada do trabalho deixado aqui), `API-05`, `UI-24` e a cadeia
+`ML-14` → `ML-15` → `ML-16`. O pedido foi revisá-las antes de qualquer merge, conferindo os
+relatórios, os diffs e as ferramentas de auditoria.
+
+**Hipótese de trabalho.** Que as afirmações dos relatos e dos relatórios se sustentassem quando
+**executadas**, e não só lidas; e que a integração das seis, com o diário e o backlog de cada uma,
+fechasse nas conferências.
+
+**O que foi testado, e como.** Por PR: suítes em ambiente limpo; os testes novos contra o código de
+`develop`, para conferir que falham sem a correção; as três sabotagens do `CALC-04` sobre o commit
+da PR. Para ML, um verificador **independente** do F1 pelas contagens e um comparador
+**independente** dos JSONs histórico × novo, folha a folha, sem reaproveitar as ferramentas
+revisadas; as reconstruções da `ML-16` comparadas da mesma forma. Os campos do diário de cada
+entrada, por script. A integração simulada numa worktree descartável e depois feita em `develop`,
+na ordem das PRs, com conferências a cada merge.
+
+**Resultado medido.** `CALC-04`: sabotagens **3/3**. `API-05`: 453 testes; **20 dos 36** casos
+novos falham com o `consulta.py` de `develop`; nenhum cliente manda `desde`/`ate`. `UI-24`: 489
+testes, build limpo; **9 dos 11** novos falham com o hook de `develop`. `ML-14`: o verificador
+independente confirma **94 valores, 21 divergências em 7 de 18 arquivos**. `ML-15`: ML-03, ML-04,
+otimizações, ML-12 e ML-05 com **zero diferença** em milhares de valores; as 2 056 diferenças da
+ablação ficam **todas** no item 2 (sem scaler). `ML-16`: pilotos e sintéticos batem; **com 8
+threads, o item 2 reproduz o histórico em 2 637 valores, zero diferenças**. Integrado: 7
+conferências de documento, 453 + 177 + 489 testes, build; CI de `develop` verde; as seis PRs
+marcadas como mescladas.
+
+**Adaptação.** As sete entradas de diário das PRs não tinham o campo "O que deu errado no
+caminho" — a maioria relatava os erros dentro de "Adaptação"; as frases foram **movidas** para o
+campo, nas próprias branches, antes do merge. A `ML-15` citava só a diferença de kappa **médio** da
+variante sem scaler (0,0045); por participante ela chega a 0,17 de kappa e 0,23 de
+especificidade, e isso entrou em `LIMITACOES-TCC.md`: um resultado que depende do número de threads
+não sustenta casas decimais. As notas de contagem das branches paralelas ganharam uma nota de
+conciliação no backlog.
+
+**O que deu errado no caminho.** Três coisas, todas de ferramenta minha. O resolvedor de
+conflitos por união, escrito para o diário e o backlog, primeiro não casou nenhum bloco: os
+arquivos são CRLF e a expressão esperava LF — e a simulação seguiu com marcadores de conflito
+commitados (era descartável; refeita). Na integração real, o mesmo resolvedor **perdeu o fechamento
+do `ML-16`**: quando a mesma linha vinha dos dois lados, ele mantinha a de `develop`, e a da #84 era
+a fechada. Na simulação isso não apareceu porque a #84 entrava de uma vez. Quem pegou foi o
+`conferir_backlog` (39 declarado × 40 recontado, `ML-16` aberto fora do quadro), antes do push; a
+linha foi restaurada da #84 dentro do próprio merge, ainda local, e um verificador de "linhas que
+cada PR mudou × `develop`" confirmou que nada mais se perdeu. E um comando de conferência foi
+recusado pelo verificador de segurança do terminal por sintaxe ambígua, e foi refeito como script.
+
+**Risco em aberto.** A `API-05` e a `UI-24` mudam o comportamento do site: valem depois do
+release, com o login. A variante sem scaler continua não convergida e dependente de threads —
+declarado em `LIMITACOES-TCC.md`. A pasta `esquemaEletrico/` (três imagens do circuito) está não
+rastreada na raiz do repositório principal, e não foi tocada.
+
+**Procedência.** PRs #79 a #84, mescladas em `develop` (`b844647`); commits de ajuste nas branches
+`035c829`, `7e873c3`, `88a0a1a`, `94765bb`, `a766a3a`, `6b2bac6`; relatórios
+`docs/REPRODUCAO-ML-15.md` e `docs/RASTREABILIDADE-ML-16.md`; conferências e comparadores
+independentes rodados nesta máquina em 05/11.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
