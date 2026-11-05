@@ -7153,6 +7153,26 @@ A divisão por área é de partida e muda conforme o autor indicar os itens.
 
 **Procedência.** feature/ML-13-coorte-dreamt; origem cb6588198a225088408554845e058dd54e2e7ffd; base origin/develop 16232bf7bebe09537b88a31669c55737b5733bd9; merge 48af0048d6911813ebf72540e2068dedaae671bc. ml/ferramentas/baixar_dreamt.py, ml/testes/test_baixar_dreamt.py, docs/ML-13-PREPARACAO-DREAMT.md e docs/PLANO-ML-13-COORTE-DREAMT.md. Evidência privada em ml/dados/processado/ml13_preparacao/; dados externos no diretório lógico dados-locais/dreamt-2.2.0; nenhum caminho de máquina publicado.
 
+---
+
+# 2026-11-05 (vi) — ML-17: diagnóstico e plano antes da correção
+
+**O problema, como foi entendido no início.** O autor repassou a revisão da PR #90 e aprovou o plano da ML-13 com mudança de ordem: corrigir fronteiras de contexto como ML-17 antes de avaliar DREAMT. A implementação da ML-17 depende da aprovação de seu plano próprio.
+
+**Hipótese de trabalho.** Separar participantes não basta quando o filtro de épocas apaga lacunas internas. Preservar gravação e índice original permitirá respeitar segmentos e medir quanto os efeitos das janelas ±2/±11 dependem do defeito.
+
+**O que foi testado, e como.** Nesta máquina Windows local, PowerShell e Python 3.11.9: fetch origin, consulta de develop d429d43 e da PR #90, busca do ID livre e inventário de chamadas. Comparação executada byte a byte entre o manifesto no ZIP e a cópia local baixada separadamente (procedência PhysioNet de 03/11 reconferida pelo revisor). Apenas lidos epocas, carregamento, experimentos, adaptador/testes ML-15 e antecedente ML-12 no diário de 30/10 (iv). Nova worktree por item, baseada em origin/develop. As conferências de documentação foram executadas após o registro deste plano.
+
+**Resultado medido.** PR #90 já integrada pelo responsável, em d429d43; não foi necessário tirá-la do rascunho. Os dois manifestos são idênticos; SHA-256 comum bf3f4d71fa9959c30d48598278013df0d6db8afa05bad770411e28f101780c3a, complemento incluído no corpo da #90. ID ML-17 livre nessa base e registrado como L0 aberto: 40 itens, L0 11/L1 14/L2 7/L3 8. Nenhuma métrica de efeito foi calculada nesta etapa; o diagnóstico de fronteiras e perda dos índices nos caches é por leitura.
+
+**Adaptação.** A #90 já havia sido mesclada quando a consulta foi executada; seu registro foi complementado sem alterar branches de integração. O plano inclui os demais chamadores encontrados e distingue ML-02 por gravação, lacunas internas, controle global deliberado da ML-12 e reprodução histórica da ML-15. Propõe caches novos rastreáveis e reutilização da mesma segmentação por contexto/HMM. P1–P3 permanecem como registradas; mudança de direção nas coortes corrigidas exigirá adendo anterior à DREAMT.
+
+**O que deu errado no caminho.** Algumas consultas rg usaram nomes presumidos de arquivos da reprodução ML-15 que não existem; a lista foi corrigida por rg --files e os arquivos reais foram lidos. Consultas extensas tiveram saída truncada e foram seguidas de leituras menores dos trechos relevantes. Na worktree nova, conferir_docs_versionados executado no sandbox não conseguiu consultar o Git e informou que não estava em um repositório; foi repetido com o acesso necessário. Nenhuma dessas consultas alterou dados ou código.
+
+**Risco em aberto.** Efeito quantitativo ainda não medido; ML-17 aberto e aguardando aprovação. Os caches atuais não comprovam continuidade temporal e não serão reutilizados como se a comprovassem. Precisam ser auditados/regenerados antes da rodada. Dados DREAMT permanecem no armazenamento externo informado na ML-13, sem cópia/link novo; nenhuma junction foi criada. A evidência privada da ML-13 permanece em sua worktree anterior, não transferida. Esta etapa só registra o plano; não houve treino nem avaliação.
+
+**Procedência.** origin/develop d429d43e1b7bafacae67fbebb9a328942d63efff; PR #90; branch bugfix/ML-17-fronteiras-contexto; docs/PLANO-ML-17-FRONTEIRAS-CONTEXTO.md; ml/src/epocas.py; ml/experimentos/ml02_baselines.py; ml/experimentos/ml03b_ablacao.py; ml/experimentos/ml03b_otimizacoes.py; ml/experimentos/ml04_validacao_externa.py; ml/experimentos/ml12_validacao_aninhada.py; ml/testes/test_comparar_reproducao.py; entrada ML-12 de 30/10 (iv).
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
