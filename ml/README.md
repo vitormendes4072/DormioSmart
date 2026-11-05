@@ -32,6 +32,23 @@ Suíte de ML: 155 testes passaram no Windows com Python 3.11.9 e as versões
 fixadas em requirements.txt. Seis dos 11 novos casos de F1 falharam antes da
 correção; dez casos adicionais verificam o instrumento de auditoria.
 
+## Reprodução dos experimentos — ML-15 (05/11/2026)
+
+15 execuções concluídas com treinos novos, saídas isoladas e caches de features
+copiados. Os resultados centrais e externos foram reproduzidos; há ressalvas para
+logística sem scaler, snapshots sintéticos antigos e coortes piloto Wearanize.
+O F1 complementar verificou 9.687 matrizes em 132 avaliações e quantificou os zeros
+antes excluídos. Históricos preservados; investigação residual no ML-16.
+
+Relatório, comandos, ambiente e limites:
+[REPRODUCAO-ML-15.md](../docs/REPRODUCAO-ML-15.md). Evidências em
+`experimentos/saida/ml15/`; comparação conferível sem baixar dados ou treinar:
+
+```sh
+# A partir da raiz do repositório:
+python ml/ferramentas/comparar_reproducao.py --novos ml/experimentos/saida/ml15/resultados --saida ml/experimentos/saida/ml15/comparacao.json --conferir
+```
+
 ## Estado (2026-09-21)
 
 | Item | Estado |

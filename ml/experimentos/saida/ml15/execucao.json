@@ -1,0 +1,172 @@
+{
+  "item": "ML-15",
+  "tarefas": {
+    "ml02_sintetico": {
+      "job": "ml02_sintetico",
+      "status": "concluido",
+      "segundos": 35.35930824279785,
+      "tentativas": 1,
+      "log": "ml02_sintetico.log"
+    },
+    "ml02_cabeca_cache92": {
+      "job": "ml02_cabeca_cache92",
+      "status": "concluido",
+      "segundos": 208.06951022148132,
+      "tentativas": 1,
+      "log": "ml02_cabeca_cache92.log"
+    },
+    "ml02_newcastle": {
+      "job": "ml02_newcastle",
+      "status": "concluido",
+      "segundos": 370.6951937675476,
+      "tentativas": 1,
+      "log": "ml02_newcastle.log"
+    },
+    "ml02_pulso_cache92": {
+      "job": "ml02_pulso_cache92",
+      "status": "concluido",
+      "segundos": 184.43033146858215,
+      "tentativas": 1,
+      "log": "ml02_pulso_cache92.log"
+    },
+    "ml03_transferencia": {
+      "job": "ml03_transferencia",
+      "status": "concluido",
+      "segundos": 496.9356212615967,
+      "tentativas": 1,
+      "log": "ml03_transferencia.log"
+    },
+    "ml03b_otimizacoes": {
+      "job": "ml03b_otimizacoes",
+      "status": "concluido",
+      "segundos": 3542.5016355514526,
+      "tentativas": 34,
+      "log": "ml03b_otimizacoes.log"
+    },
+    "ml04_newcastle": {
+      "job": "ml04_newcastle",
+      "status": "concluido",
+      "segundos": 56.45541048049927,
+      "tentativas": 1,
+      "log": "ml04_newcastle.log"
+    },
+    "ml04_walch_principal": {
+      "job": "ml04_walch_principal",
+      "status": "concluido",
+      "segundos": 57.05706334114075,
+      "tentativas": 1,
+      "log": "ml04_walch_principal.log"
+    },
+    "ml04_walch_todos": {
+      "job": "ml04_walch_todos",
+      "status": "concluido",
+      "segundos": 56.10974478721619,
+      "tentativas": 1,
+      "log": "ml04_walch_todos.log"
+    },
+    "ml04b_lados": {
+      "job": "ml04b_lados",
+      "status": "concluido",
+      "segundos": 69.24015855789185,
+      "tentativas": 1,
+      "log": "ml04b_lados.log"
+    },
+    "ml05_teto": {
+      "job": "ml05_teto",
+      "status": "concluido",
+      "segundos": 39.22307777404785,
+      "tentativas": 1,
+      "log": "ml05_teto.log"
+    },
+    "quantizacao": {
+      "job": "quantizacao",
+      "status": "concluido",
+      "segundos": 144.5225625038147,
+      "tentativas": 1,
+      "log": "quantizacao.log"
+    },
+    "ml11_ablacao": {
+      "job": "ml11_ablacao",
+      "status": "concluido",
+      "segundos": 938.1705088615417,
+      "tentativas": 1,
+      "log": "ml11_ablacao.log"
+    },
+    "ml12_aninhada": {
+      "job": "ml12_aninhada",
+      "status": "concluido",
+      "segundos": 2163.1568715572357,
+      "tentativas": 1,
+      "log": "ml12_aninhada.log"
+    },
+    "ml03b_ablacao": {
+      "job": "ml03b_ablacao",
+      "status": "concluido",
+      "segundos": 21894.882797002792,
+      "tentativas": 1,
+      "log": "ml03b_ablacao.log"
+    }
+  },
+  "logs": {
+    "ml02_cabeca_cache92.log": {
+      "sha256_utf8_lf": "ee041f7007e95ad3441ff8e4fe47e48d7a39e0f8f8df7f375584284a8c25e5dd",
+      "avisos_convergencia": 0
+    },
+    "ml02_newcastle.log": {
+      "sha256_utf8_lf": "bcf8eead2ab68ddf2b9df8e01b3cca0f48b6ad0406edabfe247c5fd5720fce07",
+      "avisos_convergencia": 0
+    },
+    "ml02_pulso_cache92.log": {
+      "sha256_utf8_lf": "789f32dc6fb4d71165ecca383199d05efc30ffa97efcd802b43ce61ebfce38f7",
+      "avisos_convergencia": 0
+    },
+    "ml02_sintetico.log": {
+      "sha256_utf8_lf": "c0a83f231ac00ce62ed2763e22372d4e37419baaee0142f100100ca67a461053",
+      "avisos_convergencia": 0
+    },
+    "ml03_transferencia.log": {
+      "sha256_utf8_lf": "ba3cd118822ddba46958b72956968aa2654f04c6e3c9e4c0d2165f7e71fffd5a",
+      "avisos_convergencia": 0
+    },
+    "ml03b_ablacao.log": {
+      "sha256_utf8_lf": "066e471bfa869a3b1a115cac5978b813dc4abc884f45042877c4b772fd6203c5",
+      "avisos_convergencia": 276
+    },
+    "ml03b_otimizacoes.log": {
+      "sha256_utf8_lf": "8262cf06464a660494741e827e784b36b00c512c0791c11cddc152a365a54812",
+      "avisos_convergencia": 0
+    },
+    "ml04_newcastle.log": {
+      "sha256_utf8_lf": "0ebcdfaa57d7a248e22fa0a2042e04f781c4c9c7dc6d997ded9950835a483cca",
+      "avisos_convergencia": 0
+    },
+    "ml04_walch_principal.log": {
+      "sha256_utf8_lf": "050ff3e71b39a0dc76876acfe00ffb73e7c4abe79534796401a9b7ac4c2e3400",
+      "avisos_convergencia": 0
+    },
+    "ml04_walch_todos.log": {
+      "sha256_utf8_lf": "8a0725d9357fa73ae0b01084f63da952122e06e0a6e619ab5123d7ee03567e94",
+      "avisos_convergencia": 0
+    },
+    "ml04b_lados.log": {
+      "sha256_utf8_lf": "fd888ae0463dec912e2e0f66c59df5c1e2b73d455279b9f180a7f58b7825e2da",
+      "avisos_convergencia": 0
+    },
+    "ml05_teto.log": {
+      "sha256_utf8_lf": "f38dfad7982d36752eafc5312567037571eef832e69ffc5f539d0724df6789a9",
+      "avisos_convergencia": 0
+    },
+    "ml11_ablacao.log": {
+      "sha256_utf8_lf": "990f26851e521e59dda86b7512be8487f45169cf51971ba429c9841627e1e49b",
+      "avisos_convergencia": 0
+    },
+    "ml12_aninhada.log": {
+      "sha256_utf8_lf": "37610fdec34bc24480730b7dcfe2c37999964f9fe64ac84da9c161108fef20d4",
+      "avisos_convergencia": 0
+    },
+    "quantizacao.log": {
+      "sha256_utf8_lf": "15688035151941c6a89383e98c96a718ae0c8aef1eab5a4f34f11924627437b9",
+      "avisos_convergencia": 0
+    }
+  }
+}

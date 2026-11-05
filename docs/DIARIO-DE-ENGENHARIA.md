@@ -6899,6 +6899,42 @@ lido em 04/11; backlog `CALC-03`, `DOC-16`, `VIA-01`.
 
 **Procedência.** Branch bugfix/ML-14-f1-sem-acertos; ml/src/avaliar.py, ml/testes/test_avaliar.py, ml/ferramentas/auditar_f1.py, ml/testes/test_auditar_f1.py e ml/experimentos/saida/ml14_auditoria_f1.json; RESULTADOS-TCC, README do ml/ e backlog ML-14.
 
+# 2026-11-04 — ML-15: reprodução controlada dos experimentos principais (em execução)
+
+**O problema, como foi entendido no início.** A ML-14 corrigiu F1 e seis checkpoints permitiram reavaliar previsões existentes, mas isso não era uma reprodução abrangente dos experimentos principais do TCC.
+
+**Hipótese de trabalho.** Com o mesmo ambiente, configuração e coorte, é possível repetir os treinamentos e comparar resultados. Diferenças de coorte, de versão do pipeline e de métrica precisam de classificações distintas.
+
+**O que foi testado, e como.** Execução local Windows em cópia isolada dos scripts da ML-14. Bibliotecas pinadas; configuração aec203907e6f, seed 20260910; dois processos. Dados brutos somente lidos, caches copiados e diretório de saída inicialmente vazio. Checkpoints antigos não foram copiados. ML-03 e baselines Wearanize usam o cache de features via adaptador que recompõe contexto por participante; os treinamentos são novos. Um manifesto registra fontes, ambiente e referências. O comparador passou controles de valor alterado, NaN, igualdade e listas.
+
+**Resultado medido.** Execução ainda em andamento. Baseline sintético reproduziu os dois registros históricos mais recentes fora das três correções de F1; dois registros mais antigos têm outras diferenças cuja origem não foi isolada. O baseline Newcastle concluiu a extração e o treinamento e bateu com o histórico fora das três correções de F1. Os números consolidados e as demais famílias serão registrados ao concluir.
+
+**Adaptação.** O baseline Wearanize histórico tem 10 participantes na cabeça e 7 no pulso, sem lista identificável no JSON. Os caches atuais têm 92 participantes comuns aos três braços: as rodadas de baseline nessa coorte são marcadas como ampliadas, não como reprodução daquelas coortes antigas. O parâmetro de threads nativas foi fixado em 1 por processo e fica registrado como condição de execução.
+
+**O que deu errado no caminho.** Nada registrado até este ponto da execução.
+
+**Risco em aberto.** Os experimentos não concluídos permanecem no item ML-15. Caches de features não equivalem a refazer toda a extração bruta. Rodadas com coorte distinta não permitem atribuir diferenças somente ao F1. Resultados antigos e dados brutos permanecem preservados.
+
+**Procedência.** Branch feature/ML-15-reproducao, dependente da ML-14; manifesto, estado, comparação e logs locais em ml/dados/processado/ml15_reproducao; relatório final pendente no mesmo item.
+
+# 2026-11-05 — ML-15: 15 execuções concluídas e limites históricos separados
+
+**O problema, como foi entendido no início.** Era preciso terminar a reprodução iniciada em 04/11 e verificar se a correção de F1 alterava resultados além dos seis checkpoints antes reavaliados. A maior ablação permaneceu ativa durante a madrugada.
+
+**Hipótese de trabalho.** Resultados com mesmas entradas e código deveriam coincidir; diferenças de avaliação, população e instabilidade numérica não podem ser atribuídas umas às outras. O kappa usado na escolha dos modelos não depende da correção de F1.
+
+**O que foi testado, e como.** Windows, Python 3.11.9, bibliotecas pinadas; 15 tarefas com código da ML-14 e saídas/checkpoints novos. A ablação concluiu em 21.894,9 s. Conferidos hashes de 25 fontes e 114 caches copiados contra as fontes locais. Comparador com tolerância absoluta/relativa 1e-10, hashes textuais normalizados para LF e exclusão de novas saídas parciais. F1 complementar reconstruiu matrizes por participante usando suportes reais, validando contagens inteiras, acurácia, especificidade e kappa. Controle independente de 552 matrizes contra previsões dos seis checkpoints antigos passou. Instrumentos têm controles de métrica alterada, NaN, coorte diferente, vetor incompleto, relatório vazio, fonte alterada e tentativa de reutilizar saída histórica.
+
+**Resultado medido.** As 15 tarefas concluíram com código zero. Transferência, otimizações, três validações externas, lateralidade, métricas do teto interavaliador, quantização e ML-11/ML-12 reproduziram os campos comparados. Newcastle e os dois snapshots sintéticos de 14/09 diferiram somente nos três F1 de vigília corrigidos. F1 complementar: 9.687 matrizes em 132 avaliações; oito zeros antes excluídos em sete avaliações não triviais, além de 363 ocorrências em seis grupos triviais. Na transferência cabeça → cabeça E4, F1 de sono médio passou de 0,4714552822 (91 válidos) para 0,4663307682 (92) ao comparar as fórmulas sobre as mesmas classificações novas. A variante sem scaler emitiu 276 avisos de convergência; maior diferença de kappa médio de 0,004545. A referência da ablação e os itens 1, 3, 4 e 5 reproduziram o histórico. O arquivo antigo da ablação era parcial e não continha suas otimizações finais. 167 testes de ML passaram, incluindo 12 controles novos; comparação salva e resumo do backlog conferidos.
+
+**Adaptação.** O comparador passou a sinalizar referência histórica parcial sem descartá-la, permitindo conferir os itens completos nela. O campo utc_notas ausente no novo teto interavaliador é metadado, não divergência de métricas. Dois snapshots sintéticos de 11/09 divergem por causa não isolada; baselines Wearanize novos de 92 participantes são coortes ampliadas, não reprodução dos pilotos 10/7.
+
+**O que deu errado no caminho.** A primeira tentativa restrita de pytest falhou ao acessar seu diretório temporário; a execução com permissões de teste passou. Durante a continuidade também houve uma edição não executada porque a revisão automática atingiu limite de uso; após a retomada, o workspace passou a permitir as edições locais. Nenhum resultado foi inferido daquele comando recusado.
+
+**Risco em aberto.** O ML-16 carrega a recuperação de IDs dos pilotos, a procedência dos snapshots sintéticos antigos e a causa da divergência sem scaler. Não foi aumentado max_iter nem mudado solver para forçar coincidência. Caches reaproveitados não validam novamente toda a extração bruta; estas bases públicas continuam sem validar o sensor no travesseiro (ML-12(c)/VIA-01). Para o TCC, a reprodução sustenta os resultados centrais e torna explícito onde a procedência histórica ainda não permite igualdade estrita. Sem merge automático.
+
+**Procedência.** Branch feature/ML-15-reproducao a partir de 72f954286633f3b197d9bab454f622d67885814b (ML-14, PR #82). docs/REPRODUCAO-ML-15.md; ml/experimentos/saida/ml15/ (15 resultados, manifesto, execução, comparação e F1 complementar); ml/ferramentas/comparar_reproducao.py, reconstruir_f1.py, rodada_reproducao.py e executar_reproducao.py; testes dos instrumentos, README do ML, RESULTADOS-TCC, LIMITACOES-TCC e backlog ML-15/ML-16. Dados e logs permanecem locais e ignorados.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
