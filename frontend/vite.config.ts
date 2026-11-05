@@ -14,6 +14,14 @@ export default defineConfig({
   },
   server: {
     port: 5173,
+    // LGPD-01 (b): a página /privacidade importa o documento versionado, que
+    // fica fora de frontend/. Libera esse arquivo, e só ele.
+    fs: {
+      allow: [
+        path.resolve(__dirname),
+        path.resolve(__dirname, '../docs/POLITICA-DE-PRIVACIDADE.md'),
+      ],
+    },
     // Durante o desenvolvimento, /api/* vai para o Flask local.
     // Em produção quem faz esse roteamento é o vercel.json (UI-08).
     proxy: {

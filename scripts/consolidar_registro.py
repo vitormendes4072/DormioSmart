@@ -2410,11 +2410,11 @@ PENDENCIAS: list[Pendencia] = [
     Pendencia("DOC-06b", SOFTWARE, "**Ler os artigos antes de citá-los** "
               "(referência conferida ≠ artigo lido) e converter para o padrão de "
               "citação do TCC.", "🔴", camada_backlog="L0"),
-    Pendencia("LGPD-01", SOFTWARE, "Política de privacidade e termos. Rascunho "
-              "escrito. Faltam **(b)** a rota e a página que sirvam o texto — "
-              "isto é software puro. **(a)** controlador e base legal e **(c)** "
-              "revisão jurídica estão nos grupos B e E.", "🟡",
-              camada_backlog="L0",
+    Pendencia("LGPD-01", ACAO, "Política de privacidade: a página `/privacidade` "
+              "existe desde 03/11 (parte (b)). Resta **(a)**: definir o controlador e o "
+              "contato e pô-los nas variáveis `VITE_POLITICA_CONTROLADOR` e "
+              "`VITE_POLITICA_CONTATO` da Vercel. **(c)** revisão jurídica é o LGPD-03.",
+              "🟡", camada_backlog="L3",
               nota="O item estava inteiro em L0; a conferência o divide, porque "
                    "as três partes dependem de coisas diferentes."),
     Pendencia("LGPD-02", SOFTWARE, "Não existe política de retenção: nenhum "
@@ -2460,11 +2460,6 @@ PENDENCIAS: list[Pendencia] = [
               "do `VIA-02` (grupo D).", "🔴", camada_backlog="L2",
               nota="Confirmado aberto: `grep` por `limiar` em "
                    "`web-app/migrations/*.sql` devolve vazio."),
-    Pendencia("LGPD-06", SOFTWARE, "Finalidade nova para a idade, decidida pelo "
-              "autor em 03/11: conhecer, de forma agregada, o público do sistema. "
-              "Política primeiro (§3, §5.3, §10), depois o comentário da `008` e o "
-              "cabeçalho de `aplicabilidade.ts`, e só então uma consulta agregada "
-              "por faixa.", "🟡", camada_backlog="L0"),
     Pendencia("UI-18", SOFTWARE, "Duas partes, não três: **(a)** asserção nomeada "
               "por rota — hoje só `/configuracoes` tem, e por isso a varredura "
               "cobre rota nova mas **não rota removida**; **(b)** as três "
@@ -2521,14 +2516,6 @@ PENDENCIAS: list[Pendencia] = [
               decisao="Qual o prazo de retenção, ou se vai declarar "
                       "formalmente que não haverá expurgo. **As duas saídas são "
                       "defensáveis; o silêncio não.**"),
-    Pendencia("LGPD-05", DECISAO, "Idade autodeclarada pode revelar que o titular "
-              "é criança ou adolescente, e o art. 14 impõe tratamento próprio. "
-              "Hoje o sistema não verifica e não trata diferente.", "🟡",
-              camada_backlog="L0",
-              decisao="(a) restringir o cadastro a maiores de 18, (b) implementar "
-                      "o fluxo de consentimento de responsável, ou (c) manter a "
-                      "lacuna declarada. **A defesa de (c) expira no dia em que "
-                      "alguém além de você criar conta.**"),
     Pendencia("ARQ-02 — modos de registro", DECISAO, "Quatro modos analisados "
               "em `docs/ARQUITETURA-DE-CAPTACAO.md`: travesseiro com bateria "
               "máxima (WoM), travesseiro com análise completa (sono leve + FIFO), "

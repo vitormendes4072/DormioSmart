@@ -20,6 +20,12 @@ import { NOME_PRODUTO } from "../lib/ui";
  * compilado. O teste de bancada (VIA-01) também não aconteceu. As duas
  * coisas aparecem agora como pendentes, não como concluídas.
  *
+ * ✏️ 03/11 (UI-23): a página ainda descrevia a arquitetura abandonada em 30/10
+ * (Deep Sleep acordando por movimento, um envio a cada evento) e dava como
+ * pendente a validação por dados públicos, fechada em 18/09. Os textos foram
+ * refeitos contra o `ARQ-01` e o backlog, e `Landing.test.tsx` reprova os
+ * termos da arquitetura antiga.
+ *
  * O movimento da página (UI-15) é deliberadamente contido: entrada suave dos
  * blocos ao aparecerem, elevação de 1px nos botões, e um único elemento
  * animado de forma contínua — o traçado de aceleração do hero, que existe
@@ -61,13 +67,13 @@ const ETAPAS = [
     icone: BedDouble,
     titulo: "Sensor no travesseiro",
     texto:
-      "ESP32 e MPU6050 embarcados no travesseiro captam aceleração sem contato com o corpo. O microcontrolador dorme em Deep Sleep e acorda ao detectar movimento.",
+      "ESP32 e MPU6050 embarcados no travesseiro captam aceleração sem contato com o corpo. O microcontrolador fica em sono leve e lê em rajadas a memória interna do sensor, a 50 Hz, resumindo cada 30 s de movimento.",
   },
   {
     icone: Radio,
     titulo: "Envio via Wi-Fi",
     texto:
-      "A cada evento, o dispositivo transmite um pacote JSON por HTTPS, autenticado com um token próprio. O backend valida a leitura antes de persistir.",
+      "A cada 10 minutos, o dispositivo envia em lote o que acumulou, por HTTPS e com um token próprio; sem rede, guarda na memória flash e envia depois. O backend valida cada leitura antes de gravar.",
   },
   {
     icone: BarChart3,
@@ -83,15 +89,18 @@ const FASE_1 = [
   { pronto: true, texto: "Contas de usuário com isolamento por dono (RLS)" },
   { pronto: true, texto: "Painel de movimento em produção" },
   { pronto: true, texto: "Integração contínua com testes automatizados" },
+  { pronto: true, texto: "Coleta pelo acelerômetro do celular, no navegador" },
+  { pronto: true, texto: "Modelo de sono × vigília validado em dados públicos de acelerometria" },
+  { pronto: true, texto: "Firmware da arquitetura de captação testado no computador (ainda não na placa)" },
   { pronto: false, texto: "Teste de bancada: o sinal separa movimento de repouso?" },
 ];
 
 const FASE_2 = [
   "Montagem física no travesseiro",
-  "Wake-on-Motion real pela interrupção do MPU6050",
+  "Firmware rodando na placa: leitura da FIFO e fila na flash",
   "Bateria, autonomia e segurança térmica",
   "Captação de uma noite real",
-  "Validação contra dataset público de acelerometria",
+  "Calibrar o modelo com a noite captada",
 ];
 
 export function Landing() {
@@ -352,6 +361,12 @@ export function Landing() {
               <Github className="w-3.5 h-3.5" />
               Código aberto
             </a>
+            <Link
+              to="/privacidade"
+              className="text-xs text-primary hover:text-accent transition-colors duration-200 font-semibold"
+            >
+              Privacidade
+            </Link>
           </div>
           </div>
         </div>

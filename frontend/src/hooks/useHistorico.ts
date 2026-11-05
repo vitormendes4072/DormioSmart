@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { ErroApi, buscarHistorico, type FiltroDeHistorico } from "../lib/api";
 import { estaEmModoDemo, gerarNoiteDemo } from "../lib/demo";
@@ -14,43 +14,55 @@ export type EstadoHistorico = {
 /**
  * Carrega o historico de leituras.
  *
- * Expoe os tres estados que o mock do prototipo nao tinha — carregando, vazio
- * (leituras.length === 0) e erro — porque com dado real os tres acontecem: o
- * dispositivo pode nunca ter enviado nada, e a rede pode cair.
+ * Expoe carregamento, vazio e erro. As chaves do filtro sao desmembradas nas
+ * dependencias para que um objeto literal novo nao recarregue em loop.
  *
- * `filtro` recorta por dispositivo e janela (DASH-05/DASH-06). As chaves sao
- * desmembradas na dependencia do `useCallback` de proposito: um objeto literal
- * vindo do componente muda de identidade a cada render e recarregaria em loop.
+ * UI-24: so o pedido mais recente pode publicar estado. A identificacao
+ * tambem cobre recargas manuais; apenas uma flag por efeito nao distinguiria
+ * duas recargas do mesmo filtro. O cleanup invalida os pedidos pendentes.
+ * Isto descarta resultados no hook; nao cancela a chamada nem altera os
+ * efeitos de autenticacao do cliente de API.
  */
 export function useHistorico(filtro: FiltroDeHistorico = {}): EstadoHistorico {
   const { dispositivo = null, desde = null, ate = null, limite = null } = filtro;
   const [leituras, setLeituras] = useState<LeituraSono[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
+  const ativo = useRef(false);
+  const geracao = useRef(0);
 
   const carregar = useCallback(async () => {
+    if (!ativo.current) return;
+    const pedido = ++geracao.current;
+    const vigente = () => ativo.current && pedido === geracao.current;
+
     setCarregando(true);
     setErro(null);
     try {
-      // Modo demo (DEMO-01): dados gerados no cliente, sem tocar na API.
-      // Guardado por build de desenvolvimento — ver lib/demo.ts.
-      if (estaEmModoDemo()) {
-        setLeituras(gerarNoiteDemo());
-        return;
-      }
-      setLeituras(await buscarHistorico({ dispositivo, desde, ate, limite }));
+      // A demonstracao continua local e guardada por build de desenvolvimento.
+      const dados = estaEmModoDemo()
+        ? gerarNoiteDemo()
+        : await buscarHistorico({ dispositivo, desde, ate, limite });
+      if (vigente()) setLeituras(dados);
     } catch (e) {
-      // 401 ja disparou o callback de sessao expirada dentro do cliente; aqui
-      // so registramos a mensagem para a tela exibir.
-      setErro(e instanceof ErroApi ? e.message : "Falha inesperada ao carregar.");
-      setLeituras([]);
+      if (vigente()) {
+        // 401 ja disparou o callback do cliente; aqui so exibimos a falha.
+        setErro(e instanceof ErroApi ? e.message : "Falha inesperada ao carregar.");
+        setLeituras([]);
+      }
     } finally {
-      setCarregando(false);
+      if (vigente()) setCarregando(false);
     }
   }, [dispositivo, desde, ate, limite]);
 
   useEffect(() => {
+    // Reativar no setup e necessario no ciclo setup/cleanup/setup do Strict Mode.
+    ativo.current = true;
     void carregar();
+    return () => {
+      ativo.current = false;
+      geracao.current++;
+    };
   }, [carregar]);
 
   return { leituras, carregando, erro, recarregar: () => void carregar() };

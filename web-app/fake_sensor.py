@@ -7,8 +7,10 @@ import httpx
 
 from device_auth import TOKEN_HEADER
 
-# URL da sua API local (onde o Flask está rodando)
-API_URL = "http://127.0.0.1:5000/api/data"
+# Onde enviar. Padrão: a API local (onde o Flask está rodando). DOC-14 (03/11):
+# DORMIO_API_URL aponta para outra base — a produção, por exemplo, para
+# alimentar uma conta de demonstração sem subir o backend local.
+API_URL = os.environ.get("DORMIO_API_URL", "http://127.0.0.1:5000").rstrip("/") + "/api/data"
 
 # Token do dispositivo (SEC-02). O backend exige o header X-Device-Token; sem
 # ele a API responde 401. Pareie um device pela aplicação e exporte o token:

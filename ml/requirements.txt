@@ -9,6 +9,8 @@ scipy==1.15.3
 scikit-learn==1.7.2
 PyYAML==6.0.3
 pytest==9.1.1
+# ML-16: controle explícito das threads; mesma versão já instalada no ambiente.
+threadpoolctl==3.6.0
 
 # Leitura dos .bin do GENEActiv (Newcastle). O formato é proprietário; esta
 # biblioteca é opcional e o carregador tem um leitor próprio de fallback.

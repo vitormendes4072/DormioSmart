@@ -5884,6 +5884,1255 @@ pulso e o travesseiro continua sem base pública que a meça (X.4).
   `https://physionet.org/content/bidsleep-dataset/1.0.1/`, `https://sleepdata.org/forum/raw-accelerometer-data-from-actigraphy/1`, 03/11;
 - backlog `ML-13`.
 
+---
+
+# 2026-11-03 (xi) — `LGPD-05` e `LGPD-06`: só maiores de 18, e a idade com uma finalidade agregada
+
+**O problema, como foi entendido no início.** O autor decidiu manter o campo idade para conhecer o
+público do sistema. Isso abria duas frentes: o `LGPD-06` (finalidade nova exige política nova
+ANTES) e o `LGPD-05` (a saída "manter a lacuna sobre menores declarada" só valia enquanto o autor
+fosse o único usuário). Perguntado se menores poderiam usar, o levantamento (LGPD art. 14, Enunciado
+CD/ANPD nº 1/2023, ECA Digital — Lei 15.211/2025, por fontes secundárias) mostrou custo alto:
+verificação de idade confiável, supervisão parental e Comitê de Ética em pesquisa. O autor escolheu
+a saída (a), só maiores de 18, e o público menor como item pós-banca.
+
+**Hipótese de trabalho.** Que a restrição pudesse valer nas três camadas (frontend, backend e banco)
+sem alterar dado existente, e que a finalidade nova pudesse ser exercida só por contagem agregada.
+
+**O que foi testado, e como.**
+
+- **A ordem:** a política foi alterada e commitada primeiro (`942aad3`: §2.1, §3 item 5, §5.3 e
+  §10), antes de qualquer código.
+- **O cadastro:** caixa obrigatória "Declaro que tenho 18 anos ou mais"; `cadastrar` recusa sem ela,
+  antes de chamar o Supabase, e com ela registra a data em
+  `raw_user_meta_data.maior_de_18_declarado_em`. Primeiro teste de componente da tela de cadastro
+  (`Register.test.tsx`).
+- **A idade:** mínimo 18 em `lib/perfil.ts`, em `perfil.py` e na migração `012` (restrição
+  `profiles_idade_maioridade`, com trava que PARA sem alterar dado se houver menor gravado, e o
+  comentário da coluna com as duas finalidades). O texto junto ao campo idade diz o uso agregado.
+- **A consulta agregada:** `CONSULTA-publico-por-faixa.sql`, só leitura, faixas com menos de 5
+  suprimidas e sem linha de total (que permitiria recuperar uma faixa suprimida por subtração).
+- **Postgres real** em contêiner `postgres:16`: suíte de RLS, mutação do RLS e o verificador de
+  migrações; backend, frontend, `tsc` e build.
+- **Controle positivo:** sete sabotagens, nas quatro camadas.
+
+**Resultado medido.**
+
+- **Backend** 417 (416 + 1); **frontend** 428 em 29 arquivos (424 + 4); `tsc` e build limpos;
+  **RLS** 174 (164 + 10); **mutação do RLS** 32/32; o verificador acerta os **12 estados** e a
+  ordem real da produção, agora com a `012`.
+- **Sabotagens, 7/7 acusadas:** frontend aceitando idade 0; cadastro sem exigir a declaração;
+  cadastro sem registrar a data dela; backend aceitando 0; banco aceitando 0; trava da `012`
+  desligada; consulta sem a supressão de faixa pequena.
+
+**Adaptação.**
+
+- **Três testes antigos especificavam o mínimo 0** — `lerIdade("0")` válido, `validar_idade(0)`
+  válido e a idade 0 aceita pelo banco — e foram reescritos para a regra nova.
+- **Um teste de "espelho" não espelhava nada:** `test_a_faixa_de_idade_espelha_a_constraint_da_migracao_001`
+  comparava o backend com números escritos no próprio teste. Agora ele **lê a restrição da `012`** e
+  reprova se o arquivo e o backend divergirem.
+- **Um item novo em L3, `LGPD-08`:** aplicar a `012` na produção e fazer o release — como o
+  `DATA-08`/`DATA-09`. O `LGPD-07` (menores de idade) foi direto para a seção Pós-banca.
+
+**O que deu errado no caminho.**
+
+- **O teste de componente acumulava a tela de um caso no outro** (o projeto não ativa a limpeza
+  automática da Testing Library): `cleanup` em `afterEach`.
+- **O teste de RLS foi escrito primeiro contra uma *fixture* que não existia e com `psycopg`**, quando
+  a suíte usa `psycopg2`; reescrito com uma conexão própria em transação, desfeita no fim de cada caso.
+
+**Risco em aberto.**
+
+- **A idade é autodeclarada**, no cadastro e no campo: ninguém verifica. A política diz isso.
+- **A proteção da consulta agregada é de procedimento:** o administrador tem acesso técnico à
+  coluna. O arquivo SQL declara isso.
+- **A política ainda não é servida dentro do app** (`LGPD-01` (b)): a finalidade está declarada num
+  documento que o usuário não vê; o texto junto ao campo idade cobre isso só em parte.
+- **Nada disso vale na produção antes do `LGPD-08`.**
+
+**Procedência.**
+
+- `docs/POLITICA-DE-PRIVACIDADE.md` (commit `942aad3`); `frontend/src/lib/autenticacao.ts`,
+  `pages/Register.tsx` e `Register.test.tsx`, `lib/perfil.ts`, `lib/aplicabilidade.ts`,
+  `components/EditarPerfil.tsx`; `web-app/perfil.py`; `web-app/migrations/012_idade_minima_18.sql` e
+  `CONSULTA-publico-por-faixa.sql`; `web-app/tests/rls/test_rls_idade_maioridade.py`;
+- backlog `LGPD-05`, `LGPD-06`, `LGPD-07` e `LGPD-08`.
+
+---
+
+# 2026-11-03 (xii) — a `012` na produção e o release do `LGPD-05`/`LGPD-06`
+
+**O problema, como foi entendido no início.** O `LGPD-05`/`LGPD-06` estava em `develop` (PR #53), e
+a migração `012` precisava ir para a produção antes do release que a usa (`LGPD-08`).
+
+**Hipótese de trabalho.** Que nenhum perfil de produção tivesse idade abaixo de 18 (a trava da
+`012` pararia), e que o release mudasse só o cadastro e a validação da idade.
+
+**O que foi testado, e como.**
+
+- **A `012`:** aplicada pelo autor no SQL Editor; depois, o `DIAGNOSTICO-migracoes-aplicadas.sql`.
+- **O release:** diff `main..develop` (código do site em `frontend/src` e `web-app/perfil.py`;
+  nenhuma dependência, variável ou `vercel.json` nova); PR #54 depois dos 9 checks; deploy
+  acompanhado pela API de deployments, com o SHA.
+- **Depois:** `/health`; `PATCH /api/me/perfil` sem credencial; o pacote JavaScript publicado,
+  procurado pelos textos novos; e, pelo autor, um login e uma tentativa de cadastro sem a caixa.
+
+**Resultado medido.**
+
+- **Diagnóstico:** `012 aplicada = true, 2 de 2 marcas`; 001 a 011 continuam aplicadas. A trava não
+  disparou: não havia perfil com idade abaixo de 18.
+- **Deploy `7530061150`, `success`, SHA `7e7140e`.** `/health` `200`, banco ok; `PATCH` sem
+  credencial → `401`; o pacote `index-DhAoYEpi.js` contém "Declaro que tenho 18 anos ou mais", a
+  mensagem de recusa e `maior_de_18_declarado_em`.
+- **O autor confirmou:** o login funciona, e o cadastro sem a caixa é recusado na tela.
+
+**Adaptação.** Nenhuma.
+
+**O que deu errado no caminho.** Nada nesta etapa.
+
+**Risco em aberto.** Os mesmos do `LGPD-05`/`LGPD-06` (diário, 03/11 (xi)): idade autodeclarada;
+proteção de procedimento na consulta agregada; a política ainda não servida dentro do app
+(`LGPD-01` (b)); e o SMTP próprio (`AUTH-06`) antes de qualquer pessoa além do autor usar o sistema.
+
+**Procedência.**
+
+- O diagnóstico colado pelo autor, 03/11; PR #54 (`7e7140e`); deployment de produção `7530061150`;
+- `GET https://dormio-smart.vercel.app/health`, `/api/me/perfil` e o pacote publicado, 03/11;
+- a confirmação do autor; backlog `LGPD-08`.
+
+---
+
+# 2026-11-03 (xiii) — `LGPD-01` (b): a política de privacidade servida dentro do app
+
+**O problema, como foi entendido no início.** A política existia só como documento no repositório:
+o titular não a via, e a finalidade nova da idade (`LGPD-06`) estava declarada num texto que
+ninguém de fora lê. A investigação achou mais dois obstáculos: o controlador e o contato estavam em
+branco (`[CONTROLADOR]`, `[CONTATO]`), e o repositório é público e não pode levar nome de pessoa; e
+o próprio documento dizia "não publicar sem revisão jurídica".
+
+**Hipótese de trabalho.** Que a página pudesse ler o próprio documento no build, em vez de uma
+cópia, e que o controlador pudesse entrar por variável de build, fora do repositório.
+
+**O que foi testado, e como.**
+
+- **A abordagem aprovada:** `/privacidade`, pública e carregada sob demanda; `lib/politica.ts`
+  recorta o trecho entre `── TEXTO` e `── FIM DO TEXTO` e troca os dois marcadores pelas variáveis
+  `VITE_POLITICA_CONTROLADOR` e `VITE_POLITICA_CONTATO` (sem elas, "ainda não informado");
+  `react-markdown` 9.0.1 e `remark-gfm` 4.0.0, sem HTML executável; faixa de versão preliminar;
+  links no cadastro, em Configurações, junto ao campo idade e no rodapé da página inicial.
+- **Testes:** o recorte sobre o documento REAL (as 10 seções, nada das notas, nenhum marcador
+  pendente além dos dois); a página renderizada; os links do cadastro e de Configurações.
+- **Controle positivo:** sete sabotagens.
+- **Build:** tamanho dos pacotes. **Navegador:** a página no servidor local.
+
+**Resultado medido.**
+
+- **Frontend:** 443 passam, 31 arquivos (428 + 15); `tsc` e build limpos.
+- **Sabotagens, 7/7 acusadas:** recorte devolvendo o documento inteiro (2 falhas); contato não
+  trocado (4); sem `remark-gfm` (1); sem o aviso de versão preliminar (1); link do cadastro para
+  outro lugar (1); link de Configurações para outro lugar (1); alcançabilidade ignorando `import`
+  dinâmico (1).
+- **Build:** a política em pacote próprio (`Privacidade-*.js`, 63 kB comprimido), fora do principal.
+- **Navegador:** faixa, títulos, tabelas e "(ainda não informado nesta versão preliminar)" no lugar
+  do controlador.
+
+**Adaptação.**
+
+- **Publicar com a faixa de versão preliminar**, contra a nota do documento: escondida, a política
+  não informava ninguém. A revisão continua no `LGPD-03`.
+- **O teste de alcançabilidade passou a reconhecer `import()` dinâmico.** O comentário dele previa
+  exatamente este falso positivo ("se passar a haver, acusa órfão que não é; alguém vai olhar").
+- **`LGPD-01` passou de L0 para L3:** o que resta, definir o controlador, é do autor.
+- **`SEC-16`, novo:** o `npm audit` mostrou alerta alto no `react-router` instalado — já existia
+  antes deste item, e um dos avisos alcança o uso do app.
+
+**O que deu errado no caminho.**
+
+- **A primeira montagem de `/privacidade` no teste do app inteiro deu raiz vazia:** o `Suspense`
+  tinha fallback nulo, e o carregamento sob demanda ainda não tinha chegado. Virou um "Carregando a
+  política…", que também serve a quem usa.
+
+**Risco em aberto.**
+
+- **O pacote da página carrega o `.md` inteiro, notas internas incluídas** — a tela não as mostra,
+  mas quem abrir o JavaScript as lê. O repositório já é público, então não expõe nada novo.
+- **Sem as variáveis na Vercel, o controlador aparece como "ainda não informado"** (`LGPD-01` (a)).
+- **O build da Vercel precisa enxergar `docs/`**, fora de `frontend/`: a prévia da PR confirma.
+
+**Procedência.**
+
+- `frontend/src/lib/politica.ts`, `pages/Privacidade.tsx`, `App.tsx`, `pages/Register.tsx`,
+  `pages/Settings.tsx`, `components/EditarPerfil.tsx`, `pages/Landing.tsx`, `vite.config.ts`;
+- `frontend/src/lib/politica.test.ts`, `pages/Privacidade.test.tsx`, `Register.test.tsx`,
+  `montagem.test.ts`, `alcance.test.ts`;
+- backlog `LGPD-01` e `SEC-16`.
+
+---
+
+# 2026-11-03 (xiv) — o release da política de privacidade
+
+**O problema, como foi entendido no início.** A página `/privacidade` (`LGPD-01` (b), PR #56) estava
+em `develop`, e o controlador e o contato dependiam de duas variáveis de build que só o autor podia
+criar na Vercel.
+
+**Hipótese de trabalho.** Que as variáveis criadas antes do release entrassem no build do deploy de
+produção, sem um redeploy à parte.
+
+**O que foi testado, e como.**
+
+- **As variáveis:** criadas pelo autor em Settings → Environment Variables do projeto, tipo Config
+  (não Secret: o valor é público por definição, e Config permite conferi-lo), só em Production. O
+  caminho no painel levou três telas (variáveis da equipe, configurações da equipe, ambientes).
+- **O release:** diff `main..develop` (o frontend e as duas dependências novas; nenhuma migração);
+  PR #57 depois dos 9 checks; deploy acompanhado pela API de deployments.
+- **Depois:** `/health`; `/privacidade`; o pacote `Privacidade-*.js` publicado, procurado pelos
+  valores injetados; e, pelo autor, a página aberta e um login.
+
+**Resultado medido.**
+
+- Deploy `7530696288`, `success`, SHA `242d854`. `/health` `200`; `/privacidade` `200`.
+- O pacote publicado traz o controlador e o contato definidos pelo autor; a seção 1 da página os
+  mostra, e as tabelas saem formatadas (conferido pelo autor, por captura de tela).
+- **O autor confirmou o login.**
+
+**Adaptação.** Nenhuma.
+
+**O que deu errado no caminho.** Nada nesta etapa.
+
+**Risco em aberto.** O controlador definido é o autor sozinho; incluir o orientador, se for o caso,
+e a revisão da política são o `LGPD-03`. O e-mail de contato fica público, por escolha do autor.
+
+**Procedência.**
+
+- PR #57 (`242d854`); deployment de produção `7530696288`;
+- `GET https://dormio-smart.vercel.app/health`, `/privacidade` e o pacote publicado, 03/11;
+- a captura de tela e a confirmação do autor; backlog `LGPD-01`.
+
+---
+
+# 2026-11-03 (xv) — `SEC-16`: `react-router` atualizado, e o destino pós-login validado
+
+**O problema, como foi entendido no início.** Ao instalar o `react-markdown` (`LGPD-01` (b)), o
+`npm audit` mostrou alerta de severidade alta no `react-router` 7.13.0 instalado — já existente.
+
+**Hipótese de trabalho.** Que a maior parte dos avisos fosse de recursos que o app não usa, e que a
+atualização dentro da versão maior 7 não mudasse comportamento.
+
+**O que foi testado, e como.**
+
+- **Os avisos:** `npm audit --json`. Doze, todos com correção a partir da 7.18.2. Dez são do modo
+  *framework*/servidor (RSC, SSR, `__manifest`, *single-fetch*, *turbo-stream*, *actions*,
+  *prerender*), que o app não usa; um é de lentidão no casamento de rotas; e um — redirecionamento
+  aberto por barra invertida em `<Link>`/`useNavigate` (GHSA-wrjc-x8rr-h8h6) — alcança o uso do app.
+- **Onde o app navega para destino vindo de fora:** busca por `navigate(`, `<Navigate` e `to={`.
+  Um caso: o `Login` navegava para `state.de`, sem validação. O valor só é escrito pelo guarda de
+  rotas, a partir das rotas protegidas (fixas) — não explorável hoje, mas sem defesa.
+- **A versão:** datas de publicação pelo `npm view`. A 7.18.4 (15/09) corrige tudo e tinha sete
+  semanas; a 7.18.5 tinha uma.
+- **A correção:** `react-router` 7.18.4, versão fixa; `destinoSeguro` em `lib/rotas.ts` (só caminho
+  que começa com `/` e não com `//` nem `/\`, sem caractere de controle), usado pelo `Login`.
+- **Testes:** 16 casos da função e 3 do `Login` renderizado (`Login.test.tsx`), com a navegação real
+  pelo `MemoryRouter`. **Controle positivo:** quatro sabotagens. **Navegador:** servidor local.
+
+**Resultado medido.**
+
+- `npm audit --omit=dev`: **0 vulnerabilidades**. Antes de qualquer código novo, a suíte com a versão
+  nova: 443 passam, `tsc` limpo — a atualização não quebrou nada.
+- **Frontend:** 462 passam, 32 arquivos (443 + 19); `tsc` e build limpos.
+- **Sabotagens, 4/4 acusadas:** `destinoSeguro` aceitando qualquer texto (14 falhas); sem recusar a
+  barra invertida (1); sem recusar caractere de controle (2); `Login` sem passar pela função (1).
+- **Navegador:** `/configuracoes` sem sessão leva a `/login` com `de: "/configuracoes"` guardado; a
+  política carrega; console sem erro.
+
+**Adaptação.** Nenhuma em relação ao plano.
+
+**O que deu errado no caminho.** **O primeiro teste da barra invertida estava errado, não a
+função:** o caractere foi escrito no teste como `"/\evil.example"` com uma barra só, e em
+JavaScript `\e` vira `e` — o teste conferia `"/evil.example"`, um caminho interno válido. Corrigido
+o teste; a função não mudou. E a sessão parou uma vez no meio, por limite de uso, com o código já
+numa PR (#59) e o registro por fazer.
+
+**Risco em aberto.** **Só vale no site depois do release.** O CI não roda `npm audit`: um aviso novo
+numa dependência só aparece quando alguém rodar à mão.
+
+**Procedência.**
+
+- `frontend/package.json` e `package-lock.json`; `frontend/src/lib/rotas.ts` e `rotas.test.ts`;
+  `frontend/src/pages/Login.tsx` e `Login.test.tsx`;
+- PR #59; backlog `SEC-16`.
+
+---
+
+# 2026-11-03 (xvi) — o release do `SEC-16`
+
+**O problema, como foi entendido no início.** O `SEC-16` estava em `develop` (PR #59) e só valia no
+site depois do release.
+
+**Hipótese de trabalho.** Que o release mudasse só o roteador e a validação do login, sem efeito no
+resto do site.
+
+**O que foi testado, e como.** Diff `main..develop` (só `frontend/`: as dependências e quatro arquivos
+de código e teste); PR #60 depois dos 9 checks; deploy acompanhado pela API de deployments; depois,
+`/health`, `/privacidade`, `PATCH /api/me/perfil` sem credencial, o pacote publicado e um login do
+autor.
+
+**Resultado medido.** Deploy `7534293060`, `success`, SHA `87622ce`. `/health` `200`, banco ok;
+`/privacidade` `200`; `PATCH` sem credencial → `401`; a validação nova (`destinoSeguro`) no pacote
+publicado. **O autor confirmou o login.**
+
+**Adaptação.** Nenhuma.
+
+**O que deu errado no caminho.** Nada nesta etapa.
+
+**Risco em aberto.** O CI não roda `npm audit` (diário, 03/11 (xv)).
+
+**Procedência.** PRs #59 e #60 (`87622ce`); deployment de produção `7534293060`; as rotas e o pacote
+de `https://dormio-smart.vercel.app`, 03/11; a confirmação do autor; backlog `SEC-16`.
+
+---
+
+# 2026-11-03 (xvii) — `DOC-13` e `CI-08`: o resumo do backlog conferido, e as dependências auditadas
+
+**O problema, como foi entendido no início.** Duas pontas de infraestrutura. O resumo do topo do
+backlog (contagem, quadro em uma tela, caminho crítico) é escrito à mão e já listou itens fechados
+como pendentes duas vezes (`DOC-13`). E nenhum CI confere as dependências contra avisos publicados:
+o `SEC-16` achou o `react-router` com 12 avisos porque alguém rodou `npm audit` à mão.
+
+**Hipótese de trabalho.** Que a regra proposta no `DOC-13` ("ID fechado citado nas seções de
+resumo") servisse como estava; e que as dependências do backend estivessem limpas, já que só o
+frontend tinha sido auditado.
+
+**O que foi testado, e como.** A regra literal medida antes de escrever: **161 acusações** (Estado
+108, Quadro 28, Caminho 25), quase todas prosa histórica legítima. Foi estreitada a três conferências
+estruturadas em `scripts/conferir_backlog.py --conferir`: recontagem por camada contra a linha
+**Contagem**; o quadro tem de listar exatamente os abertos de cada camada; nenhum fechado ou
+pós-banca sem riscar nos passos do caminho crítico. A seção "Estado" ficou de fora, com nota no
+topo dizendo isso. Quatro sabotagens em cópias (`--arquivo`): contagem +1, `DIAG-02` no quadro do L0,
+`GIT-05` tirado do quadro, `CAL-02` de volta ao caminho crítico. Depois, `npm audit --omit=dev
+--audit-level=high` e `pip-audit` 2.10.1 (num ambiente descartável), nesta máquina, e o workflow
+novo `auditoria-dependencias.yml` exercido por uma branch descartável (`ci/sabotagem-CI-08`) com
+`react-router` 7.13.0 e gunicorn 21.2.0.
+
+**Resultado medido.** Primeira execução do conferidor: **4 divergências** no caminho crítico
+(`CAL-02` e `DATA-07b`, `DIAG-02` e `DIAG-04`, todos fechados), corrigidas; contagem e quadro
+batiam. Sabotagens **4/4**, cada uma com a mensagem que nomeia o item. `npm audit` de produção:
+**0**. `pip-audit`: **4 avisos em 3 pacotes** — Flask 3.1.2 (CVE-2026-27205, `Vary: Cookie` na
+`session`), python-dotenv 1.2.1 (CVE-2026-28684, `set_key` segue link simbólico), gunicorn 21.2.0
+(CVE-2024-1135 e CVE-2024-6827, contrabando de requisição). Nenhum explorável aqui: a Vercel roda
+pelo `@vercel/python` e o gunicorn não aparece fora do `requirements.txt`; o backend não usa a
+`session` do Flask nem o `set_key`. Por decisão do Vitor os três subiram (3.1.3, 1.2.2, 22.0.0):
+**417 testes do backend passam** em Python 3.11 limpo, e o `pip-audit` sai sem aviso. Na sabotagem,
+os dois jobs do workflow reprovaram (execução `41749478900`): o `npm audit` listou os avisos do
+`react-router` (faixa até 7.18.1; o 7.18.4 em uso fica fora), o `pip-audit` os dois do gunicorn.
+
+**Adaptação.** A regra do `DOC-13` mudou de "ID fechado citado" para três conferências
+estruturadas — a literal acusaria 161 menções e ensinaria a ignorar o alarme. O plano aprovado
+previa parar se o `pip-audit` acusasse: parou, os avisos foram levados ao Vitor com a análise de
+alcance, e a decisão foi subir as versões em vez de ignorar os IDs.
+
+**O que deu errado no caminho.** A primeira tentativa da sabotagem do quadro não acusou: o
+`replace` pegou a primeira ocorrência de `DOC-13` no arquivo, que era a nota nova no topo do
+"Estado", fora do quadro. O defeito era da sabotagem, não do script; refeita dentro do quadro,
+acusou. E o primeiro script de sabotagem quebrou ao imprimir `✗` no console `cp1252` — o
+`PYTHONIOENCODING=utf-8` resolveu (o script em si já reconfigura a saída).
+
+**Risco em aberto.** O agendamento semanal só roda a partir de `main` (vale depois do release). As
+ferramentas de teste e build têm 7 avisos (`tinypool` crítico, `source-map-js` alto), fora do
+workflow de propósito — `SEC-17`. O gunicorn segue no `requirements.txt` sem ser usado; tirá-lo
+muda a stack descrita e ficou para decisão do autor.
+
+**Procedência.** Branch `chore/DOC-13-conferir-backlog-e-auditoria`; `scripts/conferir_backlog.py`;
+`.github/workflows/auditoria-dependencias.yml`; execução de sabotagem `41749478900` (branch
+`ci/sabotagem-CI-08`, não mesclada); backlog `DOC-13`, `CI-08`, `SEC-17`.
+
+---
+
+# 2026-11-03 (xviii) — o release do `DOC-13` e do `CI-08`
+
+**O problema, como foi entendido no início.** O `DOC-13` e o `CI-08` estavam em `develop` (PR #62).
+As versões corrigidas do backend só valiam na produção, e o agendamento da auditoria só rodava,
+depois do release para `main`.
+
+**Hipótese de trabalho.** Que a troca de Flask, python-dotenv e gunicorn não mudasse nada visível,
+já que os 417 testes do backend passaram com as versões novas e a Vercel não usa o gunicorn.
+
+**O que foi testado, e como.** Diff `main..develop` (só o `requirements.txt` muda a produção); PR #63
+com 13 checks, as duas auditorias incluídas; deploy acompanhado pela API de deployments; depois,
+`/health`, as rotas de ingestão e de perfil sem credencial e com `Bearer` inválido, `/privacidade`;
+a auditoria disparada à mão a partir de `main`; e um login do autor.
+
+**Resultado medido.** Deploy `7534968706`, `success`, SHA `f754b96`. `/health` `200`, banco ok,
+contrato `2.7.0`; `PATCH /api/me/perfil`, `POST /api/data/lote` e `GET /api/features` → `401` sem
+credencial, `Bearer` inválido → `401`; `/privacidade` `200`. Auditoria a partir de `main`: execução
+`41751583490`, os dois jobs verdes. **O autor confirmou o login.**
+
+**Adaptação.** Nenhuma.
+
+**O que deu errado no caminho.** Nada nesta etapa.
+
+**Risco em aberto.** A versão dos pacotes que a Vercel instalou não é visível de fora: o que garante
+o Flask 3.1.3 é o `requirements.txt` de `main`, não uma medição na produção. O agendamento semanal
+ainda não rodou sozinho — a primeira execução agendada é a da próxima segunda-feira. `SEC-17` segue
+aberto.
+
+**Procedência.** PRs #62 e #63 (`f754b96`); deployment de produção `7534968706`; execução
+`41751583490`; as rotas de `https://dormio-smart.vercel.app`, 03/11; a confirmação do autor; backlog
+`CI-08`.
+
+---
+
+# 2026-11-03 (xix) — `SEC-17`: as ferramentas de teste e build atualizadas
+
+**O problema, como foi entendido no início.** O `npm audit` sem `--omit=dev` achava 7 avisos nas
+ferramentas de teste e build (`tinypool` crítico, `source-map-js` alto, `esbuild`, `vite-node` e
+`@vitest/mocker` moderados), fora da auditoria do `CI-08` de propósito.
+
+**Hipótese de trabalho.** Que o `npm audit fix` sem `--force` resolvesse boa parte, e que sobrasse o
+`vitest`, de versão maior. E que o `vite`, por gerar o pacote do site, pudesse mudar o que vai para
+a produção.
+
+**O que foi testado, e como.** Numa cópia fora do repositório, o `npm audit fix` sem `--force`.
+Depois, na branch: suíte e build **antes** (462 testes; pacote guardado); `npm audit fix`; `vite`
+6.4.5 e `vitest` 4.1.12 com versão fixa; suíte, `tsc`, build comparado byte a byte com o de antes;
+o servidor de desenvolvimento com `/`, `/login` e `/privacidade` no navegador do app. Sabotagens
+com o vitest novo: `destinoSeguro` aceitando caminho sem barra, `montagem.test.ts` sem a diretiva
+`jsdom`, um módulo órfão em `src/components/`, e o `vitest.config.ts` sem a liberação de `docs/`.
+Para a auditoria ampliada: o lockfile de antes, com o comando antigo e com o novo.
+
+**Resultado medido.** O `audit fix` sem `--force` resolveu **1 de 7** (`source-map-js` 1.2.2): o
+`vite` está com versão fixa e o `vitest` precisava de duas versões maiores — o 3.2.7 ainda traz o
+`tinypool` vulnerável. Com 6.4.5 e 4.1.12: `npm audit` completo **0**; o `tinypool` saiu da árvore.
+**462 testes, 32 arquivos**, como antes; `tsc` limpo; o `dist/` **idêntico byte a byte** ao de
+antes — a troca não muda nada que vai para o site. As três páginas abriram no servidor de
+desenvolvimento. Sabotagens **4/4**: 4 casos do `destinoSeguro`, 4 da montagem, o órfão e o
+arquivo da política caíram. No lockfile antigo, `--omit=dev` passa (saída 0) e o comando novo
+reprova (saída 1).
+
+**Adaptação.** O plano previa só subir versões. Com o vitest 4, `Privacidade.test.tsx` e a
+montagem do `/dashboard` caíram com `Denied ID …/POLITICA-DE-PRIVACIDADE.md?raw`: desde o vite 6.4
+o carregador dos testes confere o caminho **com a query**, e uma liberação de arquivo nunca casa
+com `…md?raw` — só a de pasta. Confirmado liberando `docs/` por um instante (os 22 testes dos dois
+arquivos passaram). A liberação de `docs/` ficou só no `vitest.config.ts`; o `vite.config.ts`
+segue liberando o arquivo, e só ele. A auditoria do `CI-08` passou de `--omit=dev` para todas
+as dependências, por decisão do Vitor no plano.
+
+**O que deu errado no caminho.** Três coisas. (1) Tentei primeiro exportar a lista do
+`vite.config.ts` para o `vitest.config.ts` — a falha continuou, porque o problema não era a lista
+faltar, era a query no caminho; só lendo o código do vite (`isServerAccessDeniedForTransform`) a
+causa apareceu. (2) Supus que o servidor de desenvolvimento também quebraria a `/privacidade`; não
+quebra — o navegador pede `/@fs/…?import&raw` e recebe `200`. A suposição estava no relato antes
+de ser medida e foi corrigida pela medição. (3) A sabotagem da liberação foi desfeita com
+`git checkout` do arquivo, que levou junto a alteração ainda não commitada; refeita, e a suíte
+voltou a 462.
+
+**Risco em aberto.** O `vitest.config.ts` libera `docs/` inteira para os testes; o servidor de
+desenvolvimento não. Se outro documento passar a ser importado com `?raw`, os testes aceitam e o
+servidor de desenvolvimento recusa — o sintoma aparece no `npm run dev`, não no CI.
+
+**Procedência.** Branch `chore/SEC-17-ferramentas-de-teste-e-build`; `frontend/package.json`,
+`package-lock.json`, `vitest.config.ts`; `.github/workflows/auditoria-dependencias.yml`; backlog
+`SEC-17`, `CI-08`.
+
+---
+
+# 2026-11-03 (xx) — `UI-21`: o `?raw` conferido contra a liberação do servidor de desenvolvimento
+
+**O problema, como foi entendido no início.** O risco em aberto da entrada (xix): o
+`vitest.config.ts` libera `docs/` inteira e o `vite.config.ts` só o arquivo da política. Um segundo
+documento importado com `?raw` passaria no CI e no build e só quebraria no `npm run dev`.
+
+**Hipótese de trabalho.** Que um teste estático bastasse: achar os `?raw` dos módulos da aplicação
+e conferir cada um contra o `server.fs.allow` do servidor de desenvolvimento. Liberar `docs/` também
+no servidor de desenvolvimento foi descartado, por decisão do Vitor: desfaria o "só ele" do
+`LGPD-01` (b) sem ganho além de simetria.
+
+**O que foi testado, e como.** `frontend/src/raw.test.ts` importa o `vite.config.ts`, lê a lista e
+aplica a regra do vite (arquivo igual, ou pasta que o contém); arquivos de teste ficam de fora, porque
+só rodam no vitest. Imprime o que achou e reprova se não achar nada (catraca). Três sabotagens:
+`docs/LGPD-ELIMINACAO.md?raw` importado em `lib/politica.ts` sem liberar; a política tirada da lista do
+`vite.config.ts`; a expressão da busca trocada para não casar com nada.
+
+**Resultado medido.** A busca acha exatamente um: `pages/Privacidade.tsx →
+docs/POLITICA-DE-PRIVACIDADE.md`. Sabotagens **3/3**: as duas primeiras derrubam "todo arquivo
+importado com ?raw está liberado", a terceira derruba a catraca — e, sem a catraca, o outro teste
+teria passado sem conferir nada. Suíte: **464 testes, 33 arquivos**; `tsc` limpo.
+
+**Adaptação.** Nenhuma.
+
+**O que deu errado no caminho.** A primeira tentativa da terceira sabotagem não se aplicou: o `sed`
+não casou com a linha, ela ficou igual, e o "2 passed" que saiu não provava nada. Notado porque o
+`grep` logo depois mostrou a linha intacta; refeita com Python, conferindo a troca antes de rodar.
+Desta vez as sabotagens foram desfeitas a partir de cópias, e não com `git checkout` — o arquivo do
+teste ainda não estava commitado, que é o que apagou uma alteração na entrada (xix).
+
+**Risco em aberto.** O teste confere a lista, não o servidor: que o servidor de desenvolvimento
+sirva a página foi medido à mão, no navegador, em 03/11. Um `?raw` escrito fora do padrão
+`from "…?raw"` (um `import()` dinâmico, por exemplo) não seria achado — a catraca só garante que o
+de hoje é.
+
+**Procedência.** Branch `chore/UI-21-raw-liberado-no-dev`; `frontend/src/raw.test.ts`; backlog
+`UI-21`; diário 03/11 (xix).
+
+---
+
+# 2026-11-03 (xxi) — `UI-22`: o `?raw` conferido contra o servidor de verdade
+
+**O problema, como foi entendido no início.** Os dois limites que a entrada (xx) declarou no
+`UI-21`: a busca só achava `from "…?raw"`, e o teste conferia a lista do `vite.config.ts` com uma
+cópia da regra do vite escrita à mão, não o servidor. Na análise apareceu um terceiro: o vite confere
+do mesmo jeito `?url` e `?inline` (`isServerAccessDeniedForTransform`), que a busca não via.
+
+**Hipótese de trabalho.** Que bastasse alargar a busca e trocar a cópia da regra por um pedido HTTP
+ao servidor de desenvolvimento, exigindo `200`.
+
+**O que foi testado, e como.** Busca nova: qualquer texto entre aspas ou crases terminado em
+`?raw`, `?url` ou `?inline`; `import.meta.glob` reprova, porque não deixa o caminho escrito. O teste
+sobe o servidor com o `vite.config.ts` (`createServer`, porta livre, sem HMR nem pré-otimização) e
+pede `/@fs/…?import&<query>` para cada achado. Antes das sabotagens, uma sonda fora do teste pediu
+três arquivos: a política, um que não existe e um de `docs/` fora da lista. Sabotagens: `import()`
+dinâmico de `docs/LGPD-ELIMINACAO.md?raw`; o mesmo com `?url` em template string; `import()` de um
+caminho inexistente; um `import.meta.glob`; a política tirada da lista do `vite.config.ts`.
+
+**Resultado medido.** A sonda: política → `200`, `text/markdown`, o conteúdo; **inexistente → `200`,
+`text/html`, o `index.html` da aplicação**; fora da lista → `403`. Por isso o teste exige o corpo
+igual ao arquivo em disco, e não só o status. Sabotagens **5/5**, cada uma pela mensagem certa: os
+dois imports de outro documento → `403`, o inexistente → "arquivo não existe", o `glob` derruba o
+seu teste, a política fora da lista → o servidor recusa. Suíte: **465 testes, 33 arquivos**; `tsc`
+limpo; o servidor sobe e responde em menos de 100 ms.
+
+✏️ *Mesmo dia, antes do merge, a pedido do Vitor: avaliado o limite que restava, o caminho montado em
+execução. Medido com sabotagens temporárias: um template com variável
+(`` import(`../docs/${nome}.md?raw`) ``) **já reprova** ("arquivo não existe"); a concatenação
+(`import(base + "?raw")`) passava no teste e **no build, sem aviso** (com `@vite-ignore`), o documento
+**não entrava no pacote** — o publicado tinha `import(Sp+"?raw")`, que o navegador pediria em tempo de
+execução — e os testes de página não pegariam, porque o vitest resolve. Era defeito de produção, não
+só divergência de desenvolvimento. Entrou um quarto teste: texto entre aspas que **começa** com a
+query reprova. Sabotagens 2/2 (`?raw` e `?url` concatenados); suíte **466**. Uma primeira tentativa
+de medir o build não valeu: a alteração na página não se aplicou e o build podou o código sabotado;
+refeita com a troca conferida.*
+
+**Adaptação.** O plano previa exigir só `200`. A sonda mostrou que `200` passa para arquivo que não
+existe, e o teste passou a comparar o corpo.
+
+**O que deu errado no caminho.** A primeira versão da sonda falhou duas vezes antes de rodar: o
+heredoc do shell comeu a barra invertida de uma expressão regular, e o script, fora de `frontend/`,
+não achava o pacote `vite`. Rodou como `node -e` de dentro de `frontend/`.
+
+**Risco em aberto.** A concatenação simples reprova (ver a nota acima); um caminho montado de forma
+mais elaborada — a query guardada numa variável — continua fora da busca, e está escrito no próprio
+teste. O teste prova que o servidor serve o arquivo, não que
+a página o renderiza; isso é do `Privacidade.test.tsx` e do `montagem.test.ts`.
+
+**Procedência.** Branch `chore/UI-22-raw-no-servidor-real`; `frontend/src/raw.test.ts`; backlog
+`UI-21`, `UI-22`; diário 03/11 (xx).
+
+---
+
+# 2026-11-03 (xxii) — `INFRA-04`: o gunicorn sai, e a stack documentada volta a bater
+
+**O problema, como foi entendido no início.** O `gunicorn` estava no `web-app/requirements.txt` e na
+stack do `CLAUDE.md` e do `README.md`, sem rodar em lugar nenhum: a Vercel serve o backend pelo
+`@vercel/python`. Ele só aparecia nos avisos do `pip-audit` (`CI-08`, entrada (xvii)).
+
+**Hipótese de trabalho.** Que nada dependesse dele: nem os testes, nem o import do `app`, nem
+documento do TCC.
+
+**O que foi testado, e como.** Busca por `gunicorn`, `wsgi` e `Procfile` no repositório e nos
+documentos locais não versionados (`DOCUMENTO-TCC.md`, `ROADMAP.md`, `METODOLOGIA.md`,
+`HARDWARE.md`, roteiro). Depois de tirá-lo do `requirements.txt`: ambiente Python 3.11 limpo,
+instalado só do arquivo, conferido que o pacote **não** está presente; os testes do backend; o
+`import app` como a Vercel faz; o `pip-audit`. A linha de stack do `README.md` foi refeita contra o
+`frontend/package.json`, o `web-app/requirements.txt` e o `ml/requirements.txt`.
+
+**Resultado medido.** Gunicorn só no `requirements.txt`, no `CLAUDE.md` e no `README.md` (mais o
+histórico no diário, no backlog e no comentário do workflow, que ficam). Nenhum documento local o
+cita — o texto do TCC não muda. Sem ele: **417 testes passam**, `import app` devolve o `Flask`,
+`pip-audit` sem aviso. A stack do `README.md` dizia "Tailwind + Chart.js": o gráfico é **Recharts**,
+e faltavam React, TypeScript, Vite, o ML e o vitest.
+
+**Adaptação.** Ao ler o `README.md` inteiro para corrigir a stack, apareceram mais cinco
+afirmações velhas — a principal, mandar preencher a `SUPABASE_SERVICE_ROLE_KEY`, que a produção
+não usa desde o `SEC-14`. Ficaram fora deste item, que era a stack: viraram o `DOC-14`, porque
+reescrever instruções de instalação pede executá-las numa cópia limpa antes, e isso não estava no
+plano.
+
+**O que deu errado no caminho.** Nada nesta etapa.
+
+**Risco em aberto.** Só depois do release: a Vercel instala o `requirements.txt` sem o gunicorn, e
+a conferência é o `/health` e o login. Se o backend um dia sair da Vercel, um servidor WSGI volta a
+ser necessário — está escrito no `CLAUDE.md`. O README segue com o resto envelhecido: `DOC-14`.
+
+**Procedência.** Branch `chore/INFRA-04-remover-gunicorn`; `web-app/requirements.txt`,
+`README.md`, `CLAUDE.md`; backlog `INFRA-04`, `DOC-14`.
+
+---
+
+# 2026-11-03 (xxiii) — o release do `INFRA-04`, do `SEC-17`, do `UI-21` e do `UI-22`
+
+**O problema, como foi entendido no início.** Quatro itens em `develop` (PRs #64 a #68). Só o
+`INFRA-04` mudava o que a Vercel instala (o `requirements.txt` sem o gunicorn); o `SEC-17` trocava a
+ferramenta de build; os outros dois eram testes.
+
+**Hipótese de trabalho.** Que o backend subisse sem o gunicorn na Vercel e que o site publicado não
+mudasse, porque o build local com o vite novo saiu idêntico byte a byte ao de antes.
+
+**O que foi testado, e como.** Diff `main..develop`; PR #69 com 13 checks; deploy acompanhado pela
+API de deployments; depois, `/health`, as rotas de perfil e de ingestão sem credencial e com
+`Bearer` inválido, `/privacidade`, o nome do pacote publicado, e um login do autor. Tentativa de
+comparar o pacote com o do deploy anterior pelas URLs de cada deploy.
+
+**Resultado medido.** Deploy `7536039508`, `success`, SHA `9d19ec1`. `/health` `200`, banco ok —
+o backend sobe na Vercel sem o gunicorn; rotas sem credencial e `Bearer` inválido → `401`;
+`/privacidade` `200`. **O autor confirmou o login.** O pacote publicado é `index-BZZthQcI.js`,
+diferente do build local (`index-MJqm7df1.js`) — esperado, porque o build da Vercel inclui as
+variáveis do controlador da política.
+
+**Adaptação.** Nenhuma.
+
+**O que deu errado no caminho.** A comparação com o deploy anterior não foi possível: as URLs de
+cada deploy respondem `200` com a página de login da Vercel, não com o site. Fica registrado como
+não medido, em vez de dado por igual.
+
+**Risco em aberto.** Que o pacote publicado não mudou é inferência (build local idêntico + as
+mesmas variáveis), não medição na produção. O `DOC-14` segue aberto.
+
+**Procedência.** PRs #64 a #69 (`9d19ec1`); deployment de produção `7536039508`; as rotas de
+`https://dormio-smart.vercel.app`, 03/11; a confirmação do autor; backlog `INFRA-04`, `SEC-17`,
+`UI-21`, `UI-22`.
+
+---
+
+# 2026-11-03 (xxiv) — `DOC-14`: o README reescrito, executado e com o painel de hoje
+
+**O problema, como foi entendido no início.** O `README.md` é a primeira coisa que a banca lê, e o
+`INFRA-04` mostrou que ele envelheceu além da stack. O Vitor pediu revisão completa, inclusive das
+imagens.
+
+**Hipótese de trabalho.** Que bastasse reescrever as seções contra o código; e que a imagem do
+painel viesse de uma conta de demonstração alimentada pelo `fake_sensor.py`, criada pelo autor.
+
+**O que foi testado, e como.** Cada seção medida contra o código: as rotas de `routes.py` (13, não
+4), as rotas do `App.tsx`, os `.env.example`, os `package.json` e `requirements.txt`, os
+documentos versionados, a imagem (`img/dashboard.jpeg`, de 03/06). O README novo foi **executado
+num clone limpo**, comando por comando: instalação e subida do backend sem chaves, os testes do
+backend, do frontend e do ML, `npm ci` e servidor de desenvolvimento, e o simulador contra a produção
+com token inválido. Os 22 links relativos conferidos por script contra `git ls-files` (inclusive
+âncoras), com três sabotagens. Para a imagem: o modo demonstração já existente (`DEMO-01`,
+`/dashboard?demo=1`) e captura com o Edge sem interface, a 1920 × 1500.
+
+**Resultado medido.** No clone limpo: backend sobe e responde `503` ("consulta falhou") sem chaves,
+como o README diz; **417, 466 e 134 testes**; o servidor de desenvolvimento serve `/` e
+`/privacidade`; o simulador chega à produção e recebe `401` (`device nao autorizado`). Links: 22
+certos; as sabotagens — arquivo inexistente, âncora inexistente e `docs/METODOLOGIA.md`, que existe
+no disco mas é gitignorado — reprovaram, **3/3**. A imagem antiga era de **outra aplicação** (o
+painel em Flask/Tailwind, com "Movimento Detectado!"); saiu. A nova é o painel React real com os
+dados sintéticos do modo demonstração e a faixa "MODO DEMONSTRAÇÃO" dentro do quadro.
+
+**Adaptação.** Três. (1) Criar conta na produção, mesmo de teste, está fora do que o assistente faz;
+a captura veio do modo demonstração, que não precisa de conta nem sai da máquina. (2) O modo
+demonstração **não funcionava**: o `/dashboard?demo=1` caía no `/login`. Pelo histórico, o
+`DEMO-01` é de 19/08 e o guarda de rotas (`AUTH-04`) de 20/08 — a demo está quebrada desde o dia
+seguinte ao que nasceu, e nada notou. Para não ampliar o escopo, o guarda foi liberado
+**temporariamente** na cópia local, a captura tirada e o arquivo restaurado (conferido com
+`git diff --quiet`); a correção definitiva é o `DEMO-02`. (3) Ao capturar a página inicial
+publicada, ela descrevia a arquitetura antiga (Deep Sleep, envio a cada evento, validação por
+dataset pendente): não entrou no README, e virou o `UI-23`. Os READMEs de `web-app/` e
+`firmware/` mostraram marcadores da versão antiga numa busca: `DOC-15`.
+
+**O que deu errado no caminho.** A execução no clone pegou um erro do README novo, não do velho: as
+instruções mandavam rodar os testes sem instalar o `pytest`, que não está no `requirements.txt`.
+Corrigido e reexecutado. O primeiro teste do simulador não imprimiu nada — o `timeout` matava o
+processo antes de o Python esvaziar a saída; com `-u` apareceu o `401`. A primeira captura pelo
+Edge não gerou arquivo, porque o caminho curto do Windows (`VITOR-~1`) não foi aceito; com o caminho
+longo, gerou. E a captura pelo painel do navegador do app saía reduzida (800 px, JPEG), por isso o
+Edge.
+
+**Risco em aberto.** A imagem mostra "Conta não autenticada" na barra lateral — efeito de a demo
+rodar sem sessão; honesto, mas é o `DEMO-02` que decide se a demo deve parecer logada. O que
+depende de chave real do Supabase (login, dados reais) não foi exercitado no clone limpo, e o README
+diz isso. `DEMO-02`, `UI-23` e `DOC-15` abertos.
+
+**Procedência.** Branch `docs/DOC-14-readme`; `README.md`, `img/painel-demonstracao.png`,
+`web-app/fake_sensor.py`; backlog `DOC-14`, `DEMO-02`, `UI-23`, `DOC-15`.
+
+---
+
+# 2026-11-04 — `DEMO-02`, `UI-23` e `DOC-15`: a demo, a página inicial e os READMEs das pastas
+
+**O problema, como foi entendido no início.** Os três itens que a revisão do README (`DOC-14`)
+abriu: o modo demonstração quebrado desde 20/08 pelo guarda de rotas; a página inicial do site
+descrevendo a arquitetura abandonada em 30/10; e os READMEs de `web-app/` e `firmware/` com
+trechos da versão antiga.
+
+**Hipótese de trabalho.** Que o guarda pudesse liberar a demo sem risco para a produção, porque
+`estaEmModoDemo` já é falso fora do build de desenvolvimento; que os textos da página inicial
+fossem só texto; que os READMEs pudessem ser conferidos contra o código como no `DOC-14`.
+
+**O que foi testado, e como.** `Guardas.test.tsx`: a rota e o guarda reais, sessão falsa, quatro
+casos, inclusive `DEV` falso por `vi.stubEnv`; sabotagens tirando a liberação e tirando a
+salvaguarda de `demo.ts`. Depois, o build de produção servido com `vite preview` e
+`/dashboard?demo=1` aberto no navegador. `Landing.test.tsx`: o texto **renderizado** da página,
+procurando os termos da arquitetura antiga e exigindo os da C2; sabotagem devolvendo a frase do
+Deep Sleep. READMEs: cada afirmação contra o código — `routes.py` (códigos de resposta),
+`database.py` (a alternativa da `service_role`), `sketch.ino` (o sono leve acorda só por
+`esp_sleep_enable_timer_wakeup`), todos os `.ino` (nenhum usa o GPIO 27 nem `MODO_SIMULADOR`) — e
+links pelo script do `DOC-14`. Suíte inteira e build.
+
+**Resultado medido.** Guarda: 4/4 testes, sabotagens **2/2**, cada uma no teste certo. **No build
+de produção, `?demo=1` foi ao `/login`, sem faixa**; no servidor de desenvolvimento, o painel abriu
+com a faixa. Página inicial: 5/5 testes; a sabotagem derrubou 3. READMEs: 4 e 7 links certos,
+sabotagem 3/3. Frontend: **475 testes, 35 arquivos**; build limpo.
+
+**Adaptação.** O `web-app/README.md` documentava a `service_role` como "*fallback* até a de cima
+existir", e o código ainda tem esse caminho (`database.py`): ficou descrita como alternativa só
+de desenvolvimento local, que não existe na Vercel desde o `SEC-14`. Tirar o código não era deste
+item.
+
+**O que deu errado no caminho.** O verificador de links do `DOC-14` acusou falha em todo link dos
+READMEs das pastas, inclusive nos certos. Dois defeitos dele, um atrás do outro: comparava
+`../docs/...` com a lista do `git ls-files`, que é relativa à raiz; corrigido isso, o
+`git ls-files` rodava dentro da subpasta e devolvia caminhos relativos a ela. Com o README da raiz
+os dois eram invisíveis. Corrigido (caminho resolvido a partir da raiz, `ls-files` na raiz) e
+sabotado de novo nas pastas.
+
+**Risco em aberto.** Em modo demonstração, o painel ainda chama `GET /api/devices`, que no
+servidor de desenvolvimento sem backend responde `500` no console — o painel aparece, mas a demo
+não é inteiramente local. A página inicial nova só vale no site depois do release. As instruções
+do Wokwi no `firmware/README.md` não foram executadas e estão marcadas assim.
+
+**Procedência.** Branch `feature/DEMO-02-UI-23-DOC-15`; `frontend/src/components/Guardas.tsx` e
+`Guardas.test.tsx`, `frontend/src/pages/Landing.tsx` e `Landing.test.tsx`, `web-app/README.md`,
+`firmware/README.md`; backlog `DEMO-02`, `UI-23`, `DOC-15`.
+
+---
+
+# 2026-11-04 (ii) — o release do `DOC-14`, do `DEMO-02`, do `UI-23` e do `DOC-15`
+
+**O problema, como foi entendido no início.** Quatro itens em `develop` (PRs #70 a #72): a página
+inicial nova só valia no site, e o README novo só aparecia na página do GitHub, depois do release.
+
+**Hipótese de trabalho.** Que a página inicial publicada mostrasse os textos novos e que a
+liberação do modo demonstração não chegasse à produção — o que o build local já tinha mostrado.
+
+**O que foi testado, e como.** PR #73 com 9 checks; deploy acompanhado pela API de deployments;
+depois, `/health`, as rotas sem credencial, `/privacidade`, o pacote publicado (procurando os
+textos novos e os termos antigos), a página inicial e `/dashboard?demo=1` no navegador, o
+`README.md` da `main` pela API do GitHub, e um login do autor.
+
+**Resultado medido.** Deploy `7537089021`, `success`, SHA `31cfb7d`. `/health` `200`, banco ok;
+rotas sem credencial → `401`; `/privacidade` `200`. No pacote publicado, "fica em sono leve" e
+"A cada 10 minutos" aparecem, "Deep Sleep" e "Wake-on-Motion" não; a página no navegador confirma.
+**`/dashboard?demo=1` na produção foi ao `/login`, sem faixa.** O README da `main` tem a seção de
+estado e a imagem nova. **O autor confirmou o login.**
+
+**Adaptação.** Nenhuma.
+
+**O que deu errado no caminho.** Nada nesta etapa.
+
+**Risco em aberto.** A chamada a `/api/devices` no modo demonstração (diário de 04/11) segue —
+só no servidor de desenvolvimento.
+
+**Procedência.** PRs #70 a #73 (`31cfb7d`); deployment de produção `7537089021`; a página e o
+pacote de `https://dormio-smart.vercel.app`, 04/11; o README da `main`; a confirmação do autor;
+backlog `DOC-14`, `DEMO-02`, `UI-23`, `DOC-15`.
+
+---
+
+# 2026-11-04 (iii) — `DEMO-03`: a demonstração deixa de chamar a API
+
+**O problema, como foi entendido no início.** O risco que a entrada de 04/11 deixou em aberto: em
+modo demonstração o painel pedia `GET /api/devices`, e o servidor de desenvolvimento sem backend
+respondia `500` no console. Ficou registrado só no diário — e a prática 2 do `CLAUDE.md` pede que
+todo risco em aberto aponte um item do backlog. O Vitor apontou.
+
+**Hipótese de trabalho.** Que fosse o `useDispositivos` sem a verificação que o `useHistorico` já
+tem, e que bastasse devolver a lista vazia em demo — o mesmo efeito na tela que a falha silenciosa
+já produzia, sem o pedido.
+
+**O que foi testado, e como.** `useDispositivos.test.ts`, com `listarDispositivos` falso: em demo
+não é chamado; fora dela, é, e a lista chega; com `DEV` falso, `?demo=1` não desliga a busca.
+Sabotagem tirando o retorno da demo. Suíte inteira e build. No servidor de desenvolvimento,
+`/dashboard?demo=1`: os pedidos de rede e o console, **depois de o painel estar na tela**.
+
+**Resultado medido.** 3/3 testes; a sabotagem derrubou o teste da demo, **1/1**. Frontend **478
+testes, 36 arquivos**; build limpo. No navegador, com o painel e a faixa na tela: **zero pedidos a
+`/api`**, console sem erro.
+
+**Adaptação.** Nenhuma.
+
+**O que deu errado no caminho.** A primeira leitura da rede, feita logo depois de abrir a página,
+deu "zero pedidos" — mas o painel ainda não tinha renderizado (o vite estava reotimizando as
+dependências depois do build). Zero pedidos de uma página vazia não prova nada; a medição foi
+repetida com o painel na tela.
+
+**Risco em aberto.** Nenhum novo. A mudança só vale fora da produção (a demo é falsa lá) e entra no
+site no próximo release.
+
+**Procedência.** Branch `bugfix/DEMO-03-demo-sem-api`; `frontend/src/hooks/useDispositivos.ts` e
+`useDispositivos.test.ts`; backlog `DEMO-03`; diário 04/11.
+
+---
+
+# 2026-11-04 (iv) — `CALC-01`: o modelo de energia com a C2 que o firmware implementou
+
+**O problema, como foi entendido no início.** O capítulo de modelos quantitativos
+(`CALCULOS-TCC.md`, Z.4) já tinha a C2 desde o `ARQ-01` (30/10), mas escrita antes do firmware:
+entrega por época ou "um lote por hora", com 1 s de rádio por entrega, e a autonomia de
+armazenamento da fila antiga na RAM (32 B, 8,53 h). O `sketch.ino` fixou outra coisa: lote a cada
+10 min, cada envio religando o Wi-Fi, e a época gravada na flash (64 B). E o texto do TCC
+(Produto 5, 6.4.1) estava ainda mais atrás: Deep Sleep, ciclo de dois estados.
+
+**Hipótese de trabalho.** Registrada antes de rodar: a corrente da C2 implementada ficaria entre o
+lote por hora (2,03 mA) e o envio por época (5,31 mA), e **o rádio continuaria a maior parcela**.
+
+**O que foi testado, e como.** Um cenário novo em `scripts/estudo_cadencia.py` que **lê do
+firmware** o intervalo de envio (`INTERVALO_DE_ENVIO_US`, `sketch.ino`) e o de drenagem
+(`INTERVALO_DE_DRENAGEM_US`, `nucleo/cadeia_c2.h`); o envio completo como estimativa em faixa
+(2, 4, 8 s); a gravação na flash como estimativa (programação, apagamento de setor a cada 64
+registros, corrente); a decomposição por parcela; a varredura de todos os parâmetros; a energia de
+uma noite. Asserções no `--conferir`, que roda no CI. Três sabotagens: o envio a 5 min **no
+próprio `sketch.ino`**, a drenagem a 1,6 s **no núcleo**, e a premissa do envio no script. O texto
+do Produto 5 lido pelo conector do Drive para montar a inserção.
+
+**Resultado medido.** Referência: **2,68 mA** (2,35 a 3,34 mA conforme o envio; 1,88 a 5,81 mA na
+varredura) — dentro da faixa prevista. **A segunda metade da hipótese caiu:** o rádio é **25 %**,
+e as outras parcelas são do mesmo tamanho — transdutor 22 %, sono leve 29 %, esvaziar a FIFO 24 %;
+a flash, 0,5 %. Nenhuma passa de 30 %. Com a placa: 1 mA de consumo fixo acrescenta 37 %, e 3 mA
+já superam os circuitos integrados. Autonomia de referência com 2 000 mA·h: 746 h; 255 J numa
+noite de 8 h. A drenagem do modelo (85 amostras / 50 Hz) bate com a do firmware. Sabotagens
+**3/3**: a do envio derrubou 11 asserções; a da drenagem acusou exatamente a divergência
+firmware × modelo.
+
+**Adaptação.** Três. (1) A conclusão do capítulo mudou de forma: até aqui, "agregar envios é a
+alavanca"; com o lote de 10 min, a alavanca está gasta e nenhuma mudança isolada tira mais que um
+quarto — o que **reforça** a de que o consumo fixo da placa decide (`HW-02`). (2) O texto do TCC
+não estava no `DOCUMENTO-TCC.md` (parado no Produto 3): foi lido no Drive. Há dois documentos
+candidatos ("Produto 5", 10/09, e "Copy of Produto 5", 30/09) com a mesma 6.4.1; a inserção diz
+isso e deixa a escolha com os autores. (3) Ao ler o Produto 5, quatro outros trechos ainda falam
+de Deep Sleep e despertar por movimento: viraram o `DOC-16`.
+
+**O que deu errado no caminho.** O primeiro texto dizia que os limites de espera de um envio
+"somam 28 s" (20 s de Wi-Fi + 8 s de POST); conferido no `sketch.ino`, o envio também sincroniza o
+relógio por NTP, com 5 s, e manda até 20 lotes por conexão — corrigido para 33 s. A inserção citava
+a 6.4.2 como `CALC-03` e o trecho do "circuito de *wake-up*" como 5.7; são o `CALC-04` e a 5.6.
+E o primeiro script de edição, longo, num heredoc, foi recusado pelo shell; foi para um arquivo.
+Ao fechar o item, o conferidor do `DOC-13` reprovou o backlog: o `CALC-01` seguia citado sem
+riscar no caminho crítico — o que ele existe para pegar.
+
+**Risco em aberto.** Nada disto é medição: o envio completo, a corrente de sono leve na placa e o
+consumo fixo da placa seguem estimados — é o `VAL-02`, depois da solda. A inserção no Produto 5
+depende dos autores colarem. O resto do texto do TCC com a arquitetura antiga é o `DOC-16`.
+
+**Procedência.** Branch `feature/CALC-01-energia-c2`; `scripts/estudo_cadencia.py`;
+`docs/CALCULOS-TCC.md` (Z.4.4b a Z.4.7, procedência); nota em `docs/DECISAO-ARQ-01-CADENCIA.md`
+§4.2; inserção fora do repositório em `documento/INSERCAO-CALC-01-ENERGIA-C2.md`; Produto 5 lido
+em 04/11; backlog `CALC-01`, `DOC-16`.
+
+---
+
+# 2026-11-04 (v) — `CALC-02`: a física da medição travada no CI e levada ao texto
+
+**O problema, como foi entendido no início.** O item pedia a física do acelerômetro — força
+específica, resolução, ruído, Nyquist — e o porquê de 21 Hz e não 260 Hz. O levantamento mostrou
+que o conteúdo **já existia** no Z.1 de `CALCULOS-TCC.md`, atualizado para a C2 e coerente com o
+firmware, mas que metade dos números dele não estava travada por nenhuma conferência, e que a
+6.4.3 do texto do TCC (Produto 5) estava atrás: sem ruído, sem a justificativa do filtro, e com
+uma frase que contradiz o cálculo — "faixas menores ofereceriam resolução mais fina".
+
+**Hipótese de trabalho.** Que o Z.1 estivesse certo e bastasse travá-lo, ligando-o ao firmware
+para que uma mudança de configuração do sensor não deixasse o texto justificando o que não roda.
+
+**O que foi testado, e como.** Asserções novas em `scripts/calculos_tcc.py` para cada número do Z.1
+que não estava travado. Leitura, pelo script, da configuração que o `sketch.ino` grava no sensor
+(`nucleo/fifo_mpu.h`: `C2_DLPF_CFG`, `C2_SMPLRT_DIV`, `C2_ACCEL_CONFIG`), convertida pelas tabelas
+do Register Map em banda, taxa e fundo de escala, e das chamadas da biblioteca nos dois sketches
+de bancada. Quatro sabotagens: DLPF de 44 Hz e ±4 g no `fifo_mpu.h`, filtro de 44 Hz no
+`envio-continuo.ino`, densidade de ruído de 300 µg/√Hz no script. A 6.4.3 do Produto 5 lida
+no Drive para montar a inserção, e a numeração das equações do texto levantada antes de escrever.
+
+**Resultado medido.** O firmware dá **21 Hz, 50 Hz e ±8 g**, como o Z.1 diz. Todas as asserções
+passam. Sabotagens **4/4**, cada uma pela asserção certa: a do DLPF derrubou a banda e a condição
+"taxa acima do Nyquist do filtro"; a do fundo de escala, só ela; a do sketch de bancada apontou o
+arquivo; a da densidade derrubou os σ e as razões contra a quantização — e não o fator
+√(260/21), que não depende dela, como devia.
+
+**Adaptação.** Uma frase do Z.1 dizia que "a biblioteca empregada adota, por omissão, 260 Hz"; o
+firmware do dispositivo não usa a biblioteca — grava o registrador —, e a frase foi precisada. Na
+inserção, a relação σ = eₙ · √B ficou no corpo do texto, sem número, para não renumerar as
+Equações 8 a 10 da 6.4.4 e as citações a elas.
+
+**O que deu errado no caminho.** O `conferir()` do `calculos_tcc.py` não tinha a função
+`verdade` que o do `estudo_cadencia.py` tem; a primeira execução quebrou com `NameError` e ela foi
+acrescentada no mesmo molde. **E o achado maior, fora do plano:** antes de abrir o PR, conferido o
+`ci.yml`, o `calculos_tcc.py --conferir` **nunca rodou no CI** — nem o `estudo_buffer.py --conferir`.
+Só o `estudo_cadencia.py` estava no job `documentos`. O `CLAUDE.md` listava os três como conferências
+que "passam", o que era verdade só quando alguém os rodava à mão; e as travas deste item não
+travariam nada, e a inserção para o Produto 5 dizia "travada no CI". Os dois entraram no job — é o
+§1 das lições de novo: alcance de verificação afirmado, não conferido.
+
+**Risco em aberto.** O σ a 21 Hz continua **calculado** a partir de uma densidade especificada em
+outra configuração; a medição é do `CAL-01`, depois da solda. A banda da actigrafia
+(0,25–3,5 Hz) entra no texto do TCC sem citação lida — a inserção avisa (`DOC-06b`). Colar a
+inserção é com os autores.
+
+**Procedência.** Branch `feature/CALC-02-fisica-da-medicao`; `scripts/calculos_tcc.py`;
+`docs/CALCULOS-TCC.md` (Z.1.4 e procedência); inserção fora do repositório em
+`documento/INSERCAO-CALC-02-FISICA-DA-MEDICAO.md`; Produto 5 lido em 04/11; backlog `CALC-02`.
+
+---
+
+# 2026-11-04 (vi) — `CALC-03`: o índice de atividade travado e a 6.4.4 do TCC refeita
+
+**O problema, como foi entendido no início.** O item pedia o índice de atividade e a derivação do
+limiar `g ± k·σ`. O Z.2 de `CALCULOS-TCC.md` já entregava o índice (as oito características
+invariantes a rotação) e já demonstrava que a derivação não se sustenta — o limiar em uso, de
+1,2 m/s², equivale a ~67 σ. Faltava travar e levar ao texto. A 6.4.4 do Produto 5, lida no Drive,
+descrevia um sistema que não existe mais: índice sobre uma "janela ativa" por despertar, limiar
+`μ + k·σ` com k = 3, detecção em dois níveis com o sensor acordando o processador do Deep Sleep.
+
+**Hipótese de trabalho.** Que o Z.2 estivesse certo e que o limiar fosse o mesmo nos três lugares
+em que o sistema o usa.
+
+**O que foi testado, e como.** Asserções novas em `scripts/calculos_tcc.py` para os números do Z.2
+que não estavam travados (k, 3σ e 5σ, as razões, σ em m/s², a norma L1, o piso do ENMO). Leitura,
+pelo script, do limiar em `payload.h`, `caracteristicas.h` e `ml/src/features.py`, e da lista
+`NOMES_FEATURES`. Três sabotagens: limiar de 1,5 no `payload.h`; o g do `ml/` trocado de 9,80665
+para 9,81 (o limiar muda na quarta casa); uma característica a menos na lista. Antes de escrever o
+texto, o código do pico da época (`epoca_c2.cpp`) foi lido.
+
+**Resultado medido.** O limiar é o mesmo nos três lugares (1,2 m/s²; 1,2/9,80665 g); as
+características são oito. k = 66,7; 3σ a 5σ dão 0,054 a 0,090 m/s², 22,25× a 13,35× abaixo do
+limiar. Sabotagens **3/3**, cada uma pela asserção do arquivo sabotado.
+
+**Adaptação.** A 6.4.4 nova mantém as Equações 8 a 10 com outro conteúdo — a intensidade da época,
+o ENMO e k = L/σ — e diz por que o limiar não precisa vir do ruído: quem decide sono e vigília é o
+classificador, e o limiar só parametriza uma das oito características. A 6.5 do texto (o ciclo de
+Deep Sleep, que cita as Equações 9 e 10) ficou fora e entrou no `DOC-16`.
+
+**O que deu errado no caminho.** Duas coisas. As asserções das razões foram escritas com 13,3 e
+22,2 e tolerância de 0,05; os valores são 13,35 e 22,25 e reprovaram — o texto ("de treze a vinte
+e duas vezes") estava certo, a asserção é que estava apertada errado. E o primeiro texto da
+inserção dizia que a época é representada pela "amostra de maior afastamento do repouso"; lido o
+`epoca_c2.cpp`, é a de **maior módulo** — um afastamento para baixo de g só conta se nenhuma outra
+amostra for maior. Corrigido, e virou ressalva no texto.
+
+**Risco em aberto.** Essa diferença do rótulo não é defeito de código (o contrato define "pico da
+magnitude"), mas afeta o rótulo do painel: anexada ao `VIA-01`, que mostra na bancada se importa. O
+valor do limiar segue provisório (`VIA-01`/`CAL-01`). O ENMO entra no texto sem citação lida
+(`DOC-06b`). Até o `DOC-16`, a 6.5 do texto contradiz a 6.4.4 nova.
+
+**Procedência.** Branch `feature/CALC-03-indice-de-atividade`; `scripts/calculos_tcc.py`;
+`docs/CALCULOS-TCC.md` (🔧 1 e procedência); inserção fora do repositório em
+`documento/INSERCAO-CALC-03-INDICE-DE-ATIVIDADE.md`; `firmware/nucleo/epoca_c2.cpp` lido; Produto 5
+lido em 04/11; backlog `CALC-03`, `DOC-16`, `VIA-01`.
+
+# 2026-11-04 — `CALC-04`: interfaces elétricas e correção da energia
+
+**O problema, como foi entendido no início.** A Z.3 e a seção 6.4.2 do TCC ainda descreviam o botão e o despertar da arquitetura anterior. Era preciso analisar o I2C e a alimentação do GY-521 na C2.
+
+**Hipótese de trabalho.** A análise elétrica poderia ser atualizada sem alterar a estimativa de energia recém-publicada no `CALC-01`.
+
+**O que foi testado, e como.** Leitura do `sketch.ino` e dos cálculos; execução no computador local de `python scripts/calculos_tcc.py --conferir` e `python scripts/estudo_cadencia.py --conferir`. Na retomada, o pytest de ML teve 37 erros de preparação por acesso negado à pasta temporária no sandbox; a repetição fora dele passou 134 testes. O frontend também precisou sair do sandbox por erro de inicialização do esbuild; passou 478 testes. A sessão anterior relatou três sabotagens: frequência, pino e pull-up de referência; não foram reexecutadas nesta retomada. ✏️ *05/11, na revisão das PRs #79–#84: reexecutadas sobre o commit `2cbf715`, **3/3** — I2C a 100 kHz no `sketch.ino` reprova nos dois scripts (1 e 16 asserções), SDA no GPIO 19 reprova no `calculos_tcc`, pull-up de referência em 4,7 kΩ reprova no `estudo_cadencia` (7 asserções); arquivos restaurados e conferidos.*
+
+**Resultado medido.** O firmware configura 400 kHz, enquanto o modelo usava 100 kHz. Com 2,2 kΩ, a referência calculada passa de 2,68 para 2,28 mA, 878 h para 2 000 mA·h e 217 J em 8 h; são estimativas, não medições físicas. Os limites calculados de capacitância para 2,2 e 10 kΩ são 161 e 35 pF a 400 kHz, e 536 e 118 pF a 100 kHz.
+
+**Adaptação.** A Z.3 foi reescrita, o modelo passou a ler a frequência do firmware e considerar os dois valores de pull-up; a Z.4 e as inserções para as seções 6.4.1 e 6.4.2 foram atualizadas. A hipótese de que o cálculo anterior permaneceria correto caiu.
+
+**O que deu errado no caminho.** Na sessão que começou o item: a primeira asserção da capacitância máxima com 2,2 kΩ a 100 kHz foi escrita com 537 pF, valor de uma conta de bolso com 0,847 arredondado; o script dá 536,5 e a asserção reprovou até ser corrigida. A primeira versão da sabotagem do pull-up de referência teria **passado**: o lote altera a corrente média em só 0,01 mA, abaixo da tolerância — foi preciso travar a parcela "acordado esvaziando a FIFO" para que a sabotagem acusasse. Duas edições por heredoc falharam na escapagem de barras invertidas e foram refeitas pela ferramenta de edição. E a retomada não reexecutou as sabotagens (ver acima), o que só foi feito na revisão.
+
+**Risco em aberto.** A resistência, o trilho e a capacitância da montagem não foram medidos; o teste de bancada é `HW-08` e a escolha do VCC é `HW-02`. O consumo depende das premissas do modelo e a medição real é `VAL-02`.
+
+**Procedência.** `scripts/calculos_tcc.py`, `scripts/estudo_cadencia.py`, `docs/CALCULOS-TCC.md`, `docs/DECISAO-ARQ-01-CADENCIA.md`, `firmware/sketch.ino` e as inserções locais em `documento/`.
+
+# 2026-11-04 — `API-05`: ordem cronológica dos limites de consulta
+
+**O problema, como foi entendido no início.** A validação compartilhada do histórico e das features comparava `desde` e `ate` como texto ISO. Com fusos diferentes, uma janela válida podia ser recusada e uma invertida aceita.
+
+**Hipótese de trabalho.** Comparar objetos `datetime` corrige a ordem sem alterar o formato dos parâmetros nem o filtro por `created_at` do histórico. Duas datas sem fuso continuam aceitas no histórico; misturá-las com datas com fuso é ambíguo e passa a ser recusado.
+
+**O que foi testado, e como.** Na worktree independente de `develop`, Windows, `python -m pytest web-app/tests/test_comparacao_de_datas.py -q --tb=line -p no:cacheprovider` antes da correção. Depois, `python -m pytest web-app/tests/ -q --ignore=web-app/tests/rls -p no:cacheprovider --tb=short`. Autenticação e consultas são dubladas nas provas HTTP; não houve acesso ao banco nem a dados pessoais.
+
+**Resultado medido.** Dos 36 novos casos, 20 falharam e 16 passaram no código antigo. Após trocar a comparação textual por `datetime` e recusar fusos misturados, os 36 passaram; a suíte do backend passou 453 testes. Os casos percorrem offsets diferentes, instantes iguais, passagem de dia, frações de segundo, ambiguidade, limites isolados e formato preservado. Nas duas rotas, intervalos recusados não chamam o método de consulta. A execução vermelha foi o controle deliberado antes da correção, não uma regressão da solução.
+
+**Adaptação.** Não foi necessário converter os parâmetros devolvidos para UTC: a comparação de objetos com fuso considera os offsets, preservando o formato consumido pela camada de dados. Os novos testes ficaram em arquivo próprio para exercitar a mesma matriz na função e nas duas rotas.
+
+**O que deu errado no caminho.** Nada registrado nesta etapa. A execução vermelha dos 20 casos foi o controle deliberado antes da correção (ver "Resultado medido"), não uma falha do trabalho.
+
+**Risco em aberto.** Clientes que misturavam limite com fuso e limite sem fuso recebem 400; o contrato agora declara isso. Datas sem fuso no histórico continuam dependentes da interpretação da fonte; não foi atribuída uma zona implicitamente. A escolha de `created_at` versus `captured_at` e a paginação do histórico são achados separados da inspeção, fora desta correção. A contribuição ao TCC é preservar a integridade do recorte temporal dos registros de movimento; não amplia a afirmação científica de sono.
+
+**Procedência.** Branch `bugfix/API-05-comparacao-de-datas`; `web-app/consulta.py`, `web-app/tests/test_comparacao_de_datas.py`, contrato §6.1 e backlog `API-05`.
+
+# 2026-11-04 — UI-24: resultado antigo não substitui o histórico atual
+
+**O problema, como foi entendido no início.** Ao trocar de dispositivo ou filtro, cada chamada pendente do useHistorico podia publicar seu resultado ao terminar. Uma resposta antiga substituía o histórico novo; um erro antigo também apagava dados, e o finally antigo encerrava o indicador de carregamento de outro pedido.
+
+**Hipótese de trabalho.** Identificar cada carregamento e invalidá-lo no cleanup permite que só o pedido mais recente publique estado. A identidade precisa cobrir recarga manual, e o ciclo setup/cleanup/setup do Strict Mode precisa reativar o hook.
+
+**O que foi testado, e como.** Em worktree independente de origin/develop, no Windows, npm test -- --run src/hooks/useHistorico.test.ts montou o hook real em jsdom. Promessas controladas resolveram/rejeitaram pedidos fora de ordem. Depois da correção, npm test -- --run executou a suíte do frontend. Não houve rede real nos testes do hook.
+
+**Resultado medido.** No código antigo, 9 dos 11 novos casos falharam: dados/erro fora de ordem, indicador de carregamento prematuro, recarga manual, troca de janela, callback retido após desmontagem e primeiro efeito do Strict Mode. Após a correção, os 11 passaram, e a suíte completa passou 489 testes em 37 arquivos. O build de produção (TypeScript e Vite) também passou, mantendo o aviso de chunk acima de 500 kB. O modo demo continua sem chamada à API. Os testes das duas ordens de término comprovam que dados novos permanecem e que carregamento novo não termina por causa de pedido antigo.
+
+**Adaptação.** Uma flag por efeito não basta para duas recargas do mesmo filtro: foi usado contador de gerações, além do estado ativo. Leituras, erro e finally verificam a mesma identidade.
+
+**O que deu errado no caminho.** A primeira tentativa de executar npm após editar o hook foi feita na raiz, onde não há package.json (ENOENT); o comando foi corrigido para a pasta frontend, sem alterar dependências.
+
+**Risco em aberto.** A chamada antiga continua no transporte; o hook apenas descarta sua publicação. O tratamento de autenticação do cliente de API, inclusive o callback global de 401, permanece fora dessa guarda. jsdom não prova layout ou comportamento de rede real. Para o TCC, a correção protege a correspondência entre o filtro selecionado e os registros exibidos; não altera o critério de movimento nem as afirmações científicas.
+
+**Procedência.** Branch bugfix/UI-24-respostas-antigas-historico; frontend/src/hooks/useHistorico.ts, frontend/src/hooks/useHistorico.test.ts e backlog UI-24.
+
+# 2026-11-04 — ML-14: falha completa não sai da média de F1
+
+**O problema, como foi entendido no início.** O avaliador calculava F1 a partir de precisão e recall e produzia NaN quando deveria produzir zero. A agregação excluía esses sujeitos. RESULTADOS-TCC tratava o NaN histórico do trivial como divisão por zero legítima.
+
+**Hipótese de trabalho.** A fórmula direta pelas contagens distingue erro de classificação de ausência da classe: 2TP/(2TP + FP + FN). Denominador positivo sem acertos dá zero; denominador zero permanece NaN.
+
+**O que foi testado, e como.** Worktree independente de origin/develop, Windows, Python 3.11.9 do ambiente pinado local: numpy 2.2.6, pandas 2.3.3, scipy 1.15.3, scikit-learn 1.7.2, PyYAML 6.0.3 e pytest 9.1.1. Antes da correção: pytest testes/test_avaliar.py. Depois: pytest testes. Onze novos casos de F1 incluem comparação com scikit-learn para os 64 pares de sequências binárias de três épocas e prova de média, desvio e bootstrap. Dez casos auditam o instrumento, incluindo alteração deliberada da fonte para tornar o snapshot obsoleto. Comando da auditoria: python ml/ferramentas/auditar_f1.py --conferir, a partir da raiz.
+
+**Resultado medido.** No avaliador antigo, 6 dos 11 novos casos falharam; depois passaram. A suíte completa passou 155 testes. A auditoria recalculou 94 valores em 18 arquivos, encontrou 21 divergências em 7 arquivos, todas NaN que deveriam ser zero. Não houve campos de F1 sem matriz de confusão nesses arquivos. O snapshot novo é JSON estrito e registra os caminhos, valores e hashes do texto UTF-8 com fins de linha LF; os JSONs históricos não foram reescritos.
+
+**Adaptação.** Não foi necessário alterar a agregação para incluir zero: ela já excluía apenas NaN. A correção é na origem da métrica. A explicação documental do NaN foi corrigida sem atribuir o defeito a falta de previsões apenas. A revisão identificou que o checkout Windows usa CRLF e o Linux usa LF: os hashes passaram a normalizar os finais de linha. Remover deliberadamente a normalização fez a asserção de equivalência de hashes reprovar, confirmando o mecanismo.
+
+**O que deu errado no caminho.** A primeira tentativa de adicionar os testes usou ml/testes a partir da própria pasta ml, dando caminho inexistente; apenas os sete testes antigos rodaram nessa tentativa. Corrigido o caminho antes da execução vermelha com os casos novos. A primeira fixture do teste de hashes continha escapes literais em vez de quebras de linha e falhou ao ler o JSON; corrigida, passou. Uma execução direcionada também usou testes/ a partir da raiz e foi corrigida para ml/testes/.
+
+**Risco em aberto.** A auditoria não reestima ICs nem prova a ausência de impacto em experimentos não representados pelas contagens salvas; não houve retreino. As regras de indefinição de sensibilidade, especificidade e kappa continuam as mesmas. NaN legítimo continua possível no avaliador e nos arquivos históricos; o snapshot novo o representa explicitamente. Para o TCC, a correção evita que um sujeito com falha de classificação seja excluído como se sua métrica fosse indefinida.
+
+**Procedência.** Branch bugfix/ML-14-f1-sem-acertos; ml/src/avaliar.py, ml/testes/test_avaliar.py, ml/ferramentas/auditar_f1.py, ml/testes/test_auditar_f1.py e ml/experimentos/saida/ml14_auditoria_f1.json; RESULTADOS-TCC, README do ml/ e backlog ML-14.
+
+# 2026-11-04 — ML-15: reprodução controlada dos experimentos principais (em execução)
+
+**O problema, como foi entendido no início.** A ML-14 corrigiu F1 e seis checkpoints permitiram reavaliar previsões existentes, mas isso não era uma reprodução abrangente dos experimentos principais do TCC.
+
+**Hipótese de trabalho.** Com o mesmo ambiente, configuração e coorte, é possível repetir os treinamentos e comparar resultados. Diferenças de coorte, de versão do pipeline e de métrica precisam de classificações distintas.
+
+**O que foi testado, e como.** Execução local Windows em cópia isolada dos scripts da ML-14. Bibliotecas pinadas; configuração aec203907e6f, seed 20260910; dois processos. Dados brutos somente lidos, caches copiados e diretório de saída inicialmente vazio. Checkpoints antigos não foram copiados. ML-03 e baselines Wearanize usam o cache de features via adaptador que recompõe contexto por participante; os treinamentos são novos. Um manifesto registra fontes, ambiente e referências. O comparador passou controles de valor alterado, NaN, igualdade e listas.
+
+**Resultado medido.** Execução ainda em andamento. Baseline sintético reproduziu os dois registros históricos mais recentes fora das três correções de F1; dois registros mais antigos têm outras diferenças cuja origem não foi isolada. O baseline Newcastle concluiu a extração e o treinamento e bateu com o histórico fora das três correções de F1. Os números consolidados e as demais famílias serão registrados ao concluir.
+
+**Adaptação.** O baseline Wearanize histórico tem 10 participantes na cabeça e 7 no pulso, sem lista identificável no JSON. Os caches atuais têm 92 participantes comuns aos três braços: as rodadas de baseline nessa coorte são marcadas como ampliadas, não como reprodução daquelas coortes antigas. O parâmetro de threads nativas foi fixado em 1 por processo e fica registrado como condição de execução.
+
+**O que deu errado no caminho.** Nada registrado até este ponto da execução.
+
+**Risco em aberto.** Os experimentos não concluídos permanecem no item ML-15. Caches de features não equivalem a refazer toda a extração bruta. Rodadas com coorte distinta não permitem atribuir diferenças somente ao F1. Resultados antigos e dados brutos permanecem preservados.
+
+**Procedência.** Branch feature/ML-15-reproducao, dependente da ML-14; manifesto, estado, comparação e logs locais em ml/dados/processado/ml15_reproducao; relatório final pendente no mesmo item.
+
+# 2026-11-05 — ML-15: 15 execuções concluídas e limites históricos separados
+
+**O problema, como foi entendido no início.** Era preciso terminar a reprodução iniciada em 04/11 e verificar se a correção de F1 alterava resultados além dos seis checkpoints antes reavaliados. A maior ablação permaneceu ativa durante a madrugada.
+
+**Hipótese de trabalho.** Resultados com mesmas entradas e código deveriam coincidir; diferenças de avaliação, população e instabilidade numérica não podem ser atribuídas umas às outras. O kappa usado na escolha dos modelos não depende da correção de F1.
+
+**O que foi testado, e como.** Windows, Python 3.11.9, bibliotecas pinadas; 15 tarefas com código da ML-14 e saídas/checkpoints novos. A ablação concluiu em 21.894,9 s. Conferidos hashes de 25 fontes e 114 caches copiados contra as fontes locais. Comparador com tolerância absoluta/relativa 1e-10, hashes textuais normalizados para LF e exclusão de novas saídas parciais. F1 complementar reconstruiu matrizes por participante usando suportes reais, validando contagens inteiras, acurácia, especificidade e kappa. Controle independente de 552 matrizes contra previsões dos seis checkpoints antigos passou. Instrumentos têm controles de métrica alterada, NaN, coorte diferente, vetor incompleto, relatório vazio, fonte alterada e tentativa de reutilizar saída histórica.
+
+**Resultado medido.** As 15 tarefas concluíram com código zero. Transferência, otimizações, três validações externas, lateralidade, métricas do teto interavaliador, quantização e ML-11/ML-12 reproduziram os campos comparados. Newcastle e os dois snapshots sintéticos de 14/09 diferiram somente nos três F1 de vigília corrigidos. F1 complementar: 9.687 matrizes em 132 avaliações; oito zeros antes excluídos em sete avaliações não triviais, além de 363 ocorrências em seis grupos triviais. Na transferência cabeça → cabeça E4, F1 de sono médio passou de 0,4714552822 (91 válidos) para 0,4663307682 (92) ao comparar as fórmulas sobre as mesmas classificações novas. A variante sem scaler emitiu 276 avisos de convergência; maior diferença de kappa médio de 0,004545. A referência da ablação e os itens 1, 3, 4 e 5 reproduziram o histórico. O arquivo antigo da ablação era parcial e não continha suas otimizações finais. 167 testes de ML passaram, incluindo 12 controles novos; comparação salva e resumo do backlog conferidos.
+
+**Adaptação.** O comparador passou a sinalizar referência histórica parcial sem descartá-la, permitindo conferir os itens completos nela. O campo utc_notas ausente no novo teto interavaliador é metadado, não divergência de métricas. Dois snapshots sintéticos de 11/09 divergem por causa não isolada; baselines Wearanize novos de 92 participantes são coortes ampliadas, não reprodução dos pilotos 10/7.
+
+**O que deu errado no caminho.** A primeira tentativa restrita de pytest falhou ao acessar seu diretório temporário; a execução com permissões de teste passou. Durante a continuidade também houve uma edição não executada porque a revisão automática atingiu limite de uso; após a retomada, o workspace passou a permitir as edições locais. Nenhum resultado foi inferido daquele comando recusado.
+
+**Risco em aberto.** O ML-16 carrega a recuperação de IDs dos pilotos, a procedência dos snapshots sintéticos antigos e a causa da divergência sem scaler. Não foi aumentado max_iter nem mudado solver para forçar coincidência. Caches reaproveitados não validam novamente toda a extração bruta; estas bases públicas continuam sem validar o sensor no travesseiro (ML-12(c)/VIA-01). Para o TCC, a reprodução sustenta os resultados centrais e torna explícito onde a procedência histórica ainda não permite igualdade estrita. Sem merge automático.
+
+**Procedência.** Branch feature/ML-15-reproducao a partir de 72f954286633f3b197d9bab454f622d67885814b (ML-14, PR #82). docs/REPRODUCAO-ML-15.md; ml/experimentos/saida/ml15/ (15 resultados, manifesto, execução, comparação e F1 complementar); ml/ferramentas/comparar_reproducao.py, reconstruir_f1.py, rodada_reproducao.py e executar_reproducao.py; testes dos instrumentos, README do ML, RESULTADOS-TCC, LIMITACOES-TCC e backlog ML-15/ML-16. Dados e logs permanecem locais e ignorados.
+
+# 2026-11-05 — ML-16: pilotos, sintéticos e condição numérica reconstruídos
+
+**O problema, como foi entendido no início.** A reprodução ML-15 deixara três lacunas de procedência: IDs dos pilotos Wearanize 10/7, sintéticos de 11/09 divergentes e variante sem scaler sem igualdade numérica. O usuário aprovou investigar as três, preservando os parâmetros e os históricos.
+
+**Hipótese de trabalho.** A seleção canônica do baixador poderia recuperar uma coorte compatível; as duas correções de features descritas no histórico poderiam explicar os sintéticos; a condição numérica da execução poderia afetar o ajuste sem convergência. Nenhuma hipótese foi aceita apenas por coincidência de contagem ou por leitura do código.
+
+**O que foi testado, e como.** Worktree isolada baseada em 63a4223 (ML-15), com nova branch feature/ML-16-rastreabilidade. Python 3.11.9, bibliotecas pinadas, cache copiado e dados brutos apenas lidos. Consultados Git, diário, logs antigos, backup interno disponível e 90 commits sem referência. Primeiros dez IDs do participants.tsv usados em novas extrações e treinamentos. Controles sintéticos alteraram separadamente norma L1/L2 e referência geométrica/mediana por componente, inclusive a normalização dos vetores. Controle reduzido de uma/oito threads manteve cache, ordem, seed e max_iter=300; três modelos e nove células em sub-005. Reexecução completa da variante com oito threads nos 92 participantes. Comparação de todos os campos e vetores com tolerância absoluta/relativa 1e-10. Instrumentos incluem sabotagens de métrica, NaN, threads, referência adulterada e mudança de arquivo sem mudança dos números.
+
+**Resultado medido.** Cabeça: dez participantes, 9.471 épocas, 8.706 sono/765 vigília. Pulso: sete participantes, 6.958 épocas, 6.249 sono/709 vigília. Todos os campos comparados dos pilotos reproduzidos, fora de três F1 de vigília corrigidos em cada arquivo. L1 + mediana dos vetores unitários por componente reproduz os sintéticos de 11/09; apenas uma dessas mudanças não reproduz. Definições atuais reproduzem os dois registros de 14/09. Controle reduzido: uma thread coincide com a ML-15 em 27/27 métricas; oito threads coincidem com o histórico em 27/27. Matriz completa com oito threads: zero diferenças nas nove células, incluindo médias, desvios, ICs e vetores dos 92 participantes. Foram emitidos 276 avisos; duração registrada de 12.438,0 s. Auditoria das sete comparações e controles passou; 177 testes de ML passaram, incluindo dez novos controles.
+
+**Adaptação.** A mediana dos vetores brutos não reproduziu o sintético antigo; a dos unitários reproduziu, e as tentativas intermediárias ficaram no manifesto. O primeiro JSON sintético publicava cinco métodos com dois nomes antigos: a comparação declara os aliases e esse escopo, sem fingir que os sete métodos já estavam lá. Os pools são carregados antes de aplicar o limite de threads e os valores efetivos são registrados. threadpoolctl 3.6.0 já instalado ganhou pin explícito, sem atualização.
+
+**O que deu errado no caminho.** A restrição da sessão inicialmente negou escrita e leitura dos metadados Git na nova worktree; as operações foram realizadas com a autorização apropriada. A primeira junction ampla de dados foi restringida aos brutos antes das execuções, com cache copiado, preservando o processamento original.
+
+**Risco em aberto.** A lista de participantes da execução original, o fonte anterior às correções e o número histórico de threads não foram recuperados. Foram obtidas reconstruções consistentes com o procedimento e os resultados, não inventados documentos de origem. Igualdade neste ambiente não garante igualdade em outra arquitetura; a variante sem scaler continua não convergida. Esses limites foram declarados e restringem o uso dos registros, sem novo trabalho obrigatório para sustentar os resultados centrais. Hardware e validação do travesseiro continuam nos itens próprios, não foram resolvidos por esta investigação. ML-16 fechado pela reprodução e delimitação da procedência; sem merge automático.
+
+**Procedência.** docs/RASTREABILIDADE-ML-16.md; ml/experimentos/saida/ml16/ (sete resultados, controles, manifesto e auditoria); ml/ferramentas/rastrear_ml16.py e auditar_ml16.py; testes de ambos; requisitos pinados, backlog, README e notas de atualização de REPRODUCAO-ML-15, RESULTADOS-TCC e LIMITACOES-TCC. Base dependente das PRs #82/#83; fontes, métricas históricas e arquivos dessas branches preservados.
+
+---
+
+# 2026-11-05 — revisão e integração das PRs #79 a #84
+
+**O problema, como foi entendido no início.** Enquanto o limite de uso desta sessão estava
+esgotado, o autor seguiu o projeto com outra ferramenta, aprovando cada trabalho: seis PRs abertas
+para `develop` — `CALC-04` (a retomada do trabalho deixado aqui), `API-05`, `UI-24` e a cadeia
+`ML-14` → `ML-15` → `ML-16`. O pedido foi revisá-las antes de qualquer merge, conferindo os
+relatórios, os diffs e as ferramentas de auditoria.
+
+**Hipótese de trabalho.** Que as afirmações dos relatos e dos relatórios se sustentassem quando
+**executadas**, e não só lidas; e que a integração das seis, com o diário e o backlog de cada uma,
+fechasse nas conferências.
+
+**O que foi testado, e como.** Por PR: suítes em ambiente limpo; os testes novos contra o código de
+`develop`, para conferir que falham sem a correção; as três sabotagens do `CALC-04` sobre o commit
+da PR. Para ML, um verificador **independente** do F1 pelas contagens e um comparador
+**independente** dos JSONs histórico × novo, folha a folha, sem reaproveitar as ferramentas
+revisadas; as reconstruções da `ML-16` comparadas da mesma forma. Os campos do diário de cada
+entrada, por script. A integração simulada numa worktree descartável e depois feita em `develop`,
+na ordem das PRs, com conferências a cada merge.
+
+**Resultado medido.** `CALC-04`: sabotagens **3/3**. `API-05`: 453 testes; **20 dos 36** casos
+novos falham com o `consulta.py` de `develop`; nenhum cliente manda `desde`/`ate`. `UI-24`: 489
+testes, build limpo; **9 dos 11** novos falham com o hook de `develop`. `ML-14`: o verificador
+independente confirma **94 valores, 21 divergências em 7 de 18 arquivos**. `ML-15`: ML-03, ML-04,
+otimizações, ML-12 e ML-05 com **zero diferença** em milhares de valores; as 2 056 diferenças da
+ablação ficam **todas** no item 2 (sem scaler). `ML-16`: pilotos e sintéticos batem; **com 8
+threads, o item 2 reproduz o histórico em 2 637 valores, zero diferenças**. Integrado: 7
+conferências de documento, 453 + 177 + 489 testes, build; CI de `develop` verde; as seis PRs
+marcadas como mescladas.
+
+**Adaptação.** As sete entradas de diário das PRs não tinham o campo "O que deu errado no
+caminho" — a maioria relatava os erros dentro de "Adaptação"; as frases foram **movidas** para o
+campo, nas próprias branches, antes do merge. A `ML-15` citava só a diferença de kappa **médio** da
+variante sem scaler (0,0045); por participante ela chega a 0,17 de kappa e 0,23 de
+especificidade, e isso entrou em `LIMITACOES-TCC.md`: um resultado que depende do número de threads
+não sustenta casas decimais. As notas de contagem das branches paralelas ganharam uma nota de
+conciliação no backlog.
+
+**O que deu errado no caminho.** Três coisas, todas de ferramenta minha. O resolvedor de
+conflitos por união, escrito para o diário e o backlog, primeiro não casou nenhum bloco: os
+arquivos são CRLF e a expressão esperava LF — e a simulação seguiu com marcadores de conflito
+commitados (era descartável; refeita). Na integração real, o mesmo resolvedor **perdeu o fechamento
+do `ML-16`**: quando a mesma linha vinha dos dois lados, ele mantinha a de `develop`, e a da #84 era
+a fechada. Na simulação isso não apareceu porque a #84 entrava de uma vez. Quem pegou foi o
+`conferir_backlog` (39 declarado × 40 recontado, `ML-16` aberto fora do quadro), antes do push; a
+linha foi restaurada da #84 dentro do próprio merge, ainda local, e um verificador de "linhas que
+cada PR mudou × `develop`" confirmou que nada mais se perdeu. E um comando de conferência foi
+recusado pelo verificador de segurança do terminal por sintaxe ambígua, e foi refeito como script.
+
+**Risco em aberto.** A `API-05` e a `UI-24` mudam o comportamento do site: valem depois do
+release, com o login. A variante sem scaler continua não convergida e dependente de threads —
+declarado em `LIMITACOES-TCC.md`. A pasta `esquemaEletrico/` (três imagens do circuito) está não
+rastreada na raiz do repositório principal, e não foi tocada.
+
+**Procedência.** PRs #79 a #84, mescladas em `develop` (`b844647`); commits de ajuste nas branches
+`035c829`, `7e873c3`, `88a0a1a`, `94765bb`, `a766a3a`, `6b2bac6`; relatórios
+`docs/REPRODUCAO-ML-15.md` e `docs/RASTREABILIDADE-ML-16.md`; conferências e comparadores
+independentes rodados nesta máquina em 05/11.
+
+---
+
+# 2026-11-05 (ii) — o release da `API-05`, da `UI-24` e do `DEMO-03`
+
+**O problema, como foi entendido no início.** Depois da integração das PRs #79–#84 e da
+conciliação (#85), `develop` tinha três mudanças de comportamento do site — `API-05`, `UI-24`,
+`DEMO-03` — e os itens de cálculo e de ML, que não mudam o site.
+
+**Hipótese de trabalho.** Que o release mudasse só a validação das consultas, o carregamento do
+histórico no painel e o modo demonstração do servidor de desenvolvimento.
+
+**O que foi testado, e como.** Diff `main..develop` restrito a `web-app/`, `frontend/` e
+`vercel.json` (três arquivos de produção); PR #86 com 9 checks; deploy acompanhado pela API de
+deployments; depois, `/health`, as rotas sem credencial e com `Bearer` inválido,
+`/api/sleep-history` com limites de fuso misturado, `/privacidade`, o pacote publicado, e um login
+do autor com o painel.
+
+**Resultado medido.** Deploy `7584696406`, `success`, SHA `5fa9ab6`. `/health` `200`, banco ok;
+rotas sem credencial e `Bearer` inválido → `401`; `/api/sleep-history` com fusos misturados e sem
+credencial → `401`; `/privacidade` `200`. O pacote publicado tem um trecho compatível com a guarda
+nova do `useHistorico` — indício, não prova, por ser código minificado. **O autor confirmou o login
+e o painel.**
+
+**Adaptação.** Nenhuma.
+
+**O que deu errado no caminho.** Nada nesta etapa.
+
+**Risco em aberto.** O `400` da `API-05` não foi exercitado na produção: exige sessão válida e
+parâmetros que nenhum cliente envia hoje. As sete branches das PRs #79–#85 e as worktrees da outra
+ferramenta seguem existindo até autorização para apagar.
+
+**Procedência.** PR #86 (`5fa9ab6`); deployment de produção `7584696406`; as rotas e o pacote de
+`https://dormio-smart.vercel.app`, 05/11; a confirmação do autor; backlog `API-05`, `UI-24`.
+
+---
+
+# 2026-11-05 (iii) — limpeza depois da integração, e uma cópia que seguiu uma junction
+
+**O problema, como foi entendido no início.** Integradas e lançadas as PRs #79–#84, o autor
+autorizou apagar as branches da rodada e as worktrees da outra ferramenta. As worktrees guardavam,
+fora do Git, duas coisas que não podiam se perder: uma seção "Concluído" do `ROADMAP.md` (local,
+gitignorado) em três delas, e os logs, caches e checkpoints da ML-15 e da ML-16, citados pelos
+relatórios como "locais e ignorados".
+
+**Hipótese de trabalho.** Que bastasse levar as seções do `ROADMAP.md` para o principal e copiar as
+duas pastas de evidência para `ml/dados/processado/` do repositório principal antes de remover as
+worktrees.
+
+**O que foi testado, e como.** As seções do `ROADMAP.md` comparadas com o principal e acrescentadas
+com o texto original. A evidência copiada com `cp -a`, e depois — refeito — com `robocopy /E /XJ`;
+as pastas conferidas arquivo a arquivo (caminho e tamanho) contra a origem. Antes de cada remoção,
+as worktrees varridas por links (`-Attributes ReparsePoint`). Os dados brutos originais contados
+(arquivos e bytes) depois de cada passo.
+
+**Resultado medido.** Três seções do `ROADMAP.md` (API-05, UI-24, ML-14) que só existiam nas
+worktrees passaram ao principal. Sete branches apagadas, locais e no GitHub; cinco worktrees
+removidas. A evidência ficou no repositório principal, igual à origem: **ML-15 207/207, ML-16
+90/90**. Os dados brutos originais terminaram como começaram: **676 arquivos, 54,1 GB**.
+
+**Adaptação.** A cópia passou a excluir junctions (`robocopy /XJ`); as duas junctions foram
+desfeitas como link (`rmdir`, sem `/s`) antes de remover as worktrees; as duas cópias acidentais
+foram apagadas depois de conferido que não continham link nenhum — o disco voltou a 126,7 GB
+livres.
+
+**O que deu errado no caminho.** A pasta de evidência de cada execução continha `ml/dados/bruto`
+como **junction** para os dados brutos reais — o `REPRODUCAO-ML-15.md` dizia isso, e não foi
+conferido antes de copiar. O `cp -a` seguiu o link e **duplicou os datasets**: 58 GB na pasta da
+ML-15 e 51 GB, parciais, na da ML-16. E a interrupção da tarefa não parou a cópia: o shell morreu, o
+`cp.exe` filho não, e só a queda do espaço livre (41,3 → 25,3 GB) denunciou; o processo foi
+encontrado e encerrado. Nenhum dado original foi alterado — a cópia só lia —, mas o passo seguinte,
+remover a worktree com a junction dentro, poderia ter apagado os datasets. Lições: §5 ocorrência 10
+e §6 ocorrência 9, com as regras 13 e 8. A pasta vazia de uma worktree (um arquivo de 0 byte) não
+pôde ser apagada, provavelmente por estar em uso pelo app da outra ferramenta, e ficou.
+
+**Risco em aberto.** Execuções futuras que liguem dados brutos por junction repetem a armadilha; a
+regra 13 da §5 e o item correspondente das instruções para a outra ferramenta cobrem isso, mas
+dependem de serem lidos. As pastas de nível de cima em `.codex/worktrees/` ficaram vazias.
+
+**Procedência.** Comandos desta sessão em 05/11; `ml/dados/processado/ml15_reproducao/` e
+`ml16/` (locais, ignorados); `ROADMAP.md` (local); `docs/LICOES-APRENDIDAS.md` §5 e §6.
+
+---
+
+# 2026-11-05 (iv) — `AGENTS.md`: regras para dois agentes em paralelo
+
+**O problema, como foi entendido no início.** Desde 04/11 o projeto tem dois agentes de código
+trabalhando ao mesmo tempo (o Codex e o Claude Code). A primeira rodada de integração (PRs #79–#84)
+mostrou o custo de não haver regra comum: conflitos em todo merge nos mesmos documentos (diário,
+backlog, contagem, tabela de testes do `CLAUDE.md`), notas de contagem calculadas sobre bases
+diferentes, o campo "O que deu errado no caminho" ausente ou fora do lugar em sete entradas, e uma
+cópia de evidência que seguiu uma junction para os dados brutos (entrada (iii)).
+
+**Hipótese de trabalho.** Que um `AGENTS.md` na raiz — que o Codex lê automaticamente — com a
+divisão por área, a sincronia com `develop` antes da revisão e as regras dos arquivos de conflito
+garantido reduzisse esses conflitos, sem duplicar o `CLAUDE.md` (que continua valendo e vence onde
+divergirem).
+
+**O que foi testado, e como.** O texto conferido contra o `CLAUDE.md` (Gitflow estrito, práticas
+não negociáveis, arquivos locais) e contra as lições §5 e §6; as três conferências de documentos
+rodadas na branch.
+
+**Resultado medido.** `AGENTS.md` com 20 regras em seis grupos: antes do trabalho, divisão, branches
+e PRs, arquivos de conflito garantido, o que conta como verificado, dados locais e texto do TCC. O
+`CLAUDE.md` passa a apontá-lo entre os documentos de leitura obrigatória.
+
+**Adaptação.** A primeira versão da regra 8 permitia "PRs empilhadas"; o `CLAUDE.md` exige que toda
+PR aponte para `develop`. A regra foi reescrita: a branch pode partir de outra PR aberta, mas a PR
+aponta para `develop`, com a ordem de merge no corpo.
+
+**O que deu errado no caminho.** A leitura cruzada achou uma divergência antiga no próprio
+`CLAUDE.md`: a prática 1 dizia "os sete campos fixos" do diário, e as entradas têm oito desde que
+"O que deu errado no caminho" virou campo fixo. Corrigido com nota datada.
+
+**Risco em aberto.** As regras dependem de serem lidas e seguidas; nenhuma é verificada por script.
+A divisão por área é de partida e muda conforme o autor indicar os itens.
+
+**Procedência.** `AGENTS.md`; `CLAUDE.md` (documentos de referência e prática 1); entradas
+2026-11-05 (i) e (iii); `docs/LICOES-APRENDIDAS.md` §5 e §6.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

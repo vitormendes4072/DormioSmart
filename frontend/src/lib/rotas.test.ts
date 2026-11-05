@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { decidirDestino, ehRetornoDeRecuperacao } from "./rotas";
+import {
+  DESTINO_PADRAO_APOS_LOGIN,
+  decidirDestino,
+  destinoSeguro,
+  ehRetornoDeRecuperacao,
+} from "./rotas";
 
 describe("enquanto a sessao carrega, ninguem e redirecionado", () => {
   it("espera mesmo sem sessao — este e o bug do 'recarreguei e fui deslogado'", () => {
@@ -100,3 +105,27 @@ describe("ehRetornoDeRecuperacao", () => {
     expect(ehRetornoDeRecuperacao({})).toBe(false);
   });
 });
+
+describe("destinoSeguro — só caminho interno (SEC-16)", () => {
+  it.each(["/dashboard", "/configuracoes?aba=conta", "/coletar#topo", "/"])("aceita %s", (c) => {
+    expect(destinoSeguro(c)).toBe(c);
+  });
+
+  it.each([
+    ["//evil.example", "protocolo implícito"],
+    ["/\\evil.example", "barra invertida (GHSA-wrjc-x8rr-h8h6)"],
+    ["https://evil.example", "URL absoluta"],
+    ["javascript:alert(1)", "esquema javascript"],
+    ["dashboard", "sem a barra inicial"],
+    ["", "vazio"],
+    ["/\t/evil.example", "tab que o navegador descartaria"],
+    ["/\n/evil.example", "quebra de linha"],
+  ])("recusa %s (%s)", (c) => {
+    expect(destinoSeguro(c)).toBe(DESTINO_PADRAO_APOS_LOGIN);
+  });
+
+  it.each([undefined, null, 42, { de: "/x" }])("recusa o que não é texto: %s", (c) => {
+    expect(destinoSeguro(c)).toBe(DESTINO_PADRAO_APOS_LOGIN);
+  });
+});
+

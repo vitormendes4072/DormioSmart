@@ -49,12 +49,12 @@ linha, não um resumo: resumo é a cópia que diverge.
 
 | Grupo | Itens |
 |---|---:|
-| A — Depende só de software: dá para fazer a qualquer momento | **17** |
-| B — Depende de decisão do Vitor | **8** |
-| C — Depende de ação do Vitor que não é decisão | **4** |
+| A — Depende só de software: dá para fazer a qualquer momento | **15** |
+| B — Depende de decisão do Vitor | **7** |
+| C — Depende de ação do Vitor que não é decisão | **5** |
 | D — Bloqueado por hardware ou coleta | **18** |
 | E — Bloqueado por terceiro | **4** |
-| **Total** | **51** |
+| **Total** | **49** |
 
 ⚠️ **Este total não é comparável à contagem do backlog, e a diferença não é
 erro de nenhum dos dois.** São unidades de contagem diferentes: o backlog
@@ -75,7 +75,7 @@ outro item. **Desde 28/10 têm ID no backlog:** `GIT-07`, `INFRA-02` e
 
 ## A — Depende só de software: dá para fazer a qualquer momento
 
-**17 itens.**
+**15 itens.**
 
 ### `CALC-01` 🔴
 
@@ -109,14 +109,6 @@ Análise elétrica: pull-down, pull-ups do I2C, níveis 3,3 V, fonte de desperta
 
 *Camada no backlog: L0.*
 
-### `LGPD-01` 🟡
-
-Política de privacidade e termos. Rascunho escrito. Faltam **(b)** a rota e a página que sirvam o texto — isto é software puro. **(a)** controlador e base legal e **(c)** revisão jurídica estão nos grupos B e E.
-
-*Camada no backlog: L0.*
-
-**Conferência.** O item estava inteiro em L0; a conferência o divide, porque as três partes dependem de coisas diferentes.
-
 ### `LGPD-02` 🟡
 
 Não existe política de retenção: nenhum expurgo, nenhum prazo. Implementar um prazo, ou declarar formalmente que não haverá.
@@ -138,12 +130,6 @@ O limiar viaja com a leitura. **A coluna e o campo dão para criar já**; o *val
 *Camada no backlog: L2.*
 
 **Conferência.** Confirmado aberto: `grep` por `limiar` em `web-app/migrations/*.sql` devolve vazio.
-
-### `LGPD-06` 🟡
-
-Finalidade nova para a idade, decidida pelo autor em 03/11: conhecer, de forma agregada, o público do sistema. Política primeiro (§3, §5.3, §10), depois o comentário da `008` e o cabeçalho de `aplicabilidade.ts`, e só então uma consulta agregada por faixa.
-
-*Camada no backlog: L0.*
 
 ### `UI-18` 🟡
 
@@ -201,7 +187,7 @@ O firmware confere o certificado do servidor (`setCACert` com as raízes de `fir
 
 ## B — Depende de decisão do Vitor
 
-**8 itens.**
+**7 itens.**
 
 Cada linha traz a decisão em uma frase. Nenhum destes itens anda
 sem uma resposta sua — e nenhum deles exige que você escreva
@@ -220,14 +206,6 @@ Controlador e base legal da política de privacidade.
 Política de retenção.
 
 **A decisão.** Qual o prazo de retenção, ou se vai declarar formalmente que não haverá expurgo. **As duas saídas são defensáveis; o silêncio não.**
-
-*Camada no backlog: L0.*
-
-### `LGPD-05` 🟡
-
-Idade autodeclarada pode revelar que o titular é criança ou adolescente, e o art. 14 impõe tratamento próprio. Hoje o sistema não verifica e não trata diferente.
-
-**A decisão.** (a) restringir o cadastro a maiores de 18, (b) implementar o fluxo de consentimento de responsável, ou (c) manter a lacuna declarada. **A defesa de (c) expira no dia em que alguém além de você criar conta.**
 
 *Camada no backlog: L0.*
 
@@ -277,11 +255,19 @@ A decisão de escopo que atravessa o trabalho inteiro.
 
 ## C — Depende de ação do Vitor que não é decisão
 
-**4 itens.**
+**5 itens.**
 
 Nada aqui é decisão: a decisão já foi tomada, ou nunca houve uma.
 São ações que só você pode executar, porque exigem credencial,
 terminal na máquina, ferro de solda ou uma conta num serviço.
+
+### `LGPD-01` 🟡
+
+Política de privacidade: a página `/privacidade` existe desde 03/11 (parte (b)). Resta **(a)**: definir o controlador e o contato e pô-los nas variáveis `VITE_POLITICA_CONTROLADOR` e `VITE_POLITICA_CONTATO` da Vercel. **(c)** revisão jurídica é o LGPD-03.
+
+*Camada no backlog: L3.*
+
+**Conferência.** O item estava inteiro em L0; a conferência o divide, porque as três partes dependem de coisas diferentes.
 
 ### `Etapa 0 — soldar` 🔴
 

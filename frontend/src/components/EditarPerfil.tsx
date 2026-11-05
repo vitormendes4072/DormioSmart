@@ -37,6 +37,7 @@
  */
 import { Check, Info, Loader2, Mail, Pencil } from "lucide-react";
 import { useState } from "react";
+import { Link } from "react-router";
 
 import { useAuth } from "../contexts/AuthContext";
 import { usePerfil } from "../contexts/PerfilContext";
@@ -191,8 +192,13 @@ export function EditarPerfil() {
         />
         <p className="text-xs text-muted-foreground">
           Usada para dizer se a sua idade está dentro da faixa das pesquisas em que este
-          método foi validado. Não entra em cálculo nenhum, e apagar o campo retira o
-          dado.
+          método foi validado, e, só em contagens por faixa de idade, para conhecer o
+          público do Smart Dormio — nunca pessoa a pessoa. Não entra em cálculo nenhum, e
+          apagar o campo retira o dado. Detalhes na{" "}
+          <Link to="/privacidade" className="text-primary hover:text-accent transition font-semibold">
+            Política de Privacidade
+          </Link>
+          .
         </p>
       </div>
 

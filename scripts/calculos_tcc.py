@@ -105,6 +105,95 @@ Q_EMPATICA_MG = 1000.0 / 64.0       # E4: 8 bits da faixa ±2 g → 1/64 g
 # CALC-02 — física do acelerômetro
 # ══════════════════════════════════════════════════════════════════════════
 
+# ══════════════════════════════════════════════════════════════════════════
+# CALC-02 — a configuração do sensor, lida do firmware (04/11)
+# ══════════════════════════════════════════════════════════════════════════
+#
+# O Z.1 justifica três escolhas: ±8 g, filtro de 21 Hz e (na C2) 50 Hz. Elas
+# estão escritas em dois lugares do firmware: os registradores que o
+# `sketch.ino` grava (`nucleo/fifo_mpu.h`) e as chamadas da biblioteca nos
+# sketches de bancada. Os dois são LIDOS aqui; se o firmware mudar, o
+# `--conferir` reprova em vez de o texto continuar justificando o que não roda.
+
+from pathlib import Path  # noqa: E402
+
+RAIZ = Path(__file__).resolve().parent.parent
+
+# Register Map, registrador 26 (CONFIG), coluna do acelerômetro: DLPF_CFG →
+# banda em Hz. Mesmo caveat de fonte de `estudo_cadencia.py` (Register Map lido
+# em cópia de terceiros); o 21 Hz do valor 4 é o que a biblioteca da Adafruit
+# chama de MPU6050_BAND_21_HZ.
+DLPF_CFG_PARA_BANDA_HZ = {0: 260.0, 1: 184.0, 2: 94.0, 3: 44.0, 4: 21.0,
+                          5: 10.0, 6: 5.0}
+# Registrador 28 (ACCEL_CONFIG), bits 4:3 (AFS_SEL) → fundo de escala em g.
+AFS_SEL_PARA_G = {0: 2, 1: 4, 2: 8, 3: 16}
+# Taxa interna do acelerômetro com o DLPF ligado (DLPF_CFG de 1 a 6): 1 kHz.
+TAXA_INTERNA_DLPF_HZ = 1000.0
+
+SKETCHES_DE_BANCADA = ("firmware/envio-continuo/envio-continuo.ino",
+                       "firmware/caracterizacao/caracterizacao.ino")
+
+
+def _constante_c(arquivo: str, nome: str) -> int:
+    """Valor de `const uint8_t NOME = <inteiro> [<< n]` num arquivo do firmware."""
+    import re
+    texto = (RAIZ / arquivo).read_text(encoding="utf-8")
+    m = re.search(rf"\b{nome}\s*=\s*(\d+)u?\s*(?:<<\s*(\d+))?\s*;", texto)
+    if not m:
+        raise SystemExit(f"{nome} não encontrado (ou não é inteiro) em {arquivo}")
+    return int(m.group(1)) << int(m.group(2) or 0)
+
+
+def configuracao_c2() -> dict[str, float]:
+    """Banda, taxa e fundo de escala que o `sketch.ino` grava no MPU."""
+    dlpf = _constante_c("firmware/nucleo/fifo_mpu.h", "C2_DLPF_CFG")
+    div = _constante_c("firmware/nucleo/fifo_mpu.h", "C2_SMPLRT_DIV")
+    accel = _constante_c("firmware/nucleo/fifo_mpu.h", "C2_ACCEL_CONFIG")
+    if not 1 <= dlpf <= 6:
+        raise SystemExit(f"DLPF_CFG = {dlpf}: fora de 1–6, a taxa interna não é 1 kHz")
+    return {"banda_hz": DLPF_CFG_PARA_BANDA_HZ[dlpf],
+            "taxa_hz": TAXA_INTERNA_DLPF_HZ / (1 + div),
+            "fundo_g": AFS_SEL_PARA_G[(accel >> 3) & 0b11]}
+
+
+def sketches_de_bancada_em(chamada: str) -> list[str]:
+    """Os sketches de bancada que NÃO contêm a chamada (vazio = todos contêm)."""
+    return [s for s in SKETCHES_DE_BANCADA
+            if chamada not in (RAIZ / s).read_text(encoding="utf-8")]
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# CALC-03 — o limiar e as características, lidos de onde o sistema os usa
+# ══════════════════════════════════════════════════════════════════════════
+#
+# O limiar de 1,2 m/s² vive em três lugares: o rótulo Repouso/Movimento da
+# época (`nucleo/payload.h`), o parâmetro da característica `p_frac` no
+# firmware (`nucleo/caracteristicas.h`) e no `ml/` (`src/features.py`). O Z.2
+# afirma que são o MESMO limiar e que as características são oito; lido aqui,
+# um que divirja reprova.
+
+def _expressao_numerica(arquivo: str, nome: str) -> float:
+    """Avalia `NOME = <número> [/ <número>]` (C++ ou Python), sem `eval`."""
+    import re
+    texto = (RAIZ / arquivo).read_text(encoding="utf-8")
+    m = re.search(rf"\b{nome}(?:\s*:\s*[\w\[\], .]+)?\s*=\s*([\d.]+)f?\s*(?:/\s*([\d.]+)f?)?\s*[;\n]",
+                  texto)
+    if not m:
+        raise SystemExit(f"{nome} não encontrado (ou não é número / número) em {arquivo}")
+    v = float(m.group(1))
+    return v / float(m.group(2)) if m.group(2) else v
+
+
+def nomes_das_features_do_ml() -> list[str]:
+    """A tupla `NOMES_FEATURES` de `ml/src/features.py`, lida como texto."""
+    import re
+    texto = (RAIZ / "ml/src/features.py").read_text(encoding="utf-8")
+    m = re.search(r"NOMES_FEATURES[^=]*=\s*\((.*?)\)", texto, re.S)
+    if not m:
+        raise SystemExit("NOMES_FEATURES não encontrado em ml/src/features.py")
+    return re.findall(r'"([a-z_]+)"', m.group(1))
+
+
 def resolucao_mg_por_lsb(fundo_de_escala_g: int) -> float:
     """Passo de quantização, em mg/LSB, a partir do fator de escala da folha."""
     return 1000.0 / MPU_LSB_POR_G[fundo_de_escala_g]
@@ -196,6 +285,27 @@ def corrente_pullup_linha_baixa_a(r_ohm: float, v: float = V_LOGICA_V) -> float:
 # ══════════════════════════════════════════════════════════════════════════
 # CALC-01 — energia e autonomia
 # ══════════════════════════════════════════════════════════════════════════
+
+
+# CALC-04 (04/11): o barramento como o firmware o usa. O GY-521 traz os
+# pull-ups no próprio módulo, de 2,2 kΩ ou 10 kΩ conforme o lote (DIAG-02); o
+# `sketch.ino` usa 400 kHz. Tempo de subida máximo da especificação I2C.
+R_PULLUP_MODULO_OHM = (2200.0, 10000.0)
+T_SUBIDA_MAX_S = {100e3: 1000e-9, 400e3: 300e-9}
+
+
+def capacitancia_maxima_pf(r_ohm: float, i2c_hz: float) -> float:
+    """Maior capacitância de barramento que cumpre o tempo de subida."""
+    return T_SUBIDA_MAX_S[i2c_hz] / (math.log(0.7 / 0.3) * r_ohm) * 1e12
+
+
+def clock_i2c_do_firmware() -> float:
+    import re
+    texto = (RAIZ / "firmware/sketch.ino").read_text(encoding="utf-8")
+    m = re.search(r"Wire\.setClock\((\d+)\)", texto)
+    if not m:
+        raise SystemExit("Wire.setClock(...) não encontrado em firmware/sketch.ino")
+    return float(m.group(1))
 
 def corrente_media_a(estados: list[tuple[str, float, float]]) -> float:
     """I_média = Σ(I_i·t_i) / Σ(t_i). `estados` = [(nome, I em A, t em s)]."""
@@ -438,6 +548,10 @@ def conferir() -> int:
             falhas.append(f"{rotulo}: obtido {obtido!r}, documento diz "
                           f"{esperado!r} ({fonte})")
 
+    def verdade(rotulo: str, cond: bool) -> None:
+        if not cond:
+            falhas.append(f"{rotulo}: deixou de valer")
+
     # docs/ML-DATASETS-E-PLANO.md §2.1 e docs/SINTESE §116
     eq("resolução ±8 g", resolucao_mg_por_lsb(8), 0.244, 0.0005,
        "ML-DATASETS §2.1: 0,244 mg/LSB")
@@ -459,6 +573,86 @@ def conferir() -> int:
     eq("σ MPU 21 Hz", sigma_termico_mg(21.0), 1.8, 0.04,
        "§2.2: 400 µg/√Hz × √21 = 1,8 mg")
     eq("resolução E4", Q_EMPATICA_MG, 15.6, 0.03, "§2.1: 15,6 mg/LSB")
+
+    # CALC-02 (04/11): os números do Z.1 de `docs/CALCULOS-TCC.md` que não
+    # estavam travados, e a configuração do sensor lida do firmware.
+    z1 = "CALCULOS-TCC Z.1"
+    eq("σ MPU 21 Hz (Z.1.3)", sigma_termico_mg(21.0), 1.833, 0.0005, z1)
+    eq("σ MPU 260 Hz", sigma_termico_mg(260.0), 6.450, 0.0005, z1)
+    eq("σ MPU 44 Hz", sigma_termico_mg(44.0), 2.653, 0.0005, z1)
+    eq("√(260/21)", sigma_termico_mg(260.0) / sigma_termico_mg(21.0), 3.52, 0.005, z1)
+    eq("σ_q ±2 g", sigma_quantizacao_mg(resolucao_mg_por_lsb(2)), 0.0176, 0.00005, z1)
+    eq("σ_q ±8 g", sigma_quantizacao_mg(resolucao_mg_por_lsb(8)), 0.0705, 0.00005, z1)
+    eq("ruído / quantização, ±2 g", sigma_termico_mg(21.0)
+       / sigma_quantizacao_mg(resolucao_mg_por_lsb(2)), 104.0, 0.5, z1)
+    eq("ruído / quantização, ±8 g", sigma_termico_mg(21.0)
+       / sigma_quantizacao_mg(resolucao_mg_por_lsb(8)), 26.0, 0.5, z1)
+    eq("Nyquist 21 Hz", nyquist_hz(21.0), 42.0, 1e-9, z1)
+    eq("Nyquist 260 Hz", nyquist_hz(260.0), 520.0, 1e-9, z1)
+    eq("amostras por época a 42 Hz", nyquist_hz(21.0) * EPOCA_S, 1260.0, 1e-9, z1)
+    eq("amostras por época a 520 Hz", nyquist_hz(260.0) * EPOCA_S, 15600.0, 1e-9, z1)
+    c2 = configuracao_c2()
+    fw = "firmware/nucleo/fifo_mpu.h"
+    eq("firmware: banda do DLPF (Hz)", c2["banda_hz"], BANDA_FILTRO_HZ, 0, fw)
+    eq("firmware: taxa da C2 (Hz)", c2["taxa_hz"], 50.0, 1e-9, fw)
+    eq("firmware: fundo de escala (g)", c2["fundo_g"], 8, 0, fw)
+    verdade("taxa da C2 acima do Nyquist do filtro",
+            c2["taxa_hz"] > nyquist_hz(c2["banda_hz"]))
+    for chamada in ("MPU6050_BAND_21_HZ", "MPU6050_RANGE_8_G"):
+        faltam = sketches_de_bancada_em(chamada)
+        verdade(f"sketches de bancada com {chamada} (faltam: {faltam})", not faltam)
+
+    # CALC-03 (04/11): os números do Z.2 que não estavam travados, e o limiar e
+    # as características lidos de onde o sistema os usa.
+    z2 = "CALCULOS-TCC Z.2"
+    s21_ms2 = sigma_termico_mg(21.0) * 1e-3 * GRAVIDADE_PADRAO_MS2
+    eq("σ 21 Hz em m/s²", s21_ms2, 0.0180, 0.00005, z2)
+    eq("k implicado pelo limiar", k_implicado_pelo_limiar(LIMIAR_MOVIMENTO_MS2,
+       sigma_termico_mg(21.0)), 67.0, 0.5, z2)
+    eq("limiar de ruído a 3 σ (m/s²)", 3 * s21_ms2, 0.054, 0.0005, z2)
+    eq("limiar de ruído a 5 σ (m/s²)", 5 * s21_ms2, 0.090, 0.0005, z2)
+    eq("limiar em uso / 5 σ", LIMIAR_MOVIMENTO_MS2 / (5 * s21_ms2), 13.35, 0.01, z2)
+    eq("limiar em uso / 3 σ", LIMIAR_MOVIMENTO_MS2 / (3 * s21_ms2), 22.25, 0.01, z2)
+    eq("norma L1: √3 − 1 (%)", (math.sqrt(3) - 1) * 100, 73.0, 0.5, z2)
+    eq("piso do ENMO, 16 Hz (mg)", piso_enmo_gaussiano_mg(sigma_termico_mg(16.0)),
+       0.638, 0.0005, z2)
+    eq("limiar do rótulo (payload.h)",
+       _expressao_numerica("firmware/nucleo/payload.h", "LIMIAR_MOVIMENTO_MS2"),
+       LIMIAR_MOVIMENTO_MS2, 1e-6, "firmware/nucleo/payload.h")
+    eq("limiar do p_frac, firmware (g)",
+       _expressao_numerica("firmware/nucleo/caracteristicas.h", "LIMIAR_P_FRAC_G"),
+       LIMIAR_MOVIMENTO_MS2 / GRAVIDADE_PADRAO_MS2, 1e-6,
+       "firmware/nucleo/caracteristicas.h")
+    eq("limiar do p_frac, ml/ (g)",
+       _expressao_numerica("ml/src/features.py", "LIMIAR_P_FRAC_G"),
+       LIMIAR_MOVIMENTO_MS2 / GRAVIDADE_PADRAO_MS2, 1e-9, "ml/src/features.py")
+    nomes = nomes_das_features_do_ml()
+    eq("número de características (ml/)", len(nomes), 8, 0, "ml/src/features.py")
+    verdade(f"p_frac entre as características ({nomes})", "p_frac" in nomes)
+
+    # CALC-04 (04/11): o barramento I2C do produto, lido do firmware, e a janela
+    # de pull-up para os dois lotes do GY-521 nas duas frequências.
+    z3 = "CALCULOS-TCC Z.3"
+    sk = "firmware/sketch.ino"
+    eq("I2C do firmware (Hz)", clock_i2c_do_firmware(), 400e3, 0, sk)
+    eq("SDA do firmware", _constante_c(sk, "PINO_SDA"), 21, 0, sk)
+    eq("SCL do firmware", _constante_c(sk, "PINO_SCL"), 22, 0, sk)
+    eq("R mínimo do pull-up (Ω)", pullup_minimo_ohm(), 967.0, 1.0, z3)
+    eq("C máx., 2,2 kΩ a 400 kHz (pF)", capacitancia_maxima_pf(2200.0, 400e3), 161.0, 0.5, z3)
+    eq("C máx., 10 kΩ a 400 kHz (pF)", capacitancia_maxima_pf(10000.0, 400e3), 35.0, 0.5, z3)
+    eq("C máx., 2,2 kΩ a 100 kHz (pF)", capacitancia_maxima_pf(2200.0, 100e3), 536.5, 0.1, z3)
+    eq("C máx., 10 kΩ a 100 kHz (pF)", capacitancia_maxima_pf(10000.0, 100e3), 118.0, 0.5, z3)
+    eq("pull-up 2,2 kΩ, linha baixa (mA)", corrente_pullup_linha_baixa_a(2200.0) * 1e3, 1.318, 0.001, z3)
+    eq("pull-up 10 kΩ, linha baixa (mA)", corrente_pullup_linha_baixa_a(10000.0) * 1e3, 0.290, 0.001, z3)
+    verdade("os dois lotes acima do R mínimo",
+            min(R_PULLUP_MODULO_OHM) > pullup_minimo_ohm())
+    verdade("lote de 10 kΩ a 400 kHz não cabe em 50 pF",
+            capacitancia_maxima_pf(10000.0, 400e3) < 50.0)
+    # v2 (dois GY-521 no mesmo barramento): os pull-ups dos módulos em paralelo.
+    eq("v2, 2,2 kΩ ∥ 2,2 kΩ (Ω)", 1 / (2 / 2200.0), 1100.0, 0.5, z3)
+    verdade("v2 com 2,2 kΩ ainda acima do R mínimo", 1 / (2 / 2200.0) > pullup_minimo_ohm())
+    eq("v2, 10 kΩ ∥ 10 kΩ: C máx. a 400 kHz (pF)",
+       capacitancia_maxima_pf(1 / (2 / 10000.0), 400e3), 70.8, 0.1, z3)
 
     # docs/BACKLOG-COMPLETO.md, CALC-04
     eq("pull-down I", corrente_pulldown_a() * 1e3, 0.33, 0.005,

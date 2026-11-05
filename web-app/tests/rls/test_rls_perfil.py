@@ -354,10 +354,11 @@ def test_nome_no_teto_do_banco_passa(como, cenario):
     assert afetadas == 1
 
 
-@pytest.mark.parametrize("idade", [-1, 150, 1000])
+@pytest.mark.parametrize("idade", [-1, 0, 17, 150, 1000])
 def test_idade_fora_da_faixa_e_recusada_pelo_banco(como, cenario, idade):
-    """A constraint é da `001`; o teste é novo porque antes **nada escrevia**
-    na coluna, e constraint que nenhum caminho exercita é afirmação."""
+    """A constraint era da `001`; o teste é novo porque antes **nada escrevia**
+    na coluna, e constraint que nenhum caminho exercita é afirmação.
+    ✏️ 03/11 (`LGPD-05`): a `012` trocou o mínimo para 18; 0 e 17 entraram aqui."""
     with como(cenario["ana"]) as ana:
         ana.negado(
             "update public.profiles set idade = %s where id = %s",
@@ -365,7 +366,7 @@ def test_idade_fora_da_faixa_e_recusada_pelo_banco(como, cenario, idade):
         )
 
 
-@pytest.mark.parametrize("idade", [0, 22, 149, None])
+@pytest.mark.parametrize("idade", [18, 22, 149, None])
 def test_idade_dentro_da_faixa_passa(como, cenario, idade):
     with como(cenario["ana"]) as ana:
         afetadas = ana.contar_afetadas(

@@ -1,0 +1,359 @@
+{
+  "item": "ML-14",
+  "criterio": "F1 = 2TP/(2TP+FP+FN); indefinido somente se denominador zero",
+  "arquivos": [
+    {
+      "arquivo": "ml02_newcastle_aec203907e6f_20260914T052628Z.json",
+      "sha256_utf8_lf": "f8ce69010257807a8a7b3752d156d301b1df3278ddc6c29c4b028ed6d5ca25d5"
+    },
+    {
+      "arquivo": "ml02_sintetico_aec203907e6f_20260911T022308Z.json",
+      "sha256_utf8_lf": "3f08ed44da8da54e5b0fadbeb2c4739e88c53de67efed95e4400914f9418dfe3"
+    },
+    {
+      "arquivo": "ml02_sintetico_aec203907e6f_20260911T022721Z.json",
+      "sha256_utf8_lf": "5a974f8ed50db3f5f500b4d0a54db2bf1416596277fac66b5d9044847d2fb3be"
+    },
+    {
+      "arquivo": "ml02_sintetico_aec203907e6f_20260914T033035Z.json",
+      "sha256_utf8_lf": "89f81ef23be6ade9d9e4b675a66d891419f8fa93963394265a2cd7d71a47ccaf"
+    },
+    {
+      "arquivo": "ml02_sintetico_aec203907e6f_20260914T040706Z.json",
+      "sha256_utf8_lf": "fab94d6d698639daf4c8a5d5475b6046c9cf4ba8075684f4a9bd4b368c0aba0d"
+    },
+    {
+      "arquivo": "ml02_wearanize_cabeca_aec203907e6f_20260914T222839Z.json",
+      "sha256_utf8_lf": "0555ddca907a0f9cc31218fd2697b415aade81cfcc73dd5b95e63cf968abf559"
+    },
+    {
+      "arquivo": "ml02_wearanize_pulso_aec203907e6f_20260914T222928Z.json",
+      "sha256_utf8_lf": "1fbbdbbc789931e3b59f54d6afb2523a5cfb501e33bcc40e408e3e8b7608fd9a"
+    },
+    {
+      "arquivo": "ml03_transferencia_aec203907e6f_20260915T020658Z.json",
+      "sha256_utf8_lf": "b3934e59322d5b6589294087b161d3567a1024107f1305a686aa79d9506c1dd9"
+    },
+    {
+      "arquivo": "ml03b_ablacao_aec203907e6f_20260915T223235Z.json",
+      "sha256_utf8_lf": "7da5c2c130e239b7f0552a98e8ee751c559640f581081d1b922aebae17e6faf8"
+    },
+    {
+      "arquivo": "ml03b_otimizacoes_aec203907e6f_92suj.json",
+      "sha256_utf8_lf": "48918a01b67ede308307678191e08568801583ca93d3659c3e6642c468593325"
+    },
+    {
+      "arquivo": "ml04_validacao_externa_aec203907e6f_esquerdo.json",
+      "sha256_utf8_lf": "552f23d9b80c35db879c56a0e9692d4c341ea3ce71edfc0fcd9593ce57de5af8"
+    },
+    {
+      "arquivo": "ml04_validacao_externa_aec203907e6f_walch_principal.json",
+      "sha256_utf8_lf": "2ab3756742286372fba34749915a1429a504b93afd36f5a36a2798e6f2d2f55a"
+    },
+    {
+      "arquivo": "ml04_validacao_externa_aec203907e6f_walch_todos.json",
+      "sha256_utf8_lf": "e0f754f81856103b0083fb0d235de88002d52defcb4aa2d7a11c2d16c887e083"
+    },
+    {
+      "arquivo": "ml04b_efeito_do_lado_aec203907e6f.json",
+      "sha256_utf8_lf": "ac2c14f3383694ca9209d674fd39bed8865b87f42c2617ce02b6634cf84b6ece"
+    },
+    {
+      "arquivo": "ml05_teto_interavaliador_aec203907e6f.json",
+      "sha256_utf8_lf": "f8ab2b22c5049ed56036bfaad8eb87bf0b933bcca6946ad34af117388d099b5b"
+    },
+    {
+      "arquivo": "ml11_ablacao_features.json",
+      "sha256_utf8_lf": "1a65e7fd473a5a67bc993240a42e28c042690531633579c1e1a329e0feb3fdcd"
+    },
+    {
+      "arquivo": "ml12_validacao_aninhada.json",
+      "sha256_utf8_lf": "f47578c0c3f37bef27ad3bde406fbcead519aa868aa055f9416ee90892ee3d9e"
+    },
+    {
+      "arquivo": "quantizacao_features.json",
+      "sha256_utf8_lf": "0e6c9f25c5254ae0555a7f7a4a241726e3dc526feec0b7c8c271eeead2c47803"
+    }
+  ],
+  "n_arquivos": 18,
+  "n_valores_recalculaveis": 94,
+  "n_divergencias": 21,
+  "n_arquivos_afetados": 7,
+  "divergencias": [
+    {
+      "arquivo": "ml02_newcastle_aec203907e6f_20260914T052628Z.json",
+      "caminho": "$.resultados.0_sempre_dormindo.f1_vigilia",
+      "contagens": {
+        "vp": 41676,
+        "vn": 0,
+        "fp": 18149,
+        "fn": 0
+      },
+      "estado_anterior": "NaN",
+      "valor_anterior": null,
+      "f1_recalculado": 0.0
+    },
+    {
+      "arquivo": "ml02_newcastle_aec203907e6f_20260914T052628Z.json",
+      "caminho": "$.resultados.1a_cole_kripke_escala_arbitraria.f1_vigilia",
+      "contagens": {
+        "vp": 41676,
+        "vn": 0,
+        "fp": 18149,
+        "fn": 0
+      },
+      "estado_anterior": "NaN",
+      "valor_anterior": null,
+      "f1_recalculado": 0.0
+    },
+    {
+      "arquivo": "ml02_newcastle_aec203907e6f_20260914T052628Z.json",
+      "caminho": "$.resultados.1b_sadeh_escala_arbitraria.f1_vigilia",
+      "contagens": {
+        "vp": 41676,
+        "vn": 0,
+        "fp": 18149,
+        "fn": 0
+      },
+      "estado_anterior": "NaN",
+      "valor_anterior": null,
+      "f1_recalculado": 0.0
+    },
+    {
+      "arquivo": "ml02_sintetico_aec203907e6f_20260911T022308Z.json",
+      "caminho": "$.resultados.0_sempre_dormindo.f1_vigilia",
+      "contagens": {
+        "vp": 9430,
+        "vn": 0,
+        "fp": 1370,
+        "fn": 0
+      },
+      "estado_anterior": "NaN",
+      "valor_anterior": null,
+      "f1_recalculado": 0.0
+    },
+    {
+      "arquivo": "ml02_sintetico_aec203907e6f_20260911T022308Z.json",
+      "caminho": "$.resultados.1a_cole_kripke_substituto.f1_vigilia",
+      "contagens": {
+        "vp": 9430,
+        "vn": 0,
+        "fp": 1370,
+        "fn": 0
+      },
+      "estado_anterior": "NaN",
+      "valor_anterior": null,
+      "f1_recalculado": 0.0
+    },
+    {
+      "arquivo": "ml02_sintetico_aec203907e6f_20260911T022308Z.json",
+      "caminho": "$.resultados.1b_sadeh_substituto.f1_vigilia",
+      "contagens": {
+        "vp": 9430,
+        "vn": 0,
+        "fp": 1370,
+        "fn": 0
+      },
+      "estado_anterior": "NaN",
+      "valor_anterior": null,
+      "f1_recalculado": 0.0
+    },
+    {
+      "arquivo": "ml02_sintetico_aec203907e6f_20260911T022721Z.json",
+      "caminho": "$.resultados.0_sempre_dormindo.f1_vigilia",
+      "contagens": {
+        "vp": 9430,
+        "vn": 0,
+        "fp": 1370,
+        "fn": 0
+      },
+      "estado_anterior": "NaN",
+      "valor_anterior": null,
+      "f1_recalculado": 0.0
+    },
+    {
+      "arquivo": "ml02_sintetico_aec203907e6f_20260911T022721Z.json",
+      "caminho": "$.resultados.1a_cole_kripke_escala_arbitraria.f1_vigilia",
+      "contagens": {
+        "vp": 9430,
+        "vn": 0,
+        "fp": 1370,
+        "fn": 0
+      },
+      "estado_anterior": "NaN",
+      "valor_anterior": null,
+      "f1_recalculado": 0.0
+    },
+    {
+      "arquivo": "ml02_sintetico_aec203907e6f_20260911T022721Z.json",
+      "caminho": "$.resultados.1b_sadeh_escala_arbitraria.f1_vigilia",
+      "contagens": {
+        "vp": 9430,
+        "vn": 0,
+        "fp": 1370,
+        "fn": 0
+      },
+      "estado_anterior": "NaN",
+      "valor_anterior": null,
+      "f1_recalculado": 0.0
+    },
+    {
+      "arquivo": "ml02_sintetico_aec203907e6f_20260914T033035Z.json",
+      "caminho": "$.resultados.0_sempre_dormindo.f1_vigilia",
+      "contagens": {
+        "vp": 9430,
+        "vn": 0,
+        "fp": 1370,
+        "fn": 0
+      },
+      "estado_anterior": "NaN",
+      "valor_anterior": null,
+      "f1_recalculado": 0.0
+    },
+    {
+      "arquivo": "ml02_sintetico_aec203907e6f_20260914T033035Z.json",
+      "caminho": "$.resultados.1a_cole_kripke_escala_arbitraria.f1_vigilia",
+      "contagens": {
+        "vp": 9430,
+        "vn": 0,
+        "fp": 1370,
+        "fn": 0
+      },
+      "estado_anterior": "NaN",
+      "valor_anterior": null,
+      "f1_recalculado": 0.0
+    },
+    {
+      "arquivo": "ml02_sintetico_aec203907e6f_20260914T033035Z.json",
+      "caminho": "$.resultados.1b_sadeh_escala_arbitraria.f1_vigilia",
+      "contagens": {
+        "vp": 9430,
+        "vn": 0,
+        "fp": 1370,
+        "fn": 0
+      },
+      "estado_anterior": "NaN",
+      "valor_anterior": null,
+      "f1_recalculado": 0.0
+    },
+    {
+      "arquivo": "ml02_sintetico_aec203907e6f_20260914T040706Z.json",
+      "caminho": "$.resultados.0_sempre_dormindo.f1_vigilia",
+      "contagens": {
+        "vp": 9430,
+        "vn": 0,
+        "fp": 1370,
+        "fn": 0
+      },
+      "estado_anterior": "NaN",
+      "valor_anterior": null,
+      "f1_recalculado": 0.0
+    },
+    {
+      "arquivo": "ml02_sintetico_aec203907e6f_20260914T040706Z.json",
+      "caminho": "$.resultados.1a_cole_kripke_escala_arbitraria.f1_vigilia",
+      "contagens": {
+        "vp": 9430,
+        "vn": 0,
+        "fp": 1370,
+        "fn": 0
+      },
+      "estado_anterior": "NaN",
+      "valor_anterior": null,
+      "f1_recalculado": 0.0
+    },
+    {
+      "arquivo": "ml02_sintetico_aec203907e6f_20260914T040706Z.json",
+      "caminho": "$.resultados.1b_sadeh_escala_arbitraria.f1_vigilia",
+      "contagens": {
+        "vp": 9430,
+        "vn": 0,
+        "fp": 1370,
+        "fn": 0
+      },
+      "estado_anterior": "NaN",
+      "valor_anterior": null,
+      "f1_recalculado": 0.0
+    },
+    {
+      "arquivo": "ml02_wearanize_cabeca_aec203907e6f_20260914T222839Z.json",
+      "caminho": "$.resultados.0_sempre_dormindo.f1_vigilia",
+      "contagens": {
+        "vp": 8706,
+        "vn": 0,
+        "fp": 765,
+        "fn": 0
+      },
+      "estado_anterior": "NaN",
+      "valor_anterior": null,
+      "f1_recalculado": 0.0
+    },
+    {
+      "arquivo": "ml02_wearanize_cabeca_aec203907e6f_20260914T222839Z.json",
+      "caminho": "$.resultados.1a_cole_kripke_escala_arbitraria.f1_vigilia",
+      "contagens": {
+        "vp": 8706,
+        "vn": 0,
+        "fp": 765,
+        "fn": 0
+      },
+      "estado_anterior": "NaN",
+      "valor_anterior": null,
+      "f1_recalculado": 0.0
+    },
+    {
+      "arquivo": "ml02_wearanize_cabeca_aec203907e6f_20260914T222839Z.json",
+      "caminho": "$.resultados.1b_sadeh_escala_arbitraria.f1_vigilia",
+      "contagens": {
+        "vp": 8706,
+        "vn": 0,
+        "fp": 765,
+        "fn": 0
+      },
+      "estado_anterior": "NaN",
+      "valor_anterior": null,
+      "f1_recalculado": 0.0
+    },
+    {
+      "arquivo": "ml02_wearanize_pulso_aec203907e6f_20260914T222928Z.json",
+      "caminho": "$.resultados.0_sempre_dormindo.f1_vigilia",
+      "contagens": {
+        "vp": 6249,
+        "vn": 0,
+        "fp": 709,
+        "fn": 0
+      },
+      "estado_anterior": "NaN",
+      "valor_anterior": null,
+      "f1_recalculado": 0.0
+    },
+    {
+      "arquivo": "ml02_wearanize_pulso_aec203907e6f_20260914T222928Z.json",
+      "caminho": "$.resultados.1a_cole_kripke_escala_arbitraria.f1_vigilia",
+      "contagens": {
+        "vp": 6249,
+        "vn": 0,
+        "fp": 709,
+        "fn": 0
+      },
+      "estado_anterior": "NaN",
+      "valor_anterior": null,
+      "f1_recalculado": 0.0
+    },
+    {
+      "arquivo": "ml02_wearanize_pulso_aec203907e6f_20260914T222928Z.json",
+      "caminho": "$.resultados.1b_sadeh_escala_arbitraria.f1_vigilia",
+      "contagens": {
+        "vp": 6249,
+        "vn": 0,
+        "fp": 709,
+        "fn": 0
+      },
+      "estado_anterior": "NaN",
+      "valor_anterior": null,
+      "f1_recalculado": 0.0
+    }
+  ],
+  "sem_contagens": [],
+  "limite": "Sem matriz por sujeito ou predicoes, nao reconstroi medias ou ICs de F1."
+}
