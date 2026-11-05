@@ -6839,6 +6839,8 @@ lido em 04/11; backlog `CALC-03`, `DOC-16`, `VIA-01`.
 
 **Adaptação.** Não foi necessário converter os parâmetros devolvidos para UTC: a comparação de objetos com fuso considera os offsets, preservando o formato consumido pela camada de dados. Os novos testes ficaram em arquivo próprio para exercitar a mesma matriz na função e nas duas rotas.
 
+**O que deu errado no caminho.** Nada registrado nesta etapa. A execução vermelha dos 20 casos foi o controle deliberado antes da correção (ver "Resultado medido"), não uma falha do trabalho.
+
 **Risco em aberto.** Clientes que misturavam limite com fuso e limite sem fuso recebem 400; o contrato agora declara isso. Datas sem fuso no histórico continuam dependentes da interpretação da fonte; não foi atribuída uma zona implicitamente. A escolha de `created_at` versus `captured_at` e a paginação do histórico são achados separados da inspeção, fora desta correção. A contribuição ao TCC é preservar a integridade do recorte temporal dos registros de movimento; não amplia a afirmação científica de sono.
 
 **Procedência.** Branch `bugfix/API-05-comparacao-de-datas`; `web-app/consulta.py`, `web-app/tests/test_comparacao_de_datas.py`, contrato §6.1 e backlog `API-05`.
