@@ -896,3 +896,14 @@ disponível e que convém não deixar enterrado na seção de limitações:
 Essa é uma afirmação **independente do desempenho absoluto do protótipo**: vale mesmo que os
 números do dispositivo sejam modestos, e é o tipo de contribuição que uma banca reconhece
 como maturidade metodológica.
+
+
+**Limite de reprodutibilidade histórica medido em 05/11/2026 (ML-15).** A nova
+rodada concluiu as 15 execuções e reproduziu os resultados centrais, mas a variante
+de logística sem normalização emitiu 276 avisos de convergência e diferiu até
+0,004545 no kappa médio. Dois snapshots sintéticos antigos também divergiram, e os
+IDs das coortes piloto Wearanize de 10/7 participantes não foram recuperados dos
+JSONs; a análise ampliada de 92 participantes não é reprodução dessas coortes.
+Foram reaproveitados caches de features, o que limita a afirmação à reprodução dos
+treinamentos e avaliações sobre essas entradas. Procedência e alcance em
+[REPRODUCAO-ML-15.md](REPRODUCAO-ML-15.md); investigação residual registrada no ML-16.

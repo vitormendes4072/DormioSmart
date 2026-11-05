@@ -1182,3 +1182,15 @@ você colar as duas seções sem os `n`, vira erro aparente de transcrição.
 - **Não afirma nada sobre o protótipo em placa.** Nenhum número deste capítulo foi medido no
   dispositivo. Todo ele é sobre bases públicas de acelerometria com rotulagem
   polissonográfica, e a seção Y.8 declara isso.
+
+
+**Reconferência por execução (ML-15, 05/11/2026).** Foram concluídas 15 execuções
+com treinamentos novos e entradas de features preservadas em cópia isolada. Os
+resultados centrais de transferência, otimizações, validação externa, lateralidade,
+teto interavaliador, quantização e ML-11/ML-12 foram reproduzidos. O F1 complementar
+verificou 9.687 matrizes em 132 avaliações e quantificou zeros antes excluídos,
+inclusive na transferência cabeça → cabeça E4. Isso não muda os kappas publicados.
+Não se afirma igualdade de todo o histórico: a ablação sem scaler não convergiu,
+dois snapshots sintéticos antigos divergem e as coortes piloto Wearanize de 10/7
+participantes não foram identificadas. Detalhes e evidências em
+[REPRODUCAO-ML-15.md](REPRODUCAO-ML-15.md); pendências de procedência no ML-16.

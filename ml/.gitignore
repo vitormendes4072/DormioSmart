@@ -12,6 +12,14 @@ experimentos/saida/*
 !experimentos/saida/.gitkeep
 !experimentos/saida/*.json
 
+# ML-15: nova rodada separada dos históricos que a auditoria ML-14 fixa.
+!experimentos/saida/ml15/
+experimentos/saida/ml15/*
+!experimentos/saida/ml15/*.json
+!experimentos/saida/ml15/resultados/
+experimentos/saida/ml15/resultados/*
+!experimentos/saida/ml15/resultados/*.json
+
 # Checkpoints por dobra do LOSO retomável (experimentos/_retomada.py). São
 # estado intermediário de execução, não resultado: o resultado vai para o
 # .json. Já cairiam na regra acima; explícito porque a pasta é nova.

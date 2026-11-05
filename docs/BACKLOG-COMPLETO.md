@@ -58,7 +58,11 @@ Até 29/10 esta linha mandava rodar o `DATA-03`, fechado em 28/10.)* **Se tem um
 
 *(04/11, ML-14: item registrado e fechado em L0; contagem de abertos inalterada.)*
 
-**Contagem:** 39 itens abertos · **L0: 10** · L1: 13 · L2: 7 · L3: 9. *(Recontado linha a linha em 03/11, e não por delta; desde o `DOC-13`, o CI reconta.)*
+*(04/11, ML-15: reprodução dos experimentos principais iniciada em L0; +1 item aberto.)*
+
+*(05/11: ML-15 concluído; entrou ML-16 para a procedência histórica que a reprodução não resolveu. Saldo zero: 40 abertos, L0 11.)*
+
+**Contagem:** 40 itens abertos · **L0: 11** · L1: 13 · L2: 7 · L3: 9. *(Recontado linha a linha em 03/11, e não por delta; desde o `DOC-13`, o CI reconta.)*
 *(04/11, quinta parte: fechou `CALC-03` (L0). L0 11−1 = 10; 10+13+7+9 = 39.)*
 *(04/11, quarta parte: fechou `CALC-02` (L0). L0 12−1 = 11; 11+13+7+9 = 40.)*
 *(04/11, terceira parte: fechou `CALC-01` (L0); entrou `DOC-16` (L0, o resto do texto do TCC com o Deep Sleep). L0 12−1+1 = 12; 41.)*
@@ -196,7 +200,7 @@ E um **peso**: 🔴 caminho crítico da defesa · 🟡 importante · ⚪ polimen
                     └─────────────────────────────────────────────┘
 
    L0  EM PARALELO, SEM DEPENDER DE NADA DISSO:
-       CALC-04 · REQ-01 · LGPD-02 · DOC-06b · DOC-16
+       ML-16 · CALC-04 · REQ-01 · LGPD-02 · DOC-06b · DOC-16
        UI-18 · SEC-13 · AUTH-09 · CI-02 · GIT-05
 
    L3  TAMBÉM DEPENDE DE VOCÊ:
@@ -332,6 +336,8 @@ diagrama** — que é o que a banca lê.
 
 | Item | O quê | Peso |
 |---|---|:---:|
+| **ML-16** 🟡 *(novo — 05/11, achado do ML-15)* | **Recuperar a procedência dos resultados históricos não reproduzidos.** (a) Identificar os participantes dos baselines ML-02 Wearanize de 10/7 sujeitos; o JSON não contém IDs e a análise nova de 92 não os substitui. (b) Rastrear a configuração/código dos dois snapshots sintéticos de 11/09, que divergem dos de 14/09 e da reprodução atual. (c) Isolar a causa da divergência da logística sem scaler: 276 avisos de convergência e maior diferença de kappa médio de 0,004545; não tratar como erro de F1 nem alterar o solver para forçar coincidência. Procedência: docs/REPRODUCAO-ML-15.md e comparação salva. Resultados centrais e validação externa não dependem de fechar estas lacunas. | 🟡 |
+| **ML-15** ✅ *(05/11)* | **Reprodução dos experimentos principais após ML-14.** 15 execuções concluídas em cópia isolada; treinos e checkpoints novos, ambiente pinado, seed/configuração preservadas. Resultados centrais, otimizações e validação externa reproduzidos. F1 complementar: 9.687 matrizes verificadas em 132 avaliações; oito zeros antes excluídos em sete avaliações não triviais. Relatório docs/REPRODUCAO-ML-15.md e evidências em ml/experimentos/saida/ml15/. Limites: variante sem scaler sem convergência, snapshots sintéticos antigos e coortes piloto 10/7 não reproduzidos estritamente; investigação no ML-16. Branch feature/ML-15-reproducao, dependente da ML-14; históricos preservados. | ✅ |
 | **ML-14** ✅ *(04/11)* | **F1 sem acertos é zero quando há erros.** Fórmula pelas contagens em ml/src/avaliar.py; NaN apenas quando a classe não aparece na verdade nem na predição. Prova da inclusão de zero na média, desvio e bootstrap; comparação com scikit-learn em 64 pares de sequências. Auditoria reproduzível e snapshot estrito: 21 divergências em 7/18 JSONs históricos, entre 94 valores recalculáveis; originais preservados. 155 testes de ML passaram no Windows. Seis casos detectaram o defeito antes; controle positivo da auditoria altera a fonte e exige reprovação. Branch bugfix/ML-14-f1-sem-acertos; diário e RESULTADOS-TCC atualizados. | ✅ |
 | **CALC-01** ✅ *(04/11: `scripts/estudo_cadencia.py` ganhou a C2 **como implementada**, lendo do firmware o envio a cada 10 min e a drenagem a 1,7 s; envio completo (Wi-Fi, NTP, TLS, POST) como estimativa de 2–8 s; gravação na flash. Referência: **2,68 mA** (2,35–3,34; varredura 1,88–5,81), 746 h com 2 000 mA·h, 255 J por noite. **Nenhuma parcela passa de 30 %** — a hipótese de que o rádio seguiria dominando caiu (25 %). Com placa de 1 mA, +37 %. `CALCULOS-TCC.md`: Z.4.4c nova, tabela da C2 em Z.4.5, Z.4.6 reescrita para a fila na flash (11,4 dias), Z.4.7 com a estimativa do envio. 3/3 sabotagens, duas delas no próprio firmware. Inserção para o Produto 5 em `documento/INSERCAO-CALC-01-ENERGIA-C2.md`, fora do repositório; **colar é com os autores**)* | ✏️ **03/11 (triagem):** **refazer para a C2** — sono leve, drenagem a 1,7 s, Wi-Fi a cada 10 min e escrita na flash; o modelo de Deep Sleep e Wake-on-Motion não existe mais. Modelo de energia/autonomia: corrente por estado, duty cycle, `I_média = (I_ativo·t_ativo + I_sleep·t_sleep)/(t_ativo+t_sleep)`, `autonomia = C_bateria/I_média`. Quantifica o "baixo consumo" e **expõe o limite do DevKit V1** → embasa o `HW-02`. É predição; a medição é `VAL-02`. | 🔴 |
 | **DOC-16** 🟡 *(novo — 04/11, achado do `CALC-01`; ✏️ ampliado no `CALC-03` com a 6.5 e a Figura 5)* | **O texto do TCC (Produto 5) ainda descreve o Deep Sleep com despertar por movimento fora da 6.4.1.** Medido no "Copy of Produto 5" em 04/11: a Justificativa (dimensão ambiental: "*Deep Sleep* … *wake-on-motion*"), a 5.4 (o sensor "apoiar uma estratégia de despertar"), a 5.5 inteira ("Baixo Consumo Energético e Modo *Deep Sleep*") e a 5.6 ("circuito de *wake-up*"). Contradizem a 6.4.1 nova do `CALC-01`. A 6.4.2 (o botão no GPIO27) é do `CALC-04`. ✏️ *04/11 (`CALC-03`): entra também a **6.5 Fluxo de Operação do Firmware** inteira (e a **Figura 5**) — despertar por movimento, ruído medido na partida, "AI > L" decidindo se transmite — e o item e) dela cita as Equações 9 e 10, que mudam de conteúdo com a inserção da 6.4.4. Até a 6.5 ser reescrita, as duas seções ficam inconsistentes.* **Proposta:** arquivo de inserção com o texto atual ao lado do novo, como no `CALC-01`; a 5.5 vira fundamentação do sono leve com a fila do sensor. | 🟡 |
