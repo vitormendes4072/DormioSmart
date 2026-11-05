@@ -7,6 +7,31 @@
 
 ---
 
+## Correção de F1 — ML-14 (04/11/2026)
+
+O avaliador calcula F1 pelas contagens: 2TP/(2TP + FP + FN). Sem acertos,
+mas com falsos positivos ou falsos negativos, o valor é zero e entra na
+agregação entre sujeitos. NaN fica reservado à ausência da classe tanto na
+verdade quanto na predição. As demais métricas mantêm suas regras de
+indefinição; especificidade sem vigília verdadeira continua indefinida.
+
+A auditoria dos resultados históricos preserva os originais, registra seus
+hashes com finais de linha normalizados para LF e recalcula apenas os valores para os quais há matriz de confusão.
+Não reconstrói média ou IC sem a evidência por sujeito. O snapshot usa JSON
+estrito (null com estado explícito para NaN legado) e é conferido pela suíte.
+
+~~~bash
+# A partir da raiz do repositório:
+python ml/ferramentas/auditar_f1.py
+python ml/ferramentas/auditar_f1.py --conferir
+~~~
+
+Snapshot: ml/experimentos/saida/ml14_auditoria_f1.json. No estado desta
+correção: 21 divergências entre 94 valores recalculáveis, em 7 dos 18 arquivos.
+Suíte de ML: 155 testes passaram no Windows com Python 3.11.9 e as versões
+fixadas em requirements.txt. Seis dos 11 novos casos de F1 falharam antes da
+correção; dez casos adicionais verificam o instrumento de auditoria.
+
 ## Estado (2026-09-21)
 
 | Item | Estado |

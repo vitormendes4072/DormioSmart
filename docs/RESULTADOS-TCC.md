@@ -834,12 +834,26 @@ nossa no texto, e precisa continuar marcado** — é o tipo de conta que a banca
 refazer, e atribuí-la aos autores dos artigos seria atribuir-lhes conclusão que eles não
 tiram.
 
-**Sobre a degeneração.** O texto afirma que os valores são *exatamente* os do trivial, não
-próximos. Isso é verificável: nos três JSONs de `ml02_*` as três chaves têm os mesmos `vp`,
-`vn`, `fp`, `fn`. É uma afirmação forte e ela se sustenta — mas note que `f1_vigilia` sai
-`NaN` nessas linhas (divisão por zero, nenhuma época predita como vigília), e **`NaN` em JSON
-não é JSON válido em sentido estrito**. Se algum dia esses arquivos passarem por um parser
-mais rigoroso que o do Python, é aí que vai quebrar.
+**Sobre a degeneração e a correção do F1 (ML-14, 04/11/2026).** A identidade
+com o trivial continua verificável pelas contagens vp, vn, fp e fn dos JSONs
+ml02: as previsões degeneradas têm as mesmas contagens. Os valores históricos
+de f1_vigilia registrados como NaN nesses casos, porém, eram um erro do
+avaliador, não uma indefinição legítima: quando há vigília verdadeira e
+nenhum acerto de vigília, F1 é zero. A implementação passou a calcular
+F1 diretamente como 2TP/(2TP + FP + FN), mantendo NaN apenas quando a classe
+não aparece nem na verdade nem na predição (denominador zero).
+
+A auditoria reproduzível está em ml/ferramentas/auditar_f1.py; a saída
+ml/experimentos/saida/ml14_auditoria_f1.json confere 94 valores reconstruíveis
+em 18 arquivos, encontra 21 divergências em 7 arquivos e registra cada valor
+recalculado (zero), caminho e hash SHA-256 da fonte (UTF-8, fins de linha LF). Os arquivos históricos
+foram preservados. A auditoria não retreina modelos nem reestima médias e
+intervalos sem contagens por sujeito ou predições disponíveis. Estes números
+descrevem os arquivos inspecionados, não uma revisão integral dos experimentos.
+
+Os NaN permanecem nos JSONs originais e não são JSON estrito. O relatório
+novo usa null e um estado explícito para representar o NaN legado; os
+comandos para regenerá-lo e conferi-lo estão no README do ml/.
 
 ### Y.1.4 — teto de concordância entre pontuadores
 

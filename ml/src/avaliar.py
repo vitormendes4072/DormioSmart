@@ -69,10 +69,11 @@ def avaliar_epoca(y_verdadeiro: np.ndarray, y_predito: np.ndarray) -> Metricas:
     pe = div((vp + fn) * (vp + fp) + (vn + fp) * (vn + fn), n * n)
     kappa = div(po - pe, 1.0 - pe) if not np.isnan(pe) and abs(1.0 - pe) > 1e-12 else float("nan")
 
-    prec_s, rec_s = div(vp, vp + fp), sens
-    f1_s = div(2 * prec_s * rec_s, prec_s + rec_s) if (prec_s + rec_s) else float("nan")
-    prec_v, rec_v = div(vn, vn + fn), espec
-    f1_v = div(2 * prec_v * rec_v, prec_v + rec_v) if (prec_v + rec_v) else float("nan")
+    # ML-14: pela matriz de confusao, sem NaN intermediario de precisao/recall.
+    # Sem acertos mas com erros, F1 e zero. So e indefinido quando a classe
+    # nao aparece nem na verdade nem nas predicoes (denominador zero).
+    f1_s = div(2 * vp, 2 * vp + fp + fn)
+    f1_v = div(2 * vn, 2 * vn + fp + fn)
 
     return Metricas(
         n=n, n_sono=vp + fn, n_vigilia=vn + fp,
