@@ -749,6 +749,19 @@ anterior**: as 20 leituras mais recentes de todos os dispositivos do usuário.
 | `ate` | ISO 8601 | — | Limite superior de `created_at` |
 | `limite` | inteiro ≥ 1 | 20 | Máximo de linhas; teto de **2000** |
 
+**Ordem temporal (`API-05`, 04/11/2026):** quando `desde` e `ate` são
+informados, o início não pode ser posterior ao fim. Com fuso horário, a
+comparação considera os instantes, incluindo os offsets e as frações de segundo;
+representações diferentes do mesmo instante são aceitas. O histórico preserva
+a aceitação de dois limites sem fuso (inclusive datas sem hora), comparados
+como datas e horas sem conversão de fuso. Misturar um limite com fuso e outro
+sem fuso responde **400**, pois não há referência comum explícita. Limite
+isolado continua permitido no histórico. Os parâmetros devolvidos pela
+validação preservam os offsets normalizados em ISO 8601; a comparação não
+reinterpreta datas sem fuso como UTC. `/api/features` continua exigindo os
+dois limites com fuso e mantém o teto de 24 h (§2.6).
+
+
 > **O padrão de 20 é do protocolo, não da tela (DASH-13).** O painel e a
 > exportação passam `limite=2000` explicitamente. Enquanto não passavam, toda
 > a máquina de cobertura, lacuna e sessão operava sobre as 20 linhas mais
