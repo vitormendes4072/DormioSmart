@@ -7014,6 +7014,40 @@ rastreada na raiz do repositório principal, e não foi tocada.
 `docs/REPRODUCAO-ML-15.md` e `docs/RASTREABILIDADE-ML-16.md`; conferências e comparadores
 independentes rodados nesta máquina em 05/11.
 
+---
+
+# 2026-11-05 (ii) — o release da `API-05`, da `UI-24` e do `DEMO-03`
+
+**O problema, como foi entendido no início.** Depois da integração das PRs #79–#84 e da
+conciliação (#85), `develop` tinha três mudanças de comportamento do site — `API-05`, `UI-24`,
+`DEMO-03` — e os itens de cálculo e de ML, que não mudam o site.
+
+**Hipótese de trabalho.** Que o release mudasse só a validação das consultas, o carregamento do
+histórico no painel e o modo demonstração do servidor de desenvolvimento.
+
+**O que foi testado, e como.** Diff `main..develop` restrito a `web-app/`, `frontend/` e
+`vercel.json` (três arquivos de produção); PR #86 com 9 checks; deploy acompanhado pela API de
+deployments; depois, `/health`, as rotas sem credencial e com `Bearer` inválido,
+`/api/sleep-history` com limites de fuso misturado, `/privacidade`, o pacote publicado, e um login
+do autor com o painel.
+
+**Resultado medido.** Deploy `7584696406`, `success`, SHA `5fa9ab6`. `/health` `200`, banco ok;
+rotas sem credencial e `Bearer` inválido → `401`; `/api/sleep-history` com fusos misturados e sem
+credencial → `401`; `/privacidade` `200`. O pacote publicado tem um trecho compatível com a guarda
+nova do `useHistorico` — indício, não prova, por ser código minificado. **O autor confirmou o login
+e o painel.**
+
+**Adaptação.** Nenhuma.
+
+**O que deu errado no caminho.** Nada nesta etapa.
+
+**Risco em aberto.** O `400` da `API-05` não foi exercitado na produção: exige sessão válida e
+parâmetros que nenhum cliente envia hoje. As sete branches das PRs #79–#85 e as worktrees da outra
+ferramenta seguem existindo até autorização para apagar.
+
+**Procedência.** PR #86 (`5fa9ab6`); deployment de produção `7584696406`; as rotas e o pacote de
+`https://dormio-smart.vercel.app`, 05/11; a confirmação do autor; backlog `API-05`, `UI-24`.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
