@@ -907,3 +907,23 @@ JSONs; a análise ampliada de 92 participantes não é reprodução dessas coort
 Foram reaproveitados caches de features, o que limita a afirmação à reprodução dos
 treinamentos e avaliações sobre essas entradas. Procedência e alcance em
 [REPRODUCAO-ML-15.md](REPRODUCAO-ML-15.md); investigação residual registrada no ML-16.
+
+
+**Atualização de rastreabilidade (ML-16, 05/11/2026).** A investigação das lacunas
+registradas na ML-15 foi concluída: coortes piloto 10/7 reconstruídas reproduzem os
+resultados; L1/mediana dos vetores unitários por componente reproduz os sintéticos
+antigos; a matriz sem scaler coincide integralmente com o histórico ao usar oito
+threads nativas. O ajuste continua sem convergência e a condição numérica é parte
+da procedência. São reconstruções verificadas, sem recuperar os arquivos/listas
+originais ausentes nem prometer igualdade em outra arquitetura. Evidências,
+controles e limites em [RASTREABILIDADE-ML-16.md](RASTREABILIDADE-ML-16.md).
+
+**Consequência da condição numérica (revisão de 05/11/2026).** A mesma variante sem
+normalização, com as mesmas entradas, semente e `max_iter`, muda conforme o número de threads da
+biblioteca de álgebra linear: entre uma e oito threads, o kappa médio de uma célula varia até
+0,0045, mas o kappa **de um participante** varia até 0,17 e a especificidade até 0,23. Comparação
+campo a campo entre o histórico e `ml/experimentos/saida/ml15/resultados/ml03b_ablacao_*.json`,
+em `item2_sem_scaler.*.por_sujeito`: as 2 056 diferenças ficam todas nesse item. Um resultado que
+depende do número de threads não é robusto: o texto do TCC pode citar a variante para mostrar que
+a normalização importa, mas não deve se apoiar em suas casas decimais nem em valores por
+participante.

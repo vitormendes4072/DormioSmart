@@ -1,0 +1,412 @@
+{
+  "item": "ML-16",
+  "base_codigo": "63a4223c5b7d48e9311f7959a62540b6a2fc9808",
+  "execucoes_baseline": {
+    "piloto_cabeca": {
+      "modo": "piloto-cabeca",
+      "threads": 1,
+      "norma": "l2",
+      "referencia": "geometrica",
+      "segundos": 73.63999999999942,
+      "ambiente_numerico": [
+        {
+          "user_api": "blas",
+          "internal_api": "openblas",
+          "num_threads": 1,
+          "prefix": "libscipy_openblas",
+          "version": "0.3.29",
+          "threading_layer": "pthreads",
+          "architecture": "Haswell"
+        },
+        {
+          "user_api": "blas",
+          "internal_api": "openblas",
+          "num_threads": 1,
+          "prefix": "libscipy_openblas",
+          "version": "0.3.28",
+          "threading_layer": "pthreads",
+          "architecture": "Haswell"
+        },
+        {
+          "user_api": "openmp",
+          "internal_api": "openmp",
+          "num_threads": 1,
+          "prefix": "vcomp",
+          "version": null
+        }
+      ],
+      "versoes": {
+        "numpy": "2.2.6",
+        "scipy": "1.15.3",
+        "scikit-learn": "1.7.2",
+        "pandas": "2.3.3"
+      },
+      "config_sha256_utf8_lf": "aec203907e6f4e450b067c04e12dd15cad3e011c6c772cc6f5db61caf40a5e0c",
+      "instrumento_sha256_utf8_lf": "f688b81ef99083d919ac86b27cc050d80bf9dceab3fa606fb29c1bc3c955008e",
+      "sujeitos_candidatos": [
+        "sub-001",
+        "sub-002",
+        "sub-004",
+        "sub-005",
+        "sub-007",
+        "sub-008",
+        "sub-009",
+        "sub-010",
+        "sub-011",
+        "sub-012"
+      ]
+    },
+    "piloto_pulso": {
+      "modo": "piloto-pulso",
+      "threads": 1,
+      "norma": "l2",
+      "referencia": "geometrica",
+      "segundos": 27.81300000000192,
+      "ambiente_numerico": [
+        {
+          "user_api": "blas",
+          "internal_api": "openblas",
+          "num_threads": 1,
+          "prefix": "libscipy_openblas",
+          "version": "0.3.29",
+          "threading_layer": "pthreads",
+          "architecture": "Haswell"
+        },
+        {
+          "user_api": "blas",
+          "internal_api": "openblas",
+          "num_threads": 1,
+          "prefix": "libscipy_openblas",
+          "version": "0.3.28",
+          "threading_layer": "pthreads",
+          "architecture": "Haswell"
+        },
+        {
+          "user_api": "openmp",
+          "internal_api": "openmp",
+          "num_threads": 1,
+          "prefix": "vcomp",
+          "version": null
+        }
+      ],
+      "versoes": {
+        "numpy": "2.2.6",
+        "scipy": "1.15.3",
+        "scikit-learn": "1.7.2",
+        "pandas": "2.3.3"
+      },
+      "config_sha256_utf8_lf": "aec203907e6f4e450b067c04e12dd15cad3e011c6c772cc6f5db61caf40a5e0c",
+      "instrumento_sha256_utf8_lf": "f688b81ef99083d919ac86b27cc050d80bf9dceab3fa606fb29c1bc3c955008e",
+      "sujeitos_candidatos": [
+        "sub-001",
+        "sub-002",
+        "sub-004",
+        "sub-005",
+        "sub-007",
+        "sub-008",
+        "sub-009",
+        "sub-010",
+        "sub-011",
+        "sub-012"
+      ]
+    },
+    "sint_atual": {
+      "modo": "sintetico",
+      "threads": 1,
+      "norma": "l2",
+      "referencia": "geometrica",
+      "segundos": 51.26499999999942,
+      "ambiente_numerico": [
+        {
+          "user_api": "blas",
+          "internal_api": "openblas",
+          "num_threads": 1,
+          "prefix": "libscipy_openblas",
+          "version": "0.3.29",
+          "threading_layer": "pthreads",
+          "architecture": "Haswell"
+        },
+        {
+          "user_api": "blas",
+          "internal_api": "openblas",
+          "num_threads": 1,
+          "prefix": "libscipy_openblas",
+          "version": "0.3.28",
+          "threading_layer": "pthreads",
+          "architecture": "Haswell"
+        },
+        {
+          "user_api": "openmp",
+          "internal_api": "openmp",
+          "num_threads": 1,
+          "prefix": "vcomp",
+          "version": null
+        }
+      ],
+      "versoes": {
+        "numpy": "2.2.6",
+        "scipy": "1.15.3",
+        "scikit-learn": "1.7.2",
+        "pandas": "2.3.3"
+      },
+      "config_sha256_utf8_lf": "aec203907e6f4e450b067c04e12dd15cad3e011c6c772cc6f5db61caf40a5e0c",
+      "instrumento_sha256_utf8_lf": "f688b81ef99083d919ac86b27cc050d80bf9dceab3fa606fb29c1bc3c955008e",
+      "sujeitos_candidatos": null
+    },
+    "sint_legacy": {
+      "modo": "sintetico",
+      "threads": 1,
+      "norma": "l1",
+      "referencia": "mediana-unitaria",
+      "segundos": 66.3279999999977,
+      "ambiente_numerico": [
+        {
+          "user_api": "blas",
+          "internal_api": "openblas",
+          "num_threads": 1,
+          "prefix": "libscipy_openblas",
+          "version": "0.3.29",
+          "threading_layer": "pthreads",
+          "architecture": "Haswell"
+        },
+        {
+          "user_api": "blas",
+          "internal_api": "openblas",
+          "num_threads": 1,
+          "prefix": "libscipy_openblas",
+          "version": "0.3.28",
+          "threading_layer": "pthreads",
+          "architecture": "Haswell"
+        },
+        {
+          "user_api": "openmp",
+          "internal_api": "openmp",
+          "num_threads": 1,
+          "prefix": "vcomp",
+          "version": null
+        }
+      ],
+      "versoes": {
+        "numpy": "2.2.6",
+        "scipy": "1.15.3",
+        "scikit-learn": "1.7.2",
+        "pandas": "2.3.3"
+      },
+      "config_sha256_utf8_lf": "aec203907e6f4e450b067c04e12dd15cad3e011c6c772cc6f5db61caf40a5e0c",
+      "instrumento_sha256_utf8_lf": "f688b81ef99083d919ac86b27cc050d80bf9dceab3fa606fb29c1bc3c955008e",
+      "sujeitos_candidatos": null
+    },
+    "sint_so_l1": {
+      "modo": "sintetico",
+      "threads": 1,
+      "norma": "l1",
+      "referencia": "geometrica",
+      "segundos": 56.38999999999942,
+      "ambiente_numerico": [
+        {
+          "user_api": "blas",
+          "internal_api": "openblas",
+          "num_threads": 1,
+          "prefix": "libscipy_openblas",
+          "version": "0.3.29",
+          "threading_layer": "pthreads",
+          "architecture": "Haswell"
+        },
+        {
+          "user_api": "blas",
+          "internal_api": "openblas",
+          "num_threads": 1,
+          "prefix": "libscipy_openblas",
+          "version": "0.3.28",
+          "threading_layer": "pthreads",
+          "architecture": "Haswell"
+        },
+        {
+          "user_api": "openmp",
+          "internal_api": "openmp",
+          "num_threads": 1,
+          "prefix": "vcomp",
+          "version": null
+        }
+      ],
+      "versoes": {
+        "numpy": "2.2.6",
+        "scipy": "1.15.3",
+        "scikit-learn": "1.7.2",
+        "pandas": "2.3.3"
+      },
+      "config_sha256_utf8_lf": "aec203907e6f4e450b067c04e12dd15cad3e011c6c772cc6f5db61caf40a5e0c",
+      "instrumento_sha256_utf8_lf": "f688b81ef99083d919ac86b27cc050d80bf9dceab3fa606fb29c1bc3c955008e",
+      "sujeitos_candidatos": null
+    },
+    "sint_so_mediana": {
+      "modo": "sintetico",
+      "threads": 1,
+      "norma": "l2",
+      "referencia": "mediana-unitaria",
+      "segundos": 43.0,
+      "ambiente_numerico": [
+        {
+          "user_api": "blas",
+          "internal_api": "openblas",
+          "num_threads": 1,
+          "prefix": "libscipy_openblas",
+          "version": "0.3.29",
+          "threading_layer": "pthreads",
+          "architecture": "Haswell"
+        },
+        {
+          "user_api": "blas",
+          "internal_api": "openblas",
+          "num_threads": 1,
+          "prefix": "libscipy_openblas",
+          "version": "0.3.28",
+          "threading_layer": "pthreads",
+          "architecture": "Haswell"
+        },
+        {
+          "user_api": "openmp",
+          "internal_api": "openmp",
+          "num_threads": 1,
+          "prefix": "vcomp",
+          "version": null
+        }
+      ],
+      "versoes": {
+        "numpy": "2.2.6",
+        "scipy": "1.15.3",
+        "scikit-learn": "1.7.2",
+        "pandas": "2.3.3"
+      },
+      "config_sha256_utf8_lf": "aec203907e6f4e450b067c04e12dd15cad3e011c6c772cc6f5db61caf40a5e0c",
+      "instrumento_sha256_utf8_lf": "f688b81ef99083d919ac86b27cc050d80bf9dceab3fa606fb29c1bc3c955008e",
+      "sujeitos_candidatos": null
+    }
+  },
+  "logs_historicos": {
+    "_ml03b_final.log": {
+      "sha256": "e4f1135471f803b5bd9cb0df47dea7bf5893da8f0a0b9d0713b2838d4670ecb4",
+      "bytes": 107402,
+      "avisos_convergencia": 166
+    },
+    "_ml03b_final3.log": {
+      "sha256": "f5bac95c48d2316d44d331cbb176f12ea587d1d93f202218d7b7209b30fa077b",
+      "bytes": 178027,
+      "avisos_convergencia": 276
+    }
+  },
+  "limites": [
+    "IDs reconstruídos pela ordem canônica e conferidos por todos os resultados publicados; a lista da execução original não foi recuperada.",
+    "As definições L1/mediana unitária por componente foram reconstruídas conforme o histórico; o arquivo-fonte anterior à correção não foi recuperado.",
+    "Quantidade de threads da execução histórica não foi registrada. Os controles medem a sensibilidade e verificam uma condição que reproduz os valores."
+  ],
+  "fontes_locais_ignoradas": {
+    "rodar_sem_scaler.py": "bc4ded63e71e63e980c5933bb2c8d968276938e6d60a1916e33f53057afc7966",
+    "controle_threads.py": "e0271c8276c5580f6fd276d5f6aa17a1bd39c6b8f821cfeda0ce585127babd9c"
+  },
+  "commits_consultados": [
+    "38ae2a5befbce8109367d57f2758db57b2c68018",
+    "11eb4b73a12dcaccad29d42f6e4c74ad8a8651ef",
+    "2f7669c724dcf2cba3f96a01fee5e8348e7ae3ce",
+    "8d67a1b"
+  ],
+  "infra_execucao": {
+    "python": "3.11.9",
+    "threadpoolctl": "3.6.0",
+    "sistema": "Windows",
+    "cpu_logicas": 8
+  },
+  "tentativas_intermedias_sintetico": [
+    {
+      "variante": "sint_geometrica",
+      "sha256_utf8_lf": "67b416910925c9e08495839241c12aa163a3b9141608d62afe5b08f58ba96c53",
+      "vp_lr": 8671,
+      "vn_lr": 1071,
+      "vp_suavizada": 8734,
+      "vn_suavizada": 1087
+    },
+    {
+      "variante": "sint_geometrica_8",
+      "sha256_utf8_lf": "af9f7bd02b5ba4eefc369771b28091b2bd4d105a14a6bdb0b258a3c86018e938",
+      "vp_lr": 8671,
+      "vn_lr": 1071,
+      "vp_suavizada": 8734,
+      "vn_suavizada": 1087
+    },
+    {
+      "variante": "sint_l1_geometrica",
+      "sha256_utf8_lf": "6fd1ef6d29dfaffe1224a009d802640e3cfa36f4b0d5ed3b8662d75c14589a92",
+      "vp_lr": 8666,
+      "vn_lr": 1078,
+      "vp_suavizada": 8726,
+      "vn_suavizada": 1093
+    },
+    {
+      "variante": "sint_l1_mediana_bruta",
+      "sha256_utf8_lf": "fb3771b8924669ccd5f890910fbfc93f513b09079e7d0603c6c6570a2670b54c",
+      "vp_lr": 8667,
+      "vn_lr": 1080,
+      "vp_suavizada": 8714,
+      "vn_suavizada": 1094
+    },
+    {
+      "variante": "sint_l1_mediana_unit",
+      "sha256_utf8_lf": "ffcd08d446df3f7e1501f0290fa47ae9b943bbe498531c52f0e9dbe112b8cd37",
+      "vp_lr": 8669,
+      "vn_lr": 1078,
+      "vp_suavizada": 8717,
+      "vn_suavizada": 1093
+    },
+    {
+      "variante": "sint_mediana_bruta",
+      "sha256_utf8_lf": "15c7093473d480ad0fcb9cafee94d33766e22e1688a295fab355a6dbbaf3809e",
+      "vp_lr": 8671,
+      "vn_lr": 1073,
+      "vp_suavizada": 8742,
+      "vn_suavizada": 1088
+    },
+    {
+      "variante": "sint_mediana_unit",
+      "sha256_utf8_lf": "138fce6254ad474b24678fb0313322477c78287420632db93bace4a3a671b6a8",
+      "vp_lr": 8669,
+      "vn_lr": 1073,
+      "vp_suavizada": 8740,
+      "vn_suavizada": 1088
+    }
+  ],
+  "execucao_sem_scaler": {
+    "threads": 8,
+    "max_iter": 300,
+    "avisos_convergencia": 276,
+    "segundos": 12437.984999999999,
+    "ambiente_numerico": [
+      {
+        "user_api": "blas",
+        "internal_api": "openblas",
+        "num_threads": 8,
+        "prefix": "libscipy_openblas",
+        "version": "0.3.29",
+        "threading_layer": "pthreads",
+        "architecture": "Haswell"
+      },
+      {
+        "user_api": "openmp",
+        "internal_api": "openmp",
+        "num_threads": 8,
+        "prefix": "vcomp",
+        "version": null
+      },
+      {
+        "user_api": "blas",
+        "internal_api": "openblas",
+        "num_threads": 8,
+        "prefix": "libscipy_openblas",
+        "version": "0.3.28",
+        "threading_layer": "pthreads",
+        "architecture": "Haswell"
+      }
+    ],
+    "cache_sha256": "347f04a42bf2663e525b83e1718ba563dd2c635f98d142cfd293ecd70e35879b",
+    "log_sha256": "36fe8953638054cd1e9ed912ecf8d423894ef23fada8e74a0b6bcc063dc1711e"
+  }
+}

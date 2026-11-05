@@ -29,3 +29,11 @@ __pycache__/
 *.pyc
 .pytest_cache/
 .ipynb_checkpoints/
+
+# ML-16: evidências da reconstrução dos registros históricos.
+!experimentos/saida/ml16/
+experimentos/saida/ml16/*
+!experimentos/saida/ml16/*.json
+!experimentos/saida/ml16/resultados/
+experimentos/saida/ml16/resultados/*
+!experimentos/saida/ml16/resultados/*.json

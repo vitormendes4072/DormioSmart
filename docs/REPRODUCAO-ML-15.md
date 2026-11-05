@@ -78,6 +78,15 @@ listas de sujeitos e vetores salvos também entram na comparação quando existe
 
 ### Limites da reprodução histórica
 
+**Atualização de 05/11 — ML-16 concluída.** Os pilotos 10/7 foram reconstruídos
+pela ordem canônica e reproduzidos; L1/mediana unitária por componente reproduziu
+os sintéticos antigos; oito threads reproduziram integralmente o item sem scaler.
+O ajuste continua não convergido. As listas/fontes originais ausentes não foram
+inventadas: os limites da reconstrução constam em
+[RASTREABILIDADE-ML-16.md](RASTREABILIDADE-ML-16.md). O texto abaixo registra o
+estado encontrado ao concluir a ML-15, antes dessa investigação.
+
+
 O arquivo histórico da ablação tem `parcial=true`: contém a referência e os itens
 1–5, mas não o bloco final de otimizações. Este bloco tem também um experimento
 próprio completo, reproduzido separadamente. Não se deve anunciar o arquivo antigo

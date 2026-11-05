@@ -1,0 +1,317 @@
+{
+  "item": "ML-16",
+  "concluido": true,
+  "casos": [
+    {
+      "caso": "piloto_cabeca",
+      "referencia": "ml02_wearanize_cabeca_aec203907e6f_20260914T222839Z.json",
+      "referencia_sha256_utf8_lf": "0555ddca907a0f9cc31218fd2697b415aade81cfcc73dd5b95e63cf968abf559",
+      "novo": "piloto_cabeca.json",
+      "novo_sha256_utf8_lf": "19955d441b401f92c52a7fdb2be14968c604ed5b0b9c6989e7b2d12526ef5ca2",
+      "escopo": "arquivo completo",
+      "reproduzido": true,
+      "diferencas_f1": [
+        {
+          "caminho": "$.resultados.0_sempre_dormindo.f1_vigilia",
+          "tipo": "numero",
+          "antes": null,
+          "depois": 0.0,
+          "antes_nan": true,
+          "depois_nan": false
+        },
+        {
+          "caminho": "$.resultados.1a_cole_kripke_escala_arbitraria.f1_vigilia",
+          "tipo": "numero",
+          "antes": null,
+          "depois": 0.0,
+          "antes_nan": true,
+          "depois_nan": false
+        },
+        {
+          "caminho": "$.resultados.1b_sadeh_escala_arbitraria.f1_vigilia",
+          "tipo": "numero",
+          "antes": null,
+          "depois": 0.0,
+          "antes_nan": true,
+          "depois_nan": false
+        }
+      ],
+      "outras_diferencas": []
+    },
+    {
+      "caso": "piloto_pulso",
+      "referencia": "ml02_wearanize_pulso_aec203907e6f_20260914T222928Z.json",
+      "referencia_sha256_utf8_lf": "1fbbdbbc789931e3b59f54d6afb2523a5cfb501e33bcc40e408e3e8b7608fd9a",
+      "novo": "piloto_pulso.json",
+      "novo_sha256_utf8_lf": "32326f642f43694d9c171eee43089589fb8ea75bd6053febaa87f11d7d7a5378",
+      "escopo": "arquivo completo",
+      "reproduzido": true,
+      "diferencas_f1": [
+        {
+          "caminho": "$.resultados.0_sempre_dormindo.f1_vigilia",
+          "tipo": "numero",
+          "antes": null,
+          "depois": 0.0,
+          "antes_nan": true,
+          "depois_nan": false
+        },
+        {
+          "caminho": "$.resultados.1a_cole_kripke_escala_arbitraria.f1_vigilia",
+          "tipo": "numero",
+          "antes": null,
+          "depois": 0.0,
+          "antes_nan": true,
+          "depois_nan": false
+        },
+        {
+          "caminho": "$.resultados.1b_sadeh_escala_arbitraria.f1_vigilia",
+          "tipo": "numero",
+          "antes": null,
+          "depois": 0.0,
+          "antes_nan": true,
+          "depois_nan": false
+        }
+      ],
+      "outras_diferencas": []
+    },
+    {
+      "caso": "sint_11a",
+      "referencia": "ml02_sintetico_aec203907e6f_20260911T022308Z.json",
+      "referencia_sha256_utf8_lf": "3f08ed44da8da54e5b0fadbeb2c4739e88c53de67efed95e4400914f9418dfe3",
+      "novo": "sint_legacy.json",
+      "novo_sha256_utf8_lf": "10027b1ef901ea74cce44e554c6576fb7aec6d5aefbc6b41f8230ef603778bb2",
+      "escopo": "cinco métodos publicados, com aliases explícitos",
+      "reproduzido": true,
+      "diferencas_f1": [
+        {
+          "caminho": "$.resultados.0_sempre_dormindo.f1_vigilia",
+          "tipo": "numero",
+          "antes": null,
+          "depois": 0.0,
+          "antes_nan": true,
+          "depois_nan": false
+        },
+        {
+          "caminho": "$.resultados.1a_cole_kripke_substituto.f1_vigilia",
+          "tipo": "numero",
+          "antes": null,
+          "depois": 0.0,
+          "antes_nan": true,
+          "depois_nan": false
+        },
+        {
+          "caminho": "$.resultados.1b_sadeh_substituto.f1_vigilia",
+          "tipo": "numero",
+          "antes": null,
+          "depois": 0.0,
+          "antes_nan": true,
+          "depois_nan": false
+        }
+      ],
+      "outras_diferencas": []
+    },
+    {
+      "caso": "sint_11b",
+      "referencia": "ml02_sintetico_aec203907e6f_20260911T022721Z.json",
+      "referencia_sha256_utf8_lf": "5a974f8ed50db3f5f500b4d0a54db2bf1416596277fac66b5d9044847d2fb3be",
+      "novo": "sint_legacy.json",
+      "novo_sha256_utf8_lf": "10027b1ef901ea74cce44e554c6576fb7aec6d5aefbc6b41f8230ef603778bb2",
+      "escopo": "arquivo completo",
+      "reproduzido": true,
+      "diferencas_f1": [
+        {
+          "caminho": "$.resultados.0_sempre_dormindo.f1_vigilia",
+          "tipo": "numero",
+          "antes": null,
+          "depois": 0.0,
+          "antes_nan": true,
+          "depois_nan": false
+        },
+        {
+          "caminho": "$.resultados.1a_cole_kripke_escala_arbitraria.f1_vigilia",
+          "tipo": "numero",
+          "antes": null,
+          "depois": 0.0,
+          "antes_nan": true,
+          "depois_nan": false
+        },
+        {
+          "caminho": "$.resultados.1b_sadeh_escala_arbitraria.f1_vigilia",
+          "tipo": "numero",
+          "antes": null,
+          "depois": 0.0,
+          "antes_nan": true,
+          "depois_nan": false
+        }
+      ],
+      "outras_diferencas": []
+    },
+    {
+      "caso": "sint_14a",
+      "referencia": "ml02_sintetico_aec203907e6f_20260914T033035Z.json",
+      "referencia_sha256_utf8_lf": "89f81ef23be6ade9d9e4b675a66d891419f8fa93963394265a2cd7d71a47ccaf",
+      "novo": "sint_atual.json",
+      "novo_sha256_utf8_lf": "af663b467d52949537f3b2a5686d49a9981ee71fd8ff0dd9edbc1ce144e89b7a",
+      "escopo": "arquivo completo",
+      "reproduzido": true,
+      "diferencas_f1": [
+        {
+          "caminho": "$.resultados.0_sempre_dormindo.f1_vigilia",
+          "tipo": "numero",
+          "antes": null,
+          "depois": 0.0,
+          "antes_nan": true,
+          "depois_nan": false
+        },
+        {
+          "caminho": "$.resultados.1a_cole_kripke_escala_arbitraria.f1_vigilia",
+          "tipo": "numero",
+          "antes": null,
+          "depois": 0.0,
+          "antes_nan": true,
+          "depois_nan": false
+        },
+        {
+          "caminho": "$.resultados.1b_sadeh_escala_arbitraria.f1_vigilia",
+          "tipo": "numero",
+          "antes": null,
+          "depois": 0.0,
+          "antes_nan": true,
+          "depois_nan": false
+        }
+      ],
+      "outras_diferencas": []
+    },
+    {
+      "caso": "sint_14b",
+      "referencia": "ml02_sintetico_aec203907e6f_20260914T040706Z.json",
+      "referencia_sha256_utf8_lf": "fab94d6d698639daf4c8a5d5475b6046c9cf4ba8075684f4a9bd4b368c0aba0d",
+      "novo": "sint_atual.json",
+      "novo_sha256_utf8_lf": "af663b467d52949537f3b2a5686d49a9981ee71fd8ff0dd9edbc1ce144e89b7a",
+      "escopo": "arquivo completo",
+      "reproduzido": true,
+      "diferencas_f1": [
+        {
+          "caminho": "$.resultados.0_sempre_dormindo.f1_vigilia",
+          "tipo": "numero",
+          "antes": null,
+          "depois": 0.0,
+          "antes_nan": true,
+          "depois_nan": false
+        },
+        {
+          "caminho": "$.resultados.1a_cole_kripke_escala_arbitraria.f1_vigilia",
+          "tipo": "numero",
+          "antes": null,
+          "depois": 0.0,
+          "antes_nan": true,
+          "depois_nan": false
+        },
+        {
+          "caminho": "$.resultados.1b_sadeh_escala_arbitraria.f1_vigilia",
+          "tipo": "numero",
+          "antes": null,
+          "depois": 0.0,
+          "antes_nan": true,
+          "depois_nan": false
+        }
+      ],
+      "outras_diferencas": []
+    },
+    {
+      "caso": "sem_scaler_8_threads",
+      "referencia": "ml03b_ablacao_aec203907e6f_20260915T223235Z.json",
+      "referencia_sha256_utf8_lf": "7da5c2c130e239b7f0552a98e8ee751c559640f581081d1b922aebae17e6faf8",
+      "novo": "sem_scaler_8_threads.json",
+      "novo_sha256_utf8_lf": "eb6b1f9e4924e08246a9ac0d7eb9e783740ac7fbcf9dbabfc7748133448fcb3d",
+      "escopo": "nove células completas do item 2",
+      "reproduzido": true,
+      "diferencas_f1": [],
+      "outras_diferencas": []
+    }
+  ],
+  "controles_features": [
+    {
+      "controle": "sint_so_l1",
+      "sha256_utf8_lf": "c28b5be2d5ae104c8019810689c1d796f355798f90cc8347b99013f319c26a67",
+      "n_diferencas_fora_f1": 10,
+      "nao_reproduz_isoladamente": true
+    },
+    {
+      "controle": "sint_so_mediana",
+      "sha256_utf8_lf": "dc4174fe66f1b978020197c5ac051c864f769d59f1181a3cb17a17d212222428",
+      "n_diferencas_fora_f1": 13,
+      "nao_reproduz_isoladamente": true
+    }
+  ],
+  "controle_threads": [
+    {
+      "threads": 1,
+      "treino": "cabeca",
+      "n_metricas_iguais": 9,
+      "n_metricas": 9,
+      "n_iter": 300,
+      "avisos": 1,
+      "referencias_validas": true
+    },
+    {
+      "threads": 1,
+      "treino": "cabeca_e4",
+      "n_metricas_iguais": 9,
+      "n_metricas": 9,
+      "n_iter": 300,
+      "avisos": 1,
+      "referencias_validas": true
+    },
+    {
+      "threads": 1,
+      "treino": "pulso",
+      "n_metricas_iguais": 9,
+      "n_metricas": 9,
+      "n_iter": 300,
+      "avisos": 1,
+      "referencias_validas": true
+    },
+    {
+      "threads": 8,
+      "treino": "cabeca",
+      "n_metricas_iguais": 9,
+      "n_metricas": 9,
+      "n_iter": 300,
+      "avisos": 1,
+      "referencias_validas": true
+    },
+    {
+      "threads": 8,
+      "treino": "cabeca_e4",
+      "n_metricas_iguais": 9,
+      "n_metricas": 9,
+      "n_iter": 300,
+      "avisos": 1,
+      "referencias_validas": true
+    },
+    {
+      "threads": 8,
+      "treino": "pulso",
+      "n_metricas_iguais": 9,
+      "n_metricas": 9,
+      "n_iter": 300,
+      "avisos": 1,
+      "referencias_validas": true
+    }
+  ],
+  "controle_threads_sha256_utf8_lf": "931b013b6ad89610edc8eeddf5f0c8d7c798f2baa72129e22ce96c8d7042788f",
+  "manifesto_sha256_utf8_lf": "aa03cb17618e338329669024d888028b447fab7c67faf4285eaa683c2b1bce07",
+  "threads_reexecucao_completa": 8,
+  "n_sujeitos_por_celula": {
+    "cabeca->cabeca": 92,
+    "cabeca->cabeca_e4": 92,
+    "cabeca->pulso": 92,
+    "cabeca_e4->cabeca": 92,
+    "cabeca_e4->cabeca_e4": 92,
+    "cabeca_e4->pulso": 92,
+    "pulso->cabeca": 92,
+    "pulso->cabeca_e4": 92,
+    "pulso->pulso": 92
+  }
+}
