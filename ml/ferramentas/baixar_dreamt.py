@@ -25,27 +25,38 @@ foi o caminho usado, a ~186 KB/s. Este script só confere o resultado:
          https://physionet.org/files/dreamt/2.2.0/SHA256SUMS.txt  (e Metadata.txt,
          participant_info.csv, LICENSE.txt)
 
-    python -m ferramentas.baixar_dreamt
+    python -m ferramentas.baixar_dreamt --pasta CAMINHO_DREAMT
 
-Com o ZIP: extrair dele só `data_64Hz/` e os arquivos pequenos para
-`ml/dados/bruto/dreamt/` (a raiz do ZIP é uma pasta com o nome longo do
-projeto; o que fica em `dreamt/` são os caminhos do `SHA256SUMS.txt`).
+Com o ZIP: extrair dele só `data_64Hz/` e os arquivos pequenos para uma
+pasta local fora do checkout principal, sem junction. Informar essa pasta
+por `--pasta`. A raiz do ZIP tem o nome longo do projeto; no destino ficam
+os caminhos relativos do `SHA256SUMS.txt`.
 
-A senha é digitada no `wget` (`--ask-password`), por quem baixa. Os arquivos
-ficam em `ml/dados/bruto/dreamt/`, que o git ignora: o termo de uso proíbe
-redistribuir o dado, e nada daqui pode entrar no repositório.
+O manifesto completo também lista `data_100Hz/`, fora do escopo do ML-13.
+A conferência exige as 103 entradas conhecidas de v2.2.0: 100 CSVs a 64 Hz
+e os três metadados. Contagem igual com outro ID não substitui essa lista.
+
+A senha é digitada no `wget` (`--ask-password`), por quem baixa. O termo de
+uso proíbe redistribuir os dados; a pasta bruta e suas cópias não entram no Git.
 """
 
 from __future__ import annotations
 
 import argparse
 import hashlib
+import re
 import sys
 from pathlib import Path
 
 DESTINO = Path(__file__).resolve().parents[1] / "dados" / "bruto" / "dreamt"
 PEQUENOS = ("Metadata.txt", "participant_info.csv", "LICENSE.txt")
 PASTA_USADA = "data_64Hz/"
+# Lista canônica do SHA256SUMS.txt de DREAMT v2.2.0: não há S041 nem S060.
+CSV_ESPERADOS = frozenset(
+    f"{PASTA_USADA}S{i:03d}_whole_df.csv"
+    for i in range(2, 104) if i not in (41, 60)
+)
+ARQUIVOS_ESPERADOS = CSV_ESPERADOS | frozenset(PEQUENOS)
 
 
 def _sha256(caminho: Path) -> str:
@@ -58,10 +69,20 @@ def _sha256(caminho: Path) -> str:
 
 def _somas(caminho: Path) -> dict[str, str]:
     somas = {}
-    for linha in caminho.read_text(encoding="utf-8").splitlines():
-        partes = linha.split()
-        if len(partes) >= 2:
-            somas[partes[1].lstrip("*")] = partes[0].lower()
+    for numero, linha in enumerate(caminho.read_text(encoding="utf-8-sig").splitlines(), 1):
+        if not linha.strip():
+            continue
+        partes = re.fullmatch(r"([0-9a-fA-F]{64})[ \t]+\*?(\S+)", linha.strip())
+        if partes is None:
+            raise ValueError(f"linha {numero} malformada")
+        digest, nome = partes.groups()
+        if nome in somas:
+            raise ValueError(f"entrada duplicada: {nome}")
+        somas[nome] = digest.lower()
+    ausentes = sorted(ARQUIVOS_ESPERADOS - somas.keys())
+    if ausentes:
+        raise ValueError(f"faltam {len(ausentes)} das 103 entradas esperadas "
+                         f"(ex.: {', '.join(ausentes[:3])})")
     return somas
 
 
@@ -77,14 +98,18 @@ def main() -> int:
     if not lista.exists():
         print(f"Falta {lista}. Baixe-o com o wget (ver o topo deste arquivo).", file=sys.stderr)
         return 1
-    somas = _somas(lista)
-    alvos = sorted(p for p in somas if p.startswith(PASTA_USADA)) + [p for p in PEQUENOS if p in somas]
+    try:
+        somas = _somas(lista)
+    except (OSError, ValueError, UnicodeError) as exc:
+        print(f"MANIFESTO INVÁLIDO: {exc}", file=sys.stderr)
+        return 1
+    alvos = sorted(ARQUIVOS_ESPERADOS)
     print(f"{len(alvos)} arquivos a conferir em {args.pasta}")
 
     ok = faltam = diferem = 0
     for rel in alvos:
         alvo = args.pasta / rel
-        if not alvo.exists():
+        if not alvo.is_file():
             faltam += 1
             print(f"  FALTA: {rel}")
         elif _sha256(alvo) != somas[rel]:
@@ -93,7 +118,7 @@ def main() -> int:
         else:
             ok += 1
     print(f"\nconferem {ok} · faltam {faltam} · diferem {diferem}")
-    return 0 if faltam == 0 and diferem == 0 else 1
+    return 0 if ok == len(ARQUIVOS_ESPERADOS) and faltam == 0 and diferem == 0 else 1
 
 
 if __name__ == "__main__":
