@@ -6827,6 +6827,22 @@ valor do limiar segue provisório (`VIA-01`/`CAL-01`). O ENMO entra no texto sem
 `documento/INSERCAO-CALC-03-INDICE-DE-ATIVIDADE.md`; `firmware/nucleo/epoca_c2.cpp` lido; Produto 5
 lido em 04/11; backlog `CALC-03`, `DOC-16`, `VIA-01`.
 
+# 2026-11-04 — UI-24: resultado antigo não substitui o histórico atual
+
+**O problema, como foi entendido no início.** Ao trocar de dispositivo ou filtro, cada chamada pendente do useHistorico podia publicar seu resultado ao terminar. Uma resposta antiga substituía o histórico novo; um erro antigo também apagava dados, e o finally antigo encerrava o indicador de carregamento de outro pedido.
+
+**Hipótese de trabalho.** Identificar cada carregamento e invalidá-lo no cleanup permite que só o pedido mais recente publique estado. A identidade precisa cobrir recarga manual, e o ciclo setup/cleanup/setup do Strict Mode precisa reativar o hook.
+
+**O que foi testado, e como.** Em worktree independente de origin/develop, no Windows, npm test -- --run src/hooks/useHistorico.test.ts montou o hook real em jsdom. Promessas controladas resolveram/rejeitaram pedidos fora de ordem. Depois da correção, npm test -- --run executou a suíte do frontend. Não houve rede real nos testes do hook.
+
+**Resultado medido.** No código antigo, 9 dos 11 novos casos falharam: dados/erro fora de ordem, indicador de carregamento prematuro, recarga manual, troca de janela, callback retido após desmontagem e primeiro efeito do Strict Mode. Após a correção, os 11 passaram, e a suíte completa passou 489 testes em 37 arquivos. O build de produção (TypeScript e Vite) também passou, mantendo o aviso de chunk acima de 500 kB. O modo demo continua sem chamada à API. Os testes das duas ordens de término comprovam que dados novos permanecem e que carregamento novo não termina por causa de pedido antigo.
+
+**Adaptação.** Uma flag por efeito não basta para duas recargas do mesmo filtro: foi usado contador de gerações, além do estado ativo. Leituras, erro e finally verificam a mesma identidade. A primeira tentativa de executar npm após editar o hook foi feita na raiz, onde não há package.json (ENOENT); o comando foi corrigido para a pasta frontend, sem alterar dependências.
+
+**Risco em aberto.** A chamada antiga continua no transporte; o hook apenas descarta sua publicação. O tratamento de autenticação do cliente de API, inclusive o callback global de 401, permanece fora dessa guarda. jsdom não prova layout ou comportamento de rede real. Para o TCC, a correção protege a correspondência entre o filtro selecionado e os registros exibidos; não altera o critério de movimento nem as afirmações científicas.
+
+**Procedência.** Branch bugfix/UI-24-respostas-antigas-historico; frontend/src/hooks/useHistorico.ts, frontend/src/hooks/useHistorico.test.ts e backlog UI-24.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
