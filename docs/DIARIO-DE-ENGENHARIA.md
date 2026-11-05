@@ -6837,7 +6837,9 @@ lido em 04/11; backlog `CALC-03`, `DOC-16`, `VIA-01`.
 
 **Resultado medido.** No código antigo, 9 dos 11 novos casos falharam: dados/erro fora de ordem, indicador de carregamento prematuro, recarga manual, troca de janela, callback retido após desmontagem e primeiro efeito do Strict Mode. Após a correção, os 11 passaram, e a suíte completa passou 489 testes em 37 arquivos. O build de produção (TypeScript e Vite) também passou, mantendo o aviso de chunk acima de 500 kB. O modo demo continua sem chamada à API. Os testes das duas ordens de término comprovam que dados novos permanecem e que carregamento novo não termina por causa de pedido antigo.
 
-**Adaptação.** Uma flag por efeito não basta para duas recargas do mesmo filtro: foi usado contador de gerações, além do estado ativo. Leituras, erro e finally verificam a mesma identidade. A primeira tentativa de executar npm após editar o hook foi feita na raiz, onde não há package.json (ENOENT); o comando foi corrigido para a pasta frontend, sem alterar dependências.
+**Adaptação.** Uma flag por efeito não basta para duas recargas do mesmo filtro: foi usado contador de gerações, além do estado ativo. Leituras, erro e finally verificam a mesma identidade.
+
+**O que deu errado no caminho.** A primeira tentativa de executar npm após editar o hook foi feita na raiz, onde não há package.json (ENOENT); o comando foi corrigido para a pasta frontend, sem alterar dependências.
 
 **Risco em aberto.** A chamada antiga continua no transporte; o hook apenas descarta sua publicação. O tratamento de autenticação do cliente de API, inclusive o callback global de 401, permanece fora dessa guarda. jsdom não prova layout ou comportamento de rede real. Para o TCC, a correção protege a correspondência entre o filtro selecionado e os registros exibidos; não altera o critério de movimento nem as afirmações científicas.
 
