@@ -28,7 +28,8 @@ Como é um TCC, decisões precisam de validade científica. A pergunta de pesqui
 1. **`docs/BACKLOG-COMPLETO.md`** — o que está pendente, organizado por dependência (L0–L3). É o que responde *"o que trava o quê?"*.
 2. **`docs/DIARIO-DE-ENGENHARIA.md`** — registro cronológico do que foi feito, **incluindo o que deu errado**. Procedência primária de tudo: onde outro documento divergir dele, o diário vence.
 3. **`docs/LICOES-APRENDIDAS.md`** — os padrões de falha que este projeto já demonstrou, com o checklist do §9. **Ler antes de propor qualquer coisa.**
-4. **`docs/CORRECOES-APLICADAS.md`** e **`docs/PENDENCIAS-ABERTAS.md`** — **gerados** por `scripts/consolidar_registro.py`; não editar à mão (o `--conferir` reprova).
+4. **`AGENTS.md`** — ✏️ *(05/11)* as regras para **dois agentes em paralelo** (o Codex e o Claude Code): divisão por área, IDs, sincronia com `develop` antes da revisão, os arquivos de conflito garantido e as junctions para dados brutos. Valem também para o Claude.
+5. **`docs/CORRECOES-APLICADAS.md`** e **`docs/PENDENCIAS-ABERTAS.md`** — **gerados** por `scripts/consolidar_registro.py`; não editar à mão (o `--conferir` reprova).
 
 Ler quando o assunto aparecer (os três primeiros são **gitignorados** — existem só no disco do autor):
 - **`ROADMAP.md`** — prioridades e a seção "▶ Agora". Abre com a pergunta de pesquisa e a hipótese, que são a régua de prioridade.
@@ -74,8 +75,9 @@ Testes de todas as camadas: ver a seção **"Testes"**.
 Valem para toda sessão, com qualquer ferramenta. Cada uma existe porque o projeto já pagou por
 não a ter seguido (ver `docs/LICOES-APRENDIDAS.md`).
 
-1. **Todo trabalho é registrado no diário**, no formato das entradas existentes (os sete campos
-   fixos), **incluindo o que deu errado**.
+1. **Todo trabalho é registrado no diário**, no formato das entradas existentes (os oito campos
+   fixos, entre eles "O que deu errado no caminho"), **incluindo o que deu errado**. ✏️ *05/11:
+   aqui dizia "sete campos"; as entradas têm oito desde que o campo de erros virou fixo.*
 2. **O que exigir trabalho próprio vira item no backlog**, não observação solta. Risco em aberto
    aponta o item que o carrega (§2 das lições).
 3. **Teste de segurança ou de alcance precisa de controle positivo:** sabote de propósito e
