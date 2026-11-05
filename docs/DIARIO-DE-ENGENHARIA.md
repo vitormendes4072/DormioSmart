@@ -7048,6 +7048,53 @@ ferramenta seguem existindo até autorização para apagar.
 **Procedência.** PR #86 (`5fa9ab6`); deployment de produção `7584696406`; as rotas e o pacote de
 `https://dormio-smart.vercel.app`, 05/11; a confirmação do autor; backlog `API-05`, `UI-24`.
 
+---
+
+# 2026-11-05 (iii) — limpeza depois da integração, e uma cópia que seguiu uma junction
+
+**O problema, como foi entendido no início.** Integradas e lançadas as PRs #79–#84, o autor
+autorizou apagar as branches da rodada e as worktrees da outra ferramenta. As worktrees guardavam,
+fora do Git, duas coisas que não podiam se perder: uma seção "Concluído" do `ROADMAP.md` (local,
+gitignorado) em três delas, e os logs, caches e checkpoints da ML-15 e da ML-16, citados pelos
+relatórios como "locais e ignorados".
+
+**Hipótese de trabalho.** Que bastasse levar as seções do `ROADMAP.md` para o principal e copiar as
+duas pastas de evidência para `ml/dados/processado/` do repositório principal antes de remover as
+worktrees.
+
+**O que foi testado, e como.** As seções do `ROADMAP.md` comparadas com o principal e acrescentadas
+com o texto original. A evidência copiada com `cp -a`, e depois — refeito — com `robocopy /E /XJ`;
+as pastas conferidas arquivo a arquivo (caminho e tamanho) contra a origem. Antes de cada remoção,
+as worktrees varridas por links (`-Attributes ReparsePoint`). Os dados brutos originais contados
+(arquivos e bytes) depois de cada passo.
+
+**Resultado medido.** Três seções do `ROADMAP.md` (API-05, UI-24, ML-14) que só existiam nas
+worktrees passaram ao principal. Sete branches apagadas, locais e no GitHub; cinco worktrees
+removidas. A evidência ficou no repositório principal, igual à origem: **ML-15 207/207, ML-16
+90/90**. Os dados brutos originais terminaram como começaram: **676 arquivos, 54,1 GB**.
+
+**Adaptação.** A cópia passou a excluir junctions (`robocopy /XJ`); as duas junctions foram
+desfeitas como link (`rmdir`, sem `/s`) antes de remover as worktrees; as duas cópias acidentais
+foram apagadas depois de conferido que não continham link nenhum — o disco voltou a 126,7 GB
+livres.
+
+**O que deu errado no caminho.** A pasta de evidência de cada execução continha `ml/dados/bruto`
+como **junction** para os dados brutos reais — o `REPRODUCAO-ML-15.md` dizia isso, e não foi
+conferido antes de copiar. O `cp -a` seguiu o link e **duplicou os datasets**: 58 GB na pasta da
+ML-15 e 51 GB, parciais, na da ML-16. E a interrupção da tarefa não parou a cópia: o shell morreu, o
+`cp.exe` filho não, e só a queda do espaço livre (41,3 → 25,3 GB) denunciou; o processo foi
+encontrado e encerrado. Nenhum dado original foi alterado — a cópia só lia —, mas o passo seguinte,
+remover a worktree com a junction dentro, poderia ter apagado os datasets. Lições: §5 ocorrência 10
+e §6 ocorrência 9, com as regras 13 e 8. A pasta vazia de uma worktree (um arquivo de 0 byte) não
+pôde ser apagada, provavelmente por estar em uso pelo app da outra ferramenta, e ficou.
+
+**Risco em aberto.** Execuções futuras que liguem dados brutos por junction repetem a armadilha; a
+regra 13 da §5 e o item correspondente das instruções para a outra ferramenta cobrem isso, mas
+dependem de serem lidos. As pastas de nível de cima em `.codex/worktrees/` ficaram vazias.
+
+**Procedência.** Comandos desta sessão em 05/11; `ml/dados/processado/ml15_reproducao/` e
+`ml16/` (locais, ignorados); `ROADMAP.md` (local); `docs/LICOES-APRENDIDAS.md` §5 e §6.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
