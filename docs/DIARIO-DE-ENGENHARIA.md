@@ -6881,6 +6881,24 @@ lido em 04/11; backlog `CALC-03`, `DOC-16`, `VIA-01`.
 
 **Procedência.** Branch bugfix/UI-24-respostas-antigas-historico; frontend/src/hooks/useHistorico.ts, frontend/src/hooks/useHistorico.test.ts e backlog UI-24.
 
+# 2026-11-04 — ML-14: falha completa não sai da média de F1
+
+**O problema, como foi entendido no início.** O avaliador calculava F1 a partir de precisão e recall e produzia NaN quando deveria produzir zero. A agregação excluía esses sujeitos. RESULTADOS-TCC tratava o NaN histórico do trivial como divisão por zero legítima.
+
+**Hipótese de trabalho.** A fórmula direta pelas contagens distingue erro de classificação de ausência da classe: 2TP/(2TP + FP + FN). Denominador positivo sem acertos dá zero; denominador zero permanece NaN.
+
+**O que foi testado, e como.** Worktree independente de origin/develop, Windows, Python 3.11.9 do ambiente pinado local: numpy 2.2.6, pandas 2.3.3, scipy 1.15.3, scikit-learn 1.7.2, PyYAML 6.0.3 e pytest 9.1.1. Antes da correção: pytest testes/test_avaliar.py. Depois: pytest testes. Onze novos casos de F1 incluem comparação com scikit-learn para os 64 pares de sequências binárias de três épocas e prova de média, desvio e bootstrap. Dez casos auditam o instrumento, incluindo alteração deliberada da fonte para tornar o snapshot obsoleto. Comando da auditoria: python ml/ferramentas/auditar_f1.py --conferir, a partir da raiz.
+
+**Resultado medido.** No avaliador antigo, 6 dos 11 novos casos falharam; depois passaram. A suíte completa passou 155 testes. A auditoria recalculou 94 valores em 18 arquivos, encontrou 21 divergências em 7 arquivos, todas NaN que deveriam ser zero. Não houve campos de F1 sem matriz de confusão nesses arquivos. O snapshot novo é JSON estrito e registra os caminhos, valores e hashes do texto UTF-8 com fins de linha LF; os JSONs históricos não foram reescritos.
+
+**Adaptação.** Não foi necessário alterar a agregação para incluir zero: ela já excluía apenas NaN. A correção é na origem da métrica. A explicação documental do NaN foi corrigida sem atribuir o defeito a falta de previsões apenas. A revisão identificou que o checkout Windows usa CRLF e o Linux usa LF: os hashes passaram a normalizar os finais de linha. Remover deliberadamente a normalização fez a asserção de equivalência de hashes reprovar, confirmando o mecanismo.
+
+**O que deu errado no caminho.** A primeira tentativa de adicionar os testes usou ml/testes a partir da própria pasta ml, dando caminho inexistente; apenas os sete testes antigos rodaram nessa tentativa. Corrigido o caminho antes da execução vermelha com os casos novos. A primeira fixture do teste de hashes continha escapes literais em vez de quebras de linha e falhou ao ler o JSON; corrigida, passou. Uma execução direcionada também usou testes/ a partir da raiz e foi corrigida para ml/testes/.
+
+**Risco em aberto.** A auditoria não reestima ICs nem prova a ausência de impacto em experimentos não representados pelas contagens salvas; não houve retreino. As regras de indefinição de sensibilidade, especificidade e kappa continuam as mesmas. NaN legítimo continua possível no avaliador e nos arquivos históricos; o snapshot novo o representa explicitamente. Para o TCC, a correção evita que um sujeito com falha de classificação seja excluído como se sua métrica fosse indefinida.
+
+**Procedência.** Branch bugfix/ML-14-f1-sem-acertos; ml/src/avaliar.py, ml/testes/test_avaliar.py, ml/ferramentas/auditar_f1.py, ml/testes/test_auditar_f1.py e ml/experimentos/saida/ml14_auditoria_f1.json; RESULTADOS-TCC, README do ml/ e backlog ML-14.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
