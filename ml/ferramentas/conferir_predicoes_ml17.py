@@ -28,6 +28,7 @@ def recalcular(y, p, ids):
 
 def conferir(pasta):
     n = 0
+    maior_erro = 0.
     esperados = dict(newcastle=13, walch_principal=13, walch_todos=13, lados=24, otimizacoes=9)
     for versao in ('antes', 'depois'):
         raiz = pasta / versao / 'ml/experimentos/saida/ml17_rodada'
@@ -46,10 +47,32 @@ def conferir(pasta):
                 for k, v in novo.items():
                     np.testing.assert_allclose(v, esperado[k], rtol=0, atol=1e-12, equal_nan=True,
                                                err_msg=f'{versao}/{grupo}/{i}/{k}')
+                    d = np.abs(np.asarray(v) - np.asarray(esperado[k]))
+                    finitos = d[np.isfinite(d)]
+                    if len(finitos):
+                        maior_erro = max(maior_erro, float(finitos.max()))
                 n += 1
     if n != 144:
         raise ValueError(f'capturas totais {n}; esperadas 144')
-    return dict(capturas=n, metricas_por_captura=5, tolerancia_absoluta=1e-12, divergencias=0)
+    return dict(capturas=n, metricas_por_captura=5, tolerancia_absoluta=1e-12,
+                maior_erro_absoluto=maior_erro, divergencias=0)
+
+
+def conferir_repeticao(pasta):
+    """ML-04 e ML-04b ajustam novamente as 12 células do punho esquerdo."""
+    celulas = []
+    for versao in ('antes', 'depois'):
+        raiz = pasta / versao / 'ml/experimentos/saida/ml17_rodada'
+        for i in range(12):
+            with np.load(raiz / f'newcastle_pred_{i+1:02d}.npz', allow_pickle=True) as a, \
+                 np.load(raiz / f'lados_pred_{2*i:02d}.npz', allow_pickle=True) as b:
+                if not np.array_equal(a['y'], b['y']) or not np.array_equal(a['ids'], b['ids']):
+                    raise ValueError('repetição com alvos/participantes desalinhados')
+                celulas.append(dict(versao=versao, indice_config=i, n_epocas=len(a['p']),
+                                    n_diferentes=int(np.count_nonzero(a['p'] != b['p']))))
+    return dict(celulas=len(celulas), epocas_comparadas=sum(v['n_epocas'] for v in celulas),
+                predicoes_diferentes=sum(v['n_diferentes'] for v in celulas),
+                max_diferentes_celula=max(v['n_diferentes'] for v in celulas))
 
 
 def main():
@@ -58,6 +81,7 @@ def main():
     ap.add_argument('--saida', type=Path, required=True)
     args = ap.parse_args()
     r = conferir(args.pasta)
+    r['controle_repeticao_newcastle'] = conferir_repeticao(args.pasta)
     args.saida.write_text(json.dumps(r, indent=2), encoding='utf-8')
     print(r)
 

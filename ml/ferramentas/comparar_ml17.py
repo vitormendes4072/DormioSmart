@@ -35,7 +35,12 @@ def comparar_celula(a, b):
     if set(a['por_sujeito']) != set(b['por_sujeito']):
         raise ValueError('métricas diferentes')
     numero = lambda v: float(v) if np.isfinite(v) else None
+    def resumo(m, k):
+        return dict(desvio=numero(m['desvio_padrao'][k]), n_valido=m['n_valido'][k],
+                    ic95=[numero(m['ic95_baixo'][k]), numero(m['ic95_alto'][k])],
+                    por_participante=[numero(v) for v in m['por_sujeito'][k]])
     return {k: dict(antes=numero(a['media'][k]), depois=numero(b['media'][k]),
+                    resumo_antes=resumo(a, k), resumo_depois=resumo(b, k),
                     delta=delta(a['por_sujeito'][k], b['por_sujeito'][k]))
             for k in a['por_sujeito']}
 
@@ -80,13 +85,73 @@ def comparar_rodada(pasta):
     return {k: comparar_celula(a[k], b[k]) for k in a}
 
 
+def f1_da_captura(captura, metrica):
+    if json.dumps(captura['metricas'], sort_keys=True) != json.dumps(metrica, sort_keys=True):
+        raise ValueError('captura não corresponde à célula; não alinhar somente pela posição')
+    return captura['f1']
+
+
+def carregar_f1(pasta, versao):
+    primarias = carregar_resultados(pasta, versao)
+    raiz = pasta / versao / 'ml/experimentos/saida/ml17_rodada'
+    saida = {}
+    for grupo in ('newcastle', 'walch_principal', 'walch_todos', 'lados', 'otimizacoes'):
+        capturas = json.loads((raiz / f'{grupo}_capturas.json').read_text(encoding='utf-8'))
+        chaves = [k for k in primarias if k.startswith(grupo + '/')]
+        if grupo == 'otimizacoes':
+            chaves = [f'otimizacoes/{b}/{it}' for it in ('baseline', '8b', '9')
+                       for b in ('cabeca', 'cabeca_e4', 'pulso')]
+        if grupo in ('newcastle', 'walch_principal', 'walch_todos'):
+            capturas = capturas[1:]  # âncora trivial, fora das 69 células de modelos
+        if len(chaves) != len(capturas):
+            raise ValueError('células/capturas não correspondem')
+        for chave, captura in zip(chaves, capturas):
+            saida[chave] = f1_da_captura(captura, primarias[chave])
+    return saida
+
+
+def efeitos(pasta):
+    saida = {}
+    for versao in ('antes', 'depois'):
+        celulas = carregar_resultados(pasta, versao)
+        saida[versao] = {}
+        for coorte in ('newcastle', 'walch_principal', 'walch_todos'):
+            for braco in ('cabeca', 'cabeca_e4', 'pulso'):
+                base = celulas[f'{coorte}/{braco}/base_ctx2']
+                for config in ('item8b_hmm', 'item9_ctx11', 'item9b_ctx11_hmm'):
+                    alvo = celulas[f'{coorte}/{braco}/{config}']
+                    if base['sujeitos'] != alvo['sujeitos']:
+                        raise ValueError('efeito sem participantes pareados')
+                    saida[versao][f'{coorte}/{braco}/{config}'] = {
+                        k: delta(base['por_sujeito'][k], alvo['por_sujeito'][k])
+                        for k in ('kappa', 'especificidade', 'acuracia')}
+        for braco in ('cabeca', 'cabeca_e4', 'pulso'):
+            base = celulas[f'otimizacoes/{braco}/baseline']
+            for item in ('8b', '9'):
+                alvo = celulas[f'otimizacoes/{braco}/{item}']
+                if base['sujeitos'] != alvo['sujeitos']:
+                    raise ValueError('otimização sem participantes pareados')
+                saida[versao][f'otimizacoes/{braco}/{item}'] = {
+                    k: delta(base['por_sujeito'][k], alvo['por_sujeito'][k])
+                    for k in ('kappa', 'especificidade', 'acuracia')}
+    return saida
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument('--pasta', type=Path, required=True)
     ap.add_argument('--saida', type=Path, required=True)
+    ap.add_argument('--f1-saida', type=Path)
+    ap.add_argument('--efeitos-saida', type=Path)
     args = ap.parse_args()
     resultado = comparar_rodada(args.pasta)
     args.saida.write_text(json.dumps(resultado, indent=2, allow_nan=False), encoding='utf-8')
+    if args.f1_saida:
+        a, b = (carregar_f1(args.pasta, v) for v in ('antes', 'depois'))
+        f1 = {k: comparar_celula(a[k], b[k]) for k in a}
+        args.f1_saida.write_text(json.dumps(f1, indent=2, allow_nan=False), encoding='utf-8')
+    if args.efeitos_saida:
+        args.efeitos_saida.write_text(json.dumps(efeitos(args.pasta), indent=2, allow_nan=False), encoding='utf-8')
     print(len(resultado), 'células comparadas')
 
 

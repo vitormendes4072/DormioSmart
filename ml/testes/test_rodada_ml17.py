@@ -95,3 +95,37 @@ def test_limite_angular_legado_e_explicito_e_nao_aceita_outros_desvios():
         conferir_entrada(a, b, 3e-14)
     with pytest.raises(ValueError, match='limite angular'):
         conferir_entrada(a, b, 1e-10)
+
+
+def test_alinhamento_f1_recusa_captura_de_outra_celula():
+    from ferramentas.comparar_ml17 import f1_da_captura
+    metrica = {'media': {'kappa': .5}}
+    c = dict(metricas=metrica, f1={'media': {'f1_vigilia': .2}})
+    assert f1_da_captura(c, metrica) == c['f1']
+    with pytest.raises(ValueError, match='não corresponde'):
+        f1_da_captura(c, {'media': {'kappa': .6}})
+
+
+def test_repeticao_conta_predicao_adulterada(tmp_path):
+    import numpy as np
+    from ferramentas.conferir_predicoes_ml17 import conferir_repeticao
+    dados = dict(y=np.array([0, 1]), p=np.array([0, 1]), ids=np.array(['a', 'a']))
+    for v in ('antes', 'depois'):
+        p = tmp_path / v / 'ml/experimentos/saida/ml17_rodada'
+        p.mkdir(parents=True)
+        for i in range(12):
+            np.savez(p / f'newcastle_pred_{i+1:02d}.npz', **dados)
+            np.savez(p / f'lados_pred_{2*i:02d}.npz', **dados)
+    assert conferir_repeticao(tmp_path)['predicoes_diferentes'] == 0
+    np.savez(tmp_path / 'depois/ml/experimentos/saida/ml17_rodada/lados_pred_00.npz',
+             **{**dados, 'p': np.array([1, 1])})
+    assert conferir_repeticao(tmp_path)['predicoes_diferentes'] == 1
+
+
+def test_resumo_ambiente_nao_publica_caminho_local():
+    from ferramentas.resumir_ml17 import ambiente_publico
+    e = dict(python='3.11', bibliotecas={'numpy': '2.2.6'},
+             pools=[dict(num_threads=1, internal_api='openblas', filepath='CAMINHO_PRIVADO_NAO_PUBLICAR')])
+    r = ambiente_publico(e)
+    assert 'CAMINHO_PRIVADO_NAO_PUBLICAR' not in json.dumps(r)
+    assert r['pools'][0]['num_threads'] == 1
