@@ -67,7 +67,7 @@ RAIZ = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(RAIZ))
 sys.path.insert(0, str(RAIZ / "experimentos"))
 
-from src.epocas import empilhar_contexto              # noqa: E402
+from src.epocas import empilhar_contexto, aplicar_por_segmento              # noqa: E402
 from src.features import NOMES_FEATURES               # noqa: E402
 from src.modelos import suavizar_hmm, transicoes_hmm  # noqa: E402
 from ml11_ablacao_features import (                   # noqa: E402
@@ -83,45 +83,32 @@ N_EXTERNA = 10
 N_INTERNA = 5
 TOLERANCIA_PARADA = 0.005
 TRIO_ML11 = SUBCONJUNTOS_DA_CABECA["3 (cabeça)"]
-SAIDA = RAIZ / "experimentos" / "saida"
+SAIDA = RAIZ / "experimentos" / "saida" / "ml17-v1"
 IDX = {n: i for i, n in enumerate(NOMES_FEATURES)}
 
 
 # ── pipeline ──────────────────────────────────────────────────────────────
 
-def contexto_por_sujeito(X: np.ndarray, ids: np.ndarray) -> np.ndarray:
-    """±2 épocas sem atravessar a fronteira entre sujeitos (d).
-
-    Exige os sujeitos contíguos na matriz, o que o cache garante (conferido
-    em 30/10: 92 blocos para 92 sujeitos; 27 para 27).
-    """
-    partes = []
-    inicio = 0
-    for fim in list(np.flatnonzero(ids[1:] != ids[:-1]) + 1) + [len(ids)]:
-        partes.append(empilhar_contexto(X[inicio:fim], CONTEXTO))
-        inicio = fim
-    return np.vstack(partes)
+def contexto_por_sujeito(X: np.ndarray, ids: np.ndarray, *, segmentos) -> np.ndarray:
+    """Contexto por participante/gravação/segmento, incluindo lacunas internas."""
+    return empilhar_contexto(X, CONTEXTO, segmentos=segmentos)
 
 
-def preparar(X, ids, por_sujeito=True):
+def preparar(X, ids, por_sujeito=True, *, segmentos):
     Xn = normalizar_por_sujeito(X, ids)
-    return contexto_por_sujeito(Xn, ids) if por_sujeito else empilhar_contexto(Xn, CONTEXTO)
+    # Global deliberado: controle histórico negativo, nunca o caminho principal.
+    return contexto_por_sujeito(Xn, ids, segmentos=segmentos) if por_sujeito else empilhar_contexto(Xn, CONTEXTO)
 
 
 def _clf():
     return LogisticRegression(max_iter=2000, class_weight="balanced", random_state=SEED)
 
 
-def prever(clf, Xte, ids_te, A=None):
-    """Logística pura, ou Viterbi por sujeito por cima dela quando há `A`."""
+def prever(clf, Xte, ids_te, A=None, *, segmentos):
     if A is None:
         return clf.predict(Xte)
-    p = clf.predict_proba(Xte)[:, 1]
-    pred = np.empty(len(p), dtype=int)
-    for s in np.unique(ids_te):
-        m = ids_te == s
-        pred[m] = suavizar_hmm(p[m], A)
-    return pred
+    return aplicar_por_segmento(clf.predict_proba(Xte)[:, 1], segmentos,
+                                lambda p: suavizar_hmm(p, A))
 
 
 def metricas(y, p):
@@ -174,9 +161,9 @@ def ic95(d):
 
 # ── os experimentos ──────────────────────────────────────────────────────────
 
-def rodar_base(nome, X, y, ids, nomes):
+def rodar_base(nome, X, y, ids, nomes, *, segmentos):
     n_feat = X.shape[1]
-    Xc = preparar(X, ids, por_sujeito=True)
+    Xc = preparar(X, ids, por_sujeito=True, segmentos=segmentos)
     todas = list(nomes)
     r = {"kappa": {}, "especificidade": {}, "selecionados": [], "trilhas": []}
 
@@ -190,7 +177,7 @@ def rodar_base(nome, X, y, ids, nomes):
         primeiro_trio = trilha[2]["conjunto"] if len(trilha) >= 3 else escolhido
         r["selecionados"].append(escolhido)
         r["trilhas"].append(trilha)
-        A, _ = transicoes_hmm(y[tr], ids[tr])
+        A, _ = transicoes_hmm(y[tr], ids[tr], segmentos=segmentos[tr])
 
         for rotulo, conj in (("as 8", todas), ("aninhada", escolhido),
                              ("primeiro trio interno", primeiro_trio),
@@ -198,14 +185,14 @@ def rodar_base(nome, X, y, ids, nomes):
             cols = colunas_de(conj, n_feat)
             clf = _clf().fit(Xc[tr][:, cols], y[tr])
             for sufixo, matriz in (("", None), (" + HMM", A)):
-                p = prever(clf, Xc[te][:, cols], ids[te], matriz)
+                p = prever(clf, Xc[te][:, cols], ids[te], matriz, segmentos=segmentos[te])
                 k, e, _ = metricas(y[te], p)
                 guardar(rotulo + sufixo, k, e)
         print(f"  dobra {dobra}: escolheu {escolhido}  ({time.time() - t0:.0f} s)",
               flush=True)
 
     # (d) contexto global (o de todos os experimentos anteriores) contra por sujeito
-    Xg = preparar(X, ids, por_sujeito=False)
+    Xg = preparar(X, ids, por_sujeito=False, segmentos=segmentos)
     for tr, te in GroupKFold(n_splits=N_EXTERNA).split(Xg, y, groups=ids):
         clf = _clf().fit(Xg[tr], y[tr])
         k, e, _ = metricas(y[te], clf.predict(Xg[te]))
@@ -229,14 +216,14 @@ def rodar_base(nome, X, y, ids, nomes):
     return r
 
 
-def controle_positivo(X, y, ids):
+def controle_positivo(X, y, ids, *, segmentos):
     """Isca que vaza o rótulo: a seleção aninhada tem de achá-la sempre."""
     rng = np.random.default_rng(SEED)
     isca = np.where(rng.random(len(y)) < 0.2, 1 - y, y).astype(float)
     Xi = np.column_stack([X, isca])
     nomes = list(NOMES_FEATURES) + ["ISCA"]
     IDX_LOCAL["ISCA"] = X.shape[1]
-    Xc = preparar(Xi, ids, por_sujeito=True)
+    Xc = preparar(Xi, ids, por_sujeito=True, segmentos=segmentos)
     primeiros = []
     for tr, te in GroupKFold(n_splits=N_EXTERNA).split(Xc, y, groups=ids):
         # Só o primeiro passo da seleção: é ele que tem de ser a isca.
@@ -260,8 +247,8 @@ def main() -> int:
                  "teto_kappa": TETO_KAPPA, "bases": {}}
 
     print("===== controle positivo (cabeça, isca que vaza o rótulo) =====", flush=True)
-    X, y, ids, _ = bases["wearanize/cabeca"]
-    primeiros = controle_positivo(X, y, ids)
+    X, y, ids, _, segmentos = bases["wearanize/cabeca"]
+    primeiros = controle_positivo(X, y, ids, segmentos=segmentos)
     acertos = sum(p == "ISCA" for p in primeiros)
     print(f"  a isca foi a primeira escolha em {acertos}/{N_EXTERNA} dobras: {primeiros}")
     resultado["controle_positivo"] = {"primeiras_escolhas": primeiros,
@@ -270,11 +257,11 @@ def main() -> int:
         print("  ✗ O INSTRUMENTO NÃO ACHA UMA FEATURE QUE VAZA O RÓTULO. Parando.")
         return 1
 
-    for nome, (X, y, ids, _) in bases.items():
+    for nome, (X, y, ids, _, segmentos) in bases.items():
         t0 = time.time()
         print(f"\n===== {nome} — {len(y)} épocas, {len(np.unique(ids))} sujeitos =====",
               flush=True)
-        r = rodar_base(nome, X, y, ids, NOMES_FEATURES)
+        r = rodar_base(nome, X, y, ids, NOMES_FEATURES, segmentos=segmentos)
         r["segundos"] = time.time() - t0
         resultado["bases"][nome] = r
         for rot, v in r["resumo"].items():

@@ -67,7 +67,7 @@ def suavizar_mediana(y: np.ndarray, janela: int = 5) -> np.ndarray:
     return (np.median(janelas, axis=1) >= 0.5).astype(int)
 
 
-def transicoes_hmm(y: np.ndarray, id_sujeito: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+def transicoes_hmm(y: np.ndarray, id_sujeito: np.ndarray, *, segmentos=None) -> tuple[np.ndarray, np.ndarray]:
     """Matriz de transição 2×2 e prior, contados nos rótulos VERDADEIROS.
 
     ⚠️ Só pode ser chamada sobre o fold de TREINO. A matriz de transição é um
@@ -84,11 +84,15 @@ def transicoes_hmm(y: np.ndarray, id_sujeito: np.ndarray) -> tuple[np.ndarray, n
     y = np.asarray(y, dtype=int)
     ids = np.asarray(id_sujeito, dtype=object)
     contagem = np.ones((2, 2), dtype=float)   # Laplace: nenhuma transição é impossível
-    for s in sorted(set(ids.tolist())):
-        seq = y[ids == s]
-        if seq.size < 2:
-            continue
-        np.add.at(contagem, (seq[:-1], seq[1:]), 1.0)
+    if len(y) != len(ids):
+        raise ValueError('y e ids com comprimentos diferentes')
+    ligadas = ids[1:] == ids[:-1]
+    if segmentos is not None:
+        segmentos = np.asarray(segmentos)
+        if segmentos.ndim != 1 or len(segmentos) != len(y):
+            raise ValueError('segmentos incompatíveis com y')
+        ligadas &= segmentos[1:] == segmentos[:-1]
+    np.add.at(contagem, (y[:-1][ligadas], y[1:][ligadas]), 1.0)
     A = contagem / contagem.sum(axis=1, keepdims=True)
     prior = np.array([np.count_nonzero(y == 0), np.count_nonzero(y == 1)], dtype=float)
     prior = np.clip(prior, 1.0, None)

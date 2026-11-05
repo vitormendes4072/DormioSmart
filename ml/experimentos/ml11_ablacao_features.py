@@ -87,14 +87,16 @@ from sklearn.model_selection import GroupKFold
 RAIZ = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(RAIZ))
 
+from src.cache_temporal import VERSAO, ler_base, ler_features, segmentos_de
+from src.configuracao import carregar_config
 from src.epocas import empilhar_contexto              # noqa: E402
 from src.features import NOMES_FEATURES               # noqa: E402
 
 SEED = 20260910
 CONTEXTO = 2                     # ml/config.yaml: contexto_epocas
-CACHE_WEARANIZE = RAIZ / "dados" / "processado" / "_cache_base_wearanize_14646b9aacb7d397.pkl"
-DIR_NEWCASTLE = RAIZ / "dados" / "processado" / "newcastle_features"
-SAIDA = RAIZ / "experimentos" / "saida"
+CACHE_WEARANIZE = RAIZ / "dados" / "processado" / "_cache_base_wearanize_ml17-v1_*.pkl"
+DIR_NEWCASTLE = RAIZ / "dados" / "processado" / "newcastle_features_ml17-v1"
+SAIDA = RAIZ / "experimentos" / "saida" / VERSAO
 
 # Teto entre pontuadores humanos (ML-05) — a régua para ler os Δκ.
 TETO_KAPPA = 0.612
@@ -122,8 +124,8 @@ def normalizar_por_sujeito(X: np.ndarray, ids: np.ndarray) -> np.ndarray:
 
 
 def avaliar(X: np.ndarray, y: np.ndarray, ids: np.ndarray,
-            n_dobras: int) -> dict[str, np.ndarray]:
-    Xc = empilhar_contexto(normalizar_por_sujeito(X, ids), CONTEXTO)
+            n_dobras: int, *, segmentos) -> dict[str, np.ndarray]:
+    Xc = empilhar_contexto(normalizar_por_sujeito(X, ids), CONTEXTO, segmentos=segmentos)
     ks, es, ss = [], [], []
     for tr, te in GroupKFold(n_splits=n_dobras).split(Xc, y, groups=ids):
         clf = LogisticRegression(max_iter=2000, class_weight="balanced",
@@ -164,14 +166,14 @@ def conjuntos_de_arquitetura(X: np.ndarray, c: np.ndarray) -> dict[str, np.ndarr
     }
 
 
-def selecao_progressiva(X, y, ids, n_dobras) -> list[dict]:
+def selecao_progressiva(X, y, ids, n_dobras, *, segmentos) -> list[dict]:
     escolhidas: list[str] = []
     restantes = list(NOMES_FEATURES)
     passos = []
     while restantes:
         melhor = None
         for f in restantes:
-            r = avaliar(colunas(X, tuple(escolhidas + [f])), y, ids, n_dobras)
+            r = avaliar(colunas(X, tuple(escolhidas + [f])), y, ids, n_dobras, segmentos=segmentos)
             k = float(r["kappa"].mean())
             if melhor is None or k > melhor[1]:
                 melhor = (f, k, r)
@@ -186,34 +188,30 @@ def selecao_progressiva(X, y, ids, n_dobras) -> list[dict]:
     return passos
 
 
-def carregar_bases():
+def carregar_bases(cache=None):
+    cfg = carregar_config()
+    pasta = Path(cache) if cache else RAIZ / 'dados' / 'processado'
     bases = {}
-    if CACHE_WEARANIZE.exists():
-        d = pickle.load(open(CACHE_WEARANIZE, "rb"))
-        for pos in ("cabeca", "pulso"):
-            if pos in d:
-                v = d[pos]
-                assert np.array_equal(np.asarray(v["id"]), np.asarray(v["id_c"]))
-                assert np.array_equal(np.asarray(v["y"]), np.asarray(v["y_c"]))
-                bases[f"wearanize/{pos}"] = (
-                    np.asarray(v["X"], float), np.asarray(v["y"]),
-                    np.asarray(v["id"]), np.asarray(v["c"], float))
-    arquivos = sorted(DIR_NEWCASTLE.glob("*.npz")) if DIR_NEWCASTLE.exists() else []
+    arquivos = sorted(pasta.glob('_cache_base_wearanize_ml17-v1_*.pkl'))
+    if len(arquivos) > 1:
+        raise ValueError('mais de uma seleção Wearanize: use uma pasta de cache isolada')
     if arquivos:
-        Xs, ys, ids, cs = [], [], [], []
-        tem_c = True
-        for f in arquivos:
-            z = np.load(f, allow_pickle=True)
-            Xs.append(z["X"]); ys.append(z["y"])
-            ids.append(np.repeat(str(z["id"]), len(z["y"])))
-            if "c" in z.files:
-                cs.append(z["c"])
-            else:
-                tem_c = False
-        X, y, i = np.vstack(Xs), np.concatenate(ys), np.concatenate(ids)
-        c = np.concatenate(cs) if tem_c else np.full(len(y), np.nan)
-        m = y >= 0
-        bases["newcastle"] = (X[m], y[m], i[m], c[m])
+        with arquivos[0].open('rb') as f:
+            selecao = pickle.load(f).get('sujeitos', [])
+        d = ler_base(arquivos[0], selecao, cfg)
+        for pos in ('cabeca', 'pulso'):
+            v = d[pos]
+            bases['wearanize/' + pos] = (v['X'], v['y'], v['id'], v['c'], segmentos_de(v))
+    arquivos = sorted((pasta / ('newcastle_features_' + VERSAO)).glob('*.npz'))
+    partes = []
+    for f in arquivos:
+        z = ler_features(f, cfg)
+        # Mesma seleção histórica do ML-11: ambos os punhos disponíveis.
+        partes.append((z['X'], z['y'], np.repeat(str(z['id']), len(z['y'])),
+                       z.get('c', np.full(len(z['y']), np.nan)),
+                       np.char.add(f.name + ':', segmentos_de(z).astype(str))))
+    if partes:
+        bases['newcastle'] = tuple(np.concatenate([p[k] for p in partes]) for k in range(5))
     return bases
 
 
@@ -230,12 +228,12 @@ def main() -> int:
                  "n_dobras": n_dobras, "contexto": CONTEXTO,
                  "teto_kappa": TETO_KAPPA, "bases": {}}
 
-    for nome, (X, y, ids, c) in bases.items():
+    for nome, (X, y, ids, c, segmentos) in bases.items():
         t0 = time.time()
         print(f"\n===== {nome} — {len(y)} épocas, {len(np.unique(ids))} sujeitos, "
               f"{n_dobras} dobras =====")
         print(f"  épocas com p_frac > 0: {np.mean(X[:, IDX['p_frac']] > 0) * 100:.1f} %")
-        ref = avaliar(X, y, ids, n_dobras)
+        ref = avaliar(X, y, ids, n_dobras, segmentos=segmentos)
         kref = ref["kappa"]
         eref = ref["especificidade"]
         print(f"  as 8: κ={kref.mean():.4f} ({kref.mean() / TETO_KAPPA * 100:.0f} % do teto)"
@@ -248,7 +246,7 @@ def main() -> int:
         print("  --- tirar uma, Δ pareado contra as 8 [IC 95 %] ---")
         for f in NOMES_FEATURES:
             manter = tuple(n for n in NOMES_FEATURES if n != f)
-            r = avaliar(colunas(X, manter), y, ids, n_dobras)
+            r = avaliar(colunas(X, manter), y, ids, n_dobras, segmentos=segmentos)
             dk = ic95_pareado(r["kappa"], kref)
             de = ic95_pareado(r["especificidade"], eref)
             res["sem_uma"][f] = {"kappa": r["kappa"].tolist(),
@@ -261,7 +259,7 @@ def main() -> int:
             if not np.all(np.isfinite(Xa)):
                 print(f"    {rot:26s} (sem dado nesta base)")
                 continue
-            r = avaliar(Xa, y, ids, n_dobras)
+            r = avaliar(Xa, y, ids, n_dobras, segmentos=segmentos)
             dk = ic95_pareado(r["kappa"], kref)
             de = ic95_pareado(r["especificidade"], eref)
             km = float(r["kappa"].mean())
@@ -278,7 +276,7 @@ def main() -> int:
         print("  --- subconjunto escolhido na cabeça, fixo ---")
         res["subconjuntos_da_cabeca"] = {}
         for rot, nomes in SUBCONJUNTOS_DA_CABECA.items():
-            r = avaliar(colunas(X, nomes), y, ids, n_dobras)
+            r = avaliar(colunas(X, nomes), y, ids, n_dobras, segmentos=segmentos)
             dk = ic95_pareado(r["kappa"], kref)
             de = ic95_pareado(r["especificidade"], eref)
             fora = nome != "wearanize/cabeca"
@@ -293,7 +291,7 @@ def main() -> int:
                   f"  {'(fora da amostra)' if fora else '(OTIMISTA: escolhido aqui)'}")
 
         print("  --- seleção progressiva ---")
-        res["progressiva"] = selecao_progressiva(X, y, ids, n_dobras)
+        res["progressiva"] = selecao_progressiva(X, y, ids, n_dobras, segmentos=segmentos)
         res["segundos"] = time.time() - t0
         resultado["bases"][nome] = res
 

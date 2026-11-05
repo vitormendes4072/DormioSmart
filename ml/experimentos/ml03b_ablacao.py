@@ -87,7 +87,8 @@ from src.baseline import calibrar_escala, sadeh, sempre_dormindo            # no
 from src.carregar.base import ConjuntoEpocas                                # noqa: E402
 from src.carregar.wearanize import carregar_wearanize, sujeitos_com_posicoes  # noqa: E402
 from src.configuracao import carregar_config, fixar_seed                    # noqa: E402
-from src.epocas import empilhar_contexto, fatiar_epocas                     # noqa: E402
+from src.cache_temporal import VERSAO, segmentos_de
+from src.epocas import empilhar_contexto, fatiar_epocas, aplicar_por_segmento                     # noqa: E402
 from src.features import NOMES_FEATURES, features_de_epoca                  # noqa: E402
 from src.modelos import random_forest, regressao_logistica, suavizar_mediana  # noqa: E402
 from src.sinal import reamostrar                                            # noqa: E402
@@ -115,8 +116,8 @@ def carregar_base(sujeitos: list[str], cfg, pasta=None) -> dict[str, dict]:
     saida: dict[str, dict] = {}
     for nome, (posicao, qualidade) in BRACOS.items():
         gravacoes = carregar_wearanize(posicao=posicao, qualidade=qualidade, sujeitos=sujeitos, **kwargs)
-        Xs, ys, ids, cs, ys_c, ids_c = [], [], [], [], [], []
-        for gr in gravacoes:
+        Xs, ys, ids, cs, ys_c, ids_c, indices, gravacoes_ids = [], [], [], [], [], [], [], []
+        for numero_gr, gr in enumerate(gravacoes):
             t, a = reamostrar(gr.t, gr.a, cfg.taxa_comum_hz, cfg.corte_antialiasing_frac_nyquist)
             a_ep, idx = fatiar_epocas(t, a, gr.t0_rotulo, int(gr.rotulos.shape[0]),
                                       cfg.epoca_s, cfg.taxa_comum_hz)
@@ -131,14 +132,18 @@ def carregar_base(sujeitos: list[str], cfg, pasta=None) -> dict[str, dict]:
 
             X, _ = features_de_epoca(a_ep, fs=cfg.taxa_comum_hz)
             Xs.append(X[ok]); ys.append(y_ok); ids.append(ids_ok)
+            indices.append(idx[ok])
+            gravacoes_ids.append(np.repeat(f'{gr.id_sujeito}:{numero_gr}', len(y_ok)))
 
             c = substituto_de_contagem(a_ep, cfg.taxa_comum_hz, (float(lo), float(hi)),
                                        float(cfg.baseline["escala_contagem"]))
             cs.append(c[ok]); ys_c.append(y_ok); ids_c.append(ids_ok)
+            del gr, t, a, a_ep, X, c
 
         saida[nome] = dict(
             X=np.concatenate(Xs), y=np.concatenate(ys), id=np.concatenate(ids),
             c=np.concatenate(cs), y_c=np.concatenate(ys_c), id_c=np.concatenate(ids_c),
+            gravacao=np.concatenate(gravacoes_ids), indice_epoca=np.concatenate(indices),
         )
         print(f"  {nome:<10} {saida[nome]['X'].shape[0]} épocas · "
               f"{len(set(saida[nome]['id'].tolist()))} sujeitos", file=sys.stderr)
@@ -146,7 +151,7 @@ def carregar_base(sujeitos: list[str], cfg, pasta=None) -> dict[str, dict]:
 
 
 def montar_X(base: dict, nome: str, n_vizinhas: int) -> np.ndarray:
-    return empilhar_contexto(base[nome]["X"], n_vizinhas)
+    return empilhar_contexto(base[nome]["X"], n_vizinhas, segmentos=segmentos_de(base[nome]))
 
 
 # =========================================================================
@@ -367,11 +372,8 @@ def diagonal_sem_balanceamento(X, y, ids, seed) -> MetricasAgregadas:
     return avaliar_por_sujeito(y, pred, ids, metricas=METRICAS, seed=seed)
 
 
-def diagonal_suavizada(pred_bruta: np.ndarray, y: np.ndarray, ids: np.ndarray, seed: int) -> MetricasAgregadas:
-    suave = np.zeros_like(pred_bruta)
-    for s in sorted(set(ids.tolist())):
-        m = ids == s
-        suave[m] = suavizar_mediana(pred_bruta[m])
+def diagonal_suavizada(pred_bruta: np.ndarray, y: np.ndarray, ids: np.ndarray, seed: int, *, segmentos) -> MetricasAgregadas:
+    suave = aplicar_por_segmento(pred_bruta, segmentos, suavizar_mediana)
     return avaliar_por_sujeito(y, suave, ids, metricas=METRICAS, seed=seed)
 
 
@@ -399,30 +401,15 @@ def main() -> int:
     # realmente pode falhar (o item 2, que não converge). O cache é só um
     # pickle; se o hash do config ou a lista de sujeitos mudar, o nome do
     # arquivo muda junto, então nunca serve dado velho por engano.
-    import hashlib
-    import pickle
-    cache_chave = hashlib.sha256(
-        (cfg.hash + "|" + ",".join(sujeitos)).encode("utf-8")
-    ).hexdigest()[:16]
-    cache_caminho = RAIZ / "dados" / "processado" / f"_cache_base_wearanize_{cache_chave}.pkl"
-    if cache_caminho.exists():
-        print(f"Cache encontrado ({cache_caminho.name}), pulando releitura dos EDFs...", file=sys.stderr)
-        with open(cache_caminho, "rb") as fh:
-            base = pickle.load(fh)
-    else:
-        print("Carregando os três braços (sem empilhar contexto ainda)...", file=sys.stderr)
-        base = carregar_base(sujeitos, cfg, pasta=args.pasta)
-        cache_caminho.parent.mkdir(parents=True, exist_ok=True)
-        with open(cache_caminho, "wb") as fh:
-            pickle.dump(base, fh, protocol=pickle.HIGHEST_PROTOCOL)
-        print(f"Cache salvo em {cache_caminho.name}", file=sys.stderr)
+    from experimentos.ml03b_otimizacoes import _carregar_base_com_cache
+    base = _carregar_base_com_cache(sujeitos, cfg, pasta=args.pasta)
 
     resultado_json: dict = {
         "experimento": "ML-03b -- ablacao H1/H2 + otimizacoes de especificidade",
         "hash_config": cfg.hash, "seed": seed, "n_sujeitos": len(sujeitos),
     }
 
-    saida = RAIZ / "experimentos" / "saida"
+    saida = RAIZ / "experimentos" / "saida" / VERSAO
     saida.mkdir(parents=True, exist_ok=True)
     carimbo = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     destino = saida / f"ml03b_ablacao_{cfg.hash}_{carimbo}.json"
@@ -511,7 +498,7 @@ def main() -> int:
     print("ITEM 5 -- normalização por SUJEITO (z-score individual) + logística sem scaler extra")
     print("=" * 70)
     Xs_suj = {n: montar_X(
-        {n: dict(X=normalizar_por_sujeito(base[n]["X"], base[n]["id"]))}, n, cfg.contexto_epocas
+        {n: {**base[n], "X": normalizar_por_sujeito(base[n]["X"], base[n]["id"])}}, n, cfg.contexto_epocas
     ) for n in NOMES_BRACOS}
     matriz_suj = matriz_generica(Xs_suj, ys_ref, ids_ref, seed, modo="sem_scaler")
     imprimir_matriz_kappa(matriz_suj, "NORMALIZAÇÃO POR SUJEITO")
@@ -540,7 +527,7 @@ def main() -> int:
         print(f"    (7) limiar por Youden (escolhido no treino): kappa={m7.resumo('kappa')}  espec={m7.resumo('especificidade')}")
 
         _, pred_bruta = diagonal_padrao(X, y, ids, seed)
-        m8 = diagonal_suavizada(pred_bruta, y, ids, seed)
+        m8 = diagonal_suavizada(pred_bruta, y, ids, seed, segmentos=segmentos_de(base[nome]))
         print(f"    (8) suavização temporal (mediana móvel):     kappa={m8.resumo('kappa')}  espec={m8.resumo('especificidade')}")
 
         X_largo = montar_X(base, nome, args.contexto_largo)

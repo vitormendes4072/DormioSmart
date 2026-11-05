@@ -1,9 +1,23 @@
 # ML-17 — contexto por participante e por segmento contínuo
 
-**05/11/2026 — plano para aprovação; implementação não iniciada.**
+**05/11/2026 — plano aprovado com os ajustes abaixo; implementação em andamento.**
 Base consultada: `origin/develop` `d429d43e1b7bafacae67fbebb9a328942d63efff`
 (PR #90 integrada). Dono: Codex, conforme indicação do autor.
 A ML-13 permanece aberta; a avaliação da DREAMT depende da conclusão da ML-17.
+
+## Ajustes aprovados antes da implementação — 05/11
+
+- Duas PRs para develop: a primeira entrega código, testes de fronteira,
+  guarda histórica da ML-15 e contrato de caches versionados; a segunda parte
+  da primeira e entrega rodadas/relatório antes-depois. Ordem de merge: primeira,
+  depois segunda. A ML-13 continua aberta.
+- HMM e Viterbi do ML-04 já separam participantes no develop. Seus testes entram
+  como regressão e devem passar no d429d43. Os testes de janela entre participantes
+  e de lacunas devem falhar nesse commit. Grupos serão reportados separadamente.
+- Contexto não existe no firmware. Arquivos e valores dos testes do vetor dourado
+  não serão alterados; qualquer mudança necessária neles interrompe o trabalho.
+- Antes de iniciar treinamentos/avaliações, informar o censo de épocas de contexto
+  alteradas por coorte/braço. Separar mudança de vizinhança de mudança numérica.
 
 ## Diagnóstico por leitura
 
@@ -165,6 +179,5 @@ no corrigido, sabotagens detectadas, nenhuma chamada não classificada, entradas
 temporais rastreáveis, rodada e dispersão publicadas com os limites e procedência
 histórica preservada. O carregador/avaliação DREAMT não fazem parte desta correção.
 
-**Aguardando aprovação deste plano.** Até aqui foram executadas apenas consultas,
-a comparação de manifestos e conferências de documentação; nenhum treinamento,
-avaliação ou alteração no pipeline da ML-17.
+**Plano aprovado.** As rodadas permanecem posteriores ao censo de contexto e à
+validação do código; a entrega se divide nas duas PRs descritas no adendo.

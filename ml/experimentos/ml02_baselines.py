@@ -37,7 +37,7 @@ from src.baseline import (                                        # noqa: E402
 )
 from src.carregar.base import ConjuntoEpocas, Gravacao              # noqa: E402
 from src.configuracao import carregar_config, fixar_seed           # noqa: E402
-from src.epocas import empilhar_contexto, fatiar_epocas             # noqa: E402
+from src.epocas import empilhar_contexto, fatiar_epocas, segmentos_epocas, aplicar_por_segmento             # noqa: E402
 from src.features import NOMES_FEATURES, features_de_epoca         # noqa: E402
 from src.modelos import regressao_logistica, suavizar_mediana      # noqa: E402
 from src.sinal import reamostrar                                   # noqa: E402
@@ -59,7 +59,7 @@ def _processar_unificado(
     são idênticos para as duas saídas, então rodam uma vez só por gravação.
     """
     lo, hi = cfg.baseline["banda_contagem_hz"]
-    Xs, ys, ids = [], [], []
+    Xs, ys, ids, segmentos = [], [], [], []
     cs, ys_c, ids_c = [], [], []
     n_gravacoes = 0
     descartadas = 0
@@ -81,7 +81,9 @@ def _processar_unificado(
         ids_ok = np.full(int(ok.sum()), gr.id_sujeito, dtype=object)
 
         X, _ = features_de_epoca(a_ep, fs=cfg.taxa_comum_hz)
-        Xs.append(empilhar_contexto(X[ok], cfg.contexto_epocas))
+        seg = segmentos_epocas(ids_ok, np.repeat(n_gravacoes, len(y_ok)), idx[ok])
+        Xs.append(empilhar_contexto(X[ok], cfg.contexto_epocas, segmentos=seg))
+        segmentos.append(np.char.add(f'{n_gravacoes}:', seg.astype(str)))
         ys.append(y_ok)
         ids.append(ids_ok)
 
@@ -104,6 +106,7 @@ def _processar_unificado(
         y=np.concatenate(ys),
         id_sujeito=np.concatenate(ids),
         nomes_features=tuple(nomes),
+        segmentos=np.concatenate(segmentos),
         meta={
             "n_gravacoes": n_gravacoes,
             "epocas_descartadas_sem_cobertura": descartadas,
@@ -191,14 +194,7 @@ def main() -> int:
     resultados["2_regressao_logistica_loso"] = avaliar_epoca(conj.y, pred).dict()
 
     # --- Passo 4: suavização temporal sobre o passo 2 -----------------------
-    suave = np.concatenate([
-        suavizar_mediana(pred[conj.id_sujeito == s])
-        for s in sorted(set(conj.id_sujeito.tolist()))
-    ])
-    ordem = np.concatenate([np.flatnonzero(conj.id_sujeito == s)
-                            for s in sorted(set(conj.id_sujeito.tolist()))])
-    pred_suave = np.zeros_like(pred)
-    pred_suave[ordem] = suave
+    pred_suave = aplicar_por_segmento(pred, conj.segmentos, suavizar_mediana)
     resultados["4_logistica_mais_suavizacao"] = avaliar_epoca(conj.y, pred_suave).dict()
 
     # --- tabela -------------------------------------------------------------
@@ -230,7 +226,7 @@ def main() -> int:
               f"vs. {acc:.1%} publicado → {(acc - p) * 100:+.1f} pt")
 
     # --- log de métricas ----------------------------------------------------
-    saida = RAIZ / "experimentos" / "saida"
+    saida = RAIZ / "experimentos" / "saida" / "ml17-v1"
     saida.mkdir(parents=True, exist_ok=True)
     carimbo = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     sufixo = f"_{args.posicao}" if args.dataset == "wearanize" else ""
