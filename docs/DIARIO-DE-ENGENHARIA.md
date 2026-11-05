@@ -7133,6 +7133,26 @@ A divisão por área é de partida e muda conforme o autor indicar os itens.
 **Procedência.** `AGENTS.md`; `CLAUDE.md` (documentos de referência e prática 1); entradas
 2026-11-05 (i) e (iii); `docs/LICOES-APRENDIDAS.md` §5 e §6.
 
+---
+
+# 2026-11-05 (v) — ML-13: sincronização e levantamento antes da implementação
+
+**O problema, como foi entendido no início.** O autor pediu atualizar origin/develop, ler integralmente AGENTS.md e CLAUDE.md, ler o fim do diário e o checklist §9, integrar develop na branch existente feature/ML-13-coorte-dreamt e executar as três conferências. A implementação e a avaliação da coorte devem aguardar aprovação do próximo plano.
+
+**Hipótese de trabalho.** A branch pode receber as regras e o estado integrado sem perder seu conferidor de hashes; o download pode estar disponível em ZIP sem ter sido extraído ou validado. A presença do arquivo, sozinha, não comprova sua integridade.
+
+**O que foi testado, e como.** Nesta máquina Windows local, PowerShell e Python 3.11.9: git fetch origin; leitura dos documentos da base 16232bf; criação de worktree isolada para a branch existente; git merge origin/develop; conferir_backlog.py --conferir, consolidar_registro.py --conferir e conferir_docs_versionados.py. Inventário local e leitura do índice ZIP e do cabeçalho de um CSV, sem extrair dados nem avaliar modelos. Varredura da nova worktree por reparse points sem seguir links. O código do conferidor existente foi lido; seus controles positivos não foram executados nesta etapa e não são dados por aprovados.
+
+**Resultado medido.** Merge 48af004 sem conflitos, incorporando origin/develop 16232bf. As três conferências passaram; o backlog conferido nessa base tem 39 abertos, L0 9/L1 14/L2 7/L3 9. ZIP local com 21.827.380.848 bytes e índice legível: 100 CSVs em data_64Hz, somando 14.108.944.014 bytes descomprimidos nesse grupo; os quatro arquivos pequenos esperados constam do ZIP. Na pasta bruta local há SHA256SUMS.txt, mas data_64Hz está vazia e faltam Metadata.txt, participant_info.csv e LICENSE.txt. Na worktree nova não há junctions/reparse points; não existe pasta de execução da ML-13. Nenhum hash de dado bruto, CRC integral ou resultado de modelo foi conferido nesta etapa.
+
+**Adaptação.** A branch existia sem worktree ativa. Foi criada uma worktree própria para reutilizá-la, preservando o conferidor de hashes já commitado em cb65881. O próximo passo proposto é preparar e validar os dados antes de projetar o carregador e registrar a previsão de avaliação externa.
+
+**O que deu errado no caminho.** Os primeiros comandos Git apontaram para a antiga worktree da ML-16, já removida na limpeza, e falharam com "not a git repository". As referências foram atualizadas pelo repositório principal, sem editar ou commitar seu checkout, e o trabalho seguiu na worktree da ML-13. A consulta inicial do item .git via PowerShell não o encontrou; o Git, executado com o acesso necessário, identificou corretamente o repositório principal e suas referências.
+
+**Risco em aberto.** A integridade dos CSVs e dos metadados ainda não foi verificada. Pela leitura, o conferidor pode aceitar um manifesto vazio/incompleto sem exigir a lista esperada; essa hipótese exige controles positivos antes de confiar no resultado. Extração seletiva, verificação SHA-256, correção/testes do conferidor se necessários, inspeção de formato e avaliação permanecem sujeitos à aprovação do plano. Nenhuma junction foi criada. ZIP, dados e futura evidência ficam locais e ignorados, sem redistribuição da DREAMT.
+
+**Procedência.** origin/develop 16232bf7bebe09537b88a31669c55737b5733bd9; merge 48af0048d6911813ebf72540e2068dedaae671bc na feature/ML-13-coorte-dreamt; AGENTS.md, CLAUDE.md, backlog, checklist §9 e ml/ferramentas/baixar_dreamt.py. Dados no armazenamento local de Downloads e na pasta bruta dreamt do repositório principal; caminhos completos informados ao autor no retorno desta etapa, sem caminhos de máquina neste arquivo público.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
