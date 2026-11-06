@@ -110,7 +110,17 @@ marcas (migracao, item, marca, presente) as (values
             select 1 from pg_constraint
              where conrelid = to_regclass('public.profiles') and contype = 'c'
                and conname <> 'profiles_idade_maioridade'
-               and pg_get_constraintdef(oid) ilike '%idade%'))
+               and pg_get_constraintdef(oid) ilike '%idade%')),
+    -- 013: retenção por inatividade. As duas funções E a exclusão pelo
+    -- titular já passando por `_eliminar_titular` (sem isso, as duas listas de
+    -- deletes divergiriam). O AGENDAMENTO não é marca: depende da extensão
+    -- `pg_cron`, que é do painel — sai numa linha própria, abaixo.
+    ('013', 'LGPD-02', 'função _eliminar_titular',
+        to_regprocedure('public._eliminar_titular(uuid)') is not null),
+    ('013', 'LGPD-02', 'função expurgar_contas_inativas',
+        to_regprocedure('public.expurgar_contas_inativas()') is not null),
+    ('013', 'LGPD-02', 'apagar_minha_conta usa _eliminar_titular',
+        coalesce((select pg_get_functiondef(to_regprocedure('public.apagar_minha_conta()')) like '%public._eliminar_titular(auth.uid())%'), false))
 ),
 esquema as (
     select migracao, min(item) as item,
@@ -139,4 +149,16 @@ dados as (
 select migracao, item, aplicada, detalhe, faltando from esquema
 union all
 select migracao, item, aplicada, detalhe, faltando from dados
+union all
+-- 013, o agendamento: informativo. `cron.job` só existe com a extensão, então
+-- a contagem é montada em tempo de execução (mesmo motivo da 002 acima).
+select '013 agendamento'::text, 'LGPD-02'::text, null::boolean,
+       case when to_regclass('cron.job') is null
+            then 'pg_cron NÃO ligado: o expurgo por inatividade não está agendado'
+            else (xpath('/row/c/text()', query_to_xml(
+                      'select count(*) as c from cron.job where jobname = ''dormio-expurgo-por-inatividade''',
+                      false, true, '')))[1]::text
+                 || ' job(s) dormio-expurgo-por-inatividade — 1 é o esperado'
+       end,
+       null::text
 order by migracao;

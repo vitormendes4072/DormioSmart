@@ -7279,6 +7279,122 @@ da DevKit V1, citado no RD-15, é conhecimento geral da placa, não verificado n
 `scripts/estudo_cadencia.py`; `firmware/partitions.csv`, `firmware/nucleo/fila_flash.h`,
 `firmware/sketch.ino`; `docs/CALCULOS-TCC.md` Z.3–Z.4; "Copy of Produto 5" (30/09), lido em 05/11.
 
+---
+
+# 2026-11-05 (x) — DOC-06b: as citações do TCC conferidas contra as fontes
+
+**O problema, como foi entendido no início.** O `DOC-06b` pede que os autores leiam o que citam,
+porque "referência conferida não é artigo lido". Ninguém tinha conferido se cada fonte diz o que
+o texto atribui a ela, e é o primeiro lugar que um avaliador abre.
+
+**Hipótese de trabalho.** Que as referências existissem e estivessem certas na forma (as
+anteriores do projeto foram conferidas no `DOC-06`), e que os problemas, se houvesse, fossem de
+paráfrase.
+
+**O que foi testado, e como.** As 22 referências e as 35 frases que as citam extraídas do "Copy of
+Produto 5" (30/09). Os 9 artigos localizados pelo DOI na Europe PMC: metadados e resumo pela API,
+texto completo (`fullTextXML`) para o Skarpsno, o Liu, o Yuan e o De Fazio, com busca do trecho
+que sustenta ou contradiz cada frase. As fontes técnicas abertas no endereço citado; a LGPD no
+Planalto; o Gil por uma cópia digitalizada e o sumário de outra. As correções de texto conferidas
+por script contra o documento (4/4 trechos citados como "texto atual" encontrados).
+
+**Resultado medido.** Metadados dos 9 artigos conferem. **SKARPSNO et al. (2017) contradiz o
+texto:** a discussão do artigo diz que os sintomas de insônia não se associaram aos movimentos
+noturnos, e o texto afirmava a associação. **A página da TDK citada responde 404.** Quatro
+imprecisões: o YUAN (2024) é revisão só de actigrafia de pulso, citado duas vezes para "combinar
+sinais", e a terceira citação particulariza "REM e sono profundo"; o SMITH (2018) é mais restrito
+que "método válido"; as correntes do ESP32 vêm da folha de dados, não do guia citado. Três
+referências da lista sem citação. O ENMO da `CALC-03` sem fonte: VAN HEES et al. (2013), localizado.
+Confere o resto: De Fazio, Liu (98,42 %, 30 pessoas, sob o colchão), Boiko, Yoshihi, Walch, Bliwise
+pelo título, a lei e o Gil p. 17. Entregas: `docs/CONFERENCIA-DE-CITACOES.md`;
+`../documento/CORRECOES-CITACOES.md` (fora do Git); as inserções `CALC-01`, `CALC-02`, `CALC-03`,
+`CALC-04` e `DOC-16` ajustadas só dentro dos blocos a colar.
+
+**Adaptação.** Os sítios das editoras (MDPI) recusaram acesso automatizado (403); a leitura passou
+à Europe PMC, que tem os textos completos dos artigos abertos. Para a folha de dados da Espressif,
+cujo PDF não pôde ser lido aqui, a referência nova vai com versão e ano em branco, marcados para
+os autores preencherem da capa — melhor que um número inventado. O `DOC-06b` não fecha: o item é a
+leitura pelos autores, e a página diz o que ler primeiro.
+
+**O que deu errado no caminho.** A primeira tentativa de ler o MPU-6050 usou o endereço
+`…/mpu-6050/`, que não é o da referência; o da referência (`…/mpu-6000/`) também responde 404, e
+isso virou achado. Uma cópia da folha de dados num sítio de universidade exigia login, e outra
+voltou HTML. Um extrator de texto do PDF da Espressif, escrito às pressas, travou numa expressão
+regular e foi interrompido; conferi pela lista de processos que nenhum ficou rodando (§6, regra 8
+das lições). A tabela de vereditos tinha duas seções erradas (5.7 por 5.8; 5.6 por 5.7), corrigidas
+conferindo a seção de cada linha no texto extraído. **A minha própria inserção do `DOC-16`, de
+horas antes, citava a página quebrada da TDK e o guia da Espressif para correntes** — o mesmo erro
+que esta conferência acha no texto antigo.
+
+**Risco em aberto.** As correções só valem coladas, e o colchete da folha da Espressif precisa ser
+preenchido. Os livros (Gil p. 41, Bello, Elkington) não foram conferidos. A leitura dos autores
+segue sendo o item (`DOC-06b`).
+
+**Procedência.** "Copy of Produto 5" (30/09), lido em 05/11; Europe PMC (DOIs na página);
+`docs/CONFERENCIA-DE-CITACOES.md`; `../documento/CORRECOES-CITACOES.md`; `scripts/calculos_tcc.py`
+(seções da folha de dados do MPU-6050 e Tabela 4-2 da do ESP32).
+
+---
+
+# 2026-11-05 (xi) — LGPD-02: retenção por inatividade de 12 meses
+
+**O problema, como foi entendido no início.** Não havia política de retenção: uma leitura ficava
+no banco até o titular apagar a conta, e a seção 7 da política declarava isso como lacuna. O
+backlog aceitava as duas saídas, prazo ou declaração formal, mas não o silêncio.
+
+**Hipótese de trabalho.** Que o padrão do mercado de aparelhos de sono — guardar enquanto a conta
+é usada, apagar na exclusão — servisse, completado pela regra que resolve a conta esquecida:
+eliminar por inteiro a conta sem uso há 12 meses. O autor aprovou essa combinação depois de ver
+como Oura e Fitbit tratam o tema.
+
+**O que foi testado, e como.** Migração `013`, com a lista de deletes do titular extraída para
+`_eliminar_titular(uuid)` e o expurgo em `expurgar_contas_inativas()`. `test_rls_retencao.py`
+contra Postgres 16 em Docker, cada teste semeando contas com datas recuadas numa transação
+revertida. Controle positivo de três formas: a suíte sem a `013` numa cópia da árvore; três
+sabotagens novas no `verificar_por_mutacao.py`; e o diagnóstico rodado depois de reaplicar a
+`006` por cima da `013`. Também a suíte RLS inteira, o `verificar_migracoes.py`, o backend e os
+testes da página da política no frontend.
+
+**Resultado medido.** RLS **193** (174 + 19). Sem a `013`, **17 dos 19** testes novos caem; os 2
+que passam são os de recusa ("usuário logado não chama"), que sem a função passam porque ela não
+existe — no código real passam por duas barreiras, o EXECUTE revogado e o `security invoker`.
+Mutação **35/35**: ignorar a última leitura derrubou 3 testes; liberar o expurgo para
+`authenticated`, 1; a eliminação sem dispositivos, 5, inclusive o da exclusão pelo próprio
+titular — prova de que os dois caminhos usam a mesma lista. Diagnóstico nos **13 estados**, e
+com a `apagar_minha_conta()` revertida à da 006 a `013` cai para 2 de 3 marcas. Backend **453**;
+frontend da política 12/12.
+
+**Adaptação.** O prazo ficou dentro da função, sem parâmetro, pelo mesmo motivo da
+`apagar_minha_conta()` não ter parâmetro de usuário: um `(1)` digitado por engano apagaria quem
+não entra há um mês. As duas funções novas são `security invoker`, para não criar mais uma
+função que eleva privilégio. O agendamento ficou condicional ao `pg_cron`, e o diagnóstico o
+mostra numa linha informativa, porque o Postgres de teste não tem a extensão. A política só pode
+descrever o mecanismo depois de ele existir: a `013` vai à produção ANTES do release que publica a
+seção 7 nova — a ordem inversa da do `LGPD-06` —, e isso virou o `LGPD-09`. A seção 7 diz que não
+há aviso prévio, porque não há SMTP (`LGPD-10`), e que o plano gratuito do Supabase não faz cópia
+de segurança, conferido na documentação dele.
+
+**O que deu errado no caminho.** Na primeira resposta ao autor, chamei a saída "guardar enquanto
+a conta existir" de a mais fraca; a pesquisa mostrou que é o padrão do mercado, e a recomendação
+foi refeita. O `verificar_migracoes.py` imprimia "os 12 estados" como texto fixo, e passou a
+contá-los. Uma edição por script Python e outra por `sed` não pegaram a linha do texto fixo, que
+tinha o travessão; foi feita com a ferramenta de edição. O README das migrações tinha pulado a
+`012`, e a linha dela entrou junto com a da `013`.
+
+**Risco em aberto.** Nada disso vale na produção até o autor aplicar a `013` e ligar o `pg_cron`
+(`LGPD-09`); até lá, o release não pode levar a seção 7 nova. O sinal de login é o
+`last_sign_in_at` do Supabase, que muda no login, não a cada renovação de sessão: quem só usa
+uma sessão aberta por mais de 12 meses, sem dispositivo enviando, seria tratado como inativo —
+caso improvável, e a leitura do dispositivo já mantém a conta. Sem aviso por e-mail
+(`LGPD-10`). A guarda de 5 anos de pesquisa, se o orientador confirmar voluntários sob comitê de
+ética, seria cláusula própria, fora deste expurgo.
+
+**Procedência.** `web-app/migrations/013_retencao_por_inatividade.sql`;
+`web-app/tests/rls/test_rls_retencao.py`, `verificar_por_mutacao.py`, `esquema_base.sql`,
+`conftest.py`; `web-app/tests/migracoes/verificar_migracoes.py`;
+`web-app/migrations/DIAGNOSTICO-migracoes-aplicadas.sql` e `README.md`;
+`docs/POLITICA-DE-PRIVACIDADE.md`, seções 7 e 10; documentação de backups do Supabase, lida em 05/11.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
