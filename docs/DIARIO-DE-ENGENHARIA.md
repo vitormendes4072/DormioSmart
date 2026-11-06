@@ -7153,6 +7153,59 @@ A divisão por área é de partida e muda conforme o autor indicar os itens.
 
 **Procedência.** feature/ML-13-coorte-dreamt; origem cb6588198a225088408554845e058dd54e2e7ffd; base origin/develop 16232bf7bebe09537b88a31669c55737b5733bd9; merge 48af0048d6911813ebf72540e2068dedaae671bc. ml/ferramentas/baixar_dreamt.py, ml/testes/test_baixar_dreamt.py, docs/ML-13-PREPARACAO-DREAMT.md e docs/PLANO-ML-13-COORTE-DREAMT.md. Evidência privada em ml/dados/processado/ml13_preparacao/; dados externos no diretório lógico dados-locais/dreamt-2.2.0; nenhum caminho de máquina publicado.
 
+---
+
+# 2026-11-05 (viii) — DOC-16: a arquitetura adotada no resto do texto do TCC
+
+**O problema, como foi entendido no início.** As inserções `CALC-01` a `CALC-04` reescreveram a
+6.4 do TCC para o sono leve com a fila do sensor, mas o resto do texto continuava descrevendo o
+*Deep Sleep* com despertar por movimento. O `DOC-16` listava cinco lugares (Justificativa, 5.4,
+5.5, 5.6 e a 6.5 com a Figura 5).
+
+**Hipótese de trabalho.** Que bastasse reescrever esses cinco trechos, num arquivo de inserção
+com o texto atual ao lado do novo, como nas `CALC-*`.
+
+**O que foi testado, e como.** O "Copy of Produto 5" (30/09) lido inteiro pelo conector do Drive
+e varrido por termos da arquitetura antiga (*Deep Sleep*, *wake*, despertar, interrupção,
+evento de movimento, GPIO27, AI > L). Cada fato do texto novo conferido no código: o
+`firmware/sketch.ino` e o `firmware/nucleo/` (tarefas, 1,7 s, 10 min, FIFO de 1.024 B, grade
+de 32 Hz, divisão do lote no `413`), o `docs/DATA-CONTRACT.md` v2.7.0 (6 características e a
+gravidade enviadas; 2 derivadas no servidor) e a `ARQ-01`. Os trechos citados como "texto atual"
+conferidos por script contra o documento, com controle positivo. A Figura 5 nova desenhada em
+SVG e convertida para PNG pelo Edge em modo sem janela, e conferida por inspeção da imagem.
+
+**Resultado medido.** `../documento/INSERCAO-DOC-16-ARQUITETURA-NO-TEXTO.md` (fora do Git) com
+**13 pontos em 9 seções**, e `figura5-fluxo-firmware-c2.svg`/`.png`. Os 17 trechos citados
+estão no documento palavra por palavra (17/17); trocando uma palavra de um deles, o script
+acusa (16/17). Nenhuma inserção `CALC-*` estava colada no documento.
+
+**Adaptação.** O alcance era maior que o listado: a varredura achou a arquitetura antiga também
+na Introdução (dois parágrafos), num objetivo específico, no Quadro 1, na 6.3.1, em quatro
+trechos da 6.3.3, na 6.3.6 e no cronograma. O mais relevante deles é o volume de dados: o texto
+estimava "dezenas a poucas centenas" de registros por noite, porque só o movimento gerava
+registro; na arquitetura adotada toda época gera, e o número é fixo, 960 por noite de 8 h. O
+objetivo específico ficou com duas saídas para o autor decidir com o orientador, porque
+reescrever um objetivo para caber no resultado é diferente de corrigir uma descrição. A 6.5 nova
+diz que o firmware de produto ainda não rodou na placa.
+
+**O que deu errado no caminho.** A primeira versão da Figura 5 tinha uma decisão "Passaram
+10 min?" cuja saída "sim" seguia para as duas raias ao mesmo tempo, com uma seta sem destino
+claro; virou uma etapa, "A cada 10 min, avisa a tarefa de envio". A primeira chamada do Edge
+pelo Bash terminou sem gerar o PNG e sem erro; pelo PowerShell, com `Start-Process -Wait`,
+gerou. A 6.5 nova citava a 7.5 para os testes do firmware, e a 7.5 do documento não os menciona
+(está na contagem de 9/09); a referência saiu do texto e virou ponto do `DOC-17`. O script que
+confere as citações quebrou na primeira execução por uma barra invertida dentro do *heredoc*.
+
+**Risco em aberto.** O texto só muda quando o autor colar, e na ordem: as `CALC-01` a `04`
+primeiro. O texto do TCC não tem resultado nenhum do classificador, e a 6.6 o trata como
+condicional — contradição com a 6.4.4 nova até o `DOC-17`, que depende da `ML-17`. A 6.5 nova
+descreve um firmware que não rodou na placa; a placa pode mudar algum detalhe (`FW-05`).
+
+**Procedência.** "Copy of Produto 5" (Google Docs, 30/09), lido em 05/11; `firmware/sketch.ino`,
+`firmware/nucleo/` (`fifo_mpu.h`, `reamostragem.h`, `payload.h`, `lote.cpp`),
+`docs/DATA-CONTRACT.md`, `web-app/lote.py`, `docs/DECISAO-ARQ-01-CADENCIA.md`; inserções
+`CALC-01` a `CALC-04`; backlog `DOC-16`, `DOC-17`.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
