@@ -1,0 +1,13 @@
+{
+  "capturas": 144,
+  "metricas_por_captura": 5,
+  "tolerancia_absoluta": 1e-12,
+  "maior_erro_absoluto": 0.0,
+  "divergencias": 0,
+  "controle_repeticao_newcastle": {
+    "celulas": 24,
+    "epocas_comparadas": 730560,
+    "predicoes_diferentes": 0,
+    "max_diferentes_celula": 0
+  }
+}

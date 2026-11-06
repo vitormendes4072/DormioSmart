@@ -1,0 +1,1014 @@
+{
+  "antes": {
+    "cabeca/base_ctx2": {
+      "c_efeito_do_lado_intra_sujeito": {
+        "kappa": {
+          "metrica": "kappa",
+          "media_a": 0.2366566755937512,
+          "media_b": 0.23409478885006357,
+          "delta_medio": 0.0025618867436876043,
+          "desvio_padrao_delta": 0.0474558489161176,
+          "ic95_baixo": -0.015611689905283837,
+          "ic95_alto": 0.01975969500259652,
+          "n_participantes": 26,
+          "significativo": false,
+          "maior_diferenca_individual": 0.10115600741392763
+        },
+        "especificidade": {
+          "metrica": "especificidade",
+          "media_a": 0.35812773847594126,
+          "media_b": 0.35709608961238654,
+          "delta_medio": 0.001031648863554694,
+          "desvio_padrao_delta": 0.049324425801920965,
+          "ic95_baixo": -0.018326171972758903,
+          "ic95_alto": 0.018564831448175372,
+          "n_participantes": 26,
+          "significativo": false,
+          "maior_diferenca_individual": 0.11203319502074693
+        }
+      },
+      "d_INCORRETO_empilhado": {
+        "kappa": {
+          "media": 0.23537573222190744,
+          "ic95_baixo": 0.17727626078966846,
+          "ic95_alto": 0.29630057201951304,
+          "n": 52
+        },
+        "especificidade": {
+          "media": 0.35761191404416387,
+          "ic95_baixo": 0.3074020825242954,
+          "ic95_alto": 0.4123041300175735,
+          "n": 52
+        }
+      }
+    },
+    "cabeca/item8b_hmm": {
+      "c_efeito_do_lado_intra_sujeito": {
+        "kappa": {
+          "metrica": "kappa",
+          "media_a": 0.24318742549850247,
+          "media_b": 0.25334847950714373,
+          "delta_medio": -0.010161054008641205,
+          "desvio_padrao_delta": 0.07232941476120683,
+          "ic95_baixo": -0.039063933919731675,
+          "ic95_alto": 0.01605113353781225,
+          "n_participantes": 26,
+          "significativo": false,
+          "maior_diferenca_individual": 0.13260587669941204
+        },
+        "especificidade": {
+          "metrica": "especificidade",
+          "media_a": 0.3058538452942343,
+          "media_b": 0.3230817784002207,
+          "delta_medio": -0.017227933105986384,
+          "desvio_padrao_delta": 0.07378556077450785,
+          "ic95_baixo": -0.04641332003523926,
+          "ic95_alto": 0.009797939315485948,
+          "n_participantes": 26,
+          "significativo": false,
+          "maior_diferenca_individual": 0.17012448132780084
+        }
+      },
+      "d_INCORRETO_empilhado": {
+        "kappa": {
+          "media": 0.2482679525028231,
+          "ic95_baixo": 0.1898825438120868,
+          "ic95_alto": 0.3095135132628637,
+          "n": 52
+        },
+        "especificidade": {
+          "media": 0.31446781184722755,
+          "ic95_baixo": 0.2682229596200339,
+          "ic95_alto": 0.36406968041529963,
+          "n": 52
+        }
+      }
+    },
+    "cabeca/item9_ctx11": {
+      "c_efeito_do_lado_intra_sujeito": {
+        "kappa": {
+          "metrica": "kappa",
+          "media_a": 0.29898306775909844,
+          "media_b": 0.31095996447401375,
+          "delta_medio": -0.011976896714915381,
+          "desvio_padrao_delta": 0.06278747292922195,
+          "ic95_baixo": -0.03576670449547728,
+          "ic95_alto": 0.010415560595850288,
+          "n_participantes": 26,
+          "significativo": false,
+          "maior_diferenca_individual": 0.14915957910301783
+        },
+        "especificidade": {
+          "metrica": "especificidade",
+          "media_a": 0.43865805535313557,
+          "media_b": 0.452363495679186,
+          "delta_medio": -0.013705440326050323,
+          "desvio_padrao_delta": 0.07355973094340604,
+          "ic95_baixo": -0.041520665503069425,
+          "ic95_alto": 0.0146297386718761,
+          "n_participantes": 26,
+          "significativo": false,
+          "maior_diferenca_individual": 0.15764331210191085
+        }
+      },
+      "d_INCORRETO_empilhado": {
+        "kappa": {
+          "media": 0.3049715161165561,
+          "ic95_baixo": 0.24444408611858143,
+          "ic95_alto": 0.36776604444535504,
+          "n": 52
+        },
+        "especificidade": {
+          "media": 0.44551077551616075,
+          "ic95_baixo": 0.3870850169339502,
+          "ic95_alto": 0.5058971005705138,
+          "n": 52
+        }
+      }
+    },
+    "cabeca/item9b_ctx11_hmm": {
+      "c_efeito_do_lado_intra_sujeito": {
+        "kappa": {
+          "metrica": "kappa",
+          "media_a": 0.28825429592610974,
+          "media_b": 0.31496059434348556,
+          "delta_medio": -0.02670629841737581,
+          "desvio_padrao_delta": 0.08330663605250736,
+          "ic95_baixo": -0.057866612056778545,
+          "ic95_alto": 0.0031176608042965443,
+          "n_participantes": 26,
+          "significativo": false,
+          "maior_diferenca_individual": 0.19237776588116218
+        },
+        "especificidade": {
+          "metrica": "especificidade",
+          "media_a": 0.3890779061653957,
+          "media_b": 0.41947284069522206,
+          "delta_medio": -0.03039493452982635,
+          "desvio_padrao_delta": 0.08567737284378436,
+          "ic95_baixo": -0.06263606750428899,
+          "ic95_alto": 0.0009940754307841413,
+          "n_participantes": 26,
+          "significativo": false,
+          "maior_diferenca_individual": 0.18672199170124482
+        }
+      },
+      "d_INCORRETO_empilhado": {
+        "kappa": {
+          "media": 0.30160744513479765,
+          "ic95_baixo": 0.24265810576028973,
+          "ic95_alto": 0.36477030787861725,
+          "n": 52
+        },
+        "especificidade": {
+          "media": 0.4042753734303088,
+          "ic95_baixo": 0.3518296676304159,
+          "ic95_alto": 0.45947369685432005,
+          "n": 52
+        }
+      }
+    },
+    "cabeca_e4/base_ctx2": {
+      "c_efeito_do_lado_intra_sujeito": {
+        "kappa": {
+          "metrica": "kappa",
+          "media_a": 0.2543324032818262,
+          "media_b": 0.24972979312958338,
+          "delta_medio": 0.004602610152242832,
+          "desvio_padrao_delta": 0.05162475399566368,
+          "ic95_baixo": -0.014186771251504663,
+          "ic95_alto": 0.024143668453175393,
+          "n_participantes": 26,
+          "significativo": false,
+          "maior_diferenca_individual": 0.1617700047558368
+        },
+        "especificidade": {
+          "metrica": "especificidade",
+          "media_a": 0.4016705308037181,
+          "media_b": 0.40612622087711314,
+          "delta_medio": -0.004455690073394991,
+          "desvio_padrao_delta": 0.0537875273121486,
+          "ic95_baixo": -0.025043606389708768,
+          "ic95_alto": 0.01678009133274135,
+          "n_participantes": 26,
+          "significativo": false,
+          "maior_diferenca_individual": 0.10268948655256721
+        }
+      },
+      "d_INCORRETO_empilhado": {
+        "kappa": {
+          "media": 0.2520310982057048,
+          "ic95_baixo": 0.1930944438441622,
+          "ic95_alto": 0.3100105571268133,
+          "n": 52
+        },
+        "especificidade": {
+          "media": 0.40389837584041566,
+          "ic95_baixo": 0.3540196485057727,
+          "ic95_alto": 0.4566650252226305,
+          "n": 52
+        }
+      }
+    },
+    "cabeca_e4/item8b_hmm": {
+      "c_efeito_do_lado_intra_sujeito": {
+        "kappa": {
+          "metrica": "kappa",
+          "media_a": 0.280575905777868,
+          "media_b": 0.27055411110772354,
+          "delta_medio": 0.010021794670144411,
+          "desvio_padrao_delta": 0.07116470344695006,
+          "ic95_baixo": -0.018321862997867113,
+          "ic95_alto": 0.03516984524291964,
+          "n_participantes": 26,
+          "significativo": false,
+          "maior_diferenca_individual": 0.17285804649189865
+        },
+        "especificidade": {
+          "metrica": "especificidade",
+          "media_a": 0.36394933376611527,
+          "media_b": 0.3738722408395857,
+          "delta_medio": -0.009922907073470362,
+          "desvio_padrao_delta": 0.0628926502238639,
+          "ic95_baixo": -0.033876015650545474,
+          "ic95_alto": 0.013177064075620467,
+          "n_participantes": 26,
+          "significativo": false,
+          "maior_diferenca_individual": 0.12637362637362637
+        }
+      },
+      "d_INCORRETO_empilhado": {
+        "kappa": {
+          "media": 0.27556500844279574,
+          "ic95_baixo": 0.2155596378839986,
+          "ic95_alto": 0.3373590968886154,
+          "n": 52
+        },
+        "especificidade": {
+          "media": 0.3689107873028505,
+          "ic95_baixo": 0.31988978261734624,
+          "ic95_alto": 0.41931759104839683,
+          "n": 52
+        }
+      }
+    },
+    "cabeca_e4/item9_ctx11": {
+      "c_efeito_do_lado_intra_sujeito": {
+        "kappa": {
+          "metrica": "kappa",
+          "media_a": 0.31714773702065674,
+          "media_b": 0.3218253552664846,
+          "delta_medio": -0.00467761824582792,
+          "desvio_padrao_delta": 0.06602176693670085,
+          "ic95_baixo": -0.030471205412025807,
+          "ic95_alto": 0.018263358016801266,
+          "n_participantes": 26,
+          "significativo": false,
+          "maior_diferenca_individual": 0.18206805731805226
+        },
+        "especificidade": {
+          "metrica": "especificidade",
+          "media_a": 0.48803975181134207,
+          "media_b": 0.5054039835641378,
+          "delta_medio": -0.017364231752795792,
+          "desvio_padrao_delta": 0.06267098514949135,
+          "ic95_baixo": -0.038849624021035756,
+          "ic95_alto": 0.005503570691775065,
+          "n_participantes": 26,
+          "significativo": false,
+          "maior_diferenca_individual": 0.1410788381742738
+        }
+      },
+      "d_INCORRETO_empilhado": {
+        "kappa": {
+          "media": 0.3194865461435707,
+          "ic95_baixo": 0.25938489946658616,
+          "ic95_alto": 0.3781751565865036,
+          "n": 52
+        },
+        "especificidade": {
+          "media": 0.49672186768773996,
+          "ic95_baixo": 0.4403975539801069,
+          "ic95_alto": 0.5549818444286966,
+          "n": 52
+        }
+      }
+    },
+    "cabeca_e4/item9b_ctx11_hmm": {
+      "c_efeito_do_lado_intra_sujeito": {
+        "kappa": {
+          "metrica": "kappa",
+          "media_a": 0.3152609613323601,
+          "media_b": 0.3343478328369974,
+          "delta_medio": -0.01908687150463729,
+          "desvio_padrao_delta": 0.08633449968878003,
+          "ic95_baixo": -0.05345460854475861,
+          "ic95_alto": 0.012068401928050154,
+          "n_participantes": 26,
+          "significativo": false,
+          "maior_diferenca_individual": 0.23104689159756545
+        },
+        "especificidade": {
+          "metrica": "especificidade",
+          "media_a": 0.44541661386656994,
+          "media_b": 0.4692604838185189,
+          "delta_medio": -0.02384386995194903,
+          "desvio_padrao_delta": 0.08463706718877655,
+          "ic95_baixo": -0.05537342026665524,
+          "ic95_alto": 0.005926875170497709,
+          "n_participantes": 26,
+          "significativo": false,
+          "maior_diferenca_individual": 0.23220973782771542
+        }
+      },
+      "d_INCORRETO_empilhado": {
+        "kappa": {
+          "media": 0.32480439708467873,
+          "ic95_baixo": 0.26517584991965826,
+          "ic95_alto": 0.3847655288287595,
+          "n": 52
+        },
+        "especificidade": {
+          "media": 0.4573385488425445,
+          "ic95_baixo": 0.4072662050380216,
+          "ic95_alto": 0.5110510507939364,
+          "n": 52
+        }
+      }
+    },
+    "pulso/base_ctx2": {
+      "c_efeito_do_lado_intra_sujeito": {
+        "kappa": {
+          "metrica": "kappa",
+          "media_a": 0.2646165145477469,
+          "media_b": 0.2562576066595042,
+          "delta_medio": 0.008358907888242655,
+          "desvio_padrao_delta": 0.047519461574391485,
+          "ic95_baixo": -0.008863154818018915,
+          "ic95_alto": 0.02782359039809884,
+          "n_participantes": 26,
+          "significativo": false,
+          "maior_diferenca_individual": 0.14617481176366837
+        },
+        "especificidade": {
+          "metrica": "especificidade",
+          "media_a": 0.4142517865973267,
+          "media_b": 0.41204185578366925,
+          "delta_medio": 0.002209930813657416,
+          "desvio_padrao_delta": 0.04891183564527175,
+          "ic95_baixo": -0.016462800489573735,
+          "ic95_alto": 0.020505091109282943,
+          "n_participantes": 26,
+          "significativo": false,
+          "maior_diferenca_individual": 0.10513447432762837
+        }
+      },
+      "d_INCORRETO_empilhado": {
+        "kappa": {
+          "media": 0.26043706060362554,
+          "ic95_baixo": 0.20353386428875286,
+          "ic95_alto": 0.3176324607711073,
+          "n": 52
+        },
+        "especificidade": {
+          "media": 0.41314682119049806,
+          "ic95_baixo": 0.36183989794996846,
+          "ic95_alto": 0.468120202540538,
+          "n": 52
+        }
+      }
+    },
+    "pulso/item8b_hmm": {
+      "c_efeito_do_lado_intra_sujeito": {
+        "kappa": {
+          "metrica": "kappa",
+          "media_a": 0.29995750574702246,
+          "media_b": 0.2879197249879837,
+          "delta_medio": 0.01203778075903879,
+          "desvio_padrao_delta": 0.07126751631976967,
+          "ic95_baixo": -0.016085990842193976,
+          "ic95_alto": 0.04153972540238142,
+          "n_participantes": 26,
+          "significativo": false,
+          "maior_diferenca_individual": 0.13355183202143397
+        },
+        "especificidade": {
+          "metrica": "especificidade",
+          "media_a": 0.3765558623196154,
+          "media_b": 0.39094785866841836,
+          "delta_medio": -0.014391996348802902,
+          "desvio_padrao_delta": 0.06436551740564553,
+          "ic95_baixo": -0.03981008613959891,
+          "ic95_alto": 0.009117222932697629,
+          "n_participantes": 26,
+          "significativo": false,
+          "maior_diferenca_individual": 0.1573033707865168
+        }
+      },
+      "d_INCORRETO_empilhado": {
+        "kappa": {
+          "media": 0.29393861536750304,
+          "ic95_baixo": 0.23532129493415158,
+          "ic95_alto": 0.3552577356774851,
+          "n": 52
+        },
+        "especificidade": {
+          "media": 0.38375186049401677,
+          "ic95_baixo": 0.333455659440933,
+          "ic95_alto": 0.4374207398716504,
+          "n": 52
+        }
+      }
+    },
+    "pulso/item9_ctx11": {
+      "c_efeito_do_lado_intra_sujeito": {
+        "kappa": {
+          "metrica": "kappa",
+          "media_a": 0.3347217911680734,
+          "media_b": 0.3260397443889482,
+          "delta_medio": 0.008682046779125114,
+          "desvio_padrao_delta": 0.058974411009059945,
+          "ic95_baixo": -0.014498794328530313,
+          "ic95_alto": 0.030515280237504456,
+          "n_participantes": 26,
+          "significativo": false,
+          "maior_diferenca_individual": 0.14454402822749524
+        },
+        "especificidade": {
+          "metrica": "especificidade",
+          "media_a": 0.5100498777733231,
+          "media_b": 0.5188809292767151,
+          "delta_medio": -0.008831051503391897,
+          "desvio_padrao_delta": 0.0724547325110195,
+          "ic95_baixo": -0.037675666436613436,
+          "ic95_alto": 0.017291107864838923,
+          "n_participantes": 26,
+          "significativo": false,
+          "maior_diferenca_individual": 0.2247191011235955
+        }
+      },
+      "d_INCORRETO_empilhado": {
+        "kappa": {
+          "media": 0.3303807677785108,
+          "ic95_baixo": 0.27246401967754535,
+          "ic95_alto": 0.3861358075211811,
+          "n": 52
+        },
+        "especificidade": {
+          "media": 0.5144654035250192,
+          "ic95_baixo": 0.4605754142579456,
+          "ic95_alto": 0.568785103331768,
+          "n": 52
+        }
+      }
+    },
+    "pulso/item9b_ctx11_hmm": {
+      "c_efeito_do_lado_intra_sujeito": {
+        "kappa": {
+          "metrica": "kappa",
+          "media_a": 0.33784310335379175,
+          "media_b": 0.34237849580940305,
+          "delta_medio": -0.004535392455611128,
+          "desvio_padrao_delta": 0.0877072670491131,
+          "ic95_baixo": -0.03863144442053871,
+          "ic95_alto": 0.029749597409495107,
+          "n_participantes": 26,
+          "significativo": false,
+          "maior_diferenca_individual": 0.22695088488188905
+        },
+        "especificidade": {
+          "metrica": "especificidade",
+          "media_a": 0.467933402470497,
+          "media_b": 0.4927157512613126,
+          "delta_medio": -0.024782348790815603,
+          "desvio_padrao_delta": 0.09920031629290704,
+          "ic95_baixo": -0.06176268067878102,
+          "ic95_alto": 0.010664207572062141,
+          "n_participantes": 26,
+          "significativo": false,
+          "maior_diferenca_individual": 0.2359550561797753
+        }
+      },
+      "d_INCORRETO_empilhado": {
+        "kappa": {
+          "media": 0.3401107995815975,
+          "ic95_baixo": 0.2831769981509701,
+          "ic95_alto": 0.3976375624292406,
+          "n": 52
+        },
+        "especificidade": {
+          "media": 0.48032457686590485,
+          "ic95_baixo": 0.43212143375684536,
+          "ic95_alto": 0.5318263292564791,
+          "n": 52
+        }
+      }
+    }
+  },
+  "depois": {
+    "cabeca/base_ctx2": {
+      "c_efeito_do_lado_intra_sujeito": {
+        "kappa": {
+          "metrica": "kappa",
+          "media_a": 0.23472519301610426,
+          "media_b": 0.23184895047832685,
+          "delta_medio": 0.00287624253777741,
+          "desvio_padrao_delta": 0.04626284278280957,
+          "ic95_baixo": -0.014642970528554448,
+          "ic95_alto": 0.02019658180707659,
+          "n_participantes": 26,
+          "significativo": false,
+          "maior_diferenca_individual": 0.0944265863730584
+        },
+        "especificidade": {
+          "metrica": "especificidade",
+          "media_a": 0.35554158789202234,
+          "media_b": 0.3542707139599865,
+          "delta_medio": 0.0012708739320357865,
+          "desvio_padrao_delta": 0.04827761518680682,
+          "ic95_baixo": -0.017229684324483484,
+          "ic95_alto": 0.018748465827369738,
+          "n_participantes": 26,
+          "significativo": false,
+          "maior_diferenca_individual": 0.10416666666666669
+        }
+      },
+      "d_INCORRETO_empilhado": {
+        "kappa": {
+          "media": 0.23328707174721555,
+          "ic95_baixo": 0.1750675300240127,
+          "ic95_alto": 0.2929472771610481,
+          "n": 52
+        },
+        "especificidade": {
+          "media": 0.35490615092600447,
+          "ic95_baixo": 0.30571533394883693,
+          "ic95_alto": 0.40786724306186173,
+          "n": 52
+        }
+      }
+    },
+    "cabeca/item8b_hmm": {
+      "c_efeito_do_lado_intra_sujeito": {
+        "kappa": {
+          "metrica": "kappa",
+          "media_a": 0.23968218688419446,
+          "media_b": 0.2522610016191545,
+          "delta_medio": -0.012578814734960002,
+          "desvio_padrao_delta": 0.0705624797882253,
+          "ic95_baixo": -0.04063125195851299,
+          "ic95_alto": 0.014369101768322054,
+          "n_participantes": 26,
+          "significativo": false,
+          "maior_diferenca_individual": 0.13260587669941204
+        },
+        "especificidade": {
+          "metrica": "especificidade",
+          "media_a": 0.3042530925439735,
+          "media_b": 0.3223057263758799,
+          "delta_medio": -0.018052633831906455,
+          "desvio_padrao_delta": 0.07253206343896831,
+          "ic95_baixo": -0.04678062084423157,
+          "ic95_alto": 0.008924129155328447,
+          "n_participantes": 26,
+          "significativo": false,
+          "maior_diferenca_individual": 0.17012448132780084
+        }
+      },
+      "d_INCORRETO_empilhado": {
+        "kappa": {
+          "media": 0.24597159425167445,
+          "ic95_baixo": 0.1879691932423761,
+          "ic95_alto": 0.30734358381469346,
+          "n": 52
+        },
+        "especificidade": {
+          "media": 0.31327940945992666,
+          "ic95_baixo": 0.2672381188033002,
+          "ic95_alto": 0.36203295102074057,
+          "n": 52
+        }
+      }
+    },
+    "cabeca/item9_ctx11": {
+      "c_efeito_do_lado_intra_sujeito": {
+        "kappa": {
+          "metrica": "kappa",
+          "media_a": 0.2931506602810891,
+          "media_b": 0.304697026651249,
+          "delta_medio": -0.011546366370159794,
+          "desvio_padrao_delta": 0.06162682041718207,
+          "ic95_baixo": -0.034684393476739524,
+          "ic95_alto": 0.010260636974069036,
+          "n_participantes": 26,
+          "significativo": false,
+          "maior_diferenca_individual": 0.14588249477058893
+        },
+        "especificidade": {
+          "metrica": "especificidade",
+          "media_a": 0.4263843862671095,
+          "media_b": 0.43667701544385173,
+          "delta_medio": -0.01029262917674234,
+          "desvio_padrao_delta": 0.07432190645083177,
+          "ic95_baixo": -0.03855016693777542,
+          "ic95_alto": 0.01754199247635408,
+          "n_participantes": 26,
+          "significativo": false,
+          "maior_diferenca_individual": 0.16182572614107882
+        }
+      },
+      "d_INCORRETO_empilhado": {
+        "kappa": {
+          "media": 0.298923843466169,
+          "ic95_baixo": 0.23644242284194186,
+          "ic95_alto": 0.3615909400822068,
+          "n": 52
+        },
+        "especificidade": {
+          "media": 0.4315307008554807,
+          "ic95_baixo": 0.3767367821119529,
+          "ic95_alto": 0.49140161148314754,
+          "n": 52
+        }
+      }
+    },
+    "cabeca/item9b_ctx11_hmm": {
+      "c_efeito_do_lado_intra_sujeito": {
+        "kappa": {
+          "metrica": "kappa",
+          "media_a": 0.28974668905947554,
+          "media_b": 0.304308504317236,
+          "delta_medio": -0.014561815257760449,
+          "desvio_padrao_delta": 0.08804269355932964,
+          "ic95_baixo": -0.047718573818477196,
+          "ic95_alto": 0.016576372309666028,
+          "n_participantes": 26,
+          "significativo": false,
+          "maior_diferenca_individual": 0.1987347024657687
+        },
+        "especificidade": {
+          "metrica": "especificidade",
+          "media_a": 0.382926264749667,
+          "media_b": 0.39952715767110075,
+          "delta_medio": -0.016600892921433782,
+          "desvio_padrao_delta": 0.09662070357914587,
+          "ic95_baixo": -0.05259539717295392,
+          "ic95_alto": 0.01863587993830571,
+          "n_participantes": 26,
+          "significativo": false,
+          "maior_diferenca_individual": 0.1864035087719298
+        }
+      },
+      "d_INCORRETO_empilhado": {
+        "kappa": {
+          "media": 0.29702759668835577,
+          "ic95_baixo": 0.23744757800691474,
+          "ic95_alto": 0.36073834719285164,
+          "n": 52
+        },
+        "especificidade": {
+          "media": 0.3912267112103838,
+          "ic95_baixo": 0.33982056027098645,
+          "ic95_alto": 0.44576964114020856,
+          "n": 52
+        }
+      }
+    },
+    "cabeca_e4/base_ctx2": {
+      "c_efeito_do_lado_intra_sujeito": {
+        "kappa": {
+          "metrica": "kappa",
+          "media_a": 0.2513129392061219,
+          "media_b": 0.24598868219936174,
+          "delta_medio": 0.005324257006760183,
+          "desvio_padrao_delta": 0.053379650525174224,
+          "ic95_baixo": -0.014277231577772281,
+          "ic95_alto": 0.025647713085821696,
+          "n_participantes": 26,
+          "significativo": false,
+          "maior_diferenca_individual": 0.1627291342316033
+        },
+        "especificidade": {
+          "metrica": "especificidade",
+          "media_a": 0.39716236848172987,
+          "media_b": 0.40140520074147595,
+          "delta_medio": -0.0042428322597461,
+          "desvio_padrao_delta": 0.05611737238140483,
+          "ic95_baixo": -0.02583848831953371,
+          "ic95_alto": 0.01805088068684735,
+          "n_participantes": 26,
+          "significativo": false,
+          "maior_diferenca_individual": 0.10513447432762835
+        }
+      },
+      "d_INCORRETO_empilhado": {
+        "kappa": {
+          "media": 0.24865081070274184,
+          "ic95_baixo": 0.1901865820759556,
+          "ic95_alto": 0.30694726554422613,
+          "n": 52
+        },
+        "especificidade": {
+          "media": 0.3992837846116029,
+          "ic95_baixo": 0.34984523592736244,
+          "ic95_alto": 0.450286681534035,
+          "n": 52
+        }
+      }
+    },
+    "cabeca_e4/item8b_hmm": {
+      "c_efeito_do_lado_intra_sujeito": {
+        "kappa": {
+          "metrica": "kappa",
+          "media_a": 0.2790233153140137,
+          "media_b": 0.27126362268413773,
+          "delta_medio": 0.007759692629876015,
+          "desvio_padrao_delta": 0.07041973414695764,
+          "ic95_baixo": -0.02009169816611346,
+          "ic95_alto": 0.032215525985987765,
+          "n_participantes": 26,
+          "significativo": false,
+          "maior_diferenca_individual": 0.16514268734711554
+        },
+        "especificidade": {
+          "metrica": "especificidade",
+          "media_a": 0.36393592645772094,
+          "media_b": 0.3732886146150344,
+          "delta_medio": -0.009352688157313393,
+          "desvio_padrao_delta": 0.05941397803382497,
+          "ic95_baixo": -0.03217608897179418,
+          "ic95_alto": 0.012342131904339011,
+          "n_participantes": 26,
+          "significativo": false,
+          "maior_diferenca_individual": 0.12637362637362637
+        }
+      },
+      "d_INCORRETO_empilhado": {
+        "kappa": {
+          "media": 0.2751434689990757,
+          "ic95_baixo": 0.21503519134236349,
+          "ic95_alto": 0.3360126527303575,
+          "n": 52
+        },
+        "especificidade": {
+          "media": 0.3686122705363777,
+          "ic95_baixo": 0.32024247933708205,
+          "ic95_alto": 0.41787285251753054,
+          "n": 52
+        }
+      }
+    },
+    "cabeca_e4/item9_ctx11": {
+      "c_efeito_do_lado_intra_sujeito": {
+        "kappa": {
+          "metrica": "kappa",
+          "media_a": 0.3131165593361877,
+          "media_b": 0.31533363686408006,
+          "delta_medio": -0.0022170775278922807,
+          "desvio_padrao_delta": 0.06448512553493603,
+          "ic95_baixo": -0.027657670053466615,
+          "ic95_alto": 0.020498744635454792,
+          "n_participantes": 26,
+          "significativo": false,
+          "maior_diferenca_individual": 0.18429707819591307
+        },
+        "especificidade": {
+          "metrica": "especificidade",
+          "media_a": 0.47952897926620425,
+          "media_b": 0.49299396072444046,
+          "delta_medio": -0.013464981458236193,
+          "desvio_padrao_delta": 0.06125112525539011,
+          "ic95_baixo": -0.035464953150044776,
+          "ic95_alto": 0.008988444583183517,
+          "n_participantes": 26,
+          "significativo": false,
+          "maior_diferenca_individual": 0.13278008298755184
+        }
+      },
+      "d_INCORRETO_empilhado": {
+        "kappa": {
+          "media": 0.3142250981001339,
+          "ic95_baixo": 0.2544406789251359,
+          "ic95_alto": 0.3730447011125547,
+          "n": 52
+        },
+        "especificidade": {
+          "media": 0.48626146999532244,
+          "ic95_baixo": 0.43120203999171375,
+          "ic95_alto": 0.5415480166710868,
+          "n": 52
+        }
+      }
+    },
+    "cabeca_e4/item9b_ctx11_hmm": {
+      "c_efeito_do_lado_intra_sujeito": {
+        "kappa": {
+          "metrica": "kappa",
+          "media_a": 0.31104828856875355,
+          "media_b": 0.322789477370268,
+          "delta_medio": -0.011741188801514407,
+          "desvio_padrao_delta": 0.0784697518714504,
+          "ic95_baixo": -0.041922527577915765,
+          "ic95_alto": 0.017440274663252785,
+          "n_participantes": 26,
+          "significativo": false,
+          "maior_diferenca_individual": 0.17895449512746528
+        },
+        "especificidade": {
+          "metrica": "especificidade",
+          "media_a": 0.4372812672457797,
+          "media_b": 0.4504238290909661,
+          "delta_medio": -0.013142561845186453,
+          "desvio_padrao_delta": 0.07854550546410635,
+          "ic95_baixo": -0.04179919302026491,
+          "ic95_alto": 0.015894609942419972,
+          "n_participantes": 26,
+          "significativo": false,
+          "maior_diferenca_individual": 0.19917012448132776
+        }
+      },
+      "d_INCORRETO_empilhado": {
+        "kappa": {
+          "media": 0.31691888296951076,
+          "ic95_baixo": 0.2565130880809068,
+          "ic95_alto": 0.3781795684826215,
+          "n": 52
+        },
+        "especificidade": {
+          "media": 0.4438525481683729,
+          "ic95_baixo": 0.39379322235831954,
+          "ic95_alto": 0.49761540447439256,
+          "n": 52
+        }
+      }
+    },
+    "pulso/base_ctx2": {
+      "c_efeito_do_lado_intra_sujeito": {
+        "kappa": {
+          "metrica": "kappa",
+          "media_a": 0.261516720598468,
+          "media_b": 0.25406362310507685,
+          "delta_medio": 0.0074530974933911635,
+          "desvio_padrao_delta": 0.047925345927632416,
+          "ic95_baixo": -0.00990668514312414,
+          "ic95_alto": 0.027008449012528742,
+          "n_participantes": 26,
+          "significativo": false,
+          "maior_diferenca_individual": 0.14253464435780042
+        },
+        "especificidade": {
+          "metrica": "especificidade",
+          "media_a": 0.40995886931875397,
+          "media_b": 0.4086898514266719,
+          "delta_medio": 0.001269017892082039,
+          "desvio_padrao_delta": 0.04949790263418957,
+          "ic95_baixo": -0.018134927134236645,
+          "ic95_alto": 0.020059849522347892,
+          "n_participantes": 26,
+          "significativo": false,
+          "maior_diferenca_individual": 0.10024449877750613
+        }
+      },
+      "d_INCORRETO_empilhado": {
+        "kappa": {
+          "media": 0.2577901718517723,
+          "ic95_baixo": 0.2009922743799485,
+          "ic95_alto": 0.3146069188955677,
+          "n": 52
+        },
+        "especificidade": {
+          "media": 0.409324360372713,
+          "ic95_baixo": 0.35843737598701697,
+          "ic95_alto": 0.4627009189615715,
+          "n": 52
+        }
+      }
+    },
+    "pulso/item8b_hmm": {
+      "c_efeito_do_lado_intra_sujeito": {
+        "kappa": {
+          "metrica": "kappa",
+          "media_a": 0.29870834551506736,
+          "media_b": 0.28265278390845056,
+          "delta_medio": 0.01605556160661682,
+          "desvio_padrao_delta": 0.07360464004387084,
+          "ic95_baixo": -0.01282559701371283,
+          "ic95_alto": 0.04550943047806781,
+          "n_participantes": 26,
+          "significativo": false,
+          "maior_diferenca_individual": 0.13636318612624948
+        },
+        "especificidade": {
+          "metrica": "especificidade",
+          "media_a": 0.37117495774220544,
+          "media_b": 0.3834662156527623,
+          "delta_medio": -0.012291257910556855,
+          "desvio_padrao_delta": 0.06691878839014352,
+          "ic95_baixo": -0.03858020025175819,
+          "ic95_alto": 0.012338884152591172,
+          "n_participantes": 26,
+          "significativo": false,
+          "maior_diferenca_individual": 0.1797752808988764
+        }
+      },
+      "d_INCORRETO_empilhado": {
+        "kappa": {
+          "media": 0.29068056471175896,
+          "ic95_baixo": 0.23322328491282715,
+          "ic95_alto": 0.348738616681918,
+          "n": 52
+        },
+        "especificidade": {
+          "media": 0.37732058669748386,
+          "ic95_baixo": 0.32877467647950354,
+          "ic95_alto": 0.4287418932176929,
+          "n": 52
+        }
+      }
+    },
+    "pulso/item9_ctx11": {
+      "c_efeito_do_lado_intra_sujeito": {
+        "kappa": {
+          "metrica": "kappa",
+          "media_a": 0.32836616992899137,
+          "media_b": 0.3169796042113257,
+          "delta_medio": 0.011386565717665626,
+          "desvio_padrao_delta": 0.05781126120829267,
+          "ic95_baixo": -0.011351529027365295,
+          "ic95_alto": 0.032264641179344224,
+          "n_participantes": 26,
+          "significativo": false,
+          "maior_diferenca_individual": 0.1421433359294806
+        },
+        "especificidade": {
+          "metrica": "especificidade",
+          "media_a": 0.4910056077802935,
+          "media_b": 0.5006568285327212,
+          "delta_medio": -0.009651220752427664,
+          "desvio_padrao_delta": 0.06596878585386319,
+          "ic95_baixo": -0.03579045578171473,
+          "ic95_alto": 0.014080041142998146,
+          "n_participantes": 26,
+          "significativo": false,
+          "maior_diferenca_individual": 0.202247191011236
+        }
+      },
+      "d_INCORRETO_empilhado": {
+        "kappa": {
+          "media": 0.32267288707015856,
+          "ic95_baixo": 0.26455042793856415,
+          "ic95_alto": 0.3782408566483842,
+          "n": 52
+        },
+        "especificidade": {
+          "media": 0.4958312181565073,
+          "ic95_baixo": 0.443770061582449,
+          "ic95_alto": 0.5489433524981633,
+          "n": 52
+        }
+      }
+    },
+    "pulso/item9b_ctx11_hmm": {
+      "c_efeito_do_lado_intra_sujeito": {
+        "kappa": {
+          "metrica": "kappa",
+          "media_a": 0.3287278023784924,
+          "media_b": 0.33817405232004066,
+          "delta_medio": -0.009446249941548275,
+          "desvio_padrao_delta": 0.08411136983319724,
+          "ic95_baixo": -0.04265072665113458,
+          "ic95_alto": 0.021643209289962193,
+          "n_participantes": 26,
+          "significativo": false,
+          "maior_diferenca_individual": 0.22483916321063843
+        },
+        "especificidade": {
+          "metrica": "especificidade",
+          "media_a": 0.45111253575428734,
+          "media_b": 0.47665453609717356,
+          "delta_medio": -0.02554200034288617,
+          "desvio_padrao_delta": 0.09469374762508355,
+          "ic95_baixo": -0.05999104542117764,
+          "ic95_alto": 0.008936420889336934,
+          "n_participantes": 26,
+          "significativo": false,
+          "maior_diferenca_individual": 0.2247191011235955
+        }
+      },
+      "d_INCORRETO_empilhado": {
+        "kappa": {
+          "media": 0.3334509273492667,
+          "ic95_baixo": 0.2762054573336429,
+          "ic95_alto": 0.39131340229507877,
+          "n": 52
+        },
+        "especificidade": {
+          "media": 0.46388353592573045,
+          "ic95_baixo": 0.41631637078011535,
+          "ic95_alto": 0.514737419943385,
+          "n": 52
+        }
+      }
+    }
+  }
+}

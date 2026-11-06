@@ -1,0 +1,296 @@
+{
+  "wearanize/cabeca": [
+    {
+      "janela": 2,
+      "n_epocas": 87795,
+      "n_segmentos": 98,
+      "n_sujeitos": 92,
+      "vizinhanca_alterada": 385,
+      "vetor_alterado": 385,
+      "maior_por_sujeito": 21,
+      "comparacao_legado": {
+        "X_identico": true,
+        "max_abs": 0.0,
+        "media_abs": 0.0,
+        "epocas_diferentes": 0,
+        "participantes_diferentes": 0,
+        "max_epocas_por_participante": 0,
+        "limite_angular_legado": 3e-14,
+        "entrada_das_duas_rodadas": "reconstruida_comum"
+      },
+      "maior_fracao_por_participante": 0.03403565640194489
+    },
+    {
+      "janela": 11,
+      "n_epocas": 87795,
+      "n_segmentos": 98,
+      "n_sujeitos": 92,
+      "vizinhanca_alterada": 2090,
+      "vetor_alterado": 2090,
+      "maior_por_sujeito": 88,
+      "comparacao_legado": {
+        "X_identico": true,
+        "max_abs": 0.0,
+        "media_abs": 0.0,
+        "epocas_diferentes": 0,
+        "participantes_diferentes": 0,
+        "max_epocas_por_participante": 0,
+        "limite_angular_legado": 3e-14,
+        "entrada_das_duas_rodadas": "reconstruida_comum"
+      },
+      "maior_fracao_por_participante": 0.1426256077795786
+    }
+  ],
+  "wearanize/cabeca_e4": [
+    {
+      "janela": 2,
+      "n_epocas": 87795,
+      "n_segmentos": 98,
+      "n_sujeitos": 92,
+      "vizinhanca_alterada": 385,
+      "vetor_alterado": 385,
+      "maior_por_sujeito": 21,
+      "comparacao_legado": {
+        "X_identico": true,
+        "max_abs": 0.0,
+        "media_abs": 0.0,
+        "epocas_diferentes": 0,
+        "participantes_diferentes": 0,
+        "max_epocas_por_participante": 0,
+        "limite_angular_legado": 3e-14,
+        "entrada_das_duas_rodadas": "reconstruida_comum"
+      },
+      "maior_fracao_por_participante": 0.03403565640194489
+    },
+    {
+      "janela": 11,
+      "n_epocas": 87795,
+      "n_segmentos": 98,
+      "n_sujeitos": 92,
+      "vizinhanca_alterada": 2090,
+      "vetor_alterado": 2090,
+      "maior_por_sujeito": 88,
+      "comparacao_legado": {
+        "X_identico": true,
+        "max_abs": 0.0,
+        "media_abs": 0.0,
+        "epocas_diferentes": 0,
+        "participantes_diferentes": 0,
+        "max_epocas_por_participante": 0,
+        "limite_angular_legado": 3e-14,
+        "entrada_das_duas_rodadas": "reconstruida_comum"
+      },
+      "maior_fracao_por_participante": 0.1426256077795786
+    }
+  ],
+  "wearanize/pulso": [
+    {
+      "janela": 2,
+      "n_epocas": 87795,
+      "n_segmentos": 98,
+      "n_sujeitos": 92,
+      "vizinhanca_alterada": 385,
+      "vetor_alterado": 385,
+      "maior_por_sujeito": 21,
+      "comparacao_legado": {
+        "X_identico": true,
+        "max_abs": 0.0,
+        "media_abs": 0.0,
+        "epocas_diferentes": 0,
+        "participantes_diferentes": 0,
+        "max_epocas_por_participante": 0,
+        "limite_angular_legado": 3e-14,
+        "entrada_das_duas_rodadas": "reconstruida_comum"
+      },
+      "maior_fracao_por_participante": 0.03403565640194489
+    },
+    {
+      "janela": 11,
+      "n_epocas": 87795,
+      "n_segmentos": 98,
+      "n_sujeitos": 92,
+      "vizinhanca_alterada": 2090,
+      "vetor_alterado": 2090,
+      "maior_por_sujeito": 88,
+      "comparacao_legado": {
+        "X_identico": true,
+        "max_abs": 0.0,
+        "media_abs": 0.0,
+        "epocas_diferentes": 0,
+        "participantes_diferentes": 0,
+        "max_epocas_por_participante": 0,
+        "limite_angular_legado": 3e-14,
+        "entrada_das_duas_rodadas": "reconstruida_comum"
+      },
+      "maior_fracao_por_participante": 0.1426256077795786
+    }
+  ],
+  "newcastle/esquerdo": [
+    {
+      "janela": 2,
+      "n_epocas": 30440,
+      "n_segmentos": 27,
+      "n_sujeitos": 27,
+      "vizinhanca_alterada": 104,
+      "vetor_alterado": 104,
+      "maior_por_sujeito": 4,
+      "comparacao_legado": {
+        "X_identico": false,
+        "max_abs": 2.842170943040401e-14,
+        "media_abs": 6.221342976485442e-17,
+        "epocas_diferentes": 1017,
+        "participantes_diferentes": 27,
+        "max_epocas_por_participante": 69,
+        "limite_angular_legado": 3e-14,
+        "entrada_das_duas_rodadas": "reconstruida_comum"
+      },
+      "maior_fracao_por_participante": 0.004347826086956522
+    },
+    {
+      "janela": 11,
+      "n_epocas": 30440,
+      "n_segmentos": 27,
+      "n_sujeitos": 27,
+      "vizinhanca_alterada": 572,
+      "vetor_alterado": 572,
+      "maior_por_sujeito": 22,
+      "comparacao_legado": {
+        "X_identico": false,
+        "max_abs": 2.842170943040401e-14,
+        "media_abs": 6.221342976485442e-17,
+        "epocas_diferentes": 1017,
+        "participantes_diferentes": 27,
+        "max_epocas_por_participante": 69,
+        "limite_angular_legado": 3e-14,
+        "entrada_das_duas_rodadas": "reconstruida_comum"
+      },
+      "maior_fracao_por_participante": 0.02391304347826087
+    }
+  ],
+  "newcastle/direito": [
+    {
+      "janela": 2,
+      "n_epocas": 29385,
+      "n_segmentos": 26,
+      "n_sujeitos": 26,
+      "vizinhanca_alterada": 100,
+      "vetor_alterado": 100,
+      "maior_por_sujeito": 4,
+      "comparacao_legado": {
+        "X_identico": false,
+        "max_abs": 2.842170943040401e-14,
+        "media_abs": 6.588159205405496e-17,
+        "epocas_diferentes": 1036,
+        "participantes_diferentes": 26,
+        "max_epocas_por_participante": 88,
+        "limite_angular_legado": 3e-14,
+        "entrada_das_duas_rodadas": "reconstruida_comum"
+      },
+      "maior_fracao_por_participante": 0.004347826086956522
+    },
+    {
+      "janela": 11,
+      "n_epocas": 29385,
+      "n_segmentos": 26,
+      "n_sujeitos": 26,
+      "vizinhanca_alterada": 550,
+      "vetor_alterado": 550,
+      "maior_por_sujeito": 22,
+      "comparacao_legado": {
+        "X_identico": false,
+        "max_abs": 2.842170943040401e-14,
+        "media_abs": 6.588159205405496e-17,
+        "epocas_diferentes": 1036,
+        "participantes_diferentes": 26,
+        "max_epocas_por_participante": 88,
+        "limite_angular_legado": 3e-14,
+        "entrada_das_duas_rodadas": "reconstruida_comum"
+      },
+      "maior_fracao_por_participante": 0.02391304347826087
+    }
+  ],
+  "walch/principal": [
+    {
+      "janela": 2,
+      "n_epocas": 23303,
+      "n_segmentos": 129,
+      "n_sujeitos": 29,
+      "vizinhanca_alterada": 347,
+      "vetor_alterado": 347,
+      "maior_por_sujeito": 54,
+      "comparacao_legado": {
+        "X_identico": true,
+        "max_abs": 0.0,
+        "media_abs": 0.0,
+        "epocas_diferentes": 0,
+        "participantes_diferentes": 0,
+        "max_epocas_por_participante": 0,
+        "limite_angular_legado": 3e-14,
+        "entrada_das_duas_rodadas": "reconstruida_comum"
+      },
+      "maior_fracao_por_participante": 0.06973684210526315
+    },
+    {
+      "janela": 11,
+      "n_epocas": 23303,
+      "n_segmentos": 129,
+      "n_sujeitos": 29,
+      "vizinhanca_alterada": 1489,
+      "vetor_alterado": 1489,
+      "maior_por_sujeito": 280,
+      "comparacao_legado": {
+        "X_identico": true,
+        "max_abs": 0.0,
+        "media_abs": 0.0,
+        "epocas_diferentes": 0,
+        "participantes_diferentes": 0,
+        "max_epocas_por_participante": 0,
+        "limite_angular_legado": 3e-14,
+        "entrada_das_duas_rodadas": "reconstruida_comum"
+      },
+      "maior_fracao_por_participante": 0.3233256351039261
+    }
+  ],
+  "walch/todos": [
+    {
+      "janela": 2,
+      "n_epocas": 25250,
+      "n_segmentos": 134,
+      "n_sujeitos": 31,
+      "vizinhanca_alterada": 367,
+      "vetor_alterado": 367,
+      "maior_por_sujeito": 54,
+      "comparacao_legado": {
+        "X_identico": true,
+        "max_abs": 0.0,
+        "media_abs": 0.0,
+        "epocas_diferentes": 0,
+        "participantes_diferentes": 0,
+        "max_epocas_por_participante": 0,
+        "limite_angular_legado": 3e-14,
+        "entrada_das_duas_rodadas": "reconstruida_comum"
+      },
+      "maior_fracao_por_participante": 0.06973684210526315
+    },
+    {
+      "janela": 11,
+      "n_epocas": 25250,
+      "n_segmentos": 134,
+      "n_sujeitos": 31,
+      "vizinhanca_alterada": 1599,
+      "vetor_alterado": 1599,
+      "maior_por_sujeito": 280,
+      "comparacao_legado": {
+        "X_identico": true,
+        "max_abs": 0.0,
+        "media_abs": 0.0,
+        "epocas_diferentes": 0,
+        "participantes_diferentes": 0,
+        "max_epocas_por_participante": 0,
+        "limite_angular_legado": 3e-14,
+        "entrada_das_duas_rodadas": "reconstruida_comum"
+      },
+      "maior_fracao_por_participante": 0.3233256351039261
+    }
+  ]
+}
