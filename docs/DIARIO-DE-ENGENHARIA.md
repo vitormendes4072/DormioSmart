@@ -7172,6 +7172,112 @@ A divisão por área é de partida e muda conforme o autor indicar os itens.
 **Risco em aberto.** Efeito quantitativo não medido: segunda PR da ML-17. Antes dela, concluir preparação e informar censo por coorte/braço, sem atribuir ao contexto uma eventual diferença nas entradas. ML-13 continua aberta e não será avaliada antes da correção/revisão e eventual adendo às previsões. Brutos externos preservados; cache/log/JUnit em ml/dados/processado/ml17/, ignorado. Nenhuma junction criada; evidência ML-13 não foi copiada. Caminhos locais completos informados ao autor. Caches novos ainda não são resultados de validação de modelos.
 
 **Procedência.** origin/develop d429d43e1b7bafacae67fbebb9a328942d63efff; branch bugfix/ML-17-fronteiras-contexto; docs/PLANO-ML-17-FRONTEIRAS-CONTEXTO.md; docs/ML-17-CODIGO-E-TESTES.md; fontes/testes desta PR; JUnit antes.xml/depois.xml em ml/dados/processado/ml17/; manifesto ML-15 mantido; entrada ML-12 de 30/10 (iv).
+---
+
+# 2026-11-05 (viii) — DOC-16: a arquitetura adotada no resto do texto do TCC
+
+**O problema, como foi entendido no início.** As inserções `CALC-01` a `CALC-04` reescreveram a
+6.4 do TCC para o sono leve com a fila do sensor, mas o resto do texto continuava descrevendo o
+*Deep Sleep* com despertar por movimento. O `DOC-16` listava cinco lugares (Justificativa, 5.4,
+5.5, 5.6 e a 6.5 com a Figura 5).
+
+**Hipótese de trabalho.** Que bastasse reescrever esses cinco trechos, num arquivo de inserção
+com o texto atual ao lado do novo, como nas `CALC-*`.
+
+**O que foi testado, e como.** O "Copy of Produto 5" (30/09) lido inteiro pelo conector do Drive
+e varrido por termos da arquitetura antiga (*Deep Sleep*, *wake*, despertar, interrupção,
+evento de movimento, GPIO27, AI > L). Cada fato do texto novo conferido no código: o
+`firmware/sketch.ino` e o `firmware/nucleo/` (tarefas, 1,7 s, 10 min, FIFO de 1.024 B, grade
+de 32 Hz, divisão do lote no `413`), o `docs/DATA-CONTRACT.md` v2.7.0 (6 características e a
+gravidade enviadas; 2 derivadas no servidor) e a `ARQ-01`. Os trechos citados como "texto atual"
+conferidos por script contra o documento, com controle positivo. A Figura 5 nova desenhada em
+SVG e convertida para PNG pelo Edge em modo sem janela, e conferida por inspeção da imagem.
+
+**Resultado medido.** `../documento/INSERCAO-DOC-16-ARQUITETURA-NO-TEXTO.md` (fora do Git) com
+**13 pontos em 9 seções**, e `figura5-fluxo-firmware-c2.svg`/`.png`. Os 17 trechos citados
+estão no documento palavra por palavra (17/17); trocando uma palavra de um deles, o script
+acusa (16/17). Nenhuma inserção `CALC-*` estava colada no documento.
+
+**Adaptação.** O alcance era maior que o listado: a varredura achou a arquitetura antiga também
+na Introdução (dois parágrafos), num objetivo específico, no Quadro 1, na 6.3.1, em quatro
+trechos da 6.3.3, na 6.3.6 e no cronograma. O mais relevante deles é o volume de dados: o texto
+estimava "dezenas a poucas centenas" de registros por noite, porque só o movimento gerava
+registro; na arquitetura adotada toda época gera, e o número é fixo, 960 por noite de 8 h. O
+objetivo específico ficou com duas saídas para o autor decidir com o orientador, porque
+reescrever um objetivo para caber no resultado é diferente de corrigir uma descrição. A 6.5 nova
+diz que o firmware de produto ainda não rodou na placa.
+
+**O que deu errado no caminho.** A primeira versão da Figura 5 tinha uma decisão "Passaram
+10 min?" cuja saída "sim" seguia para as duas raias ao mesmo tempo, com uma seta sem destino
+claro; virou uma etapa, "A cada 10 min, avisa a tarefa de envio". A primeira chamada do Edge
+pelo Bash terminou sem gerar o PNG e sem erro; pelo PowerShell, com `Start-Process -Wait`,
+gerou. A 6.5 nova citava a 7.5 para os testes do firmware, e a 7.5 do documento não os menciona
+(está na contagem de 9/09); a referência saiu do texto e virou ponto do `DOC-17`. O script que
+confere as citações quebrou na primeira execução por uma barra invertida dentro do *heredoc*.
+
+**Risco em aberto.** O texto só muda quando o autor colar, e na ordem: as `CALC-01` a `04`
+primeiro. O texto do TCC não tem resultado nenhum do classificador, e a 6.6 o trata como
+condicional — contradição com a 6.4.4 nova até o `DOC-17`, que depende da `ML-17`. A 6.5 nova
+descreve um firmware que não rodou na placa; a placa pode mudar algum detalhe (`FW-05`).
+
+**Procedência.** "Copy of Produto 5" (Google Docs, 30/09), lido em 05/11; `firmware/sketch.ino`,
+`firmware/nucleo/` (`fifo_mpu.h`, `reamostragem.h`, `payload.h`, `lote.cpp`),
+`docs/DATA-CONTRACT.md`, `web-app/lote.py`, `docs/DECISAO-ARQ-01-CADENCIA.md`; inserções
+`CALC-01` a `CALC-04`; backlog `DOC-16`, `DOC-17`.
+
+---
+
+# 2026-11-05 (ix) — REQ-01: os requisitos do dispositivo, com critério e estado
+
+**O problema, como foi entendido no início.** Um objetivo específico do TCC promete "definir os
+requisitos iniciais (dimensões, conforto, autonomia, aquecimento, custo e segurança)", e o
+cronograma do texto marca a atividade como concluída em março e abril. A leitura do "Copy of
+Produto 5" para o `DOC-16` mostrou que o texto não tem seção de requisitos. O `REQ-01` estava no
+backlog havia semanas, com uma linha só.
+
+**Hipótese de trabalho.** Que a maior parte dos requisitos já tivesse número no repositório —
+autonomia, potência, armazenamento sem rede, volume de dados, segurança dos dados — e que bastasse
+reuni-los com critério verificável, deixando explícito o que depende de bancada ou de decisão.
+
+**O que foi testado, e como.** Um script novo, `scripts/requisitos_dispositivo.py`, que não cria
+modelo: importa o `estudo_cadencia.py` e lê do firmware a partição `dormio`, o tamanho do setor da
+fila e o intervalo de envio. O `--conferir` trava 26 números, entre eles a tabela inteira de
+capacidade por consumo de placa. Controle positivo: partição reduzida a 1 MiB no
+`partitions.csv`, e envio a cada 5 min no `sketch.ino`, cada um numa execução, com os arquivos
+restaurados depois. As referências a testes no documento (invariância a rotação, dourado, fila,
+RLS) conferidas por busca no repositório.
+
+**Resultado medido.** `docs/REQUISITOS-DISPOSITIVO.md` com 23 requisitos em seis dimensões. O
+`--conferir` passa com 26 números; a partição reduzida reprovou dois (32 704 → 16 320 registros;
+272,5 → 136 h), o envio a cada 5 min reprovou 18 (épocas por lote 20 → 10, e todas as correntes,
+potências e capacidades, que dependem do rádio). O resultado mais útil é a tabela do RD-10: uma semana ligado pede **383 mAh**
+só com os circuitos integrados e até **2 552 mAh** com 10 mA de consumo fixo da placa no pior caso
+— a bateria não se escolhe pelo modelo, e sim pela medição da placa. Inserção para o TCC em
+`../documento/INSERCAO-REQ-01-REQUISITOS.md`: 6.2.3 nova, com o Quadro 3 novo e a lista das
+referências a renumerar (Quadros 3 a 6 → 4 a 7).
+
+**Adaptação.** Dois critérios não têm fonte no repositório e entraram como **propostas**, marcadas
+assim, para os autores e o orientador confirmarem: 7 dias sem recarga e no máximo 1 °C de elevação
+na face do travesseiro. O critério térmico é comparativo de propósito, para não citar um limite
+normativo de temperatura de contato que ninguém leu (`DOC-06b`). Custo e dimensões ficaram
+"abertos", sem número inventado.
+
+**O que deu errado no caminho.** A tabela de renumeração da inserção atribuía a referência ao
+"Quadro 5" à 7.2, e ela está na 7.3; e contava três ocorrências de "Quadro 3" na 6.3.3, quando são
+duas. Os dois erros foram achados conferindo a seção de cada linha no texto extraído, antes de
+entregar. A nota sobre o Quadro 2 dizia que o firmware não usa as bibliotecas Adafruit; elas
+seguem nos três programas auxiliares, e a frase foi corrigida. A primeira versão do script
+imprimia a contagem de números conferidos como literal, e não contada. E a primeira leitura das
+sabotagens foi feita com a saída cortada (`tail`), o que daria "quatro" reprovações para o envio a
+cada 5 min; refeita com a saída inteira, são 18.
+
+**Risco em aberto.** Os dois valores propostos podem mudar, e a tabela de capacidade depende dos
+7 dias. Nada do documento foi medido na placa; cinco requisitos esperam a solda. O LED de energia
+da DevKit V1, citado no RD-15, é conhecimento geral da placa, não verificado nesta.
+
+**Procedência.** `docs/REQUISITOS-DISPOSITIVO.md`; `scripts/requisitos_dispositivo.py`;
+`scripts/estudo_cadencia.py`; `firmware/partitions.csv`, `firmware/nucleo/fila_flash.h`,
+`firmware/sketch.ino`; `docs/CALCULOS-TCC.md` Z.3–Z.4; "Copy of Produto 5" (30/09), lido em 05/11.
 
 # O que este diário não cobre
 
