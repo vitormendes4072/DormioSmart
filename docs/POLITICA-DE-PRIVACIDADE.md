@@ -76,19 +76,16 @@ varredura completa registrada nas notas do `LGPD-ELIMINACAO.md`.
 
 # Política de Privacidade — Smart Dormio
 
-**Última atualização:** 3 de novembro de 2026
+**Última atualização:** 5 de novembro de 2026
 
 > **O que mudou nesta revisão** (seção 10 pede que mudança material seja
-> anunciada): **o serviço passou a ser destinado apenas a maiores de 18 anos**
-> (seção 2.1), com declaração no cadastro; e a idade ganhou **uma segunda
-> finalidade**, conhecer de forma **apenas agregada** o perfil etário de quem usa
-> o sistema (seção 3), com o acesso administrativo correspondente descrito na
-> seção 5.3.
+> anunciada): **passou a haver prazo de retenção** (seção 7). Os dados ficam
+> enquanto a conta é usada, e **uma conta sem uso há 12 meses é apagada por
+> inteiro, automaticamente**. Até aqui eles ficavam por prazo indeterminado.
 >
-> *Revisão anterior (17 de outubro de 2026):* a idade passou a ser coletada, de
-> forma opcional; a seção 6.3 passou a descrever a tela de correção de nome,
-> idade e e-mail; e a seção 6.5 passou a registrar que a idade pode ser retirada
-> pelo próprio titular.
+> *Revisão anterior (3 de novembro de 2026):* o serviço passou a ser destinado
+> apenas a maiores de 18 anos (seção 2.1), com declaração no cadastro; e a idade
+> ganhou uma segunda finalidade, apenas agregada (seção 3 e seção 5.3).
 
 O Smart Dormio é um protótipo acadêmico de monitoramento não invasivo de
 movimento durante o sono, desenvolvido como trabalho de conclusão de curso. Esta
@@ -418,17 +415,28 @@ pessoa. Dizê-lo é mais útil que anunciar um prazo que não seria cumprido.
 
 ## 7. Por quanto tempo os dados são guardados
 
-**Por prazo indeterminado, até que você os apague.**
+**Enquanto você usar o serviço, e até 12 meses depois do último uso.**
 
-⚠️ Sejamos precisos, porque aqui é fácil parecer melhor do que se é: **não existe
-política de retenção implementada**. Não há expurgo automático, não há prazo após
-o qual leituras antigas sejam descartadas, não há inatividade que dispare
-remoção. Uma leitura enviada hoje permanece no banco indefinidamente, a menos que
-você use a exclusão da seção 6.4.
+- **Enquanto a conta é usada, os dados ficam.** A finalidade deles é o seu
+  próprio histórico (seção 3), e um histórico só serve se estiver lá quando
+  você o procurar. Você pode apagá-los a qualquer momento, por inteiro, pela
+  exclusão da conta (seção 6.4).
+- **Uma conta sem uso há 12 meses é apagada por inteiro, automaticamente.** Sem
+  uso quer dizer: nenhum login, nenhuma leitura recebida de um dispositivo seu e
+  nenhuma conta criada nos últimos 12 meses — basta um desses para a conta
+  continuar. A eliminação é a mesma da seção 6.4: leituras, dispositivos, perfil
+  e o cadastro de acesso. A verificação roda uma vez por dia.
+- **Não há aviso antes dessa eliminação.** O serviço ainda não envia e-mails
+  próprios; quando passar a enviar, o aviso prévio será acrescentado aqui.
 
-Isso é uma **limitação declarada**, não uma escolha de desenho: uma política de
-retenção é trabalho não executado. Enquanto não existir, o controle está
-inteiramente com você.
+O prazo de 12 meses segue o princípio da necessidade (LGPD, art. 6º, III): uma
+conta que ninguém usa há um ano não serve mais à finalidade para a qual os dados
+foram coletados, e o tratamento termina (art. 15, I).
+
+**Cópias de segurança.** O banco de dados roda no plano gratuito do provedor
+(seção 5.2), que não faz cópias de segurança automáticas. O dado apagado — por
+você ou pelo prazo acima — sai do banco no momento da eliminação, sem cópia
+que o guarde depois.
 
 ## 8. Contato
 
@@ -462,6 +470,8 @@ Mudanças materiais — nova categoria de dado, nova finalidade, novo operador �
 serão anunciadas antes de entrarem em vigor. A data no topo indica a última
 revisão.
 
+- **5 de novembro de 2026:** prazo de retenção — eliminação automática da conta
+  sem uso há 12 meses (seção 7).
 - **3 de novembro de 2026:** serviço restrito a maiores de 18 anos, com
   declaração no cadastro (seção 2.1); segunda finalidade da idade, apenas
   agregada (seção 3, item 5, e seção 5.3).
@@ -478,7 +488,7 @@ O que esta política teve de declarar como ausente, e que vira item:
 
 | Lacuna | Onde aparece | Sugestão |
 |---|---|---|
-| Sem política de retenção | §7 | `LGPD-02` — decidir prazo e implementar expurgo, ou declarar formalmente que não haverá |
+| ~~Sem política de retenção~~ | §7 | ✅ **Fechada em 05/11 pelo `LGPD-02`:** enquanto a conta é usada, os dados ficam; conta sem login, leitura nem criação há 12 meses é eliminada por inteiro (migração `013`, agendamento diário pelo `pg_cron`). ⚠️ **Ordem do release:** a seção 7 só pode ir ao ar depois de a `013` estar aplicada e agendada na produção — o contrário do `LGPD-06`, porque aqui a política descreve um mecanismo, e não pode chegar antes dele. Fica sem aviso prévio por e-mail, que depende do SMTP (`AUTH-06`) |
 | ~~Sem tela para corrigir nome e e-mail~~ | §6.3 | ✅ **Fechada em 17/10** pelo `UI-11` (nome e e-mail) e pelo `PERFIL-01` (idade, e o nome passando a gravar em `profiles`). A sugestão original — *"barato: a policy de `update` em `profiles` já existe"* — estava certa na conclusão e errada no motivo: nenhum código de produção tocava `profiles`. Ver §5 ocorrência 4 das lições |
 | **A política não acompanhou o `UI-11` no mesmo dia** | §6.3 | ⚠️ Não é lacuna de produto, é de processo: a tela saiu na manhã de 17/10 e esta política continuou dizendo que ela não existia. Ocorrência 5 do §6 das lições. O mecanismo que faltaria para pegar isso **não existe** — nada liga uma afirmação desta política a um teste |
 | Idade declarada de menor de 18 não tem tratamento próprio | §2.1 | `LGPD-05` — decidir entre exigir consentimento de responsável, restringir o cadastro a maiores de 18, ou manter a lacuna declarada. **É decisão de produto, não de implementação** |
