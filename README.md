@@ -142,13 +142,19 @@ em `firmware/nucleo/`) e as conferências de documento — todos rodam no CI, e 
 comandos está no [`CLAUDE.md`](CLAUDE.md#testes).
 
 ### Testar sem hardware
-O simulador gera leituras de um MPU6050 e as envia com o token de um dispositivo pareado
-(Configurações → dispositivos):
+O simulador da arquitetura C2 gera uma noite sintética no formato exato do firmware — épocas de
+30 s com as seis características, em lotes para `/api/data/lote` — e a envia com o token de um
+dispositivo pareado (Configurações → dispositivos). Precisa de numpy e scipy, então roda pelo
+ambiente do `ml/`:
 ```bash
 export DORMIO_DEVICE_TOKEN="<token>"    # Windows: $env:DORMIO_DEVICE_TOKEN="<token>"
-python web-app/fake_sensor.py           # envia para o backend local
+python scripts/simulador_c2.py --seco   # só gera e resume, sem enviar
+python scripts/simulador_c2.py          # a última noite já terminada, 23h–7h, no backend local
+python scripts/simulador_c2.py --tempo-real   # uma época a cada 30 s, enviando a cada 10 min
 ```
-Com `DORMIO_API_URL` (por exemplo, `https://dormio-smart.vercel.app`), envia para outra base.
+Com `DORMIO_API_URL` (por exemplo, `https://dormio-smart.vercel.app`), envia para outra base. O
+sinal é sintético: serve para a corrente funcionar, e nada medido sobre ele é resultado. O
+`web-app/fake_sensor.py`, mais antigo, simula o caminho de leitura avulsa (`/api/data`).
 O firmware também pode ser aberto no [Wokwi](https://wokwi.com) — ver
 [`firmware/README.md`](firmware/README.md).
 
