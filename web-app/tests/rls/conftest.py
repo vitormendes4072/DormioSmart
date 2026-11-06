@@ -80,6 +80,11 @@ MIGRACOES_APLICADAS = (
     # `test_rls_idade_maioridade.py` confere a restrição, a trava e a consulta
     # agregada (`CONSULTA-publico-por-faixa.sql`).
     "012_idade_minima_18.sql",
+    # A 013 (LGPD-02, 05/11) extrai os deletes do titular para
+    # `_eliminar_titular` e cria o expurgo por inatividade de 12 meses.
+    # `test_rls_retencao.py` confere quem sai, quem fica e quem não executa;
+    # `test_rls_eliminacao.py`, que a exclusão pelo titular seguiu igual.
+    "013_retencao_por_inatividade.sql",
 )
 
 VARIAVEL = "DORMIO_RLS_DATABASE_URL"
