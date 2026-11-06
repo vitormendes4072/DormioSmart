@@ -408,6 +408,58 @@ SABOTADORES = {
         minimo=1,
         exige="test_toda_funcao_definer_tem_search_path_fixo",
     ),
+
+    # --- LGPD-02 (05/11): retenção por inatividade, migração 013 ---
+    "expurgo_ignora_leituras": dict(
+        descricao="expurgo considera so criacao e login, nao a ultima leitura",
+        sql="""
+            create or replace function public.expurgar_contas_inativas()
+            returns jsonb language plpgsql volatile security invoker set search_path = ''
+            as $SAB$
+            declare r record; n bigint := 0;
+            begin
+                for r in select u.id from auth.users u
+                          where greatest(u.created_at, u.last_sign_in_at)
+                                < now() - interval '12 months'
+                loop
+                    perform public._eliminar_titular(r.id);
+                    n := n + 1;
+                end loop;
+                return jsonb_build_object('contas_expurgadas', n, 'leituras_apagadas', 0,
+                                          'dispositivos_apagados', 0, 'contas_de_acesso_removidas', 0);
+            end;
+            $SAB$;
+        """,
+        minimo=1,
+        exige="test_um_sinal_dentro_de_12_meses_mantem_a_conta",
+    ),
+    "expurgo_executavel_por_usuario": dict(
+        descricao="authenticated ganha execute no expurgo",
+        sql="grant execute on function public.expurgar_contas_inativas() to authenticated;",
+        minimo=1,
+        exige="test_nenhum_papel_de_fora_executa_as_funcoes_novas",
+    ),
+    "eliminacao_esquece_dispositivos": dict(
+        descricao="_eliminar_titular deixa os dispositivos do titular",
+        sql="""
+            create or replace function public._eliminar_titular(p_titular uuid)
+            returns jsonb language plpgsql volatile security invoker set search_path = ''
+            as $SAB$
+            declare v_l bigint; v_p bigint;
+            begin
+                if p_titular is null then return null; end if;
+                delete from public.sleep_data where user_id = p_titular;
+                get diagnostics v_l = row_count;
+                delete from public.profiles where id = p_titular;
+                get diagnostics v_p = row_count;
+                return jsonb_build_object('leituras_apagadas', v_l, 'dispositivos_apagados', 0,
+                                          'perfil_apagado', v_p > 0, 'conta_de_acesso_removida', false);
+            end;
+            $SAB$;
+        """,
+        minimo=2,
+        exige="test_ana_apaga_a_propria_conta_por_completo",
+    ),
 }
 
 
