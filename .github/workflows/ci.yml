@@ -399,6 +399,11 @@ jobs:
       - name: Estudo do buffer
         run: python scripts/estudo_buffer.py --conferir
 
+      # REQ-01 (05/11): os numeros de `docs/REQUISITOS-DISPOSITIVO.md`, derivados
+      # do modelo de energia e lidos do firmware (particao `dormio`, setor da fila).
+      - name: Requisitos do dispositivo (REQ-01)
+        run: python scripts/requisitos_dispositivo.py --conferir
+
       # SEC-15 (03/11): nenhum sketch volta a `setInsecure()`, as copias de
       # `firmware/ca_raiz.h` sao identicas e cada raiz tem a impressao digital
       # esperada. Sem rede: a cadeia real da Vercel e conferida pelo monitor
