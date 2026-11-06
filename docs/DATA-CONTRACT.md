@@ -31,8 +31,9 @@
 > `gx/gy/gz` mudou, o que não é o caso agora.)
 
 Este documento é a fonte única de verdade sobre o dado que trafega entre
-firmware, backend e banco. Firmware (`firmware/sketch.ino`), simulador
-(`web-app/fake_sensor.py`) e backend (`web-app/routes.py`) devem sempre
+firmware, backend e banco. Firmware (`firmware/sketch.ino`), simuladores
+(`web-app/fake_sensor.py` para o caminho avulso e, desde 06/11, `scripts/simulador_c2.py`
+para o lote com características — `SIM-02`) e backend (`web-app/routes.py`) devem sempre
 declarar a mesma versão deste contrato. Divergência entre eles é bug.
 
 **Desde a v2.5.0 há um quarto interessado: o pipeline de ML.** A definição das

@@ -7376,6 +7376,69 @@ caso improvável, e a leitura do dispositivo já mantém a conta. Sem aviso por 
 `web-app/migrations/DIAGNOSTICO-migracoes-aplicadas.sql` e `README.md`;
 `docs/POLITICA-DE-PRIVACIDADE.md`, seções 7 e 10; documentação de backups do Supabase, lida em 05/11.
 
+---
+
+# 2026-11-06 (xii) — SIM-02: o simulador fala a C2
+
+**O problema, como foi entendido no início.** Com a defesa adiada para depois do MVP, a pergunta
+passou a ser o que impede o produto de funcionar de ponta a ponta. Um dos buracos: o
+`web-app/fake_sensor.py` ainda falava o protocolo da v1.1 — leitura avulsa a `/api/data` a cada
+3 s, sem `ts`, `epoca_s` nem `f`/`g`/`fs`. O caminho que o firmware C2 vai usar (lote em
+`/api/data/lote`, as duas características angulares derivadas no servidor, `/api/features`) não
+era exercitado por nada, e não havia como demonstrá-lo antes da solda.
+
+**Hipótese de trabalho.** Que um simulador que gere o sinal na grade de 32 Hz e calcule as
+características pela PRÓPRIA referência (`ml/src/features.py::features_de_epoca`, que o firmware
+copia e com que o modelo foi treinado) seja indistinguível do dispositivo para o servidor, sem uma
+terceira implementação das características. A FIFO a 50 Hz não foi simulada: ela tem vetor dourado
+próprio, e o alvo aqui é o contrato e o servidor.
+
+**O que foi testado, e como.** `scripts/simulador_c2.py`, rodado pelo ambiente do `ml/` (numpy e
+scipy não entram no backend da Vercel); o envio usa só a biblioteca padrão.
+`ml/testes/test_simulador_c2.py` confere o simulador contra o código do servidor
+(`validar_leitura`, `validar_captacao`, `lote.extrair_leituras`, `features_noite.derivar_noite`) e
+contra constantes lidas dos arquivos do firmware (`payload.h`, `lote.h`, `epoca_c2.cpp`,
+`sketch.ino`) e do `device_auth.py`. Controle positivo: 7 sabotagens no simulador. Ponta a ponta,
+fora do CI: uma noite de 8 h pela rota Flask real `/api/data/lote` e depois `GET /api/features`,
+só com o banco trocado por um falso. Também o modo tempo real, a seco, por duas épocas, e as suítes
+completas de ML e do backend.
+
+**Resultado medido.** 24 testes; ML **190 → 214**; backend **453**, inalterado. Sabotagens
+**7/7**: `ts` no fim da época (1 teste cai), lote de 61 (4), 413 sem dividir pela metade (1),
+vigília com amplitude de sono (1), `g` não unitário (5), `f` em ordem invertida (2), pendente
+tratado como aceito (2). Na rota real: 960 aceitas, 0 rejeitadas, 16 requisições; o
+`/api/features` devolveu as 960 épocas, uma só sem `d_angulo` (a primeira), e as 18 viradas do
+gabarito aparecem com `d_angulo` de 20° a 62°; no sono quieto, no máximo 5,7°. Na semente dos
+testes, a mediana do ENMO acordado é 4,4 vezes a do sono quieto (3,6 mg contra 0,82 mg).
+
+**Adaptação.** O plano dizia "lotes de 20, como o firmware". Lendo o `sketch.ino` antes de
+escrever: o firmware acorda o envio a cada 10 min (~20 épocas), mas esvazia a fila em lotes de
+**até 60** (`MAX_LEITURAS_POR_LOTE`). O modo noite usa 60, e o tempo real envia a cada 20. O
+`fake_sensor.py` ficou, como o simulador do caminho avulso, que continua no contrato e cujos
+testes do critério de movimento importam dele. Nada foi enviado à produção: o backend local fala
+com o Supabase do `.env`, e enviar é gravar na conta dona do token — isso fica com o autor.
+
+**O que deu errado no caminho.** O padrão "23h de ontem" falhou na primeira execução, à 01h11: a
+noite de ontem ainda não tinha terminado, e o servidor recusa `ts` no futuro. Passou a ser "as 23h
+mais recentes cuja noite já terminou", com teste para madrugada, meio-dia e 23h30. O limiar de 5
+vezes no teste de separação do ENMO foi chute; a medida deu 4,4, e o limiar foi para 3 — sem mexer
+no modelo de sinal para caber no teste. O script das sabotagens quebrou na quinta, lendo em UTF-8
+a saída do pytest em cp1252; o `finally` restaurou o arquivo, e a rodada foi refeita inteira. O
+script da ponta a ponta errou duas vezes antes de rodar (esqueci de passar o transporte falso; o
+`device` da consulta precisa ser um uuid).
+
+**Risco em aberto.** Com `f` em ordem invertida, o **servidor aceitou** as leituras: a ordem
+errada cabe nas faixas, como o contrato já avisa no §2.6. Só o teste que recalcula as
+características pelo nome a pegou; do lado do firmware, quem protege é o vetor dourado. O sinal é
+sintético: serve à corrente e à demonstração, e nenhum número de classificador medido sobre ele
+pode entrar no TCC como resultado — o gabarito existe para conferir a `ML-INF` funcionando, não a
+acurácia dela. O envio à conta de demonstração na produção não foi exercitado.
+
+**Procedência.** `scripts/simulador_c2.py`; `ml/testes/test_simulador_c2.py`; `README.md`,
+`web-app/README.md` e `docs/DATA-CONTRACT.md` (a menção aos simuladores); `firmware/sketch.ino`
+(`INTERVALO_DE_ENVIO_US`, `enviar_pendentes`), `firmware/nucleo/lote.h`, `payload.h`,
+`epoca_c2.cpp`; backlog `SIM-02`.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
