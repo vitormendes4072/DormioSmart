@@ -72,8 +72,11 @@ Para gerar leituras sem hardware, com o servidor no ar e o token de um dispositi
 
 ```bash
 export DORMIO_DEVICE_TOKEN="<token>"   # Windows: $env:DORMIO_DEVICE_TOKEN="<token>"
-python fake_sensor.py                  # DORMIO_API_URL troca o destino (padrão: o local)
+python fake_sensor.py                  # leitura avulsa em /api/data; DORMIO_API_URL troca o destino
 ```
+
+O formato da arquitetura C2 (épocas com características, em lote) é o do
+`scripts/simulador_c2.py`, que roda pelo ambiente do `ml/` — ver o `README.md` da raiz.
 
 ### Variáveis de ambiente
 
@@ -200,7 +203,7 @@ web-app/
 ├── features_noite.py    # as duas features angulares que só o servidor calcula (DATA-07b)
 ├── validacao.py         # validação da leitura antes de persistir
 ├── database.py          # camada Supabase
-├── fake_sensor.py       # simulador de leituras
+├── fake_sensor.py       # simulador do caminho avulso (/api/data); o da C2 é scripts/simulador_c2.py
 ├── teste_conexao.py     # confere a credencial em uso contra o Supabase
 ├── migrations/          # SQL versionado
 └── tests/               # pytest (tests/rls/ fala com um Postgres de verdade)
