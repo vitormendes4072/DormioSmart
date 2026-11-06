@@ -23,7 +23,8 @@ def test_preparacao_recusa_censo_vazio_e_pasta_preenchida(tmp_path):
 
 
 @pytest.mark.parametrize('alvo', ['fonte', 'cache', 'censo'])
-def test_guarda_execucao_acusa_mutacao(tmp_path, alvo):
+@pytest.mark.parametrize('realocado', [False, True])
+def test_guarda_execucao_acusa_mutacao(tmp_path, alvo, realocado):
     import ferramentas.rodar_ml17 as r
     fonte = tmp_path / 'antes/ml/src/epocas.py'
     fonte.parent.mkdir(parents=True)
@@ -38,11 +39,48 @@ def test_guarda_execucao_acusa_mutacao(tmp_path, alvo):
                      executor_sha256=sha(r.__file__),
                      fontes={'antes': {'arquivos': {'ml/src/epocas.py': sha(fonte)}}},
                      cache_sha256={'dados.npz': sha(arq)})
+    if realocado:
+        manifesto.update(cache='LOCAL_ANTIGO/cache', censo='LOCAL_ANTIGO/censo.json')
     (tmp_path/'manifesto.json').write_text(json.dumps(manifesto))
-    assert conferir(tmp_path) == manifesto
+    from ferramentas.resumir_ml17 import conferir_evidencia
+    executar = (lambda: conferir_evidencia(tmp_path, cache, censo)) if realocado else lambda: conferir(tmp_path)
+    assert executar() == (dict(manifesto, cache=str(cache), censo=str(censo)) if realocado else manifesto)
     {'fonte': fonte, 'cache': arq, 'censo': censo}[alvo].write_bytes(b'mudou')
     with pytest.raises(ValueError, match='mudou'):
-        conferir(tmp_path)
+        executar()
+
+
+def test_realocacao_exige_os_dois_caminhos(tmp_path):
+    from ferramentas.resumir_ml17 import conferir_evidencia
+    with pytest.raises(ValueError, match='juntos'):
+        conferir_evidencia(tmp_path, cache=tmp_path)
+
+
+@pytest.mark.parametrize('chave,valor', [('por_participante', [.2, .5]),
+                                       ('indice_max_abs', 1), ('outro_vetor', [.2, .5])])
+def test_controle_notas_individuais_na_publicacao_reprova(chave, valor):
+    from ferramentas.resumir_ml17 import validar_sem_notas
+    validar_sem_notas({'delta': {'media': .2, 'max_abs': .8, 'ic95': [.1, .3]}})
+    with pytest.raises(ValueError):
+        validar_sem_notas({'delta': {chave: valor}})
+
+
+def test_auditoria_local_recompoe_e_acusa_media_adulterada():
+    from copy import deepcopy
+    from ferramentas.auditar_resumos_ml17 import conferir_notas
+    from ferramentas.resumir_ml17 import comparacao_publica, validar_sem_notas
+    m = dict(sujeitos=['a', 'b'], por_sujeito={'kappa': [.2, .4]}, media={'kappa': .3},
+             desvio_padrao={'kappa': 2**.5/10}, n_valido={'kappa': 2},
+             ic95_baixo={'kappa': .2}, ic95_alto={'kappa': .4})
+    dados = {str(i): comparar_celula(m, m) for i in range(69)}
+    assert conferir_notas(dados) == 69
+    validar_sem_notas(comparacao_publica(dados))
+    with pytest.raises(ValueError, match='individual'):
+        validar_sem_notas(dados)  # A saída anterior, com vetores, é recusada.
+    adulterado = deepcopy(dados)
+    adulterado['0']['kappa']['antes'] += .1
+    with pytest.raises(ValueError, match='estatística'):
+        conferir_notas(adulterado)
 
 
 def test_comparador_nao_esconde_extremos_na_media():
