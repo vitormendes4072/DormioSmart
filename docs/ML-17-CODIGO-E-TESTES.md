@@ -75,11 +75,49 @@ janela global restaurada numa chamada real, lacuna apagada, cache antigo aceito,
 HMM juntando participantes e Viterbi juntando participantes. Cada uma é acusada
 pela verificação correspondente, nomeada em `test_controles_ml17.py`.
 
+
+### Revisão da cobertura dos consumidores (05/11)
+
+A revisão encontrou um ponto cego: os controles numéricos acima não acusavam
+restaurar o empilhamento global em cinco grupos de consumidores. A nova guarda
+AST `test_contrato_contexto.py` lê os fontes reais de src/, experimentos/ e
+ferramentas/ e exige `segmentos=` explícito, diferente de None. Inclui aliases
+importados e chamadas por atributo. O corpo da própria primitiva não é consumidor:
+a recursão interna já recebe um único segmento. Testes e snapshots não integram
+a árvore de produção auditada.
+
+As únicas exceções globais são a alternativa negativa de `preparar` na ML-12,
+a lista histórica de `processar` na reprodução ML-15 e a atribuição `antes` do
+censo. Cada exceção confere arquivo, função, expressão, posição sintática e
+quantidade; não libera o arquivo inteiro. O censo só estará na segunda PR.
+
+| Sabotagem isolada na fonte real | Chamadas | Omitir segmentos | Passar None |
+|---|---:|---:|---:|
+| ML-03b, otimizações | 6 | 6/6 acusadas | 6/6 acusadas |
+| ML-04, comparação de punhos | 2 | 2/2 acusadas | 2/2 acusadas |
+| ML-02 | 1 | 1/1 acusada | 1/1 acusada |
+| ML-11 | 1 | 1/1 acusada | 1/1 acusada |
+| Quantização | 1 | 1/1 acusada | 1/1 acusada |
+
+Executado nesta máquina Windows, Python 3.11.9: **5/5 grupos, 22/22 mutações**
+rejeitadas pelo mesmo contrato usado sobre a árvore sem mutação (que passa).
+Cada mutação muda somente uma chamada, em memória, antes de analisar novamente
+o fonte. A guarda também foi executada sobre os fontes Git de d429d43 e do
+develop 42c1e75: ambos reprovam, nomeando 16 chamadas sem segmentos. Isto é um
+contrato de ligação das chamadas; os quatro testes numéricos de defeito e os dois
+de regressão HMM/Viterbi continuam separados na tabela anterior. Não se apresenta
+esta guarda sintática como prova do conteúdo dos vetores de segmentos.
+
+Integração: develop 42c1e75920bfc4f09c14ac65251cc90e1f6352b1, que já inclui
+DOC-16/DOC-17 e REQ-01; ML-17 aberta resulta em 39 itens, L0 10/L1 14/L2 7/L3 8.
+Nenhuma alteração no código numérico nesta revisão; a comparação congelada da
+segunda PR continua usando 3273431 como código corrigido.
+
 ## Verificação local e limites
 
-**217 testes passaram** na suíte ML completa. Novos casos cobrem consumidores
+**223 testes passaram** na suíte ML completa. Novos casos cobrem consumidores
 reais do ML-04, persistência após filtro e passagem dos segmentos pela retomada,
-além de fronteiras, caches e controles. Piso de coleta do CI atualizado para 217.
+além de fronteiras, caches e controles. Piso de coleta do CI atualizado para 223.
 
 **Dourados intactos:** nenhuma edição nos arquivos dos testes/vetores dourados
 ou no firmware. Os 40 testes de `test_vetor_dourado.py` e os 19 de
@@ -94,7 +132,10 @@ o que não foi; qualquer mudança de direção terá adendo antes da DREAMT.
 ## Evidência local
 
 JUnit antes/depois, cópia congelada do develop e logs de preparação:
-`ml/dados/processado/ml17/`, ignorado pelo Git. Os brutos continuam no
+`dados-locais/ml17-evidencias-2026-11-05/`, fora da worktree e do Git.
+Realocação após revisão: robocopy /E /XJ; 614 arquivos conferidos por tamanho e
+SHA-256 antes de remover a origem, sem reparse points. REALOCACAO.json preserva
+o inventário e os caminhos privados originais; nenhum dado bruto foi movido. Os brutos continuam no
 armazenamento original do projeto; caminhos completos informados ao autor.
 Não se criou junction, cópia de dados brutos ou ligação para esse diretório.
 A evidência privada anterior da ML-13 permanece na sua worktree anterior.
