@@ -7161,37 +7161,123 @@ A divisão por área é de partida e muda conforme o autor indicar os itens.
 
 **Hipótese de trabalho.** Separar participantes não basta quando o filtro de épocas apaga lacunas. Preservar gravação e índice original permite respeitar segmentos e medir depois quanto os efeitos das janelas ±2/±11 dependem do defeito, sem pressupor seu tamanho.
 
-**O que foi testado, e como.** Windows local, PowerShell e Python 3.11.9. Fetch/read de develop d429d43 e regras, auditoria de todas as chamadas e antecedente ML-12 (30/10 iv). Manifesto do ZIP comparado byte a byte com a cópia separada, complemento registrado na #90 já mesclada. Seis testes de fronteira executados contra cópia congelada do develop antes de editar os fontes. Depois, suíte completa; controles de janela global, lacuna apagada, cache antigo aceito, HMM/Viterbi juntando participantes; guarda de fonte histórica adulterada, commit indisponível e manifesto vazio. Testados consumidores reais do ML-04, persistência de índices e retomada. Arquivos dourados/firmware comparados por diff. Regeneração de caches iniciada com caminhos externos explícitos, em diretório ignorado, sem treino. As três conferências são executadas antes da entrega da PR.
+**O que foi testado, e como.** Windows local, PowerShell e Python 3.11.9. Fetch/read de develop d429d43 e regras, auditoria de todas as chamadas e antecedente ML-12 (30/10 iv). Manifesto do ZIP comparado byte a byte com a cópia separada, complemento registrado na #90 já mesclada. Seis testes de fronteira executados contra cópia congelada do develop antes de editar os fontes. Depois, suíte completa; controles de janela global, lacuna apagada, cache antigo aceito, HMM/Viterbi juntando participantes; guarda de fonte histórica adulterada, commit indisponível e manifesto vazio. Testados consumidores reais do ML-04, persistência de índices e retomada. Arquivos dourados/firmware comparados por diff. Regeneração de caches iniciada com caminhos externos explícitos, em diretório ignorado, sem treino. As três conferências passam após integrar develop 42c1e75. Na revisão, guarda AST em todos os consumidores, com apenas os controles globais ML-12/ML-15/censo; 11 chamadas dos cinco grupos apontados foram sabotadas isoladamente, omitindo segmentos e passando None, 22 mutações. Guarda também rodada nos fontes Git de d429d43 e 42c1e75.
 
-**Resultado medido.** No develop: quatro testes falham por valores de janela (±2/±11 entre participantes e em lacunas), dois passam (transições HMM/Viterbi entre participantes). Corrigido: suíte completa 217 passa; cinco sabotagens detectadas. Dourados: 40 + 19 testes passam, nenhuma edição nos arquivos/vetores ou firmware. Hash do manifesto confirmado novamente: bf3f4d71fa9959c30d48598278013df0d6db8afa05bad770411e28f101780c3a. ML-17 continua aberta, 40 itens nesta branch, L0 11/L1 14/L2 7/L3 8 sobre develop d429d43. Ainda não há comparação de desempenho nem resultado DREAMT.
+**Resultado medido.** No develop: quatro testes falham por valores de janela (±2/±11 entre participantes e em lacunas), dois passam (transições HMM/Viterbi entre participantes). Corrigido inicialmente: suíte completa 217 passa; cinco sabotagens detectadas. Na revisão: 223 testes passam; 5/5 grupos e 22/22 mutações acusadas; a guarda rejeita 16 chamadas nos dois códigos antigos. Os testes dourados não mudaram. Dourados: 40 + 19 testes passam, nenhuma edição nos arquivos/vetores ou firmware. Hash do manifesto confirmado novamente: bf3f4d71fa9959c30d48598278013df0d6db8afa05bad770411e28f101780c3a. ML-17 continua aberta sobre develop 42c1e75 (já inclui DOC-16/DOC-17 e REQ-01); a contagem integrada é 39, L0 10/L1 14/L2 7/L3 8. Ainda não há comparação de desempenho nem resultado DREAMT.
 
 **Adaptação.** #90 já integrada quando a consulta ocorreu; registro complementado no corpo sem alterar develop. Contexto por segmento centralizado; caches ml17-v1 preservam índices/gravação e recusam legado. As chamadas reais foram migradas; contexto global deliberado da ML-12 e adaptador histórico da ML-15 ficam identificados. Guarda ML-15 passa a conferir os fontes no commit registrado, mantendo evidência/manifesto intactos e histórico no CI. Diretórios e checkpoints novos evitam reutilizar resultados antigos. O plano foi atualizado com os três ajustes aprovados; censo distingue vizinhança de mudança numérica e exige igualdade de entradas.
 
-**O que deu errado no caminho.** Na análise, consultas rg usaram nomes presumidos da reprodução ML-15; corrigidas com rg --files. Consultas extensas foram truncadas e repetidas em trechos menores. A conferência de documentos no sandbox da worktree nova não consultou o Git; repetida com acesso necessário. Na implementação, leituras tentaram abrir conftest.py/test_pipeline.py e pytest.ini na raiz, que não existem; o arquivo real é ml/pytest.ini. Nenhum desses comandos alterou brutos ou históricos. As quatro falhas deliberadas no develop são prova do defeito, não erro operacional.
+**O que deu errado no caminho.** Na análise, consultas rg usaram nomes presumidos da reprodução ML-15; corrigidas com rg --files. Consultas extensas foram truncadas e repetidas em trechos menores. A conferência de documentos no sandbox da worktree nova não consultou o Git; repetida com acesso necessário. Na implementação, leituras tentaram abrir conftest.py/test_pipeline.py e pytest.ini na raiz, que não existem; o arquivo real é ml/pytest.ini. Nenhum desses comandos alterou brutos ou históricos. Na revisão, o primeiro mutante da comparação de punhos alterou o argumento de _prever na mesma linha, em vez da chamada interna de empilhar_contexto; o seletor foi corrigido para escolher a função e as 22 mutações foram repetidas. A suíte no sandbox negou rename de CSV artificial (222 passam, 1 erro de permissão); repetida com acesso normal do Windows, sem alterar o teste. Leituras extensas foram truncadas; trechos relevantes relidos. As quatro falhas deliberadas no develop são prova do defeito, não erro operacional.
 
-**Risco em aberto.** Efeito quantitativo não medido: segunda PR da ML-17. Antes dela, concluir preparação e informar censo por coorte/braço, sem atribuir ao contexto uma eventual diferença nas entradas. ML-13 continua aberta e não será avaliada antes da correção/revisão e eventual adendo às previsões. Brutos externos preservados; cache/log/JUnit em ml/dados/processado/ml17/, ignorado. Nenhuma junction criada; evidência ML-13 não foi copiada. Caminhos locais completos informados ao autor. Caches novos ainda não são resultados de validação de modelos.
+**Risco em aberto.** Efeito quantitativo não medido: segunda PR da ML-17. Antes dela, concluir preparação e informar censo por coorte/braço, sem atribuir ao contexto uma eventual diferença nas entradas. ML-13 continua aberta e não será avaliada antes da correção/revisão e eventual adendo às previsões. Brutos externos preservados; cache/log/JUnit realocados para dados-locais/ml17-evidencias-2026-11-05/, fora da worktree e do Git (614 arquivos, tamanho/SHA-256 conferidos, robocopy /E /XJ, origem removida depois da conferência). Nenhuma junction criada; evidência ML-13 não foi copiada. Caminhos locais completos informados ao autor. Caches novos ainda não são resultados de validação de modelos.
 
-**Procedência.** origin/develop d429d43e1b7bafacae67fbebb9a328942d63efff; branch bugfix/ML-17-fronteiras-contexto; docs/PLANO-ML-17-FRONTEIRAS-CONTEXTO.md; docs/ML-17-CODIGO-E-TESTES.md; fontes/testes desta PR; JUnit antes.xml/depois.xml em ml/dados/processado/ml17/; manifesto ML-15 mantido; entrada ML-12 de 30/10 (iv).
+**Procedência.** origin/develop d429d43e1b7bafacae67fbebb9a328942d63efff; branch bugfix/ML-17-fronteiras-contexto; docs/PLANO-ML-17-FRONTEIRAS-CONTEXTO.md; docs/ML-17-CODIGO-E-TESTES.md; fontes/testes desta PR; JUnit antes.xml/depois.xml em dados-locais/ml17-evidencias-2026-11-05/; manifesto ML-15 mantido; entrada ML-12 de 30/10 (iv).
+---
+
+# 2026-11-05 (viii) — DOC-16: a arquitetura adotada no resto do texto do TCC
+
+**O problema, como foi entendido no início.** As inserções `CALC-01` a `CALC-04` reescreveram a
+6.4 do TCC para o sono leve com a fila do sensor, mas o resto do texto continuava descrevendo o
+*Deep Sleep* com despertar por movimento. O `DOC-16` listava cinco lugares (Justificativa, 5.4,
+5.5, 5.6 e a 6.5 com a Figura 5).
+
+**Hipótese de trabalho.** Que bastasse reescrever esses cinco trechos, num arquivo de inserção
+com o texto atual ao lado do novo, como nas `CALC-*`.
+
+**O que foi testado, e como.** O "Copy of Produto 5" (30/09) lido inteiro pelo conector do Drive
+e varrido por termos da arquitetura antiga (*Deep Sleep*, *wake*, despertar, interrupção,
+evento de movimento, GPIO27, AI > L). Cada fato do texto novo conferido no código: o
+`firmware/sketch.ino` e o `firmware/nucleo/` (tarefas, 1,7 s, 10 min, FIFO de 1.024 B, grade
+de 32 Hz, divisão do lote no `413`), o `docs/DATA-CONTRACT.md` v2.7.0 (6 características e a
+gravidade enviadas; 2 derivadas no servidor) e a `ARQ-01`. Os trechos citados como "texto atual"
+conferidos por script contra o documento, com controle positivo. A Figura 5 nova desenhada em
+SVG e convertida para PNG pelo Edge em modo sem janela, e conferida por inspeção da imagem.
+
+**Resultado medido.** `../documento/INSERCAO-DOC-16-ARQUITETURA-NO-TEXTO.md` (fora do Git) com
+**13 pontos em 9 seções**, e `figura5-fluxo-firmware-c2.svg`/`.png`. Os 17 trechos citados
+estão no documento palavra por palavra (17/17); trocando uma palavra de um deles, o script
+acusa (16/17). Nenhuma inserção `CALC-*` estava colada no documento.
+
+**Adaptação.** O alcance era maior que o listado: a varredura achou a arquitetura antiga também
+na Introdução (dois parágrafos), num objetivo específico, no Quadro 1, na 6.3.1, em quatro
+trechos da 6.3.3, na 6.3.6 e no cronograma. O mais relevante deles é o volume de dados: o texto
+estimava "dezenas a poucas centenas" de registros por noite, porque só o movimento gerava
+registro; na arquitetura adotada toda época gera, e o número é fixo, 960 por noite de 8 h. O
+objetivo específico ficou com duas saídas para o autor decidir com o orientador, porque
+reescrever um objetivo para caber no resultado é diferente de corrigir uma descrição. A 6.5 nova
+diz que o firmware de produto ainda não rodou na placa.
+
+**O que deu errado no caminho.** A primeira versão da Figura 5 tinha uma decisão "Passaram
+10 min?" cuja saída "sim" seguia para as duas raias ao mesmo tempo, com uma seta sem destino
+claro; virou uma etapa, "A cada 10 min, avisa a tarefa de envio". A primeira chamada do Edge
+pelo Bash terminou sem gerar o PNG e sem erro; pelo PowerShell, com `Start-Process -Wait`,
+gerou. A 6.5 nova citava a 7.5 para os testes do firmware, e a 7.5 do documento não os menciona
+(está na contagem de 9/09); a referência saiu do texto e virou ponto do `DOC-17`. O script que
+confere as citações quebrou na primeira execução por uma barra invertida dentro do *heredoc*.
+
+**Risco em aberto.** O texto só muda quando o autor colar, e na ordem: as `CALC-01` a `04`
+primeiro. O texto do TCC não tem resultado nenhum do classificador, e a 6.6 o trata como
+condicional — contradição com a 6.4.4 nova até o `DOC-17`, que depende da `ML-17`. A 6.5 nova
+descreve um firmware que não rodou na placa; a placa pode mudar algum detalhe (`FW-05`).
+
+**Procedência.** "Copy of Produto 5" (Google Docs, 30/09), lido em 05/11; `firmware/sketch.ino`,
+`firmware/nucleo/` (`fifo_mpu.h`, `reamostragem.h`, `payload.h`, `lote.cpp`),
+`docs/DATA-CONTRACT.md`, `web-app/lote.py`, `docs/DECISAO-ARQ-01-CADENCIA.md`; inserções
+`CALC-01` a `CALC-04`; backlog `DOC-16`, `DOC-17`.
 
 ---
 
-# 2026-11-05 (vii) — ML-17: entradas comuns e protocolo antes das rodadas
+# 2026-11-05 (ix) — REQ-01: os requisitos do dispositivo, com critério e estado
 
-**O problema, como foi entendido no início.** Segunda PR da ML-17, dependente da #91: medir o efeito da correção com fontes congelados, entradas iguais e dispersão por participante/célula. O autor exigiu informar o censo antes das rodadas.
+**O problema, como foi entendido no início.** Um objetivo específico do TCC promete "definir os
+requisitos iniciais (dimensões, conforto, autonomia, aquecimento, custo e segurança)", e o
+cronograma do texto marca a atividade como concluída em março e abril. A leitura do "Copy of
+Produto 5" para o `DOC-16` mostrou que o texto não tem seção de requisitos. O `REQ-01` estava no
+backlog havia semanas, com uma linha só.
 
-**Hipótese de trabalho.** Uma comparação com os mesmos X/y/IDs nas duas versões isola a correção de contexto/segmentação, mesmo se a regeneração apresentar diferença numérica frente ao cache histórico. A magnitude do efeito nas métricas ainda não é conhecida.
+**Hipótese de trabalho.** Que a maior parte dos requisitos já tivesse número no repositório —
+autonomia, potência, armazenamento sem rede, volume de dados, segurança dos dados — e que bastasse
+reuni-los com critério verificável, deixando explícito o que depende de bancada ou de decisão.
 
-**O que foi testado, e como.** Windows local, Python 3.11.9. CI da #91 verde. Regeneração de Wearanize, Newcastle e Walch por caminhos externos explícitos. Comparação de entradas e censo de épocas/vetores ±2/±11, testes das guardas de execução, comparador, verificador independente e limite angular. Código antigo d429d43 e corrigido 3273431 fixados; executor e hashes serão congelados antes do ajuste. Protocolo em docs/ML-17-PROTOCOLO-RODADAS.md, comunicado ao autor antes de treinar.
+**O que foi testado, e como.** Um script novo, `scripts/requisitos_dispositivo.py`, que não cria
+modelo: importa o `estudo_cadencia.py` e lê do firmware a partição `dormio`, o tamanho do setor da
+fila e o intervalo de envio. O `--conferir` trava 26 números, entre eles a tabela inteira de
+capacidade por consumo de placa. Controle positivo: partição reduzida a 1 MiB no
+`partitions.csv`, e envio a cada 5 min no `sketch.ino`, cada um numa execução, com os arquivos
+restaurados depois. As referências a testes no documento (invariância a rotação, dourado, fila,
+RLS) conferidas por busca no repositório.
 
-**Resultado medido.** Censo: nos três braços Wearanize, 385/2.090 de 87.795 épocas mudam em ±2/±11; Newcastle esquerdo 104/572 de 30.440; direito 100/550 de 29.385; Walch principal 347/1.489 de 23.303; todos 367/1.599 de 25.250. Mudanças estruturais e numéricas coincidem. Wearanize/Walch exatos contra legado; Newcastle difere apenas nos ângulos, máximo 2,842170943040401e-14 graus, médias absolutas 6,221342976485442e-17 / 6,588159205405496e-17 nas oito features. O protocolo registra dispersão por participante. Suíte completa 224 passou antes do último teste do limite; oito testes do executor/comparador/limite e o teste do censo passam. Ainda nenhuma métrica das rodadas reais foi produzida.
+**Resultado medido.** `docs/REQUISITOS-DISPOSITIVO.md` com 23 requisitos em seis dimensões. O
+`--conferir` passa com 26 números; a partição reduzida reprovou dois (32 704 → 16 320 registros;
+272,5 → 136 h), o envio a cada 5 min reprovou 18 (épocas por lote 20 → 10, e todas as correntes,
+potências e capacidades, que dependem do rádio). O resultado mais útil é a tabela do RD-10: uma semana ligado pede **383 mAh**
+só com os circuitos integrados e até **2 552 mAh** com 10 mA de consumo fixo da placa no pior caso
+— a bateria não se escolhe pelo modelo, e sim pela medição da placa. Inserção para o TCC em
+`../documento/INSERCAO-REQ-01-REQUISITOS.md`: 6.2.3 nova, com o Quadro 3 novo e a lista das
+referências a renumerar (Quadros 3 a 6 → 4 a 7).
 
-**Adaptação.** As duas versões usarão o mesmo cache reconstruído, com hashes das entradas carregadas conferidos antes/depois. Não se declara reprodução bit a bit dos caches históricos. Padrão do censo continua exato; opção angular explícita, limitada a 3e-14 graus nas duas colunas, registra o desvio frente ao legado. Demais colunas, rótulos, IDs/ordem e igualdade entre rodadas permanecem exatos. A causa do arredondamento não foi determinada. O protocolo foi congelado antes dos resultados, sem alterar P1–P3 ou o código dos dourados.
+**Adaptação.** Dois critérios não têm fonte no repositório e entraram como **propostas**, marcadas
+assim, para os autores e o orientador confirmarem: 7 dias sem recarga e no máximo 1 °C de elevação
+na face do travesseiro. O critério térmico é comparativo de propósito, para não citar um limite
+normativo de temperatura de contato que ninguém leu (`DOC-06b`). Custo e dimensões ficaram
+"abertos", sem número inventado.
 
-**O que deu errado no caminho.** A preparação Walch recebeu inicialmente a pasta acima de labels/ e parou com FileNotFoundError; a pasta real do pacote foi identificada e passada explicitamente. A primeira conferência exata acusou corretamente a pequena divergência nas features Newcastle e bloqueou a execução; os desvios foram quantificados antes da escolha de entradas comuns. Nenhum bruto/cache histórico foi sobrescrito.
+**O que deu errado no caminho.** A tabela de renumeração da inserção atribuía a referência ao
+"Quadro 5" à 7.2, e ela está na 7.3; e contava três ocorrências de "Quadro 3" na 6.3.3, quando são
+duas. Os dois erros foram achados conferindo a seção de cada linha no texto extraído, antes de
+entregar. A nota sobre o Quadro 2 dizia que o firmware não usa as bibliotecas Adafruit; elas
+seguem nos três programas auxiliares, e a frase foi corrigida. A primeira versão do script
+imprimia a contagem de números conferidos como literal, e não contada. E a primeira leitura das
+sabotagens foi feita com a saída cortada (`tail`), o que daria "quatro" reprovações para o envio a
+cada 5 min; refeita com a saída inteira, são 18.
 
-**Risco em aberto.** Rodadas e relatório ainda pendentes; ML-17 e ML-13 abertas. Diferenças nas predições não precisam se limitar às épocas de fronteira, pois o modelo é reajustado. Caches/logs/execuções ficam em ml/dados/processado/ml17/, ignorado; brutos permanecem no armazenamento original do projeto, sem cópia/junction nova. Caminhos absolutos informados ao autor. Avaliação DREAMT continua bloqueada pela ML-17 e eventual adendo.
+**Risco em aberto.** Os dois valores propostos podem mudar, e a tabela de capacidade depende dos
+7 dias. Nada do documento foi medido na placa; cinco requisitos esperam a solda. O LED de energia
+da DevKit V1, citado no RD-15, é conhecimento geral da placa, não verificado nesta.
 
-**Procedência.** PR #91, fonte corrigido 3273431b6ebec4e3889bd3f01c3593b32dc0137e; fonte antigo d429d43e1b7bafacae67fbebb9a328942d63efff; branch bugfix/ML-17-rodadas-comparadas; docs/ML-17-PROTOCOLO-RODADAS.md; ferramentas rodar_ml17/comparar_ml17/conferir_predicoes_ml17/censo_contexto_ml17; evidência privada censo.json/divergencia_entradas.json e logs de preparação.
+**Procedência.** `docs/REQUISITOS-DISPOSITIVO.md`; `scripts/requisitos_dispositivo.py`;
+`scripts/estudo_cadencia.py`; `firmware/partitions.csv`, `firmware/nucleo/fila_flash.h`,
+`firmware/sketch.ino`; `docs/CALCULOS-TCC.md` Z.3–Z.4; "Copy of Produto 5" (30/09), lido em 05/11.
 
 # O que este diário não cobre
 
