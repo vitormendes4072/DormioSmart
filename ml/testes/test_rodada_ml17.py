@@ -56,6 +56,24 @@ def test_realocacao_exige_os_dois_caminhos(tmp_path):
         conferir_evidencia(tmp_path, cache=tmp_path)
 
 
+def test_executor_realocado_aceita_so_diferenca_crlf(monkeypatch, tmp_path):
+    import hashlib
+    import ferramentas.rodar_ml17 as r
+    from ferramentas.resumir_ml17 import conferir_evidencia
+    executor = tmp_path / 'executor.py'
+    executor.write_bytes(b'x = 1\r\n')
+    monkeypatch.setattr(r, '__file__', str(executor))
+    censo = tmp_path / 'censo.json'
+    censo.write_bytes(b'censo')
+    m = dict(censo_sha256=sha(censo), executor_sha256=hashlib.sha256(b'x = 1\n').hexdigest(),
+             fontes={}, cache_sha256={})
+    (tmp_path / 'manifesto.json').write_text(json.dumps(m))
+    assert conferir_evidencia(tmp_path, tmp_path, censo)['censo'] == str(censo)
+    executor.write_bytes(b'x = 2\r\n')
+    with pytest.raises(ValueError, match='executor mudou'):
+        conferir_evidencia(tmp_path, tmp_path, censo)
+
+
 @pytest.mark.parametrize('chave,valor', [('por_participante', [.2, .5]),
                                        ('indice_max_abs', 1), ('outro_vetor', [.2, .5])])
 def test_controle_notas_individuais_na_publicacao_reprova(chave, valor):

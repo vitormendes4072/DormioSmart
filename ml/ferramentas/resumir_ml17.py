@@ -39,7 +39,10 @@ def conferir_evidencia(pasta, cache=None, censo=None):
     if cache is None:
         return rodar_ml17.conferir(pasta)
     m = json.loads((pasta / 'manifesto.json').read_text(encoding='utf-8'))
-    if rodar_ml17.sha(censo) != m['censo_sha256'] or rodar_ml17.sha(rodar_ml17.__file__) != m['executor_sha256']:
+    executor = Path(rodar_ml17.__file__).read_bytes()
+    hashes_executor = {hashlib.sha256(executor).hexdigest(),
+                       hashlib.sha256(executor.replace(b'\r\n', b'\n')).hexdigest()}
+    if rodar_ml17.sha(censo) != m['censo_sha256'] or m['executor_sha256'] not in hashes_executor:
         raise ValueError('censo/executor mudou depois do congelamento')
     for nome, entrada in m['fontes'].items():
         for arq, digest in entrada['arquivos'].items():
