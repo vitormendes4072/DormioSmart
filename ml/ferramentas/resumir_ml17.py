@@ -147,6 +147,13 @@ def exportar(pasta, saida, executor_ref, cache=None, censo=None):
                      ambiente=ambientes[0], ambientes_identicos=True, execucoes=estados,
                      fontes_analise_sha256_utf8_lf=hashes,
                      arquivos_publicos_sha256_utf8_lf={n: normalizado((saida / n).read_bytes()) for n in ARQUIVOS},
+                     atribuicao_wearanize_oa=dict(
+                         colecao='https://doi.org/10.34973/xrmf-5726',
+                         colecao_primaria='https://doi.org/10.34973/j6jf-9e62',
+                         artigo='https://doi.org/10.1093/sleepadvances/zpaf094',
+                         licenca_do_pacote='https://creativecommons.org/licenses/by/4.0/',
+                         alteracoes='Métricas calculadas pelo projeto; comparação de contexto global e segmentado.',
+                         uso='Pesquisa científica, sem tentativa de identificação; créditos completos na coleção.'),
                      privacidade='Somente agregados; notas e índices individuais, predições/rótulos ficam locais.')
     gravar('manifesto.json', manifesto)
     print('Exportadas 69 celulas, F1, efeitos, censo, punhos, verificacao e manifesto.')
