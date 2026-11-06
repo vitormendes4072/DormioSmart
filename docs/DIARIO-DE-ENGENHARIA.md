@@ -7206,6 +7206,60 @@ descreve um firmware que não rodou na placa; a placa pode mudar algum detalhe (
 `docs/DATA-CONTRACT.md`, `web-app/lote.py`, `docs/DECISAO-ARQ-01-CADENCIA.md`; inserções
 `CALC-01` a `CALC-04`; backlog `DOC-16`, `DOC-17`.
 
+---
+
+# 2026-11-05 (ix) — REQ-01: os requisitos do dispositivo, com critério e estado
+
+**O problema, como foi entendido no início.** Um objetivo específico do TCC promete "definir os
+requisitos iniciais (dimensões, conforto, autonomia, aquecimento, custo e segurança)", e o
+cronograma do texto marca a atividade como concluída em março e abril. A leitura do "Copy of
+Produto 5" para o `DOC-16` mostrou que o texto não tem seção de requisitos. O `REQ-01` estava no
+backlog havia semanas, com uma linha só.
+
+**Hipótese de trabalho.** Que a maior parte dos requisitos já tivesse número no repositório —
+autonomia, potência, armazenamento sem rede, volume de dados, segurança dos dados — e que bastasse
+reuni-los com critério verificável, deixando explícito o que depende de bancada ou de decisão.
+
+**O que foi testado, e como.** Um script novo, `scripts/requisitos_dispositivo.py`, que não cria
+modelo: importa o `estudo_cadencia.py` e lê do firmware a partição `dormio`, o tamanho do setor da
+fila e o intervalo de envio. O `--conferir` trava 26 números, entre eles a tabela inteira de
+capacidade por consumo de placa. Controle positivo: partição reduzida a 1 MiB no
+`partitions.csv`, e envio a cada 5 min no `sketch.ino`, cada um numa execução, com os arquivos
+restaurados depois. As referências a testes no documento (invariância a rotação, dourado, fila,
+RLS) conferidas por busca no repositório.
+
+**Resultado medido.** `docs/REQUISITOS-DISPOSITIVO.md` com 23 requisitos em seis dimensões. O
+`--conferir` passa com 26 números; a partição reduzida reprovou dois (32 704 → 16 320 registros;
+272,5 → 136 h), o envio a cada 5 min reprovou 18 (épocas por lote 20 → 10, e todas as correntes,
+potências e capacidades, que dependem do rádio). O resultado mais útil é a tabela do RD-10: uma semana ligado pede **383 mAh**
+só com os circuitos integrados e até **2 552 mAh** com 10 mA de consumo fixo da placa no pior caso
+— a bateria não se escolhe pelo modelo, e sim pela medição da placa. Inserção para o TCC em
+`../documento/INSERCAO-REQ-01-REQUISITOS.md`: 6.2.3 nova, com o Quadro 3 novo e a lista das
+referências a renumerar (Quadros 3 a 6 → 4 a 7).
+
+**Adaptação.** Dois critérios não têm fonte no repositório e entraram como **propostas**, marcadas
+assim, para os autores e o orientador confirmarem: 7 dias sem recarga e no máximo 1 °C de elevação
+na face do travesseiro. O critério térmico é comparativo de propósito, para não citar um limite
+normativo de temperatura de contato que ninguém leu (`DOC-06b`). Custo e dimensões ficaram
+"abertos", sem número inventado.
+
+**O que deu errado no caminho.** A tabela de renumeração da inserção atribuía a referência ao
+"Quadro 5" à 7.2, e ela está na 7.3; e contava três ocorrências de "Quadro 3" na 6.3.3, quando são
+duas. Os dois erros foram achados conferindo a seção de cada linha no texto extraído, antes de
+entregar. A nota sobre o Quadro 2 dizia que o firmware não usa as bibliotecas Adafruit; elas
+seguem nos três programas auxiliares, e a frase foi corrigida. A primeira versão do script
+imprimia a contagem de números conferidos como literal, e não contada. E a primeira leitura das
+sabotagens foi feita com a saída cortada (`tail`), o que daria "quatro" reprovações para o envio a
+cada 5 min; refeita com a saída inteira, são 18.
+
+**Risco em aberto.** Os dois valores propostos podem mudar, e a tabela de capacidade depende dos
+7 dias. Nada do documento foi medido na placa; cinco requisitos esperam a solda. O LED de energia
+da DevKit V1, citado no RD-15, é conhecimento geral da placa, não verificado nesta.
+
+**Procedência.** `docs/REQUISITOS-DISPOSITIVO.md`; `scripts/requisitos_dispositivo.py`;
+`scripts/estudo_cadencia.py`; `firmware/partitions.csv`, `firmware/nucleo/fila_flash.h`,
+`firmware/sketch.ino`; `docs/CALCULOS-TCC.md` Z.3–Z.4; "Copy of Produto 5" (30/09), lido em 05/11.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
