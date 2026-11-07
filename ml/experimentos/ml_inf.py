@@ -40,7 +40,7 @@ def sha_dados(X, y, ids):
     return h.hexdigest()
 
 
-def dados_ml17(evidencia, cfg):
+def dados_ml17(evidencia, cfg, *, temporal=False):
     """Reutiliza somente o cache local congelado e autenticado pela ML-17."""
     publico = json.loads((ML / 'experimentos/saida/ml17/manifesto.json').read_text(encoding='utf-8'))
     privado = json.loads((evidencia / 'rodadas/manifesto.json').read_text(encoding='utf-8'))
@@ -57,7 +57,7 @@ def dados_ml17(evidencia, cfg):
         return dados
 
     def externa(pasta, padrao, *, esquerdo=False):
-        Xs, ys, ids = [], [], []
+        Xs, ys, ids, gravacoes, indices = [], [], [], [], []
         for p in sorted((cache / pasta).glob(padrao)):
             with np.load(BytesIO(bytes_conferidos(p)), allow_pickle=False) as d:
                 if esquerdo and str(d['lado']) != 'esquerdo':
@@ -65,7 +65,13 @@ def dados_ml17(evidencia, cfg):
                 Xs.append(d['X'])
                 ys.append(d['y'])
                 ids.append(np.full(len(d['y']), str(d['id'])))
-        return tuple(np.concatenate(v) for v in (Xs, ys, ids))
+                if temporal:
+                    gravacoes.append(np.broadcast_to(d['gravacao'], d['y'].shape))
+                    indices.append(d['indice_epoca'])
+        dados = dict(zip(('X', 'y', 'id'), map(np.concatenate, (Xs, ys, ids))))
+        if temporal:
+            dados.update(gravacao=np.concatenate(gravacoes), indice_epoca=np.concatenate(indices))
+        return dados
 
     # O pickle só é aberto após verificar os bytes contra o manifesto público.
     pkl, = cache.glob('_cache_base_wearanize_ml17-v1_*.pkl')
@@ -74,16 +80,20 @@ def dados_ml17(evidencia, cfg):
         raise ValueError('configuração ou seleção de treino diferente da ML-17')
     treino = treino['dados']['cabeca']
     conjuntos = {
-        'wearanize/cabeca': (treino['X'], treino['y'], treino['id']),
+        'wearanize/cabeca': treino,
         'newcastle': externa('newcastle_features_ml17-v1', f'{cfg.hash}_*.npz', esquerdo=True),
         'walch_principal': externa('walch_features_ml17-v1', f'{cfg.hash}_principal_*.npz'),
     }
+    if temporal:
+        conjuntos['walch_todos'] = externa('walch_features_ml17-v1', f'{cfg.hash}_todos_*.npz')
     execucoes = publico['execucoes']
     for nome, dados in conjuntos.items():
         rodada = 'newcastle' if nome == 'wearanize/cabeca' else nome
         esperado = execucoes['depois/' + rodada]['hash_entradas'][nome]['sha256']
-        if sha_dados(*dados) != esperado:
+        if sha_dados(dados['X'], dados['y'], dados['id']) != esperado:
             raise ValueError('X/y/IDs carregados divergem da rodada ML-17: ' + nome)
+    if not temporal:
+        conjuntos = {k: (d['X'], d['y'], d['id']) for k, d in conjuntos.items()}
     return conjuntos, publico['atribuicao_wearanize_oa']
 
 
