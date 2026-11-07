@@ -163,12 +163,12 @@ def vetor_dourado(modelo):
                 epocas_simulador=360, tolerancia_absoluta=1e-12, casos=casos)
 
 
-def avaliar(y, pred, ids, seed):
+def avaliar(y, pred, ids, seed, *, metricas=METRICAS):
     trivial = np.ones_like(y)
-    m = avaliar_por_sujeito(y, pred, ids, metricas=METRICAS, seed=seed).dict()
-    t = avaliar_por_sujeito(y, trivial, ids, metricas=METRICAS, seed=seed).dict()
+    m = avaliar_por_sujeito(y, pred, ids, metricas=metricas, seed=seed).dict()
+    t = avaliar_por_sujeito(y, trivial, ids, metricas=metricas, seed=seed).dict()
     pareado = {k: delta_publico(delta(t['por_sujeito'][k], m['por_sujeito'][k], seed))
-               for k in METRICAS}
+               for k in metricas}
     confusoes = {}
     for nome, p in (('modelo', pred), ('sempre_sono', trivial)):
         d = avaliar_epoca(y, p).dict()

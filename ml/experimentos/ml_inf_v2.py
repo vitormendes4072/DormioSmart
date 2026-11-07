@@ -17,7 +17,7 @@ from sklearn.linear_model import LogisticRegression
 from threadpoolctl import threadpool_info, threadpool_limits
 
 from experimentos.ml03b_ablacao import normalizar_por_sujeito
-from experimentos.ml04_validacao_externa import CONFIGS
+from experimentos.ml04_validacao_externa import CONFIGS, METRICAS
 from experimentos.ml_inf import ML, RAIZ, avaliar, dados_ml17, sha_dados
 from ferramentas.resumir_ml17 import validar_sem_notas
 from src.avaliar import split_por_sujeito
@@ -269,7 +269,9 @@ def executar(evidencia_ml17, dados_dreamt, referencia_ml13, saida):
                 np.testing.assert_allclose(p, p_sklearn, rtol=0, atol=TOLERANCIA)
                 np.testing.assert_array_equal(pred, final.predict(Xt))
                 detalhe = dict(max_diferenca_probabilidade=float(np.max(np.abs(p - p_sklearn))))
-            agregado, locais[nome] = avaliar(d['y'], pred, d['id'], cfg.seed)
+            # A ordem das métricas faz parte do protocolo do bootstrap do ML-04.
+            metricas = (*METRICAS, 'f1_sono', 'f1_vigilia')
+            agregado, locais[nome] = avaliar(d['y'], pred, d['id'], cfg.seed, metricas=metricas)
             if nome != 'wearanize/cabeca':
                 ref = (referencia_ml13 if nome == 'dreamt' else evidencia_ml17 /
                        f'rodadas/depois/ml/experimentos/saida/ml17_rodada/{nome}.json')
