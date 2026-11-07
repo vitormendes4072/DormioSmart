@@ -48,3 +48,8 @@ experimentos/saida/ml17/*
 !experimentos/saida/ml17/lados_intra_sujeito.json
 !experimentos/saida/ml17/verificacao_predicoes.json
 !experimentos/saida/ml17/manifesto.json
+
+# ML-13: a auditoria ML-14 inventaria a raiz das saídas históricas.
+!experimentos/saida/ml13/
+experimentos/saida/ml13/*
+!experimentos/saida/ml13/agregados.json
