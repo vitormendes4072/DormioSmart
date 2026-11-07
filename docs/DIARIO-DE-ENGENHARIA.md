@@ -7509,7 +7509,7 @@ acurácia dela. O envio à conta de demonstração na produção não foi exerci
 
 **O que foi testado, e como.** Windows local, Python 3.11.9 e bibliotecas pinadas. Branch avançada para b5335ac. Executados 103 hashes oficiais e inspeção de cinco colunas nas 100 gravações. Os dois testes direcionados à CLI reprovaram na base, pois a opção dreamt era rejeitada. Suíte local com os casos de escala, fase, pares ACC adulterados, lacuna, cauda truncada, coluna ausente, passagem de caminho, contexto global deliberado e ordem de notas invertida. Controles históricos da ML-17 repetidos na suíte. Protocolo commitado em c328342 antes dos resultados. Cache congelado Wearanize conferido pelo SHA-256 e pelas fontes de 3273431, com conferência da seleção atual de 92 participantes e dos três hashes X/y/IDs antes do treino. Executado ML-04 com uma thread nativa. A contagem dos pools foi verificada em processo separado com os mesmos imports e ambiente. Exportação recompôs médias e desvios para 65 combinações célula/métrica e conferiu a cobertura das 13 matrizes somadas. Lidos Metadata.txt, PhysioNet e a descrição original. Executadas as três conferências do repositório.
 
-**Resultado medido.** 203.531.428 linhas contínuas de 64 Hz com pares ACC idênticos. Três gravações com fases PSG incompatíveis, 233 transições fora da fase inicial e máximo de 120 em uma gravação. Nos 97 arquivos avaliados, 77.738 épocas e 101 segmentos após excluir 97 caudas e quatro épocas sem rótulo. O máximo por gravação foi um em cada categoria de descarte. P1 κ 0,4224 com IC95 [0,3867, 0,4562]. P2 Δκ +0,030 e Δespecificidade +0,054, ambos ICs acima de zero. P3 Δespecificidade −0,052, IC abaixo de zero. Maior |Δκ| individual 0,3672 em cabeça-E4/±11+HMM (média +0,0355). Maior queda individual de especificidade −0,4000 em cabeça/±11+HMM (média −0,0013). 278 testes passaram. Backlog sobre b5335ac passou de 39 para 38 abertos, L0 de 8 para 7, L1 14, L2 7, L3 10.
+**Resultado medido.** 203.531.428 linhas contínuas de 64 Hz com pares ACC idênticos. Três gravações com fases PSG incompatíveis, 233 transições fora da fase inicial e máximo de 120 em uma gravação. Nos 97 arquivos avaliados, 77.738 épocas e 101 segmentos após excluir 97 caudas e quatro épocas sem rótulo. O máximo por gravação foi um em cada categoria de descarte. P1 κ 0,4218 com IC95 [0,3867, 0,4562]. P2 Δκ +0,030 e Δespecificidade +0,054, ambos ICs acima de zero. P3 Δespecificidade −0,052, IC abaixo de zero. Maior |Δκ| individual 0,3672 em cabeça-E4/±11+HMM (média +0,0355). Maior queda individual de especificidade −0,4000 em cabeça/±11+HMM (média −0,0013). 278 testes passaram. Backlog sobre b5335ac passou de 39 para 38 abertos, L0 de 8 para 7, L1 14, L2 7, L3 10.
 
 **Adaptação.** Critério de uma única fase PSG fixado antes da rodada. Três gravações excluídas por ambiguidade, sem usar desempenho para decidir. O carregador recupera a grade nativa de 32 Hz de pares duplicados, converte para g e conserva o índice original ao filtrar. Uma cópia auditada do cache ML-17 foi identificada para o código atual, mantendo dados e segmentos. A exportação mantém agregados com ICs, dispersão, contagem válida e extremos sem identificadores. P1–P3 e adendo de 05/11 preservados.
 
@@ -7518,6 +7518,27 @@ acurácia dela. O envio à conta de demonstração na produção não foi exerci
 **Risco em aberto.** As três fases ambíguas limitam o resultado à coorte avaliável. Os ICs são por participante e refletem as configurações congeladas. O desempenho no travesseiro exige validação física. A exportação de um modelo de inferência no servidor é trabalho da ML-INF. Evidência em dados-locais/ml13-dreamt-avaliacao-2026-11-06 e brutos em dados-locais/dreamt-2.2.0 e no armazenamento Wearanize original. Seis raízes verificadas sem junctions. Revisão e merge ficam com os responsáveis.
 
 **Procedência.** feature/ML-13-coorte-dreamt sobre b5335acb9e0164d9be6f471602eb83fe15f1782c. Protocolo/código executado c328342367de4079b99a6f7c420e4768ac8230b6. docs/ML-13-PROTOCOLO-TEMPORAL.md, docs/RELATORIO-ML-13-DREAMT.md, ml/experimentos/saida/ml13/agregados.json. Resultado individual, log, ambiente, cache auditado e JUnit ficam na evidência externa.
+
+
+---
+
+# 2026-11-07 — ML-13: controles de fronteira na avaliação DREAMT
+
+**O problema, como foi entendido no início.** A revisão da #98 encontrou duas lacunas nos testes. A guarda de contexto só exigia o argumento segmentos, e o teste da grade PSG não exercitava diretamente o descarte de uma época com dois estágios.
+
+**Hipótese de trabalho.** Um caso com dois participantes e uma lacuna deve acusar a junção indevida pela janela e pelo Viterbi. O rótulo da época só pode ser usado quando o estágio original é uniforme, inclusive quando os dois estágios são ambos de sono.
+
+**O que foi testado, e como.** No Windows local, Python 3.11.9. Foi exercitada a entrada real rodar do ML-04 na coorte DREAMT, com catálogo, treino e destino sintéticos. Na variante de janela, o teste compara a matriz recebida pelo classificador com as janelas de referência. Na variante HMM, usa probabilidades fixas, roda o Viterbi real e confere a matriz de confusão. Foram executadas quatro mutações isoladas nos fontes, restaurados após cada execução. As três de segmentação juntam toda a matriz, apenas a lacuna ou apenas os participantes. A quarta aceita o estágio da primeira amostra. A suíte foi repetida após restaurar todos os fontes.
+
+**Resultado medido.** Cada mutação de segmentação derrubou os dois casos da CLI de avaliação. A mutação de rótulo derrubou os dois casos de estágio misto (W/N2 e N1/N2). Os sete casos novos passam com a implementação correta. A suíte completa passou com 285 testes. P1 no diário xiv foi corrigido de 0,4224 para 0,4218, conforme o JSON e o relatório.
+
+**Adaptação.** A regra de uniformidade existente foi extraída para uma função testável, preservando o controle de fase no carregador. Os testes separam o resultado esperado da função que produz os segmentos. Nenhuma nova rodada de modelos foi necessária para esse controle sintético.
+
+**O que deu errado no caminho.** Uma leitura tentou expansão de chaves no PowerShell. A primeira suíte completa foi iniciada antes do recibo final das mutações. A suíte foi repetida depois que a restauração foi confirmada e os 285 casos passaram novamente.
+
+**Risco em aberto.** A cobertura verifica fronteiras e rótulos com sinais artificiais. As limitações da coorte real continuam no relatório da ML-13. Nesta etapa os testes usam apenas arquivos sintéticos temporários, sem dados brutos ou junctions. O próximo item é o artefato de modelo da ML-INF.
+
+**Procedência.** Base origin/develop 8859101, branch bugfix/ML-13-cobertura-dreamt. Revisão da #98, ml/testes/test_dreamt.py e ml/src/carregar/dreamt.py.
 
 # O que este diário não cobre
 
