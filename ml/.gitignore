@@ -58,3 +58,4 @@ experimentos/saida/ml13/*
 !experimentos/saida/ml-inf/
 experimentos/saida/ml-inf/*
 !experimentos/saida/ml-inf/agregados.json
+!experimentos/saida/ml-inf/agregados-v2.json

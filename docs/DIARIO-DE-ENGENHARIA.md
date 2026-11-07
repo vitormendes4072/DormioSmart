@@ -7561,6 +7561,26 @@ acurácia dela. O envio à conta de demonstração na produção não foi exerci
 
 **Procedência.** feature/ML-INF-modelo-cabeca, descendente da PR #99, sobre develop 8859101. docs/ML-INF-PROTOCOLO-MVP.md, docs/RELATORIO-ML-INF-MVP.md, ml/experimentos/ml_inf.py, ml/modelos/ml-inf-cabeca-v1.json e ml/testes/fixtures/ml-inf-cabeca-v1-dourado.json.
 
+---
+
+# 2026-11-07 (iii) — ML-INF v2: reproduzir e exportar o modelo validado
+
+**O problema.** A v1 exportou seis features, escala global e uma época isolada. A revisão da #100 pediu o mesmo pipeline validado no ML-04 e na ML-13. Na Newcastle, a v1 detectou 10 de 21.270 épocas de sono.
+
+**Hipótese.** O modelo de cabeça original com oito features, z-score por gravação e contexto ±11 reproduz os agregados publicados quando recebe as entradas históricas. O mesmo JSON deve reproduzir a pontuação do scikit-learn em noites simuladas que passam pela derivação angular do servidor.
+
+**O que foi testado.** No Windows local, Python 3.11.9, foram reconferidos os 103 SHA-256 DREAMT e os caches da ML-17. Rodaram 92 ajustes LOSO, o treino final, quatro avaliações externas e duas noites C2 de 960 e 959 épocas. Uma auditoria independente refez κ e confusões. Os JSONs publicados e o caminho de classificação do ML-04 foram lidos no Git. Nove controles positivos acusaram z-score por pessoa, contexto global, corte em 45 s, piso de 22, ausência de conversão angular, JSON v1, ordem invertida, coeficiente adulterado e empate como sono.
+
+**Resultado medido.** 299 testes de ML passaram após restaurar as mutações. κ da v2 no LOSO foi 0,4569. O JSON reproduziu κ 0,2953 na Newcastle, 0,4082 e 0,4123 nas variantes Walch e 0,3470 na DREAMT, com os ICs publicados e maior diferença por participante igual a zero. Na DREAMT, Δκ médio entre v2 e v1 foi +0,3133 e o maior módulo individual foi 0,7194. Nenhuma gravação histórica ficou abaixo do piso. Nos dourados, a probabilidade conferiu em 1e-12 e a classe foi exata, inclusive no empate em 0,5.
+
+**Adaptação.** A ordem original das métricas foi recuperada para reproduzir a sequência de amostras do bootstrap. No contrato do modelo, d_angulo ausente na borda vira zero antes do z-score. O histórico conserva o cálculo angular de origem. Os testes expõem o efeito da lacuna, do limiar temporal e da referência por noite ou por trecho.
+
+**O que deu errado no caminho.** O fetch inicial foi bloqueado pela sandbox na administração Git da worktree e foi repetido com a permissão apropriada. Houve globs incompatíveis com PowerShell e uma consulta CIM sem acesso. A primeira conferência de documentos acusou o relatório ainda fora do índice. A primeira rodada parou no IC da Newcastle, com desvio máximo de 0,00558 nos limites por causa da ordem do bootstrap. Na suíte isolada, o Windows negou a renomeação de um CSV sintético no temporário da sandbox. A suíte foi repetida fora da sandbox.
+
+**Risco em aberto.** A rota consumidora e sua execução dos dourados ficam na PR de backend. As coortes externas são de punho e o sensor Wearanize de cabeça é preso à cabeça. No produto a espuma pode atenuar e atrasar o movimento. Dados e notas individuais em dados-locais, com a evidência da rodada em ml-inf-cabeca-v2-2026-11-07-final. Worktree e raízes de execução conferidas sem junctions.
+
+**Procedência.** PR #100, branch feature/ML-INF-modelo-cabeca. Protocolo anterior à rodada em e8e4875 e execução definitiva em 367cd96. docs/ML-INF-PROTOCOLO-V2.md, docs/RELATORIO-ML-INF-V2.md, ml/experimentos/ml_inf_v2.py, ml/modelos/ml-inf-cabeca-v2.json e agregados da ML-13, ML-17 e ML-INF.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
