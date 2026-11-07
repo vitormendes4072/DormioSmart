@@ -7498,6 +7498,27 @@ acurácia dela. O envio à conta de demonstração na produção não foi exerci
 
 **Procedência.** Segunda branch bugfix/ML-17-rodadas-comparadas, dependente da #91. develop 1b5c82c70262604f57d49faad4bcdafc71488ef1; executor 11fa3751088ca123d121f921f69e9813dd1c6d59; código antes d429d43 e depois 3273431; análise/exportação 3eadf88. docs/RELATORIO-ML-17-CONTEXTO.md e docs/ADENDO-ML-13-APOS-ML-17.md; ml/experimentos/saida/ml17/manifesto.json; ferramentas/resumir_ml17.py e auditar_resumos_ml17.py; evidência privada REALOCACAO.json, auditoria-agregados-06nov.json e publicacao-06nov.xml na pasta externa informada ao autor.
 
+
+---
+
+# 2026-11-06 (xiv) — ML-13: validação externa DREAMT
+
+**O problema, como foi entendido no início.** Após a integração da ML-17, avaliar a terceira coorte externa com P1–P3 congeladas. A preparação da versão 2.2.0 já estava integrada. Faltavam a inspeção da grade, o carregador por caminho explícito e a avaliação com as quatro configurações e os três braços do ML-04.
+
+**Hipótese de trabalho.** No braço pulso, κ de ±11 acima de zero, ganho conjunto de κ e especificidade com ±11 sobre ±2 e queda de especificidade com HMM sobre ±2. O protocolo exige 30 s alinhados ao PSG e separação de gravações e lacunas.
+
+**O que foi testado, e como.** Windows local, Python 3.11.9 e bibliotecas pinadas. Branch avançada para b5335ac. Executados 103 hashes oficiais e inspeção de cinco colunas nas 100 gravações. Os dois testes direcionados à CLI reprovaram na base, pois a opção dreamt era rejeitada. Suíte local com os casos de escala, fase, pares ACC adulterados, lacuna, cauda truncada, coluna ausente, passagem de caminho, contexto global deliberado e ordem de notas invertida. Controles históricos da ML-17 repetidos na suíte. Protocolo commitado em c328342 antes dos resultados. Cache congelado Wearanize conferido pelo SHA-256 e pelas fontes de 3273431, com conferência da seleção atual de 92 participantes e dos três hashes X/y/IDs antes do treino. Executado ML-04 com uma thread nativa. A contagem dos pools foi verificada em processo separado com os mesmos imports e ambiente. Exportação recompôs médias e desvios para 65 combinações célula/métrica e conferiu a cobertura das 13 matrizes somadas. Lidos Metadata.txt, PhysioNet e a descrição original. Executadas as três conferências do repositório.
+
+**Resultado medido.** 203.531.428 linhas contínuas de 64 Hz com pares ACC idênticos. Três gravações com fases PSG incompatíveis, 233 transições fora da fase inicial e máximo de 120 em uma gravação. Nos 97 arquivos avaliados, 77.738 épocas e 101 segmentos após excluir 97 caudas e quatro épocas sem rótulo. O máximo por gravação foi um em cada categoria de descarte. P1 κ 0,4224 com IC95 [0,3867, 0,4562]. P2 Δκ +0,030 e Δespecificidade +0,054, ambos ICs acima de zero. P3 Δespecificidade −0,052, IC abaixo de zero. Maior |Δκ| individual 0,3672 em cabeça-E4/±11+HMM (média +0,0355). Maior queda individual de especificidade −0,4000 em cabeça/±11+HMM (média −0,0013). 278 testes passaram. Backlog sobre b5335ac passou de 39 para 38 abertos, L0 de 8 para 7, L1 14, L2 7, L3 10.
+
+**Adaptação.** Critério de uma única fase PSG fixado antes da rodada. Três gravações excluídas por ambiguidade, sem usar desempenho para decidir. O carregador recupera a grade nativa de 32 Hz de pares duplicados, converte para g e conserva o índice original ao filtrar. Uma cópia auditada do cache ML-17 foi identificada para o código atual, mantendo dados e segmentos. A exportação mantém agregados com ICs, dispersão, contagem válida e extremos sem identificadores. P1–P3 e adendo de 05/11 preservados.
+
+**O que deu errado no caminho.** A consulta Git no sandbox retornou que a operação exigia uma worktree e foi repetida com acesso ao Git compartilhado. A seleção pytest com -k cli também encontrou o caso de colunas clínicas, que falhou antes de o módulo existir. O preparo de cache inicialmente omitiu --item, exigido pela CLI. A segunda preparação foi encerrada após verificar a cópia equivalente do cache ML-17. O teste de exportação primeiro encontrou a chave de IC incompatível com a guarda de publicação. Em seguida, a sabotagem tentou inverter uma tupla com reverse. Ajustados o esquema e a fixture, a suíte passou.
+
+**Risco em aberto.** As três fases ambíguas limitam o resultado à coorte avaliável. Os ICs são por participante e refletem as configurações congeladas. O desempenho no travesseiro exige validação física. A exportação de um modelo de inferência no servidor é trabalho da ML-INF. Evidência em dados-locais/ml13-dreamt-avaliacao-2026-11-06 e brutos em dados-locais/dreamt-2.2.0 e no armazenamento Wearanize original. Seis raízes verificadas sem junctions. Revisão e merge ficam com os responsáveis.
+
+**Procedência.** feature/ML-13-coorte-dreamt sobre b5335acb9e0164d9be6f471602eb83fe15f1782c. Protocolo/código executado c328342367de4079b99a6f7c420e4768ac8230b6. docs/ML-13-PROTOCOLO-TEMPORAL.md, docs/RELATORIO-ML-13-DREAMT.md, ml/experimentos/saida/ml13_dreamt_agregados.json. Resultado individual, log, ambiente, cache auditado e JUnit ficam na evidência externa.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

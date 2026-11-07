@@ -73,7 +73,7 @@ def test_cauda_truncada_fica_fora(tmp_path):
     assert info['cauda_incompleta'] == 1
 
 
-def test_carregador_comum_separa_lacuna_e_participante(tmp_path):
+def test_carregador_comum_separa_lacuna_e_participante(tmp_path, monkeypatch):
     from dataclasses import replace
     from src.carregar import carregar
     from src.configuracao import carregar_config
@@ -90,6 +90,12 @@ def test_carregador_comum_separa_lacuna_e_participante(tmp_path):
     np.testing.assert_array_equal(conj.segmentos, [0, 0, 1, 2, 2, 3])
     np.testing.assert_array_equal(conj.X[2, ::8], [1, 1, 1])
     np.testing.assert_array_equal(conj.X[3, ::8], [2, 2, 2])
+    import src.carregar as carregadores
+    original = carregadores.empilhar_contexto
+    monkeypatch.setattr(carregadores, 'empilhar_contexto', lambda X, n, **_: original(X, n))
+    sabotado = carregar('dreamt', cfg, pasta=tmp_path)
+    with pytest.raises(AssertionError):
+        np.testing.assert_array_equal(sabotado.X[2, ::8], [1, 1, 1])
 
 
 def test_cli_dreamt_exige_dados_brutos(monkeypatch, capsys):
@@ -109,6 +115,9 @@ def test_cli_dreamt_encaminha_o_caminho(monkeypatch, tmp_path):
     brutos = tmp_path / 'dreamt'
     brutos.mkdir()
     chamadas = []
+    for nome in ('DADOS_BRUTOS', 'DADOS_WEARANIZE', 'PASTA_CACHE', 'PASTA_FEATURES',
+                 'PASTA_FEATURES_WALCH', 'PASTA_SAIDA'):
+        monkeypatch.setattr(ml04, nome, getattr(ml04, nome))
     monkeypatch.setattr(ml04, 'rodar', lambda *a, **kw: chamadas.append(kw))
     monkeypatch.setattr(ml04, 'comparar', lambda *a: None)
     monkeypatch.setattr(sys, 'argv', ['ml04', '--coorte', 'dreamt',
@@ -117,3 +126,29 @@ def test_cli_dreamt_encaminha_o_caminho(monkeypatch, tmp_path):
     assert ml04.main() == 0
     assert chamadas[0]['coorte'] == 'dreamt'
     assert chamadas[0]['dados_dreamt'] == Path(brutos)
+
+
+def test_publicacao_aplica_p2_conjunta_e_recusa_pares_desalinhados():
+    from copy import deepcopy
+    from ferramentas.resumir_ml13 import resumir
+    from src.avaliar import avaliar_por_sujeito
+    ids = np.array(['privado-a', 'privado-a', 'privado-b', 'privado-b'])
+    y = np.array([0, 1, 0, 1])
+    base = avaliar_por_sujeito(y, np.ones_like(y), ids).dict()
+    bom = avaliar_por_sujeito(y, y, ids).dict()
+    configs = dict(base_ctx2=base, item8b_hmm=base, item9_ctx11=bom, item9b_ctx11_hmm=bom)
+    r = dict(teste={'dataset': 'dreamt'}, seed=20260910, hash_config='teste', utc='teste',
+             treino={}, qualidade={}, sha256_manifesto_dreamt='', sha256_treino={},
+             resultados={b: deepcopy(configs) for b in ('pulso', 'cabeca', 'cabeca_e4')},
+             trivial_no_dreamt=base, confusoes={}, exclusoes_locais={'privado-c': 'fase'})
+    p = resumir(r)
+    assert 'privado-' not in str(p)
+    assert p['previsoes']['P2']['resultado'] == 'confirmada'
+    m = r['resultados']['pulso']['item9_ctx11']
+    m['por_sujeito']['especificidade'] = [0., 0.]
+    for k in ('media', 'desvio_padrao', 'ic95_baixo', 'ic95_alto'):
+        m[k]['especificidade'] = 0.
+    assert resumir(r)['previsoes']['P2']['resultado'] == 'inconclusiva'
+    m['sujeitos'] = m['sujeitos'][::-1]
+    with pytest.raises(ValueError, match='desalinhadas'):
+        resumir(r)
