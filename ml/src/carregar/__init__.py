@@ -26,7 +26,7 @@ from .base import ConjuntoEpocas, Gravacao
 
 __all__ = ["carregar", "processar_gravacoes", "DATASETS", "POSICOES_WEARANIZE"]
 
-DATASETS = ("newcastle", "sintetico", "walch", "wearanize")
+DATASETS = ("newcastle", "sintetico", "walch", "wearanize", "dreamt")
 
 #: Posições de sensor do Wearanize+. Só este dataset aceita `posicao=`.
 POSICOES_WEARANIZE = ("cabeca", "pulso", "coxa")
@@ -137,6 +137,19 @@ def carregar(nome: str, cfg: Config | None = None, **opcoes) -> ConjuntoEpocas:
     """
     cfg = cfg or carregar_config()
     nome = nome.lower().strip()
+
+    if nome == "dreamt":
+        if set(opcoes) != {"pasta"} or opcoes["pasta"] is None:
+            raise ValueError("carregar('dreamt') exige pasta explícita")
+        from .dreamt import carregar_features_dreamt
+        dados, perdas, _ = carregar_features_dreamt(opcoes["pasta"], cfg)
+        seg = segmentos_epocas(dados["id"], dados["gravacao"], dados["indice_epoca"])
+        X = empilhar_contexto(dados["X"], cfg.contexto_epocas, segmentos=seg)
+        nomes = tuple(n + (f"__{d:+d}" if d else "")
+                      for d in range(-cfg.contexto_epocas, cfg.contexto_epocas + 1)
+                      for n in NOMES_FEATURES)
+        return ConjuntoEpocas(X, dados["y"], dados["id"], nomes,
+                              dict(perdas, dataset=nome, hash_config=cfg.hash), seg)
 
     if nome == "newcastle":
         if opcoes:

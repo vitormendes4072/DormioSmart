@@ -77,7 +77,7 @@ for _fluxo in (sys.stdout, sys.stderr):
     if hasattr(_fluxo, "reconfigure"):
         _fluxo.reconfigure(encoding="utf-8")
 
-from src.avaliar import avaliar_por_sujeito                                # noqa: E402
+from src.avaliar import avaliar_epoca, avaliar_por_sujeito                 # noqa: E402
 from src.carregar.wearanize import sujeitos_com_posicoes                   # noqa: E402
 from src.configuracao import carregar_config, fixar_seed                   # noqa: E402
 from src.cache_temporal import (VERSAO, caminho_base, ler_base, ler_features, salvar_features, segmentos_de)
@@ -299,13 +299,44 @@ def _trivial(y, ids, seed):
 
 
 def rodar(cfg, seed: int, punho: str, destino: Path, coorte: str = "newcastle",
-          incluir_baixa_taxa: bool = False) -> dict:
+          incluir_baixa_taxa: bool = False, *, dados_dreamt: Path | None = None) -> dict:
     sujeitos = sujeitos_com_posicoes(["cabeca", "pulso"], **({"pasta": DADOS_WEARANIZE} if DADOS_WEARANIZE else {}))
     base = _base_wearanize(sujeitos, cfg)
 
     # Os nomes `_ncl` ficam: o Newcastle foi a primeira coorte, e o caminho
     # dele não muda. Com `coorte="walch"` eles carregam a Walch.
-    if coorte == "walch":
+    metricas = METRICAS
+    extra = {}
+    confusoes = {}
+    if coorte == "dreamt":
+        import hashlib
+        from ferramentas.baixar_dreamt import CSV_ESPERADOS
+        from src.carregar.dreamt import carregar_features_dreamt
+        if dados_dreamt is None:
+            raise ValueError("DREAMT exige caminho explícito")
+        if {p.relative_to(dados_dreamt).as_posix() for p in
+                (dados_dreamt / "data_64Hz").glob("*_whole_df.csv")} != CSV_ESPERADOS:
+            raise ValueError("DREAMT exige os 100 CSVs da versão 2.2.0")
+        manifesto = json.loads((RAIZ / 'experimentos/saida/ml17/manifesto.json').read_text(encoding='utf-8'))
+        esperados = manifesto['execucoes']['depois/newcastle']['hash_entradas']
+        hashes = {}
+        for nome, b in base.items():
+            h = hashlib.sha256(np.asarray(b['X'], dtype='<f8').tobytes())
+            h.update(np.asarray(b['y'], dtype='<i8').tobytes())
+            h.update(json.dumps(b['id'].tolist()).encode())
+            hashes[nome] = h.hexdigest()
+        if len(sujeitos) != 92 or set(hashes) != set(NOMES_BRACOS) or any(
+                h != esperados[f'wearanize/{nome}']['sha256'] for nome, h in hashes.items()):
+            raise ValueError("treino Wearanize diferente dos dados congelados na ML-17")
+        dados, qualidade, exclusoes = carregar_features_dreamt(dados_dreamt, cfg)
+        X_ncl_bruto, y_ncl, ids_ncl = dados["X"], dados["y"], dados["id"]
+        seg_ncl = segmentos_de(dados)
+        metricas = (*METRICAS, "f1_sono", "f1_vigilia")
+        extra = {"qualidade": dict(qualidade, segmentos=int(seg_ncl[-1]) + 1),
+                 "exclusoes_locais": exclusoes,
+                 "sha256_manifesto_dreamt": hashlib.sha256((dados_dreamt / "SHA256SUMS.txt").read_bytes()).hexdigest(),
+                 "sha256_treino": hashes}
+    elif coorte == "walch":
         X_ncl_bruto, y_ncl, ids_ncl, seg_ncl = carregar_features_walch(cfg, incluir_baixa_taxa)
     else:
         X_ncl_bruto, y_ncl, ids_ncl, seg_ncl = carregar_features_newcastle(cfg, punho)
@@ -320,7 +351,8 @@ def rodar(cfg, seed: int, punho: str, destino: Path, coorte: str = "newcastle",
           f"prevalência de sono {y_ncl.mean():.3f}", file=sys.stderr)
     print(f"Wearanize+ (treino): {len(sujeitos)} sujeitos", file=sys.stderr)
 
-    trivial = _trivial(y_ncl, ids_ncl, seed)
+    trivial = (_trivial(y_ncl, ids_ncl, seed) if coorte != "dreamt" else
+               avaliar_por_sujeito(y_ncl, np.ones_like(y_ncl), ids_ncl, metricas=metricas, seed=seed))
     print(f"\n[âncora] trivial 'sempre dormindo' NA COORTE ({coorte}): "
           f"kappa={trivial.media['kappa']:.3f}  espec={trivial.media['especificidade']:.3f}  "
           f"acur={trivial.media['acuracia']:.3f}")
@@ -335,13 +367,16 @@ def rodar(cfg, seed: int, punho: str, destino: Path, coorte: str = "newcastle",
                    "reajuste_no_teste": "nenhum"},
         "teste": {"dataset": coorte,
                   **({"punho": punho} if coorte == "newcastle" else
-                     {"variante": _variante_walch(incluir_baixa_taxa)}),
+                     {"variante": _variante_walch(incluir_baixa_taxa)} if coorte == "walch" else {}),
                   "n_sujeitos": n_suj_ncl,
                   "n_epocas": int(X_ncl.shape[0]),
                   "prevalencia_sono": float(y_ncl.mean())},
         f"trivial_no_{coorte}": trivial.dict(),
         "resultados": {},
+        **extra,
     }
+    if coorte == "dreamt":
+        confusoes["trivial"] = avaliar_epoca(y_ncl, np.ones_like(y_ncl)).dict()
 
     for nome_braco in NOMES_BRACOS:
         Xw = normalizar_por_sujeito(base[nome_braco]["X"], base[nome_braco]["id"])
@@ -361,8 +396,10 @@ def rodar(cfg, seed: int, punho: str, destino: Path, coorte: str = "newcastle",
             A = transicoes_hmm(yw, idw, segmentos=segmentos_de(base[nome_braco]))[0] if opcoes["hmm"] else None
             pred = _prever(clf, Xn_ctx, y_ncl, ids_ncl, opcoes["hmm"], A, segmentos=seg_ncl)
 
-            m = avaliar_por_sujeito(y_ncl, pred, ids_ncl, metricas=METRICAS, seed=seed)
+            m = avaliar_por_sujeito(y_ncl, pred, ids_ncl, metricas=metricas, seed=seed)
             resultado["resultados"][nome_braco][nome_cfg] = m.dict()
+            if coorte == "dreamt":
+                confusoes[f"{nome_braco}/{nome_cfg}"] = avaliar_epoca(y_ncl, pred).dict()
 
             d_kappa = m.media["kappa"] - trivial.media["kappa"]
             print(f"  {nome_cfg:<20} kappa={m.media['kappa']:.3f} "
@@ -372,8 +409,14 @@ def rodar(cfg, seed: int, punho: str, destino: Path, coorte: str = "newcastle",
                   f"Δkappa vs. trivial={d_kappa:+.3f} "
                   f"({'acima do trivial' if m.ic95_baixo['kappa'] > trivial.media['kappa'] else 'IC inclui o trivial'})")
 
-    destino.write_text(json.dumps(resultado, indent=2, ensure_ascii=False), encoding="utf-8")
-    print(f"\nsalvo em {destino.relative_to(RAIZ)}")
+    if coorte == "dreamt":
+        resultado["confusoes"] = confusoes
+        texto = json.dumps(resultado, indent=2, ensure_ascii=False)
+        with destino.open("x", encoding="utf-8") as f:
+            f.write(texto)
+    else:
+        destino.write_text(json.dumps(resultado, indent=2, ensure_ascii=False), encoding="utf-8")
+    print(f"\nsalvo em {destino}")
     return resultado
 
 
@@ -521,8 +564,8 @@ def main() -> int:
                     help="extrai features do Newcastle (retomável; repita até COMPLETO)")
     ap.add_argument("--rodar", action="store_true")
     ap.add_argument("--punho", choices=("esquerdo", "direito", "ambos"), default="esquerdo")
-    ap.add_argument("--coorte", choices=("newcastle", "walch"), default="newcastle",
-                    help="destino da validação externa (ML-06: walch)")
+    ap.add_argument("--coorte", choices=("newcastle", "walch", "dreamt"), default="newcastle",
+                    help="destino da validação externa")
     ap.add_argument("--incluir-baixa-taxa", action="store_true",
                     help="walch: inclui os 2 sujeitos de 10 Hz (análise secundária)")
     ap.add_argument("--orcamento-s", type=float, default=75.0)
@@ -534,16 +577,37 @@ def main() -> int:
     ap.add_argument('--dados-brutos', type=Path, help='raiz da coorte de destino, sem junction')
     ap.add_argument('--dados-wearanize', type=Path, help='raiz dos dados de treino')
     ap.add_argument('--cache', type=Path, default=PASTA_CACHE)
-    ap.add_argument('--saida-dir', type=Path, default=PASTA_SAIDA)
+    ap.add_argument('--saida-dir', type=Path)
     args = ap.parse_args()
+    if args.coorte == "dreamt":
+        if args.dados_brutos is None:
+            ap.error("dreamt exige --dados-brutos")
+        if args.dados_wearanize is None or args.saida_dir is None:
+            ap.error("dreamt exige --dados-wearanize e --saida-dir")
+        if args.saida_dir.resolve().is_relative_to(RAIZ.resolve()):
+            ap.error("dreamt exige --saida-dir fora do repositório")
+        if args.preparar or args.lados or args.incluir_baixa_taxa or args.so or args.exceto:
+            ap.error("dreamt avalia a coorte completa, sem seleção pela CLI")
     DADOS_BRUTOS, DADOS_WEARANIZE = args.dados_brutos, args.dados_wearanize
-    PASTA_CACHE, PASTA_SAIDA = args.cache, args.saida_dir
+    PASTA_CACHE, PASTA_SAIDA = args.cache, args.saida_dir or PASTA_SAIDA
     PASTA_FEATURES = PASTA_CACHE / ('newcastle_features_' + VERSAO)
     PASTA_FEATURES_WALCH = PASTA_CACHE / ('walch_features_' + VERSAO)
     PASTA_SAIDA.mkdir(parents=True, exist_ok=True)
 
     cfg = carregar_config()
     fixar_seed(cfg.seed)
+
+    if args.coorte == "dreamt":
+        from threadpoolctl import threadpool_limits
+        destino = PASTA_SAIDA / f"ml04_validacao_externa_{cfg.hash}_dreamt.json"
+        if not args.comparar:
+            if destino.exists():
+                ap.error("saída DREAMT já existe. Use outro --saida-dir ou --comparar")
+            with threadpool_limits(limits=1):
+                rodar(cfg, cfg.seed, args.punho, destino, coorte="dreamt",
+                      dados_dreamt=args.dados_brutos)
+        comparar(destino)
+        return 0
 
     if args.coorte == "walch":
         if args.preparar:
