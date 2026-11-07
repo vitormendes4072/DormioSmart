@@ -44,7 +44,7 @@ SEED = 20260910
 CONTEXTO = 2                     # ml/config.yaml: contexto_epocas
 CACHE_WEARANIZE = RAIZ / "dados" / "processado" / "_cache_base_wearanize_14646b9aacb7d397.pkl"
 DIR_NEWCASTLE = RAIZ / "dados" / "processado" / "newcastle_features"
-SAIDA = RAIZ / "experimentos" / "saida"
+SAIDA = RAIZ / "experimentos" / "saida" / "ml17-v1"
 
 # ──────────────────────────────────────────────────────────────────────────
 # Esquema de ponto fixo
@@ -104,8 +104,8 @@ def normalizar_por_sujeito(X: np.ndarray, ids: np.ndarray) -> np.ndarray:
     return Xn
 
 
-def avaliar(X, y, ids, n_dobras):
-    Xc = empilhar_contexto(normalizar_por_sujeito(X, ids), CONTEXTO)
+def avaliar(X, y, ids, n_dobras, *, segmentos):
+    Xc = empilhar_contexto(normalizar_por_sujeito(X, ids), CONTEXTO, segmentos=segmentos)
     ks, es, ss = [], [], []
     for tr, te in GroupKFold(n_splits=n_dobras).split(Xc, y, groups=ids):
         clf = LogisticRegression(max_iter=2000, class_weight="balanced", random_state=SEED)
@@ -119,24 +119,8 @@ def avaliar(X, y, ids, n_dobras):
 
 
 def carregar_bases():
-    bases = {}
-    if CACHE_WEARANIZE.exists():
-        d = pickle.load(open(CACHE_WEARANIZE, "rb"))
-        for pos in ("pulso", "cabeca"):
-            if pos in d:
-                bases[f"wearanize/{pos}"] = (
-                    d[pos]["X"], np.asarray(d[pos]["y"]), np.asarray(d[pos]["id"]))
-    arquivos = sorted(DIR_NEWCASTLE.glob("*.npz")) if DIR_NEWCASTLE.exists() else []
-    if arquivos:
-        Xs, ys, ids = [], [], []
-        for f in arquivos:
-            z = np.load(f, allow_pickle=True)
-            Xs.append(z["X"]); ys.append(z["y"])
-            ids.append(np.repeat(str(z["id"]), len(z["y"])))
-        X, y, i = np.vstack(Xs), np.concatenate(ys), np.concatenate(ids)
-        m = y >= 0
-        bases["newcastle"] = (X[m], y[m], i[m])
-    return bases
+    from experimentos.ml11_ablacao_features import carregar_bases as carregar_temporal
+    return {n: (X, y, ids, segmentos) for n, (X, y, ids, c, segmentos) in carregar_temporal().items()}
 
 
 def main() -> int:
@@ -150,7 +134,7 @@ def main() -> int:
                  "escalas": ESCALAS, "exatas_em_u16": list(EXATAS_EM_U16),
                  "n_amostras_por_epoca": N_AMOSTRAS_POR_EPOCA, "bases": {}}
 
-    for nome, (X, y, ids) in bases.items():
+    for nome, (X, y, ids, segmentos) in bases.items():
         print(f"\n===== {nome} — {len(y)} épocas, {len(np.unique(ids))} sujeitos, "
               f"{n_dobras} dobras =====")
         res = {}
@@ -158,7 +142,7 @@ def main() -> int:
                            ("u12", quantizar(X, 12)), ("u10", quantizar(X, 10)),
                            ("u8", quantizar(X, 8))]:
             t0 = time.time()
-            k, e, s = avaliar(Xv, y, ids, n_dobras)
+            k, e, s = avaliar(Xv, y, ids, n_dobras, segmentos=segmentos)
             res[rotulo] = {"kappa": k.tolist(), "especificidade": e.tolist(),
                            "sensibilidade": s.tolist()}
             print(f"  {rotulo:8s} kappa={k.mean():.4f}±{k.std(ddof=1):.4f}"

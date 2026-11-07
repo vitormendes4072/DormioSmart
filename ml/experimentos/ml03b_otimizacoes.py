@@ -80,7 +80,8 @@ for _fluxo in (sys.stdout, sys.stderr):
 from src.avaliar import avaliar_por_sujeito, split_por_sujeito              # noqa: E402
 from src.carregar.wearanize import sujeitos_com_posicoes                   # noqa: E402
 from src.configuracao import carregar_config, fixar_seed                   # noqa: E402
-from src.epocas import empilhar_contexto                                   # noqa: E402
+from src.cache_temporal import VERSAO, caminho_base, ler_base, salvar_base, segmentos_de
+from src.epocas import empilhar_contexto, aplicar_por_segmento                                   # noqa: E402
 from src.modelos import suavizar_hmm, suavizar_mediana, transicoes_hmm     # noqa: E402
 
 from experimentos._retomada import loso_com_retomada                       # noqa: E402
@@ -91,22 +92,12 @@ from experimentos.ml03b_ablacao import (                                   # noq
 ITENS_VALIDOS = ("baseline", "6", "7", "8", "8b", "9", "resumo")
 
 
-def _carregar_base_com_cache(sujeitos: list[str], cfg, pasta=None) -> dict:
-    import hashlib
-    import pickle
-    cache_chave = hashlib.sha256(
-        (cfg.hash + "|" + ",".join(sujeitos)).encode("utf-8")
-    ).hexdigest()[:16]
-    cache_caminho = RAIZ / "dados" / "processado" / f"_cache_base_wearanize_{cache_chave}.pkl"
-    if cache_caminho.exists():
-        print(f"Cache encontrado ({cache_caminho.name}), pulando releitura dos EDFs...", file=sys.stderr)
-        with open(cache_caminho, "rb") as fh:
-            return pickle.load(fh)
-    print("Cache nao encontrado -- carregando do zero (pode demorar ~20 min)...", file=sys.stderr)
+def _carregar_base_com_cache(sujeitos: list[str], cfg, pasta=None, cache=None) -> dict:
+    caminho = caminho_base(sujeitos, cfg, cache or RAIZ / 'dados' / 'processado')
+    if caminho.exists():
+        return ler_base(caminho, sujeitos, cfg)
     base = carregar_base(sujeitos, cfg, pasta=pasta)
-    cache_caminho.parent.mkdir(parents=True, exist_ok=True)
-    with open(cache_caminho, "wb") as fh:
-        pickle.dump(base, fh, protocol=pickle.HIGHEST_PROTOCOL)
+    salvar_base(caminho, base, sujeitos, cfg)
     return base
 
 
@@ -129,22 +120,22 @@ def _diagonal_youden(X: np.ndarray, y: np.ndarray, ids: np.ndarray, seed: int):
     return avaliar_por_sujeito(y, pred, ids, metricas=METRICAS, seed=seed)
 
 
-def _dobra_logistica(X_tr, y_tr, X_te, ids_tr, seed):
+def _dobra_logistica(X_tr, y_tr, X_te, ids_tr, seed, **kw):
     clf = LogisticRegression(max_iter=2000, class_weight="balanced", random_state=seed)
     clf.fit(X_tr, y_tr)
     return clf.predict(X_te)
 
 
-def _dobra_hmm(X_tr, y_tr, X_te, ids_tr, seed):
+def _dobra_hmm(X_tr, y_tr, X_te, ids_tr, seed, *, segmentos_tr, segmentos_te):
     clf = LogisticRegression(max_iter=2000, class_weight="balanced", random_state=seed)
     clf.fit(X_tr, y_tr)
-    A, _ = transicoes_hmm(y_tr, ids_tr)
+    A, _ = transicoes_hmm(y_tr, ids_tr, segmentos=segmentos_tr)
     # `prior_implicito=None`: com class_weight="balanced" a probabilidade já
     # vem sob prior uniforme. Ver o aviso em src.modelos.suavizar_hmm.
-    return suavizar_hmm(clf.predict_proba(X_te)[:, 1], A)
+    return aplicar_por_segmento(clf.predict_proba(X_te)[:, 1], segmentos_te, lambda p: suavizar_hmm(p, A))
 
 
-def _diagonal_hmm(X: np.ndarray, y: np.ndarray, ids: np.ndarray, seed: int):
+def _diagonal_hmm(X: np.ndarray, y: np.ndarray, ids: np.ndarray, seed: int, *, segmentos):
     """LOSO com Viterbi de 2 estados por cima da logística.
 
     A matriz de transição é contada nos rótulos do TREINO da própria dobra —
@@ -156,10 +147,10 @@ def _diagonal_hmm(X: np.ndarray, y: np.ndarray, ids: np.ndarray, seed: int):
     for _, tr, te in split_por_sujeito(ids):
         clf = LogisticRegression(max_iter=2000, class_weight="balanced", random_state=seed)
         clf.fit(X[tr], y[tr])
-        A, _ = transicoes_hmm(y[tr], ids[tr])
+        A, _ = transicoes_hmm(y[tr], ids[tr], segmentos=segmentos[tr])
         # `prior_implicito=None`: com class_weight="balanced" a probabilidade
         # já vem sob prior uniforme. Ver o aviso em src.modelos.suavizar_hmm.
-        pred[te] = suavizar_hmm(clf.predict_proba(X[te])[:, 1], A)
+        pred[te] = aplicar_por_segmento(clf.predict_proba(X[te])[:, 1], segmentos[te], lambda p: suavizar_hmm(p, A))
     return avaliar_por_sujeito(y, pred, ids, metricas=METRICAS, seed=seed), pred
 
 
@@ -242,7 +233,11 @@ def main() -> int:
     ap.add_argument("--orcamento-s", type=float, default=115.0,
                      help="teto de segundos de cálculo por chamada (itens 8b e 9, que "
                           "rodam com checkpoint por dobra). Rode de novo até dizer COMPLETO.")
+    ap.add_argument('--cache', type=Path, default=RAIZ / 'dados' / 'processado')
+    ap.add_argument('--preparar-cache', action='store_true', help='somente prepara features, sem treino')
+    ap.add_argument('--saida-dir', type=Path, default=RAIZ / 'experimentos' / 'saida' / VERSAO)
     args = ap.parse_args()
+    args.saida_dir.mkdir(parents=True, exist_ok=True)
     t_inicio = time.time()
     incompleto = False
 
@@ -254,7 +249,7 @@ def main() -> int:
     if args.n_sujeitos:
         sujeitos = sujeitos[: args.n_sujeitos]
 
-    destino = RAIZ / "experimentos" / "saida" / f"ml03b_otimizacoes_{cfg.hash}_{len(sujeitos)}suj.json"
+    destino = args.saida_dir / f"ml03b_otimizacoes_{cfg.hash}_{len(sujeitos)}suj.json"
 
     if destino.exists():
         with open(destino, encoding="utf-8") as fh:
@@ -281,7 +276,9 @@ def main() -> int:
         return 0
 
     print(f"config hash={cfg.hash} seed={seed} sujeitos={len(sujeitos)} item={args.item}")
-    base = _carregar_base_com_cache(sujeitos, cfg, pasta=args.pasta)
+    base = _carregar_base_com_cache(sujeitos, cfg, pasta=args.pasta, cache=args.cache)
+    if args.preparar_cache:
+        return 0
 
     Xn = {n: normalizar_por_sujeito(base[n]["X"], base[n]["id"]) for n in NOMES_BRACOS}
     y = {n: base[n]["y"] for n in NOMES_BRACOS}
@@ -304,30 +301,27 @@ def main() -> int:
             continue
 
         if args.item == "baseline":
-            X_ctx = empilhar_contexto(Xn[nome], cfg.contexto_epocas)
+            X_ctx = empilhar_contexto(Xn[nome], cfg.contexto_epocas, segmentos=segmentos_de(base[nome]))
             m, _ = _diagonal(X_ctx, y[nome], ids[nome], seed, class_weight="balanced")
             resultado_item[nome] = m.dict()
             _imprime_comparacao(nome, args.item, None, m.dict())
 
         elif args.item == "6":
-            X_ctx = empilhar_contexto(Xn[nome], cfg.contexto_epocas)
+            X_ctx = empilhar_contexto(Xn[nome], cfg.contexto_epocas, segmentos=segmentos_de(base[nome]))
             m, _ = _diagonal(X_ctx, y[nome], ids[nome], seed, class_weight=None)
             resultado_item[nome] = m.dict()
             _imprime_comparacao(nome, args.item, base_dict, m.dict())
 
         elif args.item == "7":
-            X_ctx = empilhar_contexto(Xn[nome], cfg.contexto_epocas)
+            X_ctx = empilhar_contexto(Xn[nome], cfg.contexto_epocas, segmentos=segmentos_de(base[nome]))
             m = _diagonal_youden(X_ctx, y[nome], ids[nome], seed)
             resultado_item[nome] = m.dict()
             _imprime_comparacao(nome, args.item, base_dict, m.dict())
 
         elif args.item == "8":
-            X_ctx = empilhar_contexto(Xn[nome], cfg.contexto_epocas)
+            X_ctx = empilhar_contexto(Xn[nome], cfg.contexto_epocas, segmentos=segmentos_de(base[nome]))
             _, pred_bruta = _diagonal(X_ctx, y[nome], ids[nome], seed, class_weight="balanced")
-            suave = np.zeros_like(pred_bruta)
-            for s in sorted(set(ids[nome].tolist())):
-                m_ids = ids[nome] == s
-                suave[m_ids] = suavizar_mediana(pred_bruta[m_ids])
+            suave = aplicar_por_segmento(pred_bruta, segmentos_de(base[nome]), suavizar_mediana)
             m = avaliar_por_sujeito(y[nome], suave, ids[nome], metricas=METRICAS, seed=seed)
             resultado_item[nome] = m.dict()
             _imprime_comparacao(nome, args.item, base_dict, m.dict())
@@ -337,13 +331,20 @@ def main() -> int:
             # a chamada processa o que couber no orçamento e sai; a próxima
             # retoma. Ver experimentos/_retomada.py.
             if args.item == "8b":
-                X_ctx = empilhar_contexto(Xn[nome], cfg.contexto_epocas)
+                X_ctx = empilhar_contexto(Xn[nome], cfg.contexto_epocas, segmentos=segmentos_de(base[nome]))
                 dobra, rotulo_ctx = _dobra_hmm, f"ctx{cfg.contexto_epocas}_hmm"
             else:
-                X_ctx = empilhar_contexto(Xn[nome], args.contexto_largo)
+                X_ctx = empilhar_contexto(Xn[nome], args.contexto_largo, segmentos=segmentos_de(base[nome]))
                 dobra, rotulo_ctx = _dobra_logistica, f"ctx{args.contexto_largo}"
 
-            chave = f"{cfg.hash}|{args.item}|{nome}|{rotulo_ctx}|{len(sujeitos)}suj"
+            import hashlib
+            h = hashlib.sha256()
+            for fonte in (Path(__file__), RAIZ / 'src/modelos.py', RAIZ / 'experimentos/_retomada.py'):
+                h.update(fonte.read_text(encoding='utf-8').encode('utf-8'))
+            for vetor in (X_ctx, y[nome], ids[nome].astype(str), segmentos_de(base[nome])):
+                h.update(np.ascontiguousarray(vetor).tobytes())
+            assinatura = h.hexdigest()
+            chave = f"{VERSAO}|{assinatura}|{cfg.hash}|{args.item}|{nome}|{rotulo_ctx}|{len(sujeitos)}suj"
             restante = args.orcamento_s - (time.time() - t_inicio)
             if restante < 10:
                 print(f"    (orçamento da chamada esgotado antes de {nome} — rode de novo)")
@@ -351,7 +352,8 @@ def main() -> int:
                 continue
 
             pred, completo, feitas, total = loso_com_retomada(
-                chave, X_ctx, y[nome], ids[nome], dobra, seed, orcamento_s=restante)
+                chave, X_ctx, y[nome], ids[nome], dobra, seed,
+                segmentos=segmentos_de(base[nome]), pasta=args.saida_dir / "_parciais", orcamento_s=restante)
             if not completo:
                 print(f"    {feitas}/{total} dobras — parcial salvo, rode de novo para continuar")
                 incompleto = True

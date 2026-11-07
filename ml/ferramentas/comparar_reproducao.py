@@ -9,10 +9,29 @@ import hashlib
 import json
 import math
 import re
+import subprocess
 
 
 
 def hash_texto(p):return hashlib.sha256(p.read_bytes().replace(b'\r\n',b'\n')).hexdigest()
+
+
+def conferir_fontes_historicas(ml, manifesto):
+    """Confere o objeto Git registrado, não exige fontes atuais congeladas."""
+    commit = manifesto['base_codigo']
+    if not re.fullmatch(r'[0-9a-f]{40}', commit) or not manifesto['fontes']:
+        raise ValueError('procedência histórica inválida/vazia')
+    for nome, esperado in manifesto['fontes'].items():
+        if Path(nome).is_absolute() or '..' in Path(nome).parts or '\\' in nome:
+            raise ValueError('caminho de fonte inválido')
+        r = subprocess.run(['git', 'show', f'{commit}:ml/{nome}'], cwd=ml,
+                           capture_output=True, check=False)
+        if r.returncode:
+            raise ValueError(f'fonte histórica indisponível: {commit}:ml/{nome}')
+        medido = hashlib.sha256(r.stdout.replace(b'\r\n', b'\n')).hexdigest()
+        if medido != esperado:
+            raise ValueError(f'fonte histórica adulterada/divergente: {nome}')
+    return True
 
 
 def comparar(a,b,caminho='$',dif=None):

@@ -19,7 +19,7 @@ from collections.abc import Iterable
 import numpy as np
 
 from ..configuracao import Config, carregar_config
-from ..epocas import empilhar_contexto, fatiar_epocas
+from ..epocas import empilhar_contexto, fatiar_epocas, segmentos_epocas
 from ..features import NOMES_FEATURES, features_de_epoca
 from ..sinal import reamostrar
 from .base import ConjuntoEpocas, Gravacao
@@ -41,7 +41,7 @@ def processar_gravacoes(gravacoes: Iterable[Gravacao], cfg: Config) -> ConjuntoE
     ARMADILHA 4 em `src/carregar/newcastle.py`). Por isso `n_gravacoes` é
     contado no laço, não com `len()`.
     """
-    Xs, ys, ids = [], [], []
+    Xs, ys, ids, segmentos = [], [], [], []
     descartadas = 0
     n_gravacoes = 0
 
@@ -72,7 +72,10 @@ def processar_gravacoes(gravacoes: Iterable[Gravacao], cfg: Config) -> ConjuntoE
         if X.shape[0] == 0:
             continue
 
-        X = empilhar_contexto(X, cfg.contexto_epocas)
+        seg = segmentos_epocas(np.repeat(gr.id_sujeito, len(y)),
+                              np.repeat(n_gravacoes, len(y)), idx[ok])
+        X = empilhar_contexto(X, cfg.contexto_epocas, segmentos=seg)
+        segmentos.append(np.char.add(f'{n_gravacoes}:', seg.astype(str)))
         Xs.append(X)
         ys.append(y)
         ids.append(np.full(X.shape[0], gr.id_sujeito, dtype=object))
@@ -95,6 +98,7 @@ def processar_gravacoes(gravacoes: Iterable[Gravacao], cfg: Config) -> ConjuntoE
             "epocas_descartadas_sem_cobertura": descartadas,
             "hash_config": cfg.hash,
         },
+        segmentos=np.concatenate(segmentos),
     )
 
 

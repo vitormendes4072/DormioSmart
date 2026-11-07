@@ -82,6 +82,7 @@ def loso_com_retomada(
     orcamento_s: float = 115.0,
     registrar=None,
     pasta: Path | None = None,
+    segmentos: np.ndarray | None = None,
 ) -> tuple[np.ndarray, bool, int, int]:
     """Roda o LOSO em pedaços, retomando de um checkpoint em disco.
 
@@ -134,8 +135,9 @@ def loso_com_retomada(
             break
         mask_te = ids == s
         mask_tr = ~mask_te
+        kw = {} if segmentos is None else dict(segmentos_tr=segmentos[mask_tr], segmentos_te=segmentos[mask_te])
         pred[mask_te] = prever_dobra(X[mask_tr], np.asarray(y)[mask_tr],
-                                     X[mask_te], ids[mask_tr], seed)
+                                     X[mask_te], ids[mask_tr], seed, **kw)
         feitos.add(s)
         novas += 1
         if registrar is not None:

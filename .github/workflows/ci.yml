@@ -209,6 +209,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          # ML-17: a guarda da ML-15 lê as fontes do commit histórico registrado.
+          fetch-depth: 0
 
       - name: Configurar Python
         uses: actions/setup-python@v6
@@ -247,9 +250,9 @@ jobs:
           # Atualizar este numero quando a suite crescer e parte de escrever
           # teste novo. Se ele ficar atras da suite, a guarda volta a nao
           # guardar nada.
-          MINIMO=107
+          MINIMO=223 # ML-17, medido em 05/11/2026; 217 anteriores +6 de contrato dos consumidores
           if [ "${N:-0}" -lt "$MINIMO" ]; then
-            echo "::error::Coletados $N testes, menos que os $MINIMO medidos em 2026-10-16. Import quebrado, pasta renomeada ou teste removido sem registro -- em qualquer dos casos a cobertura anunciada nao rodou."
+            echo "::error::Coletados $N testes, menos que os $MINIMO medidos em 2026-11-05. Import quebrado, pasta renomeada ou teste removido sem registro -- em qualquer dos casos a cobertura anunciada nao rodou."
             exit 1
           fi
 

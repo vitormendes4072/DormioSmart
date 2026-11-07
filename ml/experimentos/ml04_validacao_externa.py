@@ -80,7 +80,8 @@ for _fluxo in (sys.stdout, sys.stderr):
 from src.avaliar import avaliar_por_sujeito                                # noqa: E402
 from src.carregar.wearanize import sujeitos_com_posicoes                   # noqa: E402
 from src.configuracao import carregar_config, fixar_seed                   # noqa: E402
-from src.epocas import empilhar_contexto, fatiar_epocas                    # noqa: E402
+from src.cache_temporal import (VERSAO, caminho_base, ler_base, ler_features, salvar_features, segmentos_de)
+from src.epocas import empilhar_contexto, fatiar_epocas, aplicar_por_segmento                    # noqa: E402
 from src.features import features_de_epoca                                 # noqa: E402
 from src.modelos import suavizar_hmm, transicoes_hmm                       # noqa: E402
 from src.sinal import reamostrar                                           # noqa: E402
@@ -89,8 +90,13 @@ from experimentos.ml03b_ablacao import (                                   # noq
     METRICAS, NOMES_BRACOS, normalizar_por_sujeito,
 )
 
-PASTA_FEATURES = RAIZ / "dados" / "processado" / "newcastle_features"
-PASTA_FEATURES_WALCH = RAIZ / "dados" / "processado" / "walch_features"
+PASTA_FEATURES = RAIZ / "dados" / "processado" / "newcastle_features_ml17-v1"
+PASTA_FEATURES_WALCH = RAIZ / "dados" / "processado" / "walch_features_ml17-v1"
+
+DADOS_BRUTOS = None
+DADOS_WEARANIZE = None
+PASTA_CACHE = RAIZ / "dados" / "processado"
+PASTA_SAIDA = RAIZ / "experimentos" / "saida" / VERSAO
 
 #: As configurações comparadas. A chave vira coluna na tabela de saída.
 #: `contexto`: nº de épocas vizinhas empilhadas. `hmm`: Viterbi por cima.
@@ -147,7 +153,7 @@ def preparar(cfg, orcamento_s: float, punho: str,
         return True
 
     processados: set[str] = set()
-    for gr in carregar_newcastle(aceitar=aceitar):
+    for gr in carregar_newcastle(aceitar=aceitar, **({"pasta": DADOS_BRUTOS} if DADOS_BRUTOS else {})):
         processados.add(gr.meta.get("arquivo", ""))
         arquivo = gr.meta.get("arquivo", f"{gr.id_sujeito}.bin")
         lado = _lado(arquivo)
@@ -166,9 +172,11 @@ def preparar(cfg, orcamento_s: float, punho: str,
             continue
 
         X, _ = features_de_epoca(a_ep, fs=cfg.taxa_comum_hz)
-        np.savez_compressed(alvo, X=X[ok], y=y_ep[ok], id=gr.id_sujeito, lado=lado)
+        salvar_features(alvo, cfg, X=X[ok], y=y_ep[ok], id=gr.id_sujeito, lado=lado,
+                        indice_epoca=idx[ok], gravacao=np.repeat(arquivo, int(ok.sum())))
         feitas += 1
         print(f"  {gr.id_sujeito}/{lado}: {int(ok.sum())} épocas -> {alvo.name}", file=sys.stderr)
+        del gr, t, a, a_ep, X
 
     # Cache NEGATIVO. O carregador rejeita algumas gravações (o ncl029 tem o
     # PSG começando depois do fim do acelerômetro — ARMADILHA 5), e só
@@ -195,9 +203,9 @@ def preparar(cfg, orcamento_s: float, punho: str,
 
 def carregar_features_newcastle(cfg, punho: str):
     arquivos = sorted(PASTA_FEATURES.glob(f"{cfg.hash}_*.npz"))
-    Xs, ys, ids = [], [], []
+    Xs, ys, ids, segmentos = [], [], [], []
     for caminho in arquivos:
-        d = np.load(caminho, allow_pickle=True)
+        d = ler_features(caminho, cfg)
         lado = str(d["lado"])
         if punho != "ambos" and lado != punho:
             continue
@@ -210,12 +218,13 @@ def carregar_features_newcastle(cfg, punho: str):
         Xs.append(d["X"])
         ys.append(d["y"].astype(int))
         ids.append(np.full(d["y"].shape[0], rotulo, dtype=object))
+        segmentos.append(np.char.add(caminho.name + ":", segmentos_de(d).astype(str)))
     if not Xs:
         raise FileNotFoundError(
             f"Nenhuma feature em {PASTA_FEATURES} para punho={punho}. "
             "Rode --preparar até dizer COMPLETO."
         )
-    return np.concatenate(Xs), np.concatenate(ys), np.concatenate(ids)
+    return np.concatenate(Xs), np.concatenate(ys), np.concatenate(ids), np.concatenate(segmentos)
 
 
 def _variante_walch(incluir_baixa_taxa: bool) -> str:
@@ -233,7 +242,7 @@ def preparar_walch(cfg, incluir_baixa_taxa: bool) -> int:
     feitas = 0
     taxa_min = None if incluir_baixa_taxa else cfg.taxa_comum_hz
     variante = _variante_walch(incluir_baixa_taxa)
-    for gr in carregar_walch(taxa_minima_hz=taxa_min):
+    for gr in carregar_walch(taxa_minima_hz=taxa_min, **({"pasta": DADOS_BRUTOS} if DADOS_BRUTOS else {})):
         alvo = PASTA_FEATURES_WALCH / f"{cfg.hash}_{variante}_{gr.id_sujeito}.npz"
         if alvo.exists():
             continue
@@ -246,7 +255,8 @@ def preparar_walch(cfg, incluir_baixa_taxa: bool) -> int:
             print(f"  {gr.id_sujeito}: nenhuma época pontuada com dado — pulado", file=sys.stderr)
             continue
         X, _ = features_de_epoca(a_ep, fs=cfg.taxa_comum_hz)
-        np.savez_compressed(alvo, X=X[ok], y=y_ep[ok], id=gr.id_sujeito,
+        salvar_features(alvo, cfg, X=X[ok], y=y_ep[ok], id=gr.id_sujeito,
+                            indice_epoca=idx[ok], gravacao=np.repeat(gr.id_sujeito, int(ok.sum())),
                             taxa_origem_hz=gr.meta["taxa_origem_hz"],
                             epocas_sem_dado=gr.meta["epocas_sem_dado"])
         feitas += 1
@@ -262,13 +272,14 @@ def carregar_features_walch(cfg, incluir_baixa_taxa: bool):
         raise FileNotFoundError(
             f"Nenhuma feature da Walch ({variante}) em {PASTA_FEATURES_WALCH}. "
             "Rode --coorte walch --preparar antes.")
-    Xs, ys, ids = [], [], []
+    Xs, ys, ids, segmentos = [], [], [], []
     for caminho in arquivos:
-        d = np.load(caminho, allow_pickle=True)
+        d = ler_features(caminho, cfg)
         Xs.append(d["X"])
         ys.append(d["y"].astype(int))
         ids.append(np.full(d["y"].shape[0], str(d["id"]), dtype=object))
-    return np.concatenate(Xs), np.concatenate(ys), np.concatenate(ids)
+        segmentos.append(np.char.add(caminho.name + ":", segmentos_de(d).astype(str)))
+    return np.concatenate(Xs), np.concatenate(ys), np.concatenate(ids), np.concatenate(segmentos)
 
 
 # =========================================================================
@@ -276,18 +287,10 @@ def carregar_features_walch(cfg, incluir_baixa_taxa: bool):
 # =========================================================================
 
 def _base_wearanize(sujeitos, cfg):
-    import hashlib
-    import pickle
-    chave = hashlib.sha256((cfg.hash + "|" + ",".join(sujeitos)).encode("utf-8")).hexdigest()[:16]
-    caminho = RAIZ / "dados" / "processado" / f"_cache_base_wearanize_{chave}.pkl"
+    caminho = caminho_base(sujeitos, cfg, PASTA_CACHE)
     if not caminho.exists():
-        raise FileNotFoundError(
-            f"cache {caminho.name} não existe — rode o ml03b_otimizacoes antes, "
-            "que é quem o constrói."
-        )
-    with open(caminho, "rb") as fh:
-        return pickle.load(fh)
-
+        raise FileNotFoundError(f'cache temporal {caminho.name} ausente; prepare com ml03b_otimizacoes')
+    return ler_base(caminho, sujeitos, cfg)
 
 def _trivial(y, ids, seed):
     """"Sempre dormindo" medido no próprio Newcastle. A única âncora que não
@@ -297,15 +300,15 @@ def _trivial(y, ids, seed):
 
 def rodar(cfg, seed: int, punho: str, destino: Path, coorte: str = "newcastle",
           incluir_baixa_taxa: bool = False) -> dict:
-    sujeitos = sujeitos_com_posicoes(["cabeca", "pulso"])
+    sujeitos = sujeitos_com_posicoes(["cabeca", "pulso"], **({"pasta": DADOS_WEARANIZE} if DADOS_WEARANIZE else {}))
     base = _base_wearanize(sujeitos, cfg)
 
     # Os nomes `_ncl` ficam: o Newcastle foi a primeira coorte, e o caminho
     # dele não muda. Com `coorte="walch"` eles carregam a Walch.
     if coorte == "walch":
-        X_ncl_bruto, y_ncl, ids_ncl = carregar_features_walch(cfg, incluir_baixa_taxa)
+        X_ncl_bruto, y_ncl, ids_ncl, seg_ncl = carregar_features_walch(cfg, incluir_baixa_taxa)
     else:
-        X_ncl_bruto, y_ncl, ids_ncl = carregar_features_newcastle(cfg, punho)
+        X_ncl_bruto, y_ncl, ids_ncl, seg_ncl = carregar_features_newcastle(cfg, punho)
     # Normalização por sujeito: é função só de X, não usa rótulo nenhum, e é
     # por isso que pode ser aplicada ao domínio de teste sem vazamento — foi
     # a conclusão do item 5 da ablação, e é o que torna a transferência a
@@ -349,20 +352,14 @@ def rodar(cfg, seed: int, punho: str, destino: Path, coorte: str = "newcastle",
 
         for nome_cfg, opcoes in CONFIGS.items():
             ctx = int(opcoes["contexto"])
-            Xw_ctx = empilhar_contexto(Xw, ctx)
-            Xn_ctx = empilhar_contexto(X_ncl, ctx)
+            Xw_ctx = empilhar_contexto(Xw, ctx, segmentos=segmentos_de(base[nome_braco]))
+            Xn_ctx = empilhar_contexto(X_ncl, ctx, segmentos=seg_ncl)
 
             clf = LogisticRegression(max_iter=2000, class_weight="balanced", random_state=seed)
             clf.fit(Xw_ctx, yw)
 
-            if opcoes["hmm"]:
-                A, _ = transicoes_hmm(yw, idw)   # transições do TREINO, nunca do Newcastle
-                pred = np.zeros_like(y_ncl)
-                for s in sorted(set(ids_ncl.tolist())):
-                    m = ids_ncl == s
-                    pred[m] = suavizar_hmm(clf.predict_proba(Xn_ctx[m])[:, 1], A)
-            else:
-                pred = clf.predict(Xn_ctx)
+            A = transicoes_hmm(yw, idw, segmentos=segmentos_de(base[nome_braco]))[0] if opcoes["hmm"] else None
+            pred = _prever(clf, Xn_ctx, y_ncl, ids_ncl, opcoes["hmm"], A, segmentos=seg_ncl)
 
             m = avaliar_por_sujeito(y_ncl, pred, ids_ncl, metricas=METRICAS, seed=seed)
             resultado["resultados"][nome_braco][nome_cfg] = m.dict()
@@ -380,15 +377,12 @@ def rodar(cfg, seed: int, punho: str, destino: Path, coorte: str = "newcastle",
     return resultado
 
 
-def _prever(clf, X_ctx, y_alvo, ids, usa_hmm: bool, A):
+def _prever(clf, X_ctx, y_alvo, ids, usa_hmm: bool, A, *, segmentos=None):
     if not usa_hmm:
         return clf.predict(X_ctx)
-    pred = np.zeros_like(y_alvo)
-    for s in sorted(set(ids.tolist())):
-        m = ids == s
-        pred[m] = suavizar_hmm(clf.predict_proba(X_ctx[m])[:, 1], A)
-    return pred
-
+    segmentos = ids if segmentos is None else segmentos
+    return aplicar_por_segmento(clf.predict_proba(X_ctx)[:, 1], segmentos,
+                                lambda p: suavizar_hmm(p, A))
 
 def lados(cfg, seed: int, destino: Path) -> dict:
     """Quanto o lado do corpo importa — com participante como unidade.
@@ -400,16 +394,16 @@ def lados(cfg, seed: int, destino: Path) -> dict:
         alinhar_por_sujeito, bootstrap_agregado, bootstrap_pareado_intra_sujeito,
     )
 
-    sujeitos = sujeitos_com_posicoes(["cabeca", "pulso"])
+    sujeitos = sujeitos_com_posicoes(["cabeca", "pulso"], **({"pasta": DADOS_WEARANIZE} if DADOS_WEARANIZE else {}))
     base = _base_wearanize(sujeitos, cfg)
 
     dados_lado = {}
     for lado in ("esquerdo", "direito"):
-        Xb, yl, idl = carregar_features_newcastle(cfg, lado)
+        Xb, yl, idl, segl = carregar_features_newcastle(cfg, lado)
         # Cada gravação é normalizada contra ela mesma. É o que um produto
         # real faz (não tem o outro punho à mão), e mantém os dois lados
         # independentes um do outro no pré-processamento.
-        dados_lado[lado] = (normalizar_por_sujeito(Xb, idl), yl, idl)
+        dados_lado[lado] = (normalizar_por_sujeito(Xb, idl), yl, idl, segl)
         print(f"{lado}: {Xb.shape[0]} épocas · {len(set(idl.tolist()))} participantes",
               file=sys.stderr)
 
@@ -441,12 +435,12 @@ def lados(cfg, seed: int, destino: Path) -> dict:
         for nome_cfg, opcoes in CONFIGS.items():
             ctx = int(opcoes["contexto"])
             clf = LogisticRegression(max_iter=2000, class_weight="balanced", random_state=seed)
-            clf.fit(empilhar_contexto(Xw, ctx), yw)
-            A = transicoes_hmm(yw, idw)[0] if opcoes["hmm"] else None
+            clf.fit(empilhar_contexto(Xw, ctx, segmentos=segmentos_de(base[nome_braco])), yw)
+            A = transicoes_hmm(yw, idw, segmentos=segmentos_de(base[nome_braco]))[0] if opcoes["hmm"] else None
 
             metricas_lado = {}
-            for lado, (Xl, yl, idl) in dados_lado.items():
-                pred = _prever(clf, empilhar_contexto(Xl, ctx), yl, idl, opcoes["hmm"], A)
+            for lado, (Xl, yl, idl, segl) in dados_lado.items():
+                pred = _prever(clf, empilhar_contexto(Xl, ctx, segmentos=segl), yl, idl, opcoes["hmm"], A, segmentos=segl)
                 metricas_lado[lado] = avaliar_por_sujeito(
                     yl, pred, idl, metricas=METRICAS, seed=seed)
 
@@ -516,6 +510,7 @@ def comparar(destino: Path) -> None:
 
 
 def main() -> int:
+    global DADOS_BRUTOS, DADOS_WEARANIZE, PASTA_CACHE, PASTA_FEATURES, PASTA_FEATURES_WALCH, PASTA_SAIDA
     ap = argparse.ArgumentParser()
     ap.add_argument("--comparar", action="store_true",
                     help="lê o .json já salvo e compara as configurações entre si, pareado")
@@ -536,7 +531,16 @@ def main() -> int:
                          "pica ~3,6 GB de RSS na decodificação e precisa de uma chamada só dele)")
     ap.add_argument("--so", nargs="*", default=[],
                     help="processa SOMENTE estes IDs")
+    ap.add_argument('--dados-brutos', type=Path, help='raiz da coorte de destino, sem junction')
+    ap.add_argument('--dados-wearanize', type=Path, help='raiz dos dados de treino')
+    ap.add_argument('--cache', type=Path, default=PASTA_CACHE)
+    ap.add_argument('--saida-dir', type=Path, default=PASTA_SAIDA)
     args = ap.parse_args()
+    DADOS_BRUTOS, DADOS_WEARANIZE = args.dados_brutos, args.dados_wearanize
+    PASTA_CACHE, PASTA_SAIDA = args.cache, args.saida_dir
+    PASTA_FEATURES = PASTA_CACHE / ('newcastle_features_' + VERSAO)
+    PASTA_FEATURES_WALCH = PASTA_CACHE / ('walch_features_' + VERSAO)
+    PASTA_SAIDA.mkdir(parents=True, exist_ok=True)
 
     cfg = carregar_config()
     fixar_seed(cfg.seed)
@@ -546,7 +550,7 @@ def main() -> int:
             feitas = preparar_walch(cfg, args.incluir_baixa_taxa)
             print(f"\n+{feitas} sujeitos extraídos — COMPLETO")
             return 0
-        destino = (RAIZ / "experimentos" / "saida" / f"ml04_validacao_externa_{cfg.hash}_walch_"
+        destino = (PASTA_SAIDA / f"ml04_validacao_externa_{cfg.hash}_walch_"
                    f"{_variante_walch(args.incluir_baixa_taxa)}.json")
         if args.rodar:
             rodar(cfg, cfg.seed, args.punho, destino, coorte="walch",
@@ -572,7 +576,7 @@ def main() -> int:
         print("COMPLETO — nada novo a extrair.")
         return 0
 
-    destino = (RAIZ / "experimentos" / "saida"
+    destino = (PASTA_SAIDA
                / f"ml04_validacao_externa_{cfg.hash}_{args.punho}.json")
 
     if args.rodar:
@@ -585,7 +589,7 @@ def main() -> int:
         return 0
 
     if args.lados:
-        lados(cfg, cfg.seed, RAIZ / "experimentos" / "saida"
+        lados(cfg, cfg.seed, PASTA_SAIDA
               / f"ml04b_efeito_do_lado_{cfg.hash}.json")
         return 0
 
