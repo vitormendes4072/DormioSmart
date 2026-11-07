@@ -250,7 +250,7 @@ jobs:
           # Atualizar este numero quando a suite crescer e parte de escrever
           # teste novo. Se ele ficar atras da suite, a guarda volta a nao
           # guardar nada.
-          MINIMO=285 # ML-13, medido em 07/11/2026; 278 anteriores +7 de cobertura
+          MINIMO=299 # ML-INF v2, medido em 07/11/2026; 289 da v1 +10 de contrato, noites e fronteiras
           if [ "${N:-0}" -lt "$MINIMO" ]; then
             echo "::error::Coletados $N testes, menos que os $MINIMO medidos em 2026-11-07. Import quebrado, pasta renomeada ou teste removido sem registro -- em qualquer dos casos a cobertura anunciada nao rodou."
             exit 1

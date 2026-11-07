@@ -7540,6 +7540,47 @@ acurácia dela. O envio à conta de demonstração na produção não foi exerci
 
 **Procedência.** Base origin/develop 8859101, branch bugfix/ML-13-cobertura-dreamt. Revisão da #98, ml/testes/test_dreamt.py e ml/src/carregar/dreamt.py.
 
+
+---
+
+# 2026-11-07 (ii) — ML-INF: treino, validação e exportação de cabeça
+
+**O problema, como foi entendido no início.** Entregar o modelo de seis características e o vetor dourado que a integração do backend consumirá. O autor escolheu o braço cabeça por ser a posição corporal mais próxima do produto, que recebe movimento através do travesseiro.
+
+**Hipótese de trabalho.** O modelo balanceado com escala aprendida só no treino deve reproduzir as probabilidades do scikit-learn quando o backend recebe o campo f. O LOSO mede generalização entre participantes da cabeça. As três coortes externas medem generalização a pessoas e coortes de punho.
+
+**O que foi testado, e como.** Windows local, Python 3.11.9. Protocolo e código fixados em 4ee0ffe antes dos resultados. Foram reconferidos inventário, bytes e X/y/IDs dos caches da ML-17 e 103 SHA-256 da DREAMT. Executados 92 folds LOSO, um ajuste com os 92 participantes e três avaliações externas congeladas. Pools nativos medidos com uma thread no próprio processo. A auditoria independente recompôs médias com scikit-learn e contou as oito matrizes a partir de y e predições locais. Os testes repetem o payload SIM-02, conferem ordem canônica e reproduzem predict_proba por aritmética da biblioteca padrão. Controles positivos executados ao incluir a pessoa de teste na dobra, inverter a ordem das features e adulterar um coeficiente. Os três controles reprovaram antes da restauração.
+
+**Resultado medido.** 289 testes passaram no Windows. As quatro avaliações retiveram 92/27/29/97 participantes e 87.795/30.440/23.303/77.738 épocas. κ médio 0,3640/−0,0002/0,3652/0,0337 para LOSO, Newcastle, Walch e DREAMT. O maior |Δκ| em um participante foi 0,6825 no LOSO, com média +0,3640. Na DREAMT, |Δκ| máximo 0,4386 com média +0,0337. A alta especificidade na Newcastle e na DREAMT veio com sensibilidades por época de 0,047% e 12,65%. O máximo erro da auditoria das médias foi 1,11e-16. Quatro payloads e duas entradas sintéticas próximas ao limiar conferiram na tolerância de 1e-12 e classe exata. O backlog mantém a ML-INF aberta pela integração.
+
+**Adaptação.** Cabeça original chega a 32 Hz pelo antialias comum e evita acrescentar saturação e quantização E4 ao sinal. Isso aproxima o pré-processamento da C2 sem presumir resolução efetiva igual. Os agregados registram desempenho baixo onde houve colapso para vigília. Os coeficientes e a fixture são versionados com procedência, licença e tolerância. As predições e notas individuais ficam externas.
+
+**O que deu errado no caminho.** O primeiro comando de mutação não tinha permissão de escrita na worktree recém-criada. O arquivo foi conferido e as mutações foram executadas com acesso de escrita, restauradas e seguidas da suíte completa.
+
+**Risco em aberto.** O teste de integração pela inferência real cabe à PR de backend. Os sensores das bases ficam presos à cabeça ou ao pulso. No produto o movimento chega pela espuma, com atenuação e atraso esperados ainda a medir. A variante ±11 exige avaliação própria. A evidência está em dados-locais/ml-inf-cabeca-2026-11-07 e os brutos DREAMT e caches ML-17 permanecem em suas pastas externas. Quatro raízes conferidas sem junctions.
+
+**Procedência.** feature/ML-INF-modelo-cabeca, descendente da PR #99, sobre develop 8859101. docs/ML-INF-PROTOCOLO-MVP.md, docs/RELATORIO-ML-INF-MVP.md, ml/experimentos/ml_inf.py, ml/modelos/ml-inf-cabeca-v1.json e ml/testes/fixtures/ml-inf-cabeca-v1-dourado.json.
+
+---
+
+# 2026-11-07 (iii) — ML-INF v2: reproduzir e exportar o modelo validado
+
+**O problema.** A v1 exportou seis features, escala global e uma época isolada. A revisão da #100 pediu o mesmo pipeline validado no ML-04 e na ML-13. Na Newcastle, a v1 detectou 10 de 21.270 épocas de sono.
+
+**Hipótese.** O modelo de cabeça original com oito features, z-score por gravação e contexto ±11 reproduz os agregados publicados quando recebe as entradas históricas. O mesmo JSON deve reproduzir a pontuação do scikit-learn em noites simuladas que passam pela derivação angular do servidor.
+
+**O que foi testado.** No Windows local, Python 3.11.9, foram reconferidos os 103 SHA-256 DREAMT e os caches da ML-17. Rodaram 92 ajustes LOSO, o treino final, quatro avaliações externas e duas noites C2 de 960 e 959 épocas. Uma auditoria independente refez κ e confusões. Os JSONs publicados e o caminho de classificação do ML-04 foram lidos no Git. Nove controles positivos acusaram z-score por pessoa, contexto global, corte em 45 s, piso de 22, ausência de conversão angular, JSON v1, ordem invertida, coeficiente adulterado e empate como sono.
+
+**Resultado medido.** 299 testes de ML passaram após restaurar as mutações. κ da v2 no LOSO foi 0,4569. O JSON reproduziu κ 0,2953 na Newcastle, 0,4082 e 0,4123 nas variantes Walch e 0,3470 na DREAMT, com os ICs publicados e maior diferença por participante igual a zero. Na DREAMT, Δκ médio entre v2 e v1 foi +0,3133 e o maior módulo individual foi 0,7194. Nenhuma gravação histórica ficou abaixo do piso. Nos dourados, a probabilidade conferiu em 1e-12 e a classe foi exata, inclusive no empate em 0,5.
+
+**Adaptação.** A ordem original das métricas foi recuperada para reproduzir a sequência de amostras do bootstrap. No contrato do modelo, d_angulo ausente na borda vira zero antes do z-score. O histórico conserva o cálculo angular de origem. Os testes expõem o efeito da lacuna, do limiar temporal e da referência por noite ou por trecho.
+
+**O que deu errado no caminho.** O fetch inicial foi bloqueado pela sandbox na administração Git da worktree e foi repetido com a permissão apropriada. Houve globs incompatíveis com PowerShell e uma consulta CIM sem acesso. A primeira conferência de documentos acusou o relatório ainda fora do índice. A primeira rodada parou no IC da Newcastle, com desvio máximo de 0,00558 nos limites por causa da ordem do bootstrap. Na suíte isolada, o Windows negou a renomeação de um CSV sintético no temporário da sandbox. A suíte foi repetida fora da sandbox.
+
+**Risco em aberto.** A rota consumidora e sua execução dos dourados ficam na PR de backend. As coortes externas são de punho e o sensor Wearanize de cabeça é preso à cabeça. No produto a espuma pode atenuar e atrasar o movimento. Dados e notas individuais em dados-locais, com a evidência da rodada em ml-inf-cabeca-v2-2026-11-07-final. Worktree e raízes de execução conferidas sem junctions.
+
+**Procedência.** PR #100, branch feature/ML-INF-modelo-cabeca. Protocolo anterior à rodada em e8e4875 e execução definitiva em 367cd96. docs/ML-INF-PROTOCOLO-V2.md, docs/RELATORIO-ML-INF-V2.md, ml/experimentos/ml_inf_v2.py, ml/modelos/ml-inf-cabeca-v2.json e agregados da ML-13, ML-17 e ML-INF.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

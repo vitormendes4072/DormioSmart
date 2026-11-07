@@ -53,3 +53,9 @@ experimentos/saida/ml17/*
 !experimentos/saida/ml13/
 experimentos/saida/ml13/*
 !experimentos/saida/ml13/agregados.json
+
+# ML-INF: só a avaliação agregada. Predições e IDs ficam na saída local.
+!experimentos/saida/ml-inf/
+experimentos/saida/ml-inf/*
+!experimentos/saida/ml-inf/agregados.json
+!experimentos/saida/ml-inf/agregados-v2.json
