@@ -19,6 +19,11 @@ class FaseAmbigua(ValueError):
     """Gravação sem uma única fase PSG demonstrável pelas transições."""
 
 
+def _rotulo_epoca(estagios):
+    """Converte uma época de estágio uniforme para o rótulo binário."""
+    return ROTULOS[estagios[0]] if np.all(estagios == estagios[0]) else -1
+
+
 def ler_epocas(arquivo):
     """Recupera os pares repetidos e a grade de rótulos, sem interpolar lacunas."""
     d = pd.read_csv(arquivo, usecols=list(COLUNAS), dtype={'Sleep_Stage': 'category'})
@@ -58,8 +63,7 @@ def ler_epocas(arquivo):
         elif not finitos[linha:fim].all():
             perdas['acc_ausente'] += 1
         else:
-            bloco = estagios[linha:fim]
-            rotulo = ROTULOS[bloco[0]] if np.all(bloco == bloco[0]) else -1
+            rotulo = _rotulo_epoca(estagios[linha:fim])
             perdas['sem_rotulo'] += int(rotulo < 0)
             blocos.append(acc[linha:fim:2] / 64)
             indices.append(indice)

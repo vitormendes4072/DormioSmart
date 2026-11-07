@@ -73,6 +73,84 @@ def test_cauda_truncada_fica_fora(tmp_path):
     assert info['cauda_incompleta'] == 1
 
 
+@pytest.mark.parametrize('estagios, esperado', [
+    (['W', 'W'], 0), (['N1', 'N1'], 1), (['Missing', 'Missing'], -1),
+    (['W', 'N2'], -1), (['N1', 'N2'], -1),
+])
+def test_rotulo_da_epoca_exige_estagio_uniforme(estagios, esperado):
+    from src.carregar.dreamt import _rotulo_epoca
+
+    assert _rotulo_epoca(np.array(estagios)) == esperado
+
+
+@pytest.mark.parametrize('hmm', [False, True], ids=['janela', 'hmm'])
+def test_ml04_dreamt_respeita_lacuna_e_participante(tmp_path, monkeypatch, hmm):
+    import hashlib
+    import json
+
+    from experimentos import ml04_validacao_externa as ml04
+    from ferramentas import baixar_dreamt
+    from src.carregar import dreamt
+    from src.configuracao import carregar_config
+
+    dados = dict(X=np.array([[1.], [3.], [8.], [100.], [200.]]),
+                 y=np.array([0, 0, 1, 0, 0]),
+                 id=np.array(['a', 'a', 'a', 'b', 'b']),
+                 gravacao=np.array(['n1', 'n1', 'n1', 'n2', 'n2']),
+                 indice_epoca=np.array([0, 1, 4, 0, 1]))
+    # O caminho real de DREAMT exige catálogo e identidade do treino. Use
+    # uma versão sintética dos dois sem substituir a montagem dos segmentos.
+    arquivo = 'data_64Hz/S002_whole_df.csv'
+    (tmp_path / arquivo).parent.mkdir()
+    (tmp_path / arquivo).touch()
+    (tmp_path / 'SHA256SUMS.txt').touch()
+    manifesto = tmp_path / 'experimentos/saida/ml17/manifesto.json'
+    manifesto.parent.mkdir(parents=True)
+    h = hashlib.sha256()
+    h.update(dados['X'].astype('<f8').tobytes())
+    h.update(dados['y'].astype('<i8').tobytes())
+    h.update(json.dumps(dados['id'].tolist()).encode())
+    manifesto.write_text(json.dumps({'execucoes': {'depois/newcastle': {
+        'hash_entradas': {'wearanize/pulso': {'sha256': h.hexdigest()}}}}}))
+
+    class ClassificadorFixo:
+        def __init__(self, **_):
+            pass
+
+        def fit(self, X, y):
+            return self
+
+        def predict(self, X):
+            # Janela ±1 com padding na lacuna e na fronteira entre pessoas.
+            np.testing.assert_array_equal(X, [
+                [1, 1, 3], [1, 3, 3], [8, 8, 8],
+                [100, 100, 200], [100, 200, 200],
+            ])
+            return dados['y']
+
+        def predict_proba(self, X):
+            # O segmento unitário favorece sono. Se for unido a qualquer
+            # vizinho, a transição pegajosa o converte para vigília.
+            p = np.array([.02, .02, .60, .02, .02])
+            return np.column_stack((1 - p, p))
+
+    monkeypatch.setattr(baixar_dreamt, 'CSV_ESPERADOS', {arquivo})
+    monkeypatch.setattr(dreamt, 'carregar_features_dreamt', lambda *a: (dados, {}, {}))
+    monkeypatch.setattr(ml04, 'RAIZ', tmp_path)
+    monkeypatch.setattr(ml04, 'NOMES_BRACOS', ['pulso'])
+    monkeypatch.setattr(ml04, 'CONFIGS', {'teste': dict(contexto=1, hmm=hmm)})
+    monkeypatch.setattr(ml04, 'sujeitos_com_posicoes', lambda *a, **kw: list(range(92)))
+    monkeypatch.setattr(ml04, '_base_wearanize', lambda *a: {'pulso': dados})
+    monkeypatch.setattr(ml04, 'normalizar_por_sujeito', lambda X, ids: X)
+    monkeypatch.setattr(ml04, 'LogisticRegression', ClassificadorFixo)
+    monkeypatch.setattr(ml04, 'transicoes_hmm', lambda *a, **kw: (
+        np.array([[.98, .02], [.02, .98]]), None))
+    r = ml04.rodar(carregar_config(), 20260910, 'esquerdo', tmp_path / 'resultado.json',
+                  coorte='dreamt', dados_dreamt=tmp_path)
+    assert r['confusoes']['pulso/teste']['vp'] == 1
+    assert r['confusoes']['pulso/teste']['fn'] == 0
+
+
 def test_carregador_comum_separa_lacuna_e_participante(tmp_path, monkeypatch):
     from dataclasses import replace
     from src.carregar import carregar
