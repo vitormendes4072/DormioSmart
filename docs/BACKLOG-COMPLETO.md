@@ -57,7 +57,7 @@ Até 29/10 esta linha mandava rodar o `DATA-03`, fechado em 28/10.)* **Se tem um
 `CALC-*` e `DIAG-*`, que são o que a banca lê.
 
 **Contagem:** 38 itens abertos · **L0: 7** · L1: 14 · L2: 7 · L3: 10. *(Recontado linha a linha em 03/11, e não por delta; desde o `DOC-13`, o CI reconta.)*
-*(07/11, ML-INF v2, sobre origin/develop 8859101f5af7edac2bbd0bb4477bf960a74f6820: artefato e dourados por noite preparados. O item segue aberto pela integração no backend. Contagem inalterada.)*
+*(07/11, ML-INF v2, sobre origin/develop 4d4a6b1b05bb08bbc5f369af41a8cd122384779a: artefato e dourados por noite preparados. O item segue aberto pela integração no backend. Contagem inalterada.)*
 *(06/11, ML-13, sobre origin/develop b5335acb9e0164d9be6f471602eb83fe15f1782c: concluiu a validação DREAMT. 39−1 = 38 abertos, L0 8−1 = 7/L1 14/L2 7/L3 10.)*
 *(06/11, integração da segunda entrega da ML-17 sobre o `develop` com a #91 e o SIM-02: a ML-17 fecha e a contagem volta a 39 abertos, L0 8/L1 14/L2 7/L3 10.)*
 *(06/11, segunda entrega ML-17, sobre origin/develop 1b5c82c70262604f57d49faad4bcdafc71488ef1: primeira PR abre ML-17 (39 a 40, L0 8 a 9); esta entrega fecha e volta a 39 abertos, L0 8/L1 14/L2 7/L3 10. Saldo zero. Ordem: #91 antes da PR de rodadas; ML-13 aberta.)*
