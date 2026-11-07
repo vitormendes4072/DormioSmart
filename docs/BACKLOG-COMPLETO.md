@@ -57,6 +57,7 @@ Até 29/10 esta linha mandava rodar o `DATA-03`, fechado em 28/10.)* **Se tem um
 `CALC-*` e `DIAG-*`, que são o que a banca lê.
 
 **Contagem:** 38 itens abertos · **L0: 7** · L1: 14 · L2: 7 · L3: 10. *(Recontado linha a linha em 03/11, e não por delta; desde o `DOC-13`, o CI reconta.)*
+*(07/11, ML-INF, sobre origin/develop 8859101f5af7edac2bbd0bb4477bf960a74f6820: artefato e dourado da cabeça preparados. O item segue aberto pela integração no backend. Contagem inalterada.)*
 *(06/11, ML-13, sobre origin/develop b5335acb9e0164d9be6f471602eb83fe15f1782c: concluiu a validação DREAMT. 39−1 = 38 abertos, L0 8−1 = 7/L1 14/L2 7/L3 10.)*
 *(06/11, integração da segunda entrega da ML-17 sobre o `develop` com a #91 e o SIM-02: a ML-17 fecha e a contagem volta a 39 abertos, L0 8/L1 14/L2 7/L3 10.)*
 *(06/11, segunda entrega ML-17, sobre origin/develop 1b5c82c70262604f57d49faad4bcdafc71488ef1: primeira PR abre ML-17 (39 a 40, L0 8 a 9); esta entrega fecha e volta a 39 abertos, L0 8/L1 14/L2 7/L3 10. Saldo zero. Ordem: #91 antes da PR de rodadas; ML-13 aberta.)*
@@ -575,7 +576,7 @@ Depende de dado real captado — uma noite medida, ou o protocolo do `VIA-02`.
 | **DASH-04** | Visualização de **noite completa**: linha do tempo e lacunas como indicador de repouso. O gráfico já está preparado; falta o dado. | 🔴 |
 | **ML-09** *(✏️ 28/10: era `ML-04`, que é a validação externa fechada em 18/09)* | Calibração do modelo para o Dormio com dado próprio. **Ajuste de limiar, não re-treino** — n=1 não treina nada. ⚠️ **A validação externa reforçou a cautela:** o que parece ganho numa coorte pode não atravessar; com n=1 não há como distinguir. | 🟡 |
 | **ML-10** *(✏️ 28/10: era `ML-05`, que é o teto interavaliador fechado em 28/09)* | O que o modelo devolve ao usuário — e o que **não** devolver. Ver §6 do plano de ML. **Um número novo entra aqui:** a especificidade externa de 0,507 é o que o produto deve assumir, não os 0,802 internos. | 🟡 |
-| **ML-INF** | Onde a inferência roda. Proposta: job em lote no backend Python ao fim de uma sessão, não no ESP32. Ver §8 do plano de ML. | 🟡 |
+| **ML-INF** 🟠 *(07/11, artefato e dourado preparados)* | Modelo de cabeça original, seis features, LOSO e três coortes de punho medidos. Modelo, contrato e limites em `docs/RELATORIO-ML-INF-MVP.md`. Resta integrar a inferência Python em lote ao fim da sessão e executar o dourado pelo backend. | 🟡 |
 | **HW-07** | ✏️ **03/11 (triagem):** fica como **contingência** do `VIA-01`, não como plano. Arquitetura v2 — **fusão de 2 acelerômetros** (travesseiro + sob o colchão), se o `VIA-01` mostrar que o travesseiro subcapta movimento de corpo. Gatilho, não plano. **Implica rever a redação da RQ** (travesseiro → cama/travesseiro). | 🟡 |
 | *(→ `LGPD-02`)* | ✏️ **28/10 (`GIT-06`)**: não é item — é o `LGPD-02` de L0, que estava listado aqui também e contado duas vezes. O bloqueio de distribuição está escrito lá. | — |
 | **DATA-06** | ✏️ **03/11 (triagem):** **movido para L2**, depois do `VIA-02`: só faz sentido com o limiar medido do celular. **O limiar viaja com a leitura.** Hoje `1,2 m/s²` é constante compartilhada nascida do travesseiro, e o celular é classificado pela mesma régua. A **coluna e o campo dão para criar já**; o *valor* do limiar do celular depende do `VIA-02` (L2). | 🔴 |

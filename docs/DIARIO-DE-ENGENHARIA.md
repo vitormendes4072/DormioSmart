@@ -7540,6 +7540,27 @@ acurácia dela. O envio à conta de demonstração na produção não foi exerci
 
 **Procedência.** Base origin/develop 8859101, branch bugfix/ML-13-cobertura-dreamt. Revisão da #98, ml/testes/test_dreamt.py e ml/src/carregar/dreamt.py.
 
+
+---
+
+# 2026-11-07 (ii) — ML-INF: treino, validação e exportação de cabeça
+
+**O problema, como foi entendido no início.** Entregar o modelo de seis características e o vetor dourado que a integração do backend consumirá. O autor escolheu o braço cabeça por ser a posição corporal mais próxima do produto, que recebe movimento através do travesseiro.
+
+**Hipótese de trabalho.** O modelo balanceado com escala aprendida só no treino deve reproduzir as probabilidades do scikit-learn quando o backend recebe o campo f. O LOSO mede generalização entre participantes da cabeça. As três coortes externas medem generalização a pessoas e coortes de punho.
+
+**O que foi testado, e como.** Windows local, Python 3.11.9. Protocolo e código fixados em 4ee0ffe antes dos resultados. Foram reconferidos inventário, bytes e X/y/IDs dos caches da ML-17 e 103 SHA-256 da DREAMT. Executados 92 folds LOSO, um ajuste com os 92 participantes e três avaliações externas congeladas. Pools nativos medidos com uma thread no próprio processo. A auditoria independente recompôs médias com scikit-learn e contou as oito matrizes a partir de y e predições locais. Os testes repetem o payload SIM-02, conferem ordem canônica e reproduzem predict_proba por aritmética da biblioteca padrão. Controles positivos executados ao incluir a pessoa de teste na dobra, inverter a ordem das features e adulterar um coeficiente. Os três controles reprovaram antes da restauração.
+
+**Resultado medido.** 289 testes passaram no Windows. As quatro avaliações retiveram 92/27/29/97 participantes e 87.795/30.440/23.303/77.738 épocas. κ médio 0,3640/−0,0002/0,3652/0,0337 para LOSO, Newcastle, Walch e DREAMT. O maior |Δκ| em um participante foi 0,6825 no LOSO, com média +0,3640. Na DREAMT, |Δκ| máximo 0,4386 com média +0,0337. A alta especificidade na Newcastle e na DREAMT veio com sensibilidades por época de 0,047% e 12,65%. O máximo erro da auditoria das médias foi 1,11e-16. Quatro payloads e duas entradas sintéticas próximas ao limiar conferiram na tolerância de 1e-12 e classe exata. O backlog mantém a ML-INF aberta pela integração.
+
+**Adaptação.** Cabeça original chega a 32 Hz pelo antialias comum e evita acrescentar saturação e quantização E4 ao sinal. Isso aproxima o pré-processamento da C2 sem presumir resolução efetiva igual. Os agregados registram desempenho baixo onde houve colapso para vigília. Os coeficientes e a fixture são versionados com procedência, licença e tolerância. As predições e notas individuais ficam externas.
+
+**O que deu errado no caminho.** O primeiro comando de mutação não tinha permissão de escrita na worktree recém-criada. O arquivo foi conferido e as mutações foram executadas com acesso de escrita, restauradas e seguidas da suíte completa.
+
+**Risco em aberto.** O teste de integração pela inferência real cabe à PR de backend. Os sensores das bases ficam presos à cabeça ou ao pulso. No produto o movimento chega pela espuma, com atenuação e atraso esperados ainda a medir. A variante ±11 exige avaliação própria. A evidência está em dados-locais/ml-inf-cabeca-2026-11-07 e os brutos DREAMT e caches ML-17 permanecem em suas pastas externas. Quatro raízes conferidas sem junctions.
+
+**Procedência.** feature/ML-INF-modelo-cabeca, descendente da PR #99, sobre develop 8859101. docs/ML-INF-PROTOCOLO-MVP.md, docs/RELATORIO-ML-INF-MVP.md, ml/experimentos/ml_inf.py, ml/modelos/ml-inf-cabeca-v1.json e ml/testes/fixtures/ml-inf-cabeca-v1-dourado.json.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
