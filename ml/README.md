@@ -634,3 +634,32 @@ Tudo abaixo **exige execução**, e nada foi executado ainda.
 6. **`ML-03`** — a matriz 3×3 de transferência entre posições, com o teto
    inter-avaliador ao lado. É a contribuição original do trabalho, e agora não
    depende de DUA nenhum.
+
+
+## ML-17 — contexto por participante e segmento (05/11/2026)
+
+A correção impede que a janela atravesse participantes, gravações ou lacunas da
+sequência de épocas retidas. Os caches novos têm contrato temporal versionado;
+o caminho do dado é explícito e não depende de junction. Firmware e testes dos
+vetores dourados permanecem intactos.
+
+Foram refeitas 69 células em cada versão: validação Newcastle/Walch, comparação
+dos punhos e baseline/HMM/±11 no LOSO completo dos três braços. As entradas das
+duas versões são idênticas; os caches históricos Newcastle têm uma diferença
+angular quantificada, por isso não se declara reprodução bit a bit dos históricos.
+
+O [relatório antes/depois](../docs/RELATORIO-ML-17-CONTEXTO.md) apresenta médias,
+ICs, diferenças por participante e máximos. As demais tabelas deste README
+registram suas rodadas históricas; a ML-17 não refez ablação inteira, Random
+Forest, seleção aninhada ou quantização. O [adendo às previsões DREAMT](../docs/ADENDO-ML-13-APOS-ML-17.md)
+preserva P1–P3 e registra os sinais secundários que mudaram, ainda inconclusivos.
+A ML-13 continua aberta; nenhuma avaliação DREAMT foi feita.
+
+Agregados numéricos, manifesto e hashes (sem notas/índices individuais ou
+predições/rótulos) em
+[experimentos/saida/ml17/](experimentos/saida/ml17/). Protocolo e comandos em
+[ML-17-PROTOCOLO-RODADAS.md](../docs/ML-17-PROTOCOLO-RODADAS.md).
+
+Em 06/11, publicação agregada aprovada. A auditoria das médias/desvios/máximos
+usando as notas externas é `ferramentas/auditar_resumos_ml17.py`; seus comandos e
+limites estão no relatório. O CI verifica contrato/hashes e fontes, sem os dados.
