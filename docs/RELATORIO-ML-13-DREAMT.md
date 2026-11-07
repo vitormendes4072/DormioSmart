@@ -59,7 +59,7 @@ no contraste com ±2.
 
 Os desvios, ICs das cinco métricas, n válido e as 13 matrizes de
 confusão somadas por época estão no
-[JSON agregado](../ml/experimentos/saida/ml13_dreamt_agregados.json).
+[JSON agregado](../ml/experimentos/saida/ml13/agregados.json).
 Cada média dá o mesmo peso a cada participante. As matrizes somadas
 dão o mesmo peso a cada época.
 
@@ -131,7 +131,7 @@ corresponder ao manifesto ML-17.
 ```text
 python -m ferramentas.baixar_dreamt --pasta PASTA_DREAMT
 python -m experimentos.ml04_validacao_externa --coorte dreamt --dados-brutos PASTA_DREAMT --dados-wearanize PASTA_WEARANIZE --cache CACHE_TREINO --saida-dir SAIDA_PRIVADA
-python -m ferramentas.resumir_ml13 --entrada RESULTADO_PRIVADO.json --saida experimentos/saida/ml13_dreamt_agregados.json
+python -m ferramentas.resumir_ml13 --entrada RESULTADO_PRIVADO.json --saida experimentos/saida/ml13/agregados.json
 ```
 
 O commit de protocolo e código anterior à rodada foi
