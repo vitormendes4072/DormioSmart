@@ -971,7 +971,7 @@ sensores) com evidência em vez de intuição.
 | **Firmware** | Amostrar a ≥ 42 Hz; agregar em épocas de 30 s; calcular as 8 features de §7 no dispositivo. | `FW-05` |
 | **Contrato** | Levar o vetor de features por época, não só magnitude + rótulo. Campo novo e opcional → **MINOR**, nada quebra em campo. | `DATA-07` |
 | **Banco** | Uma coluna `jsonb` com as features, ou colunas dedicadas. ~10 números × 960 épocas = **~9,6 mil valores por noite** — trivial. *(Enviar sinal bruto seria ~11 MB por noite: não faça.)* | `DATA-07` |
-| **Backend** | Inferência em **lote, ao fim da sessão** — não no ESP32, não em tempo real. O Python já está lá. | `ML-INF` |
+| **Backend** | ~~Inferência em **lote, ao fim da sessão**~~ ✏️ *08/11: **sob demanda**, a cada pedido de `GET /api/inferencia`, sobre a janela pedida, e sem gravar o resultado — sem migração, sem dado de saúde inferido no banco, e o servidor não precisa decidir sozinho quando uma sessão acabou (`ESC-01`). Continua não sendo no ESP32.* O Python já está lá. | `ML-INF` ✅ |
 | **Frontend** | Uma seção nova no painel para as métricas de §6, com a incerteza declarada ao lado. | `ML-05` |
 | **`ml/`** | Hoje contém apenas um diretório `data/` vazio. | `ML-01` |
 
