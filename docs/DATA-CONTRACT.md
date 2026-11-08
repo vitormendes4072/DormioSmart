@@ -1,6 +1,11 @@
 # Contrato de dados — Smart Dormio
 
-**Versão:** 2.7.0 · **Itens:** API-03, DATA-01, DATA-02, SEC-02, SEC-03, DASH-05, DASH-06, DATA-04, APP-01, SEC-06, SEC-07, APP-08, DASH-08, DASH-12, DASH-13, DATA-07a, DATA-07b, DATA-07c
+**Versão:** 2.8.0 · **Itens:** API-03, DATA-01, DATA-02, SEC-02, SEC-03, DASH-05, DASH-06, DATA-04, APP-01, SEC-06, SEC-07, APP-08, DASH-08, DASH-12, DASH-13, DATA-07a, DATA-07b, DATA-07c, ML-INF
+
+> **2.8.0 (MINOR — nada quebra em campo):** rota nova de leitura, `GET /api/inferencia`,
+> que estima sono ou vigília por época sobre a janela pedida, com o modelo
+> `ml-inf-cabeca-v2` (seção 2.6, "Inferência no servidor"). Nada da ingestão mudou.
+>
 
 > **2.7.0 (MINOR — nada quebra em campo):** a seção 2.6 deixou de ser só declarada. `f`, `g`
 > e `fs` são emitidos pelo firmware, validados na ingestão, gravados (migração 010) e
@@ -385,6 +390,44 @@ Authorization: Bearer <JWT do usuário>
   `400` para parâmetro faltando, sem fuso ou janela acima de 24 h; `401` sem
   JWT; `503` se a consulta falhar — uma lista vazia pareceria noite sem
   movimento.
+
+#### Inferência no servidor: `GET /api/inferencia` (v2.8.0, `ML-INF`)
+
+Sono ou vigília por época, calculado a cada pedido e **não gravado**, por
+`web-app/inferencia.py` com o modelo `web-app/modelos/ml-inf-cabeca-v2.json`
+(cópia byte a byte de `ml/modelos/`, conferida por SHA-256 nos testes). O
+modelo é a configuração `item9_ctx11` do ML-04, treinada no braço de cabeça do
+Wearanize+ OA; o relatório é `docs/RELATORIO-ML-INF-V2.md`.
+
+```
+GET /api/inferencia?device=<uuid>&desde=<ISO 8601 com fuso>&ate=<ISO 8601 com fuso>
+Authorization: Bearer <JWT do usuário>
+```
+
+- Mesmos parâmetros, mesma janela máxima (24 h) e mesma consulta de
+  `/api/features`.
+- Entram só épocas de **30 s a 32 Hz** (`epoca_segundos = 30`,
+  `fs_features = 32`), a grade do treino; as outras são descartadas antes da
+  derivação, para não entrar no `g_ref`, e contadas em `excluidas.fora_da_grade`.
+- `d_angulo` nulo (primeira época, depois de lacuna) entra como `0.0`. Uma
+  época vale se as oito são números finitos; as outras vão para
+  `excluidas.invalidas`.
+- **Mínimo de 23 épocas válidas** (a janela de contexto completa). Abaixo
+  disso, `422` com `{"error", "epocas_validas", "minimo"}`, e a conta não é feita.
+- z-score de cada feature sobre **a janela pedida** (`ddof = 1`; desvio abaixo
+  de `1e-9` vira 1). O modelo foi treinado com noites inteiras: outra janela
+  pode classificar a mesma época de outro jeito, e por isso a resposta devolve
+  a janela.
+- Contexto de ±11 épocas, com a época da ponta repetida nas bordas e junto a
+  cada lacuna acima de 45 s (o mesmo corte de `d_angulo`).
+- Classe `1` (sono) quando o logit é **maior que zero**; probabilidade 0,5
+  exata é vigília.
+- Resposta `200`: `{"device_id", "desde", "ate", "modelo": {"versao",
+  "configuracao", "limiar", "treino"}, "normalizacao", "classes", "aviso",
+  "epocas": [{"instante", "prob_sono", "classe"}], "n_segmentos",
+  "excluidas": {"fora_da_grade", "invalidas"}}`. `400` como em `/api/features`;
+  `401` sem JWT; `503` se a consulta falhar ou o modelo não carregar. O
+  `/health` informa `"modelo"`: a versão carregada ou `"indisponivel"`.
 
 ### 2.1 `total` — o que é e o que NÃO é
 
@@ -854,6 +897,7 @@ unidade alterada, novo header obrigatório). **MINOR** = campo opcional novo.
 
 | Versão | Data | Mudança |
 |---|---|---|
+| 2.8.0 | 2026-11-08 | **MINOR.** `GET /api/inferencia` (`ML-INF`): sono ou vigília por época sobre a janela pedida, com o modelo `ml-inf-cabeca-v2`, calculado a cada pedido e não gravado; `422` abaixo de 23 épocas válidas. O `/health` passa a informar `modelo`. A ingestão não muda |
 | 2.7.0 | 2026-10-30 | **MINOR.** A seção 2.6 implementada (`DATA-07b` (d) e (e)): `f`/`g`/`fs` emitidos pelo firmware (só época de 30 s com vetor dentro das faixas), validados na ingestão, gravados em dez colunas nomeadas (migração 010) e servidos por `GET /api/features`, que deriva `inclinacao_rel` e `d_angulo` sobre a janela pedida, com `d_angulo` nulo depois de buraco. Payload sem `f` não muda |
 | 2.6.0 | 2026-10-30 | **MINOR.** `POST /api/data/lote` (seção 5.2, `API-03`): até 60 leituras por requisição, resposta com `aceitas`, `rejeitadas` e `pendentes` por índice. O `POST /api/data` não muda |
 | 2.5.1 *(nota de estado, 2026-10-17)* | — | **Não é mudança de contrato: nenhum campo, faixa ou obrigatoriedade mudou, e por isso a versão NÃO foi incrementada** (o backend declara `CONTRATO_DE_DADOS = "2.5.1"` e continua correto). A nota de abertura da seção 2.6 deixou de dizer "nada implementa esta seção": o `DATA-07b` implementou o **cálculo** das 6 features e de `ĝ` no firmware e **provou a paridade** Python↔C++ contra o `vetor_dourado.json` (`make dourado`). O **transporte segue não implementado** — `f` não é emitido, validado nem persistido. Registrado também o pré-requisito de taxa: a 10 s de cadência a época tem 3 amostras, e o firmware recusa emitir |
