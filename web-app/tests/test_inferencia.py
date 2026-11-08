@@ -135,7 +135,7 @@ def test_casos_do_limiar_incluem_o_empate_como_vigilia(modelo, dourado):
     for caso in (abaixo, empate, acima):
         z = inf.pontuar(modelo, caso["contexto"])
         assert abs(inf._sigmoide(z) - caso["probabilidade"]) <= dourado["tolerancia_absoluta"]
-        assert int(z > 0) == caso["classe"]
+        assert inf.classe(z) == caso["classe"]
     assert inf.pontuar(modelo, empate["contexto"]) == 0 and empate["classe"] == 0
 
 
@@ -147,6 +147,16 @@ def test_piso_de_23_epocas_validas(modelo, dourado):
     with pytest.raises(inf.AbaixoDoPiso) as e:
         inf.inferir_janela(linhas[:22], modelo)
     assert (e.value.validas, e.value.minimo) == (22, 23)
+
+
+def test_piso_conta_so_as_validas_e_nao_as_recebidas(modelo, dourado):
+    """22 épocas na grade e duas fora dela são 24 linhas e 22 épocas válidas."""
+    linhas = linhas_da_noite(dourado, "continua")[:22]
+    fora = [dict(linhas[0], epoca_segundos=60, captured_at="2026-11-01T23:30:00+00:00"),
+            dict(linhas[0], fs_features=50.0, captured_at="2026-11-01T23:31:00+00:00")]
+    with pytest.raises(inf.AbaixoDoPiso) as e:
+        inf.inferir_janela(linhas + fora, modelo)
+    assert e.value.validas == 22
 
 
 def test_janela_vazia_fica_abaixo_do_piso(modelo):
@@ -209,14 +219,19 @@ def test_d_angulo_nulo_entra_como_zero(modelo, dourado):
     assert r["excluidas"]["invalidas"] == 0 and len(r["epocas"]) == 959
 
 
-def test_coluna_constante_nao_divide_por_zero(modelo):
+@pytest.mark.parametrize("ruido", [0.0, 1e-13])
+def test_desvio_abaixo_do_piso_vira_1(modelo, ruido):
+    """Desvio 0 dividiria por zero; desvio de 1e-13 transformaria ruído de
+    arredondamento em z-scores de ±1. Abaixo de 1e-9, o desvio vira 1 e a
+    coluna fica praticamente constante depois da normalização."""
     instantes = [30 * i for i in range(40)]
-    linhas = [dict({n: 0.02 for n in DO_DISPOSITIVO}, captured_at=(
+    linhas = [dict({n: 0.02 + ruido * (i % 2) for n in DO_DISPOSITIVO}, captured_at=(
         datetime(2026, 11, 1, 23, tzinfo=timezone.utc) + timedelta(seconds=s)).isoformat(),
-        epoca_segundos=30, g_x=0.0, g_y=0.0, g_z=1.0, fs_features=32.0) for s in instantes]
-    r = inf.inferir_janela(linhas, modelo)
-    assert all(math.isfinite(e["prob_sono"]) for e in r["epocas"])
-    assert len({e["prob_sono"] for e in r["epocas"]}) == 1
+        epoca_segundos=30, g_x=0.0, g_y=0.0, g_z=1.0, fs_features=32.0)
+        for i, s in enumerate(instantes)]
+    probs = [e["prob_sono"] for e in inf.inferir_janela(linhas, modelo)["epocas"]]
+    assert all(map(math.isfinite, probs))
+    assert max(probs) - min(probs) < 1e-9
 
 
 # --- 4. a rota ---------------------------------------------------------------

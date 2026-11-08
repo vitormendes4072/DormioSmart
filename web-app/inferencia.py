@@ -176,6 +176,13 @@ def _sigmoide(z):
     return 1 / (1 + e) if z >= 0 else e / (1 + e)
 
 
+def classe(z):
+    """1 (sono) só com logit estritamente positivo: 0,5 exato é vigília, como no
+    `predict` do scikit-learn que o ML-04 usou. Decidir pelo logit, e não pela
+    probabilidade, evita que o arredondamento da sigmoide mude a classe."""
+    return int(z > 0)
+
+
 def pontuar(modelo, contexto):
     """Logit de uma linha já empilhada, na ordem de `colunas_contexto`."""
     return modelo["intercepto"] + math.fsum(
@@ -228,6 +235,6 @@ def inferir_janela(linhas, modelo):
             contexto.extend(Z[max(inicio[s], min(i + d, fim[s]))])
         z = pontuar(modelo, contexto)
         saida.append({"instante": instantes[i], "prob_sono": _sigmoide(z),
-                      "classe": int(z > 0)})
+                      "classe": classe(z)})
     return {"epocas": saida, "n_segmentos": seg[-1] + 1,
             "excluidas": {"fora_da_grade": fora_da_grade, "invalidas": invalidas}}
