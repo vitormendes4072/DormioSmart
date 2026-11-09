@@ -57,6 +57,9 @@ public class NoitePlugin extends Plugin {
     private void iniciarServico(PluginCall call) {
         final Context c = getContext();
         final Intent i = new Intent(c, ServicoDaNoite.class).setAction(ServicoDaNoite.ACAO_INICIAR);
+        // Etapa 4: a posicao do celular nesta noite, anotada com ela.
+        final String posicao = call.getString("posicao");
+        if (posicao != null) i.putExtra(ServicoDaNoite.EXTRA_POSICAO, posicao);
         ContextCompat.startForegroundService(c, i);
         final JSObject r = new JSObject();
         r.put("notificacoes", Build.VERSION.SDK_INT < 33
@@ -113,9 +116,21 @@ public class NoitePlugin extends Plugin {
             final JSArray lista = new JSArray();
             for (String nome : a.noites()) {
                 final JSObject n = new JSObject();
+                final java.util.List<String> linhas = a.linhas(nome);
                 n.put("arquivo", nome);
-                n.put("epocas", a.linhas(nome).size());
+                n.put("epocas", linhas.size());
                 n.put("enviadas", a.enviadas(nome));
+                // Etapa 4: o inicio da primeira e da ultima epoca, para a duracao e a
+                // cobertura da noite, e as anotacoes.
+                if (!linhas.isEmpty()) {
+                    n.put("primeiraTs", tsDe(linhas.get(0)));
+                    n.put("ultimaTs", tsDe(linhas.get(linhas.size() - 1)));
+                }
+                final JSObject notas = new JSObject();
+                for (java.util.Map.Entry<String, String> e : NotasDaNoite.ler(a.pasta(), nome).entrySet()) {
+                    notas.put(e.getKey(), e.getValue());
+                }
+                n.put("notas", notas);
                 lista.put(n);
             }
             final JSObject r = new JSObject();
@@ -161,6 +176,43 @@ public class NoitePlugin extends Plugin {
             call.resolve(r);
         } catch (IOException ex) {
             call.reject("nao gravou o progresso do envio", ex);
+        }
+    }
+
+    private static String tsDe(String linha) {
+        try {
+            return new org.json.JSONObject(linha).optString("ts", null);
+        } catch (org.json.JSONException ex) {
+            return null;
+        }
+    }
+
+    /** Grava as anotacoes de uma noite (posicao e diario). Etapa 4. */
+    @PluginMethod
+    public void salvarNotas(PluginCall call) {
+        final String nome = call.getString("arquivo");
+        final JSObject notas = call.getObject("notas");
+        if (nome == null || notas == null) {
+            call.reject("arquivo e notas sao obrigatorios");
+            return;
+        }
+        final java.util.Map<String, String> m = new java.util.LinkedHashMap<>();
+        final java.util.Iterator<String> chaves = notas.keys();
+        while (chaves.hasNext()) {
+            final String k = chaves.next();
+            m.put(k, notas.optString(k, ""));
+        }
+        try {
+            final JSObject r = new JSObject();
+            for (java.util.Map.Entry<String, String> e
+                    : NotasDaNoite.salvar(arquivo().pasta(), nome, m).entrySet()) {
+                r.put(e.getKey(), e.getValue());
+            }
+            call.resolve(r);
+        } catch (IllegalArgumentException ex) {
+            call.reject(ex.getMessage());
+        } catch (IOException ex) {
+            call.reject("nao gravou as anotacoes", ex);
         }
     }
 

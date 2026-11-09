@@ -50,6 +50,8 @@ public class ServicoDaNoite extends Service implements SensorEventListener {
 
     public static final String ACAO_INICIAR = "app.dormiosmart.coleta.INICIAR";
     public static final String ACAO_ENCERRAR = "app.dormiosmart.coleta.ENCERRAR";
+    /** Extra do INICIAR: onde o celular fica (NotasDaNoite.POSICOES). Etapa 4. */
+    public static final String EXTRA_POSICAO = "posicao";
 
     static final String PASTA = "noites";
     static final String CANAL = "noite";
@@ -104,7 +106,7 @@ public class ServicoDaNoite extends Service implements SensorEventListener {
     public int onStartCommand(Intent intent, int flags, int startId) {
         final String acao = intent != null ? intent.getAction() : null;
         if (ACAO_ENCERRAR.equals(acao)) {
-            encerrar();
+            encerrar("usuario");
             return START_NOT_STICKY;
         }
         // Cinco segundos para chamar startForeground depois de
@@ -120,6 +122,15 @@ public class ServicoDaNoite extends Service implements SensorEventListener {
                 estado.ativa = true;
                 estado.inicioUtcMs = System.currentTimeMillis();
                 estado.arquivo = ArquivoDaNoite.nomeDaNoite(estado.inicioUtcMs);
+                final String posicao = intent.getStringExtra(EXTRA_POSICAO);
+                if (posicao != null && !posicao.isEmpty()) {
+                    try {
+                        NotasDaNoite.salvar(pasta(this), estado.arquivo,
+                                java.util.Collections.singletonMap("posicao", posicao));
+                    } catch (IllegalArgumentException ex) {
+                        Log.e(TAG, "posicao recusada: " + posicao, ex);
+                    }
+                }
             } else if (estado.ativa) {
                 // Intent nulo e o START_STICKY trazendo de volta um servico morto.
                 if (intent == null) estado.retomadas++;
@@ -151,16 +162,23 @@ public class ServicoDaNoite extends Service implements SensorEventListener {
                 .setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
         final PendingIntent aoTocar = PendingIntent.getActivity(
                 this, 0, abrir, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
-        final Notification n = new NotificationCompat.Builder(this, CANAL)
+        aoTocarNaNotificacao = aoTocar;
+        final int tipo = Build.VERSION.SDK_INT >= 34 ? ServiceInfo.FOREGROUND_SERVICE_TYPE_HEALTH : 0;
+        ServiceCompat.startForeground(this, ID_NOTIFICACAO, notificacao("Toque para ver ou encerrar."), tipo);
+    }
+
+    private PendingIntent aoTocarNaNotificacao;
+
+    private Notification notificacao(String texto) {
+        return new NotificationCompat.Builder(this, CANAL)
                 .setContentTitle("Dormio registrando a noite")
-                .setContentText("Toque para ver ou encerrar.")
+                .setContentText(texto)
                 .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
                 .setOngoing(true)
-                .setContentIntent(aoTocar)
+                .setOnlyAlertOnce(true)
+                .setContentIntent(aoTocarNaNotificacao)
                 .setPriority(NotificationCompat.PRIORITY_LOW)
                 .build();
-        final int tipo = Build.VERSION.SDK_INT >= 34 ? ServiceInfo.FOREGROUND_SERVICE_TYPE_HEALTH : 0;
-        ServiceCompat.startForeground(this, ID_NOTIFICACAO, n, tipo);
     }
 
     private void comecarARegistrar() {
@@ -182,7 +200,7 @@ public class ServicoDaNoite extends Service implements SensorEventListener {
         final Sensor acel = sm.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
         if (acel == null) {
             Log.e(TAG, "aparelho sem acelerometro");
-            encerrar();
+            encerrar("sem_sensor");
             return;
         }
         registrando = sm.registerListener(
@@ -190,7 +208,7 @@ public class ServicoDaNoite extends Service implements SensorEventListener {
         emExecucao = registrando;
         if (!registrando) {
             Log.e(TAG, "o sistema recusou o acelerometro");
-            encerrar();
+            encerrar("sem_sensor");
         }
     }
 
@@ -244,6 +262,16 @@ public class ServicoDaNoite extends Service implements SensorEventListener {
         if (decimos == Integer.MIN_VALUE) return;
         estado.temperaturaDecimos = decimos;
         if (nucleo != null) nucleo.definirTemperatura(decimos / 10.0f);
+        // Etapa 4: a temperatura na notificacao, e o corte por calor.
+        getSystemService(NotificationManager.class).notify(ID_NOTIFICACAO,
+                notificacao(String.format(java.util.Locale.ROOT, "Aparelho a %.1f °C. Toque para ver ou encerrar.",
+                        decimos / 10.0f)));
+        if (CorteDeTemperatura.deveEncerrar(decimos) && !encerrandoPorCalor) {
+            encerrandoPorCalor = true;
+            Log.w(TAG, "aparelho a " + decimos / 10.0f + " C: a noite sera encerrada");
+            // encerrar() espera a linha do sensor terminar; chamado DELA, travaria.
+            new Handler(android.os.Looper.getMainLooper()).post(() -> encerrar("temperatura"));
+        }
     }
 
     private void salvarContadores() {
@@ -289,7 +317,9 @@ public class ServicoDaNoite extends Service implements SensorEventListener {
         }
     }
 
-    private void encerrar() {
+    private volatile boolean encerrandoPorCalor;
+
+    private void encerrar(String motivo) {
         if (registrando) {
             getSystemService(SensorManager.class).unregisterListener(this);
             registrando = false;
@@ -314,7 +344,16 @@ public class ServicoDaNoite extends Service implements SensorEventListener {
                 estado = new EstadoDaNoite();
             }
         }
+        final boolean estavaAtiva = estado.ativa;
         estado.ativa = false;
+        if (estavaAtiva && estado.arquivo != null && !estado.arquivo.isEmpty()) {
+            try {
+                NotasDaNoite.salvar(pasta(this), estado.arquivo,
+                        java.util.Collections.singletonMap("fim", motivo));
+            } catch (IOException | IllegalArgumentException ex) {
+                Log.e(TAG, "nao anotou o fim da noite", ex);
+            }
+        }
         try {
             if (arquivo == null) arquivo = new ArquivoDaNoite(pasta(this));
             estado.salvar(arquivo.estado());
