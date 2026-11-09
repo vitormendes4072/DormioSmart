@@ -7,7 +7,9 @@ import static org.junit.Assert.fail;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
 import org.junit.Rule;
 import org.junit.Test;
@@ -106,5 +108,78 @@ public class ArquivoDaNoiteTest {
         final EstadoDaNoite l = EstadoDaNoite.ler(new File(tmp.getRoot(), "nao-existe"));
         assertFalse(l.ativa);
         assertEquals(Long.MIN_VALUE, l.temperaturaDecimos);
+    }
+
+    // ── O progresso do envio (etapa 3) ─────────────────────────────────────
+
+    private ArquivoDaNoite noiteCom(int epocas, String nome) throws IOException {
+        final ArquivoDaNoite a = new ArquivoDaNoite(new File(tmp.getRoot(), "noites"));
+        a.abrir(nome);
+        for (int i = 0; i < epocas; i++) a.anexar("{\"epoca\":" + i + "}");
+        return a;
+    }
+
+    @Test
+    public void semEnvioOPontoEZero() throws IOException {
+        try (ArquivoDaNoite a = noiteCom(3, "noite-1.jsonl")) {
+            assertEquals(0, a.enviadas("noite-1.jsonl"));
+        }
+    }
+
+    @Test
+    public void oPontoAvancaPersisteENuncaRecua() throws IOException {
+        try (ArquivoDaNoite a = noiteCom(100, "noite-1.jsonl")) {
+            assertEquals(60, a.marcarEnviadas("noite-1.jsonl", 60));
+            // Outra instancia (o app reaberto) le o mesmo ponto.
+            assertEquals(60, new ArquivoDaNoite(a.pasta()).enviadas("noite-1.jsonl"));
+            assertEquals(60, a.marcarEnviadas("noite-1.jsonl", 20));
+            assertEquals(60, a.enviadas("noite-1.jsonl"));
+            // Nunca passa do que foi gravado.
+            assertEquals(100, a.marcarEnviadas("noite-1.jsonl", 500));
+        }
+    }
+
+    @Test
+    public void aFaixaRespeitaOTetoDoLote() throws IOException {
+        try (ArquivoDaNoite a = noiteCom(100, "noite-1.jsonl")) {
+            assertEquals(ArquivoDaNoite.MAXIMO_POR_LOTE, a.faixa("noite-1.jsonl", 0, 999).size());
+            final List<String> f = a.faixa("noite-1.jsonl", 50, 999);
+            assertEquals(50, f.size());
+            assertEquals("{\"epoca\":50}", f.get(0));
+            assertEquals("{\"epoca\":99}", f.get(49));
+            assertEquals(40, a.faixa("noite-1.jsonl", 60, 60).size());
+            assertTrue(a.faixa("noite-1.jsonl", 100, 60).isEmpty());
+            assertTrue(a.faixa("noite-1.jsonl", 500, 60).isEmpty());
+        }
+    }
+
+    @Test
+    public void asNoitesSaoListadasEmOrdemSemOEstadoNemOProgresso() throws IOException {
+        final File pasta = new File(tmp.getRoot(), "noites");
+        try (ArquivoDaNoite a = new ArquivoDaNoite(pasta)) {
+            for (String n : new String[] {"noite-200.jsonl", "noite-100.jsonl"}) {
+                a.abrir(n);
+                a.anexar("{}");
+            }
+            a.marcarEnviadas("noite-100.jsonl", 1);
+            new EstadoDaNoite().salvar(a.estado());
+            assertEquals(new ArrayList<>(Arrays.asList("noite-100.jsonl", "noite-200.jsonl")), a.noites());
+        }
+    }
+
+    @Test
+    public void linhaPelaMetadeFicaDeForaAteTerminar() throws IOException {
+        final File pasta = new File(tmp.getRoot(), "noites");
+        try (ArquivoDaNoite a = new ArquivoDaNoite(pasta)) {
+            a.abrir("noite-1.jsonl");
+            a.anexar("{\"epoca\":0}");
+        }
+        // O servico no meio da escrita da proxima epoca.
+        try (java.io.FileOutputStream s = new java.io.FileOutputStream(new File(pasta, "noite-1.jsonl"), true)) {
+            s.write("{\"epoca\":1,\"ax\":".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        }
+        final ArquivoDaNoite leitor = new ArquivoDaNoite(pasta);
+        assertEquals(Arrays.asList("{\"epoca\":0}"), leitor.linhas("noite-1.jsonl"));
+        assertEquals(1, leitor.marcarEnviadas("noite-1.jsonl", 2));
     }
 }

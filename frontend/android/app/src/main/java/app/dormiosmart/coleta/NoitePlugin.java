@@ -10,6 +10,7 @@ import android.provider.Settings;
 
 import androidx.core.content.ContextCompat;
 
+import com.getcapacitor.JSArray;
 import com.getcapacitor.JSObject;
 import com.getcapacitor.PermissionState;
 import com.getcapacitor.Plugin;
@@ -92,6 +93,74 @@ public class NoitePlugin extends Plugin {
             call.resolve(r);
         } catch (IOException ex) {
             call.reject("nao leu o estado da noite", ex);
+        }
+    }
+
+    // ── O envio (APP-02, etapa 3) ──────────────────────────────────────────
+    //
+    // O envio fica no lado web: e la que esta a sessao, que o Supabase renova.
+    // O nativo so le o arquivo e guarda ate onde o servidor confirmou.
+
+    private ArquivoDaNoite arquivo() {
+        return new ArquivoDaNoite(ServicoDaNoite.pasta(getContext()));
+    }
+
+    /** As noites gravadas: arquivo, total de epocas e quantas ja foram confirmadas. */
+    @PluginMethod
+    public void noites(PluginCall call) {
+        try {
+            final ArquivoDaNoite a = arquivo();
+            final JSArray lista = new JSArray();
+            for (String nome : a.noites()) {
+                final JSObject n = new JSObject();
+                n.put("arquivo", nome);
+                n.put("epocas", a.linhas(nome).size());
+                n.put("enviadas", a.enviadas(nome));
+                lista.put(n);
+            }
+            final JSObject r = new JSObject();
+            r.put("noites", lista);
+            call.resolve(r);
+        } catch (IOException ex) {
+            call.reject("nao listou as noites", ex);
+        }
+    }
+
+    /** Ate 60 epocas de {@code arquivo}, a partir de {@code de}, como texto JSON. */
+    @PluginMethod
+    public void lerEpocas(PluginCall call) {
+        final String nome = call.getString("arquivo");
+        final Integer de = call.getInt("de");
+        if (nome == null || de == null || !nome.startsWith("noite-") || nome.contains("/")) {
+            call.reject("arquivo e de sao obrigatorios");
+            return;
+        }
+        try {
+            final JSArray linhas = new JSArray();
+            for (String l : arquivo().faixa(nome, de, ArquivoDaNoite.MAXIMO_POR_LOTE)) linhas.put(l);
+            final JSObject r = new JSObject();
+            r.put("epocas", linhas);
+            call.resolve(r);
+        } catch (IOException ex) {
+            call.reject("nao leu as epocas", ex);
+        }
+    }
+
+    /** Grava que as primeiras {@code ate} epocas de {@code arquivo} estao confirmadas. */
+    @PluginMethod
+    public void marcarEnviadas(PluginCall call) {
+        final String nome = call.getString("arquivo");
+        final Integer ate = call.getInt("ate");
+        if (nome == null || ate == null || !nome.startsWith("noite-") || nome.contains("/")) {
+            call.reject("arquivo e ate sao obrigatorios");
+            return;
+        }
+        try {
+            final JSObject r = new JSObject();
+            r.put("enviadas", arquivo().marcarEnviadas(nome, ate));
+            call.resolve(r);
+        } catch (IOException ex) {
+            call.reject("nao gravou o progresso do envio", ex);
         }
     }
 

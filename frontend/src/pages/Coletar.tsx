@@ -16,10 +16,11 @@ import { CartaoDaNoite } from "../components/CartaoDaNoite";
 import { noiteNativaDisponivel } from "../lib/noiteNativa";
 import { EPOCAS_DISPONIVEIS_S, EPOCA_PADRAO_S, desvio } from "../lib/acelerometro";
 import { ErroApi } from "../lib/api";
-import { prepararDispositivoDoCelular } from "../lib/coleta";
+import { enviarLote, prepararDispositivoDoCelular } from "../lib/coleta";
 import { formatarDuracao } from "../lib/metricas";
 import { contarFalhas, resumoDaSessao } from "../lib/sessaoDeColeta";
 import { useColeta, type Registro } from "../hooks/useColeta";
+import { useAuth } from "../contexts/AuthContext";
 import { GRAVIDADE, LIMIAR_DE_MOVIMENTO } from "../types/sleep";
 
 /**
@@ -59,6 +60,9 @@ export function Coletar() {
   // Pareamento automático (APP-08): a sessão já identifica o dono, então o
   // aparelho prepara o próprio dispositivo sem o usuário ver credencial.
   const [dispositivo, setDispositivo] = useState<string | null>(null);
+  // APP-02, etapa 3: o envio da noite gravada no aparelho usa a mesma sessão
+  // e o mesmo dispositivo `celular` da coleta pelo navegador.
+  const jwt = useAuth().sessao?.access_token ?? null;
   const [nomeDoDispositivo, setNomeDoDispositivo] = useState<string | null>(null);
   const [erroDePreparo, setErroDePreparo] = useState<string | null>(null);
 
@@ -103,7 +107,13 @@ export function Coletar() {
       {/* APP-02: no app Android, a noite inteira e registrada por um servico
           nativo. No site este cartao nao existe, e o aviso abaixo continua
           valendo para a coleta pelo navegador. */}
-      {noiteNativaDisponivel() && <CartaoDaNoite />}
+      {noiteNativaDisponivel() && (
+        <CartaoDaNoite
+          enviar={
+            dispositivo && jwt ? (leituras) => enviarLote(leituras, dispositivo, jwt) : undefined
+          }
+        />
+      )}
 
       {/* Fixo. Ver a nota no topo do arquivo. Diz primeiro o que FAZER, e
           só depois o porquê — antes começava por "não serve para", que soa
