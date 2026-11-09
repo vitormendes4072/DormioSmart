@@ -7952,6 +7952,35 @@ O autor não estava em casa nem era noite, então a etapa veio antes da noite re
 **Procedência.** Branch `bugfix/DATA-10-id-da-leitura-uuid`. `web-app/migrations/014_id_da_leitura_uuid.sql`, `web-app/tests/rls/esquema_base.sql`, `conftest.py`, `verificar_por_mutacao.py`, `web-app/tests/migracoes/verificar_migracoes.py`, `DIAGNOSTICO-migracoes-aplicadas.sql`, `migrations/README.md`. Logs de execução da Vercel de 09/11.
 
 
+---
+
+# 2026-11-09 (vi) — DATA-11: a 014 na produção, e o celular grava
+
+**O problema, como foi entendido no início.** A 014 (`DATA-10`, PR #106) consertava o tipo devolvido pelas funções de gravação, mas só no repositório. Até ser aplicada, nenhuma leitura gravava na produção. As 8 épocas da noite de teste esperavam no celular.
+
+**Hipótese de trabalho.** Aplicar a 014 no SQL Editor basta: o backend não muda, e o app reenvia sozinho, ao abrir, o que não tem `.enviado`.
+
+**O que foi testado, e como.**
+- **Aplicação e diagnóstico:** o autor aplicou a 014 e rodou o `DIAGNOSTICO-migracoes-aplicadas.sql`.
+- **Reenvio:** o autor abriu o app no Moto E7.
+- **Conferência:** o resultado foi conferido daqui, nos logs de execução da Vercel, pelo conector.
+
+**Resultado medido.**
+- **Diagnóstico:** a 014 saiu `true`, com **2 de 2 marcas**. As 001–012 saíram como antes, e a 002 com 0 leituras sem dono. A 013 saiu `false`, com 0 de 3 marcas e o `pg_cron` desligado; isso era esperado, porque aplicá-la é o `LGPD-09`, antes do próximo release.
+- **Reenvio:** às 22:00:51–55 UTC, um `POST /api/data/lote` fez a autenticação (`auth/v1/user` 200) e a consulta do dispositivo da conta (200), e chamou **8 vezes `registrar_leitura_da_sessao`, todas com 200**. A resposta foi **200**.
+- **Comparação:** antes da 014, o mesmo envio dava 503 com `invalid input syntax for type bigint`.
+
+**Adaptação.** Nenhuma.
+
+**O que deu errado no caminho.** Nada nesta etapa.
+
+**Risco em aberto.**
+- **O caminho do token** (`registrar_leitura`, o do dispositivo) recebeu a mesma correção e passa nos testes, mas **não foi chamado na produção**: a placa não está soldada.
+- **O que ficou gravado:** não conferi as 8 linhas no banco nem o painel; o que está medido é o `200` de cada gravação. A noite aparecer no painel e na inferência fica para a etapa 5 (`APP-02`).
+- **A 013 continua pendente** (`LGPD-09`).
+
+**Procedência.** Diagnóstico rodado pelo autor no SQL Editor, 09/11. Logs de execução da Vercel, produção, 09/11 22:00 UTC.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
