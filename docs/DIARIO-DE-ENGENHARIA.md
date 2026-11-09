@@ -7793,6 +7793,65 @@ Os roteiros rodam no processo da instrumentação, que pode receber tratamento d
 - **Frontend:** `frontend/src/lib/envioDaNoite.ts`, `frontend/src/lib/coleta.ts` (`enviarLote`), `frontend/src/lib/noiteNativa.ts`, `frontend/src/components/CartaoDaNoite.tsx`, `frontend/src/pages/Coletar.tsx`.
 - **Backend:** `web-app/tests/test_noite_do_app.py` e a fixture do emulador.
 
+---
+
+# 2026-11-09 (iii) — APP-02, etapa 4: a tela da noite no app
+
+**O problema, como foi entendido no início.** Até a etapa 3, a noite no app era um cartão provisório dentro da página Coletar. Para a noite real (etapa 5) faltavam quatro coisas:
+- o antes, com a posição do celular que o protocolo compara (fronha × colchão);
+- o depois, com as noites gravadas, o envio e o diário de sono;
+- um lugar próprio no app;
+- uma proteção para o risco de aquecimento do celular abafado na fronha.
+
+O autor não estava em casa nem era noite, então a etapa veio antes da noite real.
+
+**Hipótese de trabalho.**
+- **A tela:** uma rota `/noite`, só no app, com três momentos. Ela não mostra sono e vigília, que são inferência sobre saúde e esperam a política (`LGPD-03`, `DASH-04`).
+- **Anotações:** a posição e o diário ficam num arquivo ao lado da noite, no aparelho, sem passar pelo servidor.
+- **Calor:** um corte no serviço, porque um aviso na tela não protege quem dorme.
+
+**O que foi testado, e como.**
+- **JVM:** `NotasDaNoite` (grava, junta, apaga a chave com valor vazio, não mistura noites, recusa chave desconhecida, posição inválida, texto longo e nome fora do padrão) e `CorteDeTemperatura` (abaixo, no limite e acima de 45 °C).
+- **vitest:**
+  - a posição obrigatória no cartão e o aviso de não carregar;
+  - a lista de noites: ordem, posição, envio, cobertura, noite encerrada pelo calor, diário salvo na noite certa, "Ver no painel" só com algo enviado;
+  - o resumo da noite gravada;
+  - a navegação no site e no app.
+- **Emulador Pixel 6, Android 37:** a noite iniciada com `posicao=fronha` e a bateria simulada a 46,0 °C (`dumpsys battery set temp 460`). Antes disso, a notificação com a permissão concedida. Depois, a suíte do emulador de novo.
+- **Sabotagens:** 7 por script.
+
+**Resultado medido.**
+- **Posição e calor:** a posição ficou anotada desde o início da noite. A 46,0 °C, o serviço encerrou a noite sozinho em 26 s (a temperatura é lida a cada 30 s), com `fim=temperatura`, e parou.
+- **Notificação:** mostra "Aparelho a 25.0 °C. Toque para ver ou encerrar."
+- **Suítes:**
+
+  | Suíte | Antes | Agora |
+  |---|---|---|
+  | Frontend | 528 | 542 |
+  | JVM | 13 | 20 |
+  | Emulador | 4 + 3 pulados | 4 + 3 pulados, sem regressão |
+
+- **Sabotagens:** 7/7 acusadas. A do teto de cobertura passou na primeira rodada e só foi acusada depois de um teste novo.
+
+**Adaptação.**
+- **Coletar:** no app, o cartão da página Coletar virou um atalho para `/noite`, e o envio saiu dali para um hook (`useEnvioDoCelular`).
+- **Diário:** o formulário não reescreve a posição nem o motivo do fim; só grava os campos do diário.
+- **Gatilho de depuração:** passou a repassar a posição, para o roteiro do emulador.
+- **Conselho contraditório:** a introdução do cartão, escrita na etapa 2, dizia "deixe o celular carregando", ao lado do aviso novo de não carregar na fronha. Foi reescrita.
+
+**O que deu errado no caminho.**
+- **Sabotagem que passou:** a da cobertura passou porque nenhum teste tinha mais épocas do que cabem entre a primeira e a última; o caso da retomada sobreposta entrou.
+- **Notificação vazia:** a primeira busca pelo texto da notificação veio vazia porque o app estava com notificações desligadas (`importance=NONE`). No Android 13+, sem a permissão, o serviço roda com a notificação escondida, e o gatilho de depuração não pede a permissão; quem pede é o botão da tela. Com `pm grant`, o texto apareceu.
+
+**Risco em aberto.**
+- **O limite de 45 °C** é um valor de partida conservador, não medido no aparelho nem tirado de folha de dados. Fica para ajustar com o orientador, junto do `REQ-01` (no máximo 1 °C de elevação no dispositivo).
+- **Botões não percorridos no emulador:** o fluxo pela tela de verdade (botões, permissão de notificação e de bateria) não foi percorrido, porque a tela exige login, e eu não entro com a senha do autor. O percurso pelos botões fica para a etapa 5, no Motorola, com o autor; o que se testou no emulador foi o serviço, pelo gatilho de depuração.
+- **Anotações locais:** ficam no aparelho e se perdem se o app for desinstalado antes da análise.
+
+**Procedência.** Branch `feature/APP-02-tela-da-noite`, sobre o `develop` `762e938`.
+- **Nativo:** `frontend/android/.../NotasDaNoite.java`, `CorteDeTemperatura.java`, `ServicoDaNoite.java`, `NoitePlugin.java`, `MainActivity.java`.
+- **Frontend:** `frontend/src/pages/Noite.tsx`, `components/ListaDeNoites.tsx`, `CartaoDaNoite.tsx`, `nav.ts`, `hooks/useEnvioDoCelular.ts`, `lib/noiteNativa.ts`, `App.tsx`, `pages/Coletar.tsx`, e os testes.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
