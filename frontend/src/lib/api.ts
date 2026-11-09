@@ -4,8 +4,18 @@
  * Todo acesso a `/api/*` passa por aqui. Em desenvolvimento o Vite faz proxy
  * para o Flask local (ver vite.config.ts); em producao quem roteia e o
  * vercel.json (UI-08). Por isso os caminhos sao sempre relativos.
+ *
+ * A excecao e o app Android (APP-02): empacotado pelo Capacitor, o site roda
+ * em `https://localhost`, e um caminho relativo iria para o proprio aparelho.
+ * O build do app define `VITE_API_BASE` com o endereco do backend; o build do
+ * site nao define, e tudo continua relativo.
  */
 import type { LeituraSono } from "../types/sleep";
+
+/** Prefixo do backend: vazio no site, o endereco completo no app (APP-02). */
+export function urlDaApi(caminho: string, base: string = import.meta.env.VITE_API_BASE ?? ""): string {
+  return base.replace(/\/+$/, "") + caminho;
+}
 
 /** Erro de API com o status HTTP preservado, para a UI decidir o que fazer
  *  (401 leva ao login, 503 e falha temporaria, etc.). */
@@ -66,7 +76,7 @@ export async function requisitarJson<T>(caminho: string, opcoes: RequestInit = {
 
   let resposta: Response;
   try {
-    resposta = await fetch(caminho, { ...opcoes, headers: cabecalhos });
+    resposta = await fetch(urlDaApi(caminho), { ...opcoes, headers: cabecalhos });
   } catch {
     // Falha de rede nao tem status HTTP. Usamos 0 para distinguir de qualquer
     // resposta real do servidor.

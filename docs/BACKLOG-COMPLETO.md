@@ -56,7 +56,8 @@
 Até 29/10 esta linha mandava rodar o `DATA-03`, fechado em 28/10.)* **Se tem um fim de semana:** solde. **Se tem um mês sem ferro de solda:** escreva os
 `CALC-*` e `DIAG-*`, que são o que a banca lê.
 
-**Contagem:** 37 itens abertos · **L0: 7** · L1: 14 · L2: 6 · L3: 10. *(Recontado linha a linha em 03/11, e não por delta; desde o `DOC-13`, o CI reconta.)*
+**Contagem:** 38 itens abertos · **L0: 8** · L1: 14 · L2: 6 · L3: 10. *(Recontado linha a linha em 03/11, e não por delta; desde o `DOC-13`, o CI reconta.)*
+*(08/11, APP-02 saiu do pós-banca para o L0 por decisão do autor: 37+1 = 38 abertos, L0 7+1 = 8.)*
 *(08/11, ML-INF fechado: a inferência é servida por `GET /api/inferencia`. 38−1 = 37 abertos, L2 7−1 = 6.)*
 *(07/11, ML-INF v2, sobre origin/develop 4d4a6b1b05bb08bbc5f369af41a8cd122384779a: artefato e dourados por noite preparados. O item segue aberto pela integração no backend. Contagem inalterada.)*
 *(06/11, ML-13, sobre origin/develop b5335acb9e0164d9be6f471602eb83fe15f1782c: concluiu a validação DREAMT. 39−1 = 38 abertos, L0 8−1 = 7/L1 14/L2 7/L3 10.)*
@@ -215,7 +216,7 @@ E um **peso**: 🔴 caminho crítico da defesa · 🟡 importante · ⚪ polimen
                     └─────────────────────────────────────────────┘
 
    L0  EM PARALELO, SEM DEPENDER DE NADA DISSO:
-       DOC-06b · DOC-17
+       DOC-06b · DOC-17 · APP-02
        UI-18 · SEC-13 · AUTH-09 · CI-02 · GIT-05
 
    L3  TAMBÉM DEPENDE DE VOCÊ:
@@ -453,6 +454,7 @@ diagrama** — que é o que a banca lê.
 
 | Item | O quê | Peso |
 |---|---|:---:|
+| **APP-02** 🟠 *(08/11: saiu do pós-banca por decisão do autor; etapa 1 feita — casca e núcleo)* | 📌 **08/11, etapa 1:** a casca Capacitor 8.4.3 do frontend (`frontend/android/`, `npm run build:app` com o endereço do backend e o HTTP nativo) e o `firmware/nucleo/coletor_celular.h`, que leva as amostras do celular, com o instante de cada uma, pela mesma cadeia C2, features e payload da placa. Compilado no app pelo NDK direto das fontes do núcleo, para `armeabi-v7a`, `arm64-v8a` e `x86_64`. `make celular` usa o dourado da cadeia com as mesmas tolerâncias de validade (288 verificações); `make mutacao-coletor`: 12 sabotadores, 2 pontos cegos declarados. **Falta** o serviço em primeiro plano, o envio, a tela e a noite real. Diário, 08/11 (ii). **App Android nativo que registra a noite inteira.** O navegador não registra a noite: o `devicemotion` para quando a tela bloqueia (`useColeta.ts`). Decisão do autor em 08/11: fazer o app agora, num Motorola Android dedicado (o iPhone dele não roda o serviço em segundo plano — ver `APP-04`), para ter noites reais antes da solda. **Plano em seis etapas:** (0) escopo e ferramentas; (1) casca Capacitor do frontend e o núcleo `firmware/nucleo/` compilado no app pelo NDK, com paridade contra o dourado; (2) serviço em primeiro plano (`health` no Android 14+) com o acelerômetro a 20 ms e as épocas gravadas no aparelho; (3) envio em lote pela sessão (`APP-08`) ao encerrar a noite; (4) tela "Noite"; (5) uma noite real medindo cobertura, lacunas, bateria e temperatura; (6) protocolo de posição (dentro da fronha ou sobre o colchão) com diário de sono. **O celular é outro instrumento, não a C2:** os números dele valem para ele (`docs/ARQUITETURA-DE-CAPTACAO.md` §5). A mudança de escopo vai ao orientador junto do `RQ-01`. | 🟠 |
 | **AUTH-07** ✅ *(aberto e corrigido em 31/10 — achado pelo autor, em uso real, na produção)* | ✅ **O login voltava para /login.** O Supabase aceitava o login, mas a primeira chamada à API saía **sem** `Authorization`: o `AuthProvider` registrava o provedor de token num `useEffect`, e no React os efeitos dos filhos rodam antes dos do pai. O `PerfilProvider` (filho, `PERFIL-01`, 17/10) busca `/api/me/perfil` no instante em que a sessão aparece; recebia 401, e o callback de sessão expirada (`AUTH-04`) derrubava a sessão recém-criada. Em produção desde o release de 29/10, que levou o `PerfilProvider` a `main`. **Correção:** a sessão vai para uma ref atualizada a cada renderização, e provedor e callback são registrados uma vez, durante a renderização. Reproduzido no `vitest` com os provedores reais antes de corrigir (`Authorization: null`); 4 testes em `src/contexts/AuthContext.test.tsx`, com controle positivo: o código antigo derruba 2, a ref sem atualização derruba 3, o callback ausente derruba 1. Frontend 422 testes; `tsc` e `vite build` limpos. ✏️ **Em produção desde o release de 31/10** (PR #29, `3618c67`): o bundle publicado tem a correção, e o autor confirmou o login no site. Diário, 31/10 (vii) e (viii). | ✅ |
 
 ### Infraestrutura e qualidade
@@ -630,9 +632,8 @@ ficou em L2 como contingência do `VIA-01`.
 
 | Item | O quê | Peso |
 |---|---|:---:|
-| **APP-02** | Android nativo com foreground service. Fazível hoje; **caro e pós-banca**. | ⚪ |
 | **APP-03** | Armazenamento seguro do token. Em PWA fica em `sessionStorage`; nativo tem Keystore. *Reavaliar: com o `APP-08`, o token pode deixar de existir no celular.* | 🟡 |
-| **APP-04** | **iOS: investigação, não implementação.** Rota A (áudio em background) muda o escopo declarado e a conversa de LGPD; rota B (`CMSensorRecorder`) é coerente mas **não verificada**. O item é *confirmar antes de virar plano*. | ⚪ |
+| **APP-04** | **iOS: investigação, não implementação.** Rota A (áudio em background) muda o escopo declarado e a conversa de LGPD; rota B (`CMSensorRecorder`) é coerente mas **não verificada**. O item é *confirmar antes de virar plano*. ✏️ *08/11: o autor quer o iOS no futuro. O app Android do `APP-02` é feito com Capacitor sobre o frontend atual, o que deixa a interface pronta para iOS; o que falta é o registro em segundo plano, que segue sem rota confirmada no iPhone.* | ⚪ |
 | **APP-05** | Distribuição (loja ou APK). Depende de `LGPD-02` e `APP-04`. | ⚪ |
 | **APP-09** | Continuidade quando o usuário troca celular por sensor. Instrumentos diferentes, limiares diferentes (`DATA-06`). | 🟡 |
 | **UI-14** | Lista de espera na landing. 🔒 Gatilho: protótipo funcionando **e** `VIA-01`. Não fazer antes. | ⚪ |

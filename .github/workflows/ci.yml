@@ -324,6 +324,13 @@ jobs:
         working-directory: firmware/nucleo
         run: make mutacao-fila
 
+      # APP-02 (08/11): o app Android roda este nucleo pelo NDK, alimentado pelo
+      # acelerometro do celular. Onze sabotagens no coletor, nove acusadas e
+      # dois pontos cegos que o verificador confere que continuam cegos.
+      - name: Mutação do coletor do celular (APP-02)
+        working-directory: firmware/nucleo
+        run: make mutacao-coletor
+
       # Nao e teste: e a medicao de quantas horas cabem no buffer, que o
       # (desde 31/10 tambem le firmware/partitions.csv e reprova se a tabela
       # for invalida ou nao tiver a particao `dormio` -- FW-08)

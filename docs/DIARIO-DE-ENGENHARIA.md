@@ -7620,6 +7620,62 @@ O script de sabotagem restaura os arquivos com `git checkout`, então o código 
 
 **Procedência.** Branch `feature/ML-INF-backend`, sobre o `develop` `010f741`. `web-app/inferencia.py`, `web-app/routes.py`, `web-app/modelos/ml-inf-cabeca-v2.json`, `web-app/tests/test_inferencia.py`, `docs/DATA-CONTRACT.md` §2.6 e §7, `docs/ML-DATASETS-E-PLANO.md` §9.
 
+---
+
+# 2026-11-08 (ii) — APP-02, etapa 1: a casca do app Android e o núcleo do firmware no celular
+
+**O problema, como foi entendido no início.** O autor quer registrar noites reais antes da solda. A coleta pelo navegador não registra a noite: o `devicemotion` para quando a tela bloqueia (`useColeta.ts`). O iPhone do autor não tem serviço em segundo plano para o acelerômetro. Ele tem um Motorola Android antigo que pode ficar dedicado à coleta. O `APP-02` estava no pós-banca; o autor o trouxe para o L0 e aprovou um plano em seis etapas. Esta entrada é a primeira: a casca do app e o cálculo no aparelho.
+
+**Hipótese de trabalho.**
+- **Casca:** o frontend atual, empacotado com Capacitor, serve de casca. Só a coleta precisa ser nativa.
+- **Cálculo:** se o app compilar `firmware/nucleo/` pelo NDK, o celular envia o mesmo payload da placa, com as mesmas features. O `ColetorCelular` entrega à `CadeiaC2` drenagens montadas a partir do instante de cada amostra, carimbadas meio passo depois da última.
+- **Critério:** as features do celular ficam dentro das mesmas tolerâncias de validade do dourado da cadeia.
+
+**O que foi testado, e como.** Windows 11. O núcleo rodou num contêiner `gcc:13`; o app, com o JDK 21 do Android Studio.
+- **Coletor (`make celular`):** lê `ml/testes/vetor_dourado_cadeia_c2.json` e entrega cada amostra no instante verdadeiro, em m/s², sem e com 2 ms de variação no carimbo. Compara as features com o pipeline do `ml/`. Confere também:
+  - que o instante reconstruído é o do gerador, contra as drenagens do arquivo;
+  - o payload: `ts`, `epoca_s`, `t` e o vetor pela ida e volta da quantização da fila;
+  - a taxa de 100 Hz, uma amostra fora de ordem, um buraco de 5 minutos e a quantização.
+- **Sabotagens:** `make mutacao-coletor`, com 12 sabotadores.
+- **Firmware inteiro:** `make`, `sintaxe`, `capacidade`, `mutacao-cadeia`, `mutacao-fila` e `laco`.
+- **App:** o APK de depuração foi compilado, e `llvm-nm` listou as funções JNI exportadas.
+- **Frontend:** `vitest`, `tsc` e `vite build`, nos modos do site e do app.
+
+**Resultado medido.**
+- **Coletor:** 288 verificações, 0 falhas. As maiores diferenças contra o pipeline foram `enmo` 2,6e-6 g, `enmo_max` 9,6e-5 g, `mag_din_media` 0,86 %, `zcr` 0 e `p_frac` 5 amostras, e `g` 0,065 grau, dentro das tolerâncias da placa. O coletor ocupa 56,9 KiB.
+- **Sabotagens:** 12 de 12 deram o resultado esperado — 9 acusadas, o caso limpo passa e 2 pontos cegos declarados.
+- **Firmware:** as contagens anteriores não mudaram (341, 157, 152, 456 e 84), e `mutacao-cadeia` (29/29), `mutacao-fila` (14/14) e `laco` (4/4) passaram.
+- **App:** o APK traz `libdormio_nucleo.so` em `armeabi-v7a` (213 KB), `arm64-v8a` (356 KB) e `x86_64` (340 KB), com as 8 funções JNI.
+- **Frontend:** 494 testes (489 + 5); o endereço do backend aparece só no build do app (1 ocorrência no pacote do app, 0 no do site).
+
+**Adaptação.**
+- **Endereço da API:** a página roda em `https://localhost` dentro do app, então as chamadas à API ganharam `urlDaApi`. É vazio no site; no build `--mode app`, recebe o endereço de produção.
+- **CORS:** o `CapacitorHttp` faz as requisições pelo HTTP nativo, e o backend não precisou de CORS.
+- **Unidade:** o coletor quantiza o sinal do celular na escala do MPU6050 da C2.
+- **Temperatura:** usa a da bateria no lugar da do chip.
+- **Taxa:** a cadeia só aceita 40 a 60 Hz. Se o celular entregar outra taxa, as épocas são recusadas e contadas; a primeira noite mostra qual é o caso.
+- **Origem:** passou a ficar 3 s depois da primeira amostra (`ANTECEDENCIA_DA_ORIGEM_US`), porque a época 0 precisa de 0,5 s de sinal antes dela e de folga para o ajuste.
+- **Worktree:** foi criada em `../wt-app`, num caminho curto, e não em `.claude/worktrees/`, porque o CMake e o NDK no Windows falham com caminhos longos.
+
+**O que deu errado no caminho.**
+- **Gradle sem rede local:** a primeira compilação falhou com "Unable to establish loopback connection", inclusive fora do sandbox. O JDK no Windows abre um socket de domínio Unix no diretório temporário, e o temporário do ambiente não serviu. Com `-Djdk.net.unixdomain.tmpdir` apontando para uma pasta comum, passou.
+- **Caminho do SDK:** o `local.properties` saiu com barras invertidas sem escape e deu "Invalid file path"; foi trocado por barras normais.
+- **Makefile:** uma edição por Python deixou um `\n` literal e duas linhas emendadas, o que foi visto no `cat -A` e corrigido à mão.
+- **Teste sintético:** começava o sinal na origem, e a época 0 saiu recusada. A recusa estava certa; o teste é que estava errado, e daí veio a constante da antecedência.
+- **Previsões de ponto cego:** errei duas.
+  - A conversão com 9,81 em vez de 9,80665 é acusada: o `enmo` mede o desvio de 1 g, e 0,035 % de escala já vira viés.
+  - O sabotador de "drenar depois da amostra nova" apagava toda drenagem e acusava pelo motivo errado. Foi reescrito para só mudar a ordem; aí fica de fato cego.
+
+**Risco em aberto.**
+- **Execução:** o teste com o Java chamando o C++ de verdade espera a etapa 2, com emulador ou aparelho.
+- **Taxa do Motorola:** não se sabe a taxa que ele entrega. Se ficar fora de 40 a 60 Hz, a etapa 2 precisa decidir entre decimação e outra rota, com o autor.
+- **Pontos cegos:** o carimbo sem o meio passo e a ordem da drenagem não são acusados.
+- **Instrumento:** o celular é outro instrumento, e o que ele medir vale para ele (`ARQUITETURA-DE-CAPTACAO.md` §5).
+- **iOS:** segue sem rota de coleta em segundo plano (`APP-04`).
+- **Etapas pendentes:** o serviço, o envio, a tela e a noite real são as etapas 2 a 6 do `APP-02`.
+
+**Procedência.** Branch `feature/APP-02-app-android`, sobre o `develop` `f9bff8c`. `firmware/nucleo/coletor_celular.{h,cpp}`, `firmware/nucleo/testes/testes_coletor_celular.cpp`, `firmware/nucleo/testes/verificar_coletor_por_mutacao.sh`, `firmware/nucleo/Makefile`, `firmware/nucleo/README.md`, `frontend/android/` (casca do Capacitor 8.4.3, `app/src/main/cpp/` e `NucleoNativo.java`), `frontend/capacitor.config.ts`, `frontend/vite.config.ts`, `frontend/src/lib/api.ts` e `coleta.ts`, `.github/workflows/ci.yml`, e o backlog, a arquitetura de captação e o `CLAUDE.md`.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

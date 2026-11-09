@@ -8,7 +8,10 @@ const PAYLOAD = montarPayload(agregar([{ ax: 0, ay: 0, az: GRAVIDADE }], 30, Dat
 const DISPOSITIVO = "aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa";
 const JWT = "jwt-de-teste";
 
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  vi.unstubAllGlobals();
+  vi.unstubAllEnvs();
+});
 
 /** Captura o `init` do fetch para inspecionar o que foi enviado. */
 function capturando(status: number) {
@@ -106,5 +109,18 @@ describe("mensagemDeFalha", () => {
   it("distingue recusa, indisponibilidade e rede", () => {
     expect(mensagemDeFalha(400)).not.toBe(mensagemDeFalha(503));
     expect(mensagemDeFalha(0).toLowerCase()).toContain("conexao");
+  });
+});
+
+describe("endereco do backend no app (APP-02)", () => {
+  it("a leitura vai ao VITE_API_BASE quando o build o define", async () => {
+    vi.stubEnv("VITE_API_BASE", "https://exemplo.test");
+    let url = "";
+    vi.stubGlobal("fetch", (u: string) => {
+      url = u;
+      return Promise.resolve({ status: 201 } as Response);
+    });
+    await enviarLeitura(PAYLOAD, DISPOSITIVO, JWT);
+    expect(url).toBe("https://exemplo.test/api/data");
   });
 });
