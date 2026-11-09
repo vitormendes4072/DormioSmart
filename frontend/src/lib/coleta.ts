@@ -1,5 +1,5 @@
 import type { PayloadDeLeitura } from "./acelerometro";
-import { requisitarJson } from "./api";
+import { requisitarJson, urlDaApi } from "./api";
 import type { Dispositivo } from "./dispositivos";
 
 /**
@@ -81,7 +81,7 @@ export async function enviarLeitura(
 
   let resposta: Response;
   try {
-    resposta = await fetch("/api/data", {
+    resposta = await fetch(urlDaApi("/api/data"), {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

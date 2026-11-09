@@ -5,6 +5,7 @@ import {
   buscarHistorico,
   definirCallbackDeSessaoExpirada,
   definirProvedorDeToken,
+  urlDaApi,
 } from "./api";
 
 function resposta(status: number, corpo: unknown, ok = status >= 200 && status < 300) {
@@ -39,6 +40,7 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  vi.unstubAllEnvs();
 });
 
 describe("buscarHistorico", () => {
@@ -112,5 +114,32 @@ describe("tratamento de erro", () => {
     expect(erro).toBeInstanceOf(ErroApi);
     expect((erro as ErroApi).status).toBe(0);
     expect((erro as ErroApi).naoAutorizado).toBe(false);
+  });
+});
+
+describe("urlDaApi (APP-02)", () => {
+  it("no site fica relativo: sem VITE_API_BASE o caminho passa intacto", () => {
+    expect(urlDaApi("/api/devices", "")).toBe("/api/devices");
+  });
+
+  it("no app prefixa o backend, sem barra dobrada", () => {
+    expect(urlDaApi("/api/data", "https://exemplo.test/")).toBe("https://exemplo.test/api/data");
+    expect(urlDaApi("/api/data", "https://exemplo.test")).toBe("https://exemplo.test/api/data");
+  });
+
+  it("a requisicao autenticada usa o endereco do build", async () => {
+    vi.stubEnv("VITE_API_BASE", "https://exemplo.test");
+    const espiao = espiaoDeFetch();
+    vi.stubGlobal("fetch", espiao);
+    await buscarHistorico();
+    expect(espiao.mock.calls[0][0]).toBe("https://exemplo.test/api/sleep-history");
+  });
+
+  it("sem a variavel, a requisicao continua relativa", async () => {
+    vi.stubEnv("VITE_API_BASE", "");
+    const espiao = espiaoDeFetch();
+    vi.stubGlobal("fetch", espiao);
+    await buscarHistorico();
+    expect(espiao.mock.calls[0][0]).toBe("/api/sleep-history");
   });
 });
