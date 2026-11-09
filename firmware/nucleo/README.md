@@ -183,6 +183,25 @@ testa tudo contra uma flash NOR simulada, com corte de energia em cada byte; `ma
 mutacao-fila` sabota a fila de 10 maneiras. A ponte com o ESP32 é
 `firmware/midia_flash_esp32.h`, que por ora só passa pelo `make sintaxe`.
 
+## O celular como outra fonte da mesma cadeia (`APP-02`, 08/11)
+
+O app Android (`frontend/android/`) registra a noite pelo acelerômetro do celular e compila
+este núcleo pelo NDK, direto destas fontes (`app/src/main/cpp/CMakeLists.txt`).
+`coletor_celular.h` recebe cada amostra com o seu instante, converte m/s² para g, quantiza
+na escala do MPU6050 da C2 (±8 g, 4096 LSB/g), junta em drenagens a cada 1,7 s carimbadas
+meio passo depois da última amostra, e daí segue o caminho da placa até o payload — com a
+temperatura da bateria no lugar da do chip.
+
+`make celular` entrega as amostras do **mesmo dourado da cadeia** no instante verdadeiro, com
+e sem 2 ms de variação no carimbo, e exige as **mesmas tolerâncias de validade** da placa.
+Medido em 08/11: `enmo` 2,6e-6 g, `enmo_max` 9,6e-5 g, `mag_din_media` 0,86 %, `p_frac` 5
+amostras, `g` 0,065 grau. `make mutacao-coletor`: 12 sabotadores — 9 acusados, o caso limpo
+passa, e 2 pontos cegos declarados (carimbo sem o meio passo, que desloca a grade 10 ms; e
+drenar depois de incluir a amostra nova, sem efeito nas épocas do buraco testado).
+
+A cadeia só aceita 40 a 60 Hz. O app pede 20 ms ao sistema, mas o celular entrega o que
+quer, e as épocas fora da faixa são contadas como recusadas por taxa.
+
 ## Os arquivos
 
 | Arquivo | O quê |
@@ -203,6 +222,7 @@ mutacao-fila` sabota a fila de 10 maneiras. A ponte com o ESP32 é
 | `fila_flash.h/.cpp` | Log circular na partição `dormio`, que sobrevive a reset (`FW-08`) |
 | `epoca_c2.h/.cpp` | A `Epoca` de uma época da cadeia C2: pico da grade, temperatura (`FW-07` (b)) |
 | `envio_da_fila.h/.cpp` | Da fila ao lote e de volta: prefixo contíguo, registro sem payload sai da frente (`FW-07` (b)) |
+| `coletor_celular.h/.cpp` | A cadeia C2 alimentada pelo acelerômetro de um celular, com o instante de cada amostra: o app Android compila este núcleo pelo NDK e envia o payload da placa (`APP-02`) |
 | `capacidade.cpp` | A medição |
 | `testes/` | Suíte, paridades, peças e cadeia da C2, e os verificadores por mutação |
 
