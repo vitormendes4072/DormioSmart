@@ -7676,6 +7676,62 @@ O script de sabotagem restaura os arquivos com `git checkout`, então o código 
 
 **Procedência.** Branch `feature/APP-02-app-android`, sobre o `develop` `f9bff8c`. `firmware/nucleo/coletor_celular.{h,cpp}`, `firmware/nucleo/testes/testes_coletor_celular.cpp`, `firmware/nucleo/testes/verificar_coletor_por_mutacao.sh`, `firmware/nucleo/Makefile`, `firmware/nucleo/README.md`, `frontend/android/` (casca do Capacitor 8.4.3, `app/src/main/cpp/` e `NucleoNativo.java`), `frontend/capacitor.config.ts`, `frontend/vite.config.ts`, `frontend/src/lib/api.ts` e `coleta.ts`, `.github/workflows/ci.yml`, e o backlog, a arquitetura de captação e o `CLAUDE.md`.
 
+---
+
+# 2026-11-09 (i) — APP-02, etapa 2: o serviço que registra a noite com a tela apagada
+
+**O problema, como foi entendido no início.** Na etapa 1, o app compilava e o núcleo rodava no host, mas nada registrava a noite: o Java nunca tinha chamado o C++ num aparelho. Faltava um serviço que mantivesse o acelerômetro ligado com a tela apagada, sob o Doze do Android, gravasse cada época no aparelho e sobrevivesse à morte do processo. Faltava também a tela para ligá-lo.
+
+**Hipótese de trabalho.**
+- **Serviço:** um serviço em primeiro plano basta. Ele tem notificação fixa, o tipo `health` no Android 14+ (com `HIGH_SAMPLING_RATE_SENSORS`, sem permissão em tempo de execução e sem o limite de 6 h), uma trava parcial de CPU e o acelerômetro a 20 ms entregue em lotes de 1 s.
+- **Gravação:** uma linha sincronizada com o disco por época perde no máximo a época em curso.
+- **Retomada:** `START_STICKY`, junto com um estado gravado, permite continuar a noite no mesmo arquivo depois de o sistema matar o processo.
+
+**O que foi testado, e como.** Windows 11, emulador Pixel 6 com Android 37 (API 37, páginas de 16 KB, x86_64), JDK 21 do Android Studio.
+- **JVM (`./gradlew :app:testDebugUnitTest`):** o `RelogioDoSensor` (carimbo em ns para µs na base do `elapsedRealtime`, com o deslocamento de aparelhos que usam outra base), o `ArquivoDaNoite` e o `EstadoDaNoite`.
+- **Emulador (`connectedDebugAndroidTest`):**
+  - o `NucleoNativoTest`: o Java chama o C++, um sinal de 50 Hz produz o payload do contrato e um de 100 Hz é recusado por taxa;
+  - o `ServicoDaNoiteTest`: o serviço grava épocas com o sensor do emulador e encerra limpo.
+- **Roteiro `longa`:** 10 min com a bateria simulada desligada, a tela apagada e `dumpsys deviceidle force-idle`.
+- **Retomada:** a noite iniciada pelo app, depois `kill -9` no processo pelo `adb`.
+- **Sabotagens:**
+  - 6 no Java e 2 no frontend, por script;
+  - 3 no emulador: temperatura em décimos, sem `START_STICKY` e sem a trava.
+- **Frontend:** `vitest`, `tsc` e `vite build`.
+
+**Resultado medido.**
+- **Noite simulada:** 10 min em Doze profundo (`IDLE`) deram **20 de 20 épocas (100 %)**, taxa medida de 50,000 Hz, 30.350 amostras, nenhuma recusada e temperatura da bateria de 25,0 °C.
+- **Retomada:** depois do `kill -9`, o Android reiniciou o serviço em 1 s ("Scheduling restart of crashed service … in 1000ms"). O estado ficou com `retomadas=1`, e o mesmo arquivo continuou: 4 épocas, com intervalos de 30, 54,7 e 30 s. A lacuna aparece como intervalo, sem época inventada.
+- **Testes:** JVM 8/8; emulador 4 passando e 3 pulados (os roteiros, que só rodam por argumento); frontend 509 (494 + 15).
+- **Sabotagens:** 6/6 do Java e 2/2 do frontend acusadas; no emulador, temperatura em décimos acusada (`t = 250.0`) e 2 pontos cegos (ver abaixo).
+
+**Adaptação.**
+- **Backup desligado:** o modelo do Capacitor vinha com `allowBackup="true"`, e o Android copiaria as noites, que são dado de saúde, para a nuvem do Google sem a política dizer isso.
+- **Páginas de 16 KB:** a biblioteca nativa passou a ser ligada com `max-page-size=16384`, porque o Android 37 não carrega biblioteca alinhada a 4 KB.
+- **Noite interrompida:** o estado gravado pode dizer "ativa" com o serviço morto (forçado a parar). O plugin agora informa `rodando`, e o cartão avisa a interrupção e oferece retomar.
+- **Gatilho de roteiro:** um gatilho por `adb` (`--es roteiro iniciar/encerrar`) entrou na `MainActivity`, valendo só com `BuildConfig.DEBUG`, para o serviço nascer no processo do app.
+
+**O que deu errado no caminho.**
+- **Computador dormiu:** a primeira noite simulada parou depois de ~6 min, porque o Windows entrou em suspensão (Kernel-Power 42 às 23:16:04, retorno às 00:54:48) e pausou o emulador. A época que atravessou o salto saiu recusada por taxa, o que está certo. A rodada foi refeita com o computador impedido de dormir.
+- **Instrumentação mata sem retomada:** a primeira tentativa de retomada iniciou o serviço pela instrumentação. Quando o `am instrument` termina, ele encerra o processo de um jeito que o Android não reinicia, e isso deixou o estado "ativa" sem serviço. Foi o que revelou o caso da noite interrompida na tela.
+- **Linha de base falsa:** o script de sabotagem chamava `gradlew.bat` sem caminho, e o `cmd` deste ambiente não procura na pasta atual. A linha de base falhou e as seis primeiras "acusações" não valiam; com `.\gradlew.bat` a linha de base passou, e só então as sabotagens contaram.
+- **Testes de componente:** `jest-dom` não existe no projeto, e o teste de componente precisava do `// @vitest-environment jsdom`.
+- **Compilação:** a pasta gerada pelo `cap sync` não existia na worktree nova, então foi preciso rodar o `build:app` antes do Gradle.
+- **Tarefa do Gradle:** o `assembleDebugAndroidTest` da raiz falhou num subprojeto do Capacitor (classe Kotlin duplicada); a tarefa certa é `:app:assembleDebugAndroidTest`.
+
+**Risco em aberto.** Dois pontos cegos, e o emulador não responde a nenhum dos dois:
+- **(a) `kill -9` não reproduz o sistema matando o app:** o Android 37 trata o `kill -9` de um serviço em primeiro plano como falha e o reinicia com ou sem `START_STICKY`. O caso que o `START_STICKY` cobre (falta de memória, fabricante encerrando de madrugada) não foi reproduzido.
+- **(b) O emulador não suspende a CPU:** sem a trava, a noite de 5 min deu 10/10.
+
+O Motorola, na etapa 5, responde aos dois.
+
+Os roteiros rodam no processo da instrumentação, que pode receber tratamento diferente do de um app comum; a noite pelo botão da tela, no aparelho, é a prova que falta. O envio ao servidor é a etapa 3, e até lá as épocas ficam só no aparelho. O iOS segue sem rota (`APP-04`).
+
+**Procedência.** Branch `feature/APP-02-servico-da-noite`, sobre o `develop` `3d396b5`.
+- **Serviço e ponte:** `frontend/android/app/src/main/java/app/dormiosmart/coleta/` (`ServicoDaNoite`, `NoitePlugin`, `ArquivoDaNoite`, `EstadoDaNoite`, `RelogioDoSensor`, `MainActivity`), `AndroidManifest.xml`, `app/build.gradle`, `app/src/main/cpp/CMakeLists.txt`.
+- **Testes:** `app/src/test/` e `app/src/androidTest/` (`NucleoNativoTest`, `ServicoDaNoiteTest`, `RoteiroDaNoiteTest`).
+- **Frontend:** `frontend/src/lib/noiteNativa.ts`, `frontend/src/components/CartaoDaNoite.tsx`, `frontend/src/pages/Coletar.tsx`.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
