@@ -114,12 +114,16 @@ public class NoitePlugin extends Plugin {
         try {
             final ArquivoDaNoite a = arquivo();
             final JSArray lista = new JSArray();
+            // A noite em andamento aparece na lista, mas marcada: ela nao tem
+            // envio nem anotacoes ainda (achado no percurso pelos botoes, etapa 4).
+            final EstadoDaNoite atual = EstadoDaNoite.ler(a.estado());
             for (String nome : a.noites()) {
                 final JSObject n = new JSObject();
                 final java.util.List<String> linhas = a.linhas(nome);
                 n.put("arquivo", nome);
                 n.put("epocas", linhas.size());
                 n.put("enviadas", a.enviadas(nome));
+                n.put("ativa", atual.ativa && nome.equals(atual.arquivo));
                 // Etapa 4: o inicio da primeira e da ultima epoca, para a duracao e a
                 // cobertura da noite, e as anotacoes.
                 if (!linhas.isEmpty()) {

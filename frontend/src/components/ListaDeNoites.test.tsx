@@ -96,4 +96,20 @@ describe("ListaDeNoites (APP-02, etapa 4)", () => {
     montar(plugin([]));
     expect(await screen.findByText(/nenhuma noite gravada/i)).toBeTruthy();
   });
+
+  it("a noite em andamento aparece marcada, sem envio nem anotacoes (achado no percurso)", async () => {
+    montar(plugin([{ arquivo: "noite-3.jsonl", epocas: 3, enviadas: 0, ativa: true,
+      primeiraTs: "2026-11-09T20:41:00.000Z", ultimaTs: "2026-11-09T20:42:00.000Z", notas: { posicao: "fronha" } }]));
+    const cartao = await screen.findByTestId("noite-noite-3.jsonl");
+    expect(cartao.textContent).toMatch(/Noite em andamento/);
+    expect(cartao.textContent).not.toMatch(/Envio/);
+    expect(screen.queryByRole("button", { name: /anotações da noite/i })).toBeNull();
+  });
+
+  it("noite sem epocas nao ganha o visto de enviada nem o nome do arquivo (achado no percurso)", async () => {
+    montar(plugin([{ arquivo: "noite-4.jsonl", epocas: 0, enviadas: 0 }]));
+    const cartao = await screen.findByTestId("noite-noite-4.jsonl");
+    expect(cartao.textContent).toMatch(/Noite sem épocas gravadas/);
+    expect(cartao.textContent).not.toMatch(/noite-4\.jsonl|0 de 0/);
+  });
 });

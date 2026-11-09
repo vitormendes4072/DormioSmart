@@ -175,4 +175,15 @@ describe("CartaoDaNoite (APP-02)", () => {
     render(<CartaoDaNoite plugin={plugin(estado())} agora={() => INICIO} />);
     expect(await screen.findByText(/não deixe o celular carregando/i)).toBeTruthy();
   });
+
+  it("o botao desabilitado parece desabilitado (achado no percurso)", async () => {
+    render(<CartaoDaNoite plugin={plugin(estado())} agora={() => INICIO} />);
+    const iniciar = (await screen.findByRole("button", { name: /iniciar a noite/i })) as HTMLButtonElement;
+    expect(iniciar.className).toMatch(/disabled:opacity-50/);
+  });
+
+  it("depois de encerrar, os numeros vem sob o titulo da ultima noite (achado no percurso)", async () => {
+    render(<CartaoDaNoite plugin={plugin(estado({ epocasGravadas: 4, inicioUtcMs: INICIO }))} agora={() => INICIO} />);
+    expect(await screen.findByText("Última noite")).toBeTruthy();
+  });
 });

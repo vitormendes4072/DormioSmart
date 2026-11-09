@@ -149,7 +149,7 @@ export function CartaoDaNoite({
                 await enviarAgora();
               })
             }
-            className="inline-flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm font-medium"
+            className="inline-flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Square className="w-4 h-4" aria-hidden />
             Encerrar a noite
@@ -188,7 +188,7 @@ export function CartaoDaNoite({
             type="button"
             disabled={ocupado || estado === null || (!interrompida && posicao === null)}
             onClick={() => void agir(() => plugin.iniciar(posicao ? { posicao } : undefined))}
-            className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
+            className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {ocupado ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden /> : <Moon className="w-4 h-4" aria-hidden />}
             Iniciar a noite
@@ -206,7 +206,7 @@ export function CartaoDaNoite({
               type="button"
               disabled={ocupado}
               onClick={() => void agir(() => plugin.encerrar())}
-              className="inline-flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm font-medium"
+              className="inline-flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Square className="w-4 h-4" aria-hidden />
               Encerrar a noite
@@ -241,6 +241,9 @@ export function CartaoDaNoite({
           </p>
         )}
 
+        {estado && !ativa && !interrompida && estado.epocasGravadas > 0 && (
+          <h3 className="text-sm font-semibold text-foreground">Última noite</h3>
+        )}
         {estado && (estado.ativa || estado.epocasGravadas > 0) && (
           <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
             <dt className="text-muted-foreground">Épocas gravadas</dt>

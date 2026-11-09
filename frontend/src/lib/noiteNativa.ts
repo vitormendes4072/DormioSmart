@@ -69,6 +69,8 @@ export type NoiteGravada = {
   primeiraTs?: string;
   ultimaTs?: string;
   notas?: NotasDaNoite;
+  /** A noite ainda está sendo registrada: sem envio nem anotações por enquanto. */
+  ativa?: boolean;
 };
 
 export interface PluginNoite {

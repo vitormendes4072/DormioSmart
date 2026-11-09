@@ -137,9 +137,11 @@ export function ListaDeNoites({
             <div className="space-y-2" data-testid={`noite-${n.arquivo}`}>
               <div className="flex flex-wrap items-baseline justify-between gap-2">
                 <h3 className="text-sm font-semibold text-foreground">
-                  {r.inicio
-                    ? r.inicio.toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })
-                    : n.arquivo}
+                  {n.ativa
+                    ? "Noite em andamento"
+                    : r.inicio
+                      ? r.inicio.toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })
+                      : "Noite sem épocas gravadas"}
                 </h3>
                 <span className="text-xs text-muted-foreground">{rotuloDaPosicao(n.notas?.posicao)}</span>
               </div>
@@ -152,6 +154,8 @@ export function ListaDeNoites({
                 <dd className="tabular-nums">
                   {r.cobertura === null ? "—" : `${Math.round(r.cobertura * 100)} %`}
                 </dd>
+                {!n.ativa && n.epocas > 0 && (
+                  <>
                 <dt className="text-muted-foreground">Envio</dt>
                 <dd className="tabular-nums inline-flex items-center gap-1">
                   {r.enviadaPorInteiro ? (
@@ -161,6 +165,8 @@ export function ListaDeNoites({
                   )}
                   {n.enviadas} de {n.epocas}
                 </dd>
+                  </>
+                )}
               </dl>
               {n.notas?.fim === "temperatura" && (
                 <p className="inline-flex items-center gap-2 text-sm text-destructive" role="alert">
@@ -168,6 +174,7 @@ export function ListaDeNoites({
                   Encerrada sozinha: o aparelho chegou a 45 °C.
                 </p>
               )}
+              {!n.ativa && (
               <div className="flex flex-wrap gap-3 text-sm">
                 <button
                   type="button"
@@ -182,6 +189,7 @@ export function ListaDeNoites({
                   </Link>
                 )}
               </div>
+              )}
               {aberta === n.arquivo && (
                 <FormularioDeNotas
                   noite={n}
