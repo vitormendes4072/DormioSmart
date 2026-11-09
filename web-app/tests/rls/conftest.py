@@ -85,6 +85,11 @@ MIGRACOES_APLICADAS = (
     # `test_rls_retencao.py` confere quem sai, quem fica e quem não executa;
     # `test_rls_eliminacao.py`, que a exclusão pelo titular seguiu igual.
     "013_retencao_por_inatividade.sql",
+    # A 014 (DATA-10, 09/11) recria as duas funções de gravação devolvendo
+    # `uuid`, o tipo de `sleep_data.id` na produção. Sem ela, com o
+    # `esquema_base.sql` igual à produção, 17 testes reprovam com o mesmo
+    # `invalid input syntax for type bigint` que travava a ingestão real.
+    "014_id_da_leitura_uuid.sql",
 )
 
 VARIAVEL = "DORMIO_RLS_DATABASE_URL"
