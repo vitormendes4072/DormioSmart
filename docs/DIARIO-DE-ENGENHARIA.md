@@ -7852,6 +7852,68 @@ O autor não estava em casa nem era noite, então a etapa veio antes da noite re
 - **Nativo:** `frontend/android/.../NotasDaNoite.java`, `CorteDeTemperatura.java`, `ServicoDaNoite.java`, `NoitePlugin.java`, `MainActivity.java`.
 - **Frontend:** `frontend/src/pages/Noite.tsx`, `components/ListaDeNoites.tsx`, `CartaoDaNoite.tsx`, `nav.ts`, `hooks/useEnvioDoCelular.ts`, `lib/noiteNativa.ts`, `App.tsx`, `pages/Coletar.tsx`, e os testes.
 
+---
+
+# 2026-11-09 (iv) — APP-02, etapa 4: o percurso pelos botões da tela da noite
+
+**O problema, como foi entendido no início.** A etapa 4 testou o serviço pelo gatilho de depuração e a tela pelo `vitest`, mas ninguém tinha tocado nos botões da tela de verdade. O autor pediu esse percurso criando uma conta de testes. Não criei: o app no emulador fala com o Supabase de **produção**, e criar conta ou digitar credencial num sistema de produção não é permitido, mesmo para teste. Isso só vale em ambiente local ou de teste, e o projeto ainda não tem um Supabase de teste (`INFRA-02`).
+
+**Hipótese de trabalho.** O modo demonstração (`?demo=1`, `DEMO-02`) libera as telas protegidas só no build de desenvolvimento. Um pacote do frontend construído em modo de desenvolvimento, dentro do app, permite percorrer a `/noite` inteira com toques reais, sem conta e sem tocar a produção. O login e o envio ficam de fora, porque não há sessão; o envio já é coberto pela fixture do backend.
+
+**O que foi testado, e como.** No emulador Pixel 6 (Android 37):
+- **Toques:** reais, por `adb shell input tap`. A posição de cada botão foi lida pelo depurador do WebView (CDP), e cada passo foi fotografado.
+- **Fluxo percorrido:**
+  - iniciar sem posição;
+  - escolher a posição;
+  - iniciar e aceitar a permissão de notificação do sistema;
+  - os números durante a noite;
+  - a isenção de bateria, com o diálogo do sistema;
+  - encerrar;
+  - a lista;
+  - as anotações, com o texto digitado pelo teclado do emulador.
+- **Exceção:** os três campos de hora foram preenchidos pelo depurador, porque o seletor de hora do Android não se presta a toques automatizados.
+- **Conferência:** o arquivo `.notas` lido no aparelho.
+
+**Resultado medido.**
+- **O que funcionou:**
+  - iniciar sem posição não começa nada (sem arquivo, sem serviço);
+  - a permissão de notificação é pedida e, aceita, a notificação mostra "Aparelho a 25.0 °C";
+  - durante a noite, a tela mostrou 2 épocas, 100 %, 50.0 Hz, 0 recusadas e 25.0 °C;
+  - a isenção de bateria pôs o app na lista de exceções do sistema e o link sumiu;
+  - encerrar parou o serviço e anotou `fim=usuario`;
+  - as anotações gravaram no `.notas` a posição, as três horas, os despertares e o fim, e o campo esvaziado saiu do arquivo;
+  - no app, o `/` leva à `/noite` (ou ao login), e não à página de apresentação.
+- **Três problemas que os testes automáticos não pegaram:**
+  1. o botão "Iniciar a noite" desabilitado tinha a mesma cara do habilitado;
+  2. a noite em andamento aparecia na lista como terminada, com o nome do arquivo como título, um visto verde "0 de 0" de enviada e anotações disponíveis;
+  3. depois de encerrar, os números da noite ficavam sob o botão de iniciar, sem título.
+
+  Os três foram corrigidos: opacidade no desabilitado, "Noite em andamento" sem envio nem anotações (o plugin passou a marcar a noite ativa), e "Última noite". Cada correção ganhou um teste, e as 4 sabotagens que as desfazem foram acusadas.
+- **Na volta ao emulador:** botão com opacidade 0,5, "Noite em andamento" na lista e "Última noite" no cartão.
+- **Suítes:** frontend 546 (+4), JVM 20, emulador 4 passando e 3 pulados.
+
+**Adaptação.**
+- **Sem conta:** o percurso foi feito em modo demonstração, sem conta.
+- **Configuração temporária:** a do Capacitor (o caminho inicial e, numa tentativa, o servidor de desenvolvimento) não foi versionada e foi desfeita. O app voltou ao build normal antes das suítes.
+
+**O que deu errado no caminho.**
+- **Tela em branco:** o app apontado para o servidor de desenvolvimento abriu em branco. O Vite no Windows escuta no IPv6 (`::1`), e o `10.0.2.2` do emulador chega ao IPv4.
+- **A ferramenta de preview:** sempre subia a configuração do repositório principal, sem as dependências do Capacitor, e ignorava a que eu escrevi. Troquei o servidor por um pacote construído em modo de desenvolvimento.
+- **O `DEV` desligado:** `--mode development` sozinho não liga o `DEV` no Vite; faltava `NODE_ENV=development`.
+- **A árvore de acessibilidade do Android:** não expôs os textos do WebView, então os botões foram localizados pelo depurador.
+- **O depurador** recusou a conexão com cabeçalho `Origin`.
+- **Erros meus:**
+  - o ajudante tocou no título do diálogo de permissão em vez de "Allow";
+  - a tecla Voltar, usada para fechar o teclado, fechou o app;
+  - um texto foi para o campo errado porque a página rolou entre o cálculo da posição e o toque. Repetido conferindo o foco antes de digitar, o campo certo recebeu o texto: o problema era meu, não do app.
+
+**Risco em aberto.**
+- **Login e envio:** continuam sem percurso de ponta a ponta no app. São da etapa 5, com o autor e a conta dele, ou de um Supabase de teste (`INFRA-02`), que permitiria a mim criar uma conta de teste.
+- **A lista durante a noite:** mostra as épocas da última leitura (só relê depois de uma ação); o cartão de cima mostra os números ao vivo.
+- **O percurso pelos botões não é automatizado:** foi feito uma vez, à mão, com scripts locais.
+
+**Procedência.** Branch `feature/APP-02-tela-da-noite` (PR #105). `frontend/src/components/CartaoDaNoite.tsx`, `ListaDeNoites.tsx`, `lib/noiteNativa.ts`, `android/.../NoitePlugin.java`, e os testes. As fotos e os scripts do percurso ficaram locais, fora do repositório.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
