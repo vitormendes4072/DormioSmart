@@ -1,7 +1,8 @@
-import { BatteryWarning, Loader2, Moon, Square } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { BatteryWarning, Loader2, Moon, Square, UploadCloud } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Moldura } from "./Blueprint";
+import { type EnviarLote, contarRestantes, enviarNoites } from "../lib/envioDaNoite";
 import {
   type EstadoDaNoite,
   type PluginNoite,
@@ -14,7 +15,7 @@ import {
 export const INTERVALO_DE_LEITURA_MS = 5000;
 
 /**
- * O registro da noite inteira, só no app Android (APP-02, etapa 2).
+ * O registro da noite inteira, só no app Android (APP-02, etapas 2 e 3).
  *
  * Mínimo de propósito: iniciar, encerrar e os números que dizem se a noite
  * está sendo registrada de verdade. A tela completa é a etapa 4. Os números
@@ -25,13 +26,23 @@ export const INTERVALO_DE_LEITURA_MS = 5000;
 export function CartaoDaNoite({
   plugin = Noite,
   agora = () => Date.now(),
+  enviar,
 }: {
   plugin?: PluginNoite;
   agora?: () => number;
+  /**
+   * Manda um lote ao servidor (etapa 3). Ausente enquanto o aparelho não tem
+   * o dispositivo preparado ou a sessão: aí as épocas esperam no aparelho.
+   */
+  enviar?: EnviarLote;
 }) {
   const [estado, setEstado] = useState<EstadoDaNoite | null>(null);
   const [ocupado, setOcupado] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  const [restantes, setRestantes] = useState<number | null>(null);
+  const [enviando, setEnviando] = useState(false);
+  const [resultado, setResultado] = useState<string | null>(null);
+  const tentouAoAbrir = useRef(false);
 
   const ler = useCallback(async () => {
     try {
@@ -46,6 +57,46 @@ export function CartaoDaNoite({
     const id = setInterval(() => void ler(), INTERVALO_DE_LEITURA_MS);
     return () => clearInterval(id);
   }, [ler]);
+
+  const lerRestantes = useCallback(async () => {
+    try {
+      setRestantes(await contarRestantes(plugin));
+    } catch {
+      setRestantes(null);
+    }
+  }, [plugin]);
+
+  const enviarAgora = useCallback(async () => {
+    if (!enviar) return;
+    setEnviando(true);
+    try {
+      const r = await enviarNoites(plugin, enviar);
+      setRestantes(r.restantes);
+      const partes: string[] = [];
+      if (r.confirmadas > 0) partes.push(`${r.confirmadas} épocas enviadas.`);
+      if (r.rejeitadas > 0) {
+        partes.push(`${r.rejeitadas} recusadas pelo servidor (${r.primeiraRejeicao ?? "sem motivo"}).`);
+      }
+      if (r.erro) partes.push(r.erro);
+      setResultado(partes.length ? partes.join(" ") : "Nada a enviar.");
+    } catch {
+      setResultado("Não foi possível ler as noites do aparelho.");
+    } finally {
+      setEnviando(false);
+    }
+  }, [plugin, enviar]);
+
+  useEffect(() => {
+    void lerRestantes();
+  }, [lerRestantes]);
+
+  // Ao abrir o app com épocas esperando e nenhuma noite em curso, envia uma vez.
+  useEffect(() => {
+    if (tentouAoAbrir.current || !enviar || estado === null || restantes === null) return;
+    if (estado.ativa || restantes === 0) return;
+    tentouAoAbrir.current = true;
+    void enviarAgora();
+  }, [enviar, estado, restantes, enviarAgora]);
 
   const agir = async (acao: () => Promise<unknown>) => {
     setOcupado(true);
@@ -80,7 +131,13 @@ export function CartaoDaNoite({
           <button
             type="button"
             disabled={ocupado}
-            onClick={() => void agir(() => plugin.encerrar())}
+            onClick={() =>
+              void agir(async () => {
+                await plugin.encerrar();
+                // Ao encerrar, a noite vai para a conta (etapa 3).
+                await enviarAgora();
+              })
+            }
             className="inline-flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm font-medium"
           >
             <Square className="w-4 h-4" aria-hidden />
@@ -114,6 +171,27 @@ export function CartaoDaNoite({
               Encerrar a noite
             </button>
           </div>
+        )}
+
+        {enviar && restantes !== null && restantes > 0 && !ativa && (
+          <div className="flex flex-wrap items-center gap-3 text-sm">
+            <span className="text-muted-foreground">{restantes} épocas aguardando envio.</span>
+            <button
+              type="button"
+              disabled={enviando}
+              onClick={() => void enviarAgora()}
+              className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-1.5 font-medium"
+            >
+              {enviando ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden /> : <UploadCloud className="w-4 h-4" aria-hidden />}
+              Enviar agora
+            </button>
+          </div>
+        )}
+
+        {resultado && (
+          <p className="text-sm text-muted-foreground" role="status">
+            {resultado}
+          </p>
         )}
 
         {erro && (

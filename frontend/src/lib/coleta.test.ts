@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { ErroDeIngestao, enviarLeitura, mensagemDeFalha } from "./coleta";
+import { ErroDeIngestao, enviarLeitura, enviarLote, mensagemDeFalha } from "./coleta";
 import { agregar, montarPayload } from "./acelerometro";
 import { GRAVIDADE } from "../types/sleep";
 
@@ -122,5 +122,51 @@ describe("endereco do backend no app (APP-02)", () => {
     });
     await enviarLeitura(PAYLOAD, DISPOSITIVO, JWT);
     expect(url).toBe("https://exemplo.test/api/data");
+  });
+});
+
+describe("enviarLote (APP-02, etapa 3)", () => {
+  function respondendo(status: number, corpo: unknown) {
+    const visto: { url?: string; init?: RequestInit } = {};
+    vi.stubGlobal("fetch", (u: string, init: RequestInit) => {
+      visto.url = u;
+      visto.init = init;
+      return Promise.resolve({ status, json: async () => corpo } as Response);
+    });
+    return visto;
+  }
+
+  it("manda o device_id no envelope, as leituras como vieram e o JWT", async () => {
+    const visto = respondendo(200, { aceitas: [0, 1], rejeitadas: [], pendentes: [] });
+    const r = await enviarLote([{ a: 1 }, { a: 2 }], DISPOSITIVO, JWT);
+    expect(visto.url).toBe("/api/data/lote");
+    const corpo = JSON.parse(visto.init?.body as string);
+    expect(corpo).toEqual({ device_id: DISPOSITIVO, leituras: [{ a: 1 }, { a: 2 }] });
+    expect((visto.init?.headers as Record<string, string>).Authorization).toBe(`Bearer ${JWT}`);
+    expect(r.aceitas).toEqual([0, 1]);
+  });
+
+  it("503 traz as listas: nada gravado, tudo pendente", async () => {
+    respondendo(503, { aceitas: [], rejeitadas: [], pendentes: [0, 1] });
+    expect((await enviarLote([{}, {}], DISPOSITIVO, JWT)).pendentes).toEqual([0, 1]);
+  });
+
+  it("503 sem corpo legivel vira tudo pendente, e nao erro", async () => {
+    respondendo(503, null);
+    expect((await enviarLote([{}, {}, {}], DISPOSITIVO, JWT)).pendentes).toEqual([0, 1, 2]);
+  });
+
+  it("401, 404 e 413 viram erro com o status, sem marcar nada", async () => {
+    for (const status of [401, 404, 413]) {
+      respondendo(status, { error: "x" });
+      await expect(enviarLote([{}], DISPOSITIVO, JWT)).rejects.toMatchObject({ status });
+    }
+  });
+
+  it("sem sessao, falha antes de tocar a rede", async () => {
+    vi.stubGlobal("fetch", () => {
+      throw new Error("nao devia chamar");
+    });
+    await expect(enviarLote([{}], DISPOSITIVO, null)).rejects.toMatchObject({ status: 401 });
   });
 });

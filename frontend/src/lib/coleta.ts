@@ -97,3 +97,55 @@ export async function enviarLeitura(
     throw new ErroDeIngestao(mensagemDeFalha(resposta.status), resposta.status);
   }
 }
+
+// ── O lote da noite do app (APP-02, etapa 3) ─────────────────────────────
+
+/** A resposta de `POST /api/data/lote` (contrato §5.2), pelo indice no array enviado. */
+export type RespostaDoLote = {
+  aceitas: number[];
+  rejeitadas: { indice: number; erro: string }[];
+  pendentes: number[];
+};
+
+/**
+ * Envia até 60 épocas da noite numa requisição, autenticada pela sessão.
+ *
+ * Como o `enviarLeitura`, não passa pelo `requisitarJson`: um 401 aqui é a
+ * sessão que venceu durante o envio, e a tela diz isso em vez de derrubar o
+ * usuário para o login. 200 e 503 trazem as três listas; 503 é "nada
+ * gravado, tudo pendente", e as listas dizem o mesmo.
+ */
+export async function enviarLote(
+  leituras: object[],
+  dispositivoId: string,
+  jwt: string | null,
+): Promise<RespostaDoLote> {
+  if (!jwt) throw new ErroDeIngestao(mensagemDeFalha(401), 401);
+
+  let resposta: Response;
+  try {
+    resposta = await fetch(urlDaApi("/api/data/lote"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${jwt}` },
+      body: JSON.stringify({ device_id: dispositivoId, leituras }),
+    });
+  } catch {
+    throw new ErroDeIngestao(mensagemDeFalha(0), 0);
+  }
+  if (resposta.status !== 200 && resposta.status !== 503) {
+    throw new ErroDeIngestao(mensagemDeFalha(resposta.status), resposta.status);
+  }
+  let corpo: unknown;
+  try {
+    corpo = await resposta.json();
+  } catch {
+    corpo = null;
+  }
+  const c = corpo as Partial<RespostaDoLote> | null;
+  if (!c || !Array.isArray(c.aceitas) || !Array.isArray(c.rejeitadas) || !Array.isArray(c.pendentes)) {
+    // Sem as listas não há como saber o que gravou: tudo pendente.
+    if (resposta.status === 503) return { aceitas: [], rejeitadas: [], pendentes: leituras.map((_, i) => i) };
+    throw new ErroDeIngestao("Resposta do servidor sem o resultado do lote.", resposta.status);
+  }
+  return { aceitas: c.aceitas, rejeitadas: c.rejeitadas, pendentes: c.pendentes };
+}

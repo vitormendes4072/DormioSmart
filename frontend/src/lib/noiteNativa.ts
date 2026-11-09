@@ -35,11 +35,19 @@ export type EstadoDaNoite = {
   isentoDeBateria: boolean;
 };
 
+/** Uma noite gravada no aparelho e quanto dela o servidor já confirmou (etapa 3). */
+export type NoiteGravada = { arquivo: string; epocas: number; enviadas: number };
+
 export interface PluginNoite {
   iniciar(): Promise<{ notificacoes: boolean }>;
   encerrar(): Promise<void>;
   estado(): Promise<EstadoDaNoite>;
   pedirIsencaoDeBateria(): Promise<{ isentoDeBateria: boolean }>;
+  noites(): Promise<{ noites: NoiteGravada[] }>;
+  /** Até 60 épocas, como o texto JSON que o núcleo montou. */
+  lerEpocas(o: { arquivo: string; de: number }): Promise<{ epocas: string[] }>;
+  /** O ponto só avança; devolve o que ficou gravado. */
+  marcarEnviadas(o: { arquivo: string; ate: number }): Promise<{ enviadas: number }>;
 }
 
 export const Noite = registerPlugin<PluginNoite>("Noite");
