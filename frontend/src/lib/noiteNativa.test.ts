@@ -7,6 +7,7 @@ import {
   coberturaDaNoite,
   noiteInterrompida,
   noiteNativaDisponivel,
+  resumoDaNoiteGravada,
 } from "./noiteNativa";
 
 const INICIO = 1_794_096_000_000;
@@ -79,5 +80,33 @@ describe("noiteInterrompida (APP-02)", () => {
 
   it("encerrada nao e interrompida", () => {
     expect(noiteInterrompida(estado({ ativa: false, rodando: false }))).toBe(false);
+  });
+});
+
+describe("resumoDaNoiteGravada (APP-02, etapa 4)", () => {
+  it("duracao e cobertura entre a primeira e a ultima epoca", () => {
+    // 8 h de noite: 960 epocas cabem; 900 gravadas.
+    const r = resumoDaNoiteGravada({
+      arquivo: "noite-1.jsonl",
+      epocas: 900,
+      enviadas: 900,
+      primeiraTs: "2026-11-09T02:00:00.000Z",
+      ultimaTs: "2026-11-09T09:59:30.000Z",
+    });
+    expect(r.duracaoMs).toBe(8 * 3600 * 1000);
+    expect(r.cobertura).toBeCloseTo(900 / 960, 6);
+    expect(r.enviadaPorInteiro).toBe(true);
+    expect(r.inicio?.toISOString()).toBe("2026-11-09T02:00:00.000Z");
+  });
+
+  it("sem epocas ou sem ts, nada de numero inventado", () => {
+    expect(resumoDaNoiteGravada({ arquivo: "noite-1.jsonl", epocas: 0, enviadas: 0 }).cobertura).toBeNull();
+    expect(
+      resumoDaNoiteGravada({ arquivo: "noite-1.jsonl", epocas: 3, enviadas: 1, primeiraTs: "x" }).duracaoMs,
+    ).toBe(0);
+  });
+
+  it("parcialmente enviada nao conta como enviada", () => {
+    expect(resumoDaNoiteGravada({ arquivo: "noite-1.jsonl", epocas: 10, enviadas: 9 }).enviadaPorInteiro).toBe(false);
   });
 });

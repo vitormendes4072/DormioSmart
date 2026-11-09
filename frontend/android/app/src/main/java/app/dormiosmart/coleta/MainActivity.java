@@ -36,8 +36,10 @@ public class MainActivity extends BridgeActivity {
         if (!BuildConfig.DEBUG || intent == null) return;
         final String r = intent.getStringExtra(EXTRA_ROTEIRO);
         if ("iniciar".equals(r)) {
-            ContextCompat.startForegroundService(this,
-                    new Intent(this, ServicoDaNoite.class).setAction(ServicoDaNoite.ACAO_INICIAR));
+            final Intent i = new Intent(this, ServicoDaNoite.class).setAction(ServicoDaNoite.ACAO_INICIAR);
+            final String posicao = intent.getStringExtra(ServicoDaNoite.EXTRA_POSICAO);
+            if (posicao != null) i.putExtra(ServicoDaNoite.EXTRA_POSICAO, posicao);
+            ContextCompat.startForegroundService(this, i);
         } else if ("encerrar".equals(r)) {
             startService(new Intent(this, ServicoDaNoite.class).setAction(ServicoDaNoite.ACAO_ENCERRAR));
         }

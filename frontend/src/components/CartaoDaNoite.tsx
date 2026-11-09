@@ -8,6 +8,8 @@ import {
   type PluginNoite,
   Noite,
   coberturaDaNoite,
+  POSICOES,
+  type Posicao,
   noiteInterrompida,
 } from "../lib/noiteNativa";
 
@@ -27,6 +29,7 @@ export function CartaoDaNoite({
   plugin = Noite,
   agora = () => Date.now(),
   enviar,
+  aoMudar,
 }: {
   plugin?: PluginNoite;
   agora?: () => number;
@@ -35,6 +38,8 @@ export function CartaoDaNoite({
    * o dispositivo preparado ou a sessão: aí as épocas esperam no aparelho.
    */
   enviar?: EnviarLote;
+  /** Chamado depois de iniciar, encerrar ou enviar (a lista de noites relê). */
+  aoMudar?: () => void;
 }) {
   const [estado, setEstado] = useState<EstadoDaNoite | null>(null);
   const [ocupado, setOcupado] = useState(false);
@@ -42,6 +47,10 @@ export function CartaoDaNoite({
   const [restantes, setRestantes] = useState<number | null>(null);
   const [enviando, setEnviando] = useState(false);
   const [resultado, setResultado] = useState<string | null>(null);
+  // Etapa 4: a posição do celular entra no protocolo e é obrigatória para
+  // iniciar. Uma noite sem posição anotada não serve à comparação
+  // fronha × colchão, que é o que a noite real quer medir.
+  const [posicao, setPosicao] = useState<Posicao | null>(null);
   const tentouAoAbrir = useRef(false);
 
   const ler = useCallback(async () => {
@@ -79,12 +88,13 @@ export function CartaoDaNoite({
       }
       if (r.erro) partes.push(r.erro);
       setResultado(partes.length ? partes.join(" ") : "Nada a enviar.");
+      aoMudar?.();
     } catch {
       setResultado("Não foi possível ler as noites do aparelho.");
     } finally {
       setEnviando(false);
     }
-  }, [plugin, enviar]);
+  }, [plugin, enviar, aoMudar]);
 
   useEffect(() => {
     void lerRestantes();
@@ -104,6 +114,7 @@ export function CartaoDaNoite({
     try {
       await acao();
       await ler();
+      aoMudar?.();
     } catch {
       setErro("O aparelho recusou o pedido.");
     } finally {
@@ -123,8 +134,8 @@ export function CartaoDaNoite({
           <h2 className="text-base font-semibold text-foreground">Registrar a noite inteira</h2>
         </div>
         <p className="text-sm text-muted-foreground">
-          O registro continua com a tela apagada. Deixe o celular carregando e apoiado no lugar
-          combinado para a noite.
+          O registro continua com a tela apagada. Escolha onde o celular fica, inicie antes de
+          dormir e encerre ao acordar.
         </p>
 
         {ativa ? (
@@ -144,15 +155,45 @@ export function CartaoDaNoite({
             Encerrar a noite
           </button>
         ) : (
+          <div className="space-y-3">
+          {!interrompida && (
+            <fieldset className="space-y-2">
+              <legend className="text-sm font-medium text-foreground">Onde o celular vai ficar?</legend>
+              <div className="flex flex-wrap gap-2">
+                {POSICOES.map((p) => (
+                  <label
+                    key={p.valor}
+                    className={`inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm ${
+                      posicao === p.valor ? "border-primary text-foreground" : "border-border text-muted-foreground"
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="posicao"
+                      value={p.valor}
+                      checked={posicao === p.valor}
+                      onChange={() => setPosicao(p.valor)}
+                    />
+                    {p.rotulo}
+                  </label>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Dentro da fronha, não deixe o celular carregando: bateria abafada esquenta. Se o
+                aparelho passar de 45 °C, o Dormio encerra a noite sozinho.
+              </p>
+            </fieldset>
+          )}
           <button
             type="button"
-            disabled={ocupado || estado === null}
-            onClick={() => void agir(() => plugin.iniciar())}
+            disabled={ocupado || estado === null || (!interrompida && posicao === null)}
+            onClick={() => void agir(() => plugin.iniciar(posicao ? { posicao } : undefined))}
             className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
           >
             {ocupado ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden /> : <Moon className="w-4 h-4" aria-hidden />}
             Iniciar a noite
           </button>
+          </div>
         )}
 
         {interrompida && (

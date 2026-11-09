@@ -53,6 +53,7 @@ function plugin(
     }),
     estado: vi.fn(async () => p.atual),
     pedirIsencaoDeBateria: vi.fn(async () => ({ isentoDeBateria: false })),
+    salvarNotas: vi.fn(async ({ notas }: { arquivo: string; notas: object }) => notas),
   };
   return p;
 }
@@ -64,9 +65,11 @@ describe("CartaoDaNoite (APP-02)", () => {
     const p = plugin(estado());
     render(<CartaoDaNoite plugin={p} agora={() => INICIO} />);
     const iniciar = await screen.findByRole("button", { name: /iniciar a noite/i });
+    fireEvent.click(screen.getByLabelText(/dentro da fronha/i));
     await waitFor(() => expect((iniciar as HTMLButtonElement).disabled).toBe(false));
     await act(async () => fireEvent.click(iniciar));
     expect(p.iniciar).toHaveBeenCalledTimes(1);
+    expect(p.iniciar).toHaveBeenCalledWith({ posicao: "fronha" });
     const encerrar = await screen.findByRole("button", { name: /encerrar a noite/i });
     await act(async () => fireEvent.click(encerrar));
     expect(p.encerrar).toHaveBeenCalledTimes(1);
@@ -154,5 +157,22 @@ describe("CartaoDaNoite (APP-02)", () => {
     await screen.findByRole("button", { name: /iniciar a noite/i });
     expect(p.lerEpocas).not.toHaveBeenCalled();
     expect(screen.queryByRole("button", { name: /enviar agora/i })).toBeNull();
+  });
+
+  it("sem posicao escolhida, a noite nao comeca (etapa 4)", async () => {
+    const p = plugin(estado());
+    render(<CartaoDaNoite plugin={p} agora={() => INICIO} />);
+    const iniciar = (await screen.findByRole("button", { name: /iniciar a noite/i })) as HTMLButtonElement;
+    await waitFor(() => expect(p.estado).toHaveBeenCalled());
+    expect(iniciar.disabled).toBe(true);
+    fireEvent.click(screen.getByLabelText(/sobre o colch/i));
+    await waitFor(() => expect(iniciar.disabled).toBe(false));
+    await act(async () => fireEvent.click(iniciar));
+    expect(p.iniciar).toHaveBeenCalledWith({ posicao: "colchao" });
+  });
+
+  it("o aviso de nao carregar dentro da fronha esta antes do botao (etapa 4)", async () => {
+    render(<CartaoDaNoite plugin={plugin(estado())} agora={() => INICIO} />);
+    expect(await screen.findByText(/não deixe o celular carregando/i)).toBeTruthy();
   });
 });
