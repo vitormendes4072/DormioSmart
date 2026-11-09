@@ -5,6 +5,7 @@ import {
   ATRASO_DE_FECHAMENTO_MS,
   type EstadoDaNoite,
   coberturaDaNoite,
+  noiteInterrompida,
   noiteNativaDisponivel,
 } from "./noiteNativa";
 
@@ -13,6 +14,7 @@ const INICIO = 1_794_096_000_000;
 function estado(parcial: Partial<EstadoDaNoite>): EstadoDaNoite {
   return {
     ativa: true,
+    rodando: true,
     inicioUtcMs: INICIO,
     epocasGravadas: 0,
     recusadas: 0,
@@ -63,5 +65,19 @@ describe("coberturaDaNoite (APP-02)", () => {
 
   it("nunca passa de 100 %, nem com o relogio adiantado", () => {
     expect(coberturaDaNoite(estado({ epocasGravadas: 12 }), quandoFecha(9))).toBe(1);
+  });
+});
+
+describe("noiteInterrompida (APP-02)", () => {
+  it("ativa e rodando nao e interrompida", () => {
+    expect(noiteInterrompida(estado({}))).toBe(false);
+  });
+
+  it("ativa no arquivo sem o servico rodando e interrompida", () => {
+    expect(noiteInterrompida(estado({ rodando: false }))).toBe(true);
+  });
+
+  it("encerrada nao e interrompida", () => {
+    expect(noiteInterrompida(estado({ ativa: false, rodando: false }))).toBe(false);
   });
 });

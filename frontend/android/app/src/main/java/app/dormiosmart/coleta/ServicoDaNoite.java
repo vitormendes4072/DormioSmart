@@ -66,6 +66,17 @@ public class ServicoDaNoite extends Service implements SensorEventListener {
 
     private static final String TAG = "DormioNoite";
 
+    /**
+     * Se o servico esta registrando neste processo. O estado gravado pode dizer
+     * "ativa" com o servico morto (forcado a parar, sem retomada): a tela usa
+     * isto para nao mostrar uma noite em andamento que nao existe.
+     */
+    private static volatile boolean emExecucao;
+
+    public static boolean emExecucao() {
+        return emExecucao;
+    }
+
     private HandlerThread linha;
     private PowerManager.WakeLock trava;
     private NucleoNativo nucleo;
@@ -176,6 +187,7 @@ public class ServicoDaNoite extends Service implements SensorEventListener {
         }
         registrando = sm.registerListener(
                 this, acel, PERIODO_US, LATENCIA_MAXIMA_US, new Handler(linha.getLooper()));
+        emExecucao = registrando;
         if (!registrando) {
             Log.e(TAG, "o sistema recusou o acelerometro");
             encerrar();
@@ -318,6 +330,7 @@ public class ServicoDaNoite extends Service implements SensorEventListener {
     }
 
     private void pararServico() {
+        emExecucao = false;
         if (trava != null && trava.isHeld()) trava.release();
         ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE);
         stopSelf();
@@ -327,6 +340,7 @@ public class ServicoDaNoite extends Service implements SensorEventListener {
     public void onDestroy() {
         // Destruido sem ENCERRAR (o sistema parou o servico): solta o sensor e a
         // trava, mas deixa a noite ATIVA no estado, para a retomada continuar.
+        emExecucao = false;
         if (registrando) {
             getSystemService(SensorManager.class).unregisterListener(this);
             registrando = false;

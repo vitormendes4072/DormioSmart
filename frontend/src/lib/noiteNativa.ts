@@ -14,6 +14,12 @@ import { Capacitor, registerPlugin } from "@capacitor/core";
 
 export type EstadoDaNoite = {
   ativa: boolean;
+  /**
+   * Se o serviço está de fato registrando. `ativa` vem do arquivo de estado e
+   * sobrevive à morte do serviço; `rodando` não. Ativa sem rodar é uma noite
+   * interrompida (forçada a parar, sem retomada do sistema).
+   */
+  rodando: boolean;
   inicioUtcMs: number;
   epocasGravadas: number;
   recusadas: number;
@@ -39,6 +45,11 @@ export interface PluginNoite {
 export const Noite = registerPlugin<PluginNoite>("Noite");
 
 type Plataforma = Pick<typeof Capacitor, "isNativePlatform" | "isPluginAvailable">;
+
+/** A noite foi interrompida: o estado diz ativa, mas o serviço não roda. */
+export function noiteInterrompida(e: EstadoDaNoite): boolean {
+  return e.ativa && !e.rodando;
+}
 
 /** Só dentro do app, e só se o plugin nativo existe. */
 export function noiteNativaDisponivel(plataforma: Plataforma = Capacitor): boolean {

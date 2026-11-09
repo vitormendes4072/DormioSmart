@@ -2,7 +2,13 @@ import { BatteryWarning, Loader2, Moon, Square } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
 import { Moldura } from "./Blueprint";
-import { type EstadoDaNoite, type PluginNoite, Noite, coberturaDaNoite } from "../lib/noiteNativa";
+import {
+  type EstadoDaNoite,
+  type PluginNoite,
+  Noite,
+  coberturaDaNoite,
+  noiteInterrompida,
+} from "../lib/noiteNativa";
 
 /** De quanto em quanto tempo a tela relê o estado do serviço. */
 export const INTERVALO_DE_LEITURA_MS = 5000;
@@ -54,7 +60,8 @@ export function CartaoDaNoite({
     }
   };
 
-  const ativa = estado?.ativa ?? false;
+  const interrompida = estado ? noiteInterrompida(estado) : false;
+  const ativa = (estado?.ativa ?? false) && !interrompida;
   const cobertura = estado ? coberturaDaNoite(estado, agora()) : null;
 
   return (
@@ -89,6 +96,24 @@ export function CartaoDaNoite({
             {ocupado ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden /> : <Moon className="w-4 h-4" aria-hidden />}
             Iniciar a noite
           </button>
+        )}
+
+        {interrompida && (
+          <div className="space-y-2">
+            <p className="text-sm text-destructive" role="alert">
+              O registro desta noite foi interrompido pelo aparelho. Toque em Iniciar para
+              continuar no mesmo arquivo, ou encerre a noite.
+            </p>
+            <button
+              type="button"
+              disabled={ocupado}
+              onClick={() => void agir(() => plugin.encerrar())}
+              className="inline-flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm font-medium"
+            >
+              <Square className="w-4 h-4" aria-hidden />
+              Encerrar a noite
+            </button>
+          </div>
         )}
 
         {erro && (

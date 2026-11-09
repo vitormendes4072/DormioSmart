@@ -77,6 +77,7 @@ public class NoitePlugin extends Plugin {
                     new File(ServicoDaNoite.pasta(getContext()), ArquivoDaNoite.ESTADO));
             final JSObject r = new JSObject();
             r.put("ativa", e.ativa);
+            r.put("rodando", ServicoDaNoite.emExecucao());
             r.put("inicioUtcMs", e.inicioUtcMs);
             r.put("epocasGravadas", e.epocasGravadas);
             r.put("recusadas", e.recusadas);

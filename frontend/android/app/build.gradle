@@ -21,6 +21,10 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    // APP-02: o gatilho do roteiro da retomada em MainActivity so vale em depuracao.
+    buildFeatures {
+        buildConfig true
+    }
     // APP-02: compila `firmware/nucleo/` direto do repositorio (ver o CMakeLists).
     externalNativeBuild {
         cmake {
