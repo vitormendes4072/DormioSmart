@@ -1,6 +1,6 @@
 import { NavLink } from "react-router";
 
-import { ITENS_NAV } from "./nav";
+import { itensDeNavegacao } from "./nav";
 
 /**
  * Navegação de celular: barra fixa no rodapé, no alcance do polegar.
@@ -20,7 +20,7 @@ export function MobileNav() {
 
   return (
     <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-card border-t border-border flex items-stretch pb-[env(safe-area-inset-bottom)]">
-      {ITENS_NAV.map(({ to, label, icon: Icon }) => (
+      {itensDeNavegacao().map(({ to, label, icon: Icon }) => (
         <NavLink
           key={to}
           to={to}

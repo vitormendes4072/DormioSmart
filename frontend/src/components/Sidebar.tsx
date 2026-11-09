@@ -5,7 +5,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { usePerfil } from "../contexts/PerfilContext";
 import { nomeDoPerfil } from "../lib/perfil";
 
-import { ITENS_NAV } from "./nav";
+import { itensDeNavegacao } from "./nav";
 import { MarcaDoProduto } from "./MarcaDoProduto";
 
 /** Navegação de desktop. Em telas menores que `md` dá lugar à MobileNav —
@@ -33,7 +33,7 @@ export function Sidebar() {
       </div>
 
       <nav className="flex-1 p-4 space-y-0.5">
-        {ITENS_NAV.map(({ to, label, icon: Icon }) => (
+        {itensDeNavegacao().map(({ to, label, icon: Icon }) => (
           <NavLink
             key={to}
             to={to}

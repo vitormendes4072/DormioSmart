@@ -12,15 +12,13 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router";
 
 import { Moldura } from "../components/Blueprint";
-import { CartaoDaNoite } from "../components/CartaoDaNoite";
 import { noiteNativaDisponivel } from "../lib/noiteNativa";
 import { EPOCAS_DISPONIVEIS_S, EPOCA_PADRAO_S, desvio } from "../lib/acelerometro";
 import { ErroApi } from "../lib/api";
-import { enviarLote, prepararDispositivoDoCelular } from "../lib/coleta";
+import { prepararDispositivoDoCelular } from "../lib/coleta";
 import { formatarDuracao } from "../lib/metricas";
 import { contarFalhas, resumoDaSessao } from "../lib/sessaoDeColeta";
 import { useColeta, type Registro } from "../hooks/useColeta";
-import { useAuth } from "../contexts/AuthContext";
 import { GRAVIDADE, LIMIAR_DE_MOVIMENTO } from "../types/sleep";
 
 /**
@@ -60,9 +58,6 @@ export function Coletar() {
   // Pareamento automático (APP-08): a sessão já identifica o dono, então o
   // aparelho prepara o próprio dispositivo sem o usuário ver credencial.
   const [dispositivo, setDispositivo] = useState<string | null>(null);
-  // APP-02, etapa 3: o envio da noite gravada no aparelho usa a mesma sessão
-  // e o mesmo dispositivo `celular` da coleta pelo navegador.
-  const jwt = useAuth().sessao?.access_token ?? null;
   const [nomeDoDispositivo, setNomeDoDispositivo] = useState<string | null>(null);
   const [erroDePreparo, setErroDePreparo] = useState<string | null>(null);
 
@@ -107,12 +102,20 @@ export function Coletar() {
       {/* APP-02: no app Android, a noite inteira e registrada por um servico
           nativo. No site este cartao nao existe, e o aviso abaixo continua
           valendo para a coleta pelo navegador. */}
+      {/* APP-02, etapa 4: no app, a noite inteira tem tela própria. */}
       {noiteNativaDisponivel() && (
-        <CartaoDaNoite
-          enviar={
-            dispositivo && jwt ? (leituras) => enviarLote(leituras, dispositivo, jwt) : undefined
-          }
-        />
+        <Link
+          to="/noite"
+          className="flex items-center justify-between gap-3 rounded-xl border border-primary/40 bg-primary/5 p-4 text-sm"
+        >
+          <span>
+            <span className="font-semibold text-foreground">Registrar a noite inteira</span>
+            <span className="block text-muted-foreground">
+              No app, o registro continua com a tela apagada.
+            </span>
+          </span>
+          <ArrowRight className="w-4 h-4 flex-shrink-0" aria-hidden />
+        </Link>
       )}
 
       {/* Fixo. Ver a nota no topo do arquivo. Diz primeiro o que FAZER, e

@@ -35,11 +35,46 @@ export type EstadoDaNoite = {
   isentoDeBateria: boolean;
 };
 
-/** Uma noite gravada no aparelho e quanto dela o servidor já confirmou (etapa 3). */
-export type NoiteGravada = { arquivo: string; epocas: number; enviadas: number };
+/** Onde o celular fica na noite (etapa 4): o mesmo vocabulário de `NotasDaNoite.java`. */
+export type Posicao = "fronha" | "colchao" | "outra";
+
+export const POSICOES: { valor: Posicao; rotulo: string }[] = [
+  { valor: "fronha", rotulo: "Dentro da fronha" },
+  { valor: "colchao", rotulo: "Sobre o colchão" },
+  { valor: "outra", rotulo: "Outro lugar" },
+];
+
+/**
+ * As anotações de uma noite (etapa 4). Ficam no aparelho e NÃO vão ao
+ * servidor: o contrato não tem esses campos, e mandar mais um dado de saúde
+ * pediria a política de privacidade (`LGPD-03`).
+ */
+export type NotasDaNoite = Partial<{
+  posicao: Posicao;
+  deitou: string;
+  adormeceu: string;
+  acordou: string;
+  despertares: string;
+  observacao: string;
+  /** Por que a noite terminou: usuario | temperatura | sem_sensor. */
+  fim: string;
+}>;
+
+/** Uma noite gravada no aparelho e quanto dela o servidor já confirmou (etapas 3 e 4). */
+export type NoiteGravada = {
+  arquivo: string;
+  epocas: number;
+  enviadas: number;
+  /** `ts` da primeira e da última época gravadas. */
+  primeiraTs?: string;
+  ultimaTs?: string;
+  notas?: NotasDaNoite;
+  /** A noite ainda está sendo registrada: sem envio nem anotações por enquanto. */
+  ativa?: boolean;
+};
 
 export interface PluginNoite {
-  iniciar(): Promise<{ notificacoes: boolean }>;
+  iniciar(o?: { posicao?: Posicao }): Promise<{ notificacoes: boolean }>;
   encerrar(): Promise<void>;
   estado(): Promise<EstadoDaNoite>;
   pedirIsencaoDeBateria(): Promise<{ isentoDeBateria: boolean }>;
@@ -48,6 +83,8 @@ export interface PluginNoite {
   lerEpocas(o: { arquivo: string; de: number }): Promise<{ epocas: string[] }>;
   /** O ponto só avança; devolve o que ficou gravado. */
   marcarEnviadas(o: { arquivo: string; ate: number }): Promise<{ enviadas: number }>;
+  /** Grava as anotações (junta com as que já havia); devolve o que ficou. */
+  salvarNotas(o: { arquivo: string; notas: NotasDaNoite }): Promise<NotasDaNoite>;
 }
 
 export const Noite = registerPlugin<PluginNoite>("Noite");
@@ -87,4 +124,36 @@ export function coberturaDaNoite(e: EstadoDaNoite, agoraMs: number): number | nu
   const esperadas = Math.floor(decorrido / DURACAO_DA_EPOCA_MS);
   if (esperadas <= 0) return null;
   return Math.min(1, e.epocasGravadas / esperadas);
+}
+
+export type ResumoDaNoiteGravada = {
+  inicio: Date | null;
+  duracaoMs: number;
+  /** Épocas gravadas sobre as que cabem entre a primeira e a última, de 0 a 1. */
+  cobertura: number | null;
+  enviadaPorInteiro: boolean;
+};
+
+/**
+ * O resumo de uma noite já gravada, a partir da primeira e da última época.
+ *
+ * A cobertura aqui é a de DENTRO da noite: lacunas entre a primeira e a
+ * última época (o serviço morto e retomado, o sensor parado) baixam o número.
+ * O que aconteceu antes da primeira época não entra — por isso a noite em
+ * curso usa `coberturaDaNoite`, que conta desde o toque em "Iniciar".
+ */
+export function resumoDaNoiteGravada(n: NoiteGravada): ResumoDaNoiteGravada {
+  const ini = n.primeiraTs ? Date.parse(n.primeiraTs) : NaN;
+  const fim = n.ultimaTs ? Date.parse(n.ultimaTs) : NaN;
+  if (!Number.isFinite(ini) || !Number.isFinite(fim) || fim < ini || n.epocas === 0) {
+    return { inicio: null, duracaoMs: 0, cobertura: null, enviadaPorInteiro: n.enviadas >= n.epocas };
+  }
+  const duracaoMs = fim - ini + DURACAO_DA_EPOCA_MS;
+  const cabem = Math.round(duracaoMs / DURACAO_DA_EPOCA_MS);
+  return {
+    inicio: new Date(ini),
+    duracaoMs,
+    cobertura: Math.min(1, n.epocas / cabem),
+    enviadaPorInteiro: n.enviadas >= n.epocas,
+  };
 }
