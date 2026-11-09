@@ -120,7 +120,14 @@ marcas (migracao, item, marca, presente) as (values
     ('013', 'LGPD-02', 'função expurgar_contas_inativas',
         to_regprocedure('public.expurgar_contas_inativas()') is not null),
     ('013', 'LGPD-02', 'apagar_minha_conta usa _eliminar_titular',
-        coalesce((select pg_get_functiondef(to_regprocedure('public.apagar_minha_conta()')) like '%public._eliminar_titular(auth.uid())%'), false))
+        coalesce((select pg_get_functiondef(to_regprocedure('public.apagar_minha_conta()')) like '%public._eliminar_titular(auth.uid())%'), false)),
+    -- 014: as duas funções de gravação devolvem o tipo do id (uuid). Com
+    -- bigint, TODA gravação falha com "invalid input syntax for type bigint".
+    -- O `on conflict` da 011 continua conferido nas marcas da 011.
+    ('014', 'DATA-10', 'registrar_leitura devolve uuid',
+        coalesce((select prorettype = 'uuid'::regtype from pg_proc where oid = to_regprocedure('public.registrar_leitura(text,jsonb)')), false)),
+    ('014', 'DATA-10', 'registrar_leitura_da_sessao devolve uuid',
+        coalesce((select prorettype = 'uuid'::regtype from pg_proc where oid = to_regprocedure('public.registrar_leitura_da_sessao(uuid,jsonb)')), false))
 ),
 esquema as (
     select migracao, min(item) as item,

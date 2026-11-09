@@ -7914,6 +7914,44 @@ O autor não estava em casa nem era noite, então a etapa veio antes da noite re
 
 **Procedência.** Branch `feature/APP-02-tela-da-noite` (PR #105). `frontend/src/components/CartaoDaNoite.tsx`, `ListaDeNoites.tsx`, `lib/noiteNativa.ts`, `android/.../NoitePlugin.java`, e os testes. As fotos e os scripts do percurso ficaram locais, fora do repositório.
 
+---
+
+# 2026-11-09 (v) — DATA-10: nenhuma leitura gravava na produção
+
+**O problema, como foi entendido no início.** Na primeira noite de teste do app no celular real (`APP-02`, Moto E7, Android 10), o sensor e o serviço funcionaram, mas o envio das 8 épocas falhou. O autor mostrou o painel do Supabase perguntando se havia problema lá. O painel não mostrava erro; os logs de execução da Vercel mostravam, em cada `POST /api/data/lote`, `invalid input syntax for type bigint` (22P02) e a resposta 503.
+
+**Hipótese de trabalho.** `registrar_leitura` e `registrar_leitura_da_sessao` declaram `returns bigint` e `v_id bigint` desde a 005, e a 011 manteve isso. Se o `sleep_data.id` da produção é uuid, o `returning id into v_id` falha em toda gravação. Isso vale para os três caminhos: dispositivo, celular e navegador. Os testes não pegavam porque o `tests/rls/esquema_base.sql` criava o id como `bigserial`.
+
+**O que foi testado, e como.**
+- **Controle positivo antes do conserto:** o `esquema_base.sql` passou a criar o id como `uuid primary key default gen_random_uuid()`, como na produção, e a suíte de RLS rodou sem a 014.
+- **O conserto:** a migração `014_id_da_leitura_uuid.sql`. Ela apaga e recria as duas funções devolvendo uuid, com o corpo da 011 (o `on conflict` e a busca do id existente), e refaz os grants da 007/009: `dormio_ingestao` na do token, `authenticated` na da sessão, nada para `public`/`anon`. Mudar o tipo devolvido exige `drop`, e o `drop` leva os grants junto.
+- **O diagnóstico:** `DIAGNOSTICO-migracoes-aplicadas.sql` ganhou duas marcas da 014, o tipo devolvido de cada função.
+- **Ambiente:** tudo contra `postgres:16` em Docker, no Windows.
+
+**Resultado medido.**
+- **Sem a 014, com o esquema de teste corrigido:** 17 testes falham e 176 passam, todos com o mesmo `invalid input syntax for type bigint` da produção. Antes da troca do tipo, passavam os 193.
+- **Com a 014:** RLS **193 passam**.
+- **Mutação do RLS:** 35/35. A sabotagem que recria `registrar_leitura` também passou a devolver uuid; com bigint, ela cairia pelo motivo errado.
+- **Verificador de migrações:** acerta os **14 estados**. Até a 013, a 014 sai `F`; depois dela, `T`. A ordem real da produção também passa, com a 014 no fim.
+- **Backend:** 500 passam (ele não muda).
+- **Produção:** **não aplicada ainda.** Aplicar é o `DATA-11`, com o autor no SQL Editor.
+
+**Adaptação.** O plano previa só a migração. O controle positivo exigiu mexer no esquema de teste, que agora reproduz a produção no tipo do id.
+
+**O que deu errado no caminho.**
+- **O tipo errado vem da 005 (escrita em 27/09)** e foi copiado pelas 007, 010 e 011. Não foi notado porque nada gravou na produção por essas funções até a noite do celular: a placa não está soldada, e as noites de teste anteriores não passavam pela produção. Quando a produção passou a usar as funções não foi reconstituído.
+- **O monitor (`INFRA-03`) não pega:** ele chama o `/health`, que só lê.
+- **Postgres de verdade não bastou:** a suíte de RLS foi feita contra um Postgres real justamente para não ser enganada por mock (§4, ocorrência 1). Ainda assim, o esquema era imitado de memória e errou o tipo da coluna mais usada. Registrado no §4 das lições como ocorrência 7, com a regra 7.
+- **A pergunta do autor apontava para o Supabase:** o painel estava saudável, e o erro só apareceu nos logs da Vercel.
+
+**Risco em aberto.**
+- **Até a 014 ser aplicada,** nenhuma leitura grava na produção (`DATA-11`).
+- **As 8 épocas da noite de teste** estão guardadas no celular (`.jsonl` sem `.enviado`). O app reenvia ao abrir; isso confirma o conserto de ponta a ponta, e ainda não rodou.
+- **Outras divergências de tipo:** não houve varredura de outras colunas do `esquema_base.sql` contra a produção. A regra 7 do §4 manda conferir ao mexer em função que toca coluna; uma varredura completa pediria uma consulta de só leitura na produção pelo autor.
+
+**Procedência.** Branch `bugfix/DATA-10-id-da-leitura-uuid`. `web-app/migrations/014_id_da_leitura_uuid.sql`, `web-app/tests/rls/esquema_base.sql`, `conftest.py`, `verificar_por_mutacao.py`, `web-app/tests/migracoes/verificar_migracoes.py`, `DIAGNOSTICO-migracoes-aplicadas.sql`, `migrations/README.md`. Logs de execução da Vercel de 09/11.
+
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

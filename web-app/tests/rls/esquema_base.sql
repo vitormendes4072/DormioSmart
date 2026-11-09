@@ -150,7 +150,7 @@ $$;
 --    "só funcionava porque o backend usa service_role".
 -- ---------------------------------------------------------------------
 create table if not exists public.sleep_data (
-    id               bigserial primary key,
+    id               uuid primary key default gen_random_uuid(),
     accel_x          double precision,
     accel_y          double precision,
     accel_z          double precision,

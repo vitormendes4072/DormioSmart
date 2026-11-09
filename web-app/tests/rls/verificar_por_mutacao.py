@@ -223,9 +223,9 @@ SABOTADORES = {
         sql="""
             create or replace function public.registrar_leitura(
                 p_token_hash text, p_leitura jsonb
-            ) returns bigint language plpgsql volatile security definer
+            ) returns uuid language plpgsql volatile security definer
             set search_path = '' as $SAB$
-            declare v_device uuid; v_dono uuid; v_id bigint;
+            declare v_device uuid; v_dono uuid; v_id uuid;
             begin
                 select d.id, d.user_id into v_device, v_dono
                   from public.device_tokens t
