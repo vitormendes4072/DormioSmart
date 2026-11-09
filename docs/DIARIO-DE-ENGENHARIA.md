@@ -7581,6 +7581,45 @@ acurácia dela. O envio à conta de demonstração na produção não foi exerci
 
 **Procedência.** PR #100, branch feature/ML-INF-modelo-cabeca. Protocolo anterior à rodada em e8e4875 e execução definitiva em 367cd96. docs/ML-INF-PROTOCOLO-V2.md, docs/RELATORIO-ML-INF-V2.md, ml/experimentos/ml_inf_v2.py, ml/modelos/ml-inf-cabeca-v2.json e agregados da ML-13, ML-17 e ML-INF.
 
+---
+
+# 2026-11-08 (i) — ML-INF: a inferência no backend, sob demanda
+
+**O problema, como foi entendido no início.** O modelo `ml-inf-cabeca-v2` estava no repositório (PR #100), mas nada o aplicava a uma noite do dispositivo. O backlog e o §9 do plano de ML previam um job em lote no backend ao fim da sessão.
+
+**Hipótese de trabalho.** Partir da saída que `/api/features` já monta (`derivar_noite` sobre a janela pedida) e aplicar o modelo em Python puro, sem numpy, reproduz o `predict_proba` do scikit-learn a 1e-12 nas duas noites douradas da v2. E calcular a cada pedido, sem gravar, é mais simples e mais seguro que o lote: não exige migração, não guarda dado de saúde inferido e não obriga o servidor a decidir sozinho quando uma sessão acabou, que é o `ESC-01`.
+
+**O que foi testado, e como.** Windows local, Python 3.13 (o CI usa 3.11). O módulo novo é `web-app/inferencia.py`, a rota `GET /api/inferencia` e o modelo copiado byte a byte para `web-app/modelos/`, porque o pacote da Vercel parte de `web-app/app.py`. Os testes estão em `web-app/tests/test_inferencia.py`:
+- o contrato do modelo: o v1 e onze adulterações são recusados, e o SHA-256 da cópia é o do `ml/`;
+- as duas noites douradas, do payload à classe, pelo caminho real da linha do banco;
+- os três casos de limiar;
+- o piso de 23, contando só épocas válidas;
+- a grade de 30 s a 32 Hz, aplicada antes da derivação;
+- a lacuna de 45 e de 45,001 s e o contexto preso ao segmento;
+- o desvio abaixo de 1e-9;
+- os códigos da rota e o dono vindo do JWT.
+
+Depois, 14 sabotagens, uma por regra.
+
+**Resultado medido.** O backend passou de 453 para 493 testes. Nas noites douradas, a maior diferença de probabilidade foi 6e-15 (a régua é 1e-12), com as classes iguais e 1 e 2 segmentos, em cerca de 60 ms por noite de 960 épocas. Na primeira rodada, as sabotagens deram 11/14: três passaram e mostraram buracos nos testes, que foram corrigidos. Na segunda, 14/14. O contrato de dados subiu para 2.8.0 (MINOR), e o `/health` passou a informar o modelo carregado.
+
+**Adaptação.** Deixei de lado o lote previsto no plano e o substituí pelo cálculo sob demanda; a nota está no §9. O modelo carrega na primeira chamada. Se falhar, só a rota de inferência responde 503 e o `/health` diz `"indisponivel"` sem mudar o código, porque a ingestão não pode parar por causa do modelo. A validação de parâmetros saiu de `/api/features` para uma função comum às duas rotas.
+
+**O que deu errado no caminho.** As três sabotagens que passaram:
+- **Piso contando as linhas recebidas:** os testes só usavam épocas válidas, então contar as recebidas dava o mesmo número. Entrou um caso com 22 válidas e duas fora da grade.
+- **Empate virando sono:** o teste do limiar aplicava `z > 0` por conta própria, em vez da regra do módulo. A regra virou a função `classe(z)`, que o teste chama.
+- **Piso do desvio ignorado:** a coluna constante tem desvio exatamente 0, então trocar o piso por `s > 0` dava o mesmo resultado. Entrou um caso com ruído de 1e-13.
+
+O script de sabotagem restaura os arquivos com `git checkout`, então o código precisou ser commitado antes de rodá-lo. Sem isso, a primeira restauração teria apagado o trabalho.
+
+**Risco em aberto.**
+- O z-score é calculado sobre a janela pedida, e o modelo foi treinado com noites inteiras: uma janela curta pode classificar a mesma época de outro jeito. A resposta devolve a janela e um aviso.
+- Nenhuma tela mostra a estimativa ainda. O `DASH-04` não deve mostrá-la antes de a política de privacidade declarar a inferência sobre saúde (`LGPD-03`).
+- O empacotamento do JSON na Vercel foi conferido pelo `/health` do preview (ver a PR); a produção só depois do release.
+- O desempenho no travesseiro continua sem medição (`VAL-02`).
+
+**Procedência.** Branch `feature/ML-INF-backend`, sobre o `develop` `010f741`. `web-app/inferencia.py`, `web-app/routes.py`, `web-app/modelos/ml-inf-cabeca-v2.json`, `web-app/tests/test_inferencia.py`, `docs/DATA-CONTRACT.md` §2.6 e §7, `docs/ML-DATASETS-E-PLANO.md` §9.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
