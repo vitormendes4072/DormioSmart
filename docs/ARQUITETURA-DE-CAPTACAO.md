@@ -240,7 +240,7 @@ poupam mais.
 | Rota | Noite inteira? | Features? | Custo | Estado |
 |---|---|---|---|---|
 | **Navegador (PWA)**, a de hoje | **não**: o sensor para com a tela bloqueada; com *Wake Lock*, tela acesa a noite toda | dá para calcular as 8 no navegador | já existe | em produção, para minutos |
-| **Android nativo** com serviço em primeiro plano e *batching* | **sim**, com ressalva: fabricantes (Samsung, Xiaomi, OPPO) matam apps em segundo plano mesmo com exceção de bateria | sim, a 50 Hz | um app nativo inteiro | `APP-02`, ⚪, pós-banca |
+| **Android nativo** com serviço em primeiro plano e *batching* | **sim**, com ressalva: fabricantes (Samsung, Xiaomi, OPPO) matam apps em segundo plano mesmo com exceção de bateria | sim, a 50 Hz | um app nativo inteiro | `APP-02`, ~~⚪, pós-banca~~ ✏️ *08/11: em andamento, por decisão do autor, num Motorola dedicado. Desde o Android 14 o serviço declara o tipo `health`, que com `HIGH_SAMPLING_RATE_SENSORS` no manifesto não pede permissão em tempo de execução e não tem o limite de 6 h do `dataSync`* |
 | **iOS** | **não verificado**. `CMSensorRecorder` grava a 50 Hz em segundo plano, com janela relatada de 12 h, mas a documentação e os fóruns falam sobretudo do Apple Watch | sim, se a rota funcionar no iPhone | app nativo + conta de desenvolvedor | `APP-04`, investigação |
 
 ### 5.4 O que a literatura diz do celular sobre a cama
