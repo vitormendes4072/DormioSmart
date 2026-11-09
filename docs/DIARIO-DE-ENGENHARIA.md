@@ -7732,6 +7732,67 @@ Os roteiros rodam no processo da instrumentação, que pode receber tratamento d
 - **Testes:** `app/src/test/` e `app/src/androidTest/` (`NucleoNativoTest`, `ServicoDaNoiteTest`, `RoteiroDaNoiteTest`).
 - **Frontend:** `frontend/src/lib/noiteNativa.ts`, `frontend/src/components/CartaoDaNoite.tsx`, `frontend/src/pages/Coletar.tsx`.
 
+---
+
+# 2026-11-09 (ii) — APP-02, etapa 3: as noites do app vão para a conta
+
+**O problema, como foi entendido no início.** A etapa 2 deixava as noites só no aparelho. Para elas chegarem ao painel e à `/api/inferencia`, era preciso enviá-las ao servidor sem perder época e sem duplicar. As condições do aparelho tornam isso delicado: a noite pode terminar sem rede, a sessão pode vencer e o app pode morrer no meio de um envio.
+
+**Hipótese de trabalho.**
+- **Backend:** não precisa mudar. O `POST /api/data/lote` já responde, item a item, aceita, rejeitada ou pendente; o caminho por sessão do celular (`APP-08`) já existe; e a migração 011 deixa o reenvio idempotente.
+- **Aparelho:** basta um ponto, por noite, de até onde o servidor confirmou. Ele só avança, e avança só até a primeira pendente.
+- **Onde fica o envio:** no lado web do app, onde está a sessão que o Supabase renova. O nativo continua sem token.
+
+**O que foi testado, e como.**
+- **JVM:** o `ArquivoDaNoite` ganhou o progresso (`.enviado`), a leitura por faixa e a listagem das noites. A leitura passou a ignorar uma linha ainda sem a quebra final, porque a tela lê o arquivo enquanto o serviço grava.
+- **vitest:**
+  - o laço `enviarNoites`: tudo aceito em lotes de 60, retomada do ponto, pendente no meio, rejeitadas, `401` e sem rede, queda entre gravar e marcar, várias noites, noite já enviada;
+  - o `enviarLote`;
+  - o cartão: envio sozinho ao abrir, nenhum envio durante a noite, envio ao encerrar, falha que fica na tela, sem dispositivo ou sessão.
+- **Fixture:** uma noite de 16 min gravada pelo serviço no emulador Pixel 6 (Android 37), copiada intacta para `web-app/tests/fixtures/noite_do_app_emulador.jsonl`. O `test_noite_do_app.py`:
+  - passa cada linha pela validação real;
+  - manda a noite pelo lote da sessão com o banco mockado;
+  - passa as linhas EXATAS que a rota entregou à gravação pela inferência.
+- **Sabotagens:** 6 por script (4 no envio, 2 no nativo) e 2 na fixture (`fs` 50, `total` incoerente).
+
+**Resultado medido.**
+- **Noite do emulador:** 32 épocas, 0 recusadas, 50,000 Hz.
+- **Fixture no backend:** 7/7 testes passando. As 32 épocas são aceitas pela validação, entram pelo lote todas aceitas, o vetor chega ao banco coluna a coluna, e a inferência classifica as 32, em 1 segmento, sem nenhuma excluída.
+- **Suítes:**
+
+  | Suíte | Antes | Agora |
+  |---|---|---|
+  | Backend | 493 | 500 |
+  | Frontend | 509 | 528 |
+  | JVM | 8 | 13 |
+
+- **Sabotagens:** 6/6 acusadas com a linha de base limpa; as 2 da fixture derrubam 3 testes cada uma.
+
+**Adaptação.**
+- **A regra do ponto:** o ponto avança só pelo prefixo resolvido do lote. Avançar por cima de uma pendente perderia a época; parar antes de uma aceita só reenvia, e o servidor deduplica.
+- **Rejeitada conta como resolvida:** reenviar não adianta, como já decide o firmware. Ela é contada, e o primeiro motivo vai para a tela.
+- **Teste da inferência:** passou a usar o que a rota gravou, e não uma conversão minha.
+
+**O que deu errado no caminho.**
+- **Escape:** a gravação do ponto saiu com uma quebra de linha literal dentro da string Java, o mesmo deslize de escape do Makefile da etapa 1.
+- **Testes errados meus, dois:**
+  - um teste JVM esperava 60 épocas a partir da linha 50 de uma noite de 100, onde só restam 50;
+  - o teste do lote esperava um campo `f` na gravação, mas a ingestão converte o vetor em colunas nomeadas.
+
+  Os dois foram corrigidos no teste, sem mudar o código.
+- **Idioma:** respondi em inglês por engano durante a gravação da noite, e o autor pediu de volta o português.
+
+**Risco em aberto.**
+- **Sem produção:** nenhum envio contra a produção ainda. A primeira noite enviada com login de verdade é a da etapa 5, no Motorola; eu não entro com a senha do autor.
+- **Noite plana:** o acelerômetro do emulador é constante. A fixture prova formato e caminho, não acurácia (`VAL-02`).
+- **Ponte nativa:** os três métodos novos do plugin não têm teste no emulador. A lógica deles está no `ArquivoDaNoite`, testada na JVM, e o plugin só converte tipos.
+- **Etapas pendentes:** a tela completa é a etapa 4.
+
+**Procedência.** Branch `feature/APP-02-envio-da-noite`, sobre o `develop` `0e32ff5`.
+- **Nativo:** `frontend/android/app/src/main/java/app/dormiosmart/coleta/ArquivoDaNoite.java` e `NoitePlugin.java`.
+- **Frontend:** `frontend/src/lib/envioDaNoite.ts`, `frontend/src/lib/coleta.ts` (`enviarLote`), `frontend/src/lib/noiteNativa.ts`, `frontend/src/components/CartaoDaNoite.tsx`, `frontend/src/pages/Coletar.tsx`.
+- **Backend:** `web-app/tests/test_noite_do_app.py` e a fixture do emulador.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
