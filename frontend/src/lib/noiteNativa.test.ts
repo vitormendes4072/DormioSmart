@@ -109,4 +109,16 @@ describe("resumoDaNoiteGravada (APP-02, etapa 4)", () => {
   it("parcialmente enviada nao conta como enviada", () => {
     expect(resumoDaNoiteGravada({ arquivo: "noite-1.jsonl", epocas: 10, enviadas: 9 }).enviadaPorInteiro).toBe(false);
   });
+
+  it("mais epocas do que cabem (uma retomada sobreposta) nao passa de 100 %", () => {
+    // Duas cadeias depois de uma retomada podem gravar epocas com ts proximos.
+    const r = resumoDaNoiteGravada({
+      arquivo: "noite-1.jsonl",
+      epocas: 12,
+      enviadas: 0,
+      primeiraTs: "2026-11-09T02:00:00.000Z",
+      ultimaTs: "2026-11-09T02:04:30.000Z",
+    });
+    expect(r.cobertura).toBe(1);
+  });
 });
