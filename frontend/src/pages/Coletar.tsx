@@ -12,6 +12,8 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router";
 
 import { Moldura } from "../components/Blueprint";
+import { CartaoDaNoite } from "../components/CartaoDaNoite";
+import { noiteNativaDisponivel } from "../lib/noiteNativa";
 import { EPOCAS_DISPONIVEIS_S, EPOCA_PADRAO_S, desvio } from "../lib/acelerometro";
 import { ErroApi } from "../lib/api";
 import { prepararDispositivoDoCelular } from "../lib/coleta";
@@ -97,6 +99,11 @@ export function Coletar() {
           Usar este celular como sensor
         </h1>
       </div>
+
+      {/* APP-02: no app Android, a noite inteira e registrada por um servico
+          nativo. No site este cartao nao existe, e o aviso abaixo continua
+          valendo para a coleta pelo navegador. */}
+      {noiteNativaDisponivel() && <CartaoDaNoite />}
 
       {/* Fixo. Ver a nota no topo do arquivo. Diz primeiro o que FAZER, e
           só depois o porquê — antes começava por "não serve para", que soa

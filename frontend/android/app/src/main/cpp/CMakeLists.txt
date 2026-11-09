@@ -34,3 +34,6 @@ add_library(dormio_nucleo SHARED
 target_include_directories(dormio_nucleo PRIVATE ${NUCLEO})
 # As mesmas bandeiras do Makefile do nucleo: sem excecao e sem RTTI.
 target_compile_options(dormio_nucleo PRIVATE -Wall -Wextra -fno-exceptions -fno-rtti)
+# Aparelhos com paginas de 16 KB (o emulador do Android 37 e os aparelhos novos)
+# so carregam biblioteca alinhada a 16 KB; o NDK 27 alinha a 4 KB por padrao.
+target_link_options(dormio_nucleo PRIVATE "-Wl,-z,max-page-size=16384")
