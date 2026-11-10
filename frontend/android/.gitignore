@@ -53,9 +53,13 @@ captures/
 .idea/navEditor.xml
 
 # Keystore files
-# Uncomment the following lines if you do not want to check your keystore files in.
-#*.jks
-#*.keystore
+# APP-12 (10/11): a chave de assinatura NUNCA entra no repositorio, que e publico.
+# Ela fica fora dele (ver app/build.gradle, `signingConfigs`); estas regras sao a
+# segunda defesa, para o caso de alguem a copiar para dentro.
+*.jks
+*.keystore
+*.p12
+assinatura.properties
 
 # External native build folder generated in Android Studio 2.2 and later
 .externalNativeBuild
