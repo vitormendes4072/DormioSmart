@@ -411,11 +411,11 @@ SABOTADORES = {
 
     # --- LGPD-02 (05/11): retenção por inatividade, migração 013 ---
     "expurgo_ignora_a_sessao": dict(
-        descricao="o expurgo volta a ignorar a renovacao de sessao (LGPD-09)",
+        descricao="o expurgo ignora a refreshed_at, que e o que a renovacao grava (LGPD-09)",
         sql="""
             do $SAB$ begin
                 execute replace(pg_get_functiondef('public.expurgar_contas_inativas()'::regprocedure),
-                                'max(se.updated_at)', 'max(null::timestamptz)');
+                                'to_timestamp(extract(epoch from se.refreshed_at))', 'null::timestamptz');
             end $SAB$;
         """,
         minimo=1,
