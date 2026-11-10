@@ -8503,6 +8503,37 @@ As consultas de 10/11 na produção (5.1 e 5.3 da auditoria) deram zero leitura 
 
 **Procedência.** Branch `bugfix/LGPD-09-sessao-conta-como-uso`. `web-app/migrations/013_retencao_por_inatividade.sql`, `DIAGNOSTICO-migracoes-aplicadas.sql`; `web-app/tests/rls/esquema_base.sql`, `test_rls_retencao.py`, `verificar_por_mutacao.py`; `web-app/tests/migracoes/verificar_migracoes.py`; `docs/POLITICA-DE-PRIVACIDADE.md` §7. Consultas coladas pelo autor em 10/11.
 
+---
+
+# 2026-11-10 (xi) — LGPD-09: a 013 na produção, com o expurgo agendado
+
+**O problema, como foi entendido no início.** A 013 (retenção por inatividade), corrigida antes de ser aplicada para contar a sessão como uso (entrada x, PR #118), precisava entrar na produção com o `pg_cron` ligado. É o primeiro item do `REL-01`: a seção 7 nova da política descreve o expurgo, e não pode ser publicada antes de ele existir.
+
+**Hipótese de trabalho.** A 013 aplica limpa e não apaga ninguém na primeira execução. A consulta 5.2 da auditoria deu 0 contas, e a versão corrigida só acrescenta sinais de uso, ou seja, só pode manter mais contas.
+
+**O que foi testado, e como.**
+- **Antes, por mim:** uma versão da 013 sem os comentários, num Postgres 17 montado na ordem real da produção (001–012 e 014–016, e a 013 por último). Ela aplicou, deu 4 de 4 marcas, o expurgo rodado à mão não apagou ninguém, e uma segunda execução passou.
+- **Pelo autor, no celular:**
+  1. ligou o `pg_cron` em Database → Extensions (schema `pg_catalog`, o padrão);
+  2. rodou a 013 no SQL Editor;
+  3. rodou uma consulta curta de conferência.
+
+**Resultado medido.**
+- **Na produção:** `_eliminar_titular`, `expurgar_contas_inativas`, a exclusão de conta passando por `_eliminar_titular` e o sinal da sessão no expurgo — os quatro `true`.
+- **O agendamento:** `pg_cron` ligado (1) e **1 agendamento** `dormio-expurgo-por-inatividade`, diário às 04:17 UTC.
+- **A produção fica com 001–016**, todas aplicadas (a 002 desnecessária).
+
+**Adaptação.** A descrição interna da função de expurgo (`comment on function`) ainda citava só "criação, login nem leitura". Ela foi corrigida na versão aplicada para incluir o uso de sessão, e o arquivo do repositório foi alinhado a ela neste registro.
+
+**O que deu errado no caminho.** Nada nesta etapa.
+
+**Risco em aberto.**
+- **O primeiro expurgo agendado ainda não rodou;** a próxima execução é às 04:17 UTC. A execução pode ser conferida em `cron.job_run_details`.
+- **O diagnóstico completo não foi rodado:** a consulta curta cobre as marcas da 013 e o agendamento.
+- **O resto do `REL-01`:** a decisão sobre o `LGPD-12` e o release em si.
+
+**Procedência.** Captura de tela do painel e resultado da conferência colados pelo autor em 10/11. `web-app/migrations/013_retencao_por_inatividade.sql`.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
