@@ -8303,6 +8303,65 @@ O autor não estava em casa nem era noite, então a etapa veio antes da noite re
 
 **Procedência.** Branch `chore/REG-auditoria-e-pendencias`, a partir de `feature/APP-12-distribuicao-para-testadores` (`545f7f6`). `docs/BACKLOG-COMPLETO.md`, `docs/AUDITORIA-2026-11-10-fable.md`, `CLAUDE.md`.
 
+---
+
+# 2026-11-10 (vii) — LGPD-11: a política de privacidade alcança o app e a inferência
+
+**O problema, como foi entendido no início.** A auditoria de 10/11 (AUD-04 e AUD-05) apontou que a política não descrevia o app nativo nem a inferência de sono. A leitura inteira da política contra o código achou mais:
+
+| Seção | A política dizia | O sistema faz |
+|---|---|---|
+| §2.2 | O celular só coleta com a tela de coleta aberta | O app coleta a noite toda, com a tela apagada |
+| §2.2 | Não citava | As seis medidas de movimento e a direção da gravidade, gravadas desde a migração 010 (30/10) |
+| §2.3 | No aparelho ficam só a sessão e o tema | Ficam também os arquivos das noites (que ficam depois de enviados) e as anotações |
+| §2.4 | Nada "infere condição de saúde" | A rota de inferência estima sono e vigília |
+| §6.1 | Não há dado coletado que o app não mostre | As medidas de movimento não aparecem no painel nem saem no CSV |
+| §6.4 | Excluir a conta apaga tudo | Os arquivos no celular ficam |
+| §9 | "Toda leitura enviada é validada", "146 testes" | A validação é contornável (`SEC-18`); são 196 testes |
+
+**Hipótese de trabalho.** O autor decidiu duas coisas antes da conversa com o orientador:
+- **A série de movimento e a inferência são tratadas como dado de saúde**, por precaução. A base legal passa ao art. 11, I (consentimento específico e destacado).
+- **O uso em pesquisa só acontece por termo próprio.**
+
+A política pode ser reescrita para dizer o que o sistema faz hoje, inclusive a lacuna de não haver ainda a tela de consentimento destacado. E um teste pode ligar as colunas gravadas à seção 2.2, para que coluna nova não passe sem a política.
+
+**O que foi testado, e como.**
+- **O texto:** `docs/POLITICA-DE-PRIVACIDADE.md`, com a regra que governa a política ("o que o sistema faz hoje, não o que se pretende"):
+  - §2.2: todos os campos e o app nativo;
+  - §2.3: o que fica no aparelho;
+  - §2.4 e §2.5: a inferência e o dado de saúde;
+  - §3: a finalidade 6, a estimativa, e o uso em pesquisa por termo;
+  - §4: a base do art. 11, I e a lacuna da tela;
+  - §5.3, §6.1, §6.4, §6.7 e §9;
+  - o topo e a §10;
+  - quatro lacunas novas nas notas.
+- **O termo:** `docs/TERMO-DE-PARTICIPACAO.md`, como rascunho, com os nomes como marcadores e três conferências antes do uso (o orientador e o CEP, a política publicada e a revisão jurídica).
+- **O teste novo:** `web-app/tests/test_politica_cobre_as_colunas.py`. Ele lê nas migrações reais as colunas que `registrar_leitura` e `registrar_leitura_da_sessao` inserem, na versão mais recente de cada uma, e exige que cada coluna tenha descrição e que a descrição esteja na §2.2 (o `user_id`, na §3).
+- **Os controles positivos**, numa cópia da árvore:
+  1. uma migração nova que grava uma coluna a mais;
+  2. a política sem o trecho da direção da gravidade;
+  3. a política de antes desta revisão, a de `develop`.
+- **O ambiente:** Windows, Python 3.13 e Node 24.
+
+**Resultado medido.**
+- **O teste novo:** 5 passam.
+- **Os três controles** foram acusados, com 2 testes caindo em cada um. No terceiro, a política antiga reprova exatamente nas colunas que não citava: o número de amostras, as seis medidas de movimento, a direção da gravidade e a taxa de amostragem.
+- **Os testes da página da política:** 12 passam. O texto continua com só `[CONTROLADOR]` e `[CONTATO]` como marcadores.
+- **Backend:** **509 passam** (+5). **Frontend:** **551 passam**.
+
+**Adaptação.** O plano previa a tela de consentimento destacado como parte B, para depois. A política declara a falta dela como lacuna, e ela virou o item `LGPD-12`.
+
+**O que deu errado no caminho.** A primeira versão do teste reprovou por um falso negativo: a frase "associar cada leitura ao seu dono" está quebrada em duas linhas no Markdown. O teste passou a normalizar o espaço antes de comparar.
+
+**Risco em aberto.**
+- **A política nova só vale publicada:** ela entra no mesmo release que a inferência (`REL-01`), e esse release exige a 013 antes (`LGPD-09`).
+- **A tela de consentimento destacado** (`LGPD-12`): até ela existir, a base legal do art. 11, I fica com a lacuna declarada.
+- **O termo depende do orientador** (CEP), e a base legal do uso em pesquisa pode mudar com isso.
+- **Sem revisão jurídica:** a política continua avisando que não foi revisada.
+- **O teste só cobre as colunas:** a §2.3 (o que fica no celular), as finalidades e os direitos continuam sem teste.
+
+**Procedência.** Branch `feature/LGPD-11-politica-do-app`. `docs/POLITICA-DE-PRIVACIDADE.md`, `docs/TERMO-DE-PARTICIPACAO.md`, `web-app/tests/test_politica_cobre_as_colunas.py`.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
