@@ -215,9 +215,9 @@ end;
 $$;
 
 comment on function public.expurgar_contas_inativas() is
-    'LGPD-02. Elimina por inteiro as contas sem criacao, login nem leitura nos '
-    'ultimos 12 meses (secao 7 da politica de privacidade). Sem parametro de '
-    'proposito. Devolve so contagens. Rodada pelo agendamento diario.';
+    'LGPD-02. Elimina por inteiro as contas sem criacao, login, uso de sessao nem '
+    'leitura nos ultimos 12 meses (secao 7 da politica de privacidade). Sem parametro '
+    'de proposito. Devolve so contagens. Rodada pelo agendamento diario.';
 
 revoke all on function public.expurgar_contas_inativas() from public;
 do $$
