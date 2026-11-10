@@ -90,6 +90,9 @@ MIGRACOES_APLICADAS = (
     # `esquema_base.sql` igual à produção, 17 testes reprovam com o mesmo
     # `invalid input syntax for type bigint` que travava a ingestão real.
     "014_id_da_leitura_uuid.sql",
+    # DATA-12 (09/11): a chave de `sleep_data.user_id` ganha a cascata que a
+    # 001 declara e a produção não tinha. Sem ela, `test_rls_cascata.py` cai.
+    "015_cascata_das_leituras.sql",
 )
 
 VARIAVEL = "DORMIO_RLS_DATABASE_URL"

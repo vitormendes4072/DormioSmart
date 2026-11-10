@@ -127,7 +127,13 @@ marcas (migracao, item, marca, presente) as (values
     ('014', 'DATA-10', 'registrar_leitura devolve uuid',
         coalesce((select prorettype = 'uuid'::regtype from pg_proc where oid = to_regprocedure('public.registrar_leitura(text,jsonb)')), false)),
     ('014', 'DATA-10', 'registrar_leitura_da_sessao devolve uuid',
-        coalesce((select prorettype = 'uuid'::regtype from pg_proc where oid = to_regprocedure('public.registrar_leitura_da_sessao(uuid,jsonb)')), false))
+        coalesce((select prorettype = 'uuid'::regtype from pg_proc where oid = to_regprocedure('public.registrar_leitura_da_sessao(uuid,jsonb)')), false)),
+    -- 015: a chave de `sleep_data.user_id` com `on delete cascade`. Sem ela,
+    -- apagar o usuário direto (o painel do Supabase) é recusado.
+    ('015', 'DATA-12', 'sleep_data_user_id_fkey com cascata',
+        coalesce((select confdeltype = 'c' from pg_constraint
+                   where conname = 'sleep_data_user_id_fkey'
+                     and conrelid = to_regclass('public.sleep_data')), false))
 ),
 esquema as (
     select migracao, min(item) as item,
