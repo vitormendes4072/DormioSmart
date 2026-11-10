@@ -563,12 +563,11 @@ O que existe, concretamente:
   dado alheio, e em que se tenta gravar perfil na conta de outra pessoa.
   *(Eram 105 em 29/09, 146 em 17/10 e 196 em 10/11.)*
 - **A credencial de ingestão** não tem privilégio sobre tabela nenhuma.
-- **Toda leitura enviada pelo dispositivo ou pelo aplicativo é validada** pelo
-  servidor — faixa física, coerência interna, recusa de instante futuro e de
-  sensor que responde mas não mede. ⚠️ Quem tem conta consegue gravar **na
-  própria conta** sem passar por essa validação, chamando o banco diretamente;
-  não alcança a conta de ninguém. Levar a validação para dentro do banco está em
-  desenvolvimento.
+- **Toda leitura enviada é validada** — faixa física, coerência interna, recusa
+  de instante futuro e de sensor que responde mas não mede. As faixas e a recusa
+  do futuro valem também **dentro do próprio banco de dados**, desde 10 de
+  novembro de 2026: uma leitura fora delas é recusada mesmo que chegue sem passar
+  pelo servidor da aplicação.
 
 Nenhuma dessas medidas torna um sistema invulnerável, e esta política não afirma
 que torne.
@@ -609,7 +608,7 @@ O que esta política teve de declarar como ausente, e que vira item:
 | **Sem consentimento específico e destacado para a série de movimento** | §4 | ✏️ *10/11:* a série passou a ser tratada como dado de saúde (art. 11, I), que pede essa tela. Item `LGPD-12`. Até lá, a lacuna fica declarada no texto |
 | **As medidas de movimento por época não aparecem no painel nem saem no CSV** | §6.1 | ✏️ *10/11:* disponíveis só por `GET /api/features`. Acrescentar ao CSV fecha a lacuna |
 | **A exclusão da conta não apaga os arquivos do celular** | §6.4 | ✏️ *10/11:* declarado. Apagar as noites locais junto com a conta é uma mudança no app |
-| **A validação do servidor é contornável na própria conta** | §9 | ✏️ *10/11:* `SEC-18` |
+| ~~A validação do servidor é contornável na própria conta~~ | §9 | ✅ *10/11:* fechada pelo `SEC-18` (migração 016), aplicada na produção no mesmo dia (`SEC-21`). A coerência de `total` e o "sensor mudo" continuam só no servidor |
 | Sem bloqueio nem anonimização parcial | §6.5 | Provavelmente não vale implementar num protótipo; manter declarado |
 | Exportação limitada a 2.000 linhas | §6.2 | Herdado do `DASH-13`. Paginação resolve, mas só importa quando houver histórico longo |
 | Remoção parcial de conta possível | §6.4 | Já tratado no `UI-10`; o conserto de raiz está no cabeçalho da migração `006` |
