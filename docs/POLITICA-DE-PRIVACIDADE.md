@@ -76,14 +76,24 @@ varredura completa registrada nas notas do `LGPD-ELIMINACAO.md`.
 
 # Política de Privacidade — Smart Dormio
 
-**Última atualização:** 5 de novembro de 2026
+**Última atualização:** 10 de novembro de 2026
 
 > **O que mudou nesta revisão** (seção 10 pede que mudança material seja
-> anunciada): **passou a haver prazo de retenção** (seção 7). Os dados ficam
-> enquanto a conta é usada, e **uma conta sem uso há 12 meses é apagada por
-> inteiro, automaticamente**. Até aqui eles ficavam por prazo indeterminado.
+> anunciada):
 >
-> *Revisão anterior (3 de novembro de 2026):* o serviço passou a ser destinado
+> - **o aplicativo para Android** passou a ser descrito: ele registra a noite
+>   inteira com a tela apagada e guarda arquivos no seu celular (seções 2.2 e 2.3);
+> - **o sistema passou a estimar sono e vigília** a partir do movimento (seção 3,
+>   item 6). Essa estimativa não é diagnóstico;
+> - **a série de movimento passou a ser tratada como dado de saúde**, por
+>   precaução, e a base legal mudou com isso (seções 2.5 e 4);
+> - **o uso em pesquisa** passou a ser descrito: só com um termo próprio, assinado
+>   à parte (seção 3).
+>
+> *Revisão anterior (5 de novembro de 2026):* passou a haver prazo de retenção
+> (seção 7): uma conta sem uso há 12 meses é apagada por inteiro, automaticamente.
+>
+> *Revisão de 3 de novembro de 2026:* o serviço passou a ser destinado
 > apenas a maiores de 18 anos (seção 2.1), com declaração no cadastro; e a idade
 > ganhou uma segunda finalidade, apenas agregada (seção 3 e seção 5.3).
 
@@ -136,28 +146,59 @@ O controlador dos dados é **[CONTROLADOR]**, que pode ser contatado em
 
 ### 2.2 Dados gerados pelo uso
 
-O objeto do serviço é a **medição de movimento**. Cada leitura registra:
+O objeto do serviço é a **medição de movimento**. O aparelho mede o movimento
+continuamente e o resume em **épocas** de 30 segundos. Cada época enviada registra:
 
 - **Aceleração nos três eixos** e a **magnitude** do vetor de aceleração;
 - Um **rótulo de estado** — "Repouso" ou "Movimento" — calculado pelo próprio
-  dispositivo a partir da magnitude;
-- A **temperatura do circuito integrado do sensor**, quando o aparelho a tiver;
+  aparelho a partir da magnitude;
+- **Seis medidas de movimento da época:** a média, o desvio e o máximo da
+  aceleração acima da gravidade, a média do movimento dinâmico, a taxa de
+  cruzamentos por zero e a fração de amostras com movimento;
+- A **direção da gravidade** na época, isto é, a inclinação do aparelho;
+- A **taxa de amostragem** e o **número de amostras** que produziram a época;
+- Uma **temperatura**: a do circuito integrado do sensor, no dispositivo do
+  travesseiro; a da **bateria**, no celular;
 - Leituras do **giroscópio**, quando o aparelho o tiver;
 - Dois **instantes**: quando a medição foi feita e quando ela chegou ao servidor;
 - A **duração da janela** resumida pela leitura e o **método** usado para
   resumi-la;
 - O **identificador do aparelho** que enviou.
 
-Quando o sensor é um **celular**, esses dados vêm da API de movimento do
-navegador, e **somente enquanto a tela de coleta estiver aberta e com sua
-permissão explícita**. O navegador solicita essa permissão; negá-la impede a
-coleta por esse caminho e não afeta o restante do aplicativo.
+**No aplicativo para Android**, a noite é registrada por um serviço do próprio
+aplicativo, que **continua medindo com a tela apagada**, do momento em que você
+toca em *Iniciar a noite* até tocar em *Encerrar*. Enquanto ele mede, uma
+**notificação fixa** fica visível: é o sinal de que o registro está ativo. Nada é
+medido fora desse intervalo. As épocas ficam guardadas no celular e são enviadas
+à sua conta quando você abre o aplicativo.
 
-### 2.3 O que é armazenado no seu navegador
+**Na versão para navegador**, o celular só mede enquanto a tela de coleta estiver
+aberta, e **com a sua permissão explícita**, pedida pelo navegador. Negá-la
+impede a coleta por esse caminho e não afeta o restante do aplicativo.
+
+### 2.3 O que fica guardado no seu aparelho
+
+**No navegador:**
 
 - A **sua sessão de acesso**, mantida pela biblioteca de autenticação para que
   você não precise entrar novamente a cada recarregamento;
 - A **sua preferência de tema** (claro ou escuro).
+
+**No celular, pelo aplicativo para Android:**
+
+- **O arquivo de cada noite**, com as épocas descritas na seção 2.2. O arquivo
+  **continua no celular depois de enviado**; o aplicativo só marca até onde o
+  envio foi confirmado;
+- **As anotações da noite**, se você as preencher: onde o celular ficou, a hora
+  em que deitou, em que acha que adormeceu e em que acordou, os despertares, uma
+  observação livre e o motivo do fim do registro. **As anotações nunca saem do
+  celular**: não são enviadas à sua conta nem a ninguém;
+- **O estado do registro**: contadores técnicos da noite (épocas gravadas,
+  retomadas, a taxa do sensor, a temperatura).
+
+Esses arquivos ficam na área privada do aplicativo, que outros aplicativos não
+leem, e **não entram no backup automático do Android** para a nuvem. Eles saem do
+celular quando você **desinstala o aplicativo**.
 
 **Não há cookies de rastreamento, de publicidade ou de análise de audiência**, e
 o serviço não integra nenhuma ferramenta de medição de comportamento.
@@ -167,11 +208,16 @@ o serviço não integra nenhuma ferramenta de medição de comportamento.
 - **Áudio, imagem ou vídeo.** O aparelho não tem microfone nem câmera.
 - **Localização.** Nem do aparelho, nem do navegador.
 - **Dados de contatos, agenda, aplicativos instalados ou navegação.**
-- **Dado de saúde, diagnóstico ou histórico clínico.** Nada nesta política e
-  nada no aplicativo pede, guarda ou infere condição de saúde. A série de
-  movimento é dado sobre o corpo (seção 2.5) e **não** é tratada aqui como dado
-  de saúde.
+- **Diagnóstico ou histórico clínico.** O aplicativo não pede, não guarda e não
+  produz diagnóstico de condição alguma. Ele produz, sim, uma **estimativa de
+  sono e vigília** a partir do movimento (seção 3, item 6) — e é por isso que a
+  série de movimento passou a ser tratada como dado de saúde (seção 2.5).
 
+> ✏️ **A última linha desta lista mudou em 2026-11-10.** Dizia que nada no
+> aplicativo "pede, guarda ou infere condição de saúde" e que a série de
+> movimento **não** era tratada como dado de saúde. A segunda parte deixou de
+> valer quando o sistema passou a estimar sono e vigília (seção 3, item 6).
+>
 > ✏️ **Esta lista tinha uma quarta linha, e ela saiu em 2026-10-17.** Dizia:
 > *"**Idade.** A estrutura do banco tem um campo para ela, herdado de uma versão
 > anterior do projeto, mas nenhuma tela o preenche e nenhuma funcionalidade o
@@ -183,11 +229,16 @@ o serviço não integra nenhuma ferramenta de medição de comportamento.
 ### 2.5 Sobre a natureza dos dados de movimento
 
 Convém ser explícito, porque o assunto merece: **a série temporal de movimento
-noturno é um dado sobre o seu corpo.** Ainda que não constitua diagnóstico e não
-seja tratada aqui como dado de saúde, ela descreve seu comportamento durante o
-sono, e uma série longa o bastante é, por si, capaz de distinguir uma pessoa de
-outra. É por essa razão que este serviço **não anonimiza** os dados como
-alternativa a apagá-los (seção 6.4).
+noturno é um dado sobre o seu corpo**, e uma série longa o bastante é, por si,
+capaz de distinguir uma pessoa de outra. É por essa razão que este serviço **não
+anonimiza** os dados como alternativa a apagá-los (seção 6.4).
+
+**Este serviço trata essa série, e a estimativa de sono e vigília feita a partir
+dela, como dado de saúde** — dado pessoal sensível, na definição da Lei nº
+13.709/2018 (art. 5º, II). É uma escolha de precaução: uma estimativa de como uma
+pessoa identificada dormiu está perto o bastante de um dado de saúde para que o
+risco de classificá-la para baixo não valha a pena. Isso muda a base legal (seção
+4), e não muda o que o serviço é: ele não diagnostica nada (aviso no topo).
 
 ## 3. Para que os dados são usados
 
@@ -222,6 +273,22 @@ Exclusivamente para:
    identificável pela contagem. Nenhuma idade é consultada pessoa a pessoa, e a
    contagem não é cruzada com medições nem com nenhum outro dado. Se você não
    informar a idade, entra apenas na contagem de "não informada".
+6. **Estimar, época a época, se você estava dormindo ou acordado.** Desde 10 de
+   novembro de 2026. Convém ser explícito também aqui:
+
+   - **O que acontece:** quando a sua sessão pede, o servidor aplica um modelo
+     às medidas de movimento (seção 2.2) de uma janela de até 24 horas e devolve,
+     para cada época, a estimativa "sono" ou "vigília" e a probabilidade dela.
+   - **Como o modelo foi feito:** treinado e avaliado em **bases públicas de
+     terceiros**, com sensores no pulso e na cabeça — **não** com dados de
+     usuários deste serviço, e **não** com o sensor no travesseiro.
+   - **O que NÃO acontece:** a estimativa **não é gravada**: é calculada a cada
+     pedido e devolvida só a você. Não é diagnóstico, não alimenta nenhum outro
+     cálculo e não é compartilhada. Ela erra, e erra de modo conhecido: quem está
+     acordado e parado tende a ser classificado como dormindo.
+   - **Onde aparece:** hoje, em nenhuma tela; está disponível para a sua sessão
+     pela interface do serviço. Quando uma tela passar a mostrá-la, ela trará o
+     mesmo aviso que a resposta do servidor já traz.
 
 **Não há nenhum outro uso.** Os dados não são usados para publicidade, não são
 vendidos, não são cedidos, não alimentam perfilamento comercial e não são
@@ -230,15 +297,33 @@ combinados com dados de outras fontes.
 > **Sobre o uso dos dados em pesquisa.** Os resultados de aprendizado de máquina
 > deste trabalho foram obtidos sobre **bases públicas de terceiros**, com dados
 > de outros indivíduos, obtidas sob acordo de uso — **não** sobre dados de
-> usuários deste serviço. Caso venha a existir intenção de usar dados coletados
-> aqui em pesquisa, isso exigirá consentimento específico e separado, e esta
-> política será atualizada **antes**, não depois.
+> usuários deste serviço.
+>
+> **Os dados de um usuário só entram no trabalho acadêmico se ele assinar um
+> termo de participação próprio**, separado desta política e do cadastro. O termo
+> diz quais dados são usados, como e por quanto tempo, e pode ser revogado a
+> qualquer momento. **Quem não assinar o termo usa o serviço normalmente, e os
+> seus dados não entram no trabalho.** Usar o aplicativo não equivale a
+> participar da pesquisa.
 
 ## 4. Com que base legal
 
-O tratamento se apoia no **seu consentimento** (Lei nº 13.709/2018, art. 7º, I),
-manifestado ao criar a conta e ao autorizar o acesso ao sensor de movimento. Você
-pode revogá-lo a qualquer momento apagando sua conta (seção 6.4).
+O tratamento se apoia no **seu consentimento**. Como a série de movimento é
+tratada como dado de saúde (seção 2.5), a base é a do **art. 11, I** da Lei nº
+13.709/2018, que exige consentimento **específico e destacado**, para finalidades
+específicas. Os dados que não são de saúde (e-mail, nome, idade, nome do
+dispositivo) seguem no art. 7º, I.
+
+⚠️ **O que existe hoje, e o que falta.** O consentimento é manifestado ao criar
+a conta, ao autorizar o sensor no navegador e, no aplicativo para Android, a cada
+vez que você toca em *Iniciar a noite*. **Ainda não há uma tela própria e
+destacada** para o consentimento sobre a série de movimento e a estimativa de
+sono — é o que o art. 11, I pede, e ela está em desenvolvimento. Até ela existir,
+esta lacuna fica declarada aqui.
+
+Você pode revogar o consentimento a qualquer momento apagando sua conta (seção
+6.4). O uso em pesquisa tem consentimento próprio, pelo termo de participação
+(seção 3).
 
 ## 5. Quem tem acesso
 
@@ -278,6 +363,11 @@ do que a manutenção do serviço exigir. **A idade é consultada apenas de form
 agregada**, pela contagem por faixa descrita na seção 3, item 5 — nunca por
 pessoa.
 
+A única exceção é a de quem **assinar o termo de participação** (seção 3): as
+medições dessas pessoas são analisadas noite a noite pelo responsável pelo
+projeto, nos termos do próprio termo. O que vai para o texto do trabalho não
+identifica ninguém.
+
 ## 6. Seus direitos, e como exercê-los **hoje**
 
 Esta é a seção que esta política existe para ser honesta. A lei assegura os
@@ -285,8 +375,18 @@ direitos abaixo. O que segue diz, para cada um, **se há mecanismo implementado*
 
 ### 6.1 Confirmação de que há tratamento, e acesso aos dados (art. 18, I e II)
 
-✅ **Implementado.** Entre na sua conta: o painel exibe as suas medições. Não há
-nenhuma categoria de dado seu que o aplicativo colete e não mostre.
+✅ **Implementado, com uma limitação declarada.** Entre na sua conta: o painel
+exibe as suas medições.
+
+⚠️ **As seis medidas de movimento e a direção da gravidade** (seção 2.2) **não
+aparecem no painel e não saem na exportação** (6.2). Elas estão disponíveis para
+a sua sessão pela interface do serviço, assim como a estimativa de sono (seção 3,
+item 6); uma solicitação pelo canal da seção 8 também é atendida. As anotações
+da noite ficam só no seu celular, e você as vê no próprio aplicativo.
+
+> ✏️ *Até 10 de novembro de 2026, esta seção dizia que não havia "nenhuma
+> categoria de dado seu que o aplicativo colete e não mostre". Deixou de ser
+> verdade quando as medidas de movimento por época passaram a ser enviadas.*
 
 ### 6.2 Portabilidade (art. 18, V)
 
@@ -368,6 +468,10 @@ e-mail permanece**, e a tela informa isso explicitamente, em vez de anunciar
 sucesso. Nesse caso, a remoção do cadastro depende de solicitação pelo canal da
 seção 8.
 
+⚠️ **O que fica no seu celular não sai com a conta.** A exclusão da conta apaga
+o que está no servidor. **Os arquivos das noites e as anotações guardados no
+celular** (seção 2.3) continuam lá até você **desinstalar o aplicativo**.
+
 > **Por que eliminação e não anonimização.** Uma série temporal de acelerometria
 > noturna com carimbo de tempo não é razoavelmente anonimizável: a própria série
 > funciona como identificador quando cruzada com outra fonte. Como a lei retira
@@ -403,7 +507,9 @@ são compartilhados. Não há outros.
 ✅ **Atendido por esta política.** Você pode não criar conta, e nesse caso nenhum
 dado seu é tratado. Pode criar conta e não autorizar o sensor de movimento do
 celular: o aplicativo funciona, e apenas a coleta por esse caminho fica
-indisponível. Pode, a qualquer momento, apagar tudo (6.4).
+indisponível. No aplicativo para Android, pode negar a notificação e a isenção
+da economia de bateria: o registro funciona, mas o Android pode interrompê-lo no
+meio da noite. Pode, a qualquer momento, apagar tudo (6.4).
 
 ### 6.8 Prazo de resposta
 
@@ -452,14 +558,17 @@ O que existe, concretamente:
   tabela à qual o navegador não tem acesso algum. O valor em texto é exibido uma
   única vez, no pareamento, e descartado.
 - **Isolamento entre titulares** é imposto pelo banco de dados, não pela
-  aplicação, e é verificado por **146 testes** automatizados contra um banco
+  aplicação, e é verificado por **196 testes** automatizados contra um banco
   real — incluindo os casos adversariais, em que se tenta ler, alterar e apagar
   dado alheio, e em que se tenta gravar perfil na conta de outra pessoa.
-  *(Eram 105 em 29/09 e 146 em 17/10, com o perfil passando a ser escrito pelo
-  aplicativo.)*
+  *(Eram 105 em 29/09, 146 em 17/10 e 196 em 10/11.)*
 - **A credencial de ingestão** não tem privilégio sobre tabela nenhuma.
-- **Toda leitura enviada é validada** — faixa física, coerência interna, recusa de
-  instante futuro e de sensor que responde mas não mede.
+- **Toda leitura enviada pelo dispositivo ou pelo aplicativo é validada** pelo
+  servidor — faixa física, coerência interna, recusa de instante futuro e de
+  sensor que responde mas não mede. ⚠️ Quem tem conta consegue gravar **na
+  própria conta** sem passar por essa validação, chamando o banco diretamente;
+  não alcança a conta de ninguém. Levar a validação para dentro do banco está em
+  desenvolvimento.
 
 Nenhuma dessas medidas torna um sistema invulnerável, e esta política não afirma
 que torne.
@@ -470,6 +579,11 @@ Mudanças materiais — nova categoria de dado, nova finalidade, novo operador �
 serão anunciadas antes de entrarem em vigor. A data no topo indica a última
 revisão.
 
+- **10 de novembro de 2026:** o aplicativo para Android (seções 2.2, 2.3, 6.4 e
+  6.7); a estimativa de sono e vigília (seção 3, item 6); a série de movimento
+  tratada como dado de saúde e a base legal do art. 11, I (seções 2.4, 2.5 e 4);
+  o uso em pesquisa só por termo próprio (seções 3 e 5.3); correções nas seções
+  6.1 e 9.
 - **5 de novembro de 2026:** prazo de retenção — eliminação automática da conta
   sem uso há 12 meses (seção 7).
 - **3 de novembro de 2026:** serviço restrito a maiores de 18 anos, com
@@ -492,6 +606,10 @@ O que esta política teve de declarar como ausente, e que vira item:
 | ~~Sem tela para corrigir nome e e-mail~~ | §6.3 | ✅ **Fechada em 17/10** pelo `UI-11` (nome e e-mail) e pelo `PERFIL-01` (idade, e o nome passando a gravar em `profiles`). A sugestão original — *"barato: a policy de `update` em `profiles` já existe"* — estava certa na conclusão e errada no motivo: nenhum código de produção tocava `profiles`. Ver §5 ocorrência 4 das lições |
 | **A política não acompanhou o `UI-11` no mesmo dia** | §6.3 | ⚠️ Não é lacuna de produto, é de processo: a tela saiu na manhã de 17/10 e esta política continuou dizendo que ela não existia. Ocorrência 5 do §6 das lições. O mecanismo que faltaria para pegar isso **não existe** — nada liga uma afirmação desta política a um teste |
 | Idade declarada de menor de 18 não tem tratamento próprio | §2.1 | `LGPD-05` — decidir entre exigir consentimento de responsável, restringir o cadastro a maiores de 18, ou manter a lacuna declarada. **É decisão de produto, não de implementação** |
+| **Sem consentimento específico e destacado para a série de movimento** | §4 | ✏️ *10/11:* a série passou a ser tratada como dado de saúde (art. 11, I), que pede essa tela. Item `LGPD-12`. Até lá, a lacuna fica declarada no texto |
+| **As medidas de movimento por época não aparecem no painel nem saem no CSV** | §6.1 | ✏️ *10/11:* disponíveis só por `GET /api/features`. Acrescentar ao CSV fecha a lacuna |
+| **A exclusão da conta não apaga os arquivos do celular** | §6.4 | ✏️ *10/11:* declarado. Apagar as noites locais junto com a conta é uma mudança no app |
+| **A validação do servidor é contornável na própria conta** | §9 | ✏️ *10/11:* `SEC-18` |
 | Sem bloqueio nem anonimização parcial | §6.5 | Provavelmente não vale implementar num protótipo; manter declarado |
 | Exportação limitada a 2.000 linhas | §6.2 | Herdado do `DASH-13`. Paginação resolve, mas só importa quando houver histórico longo |
 | Remoção parcial de conta possível | §6.4 | Já tratado no `UI-10`; o conserto de raiz está no cabeçalho da migração `006` |
