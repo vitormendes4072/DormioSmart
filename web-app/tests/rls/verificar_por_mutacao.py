@@ -410,6 +410,17 @@ SABOTADORES = {
     ),
 
     # --- LGPD-02 (05/11): retenção por inatividade, migração 013 ---
+    "expurgo_ignora_a_sessao": dict(
+        descricao="o expurgo volta a ignorar a renovacao de sessao (LGPD-09)",
+        sql="""
+            do $SAB$ begin
+                execute replace(pg_get_functiondef('public.expurgar_contas_inativas()'::regprocedure),
+                                'max(se.updated_at)', 'max(null::timestamptz)');
+            end $SAB$;
+        """,
+        minimo=1,
+        exige="test_um_sinal_dentro_de_12_meses_mantem_a_conta",
+    ),
     "expurgo_ignora_leituras": dict(
         descricao="expurgo considera so criacao e login, nao a ultima leitura",
         sql="""

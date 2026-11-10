@@ -184,7 +184,9 @@ def verificar_diagnostico(bancos) -> list[str]:
     # A 014 (DATA-10, 09/11) conserta o tipo devolvido pelas funções de gravação.
     # A 015 (DATA-12, 09/11) dá à chave de sleep_data.user_id a cascata da 001.
     # A 016 (SEC-18, 10/11) leva a validacao da leitura e do pareamento para dentro do banco.
-    ordem_real = ["001", "003", "004", "005", "006", "008", "009", "007", "010", "011", "012", "013", "014", "015", "016"]
+    # ✏️ 10/11 (LGPD-09): na produção a 013 entra DEPOIS da 014, da 015 e da 016,
+    # que já estão aplicadas (diagnóstico de 10/11). É essa a ordem que se confere.
+    ordem_real = ["001", "003", "004", "005", "006", "008", "009", "007", "010", "011", "012", "014", "015", "016", "013"]
     c = montar(bancos, "diagreal", ordem_real)
     cur = c.cursor()
     res = diagnostico(cur)

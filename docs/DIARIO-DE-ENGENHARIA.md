@@ -8447,6 +8447,41 @@ As consultas de 10/11 na produção (5.1 e 5.3 da auditoria) deram zero leitura 
 
 **Procedência.** Resultado colado pelo autor em 10/11. `docs/POLITICA-DE-PRIVACIDADE.md` §9.
 
+---
+
+# 2026-11-10 (x) — LGPD-09: a 013 passa a contar a sessão aberta como uso
+
+**O problema, como foi entendido no início.** Antes de aplicar a 013 (expurgo por inatividade), o `REL-01` pedia para conferir se o Supabase atualiza `last_sign_in_at` quando a sessão é só renovada. A 013 decidia "conta sem uso há 12 meses" por três sinais: a criação da conta, o último login e a última leitura.
+
+**Hipótese de trabalho.** O `last_sign_in_at` só muda num login. O app mantém a sessão aberta e a renova sozinho. Então quem usa o painel sem sair e sem dispositivo enviando leituras seria apagado em 12 meses, ainda ativo.
+
+**O que foi testado, e como.**
+- **O código do Supabase Auth:** lido pelo navegador. `UpdateLastSignInAt` grava só o campo, e a correção da PR #2655 (versão 2.195.0, agosto de 2026) diz que o caminho v2 "cria a sessão diretamente e nunca chamava `UpdateLastSignInAt`" — o campo é gravado na criação da sessão. Nenhuma fonte lida diz que a renovação o atualiza. Isso não foi confirmado pelo código da renovação.
+- **Na produção:** duas consultas só de leitura, rodadas pelo autor, sem e-mail nem identificador. As colunas de `auth.sessions`, e quantas contas tinham a sessão renovada depois do último login (`updated_at` da sessão contra `last_sign_in_at`).
+- **A correção:** na 013, ainda não aplicada em lugar nenhum além dos testes, a última renovação de sessão (`auth.sessions.updated_at`) entrou como quarto sinal.
+- **O esquema de teste:** ganhou `auth.sessions`, com exclusão em cascata a partir do usuário.
+- **Os testes novos:**
+  - a sessão renovada há 1 mês, com login há 13 meses e sem dispositivo, **fica**;
+  - login e sessão há 13 meses **saem**, e a sessão sai junto.
+- **Os controles:** a sabotagem `expurgo_ignora_a_sessao` na mutação; uma marca da 013 no diagnóstico; e a ordem real da produção no verificador, que passou a ter a 013 depois da 014, da 015 e da 016, como vai acontecer.
+- **O ambiente:** `postgres:17` em Docker, no Windows.
+
+**Resultado medido.**
+- **Na produção:** **6 contas, 3 com sessão, 2 com a sessão renovada depois do último login**, com distância máxima de **1 dia, 16 h e 31 min**. A hipótese se confirmou.
+- **As colunas de `auth.sessions`** incluem `updated_at` e `refreshed_at`. Ficou `updated_at`, que é a usada na consulta que mostrou o efeito.
+- **RLS:** **246 passam** (+2). **Mutação:** **45/45** (+1). **Verificador:** os 16 estados e a ordem real nova.
+
+**Adaptação.** A correção entrou na própria 013 e não numa migração nova: ela nunca foi aplicada, e aplicar uma versão sabidamente errada para consertá-la em seguida seria pior. O cabeçalho dela registra a mudança.
+
+**O que deu errado no caminho.** Escrevi ao autor que a `refreshed_at` do Supabase é de outro tipo de data, sem fuso, como motivo para não usá-la. Isso **não foi conferido**: a consulta pediu só os nomes das colunas. O motivo que vale é outro: a `updated_at` é a que a consulta mostrou mudar com a renovação.
+
+**Risco em aberto.**
+- **Sessão encerrada:** se a pessoa sair do app (logout), a sessão é apagada e o sinal some. Aí valem o login e as leituras, como antes.
+- **A renovação do Supabase:** que ela continue atualizando `updated_at` depende do Supabase. Uma mudança de comportamento dele voltaria a abrir o risco, e nenhum teste daqui pega isso.
+- **A 013 ainda não foi aplicada** (`LGPD-09`).
+
+**Procedência.** Branch `bugfix/LGPD-09-sessao-conta-como-uso`. `web-app/migrations/013_retencao_por_inatividade.sql`, `DIAGNOSTICO-migracoes-aplicadas.sql`; `web-app/tests/rls/esquema_base.sql`, `test_rls_retencao.py`, `verificar_por_mutacao.py`; `web-app/tests/migracoes/verificar_migracoes.py`; `docs/POLITICA-DE-PRIVACIDADE.md` §7. Consultas coladas pelo autor em 10/11.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

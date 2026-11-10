@@ -119,6 +119,8 @@ marcas (migracao, item, marca, presente) as (values
         to_regprocedure('public._eliminar_titular(uuid)') is not null),
     ('013', 'LGPD-02', 'função expurgar_contas_inativas',
         to_regprocedure('public.expurgar_contas_inativas()') is not null),
+    ('013', 'LGPD-09', 'expurgo considera a renovacao de sessao',
+        coalesce((select pg_get_functiondef(to_regprocedure('public.expurgar_contas_inativas()')) like '%auth.sessions%'), false)),
     ('013', 'LGPD-02', 'apagar_minha_conta usa _eliminar_titular',
         coalesce((select pg_get_functiondef(to_regprocedure('public.apagar_minha_conta()')) like '%public._eliminar_titular(auth.uid())%'), false)),
     -- 014: as duas funções de gravação devolvem o tipo do id (uuid). Com
