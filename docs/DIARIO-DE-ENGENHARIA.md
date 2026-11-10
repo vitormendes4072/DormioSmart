@@ -8107,6 +8107,55 @@ O autor não estava em casa nem era noite, então a etapa veio antes da noite re
 
 **Procedência.** Branch `bugfix/APP-10-envio-da-noite-inteira`. `frontend/src/lib/envioDaNoite.ts`, `frontend/src/components/CartaoDaNoite.tsx`, `web-app/database.py`, `web-app/routes.py` e os testes `envioDaNoite.test.ts`, `CartaoDaNoite.test.tsx`, `test_lote.py` e `test_noite_do_app.py`. Logs de execução da Vercel de 09/11.
 
+---
+
+# 2026-11-10 (iii) — APP-02, etapa 5: a primeira noite real no Moto E7, e o viés da orientação
+
+**O problema, como foi entendido no início.** A etapa 5 do `APP-02` era a primeira noite real, com o app no Moto E7 (Android 10), na conta do autor. As perguntas eram quatro: o app aguenta a noite inteira com a tela apagada, o Android o deixa trabalhar, os dados chegam ao banco, e o que o modelo diz da noite.
+
+**Hipótese de trabalho.** Com o serviço em primeiro plano, a trava de energia e a isenção de bateria, a cobertura passa de 95 %. O envio de manhã esbarraria no AUD-01, já corrigido no código (`APP-10`, PR #110) mas ainda não instalado no aparelho; não haveria perda de dado.
+
+**O que foi testado, e como.**
+- **A noite:** o autor dormiu com o app registrando, com o celular no colchão. De manhã encerrou a noite e enviou.
+- **O que o celular gravou:** copiado pelo cabo USB, com `adb exec-out run-as`, para fora do repositório: o arquivo da noite (815 linhas), as anotações e o estado do serviço.
+- **O que chegou ao banco:** consulta de contagem por hora (`captured_at`), rodada pelo autor no SQL Editor. Ela não traz nenhum dado de leitura.
+- **A inferência:** o mesmo modelo e o mesmo código do servidor (`inferencia.inferir_janela`, `ml-inf-cabeca-v2`), rodados localmente sobre as linhas do arquivo, convertidas como a ingestão as grava. Nada foi chamado na produção.
+- **O controle do viés:** a mesma inferência com o viés do trecho virado subtraído da medida de movimento. É só diagnóstico, para medir o tamanho do efeito.
+
+**Resultado medido.**
+- **Cobertura:** de 03:02 a 09:52 (horário de Brasília), **815 de 821 épocas (99,3 %)**. Os 6 buracos têm uma época cada (60 s entre duas linhas), e o estado do serviço os conta como `sem_payload=6`.
+- **O serviço e o sensor:** **0 retomadas**; taxa de 49,506 Hz; 0 épocas recusadas; 960 amostras e o vetor completo em todas.
+- **Temperatura:** de 25,5 °C a 16,9 °C, com pico de 26,8 °C, longe do corte de 45 °C.
+- **O banco:** **815 épocas**, das 03:02 às 09:52, as mesmas do celular. **Nada se perdeu.** O envio pediu vários toques, como o AUD-01 previa.
+- **A validação do backend:** 0 das 815 épocas reprovadas.
+- **A inferência:** 78,2 % das épocas como sono, com nove blocos de vigília de 5 min ou mais. O autor relatou uma noite ruim, ansioso, acordando várias vezes; a comparação época a época não é possível, porque as horas de deitar, dormir e acordar ficaram em branco nas anotações.
+- **O celular virado:** às 06:04 o autor pegou o celular para ver a hora e o largou com a tela para baixo, e às 07:38 o desvirou. As duas viradas (172° e 174° entre épocas vizinhas) caíram dentro de blocos que o modelo marcou como vigília (06:00 a 06:10 e 07:38 a 07:43). O gesto foi aceito, gravado e lido como despertar, o que está correto.
+- **O viés da orientação:** virado, o acelerômetro do Moto lê a gravidade maior, e a medida de movimento sobe sem movimento nenhum.
+
+  | Trecho | Épocas | Movimento (mediana) | Magnitude (mediana) |
+  |---|---:|---:|---:|
+  | Tela para cima, 03:02 a 06:04 | 362 | 0,50 mg | 9,84 m/s² |
+  | Tela para baixo, 06:04 a 07:37 | 186 | **23,12 mg** | 10,06 m/s² |
+  | Tela para cima, 07:38 a 09:52 | 267 | 0,95 mg | 9,84 m/s² |
+
+- **O efeito no modelo:** com o viés subtraído, o sono passa de 78,2 % para 79,6 %, e dois blocos curtos de vigília somem (08:06 a 08:11 e 09:30 a 09:38). Nesta noite o efeito é pequeno porque o trecho virado é curto e a normalização é por noite. Não há garantia de que seja pequeno com o celular virado por metade da noite.
+- **O app corrigido:** instalado no aparelho com `adb install -r` depois da cópia; as duas noites continuam lá, marcadas como enviadas (815 de 815).
+
+**Adaptação.** O plano não previa medir o efeito da orientação. Ele apareceu na análise e virou o item `CAL-03` (autocalibração pela gravidade).
+
+**O que deu errado no caminho.**
+- **Os logs da Vercel:** o plano gratuito guarda só uma hora, e os envios da madrugada não estavam mais lá. A contagem veio da consulta no banco.
+- **As anotações em branco:** sem as horas, a comparação com o modelo ficou qualitativa.
+- **Erro meu:** escrevi ao autor que o viés "soma cerca de 23 mg" sem dizer que é mediana do trecho; a tabela acima corrige.
+
+**Risco em aberto.**
+- **O viés da orientação no modelo:** só medido nesta noite, num trecho de 1 h 33 min. O item é o `CAL-03`.
+- **Uma noite não mede acurácia:** falta referência e mais noites (`VAL-02`). Numa noite de vigília quieta, o modelo deve superestimar o sono, como toda actigrafia (`LIMITACOES-TCC.md` X.1).
+- **O envio corrigido no aparelho** ainda não foi exercitado numa noite real; a próxima noite confere.
+- **O erro do sensor muda com a temperatura**, que caiu 8,6 °C nesta noite. Isso não foi separado do efeito da orientação.
+
+**Procedência.** Arquivos do celular copiados para fora do repositório (não versionados: são dado de sono do autor). Consulta de contagem colada pelo autor em 10/11. O relatório da auditoria de 10/11 (AUD-01) não está versionado.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
