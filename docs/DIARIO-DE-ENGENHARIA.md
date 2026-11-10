@@ -8211,6 +8211,46 @@ O autor não estava em casa nem era noite, então a etapa veio antes da noite re
 
 **Procedência.** Arquivos do celular copiados para fora do repositório; o cálculo foi feito na hora, em script local. Nenhum dado de sono entrou no repositório.
 
+---
+
+# 2026-11-10 (v) — APP-12: preparar o app para testadores (a parte técnica)
+
+**O problema, como foi entendido no início.** O autor quer mandar o app a amigos com Android, para juntar mais noites. Hoje só existe o APK de depuração: assinado com a chave de teste do Android Studio, depurável, com a depuração do WebView ligada e o gatilho de teste da `MainActivity`. E não havia guia de instalação.
+
+**Hipótese de trabalho.** Basta um APK de release assinado com uma chave do autor, guardada fora do repositório (que é público), e um guia em duas partes: como gerar o APK e como o testador instala e usa. A parte que não é técnica (comitê de ética, política de privacidade e consentimento) fica com o autor e o orientador, e o documento diz que o envio espera por ela.
+
+**O que foi testado, e como.**
+- **A chave fora do repositório:** o `app/build.gradle` passou a ler `~/.dormio/assinatura.properties`, ou o caminho de `DORMIO_ASSINATURA`. Sem o arquivo, o release sai sem assinatura, em vez de cair para a chave de depuração. O `.gitignore` do Android passou a recusar `*.jks`, `*.keystore`, `*.p12` e `assinatura.properties`; essas linhas vinham comentadas do modelo do Capacitor.
+- **A versão:** `versionName` 1.0.0.
+- **O build:** `assembleRelease` no Windows, JDK do Android Studio, em três casos:
+  1. sem o arquivo de assinatura;
+  2. com uma chave **descartável** de teste, gerada com senha aleatória no scratchpad e apagada em seguida;
+  3. a comparação com o de depuração.
+- **As conferências:** `apksigner verify` e `aapt2 dump badging`, a etiqueta `application-debuggable`.
+- **A depuração do WebView:** lida no código do Capacitor 8 (`CapConfig.java`): o padrão de `webContentsDebuggingEnabled` é o tipo do build, desligado no release.
+
+**Resultado medido.**
+- **Sem o arquivo:** `app-release-unsigned.apk`, e o `apksigner verify` recusa ("DOES NOT VERIFY"). É o comportamento pedido: não instala.
+- **Com a chave descartável:** `app-release.apk`, e o `apksigner verify` aceita (esquema v2).
+- **Depurável:** a etiqueta `application-debuggable` aparece no APK de depuração e não no de release (controle positivo: o de depuração tem).
+- **A versão no APK:** `versionName='1.0.0'`, `targetSdkVersion 36`.
+- **O `.gitignore`:** o `git check-ignore` confirma a regra para `.jks`, `.keystore` e `assinatura.properties`.
+- **O guia:** `docs/DISTRIBUICAO-DO-APP.md`, com a chave e o APK para o autor; a instalação, a conta, a bateria por marca, a noite, o envio e a saída para o testador. Os rótulos de tela citados ("Cadastre-se", "Criar conta", "Excluir minha conta", o link da bateria) foram conferidos no código.
+- **Nada foi enviado a ninguém**, e nenhuma chave de verdade foi criada: a chave é do autor e ele a cria sozinho.
+
+**Adaptação.** O plano não previa a variável `DORMIO_ASSINATURA`. Ela existe para testar a assinatura com uma chave descartável sem tocar no arquivo de verdade do autor, nem mudar a pasta do usuário, o que moveria também o cache do Gradle.
+
+**O que deu errado no caminho.** O guia saiu com dois rótulos errados ("Criar conta" como primeiro botão, quando a tela de entrada mostra "Cadastre-se"; e "Excluir conta" em vez de "Excluir minha conta"). Corrigidos depois de conferir o código das telas.
+
+**Risco em aberto.**
+- **A decisão que não é técnica:** comitê de ética, política de privacidade (AUD-04) e consentimento, antes de qualquer envio (`LGPD-03`).
+- **A recuperação de senha não chega aos testadores** (`AUTH-06`); o guia avisa.
+- **Só o Moto E7 foi testado.** Xiaomi e Samsung encerram apps em segundo plano com mais força; o guia dá os passos por marca, mas eles não foram conferidos num aparelho dessas marcas.
+- **Gravação de teste vira noite** (`APP-11`); o guia pede para não fazer.
+- **O build de release não roda no CI.** O CI não tem job Android (AUD-06 da auditoria de 10/11).
+
+**Procedência.** Branch `feature/APP-12-distribuicao-para-testadores`. `frontend/android/app/build.gradle`, `frontend/android/.gitignore`, `docs/DISTRIBUICAO-DO-APP.md`.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

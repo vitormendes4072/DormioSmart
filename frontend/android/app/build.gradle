@@ -8,7 +8,7 @@ android {
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
-        versionName "1.0"
+        versionName "1.0.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         // APP-02: o nucleo do firmware em C++ para os processadores de celular
         // (32 e 64 bits ARM) e o x86_64 do emulador.
@@ -32,10 +32,43 @@ android {
             version "3.22.1"
         }
     }
+    // APP-12 (10/11): a assinatura do APK que vai para os testadores.
+    //
+    // A chave e a senha ficam FORA do repositorio (que e publico), num arquivo
+    // na pasta do usuario: `~/.dormio/assinatura.properties` (ou o de `DORMIO_ASSINATURA`), com
+    //   arquivo=<caminho do .jks>
+    //   senha=<senha do keystore>
+    //   apelido=<alias da chave>
+    //   senhaDaChave=<senha da chave>
+    // Sem o arquivo, `assembleRelease` gera o APK SEM assinatura (nao instala),
+    // em vez de cair para a chave de depuracao: um APK de depuracao nao pode
+    // chegar a ninguem por engano. Perder a chave impede atualizar o app ja
+    // instalado (o testador desinstala e instala de novo, e perde as noites
+    // que ainda nao enviou).
+    // `DORMIO_ASSINATURA` aponta para outro arquivo (o teste da assinatura usa
+    // uma chave descartavel, sem tocar no arquivo de verdade).
+    def assinatura = System.getenv("DORMIO_ASSINATURA") ?
+            new File(System.getenv("DORMIO_ASSINATURA")) :
+            new File(System.getProperty("user.home"), ".dormio/assinatura.properties")
+    signingConfigs {
+        if (assinatura.exists()) {
+            release {
+                def p = new Properties()
+                assinatura.withInputStream { p.load(it) }
+                storeFile file(p.getProperty("arquivo"))
+                storePassword p.getProperty("senha")
+                keyAlias p.getProperty("apelido")
+                keyPassword p.getProperty("senhaDaChave")
+            }
+        }
+    }
     buildTypes {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            if (assinatura.exists()) {
+                signingConfig signingConfigs.release
+            }
         }
     }
 }
