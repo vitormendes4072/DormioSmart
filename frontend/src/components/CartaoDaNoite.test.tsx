@@ -111,6 +111,22 @@ describe("CartaoDaNoite (APP-02)", () => {
     expect(p.iniciar).toHaveBeenCalledTimes(1);
   });
 
+  // APP-10: o servidor so grava parte do lote por requisicao; o cartao nao para no meio.
+  it("servidor que grava 13 por requisicao: envia tudo sozinho, sem mensagem de pendencia", async () => {
+    const p = plugin(estado({ ativa: false, rodando: false }), 70);
+    const enviar = vi.fn(async (l: object[]) => ({
+      aceitas: l.slice(0, 13).map((_, i) => i),
+      rejeitadas: [],
+      pendentes: l.slice(13).map((_, i) => i + 13),
+    }));
+    render(<CartaoDaNoite plugin={p} agora={() => INICIO} enviar={enviar} />);
+    const status = await screen.findByRole("status");
+    expect(status.textContent).toMatch(/70 épocas enviadas/);
+    expect(status.textContent).not.toMatch(/pendentes/);
+    expect(enviar).toHaveBeenCalledTimes(6);
+    expect(p.enviadas).toBe(70);
+  });
+
   it("ao abrir com epocas esperando e sem noite em curso, envia sozinho", async () => {
     const p = plugin(estado({ ativa: false, rodando: false }), 70);
     const enviar = vi.fn(async (l: object[]) => ({ aceitas: l.map((_, i) => i), rejeitadas: [], pendentes: [] }));

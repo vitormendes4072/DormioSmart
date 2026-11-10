@@ -400,8 +400,15 @@ class Database:
             logger.exception("Falha ao registrar leitura.")
             return None
 
-    def registrar_leitura_da_sessao(self, jwt, device_id, leitura):
+    def registrar_leitura_da_sessao(self, jwt, device_id, leitura, cliente=None):
         """Persiste uma leitura do caminho do celular (APP-08, SEC-06).
+
+        `cliente` é o cliente do usuário que a rota já montou para conferir o
+        dispositivo (APP-10, 10/11). Sem ele, este método montava um cliente
+        novo a CADA leitura — uma conexão nova por leitura, ~0,5 s cada na
+        produção —, e de um lote de 60 só 13 cabiam nos 6 s. Com ele, o lote
+        inteiro vai pela mesma conexão. É o cliente DESTA requisição e DESTE
+        jwt; nunca um guardado entre requisições (ver `cliente_do_usuario`).
 
         Vai pelo cliente do USUÁRIO, não por chave privilegiada: a função no
         banco deriva o dono de `auth.uid()` e confere a posse do dispositivo
@@ -412,7 +419,7 @@ class Database:
         revelar id de dispositivo alheio.
         """
         try:
-            client = self.cliente_do_usuario(jwt)
+            client = cliente if cliente is not None else self.cliente_do_usuario(jwt)
             if client is None:
                 return None
             resposta = client.rpc(

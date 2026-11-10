@@ -47,6 +47,7 @@ export function CartaoDaNoite({
   const [restantes, setRestantes] = useState<number | null>(null);
   const [enviando, setEnviando] = useState(false);
   const [resultado, setResultado] = useState<string | null>(null);
+  const [progresso, setProgresso] = useState<{ confirmadas: number; total: number } | null>(null);
   // Etapa 4: a posição do celular entra no protocolo e é obrigatória para
   // iniciar. Uma noite sem posição anotada não serve à comparação
   // fronha × colchão, que é o que a noite real quer medir.
@@ -78,8 +79,9 @@ export function CartaoDaNoite({
   const enviarAgora = useCallback(async () => {
     if (!enviar) return;
     setEnviando(true);
+    setProgresso(null);
     try {
-      const r = await enviarNoites(plugin, enviar);
+      const r = await enviarNoites(plugin, enviar, setProgresso);
       setRestantes(r.restantes);
       const partes: string[] = [];
       if (r.confirmadas > 0) partes.push(`${r.confirmadas} épocas enviadas.`);
@@ -93,6 +95,7 @@ export function CartaoDaNoite({
       setResultado("Não foi possível ler as noites do aparelho.");
     } finally {
       setEnviando(false);
+      setProgresso(null);
     }
   }, [plugin, enviar, aoMudar]);
 
@@ -229,7 +232,13 @@ export function CartaoDaNoite({
           </div>
         )}
 
-        {resultado && (
+        {enviando && progresso && (
+          <p className="text-sm text-muted-foreground" aria-live="polite">
+            Enviando: {progresso.confirmadas} de {progresso.total} épocas. Mantenha o app aberto.
+          </p>
+        )}
+
+        {resultado && !enviando && (
           <p className="text-sm text-muted-foreground" role="status">
             {resultado}
           </p>

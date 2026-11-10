@@ -575,8 +575,10 @@ def init_routes(app):
         # `buscar_do_dono` não devolve `user_id` (não está em CAMPOS). O `jwt`
         # segue junto porque a gravação deste caminho vai pelo cliente do
         # USUÁRIO, não por chave privilegiada: a função no banco deriva o dono
-        # de `auth.uid()` (SEC-06).
-        return dict(device, user_id=usuario_id, jwt=jwt), None, 200
+        # de `auth.uid()` (SEC-06). O `cliente` segue também (APP-10): é o
+        # mesmo que acabou de conferir o dispositivo, e a gravação o reusa em
+        # vez de abrir uma conexão por leitura.
+        return dict(device, user_id=usuario_id, jwt=jwt, cliente=client), None, 200
 
     def _gravar_leitura(caminho, device, content):
         """Valida, traduz e grava UMA leitura (FIX-02, SEC-03, SEC-06).
@@ -649,7 +651,7 @@ def init_routes(app):
             gravado = db.registrar_leitura(device["token_hash"], payload)
         else:
             gravado = db.registrar_leitura_da_sessao(
-                device["jwt"], device["id"], payload
+                device["jwt"], device["id"], payload, cliente=device.get("cliente")
             )
 
         if not gravado:

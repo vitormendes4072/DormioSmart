@@ -19,11 +19,23 @@ import type { PluginNoite } from "./noiteNativa";
  *
  * Nada é marcado antes da resposta: sem rede, com sessão vencida ou com o
  * servidor fora, o ponto fica onde estava.
+ *
+ * ── PENDENTE NÃO É PARADA (APP-10, 10/11) ────────────────────
+ *
+ * O servidor para o lote aos 6 s e devolve o resto como pendente
+ * (`web-app/lote.py`). Na produção cada gravação levava ~0,5 s: de 60 épocas,
+ * 13 entravam e 47 voltavam pendentes. Até 10/11 o laço parava aí, com
+ * mensagem de erro, e uma noite de 960 épocas pedia ~74 toques. Agora ele
+ * segue do ponto novo enquanto cada requisição resolver ao menos uma época, e
+ * só para quando uma requisição não avança nada: aí insistir é girar em falso.
  */
 
 export type FonteDaNoite = Pick<PluginNoite, "noites" | "lerEpocas" | "marcarEnviadas">;
 
 export type EnviarLote = (leituras: object[]) => Promise<RespostaDoLote>;
+
+/** Quanto do envio já foi: épocas confirmadas até aqui, do total que esperava. */
+export type ProgressoDoEnvio = { confirmadas: number; total: number };
 
 export type ResultadoDoEnvio = {
   /** Épocas confirmadas neste envio (aceitas + rejeitadas). */
@@ -51,9 +63,14 @@ export async function contarRestantes(fonte: FonteDaNoite): Promise<number> {
   return noites.reduce((s, n) => s + Math.max(0, n.epocas - n.enviadas), 0);
 }
 
-export async function enviarNoites(fonte: FonteDaNoite, enviar: EnviarLote): Promise<ResultadoDoEnvio> {
+export async function enviarNoites(
+  fonte: FonteDaNoite,
+  enviar: EnviarLote,
+  aoAvancar?: (p: ProgressoDoEnvio) => void,
+): Promise<ResultadoDoEnvio> {
   const r: ResultadoDoEnvio = { confirmadas: 0, rejeitadas: 0, primeiraRejeicao: null, restantes: 0, erro: null };
   const { noites } = await fonte.noites();
+  const total = noites.reduce((s, n) => s + Math.max(0, n.epocas - n.enviadas), 0);
 
   envio: for (const noite of noites) {
     let ponto = noite.enviadas;
@@ -85,11 +102,16 @@ export async function enviarNoites(fonte: FonteDaNoite, enviar: EnviarLote): Pro
           if (r.primeiraRejeicao === null) r.primeiraRejeicao = x.erro;
         }
       }
+      const antes = ponto;
       if (k > 0) {
         ponto = (await fonte.marcarEnviadas({ arquivo: noite.arquivo, ate: ponto + k })).enviadas;
         r.confirmadas += k;
+        aoAvancar?.({ confirmadas: r.confirmadas, total });
       }
-      if (k < leituras.length) {
+      // Sem avanço (nenhuma época resolvida, ou o aparelho não moveu o ponto):
+      // para. Com avanço, as pendentes são só o resto do lote que não coube no
+      // tempo do servidor, e o laço as relê a partir do ponto novo.
+      if (ponto <= antes) {
         r.erro = `${leituras.length - k} épocas ficaram pendentes no servidor. Tente de novo em instantes.`;
         break envio;
       }
