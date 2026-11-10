@@ -8419,6 +8419,34 @@ As consultas de 10/11 na produção (5.1 e 5.3 da auditoria) deram zero leitura 
 
 **Procedência.** Branch `bugfix/SEC-18-validacao-no-banco`. `web-app/migrations/016_validacao_no_banco.sql`, `DIAGNOSTICO-migracoes-aplicadas.sql`, `README.md`; `web-app/tests/rls/test_rls_validacao_no_banco.py`, `conftest.py`, `test_rls_ingestao.py`, `test_rls_isolamento.py`, `test_rls_credencial.py`, `verificar_por_mutacao.py`; `web-app/tests/migracoes/verificar_migracoes.py`.
 
+---
+
+# 2026-11-10 (ix) — SEC-21: a 016 na produção
+
+**O problema, como foi entendido no início.** A 016 (`SEC-18`, PR #116) leva a validação da leitura e do pareamento para dentro do banco, mas só no repositório. Até ser aplicada, a chamada direta da auditoria continuava gravando `NaN` e datas de 2099 na própria conta.
+
+**Hipótese de trabalho.** Ela aplica limpa, porque as consultas 5.1 e 5.3 da auditoria, rodadas pelo autor mais cedo no mesmo dia, deram zero leitura fora das regras, no máximo 2 dispositivos por conta e nome de até 12 caracteres. E se não aplicasse, pararia sem apagar nada.
+
+**O que foi testado, e como.**
+- **Pelo celular:** o autor aplicou a 016 no SQL Editor, numa versão sem os comentários, para caber na tela.
+- **A versão sem comentários:** foi conferida antes, por mim, num Postgres 17 montado como a produção (001 a 015, sem a 013). Aplicou e deu 5 de 5 marcas no diagnóstico.
+- **A conferência:** em seguida, o autor rodou uma consulta curta, só leitura, com as mesmas marcas do diagnóstico.
+
+**Resultado medido.**
+- **Na produção:** `regras_validadas = 7` (as sete restrições de `sleep_data`, validadas); `nome_ok`, `futuro_ok`, `teto_ok` e `revogacao_ok` todos `true`.
+- **Sem dado ruim:** a migração não parou, então nenhuma linha antiga estava fora das regras.
+
+**Adaptação.** A §9 da política deixou de dizer que a validação é contornável na própria conta, e a lacuna correspondente foi fechada nas notas.
+
+**O que deu errado no caminho.** Nada nesta etapa.
+
+**Risco em aberto.**
+- **O diagnóstico completo não foi rodado;** a consulta curta cobre só as marcas da 016.
+- **O caminho normal com a 016 ainda não foi exercitado na produção:** a próxima noite do app confere que ele continua gravando.
+- **A política nova** continua esperando o release (`REL-01`).
+
+**Procedência.** Resultado colado pelo autor em 10/11. `docs/POLITICA-DE-PRIVACIDADE.md` §9.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
