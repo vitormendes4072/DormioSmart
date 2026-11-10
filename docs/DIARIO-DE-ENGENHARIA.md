@@ -8251,6 +8251,58 @@ O autor não estava em casa nem era noite, então a etapa veio antes da noite re
 
 **Procedência.** Branch `feature/APP-12-distribuicao-para-testadores`. `frontend/android/app/build.gradle`, `frontend/android/.gitignore`, `docs/DISTRIBUICAO-DO-APP.md`.
 
+---
+
+# 2026-11-10 (vi) — Registro: a auditoria de 10/11 vira itens, e as pendências do autor numa lista só
+
+**O problema, como foi entendido no início.** O autor pediu: "deixe registrado tudo o que precisamos fazer". Havia três lugares desencontrados:
+- **A auditoria de 10/11** (Fable 5.2) tinha 12 achados num relatório não versionado, e só o AUD-01 virara item (`APP-10`).
+- **As pendências do autor** estavam espalhadas pela memória do Claude e pelo `ROADMAP.md` local, com itens já feitos misturados aos abertos.
+- **Duas contagens erradas** que a auditoria apontou (AUD-08) seguiam nos documentos.
+
+**Hipótese de trabalho.**
+- **Os achados:** cada um vira item no backlog, com a evidência da auditoria e a correção proposta. O relatório é versionado, com o mapa de cada achado para o item que o carrega, como o de 31/10.
+- **As contagens:** corrigidas no próprio registro.
+- **As pendências do autor:** uma lista só, por tipo, sem o que já foi feito.
+
+**O que foi testado, e como.**
+- **Os IDs:** conferidos livres em `origin/feature/APP-12-distribuicao-para-testadores` antes de usar.
+- **As conferências:** `conferir_backlog --conferir`, `consolidar_registro --conferir` e `conferir_docs_versionados`.
+- **A varredura do relatório:** nome de pessoa e caminho de máquina, antes de versionar.
+
+**Resultado medido.**
+- **Itens novos, 9:**
+
+  | Camada | Item | Achado |
+  |---|---|---|
+  | L0 | `SEC-18` | AUD-02 e AUD-03 |
+  | L0 | `SEC-19` | AUD-10 |
+  | L0 | `SEC-20` | AUD-12 |
+  | L0 | `DATA-14` | AUD-11 |
+  | L0 | `CI-09` | AUD-06 |
+  | L0 | `CI-10` | AUD-07 |
+  | L0 | `CI-11` | AUD-09 |
+  | L0 | `LGPD-11` | AUD-04 |
+  | L3 | `REL-01` | AUD-05, com a pergunta sobre `last_sign_in_at` |
+
+- **Contagem:** 42 → **51 abertos**; L0 12 → **20**; L3 10 → **11**. O `conferir_backlog` passa.
+- **AUD-08:**
+  - o `CLAUDE.md` ganhou a nota da mutação da fila: **14/14** medido, contra os 13/13 de 31/10;
+  - o `UI-15` ganhou o pacote medido: **925 kB**, contra 876 kB.
+  - A contagem de 42 arquivos do frontend já tinha sido corrigida pelo `APP-10`.
+- **O relatório:** `docs/AUDITORIA-2026-11-10-fable.md`, versionado com o mapa dos achados. Nenhum nome nem caminho de máquina.
+- **As pendências do autor:** reescritas em seis grupos (orientador, produção, app, texto, dados, GitHub), na memória do Claude e no `ROADMAP.md` local, que não é versionado.
+
+**Adaptação.** Esta branch parte da do `APP-12` (PR #113, ainda aberta), porque o backlog e o diário são arquivos de conflito garantido. A PR aponta para `develop`; o corpo dela diz a ordem de merge.
+
+**O que deu errado no caminho.** Nada nesta etapa.
+
+**Risco em aberto.**
+- **Nove itens novos de uma vez:** a L0 dobrou de tamanho, e nenhum deles foi priorizado. A prioridade é do autor.
+- **Itens que esperam outros:** o `SEC-18` e o `REL-01` pedem consultas na produção que só o autor roda (5.1 e 5.2 da auditoria).
+
+**Procedência.** Branch `chore/REG-auditoria-e-pendencias`, a partir de `feature/APP-12-distribuicao-para-testadores` (`545f7f6`). `docs/BACKLOG-COMPLETO.md`, `docs/AUDITORIA-2026-11-10-fable.md`, `CLAUDE.md`.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
