@@ -7981,6 +7981,59 @@ O autor não estava em casa nem era noite, então a etapa veio antes da noite re
 
 **Procedência.** Diagnóstico rodado pelo autor no SQL Editor, 09/11. Logs de execução da Vercel, produção, 09/11 22:00 UTC.
 
+---
+
+# 2026-11-09 (vii) — DATA-12: o esquema de teste como a produção, e a cascata das leituras
+
+**O problema, como foi entendido no início.** O `DATA-10` mostrou que o esquema de teste divergia da produção no tipo do id. Restava saber se havia outras divergências da mesma classe antes da primeira noite real.
+
+**Hipótese de trabalho.** Uma consulta só de leitura do catálogo, rodada nos dois bancos, mostra a diferença inteira de uma vez: tipos, padrões, chaves, índices, permissões e funções. O banco de teste foi montado na ordem real da produção, sem a 013, que lá não está aplicada.
+
+**O que foi testado, e como.**
+- **A consulta:** `migrations/CONSULTA-estrutura-do-esquema.sql` foi rodada pelo autor no SQL Editor e, por mim, no banco de teste (`postgres:16` em Docker, Windows). Foram 78 linhas de cada lado, comparadas uma a uma.
+- **O que divergiu:**
+  - a chave de `sleep_data.user_id` não tem `on delete cascade` na produção e tem no teste;
+  - `user_id` tem padrão `auth.uid()` na produção;
+  - `created_at` aceita nulo na produção;
+  - a produção tem dois índices antigos (`idx_sleep_data_created_at`, `idx_sleep_data_user`).
+- **O que bateu:** as 8 funções (retorno, definer, `search_path`, permissões), o RLS e as permissões das 4 tabelas, e as demais restrições e índices.
+- **A versão:** as permissões da produção trazem o privilégio `m` (MAINTAIN), que só existe a partir do Postgres 17.
+- **A causa:** a tabela e a coluna `user_id` foram criadas pelo painel do Supabase antes das migrações. A 001 usa `add column if not exists user_id ... on delete cascade`, e na produção a coluna já existia: a linha inteira foi pulada, a cascata junto. É a mesma causa do `DATA-10`, em outra coluna.
+- **O efeito:** `apagar_minha_conta` e `_eliminar_titular` apagam as leituras antes do usuário, então a eliminação pelo app funciona. Apagar o usuário direto em `auth.users`, que é o que o painel faz, é recusado se houver leituras.
+- **O conserto:**
+  - o `esquema_base.sql` cria `sleep_data` como a produção, para que a 001 pule a coluna como lá;
+  - a migração `015_cascata_das_leituras.sql` recria a chave com a cascata;
+  - `test_rls_cascata.py` cobre o caso com 3 testes: a exclusão direta leva as leituras, não toca nas do outro usuário, e a chave tem cascata;
+  - a sabotagem `leituras_sem_cascata` entrou na mutação;
+  - o diagnóstico ganhou a marca da 015;
+  - a matriz do CI ganhou o Postgres 17.
+
+**Resultado medido.**
+- **Sem a 015, com o esquema novo:** os 3 testes caem, dois com `ForeignKeyViolation` em `sleep_data_user_id_fkey`, que é o erro que a produção daria, e um com `confdeltype='a'`.
+- **Com a 015:** RLS **196 passam** no Postgres 16, e **196** no 17, em Docker local.
+- **Mutação:** **36/36**; a nova caiu por 3 testes.
+- **Verificador de migrações:** **15 estados** e a ordem real.
+- **Estrutura no Postgres 17:** montado como a produção e sem a 015, o banco de teste reproduz as linhas de `sleep_data` e as permissões com `m` da produção.
+- **Produção:** a 015 **não foi aplicada**; é o `DATA-13`.
+
+**Adaptação.** O plano previa sabotar `_eliminar_titular`, tirando o `delete` das leituras, como controle positivo. Ao ler o teste, vi que ele já confere `leituras_apagadas == 1` no recibo, e acusaria essa sabotagem com ou sem cascata. O ponto cego que eu tinha anunciado ao autor não existia nessa forma. O controle passou a ser a exclusão direta do usuário, que nenhum teste exercitava.
+
+**O que deu errado no caminho.**
+- **Afirmações minhas erradas ao autor:**
+  - disse que o bug do `DATA-10` "passou nove dias escondido"; o tipo vem da 005, de 27/09;
+  - disse que tirar o `delete` das leituras passaria nos testes; não passaria.
+
+  As duas foram corrigidas na conversa.
+- **A consulta:** a primeira versão falhou no Postgres (`text || "char"` ambíguo, no `provolatile`) e foi corrigida antes de ir ao autor.
+
+**Risco em aberto.**
+- **Até a 015 ser aplicada** (`DATA-13`), excluir pelo painel um usuário com leituras é recusado.
+- **Ficaram de fora, de propósito:** o padrão `auth.uid()` e o `created_at` anulável. Não mudam comportamento, porque as funções sempre passam o dono e nunca gravam `created_at`.
+- **A comparação é retrato de 09/11.** Mudança feita pelo painel depois disso não aparece sozinha; a consulta versionada é para repetir.
+- **A versão exata da produção** (17.x) não foi lida. Foi inferida pelo privilégio `m`.
+
+**Procedência.** Branch `bugfix/DATA-12-esquema-como-a-producao`. `web-app/tests/rls/esquema_base.sql`, `test_rls_cascata.py`, `conftest.py`, `verificar_por_mutacao.py`, `web-app/migrations/015_cascata_das_leituras.sql`, `CONSULTA-estrutura-do-esquema.sql`, `DIAGNOSTICO-migracoes-aplicadas.sql`, `README.md`, `web-app/tests/migracoes/verificar_migracoes.py`, `.github/workflows/ci.yml`. Resultado da consulta na produção colado pelo autor em 09/11.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

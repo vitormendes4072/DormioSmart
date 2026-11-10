@@ -59,6 +59,8 @@ jobs:
     # do schema `public`, por exemplo. O harness foi desenvolvido e verificado
     # na 14; a 16 e a que se usaria hoje. Rodar nas duas faz a diferenca
     # aparecer aqui, com o diff na mao, e nao meses depois num banco real.
+    # A 17 entrou em 09/11 (DATA-12): e a da producao -- o catalogo dela
+    # mostra o privilegio MAINTAIN (`m`), que so existe a partir da 17.
     name: RLS contra Postgres ${{ matrix.postgres }}
     runs-on: ubuntu-24.04
 
@@ -67,7 +69,7 @@ jobs:
       # na 16 e metade do diagnostico.
       fail-fast: false
       matrix:
-        postgres: ['14', '16']
+        postgres: ['14', '16', '17']
 
     services:
       postgres:

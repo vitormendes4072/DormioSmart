@@ -34,9 +34,17 @@
 --     reproduzir o GRANT, o teste passaria por falta de permissão e não
 --     provaria nada sobre RLS — o falso-positivo clássico desse tipo de suíte.
 --
---  4. `sleep_data` é criada aqui no estado PRÉ-001 (sem `user_id`, sem
---     `device_id`, com RLS ligado e sem nenhuma policy), porque é assim que
---     a 001 a encontra. Colunas conforme docs/DATA-CONTRACT.md §4.
+--  4. `sleep_data` é criada aqui no estado em que a 001 a encontrou NA
+--     PRODUÇÃO, e não no que a 001 supõe: com RLS ligado, sem policy, sem
+--     `device_id` — e JÁ COM `user_id` (padrão `auth.uid()`, chave estrangeira
+--     SEM cascata), `created_at` anulável e dois índices antigos, todos
+--     criados pelo painel do Supabase antes das migrações. Como a coluna já
+--     existe, o `add column if not exists user_id ... on delete cascade` da
+--     001 é pulado, como foi na produção. Conferido contra a produção em
+--     09/11 (`DATA-12`, `migrations/CONSULTA-estrutura-do-esquema.sql`): até
+--     ali este arquivo criava o id como `bigserial` (`DATA-10`) e sem
+--     `user_id`, e a suíte testava uma cascata que a produção não tinha.
+--     Colunas conforme docs/DATA-CONTRACT.md §4.
 --
 -- O QUE NÃO É REPRODUZIDO
 --
@@ -160,8 +168,12 @@ create table if not exists public.sleep_data (
     temp             double precision,
     movimento_total  double precision,
     status           text,
-    created_at       timestamptz not null default now()
+    created_at       timestamptz default now(),
+    -- Do painel, como na produção: padrão auth.uid() e sem `on delete cascade`.
+    user_id          uuid default auth.uid() references auth.users(id)
 );
+create index if not exists idx_sleep_data_created_at on public.sleep_data (created_at desc);
+create index if not exists idx_sleep_data_user       on public.sleep_data (user_id);
 
 alter table public.sleep_data enable row level security;
 

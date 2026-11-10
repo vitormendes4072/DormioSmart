@@ -460,6 +460,16 @@ SABOTADORES = {
         minimo=2,
         exige="test_ana_apaga_a_propria_conta_por_completo",
     ),
+    "leituras_sem_cascata": dict(
+        descricao="a chave de sleep_data.user_id volta a ser sem cascata, como na producao antes da 015",
+        sql="""
+            alter table public.sleep_data drop constraint sleep_data_user_id_fkey;
+            alter table public.sleep_data add constraint sleep_data_user_id_fkey
+                foreign key (user_id) references auth.users(id);
+        """,
+        minimo=3,
+        exige="test_apagar_o_usuario_direto_leva_as_leituras",
+    ),
 }
 
 
