@@ -8034,6 +8034,36 @@ O autor não estava em casa nem era noite, então a etapa veio antes da noite re
 
 **Procedência.** Branch `bugfix/DATA-12-esquema-como-a-producao`. `web-app/tests/rls/esquema_base.sql`, `test_rls_cascata.py`, `conftest.py`, `verificar_por_mutacao.py`, `web-app/migrations/015_cascata_das_leituras.sql`, `CONSULTA-estrutura-do-esquema.sql`, `DIAGNOSTICO-migracoes-aplicadas.sql`, `README.md`, `web-app/tests/migracoes/verificar_migracoes.py`, `.github/workflows/ci.yml`. Resultado da consulta na produção colado pelo autor em 09/11.
 
+---
+
+# 2026-11-10 (i) — DATA-13: a 015 na produção
+
+**O problema, como foi entendido no início.** A 015 (`DATA-12`, PR #108) dava à chave de `sleep_data.user_id` a cascata que a 001 declara, mas só no repositório. Na produção, apagar um usuário com leituras pelo painel do Supabase continuava recusado.
+
+**Hipótese de trabalho.** Aplicar a 015 no SQL Editor basta. O backend não muda, a migração não mexe em dado, e foi testada antes num Postgres 17 montado como a produção, com 501 leituras: aplicou, rodou duas vezes sem efeito e acendeu a marca.
+
+**O que foi testado, e como.**
+- **Pelo celular:** o autor aplicou a 015 e rodou uma conferência curta, a marca da 015 e `select version()`. Os arquivos foram passados no chat, porque ele não conseguia abri-los no celular.
+- **O diagnóstico completo:** rodado em seguida, com a consulta sem comentários.
+
+**Resultado medido.**
+- **Conferência curta:** `cascata_ok = true`. A versão é **PostgreSQL 17.6** (aarch64).
+- **Diagnóstico completo:**
+  - a 015 saiu `true`, com 1 de 1 marca;
+  - as 001, 003–012 e 014 saíram `true`, com as mesmas marcas de antes;
+  - a 002 saiu com 0 leituras sem dono;
+  - a 013 saiu `false`, com 0 de 3 marcas e o `pg_cron` desligado, como esperado: aplicá-la é o `LGPD-09`.
+
+**Adaptação.** O diagnóstico foi passado ao autor sem os comentários, para caber na tela do celular. O conteúdo das consultas é o mesmo do arquivo versionado.
+
+**O que deu errado no caminho.** Nada na produção. Do meu lado, um comando de registro travou por um `cat` sem entrada, e foi interrompido e refeito.
+
+**Risco em aberto.**
+- **A exclusão pelo painel não foi exercitada na produção.** Não há conta de teste lá, e apagar uma conta real não é teste. O comportamento foi medido no Postgres 17 local (`DATA-12`).
+- **A 013 continua pendente** (`LGPD-09`).
+
+**Procedência.** Resultados colados pelo autor em 10/11, no SQL Editor da produção.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
