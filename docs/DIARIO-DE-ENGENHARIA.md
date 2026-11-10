@@ -8156,6 +8156,61 @@ O autor não estava em casa nem era noite, então a etapa veio antes da noite re
 
 **Procedência.** Arquivos do celular copiados para fora do repositório (não versionados: são dado de sono do autor). Consulta de contagem colada pelo autor em 10/11. O relatório da auditoria de 10/11 (AUD-01) não está versionado.
 
+---
+
+# 2026-11-10 (iv) — CAL-03, etapa 0: o erro de cada eixo do acelerômetro do Moto E7
+
+**O problema, como foi entendido no início.** Na noite de 10/11 (entrada iii), com a tela para baixo, o Moto E7 leu a gravidade 2,2 % maior, e a medida de movimento subiu para 23 mg sem movimento nenhum. A etapa 0 do `CAL-03` mede o erro de cada eixo deste aparelho, com o celular parado em seis posições, para saber de onde vem o viés e quanto dele uma calibração explica.
+
+**Hipótese de trabalho.** O erro é de desvio e escala por eixo, o modelo clássico de calibração de acelerômetro. Com cada eixo apontado para cima e para baixo, a média dos dois valores dá o desvio, e a meia diferença dá a escala.
+
+**O que foi testado, e como.**
+- **O teste:** o autor gravou pelo app o celular parado sobre a mesa, 10 min em cada uma de seis posições: tela para cima, tela para baixo, em pé normal, em pé invertido, de lado com os botões para cima e para baixo. Cada posição foi uma "noite" separada, de 16:40 a 17:46 (horário de Brasília), na posição "outra" do app, fora do carregador.
+- **A cópia:** pelo cabo USB, com `adb exec-out run-as`, para fora do repositório.
+- **A seleção:** cada arquivo é uma posição. A primeira e a última época foram descartadas (o toque nos botões), e ficaram só as épocas paradas (`mag_din_media` < 10 mg): 16 a 22 por posição.
+- **O valor por eixo:** a mediana de `ax`, `ay`, `az` das épocas paradas. No payload, esses três valores são os da amostra de **maior magnitude** da época, e não a média. O desvio não sofre com isso: o excesso do pico entra com o mesmo sinal da gravidade e se cancela na média entre as duas posições. A escala sofre, e foi corrigida pelo excesso medido.
+- **O excesso do pico:** onde a magnitude passa de 1 g, a medida de movimento (média por amostra do que passa de 1 g) dá a magnitude média. A diferença para a do pico ficou em 2,0 a 3,0 mg, média de 0,024 m/s².
+- **A conferência:** a calibração estimada na mesa, aplicada à noite de 10/11.
+
+**Resultado medido.**
+- **Sem calibração**, a magnitude parada varia de **0,991 g a 1,020 g** conforme a posição. A medida de movimento só enxerga o que passa de 1 g, e por isso o "piso" dela muda com a posição:
+
+  | Posição | Magnitude parada | Movimento (mediana) |
+  |---|---:|---:|
+  | Tela para cima | 1,0041 g | 4,20 mg |
+  | Tela para baixo | 1,0198 g | **18,71 mg** |
+  | Em pé, normal | 0,9933 g | 0,00 mg |
+  | Em pé, invertido | 0,9910 g | 0,00 mg |
+  | De lado, botões para cima | 0,9980 g | 0,00 mg |
+  | De lado, botões para baixo | 1,0175 g | **17,76 mg** |
+
+- **O erro por eixo** (temperatura do aparelho de 25,7 a 27,8 °C):
+
+  | Eixo | Desvio | Escala |
+  |---|---:|---:|
+  | x | −0,095 m/s² (−9,7 mg) | +0,76 % |
+  | y | +0,015 m/s² (+1,5 mg) | −0,87 % |
+  | z | −0,075 m/s² (−7,6 mg) | +1,17 % |
+
+- **Na própria mesa:** com a calibração, as seis posições ficam entre **1,0002 g e 1,0015 g**. Esse número é de ajuste, e não de validação: são seis posições para seis parâmetros.
+- **Na noite de 10/11, a conferência que vale:** a diferença entre tela para cima e tela para baixo era de **22,1 mg** (1,0002 contra 1,0223 g) e passa a **7,9 mg** (0,9957 contra 1,0036 g). A calibração de mesa explica **64 %** do viés da noite.
+- **O que sobra:** a noite foi a 18 °C (mediana), e a mesa a 26 a 27 °C. O resíduo é compatível com o erro do sensor variando com a temperatura, mas isso **não foi medido** de forma separada.
+
+**Adaptação.**
+- **Cada posição numa noite separada:** o roteiro previa uma noite só, trocando de posição, e o autor iniciou e encerrou uma noite por posição. Ficou melhor, porque cada arquivo é uma posição.
+- **O excesso do pico:** o plano não previa estimá-lo; ele apareceu ao ler o que `ax`, `ay`, `az` significam no payload.
+
+**O que deu errado no caminho.**
+- **As seis gravações foram para a conta do autor na produção.** O app envia sozinho ao abrir, e as seis "noites" de teste, cerca de 120 épocas, estão no histórico como se fossem sono. O app não tem como marcar uma gravação como teste.
+- **O roteiro de bancada que escrevi** não dizia que o app enviaria as gravações. Devia ter dito.
+
+**Risco em aberto.**
+- **A temperatura:** o erro muda com ela, e uma calibração feita a 26 °C deixa 8 mg de viés a 18 °C. A etapa 1 do `CAL-03` precisa de um termo de temperatura, como o método de van Hees já prevê.
+- **Uma gravação de teste vira noite:** não há marca de gravação de teste, e o histórico do autor tem seis noites falsas de 10 min. Item novo `APP-11`.
+- **Um aparelho só:** os números valem para este Moto E7. Outro celular tem outro erro.
+
+**Procedência.** Arquivos do celular copiados para fora do repositório; o cálculo foi feito na hora, em script local. Nenhum dado de sono entrou no repositório.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
