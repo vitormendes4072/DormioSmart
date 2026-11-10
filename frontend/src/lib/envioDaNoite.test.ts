@@ -79,19 +79,66 @@ describe("enviarNoites (APP-02, etapa 3)", () => {
     expect(r.confirmadas).toBe(30);
   });
 
-  it("pendente no meio: o ponto para antes dela, e nada se perde", async () => {
+  it("pendente no meio, com avanco: o laco segue do ponto novo, e nada se perde", async () => {
     const f = fonte({ "noite-1.jsonl": 100 });
     let falhou = false;
     const s = servidor((l) => (!falhou && l.epoca === 25 ? ((falhou = true), "pendente") : "aceita"));
     const r = await enviarNoites(f, s.enviar);
-    expect(f.ponto["noite-1.jsonl"]).toBe(25);
-    expect(r.restantes).toBe(75);
-    expect(r.erro).toMatch(/35 épocas ficaram pendentes/);
-    // A proxima tentativa termina a noite.
-    const r2 = await enviarNoites(f, s.enviar);
+    // O primeiro lote resolveu 25; o laco rele a partir da 25, sem pular nenhuma.
+    expect(s.lotes).toEqual([60, 60, 15]);
     expect(f.ponto["noite-1.jsonl"]).toBe(100);
-    expect(r2.restantes).toBe(0);
+    expect(r).toEqual({ confirmadas: 100, rejeitadas: 0, primeiraRejeicao: null, restantes: 0, erro: null });
     expect(s.gravadas.size).toBe(100);
+  });
+
+  // APP-10: o servidor para o lote aos 6 s. Na producao (09/11) cabiam 13 de 60.
+  it("servidor que so grava 13 por requisicao: a noite de 960 sobe inteira, sozinha", async () => {
+    const f = fonte({ "noite-1.jsonl": 960 });
+    const s = servidor((_, i) => (i < 13 ? "aceita" : "pendente"));
+    const passos: number[] = [];
+    const r = await enviarNoites(f, s.enviar, (p) => {
+      expect(p.total).toBe(960);
+      passos.push(p.confirmadas);
+    });
+    expect(f.ponto["noite-1.jsonl"]).toBe(960);
+    expect(s.gravadas.size).toBe(960);
+    expect(r).toEqual({ confirmadas: 960, rejeitadas: 0, primeiraRejeicao: null, restantes: 0, erro: null });
+    expect(s.lotes.length).toBe(Math.ceil(960 / 13));
+    // O progresso so cresce, de 13 em 13, ate o total.
+    expect(passos[0]).toBe(13);
+    expect(passos[passos.length - 1]).toBe(960);
+    expect(passos.every((v, i) => i === 0 || v > passos[i - 1])).toBe(true);
+  });
+
+  it("requisicao sem nenhum avanco: para na primeira, e o ponto fica onde estava", async () => {
+    const f = fonte({ "noite-1.jsonl": 100 }, { "noite-1.jsonl": 20 });
+    const s = servidor(() => "pendente");
+    const r = await enviarNoites(f, s.enviar);
+    expect(s.lotes).toEqual([60]);
+    expect(f.ponto["noite-1.jsonl"]).toBe(20);
+    expect(r.confirmadas).toBe(0);
+    expect(r.restantes).toBe(80);
+    expect(r.erro).toMatch(/60 épocas ficaram pendentes/);
+  });
+
+  it("o servidor para de avancar no meio: o laco para ali, com o que ja entrou marcado", async () => {
+    const f = fonte({ "noite-1.jsonl": 100 });
+    // As 26 primeiras entram, de 13 em 13; dali em diante, nada.
+    const s = servidor((l, i) => (l.epoca < 26 && i < 13 ? "aceita" : "pendente"));
+    const r = await enviarNoites(f, s.enviar);
+    expect(s.lotes).toEqual([60, 60, 60]);
+    expect(f.ponto["noite-1.jsonl"]).toBe(26);
+    expect(r.confirmadas).toBe(26);
+    expect(r.erro).toMatch(/ficaram pendentes/);
+  });
+
+  it("o aparelho nao move o ponto: para, em vez de reenviar o mesmo lote para sempre", async () => {
+    const f = fonte({ "noite-1.jsonl": 100 });
+    f.marcarEnviadas = async () => ({ enviadas: 0 });
+    const s = servidor();
+    const r = await enviarNoites(f, s.enviar);
+    expect(s.lotes).toEqual([60]);
+    expect(r.erro).not.toBeNull();
   });
 
   it("rejeitada e resolvida: o envio segue, e o motivo e contado", async () => {

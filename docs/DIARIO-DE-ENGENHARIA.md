@@ -8064,6 +8064,49 @@ O autor não estava em casa nem era noite, então a etapa veio antes da noite re
 
 **Procedência.** Resultados colados pelo autor em 10/11, no SQL Editor da produção.
 
+---
+
+# 2026-11-10 (ii) — APP-10: o envio de uma noite inteira
+
+**O problema, como foi entendido no início.** A auditoria de 10/11 (achado AUD-01; o relatório ainda não está versionado) mostrou que o envio de uma noite inteira pelo app não termina sozinho. O teste de 09/11 no celular tinha 8 épocas e passou; uma noite real tem cerca de 960.
+
+**Hipótese de trabalho.** Duas causas somadas:
+- **No backend:** `registrar_leitura_da_sessao` monta um cliente Supabase novo a cada leitura. Isso abre uma conexão por leitura, e por isso cada gravação leva cerca de 0,5 s na produção.
+- **No app:** o lote do servidor para aos 6 s e devolve o resto como pendente, e o laço do app parava na primeira pendente, com mensagem de erro.
+
+**O que foi testado, e como.**
+- **A latência da produção:** lida nos logs da Vercel de 09/11, 22:00:51 a 22:00:55 UTC. As 8 gravações saíram a cada 0,49 s em média.
+- **A reprodução:** `POST /api/data/lote` pelo cliente de teste do Flask, com 60 épocas da fixture do emulador e a gravação falsa esperando 0,49 s (Windows, Python 3.13).
+- **Parte A, o app (`envioDaNoite.ts`):** o laço segue do ponto novo enquanto a requisição resolver ao menos uma época e o aparelho mover o ponto; sem avanço, para. A tela mostra o progresso em vez da mensagem de pendência.
+- **Parte B, o backend:** a rota repassa à gravação o cliente que ela já montou para conferir o dispositivo. É o cliente daquela requisição e daquele JWT; nada fica guardado entre requisições.
+- **Conexões:** um servidor HTTP local contando conexões TCP, com o cliente Supabase real apontado para ele.
+
+**Resultado medido.**
+- **A reprodução, antes:** `200`, com 13 aceitas e 47 pendentes, em 6,4 s. A 13 por tentativa, 960 épocas pediam cerca de 74 toques em "Enviar agora".
+- **Conexões por lote de 60:** 60 antes, 1 depois.
+- **Suítes:** backend **504 passam** (+4), frontend **551 passam** em 42 arquivos (+5), `tsc` limpo, `vite build` ok.
+- **Sabotagens, todas acusadas:**
+  - a rota sem repassar o cliente: 3 testes caem;
+  - o método ignorando o cliente recebido: 3 caem;
+  - o laço parando na primeira pendente: 3 caem no laço e 1 no cartão;
+  - o progresso sem aviso: 1 cai;
+  - a parada só com zero épocas resolvidas, sem olhar o ponto do aparelho: o teste não termina, e foi morto pelo teto de 70 s.
+- **Na produção: nada medido.** O ganho de tempo por leitura com a conexão reaproveitada só aparece depois de um release. O app novo ainda não foi instalado no celular.
+
+**Adaptação.** O plano não previa a guarda do ponto do aparelho. Ao escrever o laço, vi que "seguir enquanto houver avanço" precisa conferir que o ponto andou de fato, e não só que o servidor resolveu épocas. O código anterior já tinha essa falha latente: com o servidor aceitando tudo e o aparelho sem mover o ponto, ele reenviaria o mesmo lote para sempre.
+
+**O que deu errado no caminho.**
+- **A primeira rodada de sabotagens travou.** A sabotagem que devolvia o laço antigo caiu justamente no laço infinito descrito acima, num teste novo, e o vitest ficou mais de 6 minutos preso: um laço de microtarefas bloqueia até o tempo limite do próprio teste. Interrompi, matei os processos, restaurei o arquivo pela cópia e refiz com `timeout` e filtro de teste. A árvore foi conferida igual antes e depois, por hash do `git diff`.
+- **Um teste existente acoplado à assinatura:** o `test_noite_do_app.py` usava um `lambda` de três parâmetros no lugar da gravação e passou a receber `cliente`.
+
+**Risco em aberto.**
+- **A parte B só vale na produção com um release.** A `main` está 33 merges atrás da `develop`; o release levaria a rota de inferência e a seção 7 da política, que exige a 013 antes (`LGPD-09`). Sem release, a parte A sozinha faz a noite subir, em cerca de 9 minutos com o app aberto (estimado: 74 requisições de 6 a 7 s).
+- **O teste da guarda do ponto não falha, trava.** Se alguém a remover, o CI fica preso até o tempo limite do job, em vez de acusar o teste.
+- **Quanto a conexão única reduz o tempo por leitura** não foi medido. Se ainda não couberem 60 em 6 s, a saída é uma função no banco que receba o lote inteiro (`API-06`).
+- **O app no celular** precisa ser recompilado e reinstalado para a parte A valer.
+
+**Procedência.** Branch `bugfix/APP-10-envio-da-noite-inteira`. `frontend/src/lib/envioDaNoite.ts`, `frontend/src/components/CartaoDaNoite.tsx`, `web-app/database.py`, `web-app/routes.py` e os testes `envioDaNoite.test.ts`, `CartaoDaNoite.test.tsx`, `test_lote.py` e `test_noite_do_app.py`. Logs de execução da Vercel de 09/11.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

@@ -267,3 +267,64 @@ def test_status_da_resposta():
     assert lote.status_da_resposta({"aceitas": [0], "rejeitadas": [], "pendentes": [1]}) == 200
     assert lote.status_da_resposta({"aceitas": [], "rejeitadas": [{"indice": 0}],
                                     "pendentes": []}) == 200
+
+
+# --- APP-10: um cliente por requisição, não por leitura ----------------------
+#
+# Até 10/11 `registrar_leitura_da_sessao` montava um cliente Supabase a cada
+# leitura: uma conexão nova por leitura, ~0,5 s cada na produção, e de um lote
+# de 60 só 13 cabiam nos 6 s. Aqui o `create_client` é o falso; nada abaixo dele
+# é mockado, para que a contagem seja a de verdade.
+
+def _com_supabase_falso():
+    """`create_client` falso que devolve um cliente novo a cada chamada."""
+    def fabrica(url, chave):
+        cliente = MagicMock(name="cliente")
+        cliente.rpc.return_value.execute.return_value.data = "id-da-linha"
+        return cliente
+    return (
+        patch.object(database, "create_client", side_effect=fabrica),
+        patch.object(database.db, "url", "https://exemplo.supabase.co"),
+        patch.object(database.db, "anon_key", "anon"),
+        patch.object(database.db, "validar_token_de_usuario", return_value="user-ana"),
+    )
+
+
+def test_lote_de_60_pela_sessao_monta_o_cliente_uma_vez():
+    criar, url, anon, validar = _com_supabase_falso()
+    with criar as create_client, url, anon, validar,          patch.object(dispositivos, "buscar_do_dono", return_value={"id": "dev-ana"}) as buscar:
+        resp = _post({"device_id": "dev-ana", "leituras": [_LEITURA] * 60}, headers=_SESSAO)
+    assert resp.status_code == 200
+    assert resp.get_json()["aceitas"] == list(range(60))
+    assert create_client.call_count == 1, (
+        f"{create_client.call_count} clientes montados para um lote de 60: "
+        "a gravacao voltou a abrir uma conexao por leitura (APP-10)")
+    # E é o MESMO cliente que conferiu o dispositivo: as 60 gravações foram nele.
+    cliente = buscar.call_args[0][0]
+    assert cliente.rpc.call_count == 60
+
+
+def test_leitura_unica_pela_sessao_tambem_monta_um_cliente_so():
+    criar, url, anon, validar = _com_supabase_falso()
+    with criar as create_client, url, anon, validar,          patch.object(dispositivos, "buscar_do_dono", return_value={"id": "dev-ana"}):
+        resp = _client().post("/api/data", json=dict(_LEITURA, device_id="dev-ana"),
+                              headers=_SESSAO)
+    assert resp.status_code == 201
+    assert create_client.call_count == 1
+
+
+def test_sem_cliente_da_rota_o_metodo_monta_o_proprio():
+    """Quem chama `registrar_leitura_da_sessao` sem cliente continua servido."""
+    criar, url, anon, _ = _com_supabase_falso()
+    with criar as create_client, url, anon:
+        assert database.db.registrar_leitura_da_sessao("jwt", "dev", {"a": 1}) == "id-da-linha"
+    assert create_client.call_count == 1
+
+
+def test_o_cliente_de_uma_requisicao_nao_passa_para_a_seguinte():
+    """Dois pedidos, dois clientes: nenhum fica guardado com o jwt de alguém."""
+    criar, url, anon, validar = _com_supabase_falso()
+    with criar as create_client, url, anon, validar,          patch.object(dispositivos, "buscar_do_dono", return_value={"id": "dev-ana"}):
+        _post({"device_id": "dev-ana", "leituras": [_LEITURA] * 3}, headers=_SESSAO)
+        _post({"device_id": "dev-ana", "leituras": [_LEITURA] * 3}, headers=_SESSAO)
+    assert create_client.call_count == 2
