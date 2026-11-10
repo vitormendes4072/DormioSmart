@@ -29,14 +29,11 @@
 -- Corrigida aqui, e não numa migração nova, porque nunca foi aplicada: aplicar
 -- uma versão sabidamente errada para consertá-la em seguida seria pior.
 --
--- ✏️ POR QUE OS TRÊS CAMPOS DA SESSÃO, E NÃO SÓ A `updated_at` (10/11, lido no
--- código do Supabase Auth): a renovação grava `refreshed_at`, `user_agent` e
--- `ip` (`Session.UpdateOnlyRefreshInfo`), e a biblioteca deles só atualiza a
--- `updated_at` quando ela está na lista — e não está. A `refreshed_at` é
--- `timestamp` SEM fuso, gravada em UTC (comentário no mesmo código). E até a
--- versão 2.195.0 (PR #2655, agosto de 2026) um caminho de login criava a sessão
--- sem atualizar o `last_sign_in_at`: a sessão criada depois do "último login"
--- também é sinal de uso. Cada campo cobre um caminho; o maior dos três vale.
+-- ✏️ POR QUE OS TRÊS CAMPOS DA SESSÃO (10/11): o código do Supabase Auth grava
+-- explicitamente a `refreshed_at` na renovação (`Session.UpdateOnlyRefreshInfo`),
+-- como `timestamp` SEM fuso, em UTC; e a produção mostrou a `updated_at` mudando
+-- junto (2 de 2 sessões renovadas, consulta de 10/11). Ler os dois, mais a
+-- criação, cobre uma mudança futura em qualquer um deles. O maior dos três vale.
 --
 -- AS PEÇAS
 --
