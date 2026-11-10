@@ -19,6 +19,9 @@ funcionando pelo caminho novo.
 """
 import pytest
 
+# SEC-18 (016): o pareamento so aceita o formato do SHA-256 em hexadecimal.
+HASH_NOVO = "a1" * 32
+
 TABELA = "device_tokens"
 
 
@@ -224,7 +227,7 @@ def test_ana_pareia_um_dispositivo_novo(como, cenario):
     with como(cenario["ana"]) as ana:
         linhas = ana.executar(
             "select * from public.parear_dispositivo(%s, %s, %s)",
-            ("Travesseiro novo", "travesseiro", "hash-novo-da-ana"),
+            ("Travesseiro novo", "travesseiro", HASH_NOVO),
         )
         assert len(linhas) == 1, "o pareamento nao devolveu o dispositivo"
         nomes = [d[0] for d in ana.cursor.description]
@@ -241,7 +244,7 @@ def test_ana_pareia_um_dispositivo_novo(como, cenario):
         )
 
     assert str(dono) == cenario["ana"], "o dono nao saiu de auth.uid()"
-    assert credencial == [("hash-novo-da-ana",)], "a credencial nao foi gravada"
+    assert credencial == [(HASH_NOVO,)], "a credencial nao foi gravada"
 
 
 def test_o_pareamento_nao_aceita_escolher_o_dono(catalogo):

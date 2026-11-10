@@ -133,7 +133,26 @@ marcas (migracao, item, marca, presente) as (values
     ('015', 'DATA-12', 'sleep_data_user_id_fkey com cascata',
         coalesce((select confdeltype = 'c' from pg_constraint
                    where conname = 'sleep_data_user_id_fkey'
-                     and conrelid = to_regclass('public.sleep_data')), false))
+                     and conrelid = to_regclass('public.sleep_data')), false)),
+    -- 016: a validacao dentro do banco. As restricoes VALIDADAS (uma `not
+    -- valid` que ficou para tras indicaria a 016 pela metade), as funcoes com a
+    -- recusa do futuro e o pareamento com o teto, e o gatilho da revogacao.
+    ('016', 'SEC-18', 'restricoes de faixa validadas em sleep_data',
+        (select count(*) = 7 from pg_constraint
+          where conrelid = to_regclass('public.sleep_data') and convalidated
+            and conname in ('sleep_data_faixa_aceleracao', 'sleep_data_faixa_giroscopio',
+                            'sleep_data_faixa_temperatura', 'sleep_data_estado_valido',
+                            'sleep_data_agregacao_valida', 'sleep_data_faixa_features',
+                            'sleep_data_gravidade_unitaria'))),
+    ('016', 'SEC-18', 'restricao devices_nome_tamanho validada',
+        exists (select 1 from pg_constraint where conname = 'devices_nome_tamanho' and convalidated)),
+    ('016', 'SEC-18', 'gravacao recusa captured_at no futuro',
+        coalesce((select pg_get_functiondef(to_regprocedure('public.registrar_leitura_da_sessao(uuid,jsonb)')) like '%SEC-18: captured_at no futuro%'
+                     and pg_get_functiondef(to_regprocedure('public.registrar_leitura(text,jsonb)')) like '%SEC-18: captured_at no futuro%'), false)),
+    ('016', 'SEC-18', 'parear_dispositivo com teto e formato do hash',
+        coalesce((select pg_get_functiondef(to_regprocedure('public.parear_dispositivo(text,text,text)')) like '%limite de 10 dispositivos%'), false)),
+    ('016', 'SEC-18', 'gatilho devices_revogacao_definitiva',
+        exists (select 1 from pg_trigger where tgname = 'devices_revogacao_definitiva'))
 ),
 esquema as (
     select migracao, min(item) as item,

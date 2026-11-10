@@ -470,6 +470,74 @@ SABOTADORES = {
         minimo=3,
         exige="test_apagar_o_usuario_direto_leva_as_leituras",
     ),
+    # --- SEC-18 (10/11): a validacao dentro do banco (migracao 016) ---------
+    "faixa_das_features_some": dict(
+        descricao="a restricao de faixa das features sai",
+        sql="alter table public.sleep_data drop constraint sleep_data_faixa_features;",
+        minimo=1,
+        exige="test_um_passo_alem_da_borda_e_recusado",
+    ),
+    "faixa_mais_estreita_que_o_flask": dict(
+        descricao="enmo_max no banco vai so ate 15 g (o Flask aceita 16): leitura valida falharia",
+        sql="""
+            alter table public.sleep_data drop constraint sleep_data_faixa_features;
+            alter table public.sleep_data add constraint sleep_data_faixa_features check (
+                enmo_max is null or enmo_max between 0 and 15);
+        """,
+        minimo=1,
+        exige="test_a_borda_do_flask_passa_no_banco",
+    ),
+    "estado_livre_de_novo": dict(
+        descricao="a restricao de estado sai",
+        sql="alter table public.sleep_data drop constraint sleep_data_estado_valido;",
+        minimo=1,
+        exige="test_estado_e_metodo_so_os_do_flask",
+    ),
+    "futuro_aceito": dict(
+        descricao="a gravacao por sessao tolera 100 anos no futuro em vez de 5 minutos",
+        sql="""
+            do $SAB$ begin
+                execute replace(pg_get_functiondef('public.registrar_leitura_da_sessao(uuid,jsonb)'::regprocedure),
+                                '5 minutes', '100 years');
+            end $SAB$;
+        """,
+        minimo=1,
+        exige="test_captura_no_futuro_e_recusada",
+    ),
+    "pareamento_sem_teto": dict(
+        descricao="parear_dispositivo deixa de contar os dispositivos ativos",
+        sql="""
+            do $SAB$ begin
+                execute replace(pg_get_functiondef('public.parear_dispositivo(text,text,text)'::regprocedure),
+                                '>= 10 then', '>= 100000 then');
+            end $SAB$;
+        """,
+        minimo=1,
+        exige="test_o_teto_e_de_10_dispositivos_ativos",
+    ),
+    "pareamento_aceita_qualquer_hash": dict(
+        descricao="parear_dispositivo deixa de conferir o formato do hash",
+        sql="""
+            do $SAB$ begin
+                execute replace(pg_get_functiondef('public.parear_dispositivo(text,text,text)'::regprocedure),
+                                '^[0-9a-f]{64}$', '.*');
+            end $SAB$;
+        """,
+        minimo=1,
+        exige="test_pareamento_recusa_hash_fora_do_formato",
+    ),
+    "revogacao_desfeita": dict(
+        descricao="o gatilho que torna a revogacao definitiva sai",
+        sql="drop trigger devices_revogacao_definitiva on public.devices;",
+        minimo=1,
+        exige="test_o_titular_nao_desfaz_a_revogacao",
+    ),
+    "nome_sem_teto": dict(
+        descricao="a restricao de tamanho do nome do dispositivo sai",
+        sql="alter table public.devices drop constraint devices_nome_tamanho;",
+        minimo=1,
+        exige="test_o_titular_nao_renomeia_para_mais_de_60",
+    ),
 }
 
 

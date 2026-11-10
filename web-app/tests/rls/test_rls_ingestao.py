@@ -113,14 +113,18 @@ def test_o_papel_nao_escreve_em_tabela_alguma(como, cenario, tabela):
 
 def test_o_papel_nao_insere_direto_em_sleep_data(como, cenario):
     """A única porta de gravação é a função. O INSERT direto morre."""
+    # SEC-18 (10/11): estado VALIDO de proposito, e o motivo conferido. Com um
+    # estado inventado, a restricao da 016 recusava antes da policy, e o teste
+    # passava pelo mecanismo errado (a sabotagem `insert_liberado` o mostrou).
     with como(cenario["ana"], papel=PAPEL) as ingestao:
-        ingestao.negado(
+        erro = ingestao.negado(
             """
             insert into public.sleep_data (user_id, movimento_total, status)
-            values (%s, 1.0, 'Direto')
+            values (%s, 1.0, 'Repouso')
             """,
             (cenario["ana"],),
         )
+    assert erro.pgcode == "42501", f"recusado por outro motivo: {erro.pgcode}"
 
 
 def test_o_papel_nao_le_o_token_hash_de_ninguem(como, cenario):
@@ -238,7 +242,7 @@ def test_registrar_leitura_grava_e_carimba_o_dono(como, cenario):
     with como(cenario["ana"], papel=PAPEL) as ingestao:
         novo = ingestao.executar(
             "select public.registrar_leitura(%s, %s::jsonb)",
-            (HASH_ANA, '{"movimento_total": 7.5, "status": "Dormindo"}'),
+            (HASH_ANA, '{"movimento_total": 7.5, "status": "Repouso"}'),
         )[0][0]
         assert novo is not None, "a gravacao nao confirmou"
 

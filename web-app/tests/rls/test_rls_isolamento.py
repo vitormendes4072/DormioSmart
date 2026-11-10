@@ -118,14 +118,18 @@ def test_ana_nao_fabrica_leitura_no_nome_do_bruno(como, cenario):
     Não é só vazamento: é contaminar o dado de sono de outra pessoa, que é
     exatamente o que um TCC de medição não pode admitir.
     """
+    # SEC-18 (10/11): estado VALIDO de proposito, e o motivo conferido. Com um
+    # estado inventado, a restricao da 016 recusava antes da policy, e o teste
+    # passava pelo mecanismo errado (a sabotagem `insert_liberado` o mostrou).
     with como(cenario["ana"]) as ana:
-        ana.negado(
+        erro = ana.negado(
             """
             insert into public.sleep_data (user_id, movimento_total, status)
-            values (%s, 99.0, 'Injetado')
+            values (%s, 99.0, 'Repouso')
             """,
             (cenario["bruno"],),
         )
+    assert erro.pgcode == "42501", f"recusado por outro motivo: {erro.pgcode}"
 
 
 def test_ana_nao_fabrica_leitura_nem_no_proprio_nome(como, cenario):
@@ -137,14 +141,18 @@ def test_ana_nao_fabrica_leitura_nem_no_proprio_nome(como, cenario):
     cai — e deve cair, porque a integridade da medição depende de o dado não
     poder ser digitado.
     """
+    # SEC-18 (10/11): estado VALIDO de proposito, e o motivo conferido. Com um
+    # estado inventado, a restricao da 016 recusava antes da policy, e o teste
+    # passava pelo mecanismo errado (a sabotagem `insert_liberado` o mostrou).
     with como(cenario["ana"]) as ana:
-        ana.negado(
+        erro = ana.negado(
             """
             insert into public.sleep_data (user_id, movimento_total, status)
-            values (%s, 1.0, 'Digitado')
+            values (%s, 1.0, 'Repouso')
             """,
             (cenario["ana"],),
         )
+    assert erro.pgcode == "42501", f"recusado por outro motivo: {erro.pgcode}"
 
 
 def test_ana_nao_altera_leitura_do_bruno(como, cenario):

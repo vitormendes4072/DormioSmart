@@ -93,6 +93,10 @@ MIGRACOES_APLICADAS = (
     # DATA-12 (09/11): a chave de `sleep_data.user_id` ganha a cascata que a
     # 001 declara e a produção não tinha. Sem ela, `test_rls_cascata.py` cai.
     "015_cascata_das_leituras.sql",
+    # SEC-18 (10/11): a validacao da leitura e do pareamento dentro do banco.
+    # Os estados dos dados de teste passaram de "Dormindo"/"Orfa" a "Repouso",
+    # porque a 016 recusa estado fora de ("Repouso", "Movimento").
+    "016_validacao_no_banco.sql",
 )
 
 VARIAVEL = "DORMIO_RLS_DATABASE_URL"
@@ -293,7 +297,7 @@ def cenario(_conexao_dona, esquema):
                 """
                 insert into public.sleep_data
                     (user_id, device_id, movimento_total, temp, status)
-                values (%s, %s, %s, 31.0, 'Dormindo')
+                values (%s, %s, %s, 31.0, 'Repouso')
                 returning id
                 """,
                 (usuario, device, movimento),
@@ -305,7 +309,7 @@ def cenario(_conexao_dona, esquema):
         cursor.execute(
             """
             insert into public.sleep_data (movimento_total, temp, status)
-            values (42.0, 30.0, 'Orfa') returning id
+            values (42.0, 30.0, 'Repouso') returning id
             """
         )
         linhas["orfa"] = cursor.fetchone()[0]
