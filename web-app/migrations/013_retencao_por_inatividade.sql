@@ -13,10 +13,27 @@
 --   · conta INATIVA HÁ 12 MESES é eliminada por inteiro, do mesmo jeito que a
 --     exclusão pedida pelo titular.
 --
--- "Inativa" = nenhum dos três sinais nos últimos 12 meses: criação da conta,
--- último login (`auth.users.last_sign_in_at`) e última leitura recebida
+-- "Inativa" = nenhum dos quatro sinais nos últimos 12 meses: criação da conta,
+-- último login (`auth.users.last_sign_in_at`), uso de uma sessão (a criação, a
+-- `updated_at` e a `refreshed_at` de `auth.sessions`) e última leitura recebida
 -- (`sleep_data.created_at`). A leitura conta porque o dispositivo pode seguir
 -- enviando sem que a pessoa entre no site.
+--
+-- ✏️ A SESSÃO ENTROU EM 10/11/2026, ANTES DE ESTA MIGRAÇÃO SER APLICADA EM
+-- QUALQUER LUGAR (LGPD-09). A versão de 05/11 tinha três sinais e confiava no
+-- `last_sign_in_at` para "a pessoa usou o serviço". Ele só muda num login: a
+-- renovação de uma sessão aberta não o toca, e o app mantém a sessão aberta.
+-- Medido na produção em 10/11: em 2 de 6 contas a sessão tinha sido renovada
+-- até 1 dia e 16 h depois do último login. Com três sinais, quem usa o painel
+-- todo dia sem nunca sair e sem dispositivo enviando seria apagado em 12 meses.
+-- Corrigida aqui, e não numa migração nova, porque nunca foi aplicada: aplicar
+-- uma versão sabidamente errada para consertá-la em seguida seria pior.
+--
+-- ✏️ POR QUE OS TRÊS CAMPOS DA SESSÃO (10/11): o código do Supabase Auth grava
+-- explicitamente a `refreshed_at` na renovação (`Session.UpdateOnlyRefreshInfo`),
+-- como `timestamp` SEM fuso, em UTC; e a produção mostrou a `updated_at` mudando
+-- junto (2 de 2 sessões renovadas, consulta de 10/11). Ler os dois, mais a
+-- criação, cobre uma mudança futura em qualquer um deles. O maior dos três vale.
 --
 -- AS PEÇAS
 --
@@ -165,6 +182,14 @@ begin
          where greatest(
                    u.created_at,
                    u.last_sign_in_at,
+                   -- A sessão: criação, `updated_at` e `refreshed_at`. A
+                   -- renovação grava a `refreshed_at` (e não a `updated_at`),
+                   -- num `timestamp` SEM fuso, em UTC: o `extract(epoch ...)`
+                   -- lê os dois tipos do mesmo jeito. Ver o cabeçalho.
+                   (select max(greatest(se.created_at, se.updated_at,
+                                        to_timestamp(extract(epoch from se.refreshed_at))))
+                      from auth.sessions se
+                     where se.user_id = u.id),
                    (select max(s.created_at)
                       from public.sleep_data s
                      where s.user_id = u.id)

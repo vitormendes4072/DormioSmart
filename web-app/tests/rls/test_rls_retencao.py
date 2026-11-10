@@ -3,7 +3,8 @@
 ── O QUE ESTÁ SOB TESTE ─────────────────────────────────────────────────
 
 `expurgar_contas_inativas()` apaga por inteiro a conta sem nenhum sinal de uso
-há 12 meses: criação, último login ou última leitura. É a segunda função do
+há 12 meses: criação, último login, última renovação de sessão (✏️ 10/11, LGPD-09)
+ou última leitura. É a segunda função do
 banco que apaga conta — e, ao contrário da `apagar_minha_conta()`, apaga a de
 OUTRA pessoa. Então o teste mais importante não é "a conta velha saiu"; é "a
 conta que ainda tem UM sinal recente ficou".
@@ -16,7 +17,8 @@ import uuid
 import pytest
 
 
-def _conta(sessao, *, criada_ha, login_ha=None, leitura_ha=None, com_dispositivo=True):
+def _conta(sessao, *, criada_ha, login_ha=None, leitura_ha=None, sessao_ha=None,
+           renovada_ha=None, com_dispositivo=True):
     """Cria uma conta com as datas recuadas. Devolve o id.
 
     `*_ha` são intervalos do Postgres ('13 months', '2 days'); `None` = nunca.
@@ -30,6 +32,18 @@ def _conta(sessao, *, criada_ha, login_ha=None, leitura_ha=None, com_dispositivo
         """,
         (titular, f"{titular}@exemplo.test"),
     )
+    if sessao_ha or renovada_ha:
+        # Uma sessão (LGPD-09). `sessao_ha` recua a `updated_at`; `renovada_ha`
+        # a `refreshed_at`, que é o que a renovação grava no Supabase — sem fuso,
+        # em UTC. Sem `renovada_ha`, a sessão nunca foi renovada.
+        atualizada = sessao_ha or criada_ha
+        renovada = (f"(now() - interval '{renovada_ha}') at time zone 'UTC'"
+                    if renovada_ha else "null")
+        sessao.cursor.execute(
+            f"insert into auth.sessions (user_id, created_at, updated_at, refreshed_at) "
+            f"values (%s, now() - interval '{criada_ha}', now() - interval '{atualizada}', {renovada})",
+            (titular,),
+        )
     device = None
     if com_dispositivo:
         device = str(uuid.uuid4())
@@ -57,6 +71,7 @@ def _restos(sessao, titular):
     """Quanto dado pessoal do titular sobrou, tabela a tabela."""
     consultas = {
         "auth.users": "select count(*) from auth.users where id = %s",
+        "auth.sessions": "select count(*) from auth.sessions where user_id = %s",
         "profiles": "select count(*) from public.profiles where id = %s",
         "devices": "select count(*) from public.devices where user_id = %s",
         "device_tokens": (
@@ -90,17 +105,29 @@ def dono(como, cenario):
 
 def test_conta_sem_nenhum_sinal_ha_13_meses_sai_por_inteiro(dono):
     with dono() as s:
-        velha = _conta(s, criada_ha="3 years", login_ha="13 months", leitura_ha="14 months")
+        velha = _conta(s, criada_ha="3 years", login_ha="13 months", leitura_ha="14 months",
+                       sessao_ha="13 months")
         recibo = s.executar("select public.expurgar_contas_inativas()")[0][0]
         restos = _restos(s, velha)
 
     assert restos == {
-        "auth.users": 0, "profiles": 0, "devices": 0, "device_tokens": 0, "sleep_data": 0,
+        "auth.users": 0, "auth.sessions": 0, "profiles": 0, "devices": 0, "device_tokens": 0,
+        "sleep_data": 0,
     }, f"sobrou dado pessoal da conta inativa: {restos}"
     assert recibo["contas_expurgadas"] == 1
     assert recibo["leituras_apagadas"] == 1
     assert recibo["dispositivos_apagados"] == 1
     assert recibo["contas_de_acesso_removidas"] == 1
+
+
+def test_sessao_velha_nao_salva_a_conta(dono):
+    """LGPD-09: a sessão conta como uso, mas só se for recente. Login e sessão há 13 meses saem."""
+    with dono() as s:
+        velha = _conta(s, criada_ha="3 years", login_ha="13 months", sessao_ha="13 months",
+                       renovada_ha="13 months", com_dispositivo=False)
+        s.executar("select public.expurgar_contas_inativas()")
+        restos = _restos(s, velha)
+    assert restos["auth.users"] == 0 and restos["auth.sessions"] == 0
 
 
 def test_conta_que_nunca_fez_login_nem_enviou_sai(dono):
@@ -122,6 +149,15 @@ def test_conta_que_nunca_fez_login_nem_enviou_sai(dono):
         ("login recente", dict(criada_ha="3 years", login_ha="11 months", leitura_ha="2 years")),
         ("leitura recente", dict(criada_ha="3 years", login_ha="2 years", leitura_ha="2 days")),
         ("conta nova", dict(criada_ha="1 month")),
+        # LGPD-09 (10/11): quem usa o app com a sessão aberta e sem dispositivo
+        # enviando. O login é velho; a renovação da sessão, não.
+        ("sessão atualizada recente", dict(criada_ha="3 years", login_ha="13 months",
+                                           sessao_ha="1 month", com_dispositivo=False)),
+        # O caso real: a renovação grava só a `refreshed_at`, e a `updated_at`
+        # fica na data da criação (lido no código do Supabase Auth, 10/11).
+        ("sessão só renovada recente", dict(criada_ha="3 years", login_ha="13 months",
+                                            sessao_ha="3 years", renovada_ha="1 month",
+                                            com_dispositivo=False)),
     ],
 )
 def test_um_sinal_dentro_de_12_meses_mantem_a_conta(dono, rotulo, datas):
@@ -143,7 +179,8 @@ def test_o_expurgo_nao_toca_na_conta_ativa_ao_lado_da_inativa(dono):
         restos_ativa = _restos(s, ativa)
     assert restos_velha["sleep_data"] == 0
     assert restos_ativa == {
-        "auth.users": 1, "profiles": 1, "devices": 1, "device_tokens": 1, "sleep_data": 1,
+        "auth.users": 1, "auth.sessions": 0, "profiles": 1, "devices": 1, "device_tokens": 1,
+        "sleep_data": 1,
     }
 
 

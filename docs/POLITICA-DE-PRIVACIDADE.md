@@ -528,9 +528,10 @@ pessoa. Dizê-lo é mais útil que anunciar um prazo que não seria cumprido.
   você o procurar. Você pode apagá-los a qualquer momento, por inteiro, pela
   exclusão da conta (seção 6.4).
 - **Uma conta sem uso há 12 meses é apagada por inteiro, automaticamente.** Sem
-  uso quer dizer: nenhum login, nenhuma leitura recebida de um dispositivo seu e
-  nenhuma conta criada nos últimos 12 meses — basta um desses para a conta
-  continuar. A eliminação é a mesma da seção 6.4: leituras, dispositivos, perfil
+  uso quer dizer: nenhum login, nenhum uso do aplicativo com a sessão já aberta
+  (ele mantém você conectado, e cada uso renova a sessão), nenhuma leitura
+  recebida de um dispositivo seu e nenhuma conta criada nos últimos 12 meses —
+  basta um desses para a conta continuar. A eliminação é a mesma da seção 6.4: leituras, dispositivos, perfil
   e o cadastro de acesso. A verificação roda uma vez por dia.
 - **Não há aviso antes dessa eliminação.** O serviço ainda não envia e-mails
   próprios; quando passar a enviar, o aviso prévio será acrescentado aqui.

@@ -124,6 +124,20 @@ create table if not exists auth.users (
     last_sign_in_at      timestamptz
 );
 
+-- LGPD-09 (10/11): as sessões do Supabase Auth. O expurgo por inatividade lê
+-- a criação, a `updated_at` e a `refreshed_at` (a que a renovação grava): o
+-- `last_sign_in_at` só muda num login, e o app mantém a sessão aberta (medido na produção em 10/11:
+-- em 2 de 6 contas a sessão foi renovada até 1 dia e 16 h depois do último
+-- login). Só as colunas que o projeto usa; a tabela do Supabase tem mais.
+create table if not exists auth.sessions (
+    id          uuid primary key default gen_random_uuid(),
+    user_id     uuid not null references auth.users(id) on delete cascade,
+    created_at  timestamptz default now(),
+    updated_at  timestamptz default now(),
+    -- Como no Supabase: SEM fuso, em UTC. É a que a renovação grava.
+    refreshed_at timestamp
+);
+
 -- ---------------------------------------------------------------------
 -- 3. auth.uid()
 --    Cópia da definição do Supabase. As duas formas de GUC são aceitas
