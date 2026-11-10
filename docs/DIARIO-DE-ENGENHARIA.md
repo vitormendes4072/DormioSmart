@@ -8362,6 +8362,63 @@ A política pode ser reescrita para dizer o que o sistema faz hoje, inclusive a 
 
 **Procedência.** Branch `feature/LGPD-11-politica-do-app`. `docs/POLITICA-DE-PRIVACIDADE.md`, `docs/TERMO-DE-PARTICIPACAO.md`, `web-app/tests/test_politica_cobre_as_colunas.py`.
 
+---
+
+# 2026-11-10 (viii) — SEC-18: a validação da leitura e do pareamento dentro do banco
+
+**O problema, como foi entendido no início.** A auditoria de 10/11 (AUD-02 e AUD-03) mostrou que a validação vivia só no Flask. Quem tem conta chama `registrar_leitura_da_sessao` direto, porque a chave anon e o endereço são públicos, e grava `NaN`, captura em 2099 e época −5 na própria conta. Em `devices`: nome de 100 000 caracteres, 500 dispositivos numa chamada, `token_hash` escolhido pelo cliente, e a revogação desfeita por `update`. Nada cruza contas, mas contamina o dado que o trabalho analisa.
+
+**Hipótese de trabalho.** Restrições `CHECK` com **as mesmas** faixas da `validacao.py`, nem mais largas nem mais estreitas. Mais estreita faria uma leitura aceita pelo backend falhar na gravação, e o dispositivo reenviaria para sempre. O resto:
+- a recusa do futuro nas duas funções de gravação;
+- formato do hash e teto de dispositivos no pareamento;
+- um gatilho que barra a desrevogação.
+
+As consultas de 10/11 na produção (5.1 e 5.3 da auditoria) deram zero leitura fora das regras, no máximo 2 dispositivos por conta e nome de até 12 caracteres.
+
+**O que foi testado, e como.**
+- **A migração `016_validacao_no_banco.sql`:**
+  - sete `CHECK` em `sleep_data` e um em `devices.nome` (até 60 caracteres), todos `NOT VALID`;
+  - um bloco que confere o que já existe contra cada restrição (lendo a própria definição dela no catálogo) e para com a contagem se algo falhar;
+  - depois, `VALIDATE`;
+  - as duas funções de gravação com o corpo da 014 e a recusa de `captured_at` mais de 5 min no futuro;
+  - `parear_dispositivo` com o corpo da 007, o formato SHA-256 do hash e o teto de 10 ativos;
+  - o gatilho `devices_revogacao_definitiva`, que só barra os papéis do cliente; o dono do banco continua podendo, para manutenção.
+- **Os testes:** `test_rls_validacao_no_banco.py`, com 48 casos, contra `postgres:17` em Docker no Windows:
+  - **as bordas tiradas das constantes da `validacao.py`:** cada uma passa no banco, e um passo além é recusado com `23514`;
+  - **a chamada direta da auditoria**, recusada;
+  - **o caminho do token** (`dormio_ingestao`), que recusa também;
+  - **a leitura antiga sem o vetor**, que continua válida;
+  - **o pareamento e a revogação**;
+  - **a noite do emulador**, inteira pelo banco.
+- **A mutação do RLS:** 8 sabotagens novas. Uma delas é uma faixa **mais estreita** que a do Flask (`enmo_max` até 15 g, em vez de 16).
+- **O verificador de migrações:** o 16º estado, e uma verificação nova: a 016 num banco com dado antigo fora das regras tem de parar sem apagar nada; num banco limpo, aplica inteira.
+- **O diagnóstico:** 5 marcas da 016.
+
+**Resultado medido.**
+- **RLS:** **244 passam** (196 + 48).
+- **Mutação:** **44/44**.
+- **Verificador:** **16 estados** e a ordem real. Com dado ruim, a 016 parou, informou `sleep_data_faixa_temperatura: 1 linha(s)`, não aplicou nenhuma restrição e a linha ficou. Sem dado ruim, aplicou.
+- **Backend:** 509 passam (o backend não muda).
+
+**Adaptação.**
+- **O formato do hash e o teto** ficaram na função de pareamento, e não como `CHECK` em `device_tokens`. É a única porta de criação (desde a 007), e os dados de teste gravam hashes curtos direto na tabela.
+- **Coerência de `total` e "sensor mudo"** ficaram fora: são regras sobre o payload do dispositivo, não sobre o domínio da coluna.
+
+**O que deu errado no caminho.**
+- **Um teste de segurança passou a testar o mecanismo errado.** A sabotagem antiga `insert_liberado` (liberar o insert direto em `sleep_data`) passou a derrubar só 1 teste em vez de 2. Três testes de negação inseriam leituras com estados inventados ("Direto", "Injetado", "Digitado"), e a regra de estado da 016 passou a recusá-las **antes** da policy: o teste continuava verde, recusado pelo motivo errado. É a ocorrência clássica do §1 das lições. Corrigidos para usar um estado válido **e conferir o código do erro** (`42501`, falta de privilégio, e não `23514`); a sabotagem voltou a 2.
+- **Erros meus no teste novo:**
+  - `NaN` mandado como número quebrava o JSON (a auditoria o mandou como texto);
+  - "1 + tolerância" na gravidade já seria recusado pelo próprio Flask, que limita cada componente a [−1, 1].
+- **O verificador:** consultava depois da falha esperada sem `rollback`.
+- **Um script meu de inserção das sabotagens** tinha aspas conflitantes, e foi refeito sem alterar o arquivo.
+
+**Risco em aberto.**
+- **A 016 não está na produção** (`SEC-21`). Até lá, a §9 da política continua declarando a lacuna, e muda depois da aplicação.
+- **O volume por chamada** continua sem limite, de propósito, e só afeta a própria conta.
+- **As restrições copiam as faixas do Flask.** Mudar uma faixa exige mudar os dois lados. O teste das bordas acusa a divergência, mas não a impede.
+
+**Procedência.** Branch `bugfix/SEC-18-validacao-no-banco`. `web-app/migrations/016_validacao_no_banco.sql`, `DIAGNOSTICO-migracoes-aplicadas.sql`, `README.md`; `web-app/tests/rls/test_rls_validacao_no_banco.py`, `conftest.py`, `test_rls_ingestao.py`, `test_rls_isolamento.py`, `test_rls_credencial.py`, `verificar_por_mutacao.py`; `web-app/tests/migracoes/verificar_migracoes.py`.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

@@ -52,7 +52,7 @@ WEB = AQUI.parent.parent
 MIG = WEB / "migrations"
 RLS = WEB / "tests" / "rls"
 DIAG = MIG / "DIAGNOSTICO-migracoes-aplicadas.sql"
-ORDEM = ["001", "003", "004", "005", "006", "007", "008", "009", "010", "011", "012", "013", "014", "015"]
+ORDEM = ["001", "003", "004", "005", "006", "007", "008", "009", "010", "011", "012", "013", "014", "015", "016"]
 ARQ = {p.name[:3]: p for p in MIG.glob("0[0-9][0-9]_*.sql")}
 
 ANA = "00000000-0000-0000-0000-00000000000a"
@@ -183,7 +183,8 @@ def verificar_diagnostico(bancos) -> list[str]:
     # A 013 (LGPD-02, 05/11) entra ANTES do release que publica a seção 7 nova.
     # A 014 (DATA-10, 09/11) conserta o tipo devolvido pelas funções de gravação.
     # A 015 (DATA-12, 09/11) dá à chave de sleep_data.user_id a cascata da 001.
-    ordem_real = ["001", "003", "004", "005", "006", "008", "009", "007", "010", "011", "012", "013", "014", "015"]
+    # A 016 (SEC-18, 10/11) leva a validacao da leitura e do pareamento para dentro do banco.
+    ordem_real = ["001", "003", "004", "005", "006", "008", "009", "007", "010", "011", "012", "013", "014", "015", "016"]
     c = montar(bancos, "diagreal", ordem_real)
     cur = c.cursor()
     res = diagnostico(cur)
@@ -283,6 +284,44 @@ def verificar_ordem(bancos) -> list[str]:
     return erros
 
 
+def verificar_016_com_dado_ruim(bancos) -> list[str]:
+    """A 016 PARA se já houver dado fora das regras novas, e não apaga nada (SEC-18).
+
+    Controle positivo da trava: o mesmo banco sem a linha ruim aplica a 016 inteira.
+    """
+    erros = []
+    antes = [m for m in ORDEM if m != "016"]
+    for com_dado_ruim in (True, False):
+        c = montar(bancos, "sec18_" + ("ruim" if com_dado_ruim else "limpo"), antes)
+        cur = c.cursor()
+        if com_dado_ruim:
+            cur.execute("insert into auth.users (id, email) values (%s, 'ana@exemplo.com')", (ANA,))
+            cur.execute("insert into public.sleep_data (user_id, movimento_total, temp, status) "
+                        "values (%s, 9.8, -9999, 'Dormindo')", (ANA,))
+        try:
+            rodar(cur, ARQ["016"])
+            aplicou, motivo = True, ""
+        except psycopg2.Error as e:
+            aplicou, motivo = False, str(e).splitlines()[0]
+            # A 016 abre a propria transacao (`begin`); o erro a deixa abortada.
+            cur.execute("rollback")
+        cur.execute("select count(*) from pg_constraint where conname = 'sleep_data_estado_valido'")
+        tem_restricao = cur.fetchone()[0] == 1
+        cur.execute("select count(*) from public.sleep_data where status = 'Dormindo'")
+        sobrou = cur.fetchone()[0]
+        print(f"  016 {'com' if com_dado_ruim else 'sem'} dado ruim: aplicou={aplicou}, "
+              f"restricao={tem_restricao}, linha ruim preservada={sobrou}"
+              + (f" | {motivo[:110]}" if motivo else ""))
+        if com_dado_ruim and (aplicou or tem_restricao or sobrou != 1
+                              or "sleep_data_estado_valido" not in motivo
+                              or "sleep_data_faixa_temperatura" not in motivo):
+            erros.append("a 016 com dado ruim devia parar, contar as duas restricoes e nao apagar nada")
+        if not com_dado_ruim and not (aplicou and tem_restricao):
+            erros.append(f"a 016 num banco limpo devia aplicar inteira: {motivo}")
+        c.close()
+    return erros
+
+
 def main() -> int:
     for fluxo in (sys.stdout, sys.stderr):
         if hasattr(fluxo, "reconfigure"):
@@ -293,6 +332,8 @@ def main() -> int:
         erros = verificar_diagnostico(bancos)
         print("(2) as operações do código de main, antes e depois de cada grupo")
         erros += verificar_ordem(bancos)
+        print("(3) a 016 com dado antigo fora das regras novas")
+        erros += verificar_016_com_dado_ruim(bancos)
     finally:
         bancos.limpar()
     if erros:
