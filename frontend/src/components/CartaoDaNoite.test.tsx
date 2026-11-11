@@ -88,6 +88,25 @@ describe("CartaoDaNoite (APP-02)", () => {
     expect(screen.getByText("31.8 °C")).toBeTruthy();
   });
 
+  it("mostra a calibracao do sensor que a noite usou (CAL-03)", async () => {
+    const agora = INICIO + 3000 + 4200 + 10 * 30_000;
+    const p = plugin(
+      estado({ ativa: true, rodando: true, inicioUtcMs: INICIO, epocasGravadas: 9, taxaHz: 49.98,
+        calibrada: true, calibracao: "Calibrado: erro de 15,5 mg para 0,6 mg, com 120 épocas paradas" }),
+    );
+    render(<CartaoDaNoite plugin={p} agora={() => agora} />);
+    expect((await screen.findByTestId("calibracao")).textContent).toBe(
+      "Calibrado: erro de 15,5 mg para 0,6 mg, com 120 épocas paradas",
+    );
+  });
+
+  it("o app antigo, sem calibracao, nao mostra a linha (CAL-03)", async () => {
+    const p = plugin(estado({ ativa: true, rodando: true, inicioUtcMs: INICIO, epocasGravadas: 9, taxaHz: 49.98 }));
+    render(<CartaoDaNoite plugin={p} agora={() => INICIO + 400_000} />);
+    await screen.findByText("50.0 Hz");
+    expect(screen.queryByTestId("calibracao")).toBeNull();
+  });
+
   it("taxa recusada sem nenhuma epoca vira alerta, e nao uma noite vazia silenciosa", async () => {
     const p = plugin(estado({ ativa: true, rodando: true, inicioUtcMs: INICIO, recusadasPorTaxa: 4 }));
     render(<CartaoDaNoite plugin={p} agora={() => INICIO + 200_000} />);

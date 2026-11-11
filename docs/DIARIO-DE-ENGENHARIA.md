@@ -8878,6 +8878,54 @@ Um celular deitado só mexe em z, e é z que pesa na norma nessa posição. O GG
 
 **Procedência.** Execuções desta entrada; erros sintéticos da bancada da etapa 0 (diário, 10/11 iv).
 
+# 2026-11-11 (viii) — CAL-03, etapa 2: o app junta os pontos e calibra sozinho
+
+**O problema, como foi entendido no início.** A etapa 1 deixou o núcleo capaz de calibrar, mas ninguém juntava os pontos nem estimava: toda época saía com `cal: 0`. A etapa 2 fecha o ciclo no celular. As épocas paradas de cada noite viram pontos guardados entre noites, e ao iniciar a noite seguinte o app estima e aplica.
+
+**Hipótese de trabalho.**
+- O núcleo entrega o ponto parado de cada época já desfeito para o bruto. Assim, pontos de noites com calibrações diferentes ficam na mesma escala.
+- O app guarda os pontos num arquivo próprio, com os 2 000 mais recentes.
+- Uma calibração por noite, estimada no início, porque trocar no meio mudaria a medida dentro da noite.
+- A noite registra qual calibração usou.
+
+**O que foi testado, e como.**
+- **Núcleo** (`ColetorCelular::ponto_parado`): a época com movimento dinâmico abaixo de 10 mg vira {x, y, z, temp} no bruto; a época em movimento, não. Duas sabotagens novas no coletor: o ponto calibrado em vez de bruto, e a época em movimento virando ponto.
+- **Ponte JNI:** `pontoParado`, `definirCalibracao`, `estimar` e `pontosMinimos`. Só conversão de tipos.
+- **Java:**
+  - `Calibracao`: o resultado da estimativa, gravado ao lado da noite em `noite-<ts>.jsonl.calibracao`; arquivo estragado ou escala absurda voltam à identidade.
+  - `PontosDeCalibracao`: `calibracao-pontos.csv`, aparado aos 2 000 mais recentes, com linha ruim pulada e NaN não guardado.
+  - O serviço da noite estima ao iniciar, aplica no núcleo (também na retomada) e guarda cada ponto parado.
+  - O plugin devolve `calibrada`, `calibracao` (o resumo) e `pontosDeCalibracao`.
+- **Testes:** 12 de JVM (`CalibracaoTest`) e 3 instrumentados no emulador Pixel 6 (`CalibracaoNativaTest`): o ciclo inteiro pelo JNI, a noite sem calibração e poucos pontos.
+- **Tela:** o cartão da noite mostra a linha "Calibração do sensor" com o resumo. Dois testes de vitest; sem a linha, o teste cai.
+- **Política §2.3:** os pontos de calibração guardados no celular.
+
+**Resultado medido** (Windows 11; núcleo em `gcc:13`; app no emulador Pixel 6):
+- **No emulador, pelo JNI:** com pontos de tela para cima e para baixo e o erro de z do Moto E7, a estimativa aceita, com z completo e erro abaixo de 2 mg. A noite calibrada sai com `cal: 1`, ENMO parado abaixo de 1 mg e `gn` = 1,000 ± 0,002 g, e o ponto parado volta no bruto (−1,0193 g).
+- **Testes do app:**
+  - JVM 32 (+12);
+  - emulador 7 passam e 3 pulados (os roteiros), com os 3 novos;
+  - o APK de depuração compila pelo NDK com o `calibracao.cpp`, o que fecha o "não verificado" da etapa 1.
+- **Núcleo e mutações:** coletor 320 verificações, mutação do coletor 17/17.
+- **Outras suítes:** frontend 563; teste da política 5/5.
+
+**Adaptação.**
+- **Resumo da tela:** passou a ser escrito em português com acento e vírgula decimal (`Locale.forLanguageTag("pt-BR")`), porque é ele que aparece na tela.
+- **Testes instrumentados:** rodados só no emulador (`ANDROID_SERIAL=emulator-5554`), porque o celular do autor estava ligado pelo USB e o `connectedAndroidTest` desinstala o app no fim, o que apagaria as noites guardadas.
+
+**O que deu errado no caminho.**
+- **Ponto parado sumindo:** o ponto se perdia porque eu zerava a marca no começo de **toda** chamada de `proximo`, inclusive a última, que só responde "nada pronto". Passou a zerar só quando uma época fecha. O teste do coletor acusou (3 falhas) antes da correção.
+- **Gradle sem conexão local:** "Unable to establish loopback connection", o mesmo do diário de 10/11. Resolvido com `-Djdk.net.unixdomain.tmpdir`.
+- **Build instrumentado do projeto inteiro:** falhou por classes Kotlin duplicadas nas bibliotecas do Capacitor. É anterior a esta mudança, e o caminho certo é `:app:connectedDebugAndroidTest`, como o CLAUDE.md diz.
+- **`raw.test.ts`:** falhou uma vez na suíte inteira logo depois do Gradle e passou sozinho e na suíte seguinte (563/563). É um teste que sobe um servidor, sensível a carga.
+
+**Risco em aberto.**
+- **Produção (`CAL-03`):** o app novo manda `gn` e `cal`, e a produção (backend 2.8.0, sem a 018) os ignora sem erro. A ordem é a 018, depois o release do backend 2.9.0, e só então o APK novo.
+- **Percurso real não feito:** uma noite de verdade em que os pontos se acumulam e a noite seguinte sai calibrada; o teste instrumentado cobre o ciclo com pontos injetados. É a etapa 3.
+- **Limiares provisórios:** a faixa de temperatura (2 °C) e o critério de parado (10 mg).
+
+**Procedência.** Execuções desta entrada; relatórios do Gradle em `frontend/android/app/build/` (não versionados).
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

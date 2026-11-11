@@ -489,6 +489,33 @@ static void testar_calibracao() {
             "calibracao recusada mexeu no ENMO: %.6f contra %.6f", c.ultimas_features().enmo_media,
             enmo_sem);
   VERIFICAR(strstr(ultimo, "\"cal\":0}") != 0, "recusada: o payload diz cal 0: %s", ultimo);
+
+  // Etapa 2: a epoca parada e um ponto de calibracao, e o ponto vem no BRUTO
+  // mesmo quando a noite saiu calibrada -- e o que a proxima estimativa usa.
+  double ponto[4];
+  cal.aceita = true;
+  c.iniciar(origem, parede_de_teste(origem));
+  c.definir_calibracao(cal);
+  p = 0;
+  alimentar_parado(&c, origem, 65.0, ultimo, &p);
+  VERIFICAR(c.ponto_parado(ponto), "a epoca parada calibrada nao deu ponto");
+  const double bruto_z = ESCALA_Z * -1.0 + DESVIO_Z_G;
+  VERIFICAR(fabs(ponto[2] - bruto_z) < 0.0005 && fabs(ponto[0]) < 1e-3 && fabs(ponto[1]) < 1e-3,
+            "o ponto devia ser o bruto (0, 0, %.4f): (%.5f, %.5f, %.5f)", bruto_z, ponto[0],
+            ponto[1], ponto[2]);
+  VERIFICAR(ponto[3] == 25.0, "o ponto leva a temperatura da noite: %.2f", ponto[3]);
+  // Uma epoca em movimento nao e ponto: o sinal do `testar_taxa_fora_da_faixa`
+  // balanca 0,05 rad a 0,3 Hz, bem acima dos 10 mg de movimento dinamico.
+  {
+    static ColetorCelular m;
+    m.iniciar(origem, parede_de_teste(origem));
+    uint32_t pm = 0, rm = 0;
+    alimentar(&m, origem, -INICIO_SINTETICO_S, 65.0, 50.0, &pm, &rm);
+    VERIFICAR(pm >= 2 && m.ultima_teve_features(), "em movimento: %u payloads", pm);
+    VERIFICAR(m.ultimas_features().mag_din_media >= LIMIAR_PARADO_G,
+              "o sinal de teste devia ser movimento: %.4f g", m.ultimas_features().mag_din_media);
+    VERIFICAR(!m.ponto_parado(ponto), "epoca em movimento virou ponto de calibracao");
+  }
   printf("  calibracao: ENMO parado %.2f mg -> %.3f mg, gn %.4f -> %.5f g\n", 1000.0 * enmo_sem,
          1000.0 * enmo_com, gn_sem, gn_com);
 }

@@ -34,7 +34,10 @@ ColetorCelular::ColetorCelular()
       sem_features_(0),
       sem_payload_(0),
       ultima_taxa_hz_(0.0),
-      ultima_teve_features_(false) {}
+      ultima_teve_features_(false),
+      tem_ponto_(false) {
+  for (int k = 0; k < 4; k++) ponto_[k] = 0.0;
+}
 
 void ColetorCelular::iniciar(uint64_t origem_us, const ResolucaoDeParede &parede) {
   cadeia_.iniciar(origem_us);
@@ -104,6 +107,12 @@ void ColetorCelular::amostrar(uint64_t t_us, float ax_ms2, float ay_ms2, float a
   recebidas_++;
 }
 
+bool ColetorCelular::ponto_parado(double saida[4]) const {
+  if (!tem_ponto_ || saida == 0) return false;
+  for (int k = 0; k < 4; k++) saida[k] = ponto_[k];
+  return true;
+}
+
 ResultadoDoColetor ColetorCelular::proximo(char *destino, uint32_t tamanho, uint32_t *escritos) {
   if (escritos) *escritos = 0;
   if (!iniciado_) return COLETOR_NADA;
@@ -111,6 +120,9 @@ ResultadoDoColetor ColetorCelular::proximo(char *destino, uint32_t tamanho, uint
   EpocaReamostrada info;
   const ResultadoDaEpoca r = cadeia_.proxima_epoca(&info, grade_x_, grade_y_, grade_z_);
   if (r == EPOCA_AINDA_NAO) return COLETOR_NADA;
+  // Uma epoca fechou: o ponto da anterior deixa de valer (o `ponto_parado`
+  // e o da ULTIMA epoca pronta, e sobrevive as chamadas que nao fecham nada).
+  tem_ponto_ = false;
   if (r != EPOCA_PRONTA) {
     recusadas_++;
     if (r == EPOCA_RECUSADA_TAXA) recusadas_taxa_++;
@@ -135,6 +147,16 @@ ResultadoDoColetor ColetorCelular::proximo(char *destino, uint32_t tamanho, uint
     // ela, e manda os dois (CAL-03).
     f_enviada.gn = f.gn;
     f_enviada.calibrada = calibracao_.aceita ? 1 : 0;
+    // CAL-03, etapa 2: a epoca parada vira ponto de calibracao, no bruto.
+    if (f.mag_din_media < LIMIAR_PARADO_G && f.gn > 0.0) {
+      const double temp = static_cast<double>(temperatura_c_);
+      const double calibrado[3] = {f.gx * f.gn, f.gy * f.gn, f.gz * f.gn};
+      double bruto[3];
+      desfazer_calibracao(calibracao_, temp, calibrado, bruto);
+      for (int k = 0; k < 3; k++) ponto_[k] = bruto[k];
+      ponto_[3] = temp;
+      tem_ponto_ = true;
+    }
   }
 
   const Epoca e = epoca_da_grade(info.indice, grade_x_, grade_y_, grade_z_, AMOSTRAS_NA_GRADE,

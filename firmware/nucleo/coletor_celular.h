@@ -106,6 +106,15 @@ class ColetorCelular {
   void definir_calibracao(const Calibracao &c) { calibracao_ = c; }
   const Calibracao &calibracao() const { return calibracao_; }
 
+  // O ponto de calibracao da ultima epoca pronta (CAL-03, etapa 2): se ela foi
+  // PARADA (`mag_din_media` abaixo de `LIMIAR_PARADO_G`), `saida` recebe o
+  // vetor medio da gravidade em g, DESFEITO para o bruto pela calibracao desta
+  // noite, e a temperatura: {x, y, z, temp_c}. Bruto porque a proxima
+  // estimativa parte do sinal original, e esta noite pode ja ter saido
+  // calibrada. Devolve false se a epoca nao foi parada ou nao teve features.
+  // Vale ate a proxima chamada de `proximo`.
+  bool ponto_parado(double saida[4]) const;
+
   // Tenta fechar uma epoca. Chamar em laco ate devolver COLETOR_NADA. Com
   // COLETOR_PAYLOAD, `destino` (TAMANHO_DO_PAYLOAD bytes) recebe o JSON,
   // terminado em zero, e `escritos` o tamanho.
@@ -159,6 +168,8 @@ class ColetorCelular {
   double ultima_taxa_hz_;
   FeaturesDeEpoca ultimas_features_;
   bool ultima_teve_features_;
+  double ponto_[4];
+  bool tem_ponto_;
 };
 
 }  // namespace dormio

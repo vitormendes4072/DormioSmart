@@ -63,6 +63,25 @@ public final class NucleoNativo implements AutoCloseable {
         return contadores(ponteiro);
     }
 
+    /** A calibracao desta noite (CAL-03). Chamar antes das amostras. */
+    public void definirCalibracao(Calibracao c) {
+        definirCalibracao(ponteiro, c.parametros());
+    }
+
+    /** {x, y, z, temp} da ultima epoca, se ela foi parada; senao {@code null}. */
+    public double[] pontoParado() {
+        return pontoParado(ponteiro);
+    }
+
+    /** Estima a calibracao a partir dos pontos guardados ({@link PontosDeCalibracao}). */
+    public static Calibracao estimar(java.util.List<double[]> pontos) {
+        final double[][] v = PontosDeCalibracao.paraEstimar(pontos);
+        return Calibracao.doResultado(estimar(v[0], v[1], pontos.size()));
+    }
+
+    /** Quantas epocas paradas a estimativa exige ({@code PONTOS_MINIMOS_CALIBRACAO}). */
+    public static native int pontosMinimos();
+
     @Override
     public void close() {
         if (ponteiro != 0) {
@@ -86,4 +105,10 @@ public final class NucleoNativo implements AutoCloseable {
     private static native String proximoPayload(long p);
 
     private static native long[] contadores(long p);
+
+    private static native void definirCalibracao(long p, double[] parametros);
+
+    private static native double[] pontoParado(long p);
+
+    private static native double[] estimar(double[] xyz, double[] temps, int n);
 }
