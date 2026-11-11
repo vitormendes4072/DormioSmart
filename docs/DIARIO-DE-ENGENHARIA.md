@@ -8592,6 +8592,190 @@ As consultas de 10/11 na produção (5.1 e 5.3 da auditoria) deram zero leitura 
 
 **Procedência.** `web-app/migrations/017_consentimento_destacado.sql`, `web-app/tests/rls/test_rls_consentimento.py`, `web-app/tests/test_consentimento.py`, `frontend/src/components/TelaDeConsentimento.test.tsx`; execuções de 10/11 nesta máquina.
 
+---
+
+# 2026-11-10 (xiii) — REL-01 e LGPD-13: release e 017 na produção
+
+**O problema, como foi entendido no início.** A migração 017 precisava ser aplicada imediatamente antes do release que publica o consentimento destacado, para que banco, backend e frontend chegassem juntos.
+
+**Hipótese de trabalho.** Após aplicar a 017 e publicar o release, o modelo estará disponível, as rotas recusarão acesso anônimo e a tela de consentimento estará presente no frontend.
+
+**O que foi testado, e como.** O autor aplicou a 017 no SQL Editor e executou uma consulta curta; o PR #121 foi mesclado. Nesta máquina Windows, o Codex consultou o estado do commit no GitHub e fez requisições públicas ao site e ao bundle publicado.
+
+**Resultado medido.** Na consulta do autor, colunas, função, gatilho e as travas de gravação e pareamento deram `true`; versão `2026-11-10`. PR #121 mesclado em `ddd6041`; status Vercel do commit `success`. `/health` respondeu `200`, banco `ok`, contrato `2.8.0`, modelo `ml-inf-cabeca-v2`. Sem credencial, `POST /api/me/consentimento`, `GET /api/inferencia` e `POST /api/data/lote` responderam `401`. O bundle `index-B9XMms3k.js` contém o texto da tela e a versão de consentimento. Uma captura enviada pelo autor mostra a tela em Coletar, com a caixa marcada e o botão Concordo habilitado, numa sessão autenticada; o autor confirmou que o botão fica desabilitado ao desmarcar a caixa. O autor relatou que, após concordar, a gravação foi liberada e iniciou a coleta; capturas mostram o botão de início e a coleta ativa em 1 s, com 0 registros. Os checks da PR e a auditoria de dependências do commit de merge passaram.
+
+**Adaptação.** A conferência foi retomada pelo Codex a partir do registro da sessão anterior; os resultados públicos foram medidos de novo, distinguindo-os da consulta executada pelo autor.
+
+**O que deu errado no caminho.** O terminal inicialmente não conectou ao GitHub no sandbox; a consulta com acesso autorizado funcionou. Uma primeira busca no bundle tratou suas linhas como coleção e deu falsos negativos; refeita sobre o texto completo, encontrou a tela e a versão.
+
+**Risco em aberto.** As capturas e o relato confirmam a tela e o início da coleta, mas não comprovam a persistência do consentimento após recarregar nem a gravação de uma leitura (a captura mostra 0 registros) (`LGPD-13` e `REL-01` permanecem abertos). Falta medir o tempo do lote nos caminhos de sessão e token (`API-06`). A execução agendada do expurgo também não foi conferida nesta etapa.
+
+**Procedência.** Resultado da consulta enviado pelo autor em 10/11 na sessão anterior capturas da tela e do início da coleta e relatos enviados pelo autor em 10/11; PR #121 e status do commit `ddd6041`; requisições públicas executadas nesta máquina em 10/11.
+
+---
+
+# 2026-11-10 (xiv) — atualização do app no Moto E7
+
+**O problema, como foi entendido no início.** O celular conectado tinha uma versão anterior do aplicativo, sem as últimas mudanças da release #121.
+
+**Hipótese de trabalho.** Uma compilação de depuração da árvore `0a86de1`, assinada com a mesma chave da instalação anterior, pode atualizar o aplicativo sem desinstalá-lo.
+
+**O que foi testado, e como.** Nesta máquina Windows, `npm run build:app` e `gradlew assembleDebug`; no Moto E7 com Android 10, consulta do pacote e dos serviços, comparação dos certificados dos APKs e instalação com `adb install -r`. O APK instalado foi lido de volta e comparado por SHA-256 ao compilado.
+
+**Resultado medido.** Ambos os builds passaram. Não foi encontrado serviço de coleta ativo na consulta. Certificados iguais; instalação `Success`; versão exibida pelo Android passou de `1.0` para `1.0.0`, com `versionCode` 1. O hash do APK instalado coincide com o compilado. A instalação original foi mantida, sem desinstalação; os dados individuais não foram inspecionados. É uma compilação de depuração, destinada ao aparelho de desenvolvimento.
+
+**Adaptação.** Usada a chave de depuração existente para compatibilidade com o aplicativo já instalado; não foi criada nem distribuída uma chave de release.
+
+**O que deu errado no caminho.** O ADB não estava no PATH e o daemon não iniciou no sandbox; funcionou com o acesso autorizado. `npm ci --offline` falhou por falta de pacote no cache e foi repetido com acesso à rede. O Gradle inicialmente falhou ao criar conexão local; funcionou com a configuração de diretório temporário já usada no projeto.
+
+**Risco em aberto.** A abertura do app e o fluxo de consentimento e coleta no Android atualizado ainda não foram exercitados. A instalação preserva os dados do aplicativo, mas não os verifica individualmente. O APK é depurável e não é o release para distribuição (`APP-12`).
+
+**Procedência.** Compilação e comandos ADB executados nesta máquina em 10/11; árvore `0a86de1` e release #121.
+
+---
+
+# 2026-11-10 (xv) — análise do frontend e da experiência de uso
+
+**O problema, como foi entendido no início.** O autor pediu uma análise e documentação das telas, da interface e da experiência de uso do frontend e do app Android.
+
+**Hipótese de trabalho.** O código, as evidências da sessão e o backlog permitem mapear os fluxos e apontar hipóteses verificáveis, sem substituir observação com usuários ou auditoria de acessibilidade.
+
+**O que foi testado, e como.** Leitura das rotas, páginas, componentes, tokens, navegação e backlog; consulta às capturas e relatos desta sessão. Suíte `npm test -- --reporter=dot` executada no Windows.
+
+**Resultado medido.** Documentos `ANALISE-FRONTEND-UX-UI.md` e `CATALOGO-TELAS-FRONTEND.md` com inventário detalhado por tela, composição visual, estados, fluxos, sistema visual, achados priorizados, plano de validação e limites. A suíte passou com 43 arquivos e 561 testes. O diálogo de consentimento não apresenta gestão explícita de foco no componente; seu efeito real fica para teste com teclado e leitor de tela. A tabela do painel descreve ordem de chegada, mas o código a ordena pelo instante da medição quando disponível; falta reproduzir a divergência.
+
+**Adaptação.** O documento diferencia comportamento lido em código, resultado observado pelo autor e hipóteses de design; não cria novos itens de backlog nem declara conformidade.
+
+**O que deu errado no caminho.** A primeira execução da suíte não iniciou os testes: `EPERM` ao renomear arquivos temporários no sandbox. A repetição com acesso autorizado passou. Uma leitura tentou o caminho incorreto `src/index.css`; o arquivo correto é `src/styles/index.css`.
+
+**Risco em aberto.** Faltam inspeção visual abrangente, estudo com usuários, auditoria de acessibilidade, comprovação de persistência e leitura na coleta web e teste do fluxo nativo no aparelho. O documento é análise na base `0a86de1`, não comprovação desses resultados.
+
+**Procedência.** Código e backlog da worktree, capturas e relatos do autor e testes executados nesta máquina em 10/11.
+
+---
+
+# 2026-11-10 (xvi) — capturas para a documentação do frontend
+
+**O problema, como foi entendido no início.** O autor pediu que a documentação de cada tela tivesse capturas, além dos esquemas textuais.
+
+**Hipótese de trabalho.** As rotas públicas e o modo de demonstração local permitem documentar a maioria das telas sem dados de contas; a tela nativa exige o aparelho real.
+
+**O que foi testado, e como.** Frontend local em modo de desenvolvimento, navegador automatizado em 1440 × 900 e 390 × 844 CSS px; captura do Moto E7 aberto pelo autor. Conferência visual de amostras e verificação da existência das imagens referenciadas.
+
+**Resultado medido.** Dezoito referências de imagens no catálogo, todas encontradas: telas públicas, demonstração, consentimento e captura nativa. O autor autorizou a captura nativa com dados reais para o documento local. O painel usa dados simulados identificados na imagem; a configuração sem backend local apresenta erro, sem implicar estado da produção.
+
+**Adaptação.** As imagens são legendadas por ambiente, recorte e estado; a captura nativa contém dados reais e não está autorizada para publicação. A recuperação de senha mostra o estado de link inválido; formulário de recuperação válido e sucesso não foram capturados.
+
+**O que deu errado no caminho.** A primeira captura da política ocorreu durante o carregamento e foi refeita após o texto ficar visível. A captura integral inicial da landing deixou blocos ainda ocultos pela animação de entrada; foi refeita com preferência de movimento reduzido.
+
+**Risco em aberto.** As imagens não demonstram todos os estados, nem substituem teste com usuário. A imagem nativa exige cuidado antes de qualquer publicação. As imagens e os documentos ainda estão locais, sem commit.
+
+**Procedência.** Capturas geradas nesta máquina e no Moto E7 em 10/11; autorização do autor nesta conversa; código `0a86de1`.
+
+---
+
+# 2026-11-11 (i) — revisão da documentação visual
+
+**O problema, como foi entendido no início.** O catálogo tinha uma frase contraditória sobre dados reais e cobertura visual incompleta; o autor pediu para prosseguir com as melhorias propostas.
+
+**Hipótese de trabalho.** Uma matriz de evidências, capturas adicionais em demonstração e um PDF local com as duas análises tornam os limites e as telas mais fáceis de consultar.
+
+**O que foi testado, e como.** Nesta máquina Windows, capturas adicionais no frontend local em demonstração; verificação dos caminhos das imagens; geração do PDF e renderização de páginas para inspeção visual.
+
+**Resultado medido.** Contradição corrigida; matriz de cobertura e cinco capturas adicionadas (tema escuro, edição de perfil, confirmação de exclusão e consentimento marcado). O PDF reúne análise e catálogo e identifica a imagem nativa como dado real autorizado somente para uso local. Os caminhos das 23 imagens existem; as páginas amostradas e o sumário foram renderizados e inspecionados.
+
+**Adaptação.** A exclusão e o consentimento foram apenas abertos ou marcados na demonstração, sem concluir ações. Dados reais adicionais não foram gerados.
+
+**O que deu errado no caminho.** A primeira conferência textual do sumário exibiu caracteres substituídos no terminal; a inspeção da página renderizada confirmou o texto visualmente. O backend local não foi iniciado, e os erros da tela de demonstração estão identificados como tais.
+
+**Risco em aberto.** Faltam estados registrados na matriz, em particular o percurso nativo completo e a recuperação de senha válida. O PDF e a captura com dados reais são para uso local e não foram autorizados para publicação. As alterações permanecem sem commit.
+
+**Procedência.** Capturas locais e autorização do autor na conversa, código `0a86de1`, catálogo e PDF produzidos nesta máquina em 11/11.
+
+---
+
+# 2026-11-11 (ii) — estados adicionais da documentação visual
+
+**O problema, como foi entendido no início.** Restavam estados de tela sem evidência visual e o autor pediu que fossem documentados.
+
+**Hipótese de trabalho.** Componentes isolados e identificados como simulação permitem mostrar vazio, erro e carregamento sem depender de conta ou servidor reais.
+
+**O que foi testado, e como.** Nesta máquina Windows, montados temporariamente os componentes reais do painel com mensagem de erro de exemplo; capturados também política e detalhes da coleta em janela móvel e validação local da recuperação sem e-mail. Regenerado o PDF e conferidos caminhos e número de imagens.
+
+**Resultado medido.** Seis imagens adicionadas: vazio, erro e carregamento simulados; política e detalhes em celular; mensagem por e-mail ausente. A montagem dos estados não inclui a navegação completa e suas imagens são identificadas como simulação. Nenhuma recuperação de senha foi solicitada nesta etapa.
+
+**Adaptação.** Os estados isolados usam faixa visível de simulação; as pendências do aparelho e do link de recuperação permanecem distintas do material simulado.
+
+**O que deu errado no caminho.** Nada nesta etapa.
+
+**Risco em aberto.** Aguardam-se a gravação de teste no Android e a abertura do link válido pelo autor. Não há evidência ainda dos estados reais de interrupção, encerramento, envio ou sucesso da recuperação. A captura nativa anterior e o PDF continuam apenas para uso local, como autorizado.
+
+**Procedência.** Capturas e execução local nesta máquina em 11/11; catálogo e PDF locais.
+
+---
+
+# 2026-11-11 (iii) — solicitação de recuperação documentada
+
+**O problema, como foi entendido no início.** O autor enviou a tela após solicitar recuperação e pediu que seu e-mail fosse ocultado.
+
+**Hipótese de trabalho.** Uma versão editada pode ilustrar a mensagem condicional sem reproduzir as credenciais, desde que não seja apresentada como prova visual pixel a pixel.
+
+**O que foi testado, e como.** A imagem fornecida foi editada para remover o conteúdo de e-mail e senha; o resultado foi inspecionado visualmente e incluído no catálogo e no PDF locais. Os caminhos e imagens do PDF foram conferidos nesta máquina.
+
+**Resultado medido.** A imagem resultante não mostra o e-mail nem a senha. A ferramenta alterou características visuais além dos campos, por isso o catálogo a identifica como ilustração editada por IA, não como captura fiel. A mensagem exibida não comprova entrega do e-mail.
+
+**Adaptação.** A ilustração foi acrescentada ao estado de solicitação, sem substituir a captura do link inválido ou afirmar que o link válido foi aberto.
+
+**O que deu errado no caminho.** A edição generativa não preservou a imagem pixel a pixel; a limitação foi explicitada na legenda.
+
+**Risco em aberto.** A tela aberta a partir do link válido e o fluxo nativo em andamento continuam sem captura. O PDF com a imagem real anterior continua restrito a uso local.
+
+**Procedência.** Imagem fornecida e autorização de ocultação pelo autor nesta conversa; edição e conferência nesta máquina em 11/11.
+
+---
+
+# 2026-11-11 (iv) — tela de nova senha documentada
+
+**O problema, como foi entendido no início.** Faltava registrar a tela aberta pelo link de recuperação da conta.
+
+**Hipótese de trabalho.** A captura do formulário vazio demonstra a apresentação dessa etapa sem exigir que o autor altere a senha.
+
+**O que foi testado, e como.** O autor enviou capturas do recebimento do e-mail e do formulário aberto após seguir o link. O formulário foi incorporado ao catálogo e ao PDF locais; arquivos e imagens foram conferidos nesta máquina.
+
+**Resultado medido.** A captura mostra o formulário de nova senha, com campo vazio e sem URL visível. O e-mail recebido demonstra a entrega à conta utilizada nessa tentativa; não generaliza a outras contas. Nenhuma senha foi alterada nesta etapa.
+
+**Adaptação.** O conteúdo da caixa de entrada não foi incorporado; a documentação usa somente a captura da aplicação, sem credenciais.
+
+**O que deu errado no caminho.** Nada nesta etapa.
+
+**Risco em aberto.** A captura não comprova o salvamento de uma nova senha. O fluxo Android em andamento continua sem captura. A imagem nativa anterior e o PDF seguem restritos a uso local.
+
+**Procedência.** Capturas fornecidas pelo autor em 11/11; catálogo e PDF atualizados nesta máquina.
+
+# 2026-11-11 (v) — REL-01 e LGPD-13 fechados: o consentimento e as leituras no banco
+
+**O problema, como foi entendido no início.** O release #121 e a 017 estavam na produção (entrada 10/11 xiii), mas faltava provar no banco duas coisas que a tela não prova: que o consentimento dado na tela fica gravado, e que, com a trava da 017 ligada, as leituras de quem consentiu continuam entrando. Faltava também conferir a primeira execução agendada do expurgo (`LGPD-09`).
+
+**Hipótese de trabalho.** Uma consulta só de agregados (contagens e horários, sem nome nem e-mail) responde as três perguntas.
+
+**O que foi testado, e como.** O autor rodou no SQL Editor uma consulta escrita por mim: contas com o consentimento na versão vigente, o último consentimento, leituras com `created_at` depois de 10/11 22:00 UTC, a última leitura, e as execuções do agendamento `dormio-expurgo-por-inatividade` em `cron.job_run_details`.
+
+**Resultado medido.**
+- 2 contas com o consentimento na versão `2026-11-10`, o último às 07:19 UTC de 11/11.
+- 941 leituras gravadas depois do release, a última às 15:09 UTC de 11/11.
+- O expurgo: uma execução, `succeeded`, 11/11 04:17 UTC.
+
+**Adaptação.** O registro das entradas 10/11 (xiii) a 11/11 (iv), feito pelo Codex enquanto o Claude estava sem cota, entrou nesta mesma branch, sem alteração. Ficaram de fora a análise e o catálogo do frontend, as capturas e o PDF: o PDF tem uma captura com dados reais, autorizada pelo autor só para uso local, e o repositório é público.
+
+**O que deu errado no caminho.** Nada nesta etapa.
+
+**Risco em aberto.**
+- **`API-06`:** o tempo por leitura do lote na produção ainda não foi medido.
+- **Origem das leituras:** a consulta não separa as 941 leituras entre o app e o navegador.
+- **Consentimento na versão antiga do app:** o fluxo no app instalado no Moto E7 não foi conferido por esta consulta.
+
+**Procedência.** Resultado da consulta colado pelo autor em 11/11.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
