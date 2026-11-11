@@ -37,7 +37,9 @@ logger = logging.getLogger(__name__)
 # cabeçalho). É o que a interface precisa. `id` fica de fora porque o cliente
 # já sabe quem é — e porque devolvê-lo convidaria alguém a mandá-lo de volta
 # num corpo de requisição, que é precisamente o que a rota não aceita.
-CAMPOS = "nome, idade, updated_at"
+# LGPD-12: o consentimento vem junto, para a tela saber se pede. So a funcao do
+# banco o grava (migracao 017); `ALTERAVEIS` nao o inclui.
+CAMPOS = "nome, idade, updated_at, consentimento_saude_em, consentimento_saude_versao"
 
 # Campos que o titular pode alterar. Qualquer outro no corpo é 400, e não
 # silenciosamente ignorado: ignorar faria `PATCH {"idadee": 30}` responder

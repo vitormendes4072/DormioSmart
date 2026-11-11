@@ -549,6 +549,58 @@ SABOTADORES = {
         minimo=1,
         exige="test_o_titular_nao_renomeia_para_mais_de_60",
     ),
+    # --- LGPD-12 (10/11): o consentimento destacado (migracao 017) ----------
+    "sessao_grava_sem_consentimento": dict(
+        descricao="registrar_leitura_da_sessao deixa de exigir o consentimento",
+        sql="""
+            do $SAB$ begin
+                execute replace(pg_get_functiondef('public.registrar_leitura_da_sessao(uuid,jsonb)'::regprocedure),
+                                'if not exists (select 1 from public.profiles p', 'if false and not exists (select 1 from public.profiles p');
+            end $SAB$;
+        """,
+        minimo=1,
+        exige="test_sem_consentimento_a_gravacao_pela_sessao_e_recusada",
+    ),
+    "pareia_sem_consentimento": dict(
+        descricao="parear_dispositivo deixa de exigir o consentimento",
+        sql="""
+            do $SAB$ begin
+                execute replace(pg_get_functiondef('public.parear_dispositivo(text,text,text)'::regprocedure),
+                                'if not exists (select 1 from public.profiles p', 'if false and not exists (select 1 from public.profiles p');
+            end $SAB$;
+        """,
+        minimo=1,
+        exige="test_sem_consentimento_o_pareamento_e_recusado",
+    ),
+    "qualquer_versao_serve": dict(
+        descricao="a trava aceita qualquer versao registrada, inclusive a antiga",
+        sql="""
+            do $SAB$ begin
+                execute replace(pg_get_functiondef('public.registrar_leitura_da_sessao(uuid,jsonb)'::regprocedure),
+                                'and p.consentimento_saude_versao = public.versao_do_consentimento()',
+                                'and p.consentimento_saude_versao is not null');
+            end $SAB$;
+        """,
+        minimo=1,
+        exige="test_versao_antiga_conta_como_sem_consentimento",
+    ),
+    "consentimento_escrito_direto": dict(
+        descricao="o gatilho que obriga a passar pela funcao sai",
+        sql="drop trigger profiles_consentimento_so_pela_funcao on public.profiles;",
+        minimo=2,
+        exige="test_o_titular_nao_escreve_o_consentimento_direto",
+    ),
+    "consente_qualquer_versao": dict(
+        descricao="consentir_dado_de_saude deixa de conferir a versao",
+        sql="""
+            do $SAB$ begin
+                execute replace(pg_get_functiondef('public.consentir_dado_de_saude(text)'::regprocedure),
+                                'if p_versao is distinct from', 'if false and p_versao is distinct from');
+            end $SAB$;
+        """,
+        minimo=1,
+        exige="test_consentir_com_versao_errada_e_recusado",
+    ),
 }
 
 

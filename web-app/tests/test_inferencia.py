@@ -23,7 +23,7 @@ import json
 import math
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
@@ -249,7 +249,9 @@ def _client():
 
 
 def _get(params, linhas):
+    # LGPD-12: a rota confere o consentimento com o cliente do usuario.
     with patch.object(database.db, "validar_token_de_usuario", return_value=_USUARIO), \
+         patch.object(database.db, "cliente_do_usuario", return_value=MagicMock()), \
          patch.object(database.db, "get_features_do_usuario", return_value=linhas) as consulta:
         resp = _client().get("/api/inferencia", query_string=params,
                              headers={"Authorization": "Bearer jwt-de-teste"})

@@ -2,6 +2,8 @@ import { BatteryWarning, Loader2, Moon, Square, UploadCloud } from "lucide-react
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Moldura } from "./Blueprint";
+import { TelaDeConsentimento } from "./TelaDeConsentimento";
+import { usePortaoDoConsentimento } from "../hooks/usePortaoDoConsentimento";
 import { type EnviarLote, contarRestantes, enviarNoites } from "../lib/envioDaNoite";
 import {
   type EstadoDaNoite,
@@ -30,6 +32,7 @@ export function CartaoDaNoite({
   agora = () => Date.now(),
   enviar,
   aoMudar,
+  consentimento,
 }: {
   plugin?: PluginNoite;
   agora?: () => number;
@@ -40,7 +43,13 @@ export function CartaoDaNoite({
   enviar?: EnviarLote;
   /** Chamado depois de iniciar, encerrar ou enviar (a lista de noites relê). */
   aoMudar?: () => void;
+  /**
+   * LGPD-12: com isto, "Iniciar a noite" passa antes pela tela do consentimento
+   * destacado se ele não estiver vigente. Ausente, inicia direto.
+   */
+  consentimento?: { vigente: boolean; registrar: () => Promise<void> };
 }) {
+  const portao = usePortaoDoConsentimento(consentimento);
   const [estado, setEstado] = useState<EstadoDaNoite | null>(null);
   const [ocupado, setOcupado] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
@@ -190,7 +199,7 @@ export function CartaoDaNoite({
           <button
             type="button"
             disabled={ocupado || estado === null || (!interrompida && posicao === null)}
-            onClick={() => void agir(() => plugin.iniciar(posicao ? { posicao } : undefined))}
+            onClick={() => portao.pedir(() => agir(() => plugin.iniciar(posicao ? { posicao } : undefined)))}
             className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {ocupado ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden /> : <Moon className="w-4 h-4" aria-hidden />}
@@ -242,6 +251,10 @@ export function CartaoDaNoite({
           <p className="text-sm text-muted-foreground" role="status">
             {resultado}
           </p>
+        )}
+
+        {portao.telaAberta && (
+          <TelaDeConsentimento aoConcordar={portao.concordar} aoRecusar={portao.recusar} erro={portao.erro} />
         )}
 
         {erro && (

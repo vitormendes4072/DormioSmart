@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from flask import g, jsonify, request
 from werkzeug.exceptions import HTTPException
 
+import consentimento
 import dispositivos
 import features_noite
 import inferencia
@@ -225,6 +226,13 @@ def init_routes(app):
         modelo = inferencia.modelo_carregado()
         if modelo is None:
             return jsonify({"error": "modelo indisponivel"}), 503
+        # LGPD-12: a estimativa de sono é o dado de saúde mais sensível do sistema.
+        client = _cliente_do_usuario()
+        if client is None:
+            return jsonify({"error": "fonte de dados indisponivel"}), 503
+        recusa = _falta_consentimento(client, g.usuario_id)
+        if recusa:
+            return recusa
 
         linhas = db.get_features_do_usuario(
             g.jwt, g.usuario_id, device_id, desde.isoformat(), ate.isoformat())
@@ -264,6 +272,42 @@ def init_routes(app):
         """Cliente com o JWT da requisição, ou None se indisponível."""
         return db.cliente_do_usuario(g.jwt)
 
+    def _falta_consentimento(client, usuario_id):
+        """A resposta de recusa quando falta o consentimento vigente (LGPD-12), ou None.
+
+        O banco já recusa a gravação e o pareamento sem ele (migração 017); responder
+        403 aqui, com o motivo, é o que faz o app pedir o consentimento em vez de
+        tratar a recusa como servidor fora do ar e reenviar para sempre.
+        """
+        situacao = consentimento.estado(client, usuario_id)
+        if situacao is None:
+            return jsonify({"error": "fonte de dados indisponivel"}), 503
+        if not situacao:
+            return jsonify({"error": consentimento.PENDENTE,
+                            "versao_vigente": consentimento.VERSAO}), 403
+        return None
+
+    @app.route('/api/me/consentimento', methods=['POST'])
+    @require_auth
+    def consentir():
+        """O consentimento específico e destacado para dado de saúde (LGPD-12).
+
+        O corpo diz QUAL versão do texto o titular leu. Versão diferente da vigente
+        responde 409, com a vigente: a tela que mostrou um texto antigo não pode
+        registrar consentimento para o texto novo. A data é a do banco.
+        """
+        versao = (request.get_json(silent=True) or {}).get("versao")
+        if versao != consentimento.VERSAO:
+            return jsonify({"error": "versao do texto desatualizada",
+                            "versao_vigente": consentimento.VERSAO}), 409
+        client = _cliente_do_usuario()
+        if client is None:
+            return jsonify({"error": "fonte de dados indisponivel"}), 503
+        recibo = consentimento.registrar(client, versao)
+        if not recibo:
+            return jsonify({"error": "consentimento nao registrado (fonte indisponivel)"}), 503
+        return jsonify(recibo), 200
+
     @app.route('/api/devices')
     @require_auth
     def listar_devices():
@@ -293,6 +337,9 @@ def init_routes(app):
         client = _cliente_do_usuario()
         if client is None:
             return jsonify({"error": "fonte de dados indisponivel"}), 503
+        recusa = _falta_consentimento(client, g.usuario_id)
+        if recusa:
+            return recusa
 
         token = gerar_token()
         device = dispositivos.criar(client, nome, hash_token(token), tipo)
@@ -330,6 +377,9 @@ def init_routes(app):
         client = _cliente_do_usuario()
         if client is None:
             return jsonify({"error": "fonte de dados indisponivel"}), 503
+        recusa = _falta_consentimento(client, g.usuario_id)
+        if recusa:
+            return recusa
 
         device = dispositivos.primeiro_do_tipo(client, g.usuario_id, "celular")
         if device is not None:
@@ -565,6 +615,14 @@ def init_routes(app):
         client = db.cliente_do_usuario(jwt)
         if client is None:
             return None, "fonte de dados indisponivel", 503
+
+        # LGPD-12: sem o consentimento vigente, nada é gravado (o banco recusa
+        # também). 403 e não 503: reenviar não adianta enquanto ele faltar.
+        situacao = consentimento.estado(client, usuario_id)
+        if situacao is None:
+            return None, "fonte de dados indisponivel", 503
+        if not situacao:
+            return None, consentimento.PENDENTE, 403
 
         device = dispositivos.buscar_do_dono(client, usuario_id, device_id)
         if device is None:
