@@ -8776,6 +8776,42 @@ As consultas de 10/11 na produção (5.1 e 5.3 da auditoria) deram zero leitura 
 
 **Procedência.** Resultado da consulta colado pelo autor em 11/11.
 
+# 2026-11-11 (vi) — INFRA-05: o envio era lento porque o backend estava em outro continente
+
+**O problema, como foi entendido no início.** O autor notou que o envio da noite, ao encerrar, demorou bastante. O `API-06` esperava exatamente essa medição para decidir se o lote precisa de uma função de gravação única no banco.
+
+**Hipótese de trabalho.** Os logs da Vercel dariam a duração de cada requisição. Como o plano gratuito guarda só uma hora de log, o envio de hoje já tinha sumido. A hipótese passou a ser: o `created_at` de cada leitura (o `now()` de cada chamada ao banco) reconstrói os lotes, pelos intervalos.
+
+**O que foi testado, e como.**
+- **Os lotes:** uma consulta agrupou as leituras depois do release por intervalos de mais de 1 s, com tamanho, duração e pausa antes de cada lote. Rodada pelo autor no SQL Editor.
+- **O tempo do banco:** `pg_stat_statements`, rodado pelo autor: o tempo médio das chamadas de gravação.
+- **As regiões:** a do backend pela API da Vercel (`get_deployment`: `regions: ["iad1"]`); a do banco pelo painel do Supabase, enviada pelo autor (`sa-east-1`).
+- **O código:** o laço do app, a rota do lote, e o cliente do Supabase (o `postgrest` é guardado no cliente, então a conexão é reaproveitada entre as gravações de um lote).
+
+**Resultado medido.**
+- **A noite:** 930 épocas entre 15:04:42 e 15:09:30 UTC: **4 min 48 s em 38 requisições**. Nenhum lote chegou a 60 leituras: todos pararam nos 6 s, com 16 a 40.
+- **Por gravação:** 0,15 a 0,40 s, e ~2 s de pausa entre lotes.
+- **No banco:** a função de gravação leva **0,43 ms** em média (máx. 2,6 ms, 1 887 chamadas). As consultas de dispositivo e perfil levam menos de 0,1 ms.
+- **Conclusão:** quase todo o tempo é a ida e volta Washington ↔ São Paulo, uma vez por leitura e três ou quatro vezes por lote (login, consentimento e dispositivo).
+
+**Adaptação.**
+- `"regions": ["gru1"]` no `vercel.json`. A documentação da Vercel diz que o plano Hobby escolhe uma região, qualquer uma.
+- `web-app/tests/test_regiao_do_backend.py` exige a região da Vercel perto da do banco. A região do banco fica como constante no teste, porque é configuração do painel.
+- Controle positivo, com a sabotagem nas duas formas: `iad1` no lugar de `gru1`, e a chave apagada. O teste caiu nas duas.
+- O `API-06` fica esperando a medição depois do release: se 60 leituras couberem nos 6 s, fecha sem implementar.
+
+**O que deu errado no caminho.**
+- **Logs da Vercel:** a primeira tentativa foi pelos logs, apagados depois de uma hora no plano gratuito.
+- **Medição daqui até o Supabase:** passa pela Cloudflare, e o tempo de conexão (13 ms) é o da borda no Rio, não o da origem. Só o painel deu a região com certeza.
+- **Projeto exposto na saída:** um cabeçalho de resposta trouxe o identificador do projeto do Supabase na saída do terminal. Ele não entrou em nenhum arquivo.
+
+**Risco em aberto.**
+- **Ganho estimado, não medido (`INFRA-05`):** 60 leituras por lote e uma noite em ~30–60 s. A medição é a mesma consulta numa noite nova, depois do release.
+- **Caminho do token:** continua sem medição, porque o dispositivo do travesseiro ainda não envia.
+- **Lote solto:** um lote de 11 leituras às 04:41 UTC, separado do envio, não foi explicado.
+
+**Procedência.** Resultados das consultas e captura do painel colados pelo autor em 11/11; `get_deployment` da Vercel; documentação da Vercel sobre regiões de funções; testes nesta máquina (Windows 11), backend 526 passam.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
