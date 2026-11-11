@@ -147,6 +147,15 @@ caso "gn perdido na ida e volta da fila" acusa \
   "    f_enviada.gn = f.gn;" \
   ""
 
+# CAL-03, etapa 2: o ponto parado.
+caso "ponto parado calibrado em vez de bruto" acusa \
+  "      desfazer_calibracao(calibracao_, temp, calibrado, bruto);" \
+  "      for (int k = 0; k < 3; k++) bruto[k] = calibrado[k];"
+
+caso "epoca em movimento tambem vira ponto" acusa \
+  "    if (f.mag_din_media < LIMIAR_PARADO_G && f.gn > 0.0) {" \
+  "    if (f.gn > 0.0) {"
+
 caso "quantizacao trunca em vez de arredondar" acusa \
   "  return static_cast<int16_t>(lroundf(lsb));" \
   "  return static_cast<int16_t>(lsb);"
