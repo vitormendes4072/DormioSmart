@@ -52,7 +52,7 @@ WEB = AQUI.parent.parent
 MIG = WEB / "migrations"
 RLS = WEB / "tests" / "rls"
 DIAG = MIG / "DIAGNOSTICO-migracoes-aplicadas.sql"
-ORDEM = ["001", "003", "004", "005", "006", "007", "008", "009", "010", "011", "012", "013", "014", "015", "016", "017"]
+ORDEM = ["001", "003", "004", "005", "006", "007", "008", "009", "010", "011", "012", "013", "014", "015", "016", "017", "018"]
 ARQ = {p.name[:3]: p for p in MIG.glob("0[0-9][0-9]_*.sql")}
 
 ANA = "00000000-0000-0000-0000-00000000000a"
@@ -187,7 +187,8 @@ def verificar_diagnostico(bancos) -> list[str]:
     # ✏️ 10/11 (LGPD-09): na produção a 013 entra DEPOIS da 014, da 015 e da 016,
     # que já estão aplicadas (diagnóstico de 10/11). É essa a ordem que se confere.
     # A 017 (LGPD-12, 10/11) entra depois de todas: o consentimento destacado.
-    ordem_real = ["001", "003", "004", "005", "006", "008", "009", "007", "010", "011", "012", "014", "015", "016", "013", "017"]
+    # A 018 (CAL-03, 11/11) entra depois de todas: a calibracao da gravidade.
+    ordem_real = ["001", "003", "004", "005", "006", "008", "009", "007", "010", "011", "012", "014", "015", "016", "013", "017", "018"]
     c = montar(bancos, "diagreal", ordem_real)
     cur = c.cursor()
     res = diagnostico(cur)

@@ -254,8 +254,13 @@ static void rodar_caso(const Caso &c, const Tolerancias &tol, double jitter_us) 
       snprintf(chave, sizeof(chave), "\"ts\":\"%s\"", ts);
       VERIFICAR(strstr(json, chave) != 0, "epoca %u: payload sem %s: %s", e, chave, json);
       VERIFICAR(strstr(json, "\"epoca_s\":30,") != 0, "epoca %u: epoca_s", e);
-      VERIFICAR(strstr(json, "\"f\":[") != 0 && strstr(json, "\"fs\":32}") != 0,
+      VERIFICAR(strstr(json, "\"f\":[") != 0 && strstr(json, "\"fs\":32,") != 0,
                 "epoca %u: payload sem o vetor: %s", e, json);
+      // CAL-03: a norma da gravidade media, a da epoca antes da quantizacao, e
+      // a marca de que nenhuma calibracao foi aplicada (o dourado nao define).
+      char gn[48];
+      snprintf(gn, sizeof(gn), "\"gn\":%.9g,\"cal\":0}", f.gn);
+      VERIFICAR(strstr(json, gn) != 0, "epoca %u: payload sem %s: %s", e, gn, json);
       VERIFICAR(strstr(json, "\"t\":31.5,") != 0, "epoca %u: temperatura do aparelho", e);
       // O vetor e o da placa: a ida e volta pela quantizacao da fila de flash.
       const FeaturesDeEpoca q =
@@ -417,6 +422,104 @@ static void testar_quantizacao() {
             g_para_lsb(-1.6f / 4096.0f));
 }
 
+// CAL-03: o celular parado de tela para baixo, com o erro do eixo z do Moto
+// E7 medido na bancada (escala +1,17 %, desvio -7,6 mg). Sem calibracao, a
+// norma da 1,019 g e o ENMO le ~19 mg de movimento que nao existe; com a
+// calibracao inversa, a norma volta a 1 g e o ENMO a zero.
+static const double ESCALA_Z = 1.0117;
+static const double DESVIO_Z_G = -0.0076;
+
+static void alimentar_parado(ColetorCelular *c, uint64_t origem, double fim_s, char *ultimo,
+                             uint32_t *payloads) {
+  static char json[TAMANHO_DO_PAYLOAD];
+  const float z = static_cast<float>(G_PADRAO_MS2 * (ESCALA_Z * -1.0 + DESVIO_Z_G));
+  for (double t = -INICIO_SINTETICO_S; t < fim_s; t += 1.0 / 50.0) {
+    c->amostrar(static_cast<uint64_t>(static_cast<int64_t>(origem) + llround(t * 1e6)), 0.0f,
+                0.0f, z);
+    for (;;) {
+      uint32_t n = 0;
+      const ResultadoDoColetor r = c->proximo(json, sizeof(json), &n);
+      if (r == COLETOR_NADA) break;
+      if (r == COLETOR_PAYLOAD) {
+        (*payloads)++;
+        memcpy(ultimo, json, n + 1);
+      }
+    }
+  }
+}
+
+static void testar_calibracao() {
+  static ColetorCelular c;
+  static char ultimo[TAMANHO_DO_PAYLOAD];
+  const uint64_t origem = 70000000u;
+
+  c.iniciar(origem, parede_de_teste(origem));
+  uint32_t p = 0;
+  alimentar_parado(&c, origem, 65.0, ultimo, &p);
+  VERIFICAR(p >= 2 && c.ultima_teve_features(), "sem calibracao: %u payloads", p);
+  const double enmo_sem = c.ultimas_features().enmo_media;
+  const double gn_sem = c.ultimas_features().gn;
+  VERIFICAR(enmo_sem > 0.015, "sem calibracao o ENMO parado devia ler o erro: %.4f g", enmo_sem);
+  VERIFICAR(fabs(gn_sem - (ESCALA_Z - DESVIO_Z_G)) < 0.001, "gn sem calibracao %.5f", gn_sem);
+  VERIFICAR(strstr(ultimo, "\"cal\":0}") != 0, "sem calibracao o payload diz cal 0: %s", ultimo);
+
+  Calibracao cal;
+  cal.aceita = true;
+  cal.modos[2] = EIXO_COMPLETO;
+  cal.escala[2] = 1.0 / ESCALA_Z;
+  cal.desvio[2] = -DESVIO_Z_G / ESCALA_Z;
+  c.iniciar(origem, parede_de_teste(origem));
+  c.definir_calibracao(cal);
+  p = 0;
+  alimentar_parado(&c, origem, 65.0, ultimo, &p);
+  VERIFICAR(p >= 2 && c.ultima_teve_features(), "com calibracao: %u payloads", p);
+  const double enmo_com = c.ultimas_features().enmo_media;
+  const double gn_com = c.ultimas_features().gn;
+  VERIFICAR(enmo_com < 0.0005, "com calibracao o ENMO parado devia ser ~0: %.5f g", enmo_com);
+  VERIFICAR(fabs(gn_com - 1.0) < 0.0005, "gn com calibracao %.5f", gn_com);
+  VERIFICAR(strstr(ultimo, "\"cal\":1}") != 0, "com calibracao o payload diz cal 1: %s", ultimo);
+
+  // Uma calibracao recusada nao mexe: o mesmo ENMO de sem calibracao.
+  cal.aceita = false;
+  c.iniciar(origem, parede_de_teste(origem));
+  c.definir_calibracao(cal);
+  p = 0;
+  alimentar_parado(&c, origem, 65.0, ultimo, &p);
+  VERIFICAR(fabs(c.ultimas_features().enmo_media - enmo_sem) < 1e-12,
+            "calibracao recusada mexeu no ENMO: %.6f contra %.6f", c.ultimas_features().enmo_media,
+            enmo_sem);
+  VERIFICAR(strstr(ultimo, "\"cal\":0}") != 0, "recusada: o payload diz cal 0: %s", ultimo);
+
+  // Etapa 2: a epoca parada e um ponto de calibracao, e o ponto vem no BRUTO
+  // mesmo quando a noite saiu calibrada -- e o que a proxima estimativa usa.
+  double ponto[4];
+  cal.aceita = true;
+  c.iniciar(origem, parede_de_teste(origem));
+  c.definir_calibracao(cal);
+  p = 0;
+  alimentar_parado(&c, origem, 65.0, ultimo, &p);
+  VERIFICAR(c.ponto_parado(ponto), "a epoca parada calibrada nao deu ponto");
+  const double bruto_z = ESCALA_Z * -1.0 + DESVIO_Z_G;
+  VERIFICAR(fabs(ponto[2] - bruto_z) < 0.0005 && fabs(ponto[0]) < 1e-3 && fabs(ponto[1]) < 1e-3,
+            "o ponto devia ser o bruto (0, 0, %.4f): (%.5f, %.5f, %.5f)", bruto_z, ponto[0],
+            ponto[1], ponto[2]);
+  VERIFICAR(ponto[3] == 25.0, "o ponto leva a temperatura da noite: %.2f", ponto[3]);
+  // Uma epoca em movimento nao e ponto: o sinal do `testar_taxa_fora_da_faixa`
+  // balanca 0,05 rad a 0,3 Hz, bem acima dos 10 mg de movimento dinamico.
+  {
+    static ColetorCelular m;
+    m.iniciar(origem, parede_de_teste(origem));
+    uint32_t pm = 0, rm = 0;
+    alimentar(&m, origem, -INICIO_SINTETICO_S, 65.0, 50.0, &pm, &rm);
+    VERIFICAR(pm >= 2 && m.ultima_teve_features(), "em movimento: %u payloads", pm);
+    VERIFICAR(m.ultimas_features().mag_din_media >= LIMIAR_PARADO_G,
+              "o sinal de teste devia ser movimento: %.4f g", m.ultimas_features().mag_din_media);
+    VERIFICAR(!m.ponto_parado(ponto), "epoca em movimento virou ponto de calibracao");
+  }
+  printf("  calibracao: ENMO parado %.2f mg -> %.3f mg, gn %.4f -> %.5f g\n", 1000.0 * enmo_sem,
+         1000.0 * enmo_com, gn_sem, gn_com);
+}
+
 int main(int argc, char **argv) {
   printf("Coletor do celular contra o dourado da C2 -- APP-02\n");
   printf("===================================================\n");
@@ -429,6 +532,7 @@ int main(int argc, char **argv) {
   testar_fora_de_ordem();
   testar_buraco();
   testar_quantizacao();
+  testar_calibracao();
   printf("\n-----------------------------------------\n");
   printf("%d verificacoes, %d falhas\n", total, falhas);
   return falhas == 0 ? 0 : 1;

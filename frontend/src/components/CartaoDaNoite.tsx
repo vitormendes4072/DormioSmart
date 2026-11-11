@@ -286,6 +286,12 @@ export function CartaoDaNoite({
                 <dd className="tabular-nums">{estado.temperaturaC.toFixed(1)} °C</dd>
               </>
             )}
+            {estado.calibracao && (
+              <>
+                <dt className="text-muted-foreground">Calibração do sensor</dt>
+                <dd data-testid="calibracao">{estado.calibracao}</dd>
+              </>
+            )}
           </dl>
         )}
 

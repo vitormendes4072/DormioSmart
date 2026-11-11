@@ -36,6 +36,11 @@ public final class EstadoDaNoite {
     public long temperaturaDecimos = Long.MIN_VALUE;
     /** Deslocamento aplicado ao relogio do sensor (ver RelogioDoSensor), em ns. */
     public long deslocamentoDoRelogioNs;
+    /** CAL-03: se a noite saiu calibrada, e o resumo para a tela. */
+    public boolean calibrada;
+    public String calibracaoResumo = "";
+    /** Quantas epocas paradas desta noite viraram ponto de calibracao. */
+    public long pontosDeCalibracao;
 
     public void salvar(File destino) throws IOException {
         final Properties p = new Properties();
@@ -54,6 +59,9 @@ public final class EstadoDaNoite {
         p.setProperty("ultima_epoca_utc_ms", Long.toString(ultimaEpocaUtcMs));
         p.setProperty("temperatura_decimos", Long.toString(temperaturaDecimos));
         p.setProperty("deslocamento_relogio_ns", Long.toString(deslocamentoDoRelogioNs));
+        p.setProperty("calibrada", Boolean.toString(calibrada));
+        p.setProperty("calibracao_resumo", calibracaoResumo);
+        p.setProperty("pontos_de_calibracao", Long.toString(pontosDeCalibracao));
         // Grava num temporario e troca: um corte no meio nao deixa estado pela metade.
         final File tmp = new File(destino.getPath() + ".tmp");
         try (OutputStream s = new FileOutputStream(tmp)) {
@@ -89,6 +97,9 @@ public final class EstadoDaNoite {
         e.ultimaEpocaUtcMs = numero(p, "ultima_epoca_utc_ms", 0);
         e.temperaturaDecimos = numero(p, "temperatura_decimos", Long.MIN_VALUE);
         e.deslocamentoDoRelogioNs = numero(p, "deslocamento_relogio_ns", 0);
+        e.calibrada = Boolean.parseBoolean(p.getProperty("calibrada", "false"));
+        e.calibracaoResumo = p.getProperty("calibracao_resumo", "");
+        e.pontosDeCalibracao = numero(p, "pontos_de_calibracao", 0);
         return e;
     }
 

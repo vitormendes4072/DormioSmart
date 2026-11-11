@@ -84,6 +84,7 @@ public class ServicoDaNoite extends Service implements SensorEventListener {
     private NucleoNativo nucleo;
     private RelogioDoSensor relogio;
     private ArquivoDaNoite arquivo;
+    private PontosDeCalibracao pontos;
     private EstadoDaNoite estado;
     private boolean registrando;
     private boolean nucleoIniciado;
@@ -122,6 +123,7 @@ public class ServicoDaNoite extends Service implements SensorEventListener {
                 estado.ativa = true;
                 estado.inicioUtcMs = System.currentTimeMillis();
                 estado.arquivo = ArquivoDaNoite.nomeDaNoite(estado.inicioUtcMs);
+                estimarCalibracao();
                 final String posicao = intent.getStringExtra(EXTRA_POSICAO);
                 if (posicao != null && !posicao.isEmpty()) {
                     try {
@@ -148,6 +150,31 @@ public class ServicoDaNoite extends Service implements SensorEventListener {
         }
         comecarARegistrar();
         return START_STICKY;
+    }
+
+    /**
+     * CAL-03, etapa 2: a calibracao da noite que comeca, estimada com as
+     * epocas paradas das noites anteriores, e gravada ao lado dela. Uma
+     * calibracao por noite: trocar no meio mudaria a medida dentro da noite, e
+     * o modelo normaliza por noite. Sem pontos bastantes, ou com a estimativa
+     * recusada, a noite sai sem calibracao ({@code cal: 0}).
+     */
+    private void estimarCalibracao() {
+        Calibracao c;
+        try {
+            c = NucleoNativo.estimar(new PontosDeCalibracao(pasta(this)).ler());
+        } catch (IOException | IllegalArgumentException ex) {
+            Log.e(TAG, "nao estimou a calibracao", ex);
+            c = new Calibracao();
+        }
+        estado.calibrada = c.aceita;
+        estado.calibracaoResumo = c.resumo(NucleoNativo.pontosMinimos());
+        estado.pontosDeCalibracao = 0;
+        try {
+            c.salvar(Calibracao.arquivoDa(pasta(this), estado.arquivo));
+        } catch (IOException ex) {
+            Log.e(TAG, "nao gravou a calibracao da noite", ex);
+        }
     }
 
     private void entrarEmPrimeiroPlano() {
@@ -190,6 +217,8 @@ public class ServicoDaNoite extends Service implements SensorEventListener {
         linha = new HandlerThread("dormio-sensor");
         linha.start();
         nucleo = new NucleoNativo();
+        nucleo.definirCalibracao(Calibracao.ler(Calibracao.arquivoDa(pasta(this), estado.arquivo)));
+        pontos = new PontosDeCalibracao(pasta(this));
         relogio = new RelogioDoSensor();
         nucleoIniciado = false;
         pendentes = 0;
@@ -248,6 +277,17 @@ public class ServicoDaNoite extends Service implements SensorEventListener {
                 estado.ultimaEpocaUtcMs = System.currentTimeMillis();
             } catch (IOException ex) {
                 Log.e(TAG, "nao gravou a epoca", ex);
+            }
+            // CAL-03: a epoca parada vira ponto da proxima calibracao. Falhar
+            // aqui nao para a noite: perde-se um ponto, nao uma epoca.
+            final double[] ponto = nucleo.pontoParado();
+            if (ponto != null) {
+                try {
+                    pontos.anexar(ponto);
+                    estado.pontosDeCalibracao++;
+                } catch (IOException ex) {
+                    Log.e(TAG, "nao guardou o ponto de calibracao", ex);
+                }
             }
         }
         if (gravou) salvarContadores();

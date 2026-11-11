@@ -93,6 +93,10 @@ public class NoitePlugin extends Plugin {
             r.put("ultimaEpocaUtcMs", e.ultimaEpocaUtcMs);
             if (e.temperaturaDecimos != Long.MIN_VALUE) r.put("temperaturaC", e.temperaturaDecimos / 10.0);
             r.put("isentoDeBateria", isento());
+            // CAL-03: a calibracao desta noite, para a tela dizer.
+            r.put("calibrada", e.calibrada);
+            r.put("calibracao", e.calibracaoResumo);
+            r.put("pontosDeCalibracao", e.pontosDeCalibracao);
             call.resolve(r);
         } catch (IOException ex) {
             call.reject("nao leu o estado da noite", ex);

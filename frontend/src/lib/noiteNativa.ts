@@ -33,6 +33,15 @@ export type EstadoDaNoite = {
   ultimaEpocaUtcMs: number;
   temperaturaC?: number;
   isentoDeBateria: boolean;
+  /**
+   * CAL-03: se a noite saiu com a autocalibração do acelerômetro, e o resumo
+   * que o app escreveu ao iniciá-la ("Calibrado: …", "Calibrando: 12 de 40
+   * épocas paradas", "Calibração recusada: …"). Ausentes no app antigo.
+   */
+  calibrada?: boolean;
+  calibracao?: string;
+  /** Épocas paradas desta noite que viraram ponto da próxima calibração. */
+  pontosDeCalibracao?: number;
 };
 
 /** Onde o celular fica na noite (etapa 4): o mesmo vocabulário de `NotasDaNoite.java`. */

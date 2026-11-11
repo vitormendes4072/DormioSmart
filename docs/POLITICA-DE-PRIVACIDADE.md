@@ -155,7 +155,9 @@ continuamente e o resume em **épocas** de 30 segundos. Cada época enviada regi
 - **Seis medidas de movimento da época:** a média, o desvio e o máximo da
   aceleração acima da gravidade, a média do movimento dinâmico, a taxa de
   cruzamentos por zero e a fração de amostras com movimento;
-- A **direção da gravidade** na época, isto é, a inclinação do aparelho;
+- A **direção da gravidade** na época, isto é, a inclinação do aparelho, e a
+  **intensidade da gravidade** que o sensor mediu — no celular, junto com a
+  marca de se a leitura passou pela **correção de calibração** do sensor;
 - A **taxa de amostragem** e o **número de amostras** que produziram a época;
 - Uma **temperatura**: a do circuito integrado do sensor, no dispositivo do
   travesseiro; a da **bateria**, no celular;
@@ -194,7 +196,12 @@ impede a coleta por esse caminho e não afeta o restante do aplicativo.
   observação livre e o motivo do fim do registro. **As anotações nunca saem do
   celular**: não são enviadas à sua conta nem a ninguém;
 - **O estado do registro**: contadores técnicos da noite (épocas gravadas,
-  retomadas, a taxa do sensor, a temperatura).
+  retomadas, a taxa do sensor, a temperatura);
+- **Os pontos de calibração do sensor**: de cada época em que o celular ficou
+  parado, a direção e a intensidade da gravidade e a temperatura do aparelho —
+  só as 2 000 mais recentes. Servem para o aplicativo corrigir o erro do
+  acelerômetro nas noites seguintes, e **não saem do celular**. Ao lado do
+  arquivo de cada noite fica a calibração que ela usou.
 
 Esses arquivos ficam na área privada do aplicativo, que outros aplicativos não
 leem, e **não entram no backup automático do Android** para a nuvem. Eles saem do
@@ -586,6 +593,9 @@ Mudanças materiais — nova categoria de dado, nova finalidade, novo operador �
 serão anunciadas antes de entrarem em vigor. A data no topo indica a última
 revisão.
 
+- **11 de novembro de 2026:** a intensidade da gravidade medida e a marca de
+  correção de calibração do sensor, enviadas pelo celular (seção 2.2), e os
+  pontos de calibração guardados no celular (seção 2.3).
 - **10 de novembro de 2026, segunda revisão:** a tela de consentimento
   específico e destacado para os dados de sono, com data e versão registradas
   (seção 4).

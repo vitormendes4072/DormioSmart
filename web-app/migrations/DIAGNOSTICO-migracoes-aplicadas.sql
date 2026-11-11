@@ -166,7 +166,17 @@ marcas (migracao, item, marca, presente) as (values
         exists (select 1 from pg_trigger where tgname = 'profiles_consentimento_so_pela_funcao')),
     ('017', 'LGPD-12', 'gravacao pela sessao exige o consentimento',
         coalesce((select pg_get_functiondef(to_regprocedure('public.registrar_leitura_da_sessao(uuid,jsonb)')) like '%consentimento para dado de saude pendente%'
-                     and pg_get_functiondef(to_regprocedure('public.parear_dispositivo(text,text,text)')) like '%consentimento para dado de saude pendente%'), false))
+                     and pg_get_functiondef(to_regprocedure('public.parear_dispositivo(text,text,text)')) like '%consentimento para dado de saude pendente%'), false)),
+    -- 018: a calibracao da gravidade. As colunas, a restricao, e as duas
+    -- funcoes de gravacao guardando-as.
+    ('018', 'CAL-03', 'colunas g_norma e calibrada em sleep_data',
+        exists (select 1 from col where nome = 'sleep_data.g_norma')
+        and exists (select 1 from col where nome = 'sleep_data.calibrada')),
+    ('018', 'CAL-03', 'restricao sleep_data_calibracao_valida',
+        exists (select 1 from pg_constraint where conname = 'sleep_data_calibracao_valida')),
+    ('018', 'CAL-03', 'as duas funcoes de gravacao guardam g_norma',
+        coalesce((select pg_get_functiondef(to_regprocedure('public.registrar_leitura(text,jsonb)')) like '%g_norma%'
+                     and pg_get_functiondef(to_regprocedure('public.registrar_leitura_da_sessao(uuid,jsonb)')) like '%g_norma%'), false))
 ),
 esquema as (
     select migracao, min(item) as item,

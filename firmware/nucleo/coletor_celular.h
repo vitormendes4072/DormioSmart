@@ -46,6 +46,7 @@
 #include <stdint.h>
 
 #include "cadeia_c2.h"
+#include "calibracao.h"
 #include "caracteristicas.h"
 #include "fifo_mpu.h"
 #include "payload.h"
@@ -95,8 +96,24 @@ class ColetorCelular {
   // crescente, e uma amostra fora de ordem entortaria a linha do tempo.
   void amostrar(uint64_t t_us, float ax_ms2, float ay_ms2, float az_ms2);
 
-  // A temperatura que vai no proximo payload (`t`), em graus C.
+  // A temperatura que vai no proximo payload (`t`), em graus C. E tambem a
+  // que a calibracao usa no termo de temperatura.
   void definir_temperatura(float graus_c) { temperatura_c_ = graus_c; }
+
+  // A calibracao das amostras (CAL-03). Sem chamar, ou com uma recusada, as
+  // amostras passam como vieram e o payload diz `cal: 0`. Quem estima e o app,
+  // entre noites (`estimar_calibracao`); a noite inteira usa a mesma.
+  void definir_calibracao(const Calibracao &c) { calibracao_ = c; }
+  const Calibracao &calibracao() const { return calibracao_; }
+
+  // O ponto de calibracao da ultima epoca pronta (CAL-03, etapa 2): se ela foi
+  // PARADA (`mag_din_media` abaixo de `LIMIAR_PARADO_G`), `saida` recebe o
+  // vetor medio da gravidade em g, DESFEITO para o bruto pela calibracao desta
+  // noite, e a temperatura: {x, y, z, temp_c}. Bruto porque a proxima
+  // estimativa parte do sinal original, e esta noite pode ja ter saido
+  // calibrada. Devolve false se a epoca nao foi parada ou nao teve features.
+  // Vale ate a proxima chamada de `proximo`.
+  bool ponto_parado(double saida[4]) const;
 
   // Tenta fechar uma epoca. Chamar em laco ate devolver COLETOR_NADA. Com
   // COLETOR_PAYLOAD, `destino` (TAMANHO_DO_PAYLOAD bytes) recebe o JSON,
@@ -140,6 +157,7 @@ class ColetorCelular {
   float grade_z_[AMOSTRAS_NA_GRADE];
 
   float temperatura_c_;
+  Calibracao calibracao_;
   uint64_t recebidas_;
   uint32_t fora_de_ordem_;
   uint32_t com_payload_;
@@ -150,6 +168,8 @@ class ColetorCelular {
   double ultima_taxa_hz_;
   FeaturesDeEpoca ultimas_features_;
   bool ultima_teve_features_;
+  double ponto_[4];
+  bool tem_ponto_;
 };
 
 }  // namespace dormio

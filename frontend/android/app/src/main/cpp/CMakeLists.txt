@@ -30,6 +30,7 @@ add_library(dormio_nucleo SHARED
   ${NUCLEO}/epoca_c2.cpp
   ${NUCLEO}/envio_da_fila.cpp
   ${NUCLEO}/coletor_celular.cpp
+  ${NUCLEO}/calibracao.cpp
 )
 target_include_directories(dormio_nucleo PRIVATE ${NUCLEO})
 # As mesmas bandeiras do Makefile do nucleo: sem excecao e sem RTTI.

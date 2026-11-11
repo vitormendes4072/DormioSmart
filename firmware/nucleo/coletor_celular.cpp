@@ -34,7 +34,10 @@ ColetorCelular::ColetorCelular()
       sem_features_(0),
       sem_payload_(0),
       ultima_taxa_hz_(0.0),
-      ultima_teve_features_(false) {}
+      ultima_teve_features_(false),
+      tem_ponto_(false) {
+  for (int k = 0; k < 4; k++) ponto_[k] = 0.0;
+}
 
 void ColetorCelular::iniciar(uint64_t origem_us, const ResolucaoDeParede &parede) {
   cadeia_.iniciar(origem_us);
@@ -86,15 +89,28 @@ void ColetorCelular::amostrar(uint64_t t_us, float ax_ms2, float ay_ms2, float a
        n_pendentes_ >= CAPACIDADE_DA_DRENAGEM)) {
     drenar();
   }
+  // Em g, calibrada (CAL-03), e so entao na escala do MPU: a correcao vem
+  // antes de tudo que a cadeia faz com a amostra, ENMO inclusive.
+  const double bruta[3] = {static_cast<double>(ax_ms2 / G_PADRAO_MS2),
+                           static_cast<double>(ay_ms2 / G_PADRAO_MS2),
+                           static_cast<double>(az_ms2 / G_PADRAO_MS2)};
+  double g[3];
+  aplicar_calibracao(calibracao_, static_cast<double>(temperatura_c_), bruta, g);
   AmostraBruta &a = pendentes_[n_pendentes_];
-  a.x = g_para_lsb(ax_ms2 / G_PADRAO_MS2);
-  a.y = g_para_lsb(ay_ms2 / G_PADRAO_MS2);
-  a.z = g_para_lsb(az_ms2 / G_PADRAO_MS2);
+  a.x = g_para_lsb(static_cast<float>(g[0]));
+  a.y = g_para_lsb(static_cast<float>(g[1]));
+  a.z = g_para_lsb(static_cast<float>(g[2]));
   if (n_pendentes_ == 0) t_primeira_pendente_us_ = t_us;
   n_pendentes_++;
   t_ultima_us_ = t_us;
   tem_amostra_ = true;
   recebidas_++;
+}
+
+bool ColetorCelular::ponto_parado(double saida[4]) const {
+  if (!tem_ponto_ || saida == 0) return false;
+  for (int k = 0; k < 4; k++) saida[k] = ponto_[k];
+  return true;
 }
 
 ResultadoDoColetor ColetorCelular::proximo(char *destino, uint32_t tamanho, uint32_t *escritos) {
@@ -104,6 +120,9 @@ ResultadoDoColetor ColetorCelular::proximo(char *destino, uint32_t tamanho, uint
   EpocaReamostrada info;
   const ResultadoDaEpoca r = cadeia_.proxima_epoca(&info, grade_x_, grade_y_, grade_z_);
   if (r == EPOCA_AINDA_NAO) return COLETOR_NADA;
+  // Uma epoca fechou: o ponto da anterior deixa de valer (o `ponto_parado`
+  // e o da ULTIMA epoca pronta, e sobrevive as chamadas que nao fecham nada).
+  tem_ponto_ = false;
   if (r != EPOCA_PRONTA) {
     recusadas_++;
     if (r == EPOCA_RECUSADA_TAXA) recusadas_taxa_++;
@@ -124,6 +143,20 @@ ResultadoDoColetor ColetorCelular::proximo(char *destino, uint32_t tamanho, uint
   FeaturesDeEpoca f_enviada;
   if (tem_features) {
     f_enviada = desquantizar(quantizar(f), static_cast<uint16_t>(AMOSTRAS_NA_GRADE));
+    // A fila de flash nao carrega `gn` nem a marca; o celular nao passa por
+    // ela, e manda os dois (CAL-03).
+    f_enviada.gn = f.gn;
+    f_enviada.calibrada = calibracao_.aceita ? 1 : 0;
+    // CAL-03, etapa 2: a epoca parada vira ponto de calibracao, no bruto.
+    if (f.mag_din_media < LIMIAR_PARADO_G && f.gn > 0.0) {
+      const double temp = static_cast<double>(temperatura_c_);
+      const double calibrado[3] = {f.gx * f.gn, f.gy * f.gn, f.gz * f.gn};
+      double bruto[3];
+      desfazer_calibracao(calibracao_, temp, calibrado, bruto);
+      for (int k = 0; k < 3; k++) ponto_[k] = bruto[k];
+      ponto_[3] = temp;
+      tem_ponto_ = true;
+    }
   }
 
   const Epoca e = epoca_da_grade(info.indice, grade_x_, grade_y_, grade_z_, AMOSTRAS_NA_GRADE,
