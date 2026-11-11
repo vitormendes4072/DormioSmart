@@ -265,6 +265,10 @@ def _validar_features(content):
     """
     f, gv, fs = content.get("f"), content.get("g"), content.get("fs")
     if f is None and gv is None and fs is None:
+        # CAL-03: `gn` e `cal` só existem junto do vetor.
+        for campo in ("gn", "cal"):
+            if content.get(campo) is not None:
+                return f"campo {campo} exige f"
         return None
     if f is None or gv is None or fs is None:
         return "campos f, g e fs vem juntos: falta " + ", ".join(
@@ -293,6 +297,27 @@ def _validar_features(content):
 
     if not _numero_valido(fs) or not (0.0 < fs <= FS_MAXIMA):
         return f"campo fs deve ser numero em (0, {FS_MAXIMA}]"
+    return _validar_calibracao(content)
+
+
+#: Fundo de escala da C2 (±8 g): a norma da gravidade média não passa dele.
+GN_MAXIMA_G = 8.0
+
+
+def _validar_calibracao(content):
+    """`gn` e `cal` (contrato 2.9.0, CAL-03). Opcionais, e só com o vetor.
+
+    `gn` é a norma da gravidade média da época, em g; `cal`, se as amostras
+    passaram por uma calibração aceita (0 ou 1). A mesma régua da restrição
+    `sleep_data_calibracao_valida` da migração 018.
+    """
+    gn, cal = content.get("gn"), content.get("cal")
+    if gn is not None:
+        erro = _fora_da_faixa("gn", gn, 0.0, GN_MAXIMA_G)
+        if erro:
+            return erro
+    if cal is not None and (not isinstance(cal, int) or cal not in (0, 1)):
+        return "campo cal deve ser 0 ou 1"
     return None
 
 
@@ -300,6 +325,9 @@ def _validar_features(content):
 #: `f` vira NOME aqui, uma vez, e daí em diante ninguém depende de posição.
 COLUNAS_DE_FEATURES = tuple(nome for nome, _, _ in FEATURES_DO_DISPOSITIVO) + (
     "g_x", "g_y", "g_z", "fs_features")
+#: As colunas da calibração (migração 018, CAL-03). Opcionais dentro do vetor:
+#: nulas quando o payload não as traz (app antigo, travesseiro).
+COLUNAS_DE_CALIBRACAO = ("g_norma", "calibrada")
 
 
 def colunas_de_features(content):
@@ -310,9 +338,13 @@ def colunas_de_features(content):
     """
     f = content.get("f")
     if f is None:
-        return {coluna: None for coluna in COLUNAS_DE_FEATURES}
+        return {coluna: None for coluna in COLUNAS_DE_FEATURES + COLUNAS_DE_CALIBRACAO}
     valores = list(f) + list(content["g"]) + [content["fs"]]
-    return dict(zip(COLUNAS_DE_FEATURES, (float(v) for v in valores)))
+    colunas = dict(zip(COLUNAS_DE_FEATURES, (float(v) for v in valores)))
+    gn, cal = content.get("gn"), content.get("cal")
+    colunas["g_norma"] = None if gn is None else float(gn)
+    colunas["calibrada"] = None if cal is None else bool(cal)
+    return colunas
 
 
 def validar_captacao(valor):

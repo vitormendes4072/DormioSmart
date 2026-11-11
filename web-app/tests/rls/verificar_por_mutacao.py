@@ -601,6 +601,45 @@ SABOTADORES = {
         minimo=1,
         exige="test_consentir_com_versao_errada_e_recusado",
     ),
+    # --- CAL-03 (11/11): a calibracao da gravidade (migracao 018) ----------
+    "calibracao_sem_regua": dict(
+        descricao="a restricao de g_norma e calibrada sai",
+        sql="alter table public.sleep_data drop constraint sleep_data_calibracao_valida;",
+        minimo=1,
+        exige="test_um_passo_alem_da_borda_e_recusado",
+    ),
+    "calibracao_mais_estreita_que_o_flask": dict(
+        descricao="g_norma no banco so ate 7 g (o Flask aceita 8): leitura valida falharia",
+        sql="""
+            alter table public.sleep_data drop constraint sleep_data_calibracao_valida;
+            alter table public.sleep_data add constraint sleep_data_calibracao_valida check (
+                g_norma is null or g_norma between 0 and 7);
+        """,
+        minimo=1,
+        exige="test_a_borda_do_flask_passa",
+    ),
+    "sessao_descarta_gn": dict(
+        descricao="registrar_leitura_da_sessao grava nulo em g_norma",
+        sql="""
+            do $SAB$ begin
+                execute replace(pg_get_functiondef('public.registrar_leitura_da_sessao(uuid,jsonb)'::regprocedure),
+                                '(p_leitura ->> ''g_norma'')::double precision', 'null::double precision');
+            end $SAB$;
+        """,
+        minimo=1,
+        exige="test_a_sessao_grava_gn_e_a_marca",
+    ),
+    "token_descarta_a_marca": dict(
+        descricao="registrar_leitura (token) grava nulo em calibrada",
+        sql="""
+            do $SAB$ begin
+                execute replace(pg_get_functiondef('public.registrar_leitura(text,jsonb)'::regprocedure),
+                                '(p_leitura ->> ''calibrada'')::boolean', 'null::boolean');
+            end $SAB$;
+        """,
+        minimo=1,
+        exige="test_o_token_grava_gn_e_a_marca",
+    ),
 }
 
 

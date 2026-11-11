@@ -177,6 +177,17 @@ struct FeaturesDeEpoca {
   // ele envia a epoca 12 as epocas 13..960 ainda nao existem).
   double gx, gy, gz;
 
+  // `gn`: a NORMA da gravidade media da epoca, em g -- o mesmo vetor de que
+  // `g` e a direcao (CAL-03). Tambem nao e feature: parada, a epoca deveria
+  // dar 1 g, e o quanto se afasta e o erro de calibracao. O app guarda as
+  // epocas paradas e estima a calibracao a partir delas. Negativo = ausente
+  // (o vetor que volta da fila de flash nao o carrega).
+  double gn;
+  // Se as amostras desta epoca passaram por uma calibracao aceita (1), por
+  // nenhuma (0), ou se nao se sabe (-1, ausente no payload). Vai ao servidor
+  // para o dado dizer qual epoca foi corrigida.
+  int8_t calibrada;
+
   // As contagens inteiras de que `zcr` e `p_frac` sao fracoes. O contrato
   // (secao 2.6, "Representacao") manda guardar a CONTAGEM, nao a fracao: em
   // uint16 isso e representacao exata, nao quantizacao.
@@ -186,8 +197,8 @@ struct FeaturesDeEpoca {
 
   FeaturesDeEpoca()
       : enmo_media(0), enmo_desvio(0), enmo_max(0), mag_din_media(0), zcr(0),
-        p_frac(0), gx(0), gy(0), gz(1), cruzamentos(0), amostras_acima(0),
-        amostras(0) {}
+        p_frac(0), gx(0), gy(0), gz(1), gn(-1), calibrada(-1), cruzamentos(0),
+        amostras_acima(0), amostras(0) {}
 };
 
 // ── O vetor, empacotado: o que o ARMAZENAMENTO guarda ─────────────────

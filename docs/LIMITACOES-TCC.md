@@ -125,6 +125,10 @@ sobre a classificação foi pequeno: a proporção de épocas classificadas como
 78,2% para 79,6% quando o viés foi subtraído. O efeito depende da duração do trecho afetado
 e do aparelho, e não foi caracterizado além dessa noite (diário de engenharia, 10/11/2026).
 ✏️ *Rascunho de 10/11: medição de uma noite, de um aparelho; conferir antes de colar.*
+✏️ *11/11 (`CAL-03`): o aplicativo passa a corrigir esse erro com uma autocalibração pela
+gravidade (van Hees et al., 2014), e cada época leva a marca de se foi corrigida. As noites
+registradas antes dela ficam sem correção, porque o sinal bruto não é guardado: só as medidas
+por época. Com um aparelho que nunca muda de posição, só a direção usada é corrigida.*
 
 ### X.2 Ausência de estadiamento do sono
 

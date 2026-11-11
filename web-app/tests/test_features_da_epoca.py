@@ -21,7 +21,7 @@ from flask import Flask
 import database
 from device_auth import TOKEN_HEADER
 from routes import init_routes
-from validacao import COLUNAS_DE_FEATURES, colunas_de_features, validar_leitura
+from validacao import COLUNAS_DE_CALIBRACAO, COLUNAS_DE_FEATURES, colunas_de_features, validar_leitura
 
 _DEVICE = {"id": "dev-uuid-1", "user_id": "user-uuid-1", "revoked_at": None}
 _AUTH = {TOKEN_HEADER: "token-de-teste"}
@@ -147,12 +147,16 @@ def test_colunas_tem_nome_de_feature_e_nao_posicao():
     assert colunas["p_frac"] == _F[5]
     assert (colunas["g_x"], colunas["g_y"], colunas["g_z"]) == tuple(_G)
     assert colunas["fs_features"] == 32.0
-    assert set(colunas) == set(COLUNAS_DE_FEATURES) and len(COLUNAS_DE_FEATURES) == 10
+    assert len(COLUNAS_DE_FEATURES) == 10
+    # CAL-03: as duas da calibração vão junto, nulas quando o payload não as traz.
+    assert set(colunas) == set(COLUNAS_DE_FEATURES) | set(COLUNAS_DE_CALIBRACAO)
+    assert colunas["g_norma"] is None and colunas["calibrada"] is None
 
 
 def test_sem_f_as_dez_colunas_vao_nulas():
     """A restrição "tudo ou nada" da migração 010 exige exatamente isso."""
-    assert colunas_de_features(dict(_BASE)) == {c: None for c in COLUNAS_DE_FEATURES}
+    assert colunas_de_features(dict(_BASE)) == {
+        c: None for c in COLUNAS_DE_FEATURES + COLUNAS_DE_CALIBRACAO}
 
 
 def test_api_data_grava_as_features_pelo_token():

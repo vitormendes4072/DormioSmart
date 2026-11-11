@@ -146,6 +146,22 @@ ResultadoDeMontagem montar_payload(const Epoca &e, const ResolucaoDeParede &pare
                            f.p_frac, f.gx, f.gy, f.gz, static_cast<double>(fs_hz));
     if (m < 0 || usado + static_cast<uint32_t>(m) >= tamanho) return PAYLOAD_BUFFER_PEQUENO;
     usado += static_cast<uint32_t>(m);
+
+    // CAL-03 (contrato 2.9.0): a norma da gravidade media e a marca de
+    // calibracao. Opcionais: o vetor da fila de flash nao carrega nenhum dos
+    // dois, e o payload do travesseiro fica como era. `gn` fora de [0, 8] g
+    // (o fundo de escala da C2) e omitido, como o servidor o recusaria.
+    if (dentro(f.gn, 0.0, 8.0)) {
+      const int q = snprintf(destino + usado, tamanho - usado, ",\"gn\":%.9g", f.gn);
+      if (q < 0 || usado + static_cast<uint32_t>(q) >= tamanho) return PAYLOAD_BUFFER_PEQUENO;
+      usado += static_cast<uint32_t>(q);
+    }
+    if (f.calibrada == 0 || f.calibrada == 1) {
+      const int q = snprintf(destino + usado, tamanho - usado, ",\"cal\":%d",
+                             static_cast<int>(f.calibrada));
+      if (q < 0 || usado + static_cast<uint32_t>(q) >= tamanho) return PAYLOAD_BUFFER_PEQUENO;
+      usado += static_cast<uint32_t>(q);
+    }
   }
   if (usado + 2 > tamanho) return PAYLOAD_BUFFER_PEQUENO;
   destino[usado++] = '}';

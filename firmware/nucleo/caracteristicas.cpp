@@ -245,6 +245,7 @@ bool AcumuladorDeFeatures::fechar(float fs, FeaturesDeEpoca *saida) {
   const double gmy = soma_g[1] / dn;
   const double gmz = soma_g[2] / dn;
   double norma = sqrt(gmx * gmx + gmy * gmy + gmz * gmz);
+  const double norma_medida = norma;
   // Mesmo guarda-corpo de `unitario()` no Python: vetor ~nulo volta
   // inalterado em vez de virar NaN. Nao deveria acontecer com um
   // acelerometro vivo (a gravidade e ~1 g), mas um acelerometro MORTO devolve
@@ -265,6 +266,7 @@ bool AcumuladorDeFeatures::fechar(float fs, FeaturesDeEpoca *saida) {
   f.gx = gmx / norma;
   f.gy = gmy / norma;
   f.gz = gmz / norma;
+  f.gn = norma_medida;
 
   *saida = f;
   return true;

@@ -333,6 +333,12 @@ jobs:
         working-directory: firmware/nucleo
         run: make mutacao-coletor
 
+      # CAL-03 (11/11): a autocalibracao pela gravidade contra o dourado da
+      # referencia em Python. Dez sabotagens no estimador, todas acusadas.
+      - name: Mutação da autocalibração (CAL-03)
+        working-directory: firmware/nucleo
+        run: make mutacao-calibracao
+
       # Nao e teste: e a medicao de quantas horas cabem no buffer, que o
       # (desde 31/10 tambem le firmware/partitions.csv e reprova se a tabela
       # for invalida ou nao tiver a particao `dormio` -- FW-08)

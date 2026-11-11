@@ -68,7 +68,11 @@ def _resposta_de_falha(e, rota):
 #
 # 2.8.0 (08/11, ML-INF) e MINOR: `GET /api/inferencia`, rota nova de leitura.
 # Nada da ingestao mudou.
-CONTRATO_DE_DADOS = "2.8.0"
+#
+# 2.9.0 (11/11, CAL-03) e MINOR: `gn` e `cal`, opcionais, junto do vetor -- a
+# norma da gravidade media e a marca de calibracao. Payload sem eles continua
+# sendo o payload correto (app antigo, travesseiro).
+CONTRATO_DE_DADOS = "2.9.0"
 
 # Frase exigida no corpo de `DELETE /api/me` (SEC-07). Em portugues e em
 # maiusculas de proposito: tem de ser digitada, e nao pode ser o resultado de

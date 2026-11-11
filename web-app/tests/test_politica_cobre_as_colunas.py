@@ -55,6 +55,8 @@ DESCRICAO = {
     "g_y": "direção da gravidade",
     "g_z": "direção da gravidade",
     "fs_features": "taxa de amostragem",
+    "g_norma": "intensidade da gravidade",
+    "calibrada": "correção de calibração",
     "user_id": "associar cada leitura ao seu dono",  # seção 3: o dono, não um dado medido
     "device_id": "identificador do aparelho",
 }

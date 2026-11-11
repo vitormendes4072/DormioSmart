@@ -506,6 +506,9 @@ static void testar_payload_do_registro() {
   VERIFICAR(tem(buf, "\"ts\":\"2026-10-31T00:00:30.000Z\""),
             "a hora gravada sobrevive ao reset");
   VERIFICAR(incluiu && tem(buf, "\"f\":[") && tem(buf, "\"fs\":32"), "o vetor vai, com fs = 32 Hz");
+  // CAL-03: o travesseiro nao manda `gn` nem `cal` -- o registro da flash nao
+  // os carrega, e o payload dele fica como era.
+  VERIFICAR(!tem(buf, "\"gn\"") && !tem(buf, "\"cal\""), "o registro da flash nao inventa gn/cal");
 
   // `zcr` volta da contagem: 400/959. Le o quinto numero de `f`.
   const char *p = strstr(buf, "\"f\":[");

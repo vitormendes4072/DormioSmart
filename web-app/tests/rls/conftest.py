@@ -100,6 +100,7 @@ MIGRACOES_APLICADAS = (
     # LGPD-12 (10/11): o consentimento destacado. A Ana e o Bruno do cenario
     # consentem (gravado pelo dono do banco); a Carol, sem perfil, nao.
     "017_consentimento_destacado.sql",
+    "018_calibracao_da_gravidade.sql",
 )
 
 VARIAVEL = "DORMIO_RLS_DATABASE_URL"
