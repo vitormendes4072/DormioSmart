@@ -8926,6 +8926,58 @@ Um celular deitado só mexe em z, e é z que pesa na norma nessa posição. O GG
 
 **Procedência.** Execuções desta entrada; relatórios do Gradle em `frontend/android/app/build/` (não versionados).
 
+# 2026-11-11 (ix) — release #127: a 018 e o backend 2.9.0 na produção; o sensor soldado responde
+
+**O problema, como foi entendido no início.** As etapas 1 e 2 do `CAL-03` estavam em `develop`, mas nada delas na produção. A ordem fixada na etapa 1 era: a 018 antes do backend 2.9.0, e o APK novo só depois dos dois. Na ordem inversa, `gn` e `cal` se perderiam em silêncio. No mesmo dia, o autor soldou o MPU6050 na ESP32, que é a corrente que trava a captação desde agosto.
+
+**Hipótese de trabalho.**
+- A 018 sem comentários aplica limpa na ordem da produção.
+- O release só acrescenta: o backend aceita dois campos opcionais e nada do que já entra muda.
+- A solda passa no `diagnostico-i2c` sem erro de barramento.
+
+**O que foi testado, e como.**
+- **A 018 sem comentários (216 linhas):** aplicada por mim num Postgres 17 montado na ordem real (001–017), com o diagnóstico.
+- **Na produção:** o autor aplicou a 018 no SQL Editor e rodou uma conferência de cinco marcas: colunas, restrição, as duas funções gravando `g_norma` e a trava do consentimento mantida.
+- **Release:** PR #127, CI 10/10; mesclado e publicado pela Vercel. Depois do deploy:
+  - `get_deployment`;
+  - `/health`;
+  - as rotas sem credencial;
+  - o pacote publicado, inclusive o pedaço da página `/privacidade`.
+- **O sensor soldado:** liguei as quatro ligações (VCC → 3V3, GND → GND, SDA → D21, SCL → D22) e conferi pelas fotos do autor o lado do sensor. Instalei o `arduino-cli` 1.6.0 e o pacote ESP32 3.3.12 numa pasta de ferramentas fora do repositório. Compilei e gravei o `firmware/diagnostico-i2c` na COM3 e li a serial.
+
+**Resultado medido.**
+- **A 018 no banco de teste:** 3 de 3 marcas, a 016 e a 017 intactas, nenhuma marca falsa.
+- **A conferência na produção:** os cinco `true`. **Produção com 001–018.**
+- **O deploy:**
+  - `regions: ["gru1"]`, e a resposta vem `gru1::gru1`;
+  - `/health` `200`, `"contrato_de_dados": "2.9.0"` e o modelo `ml-inf-cabeca-v2`;
+  - lote, leitura, consentimento e inferência sem credencial respondem `401`; `/privacidade` responde `200`;
+  - o pedaço da política traz os trechos novos da §2.2, da §2.3 e da §10; o pacote principal traz a linha "Calibração do sensor".
+- **O diagnóstico de I²C, com a placa parada:**
+  - 0 falhas de barramento a 100 e a 400 kHz;
+  - WHO_AM_I `0x68` em 1 000 de 1 000 leituras;
+  - 0 leituras fora do plausível;
+  - |a| de 9,990 a 10,055 m/s².
+- **O sensor lê 10,03 m/s² parado, 2,2 % acima de 9,81.** É o erro que a calibração de bancada (`CAL-01`) mede eixo por eixo.
+
+**Adaptação.**
+- **Gravação da ESP32:** a 921600 bauds falhou ("No more data to read from the serial port") e a 115200 passou.
+- **Rótulos da placa:** o DevKit V1 de 30 pinos do autor rotula os GPIO como D21 e D22, e o 3V3 fica do mesmo lado que eles. O desenho do repositório (`esquemaEletrico/`, de outra placa, de 38 pinos) tem outra disposição; a orientação foi seguir os nomes impressos.
+
+**O que deu errado no caminho.**
+- **Primeira rodada do diagnóstico:** deu 18,8 % de leituras fora do plausível a 100 kHz (|a| de 7,0 a 13,0). Mas teve 0 falhas de barramento e o WHO_AM_I estável, o que é a placa sendo mexida, e não contato ruim. A segunda rodada, parada, deu 0 %.
+- **Relógio do PC:** está cerca de 1h30 atrasado em relação ao GitHub (cabeçalho `Date` da API contra o relógio local). Isso quebrou a verificação de assinatura do índice de bibliotecas do Arduino ("signature expired"); o diagnóstico não precisava dele.
+- **CI da etapa 2:** os dois runs do PR #126 foram criados durante um incidente do GitHub Actions e ficaram "queued" por mais de uma hora, mesmo depois de o incidente fechar. O GitHub os dava como terminados ao cancelar e como em andamento ao re-executar. Fechar e reabrir o PR gerou um run novo, que passou 8/8.
+- **Script de teste da 018:** quebrou numa substituição de caminho com barras invertidas pelo terminal e foi reescrito inteiro.
+
+**Risco em aberto.**
+- **O APK novo:** é o próximo passo (`APP-12`), e só depois dele a calibração chega ao celular.
+- **O login de verdade** depois deste release ainda não foi confirmado pelo autor.
+- **`CAL-01`:** a calibração de bancada do sensor do travesseiro, agora possível com a solda.
+- **O relógio do PC** precisa ser acertado.
+
+**Procedência.** Conferência colada pelo autor em 11/11; `get_deployment` e requisições públicas desta máquina; a saída serial do diagnóstico, guardada fora do repositório; fotos da solda enviadas pelo autor.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
