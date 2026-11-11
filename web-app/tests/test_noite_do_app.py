@@ -78,7 +78,9 @@ def gravadas(noite):
     as colunas nomeadas do vetor —, e as respostas de cada lote.
     """
     gravadas, respostas = [], []
-    with patch.object(database.db, "validar_token_de_usuario", return_value="user-ana"),          patch.object(database.db, "cliente_do_usuario", return_value=MagicMock()),          patch.object(dispositivos, "buscar_do_dono", return_value={"id": "dev-celular"}),          patch.object(database.db, "registrar_leitura_da_sessao",
+    # LGPD-12: este fixture é de módulo e roda antes do consentimento padrão do conftest.
+    with patch("consentimento.estado", return_value=True), \
+         patch.object(database.db, "validar_token_de_usuario", return_value="user-ana"),          patch.object(database.db, "cliente_do_usuario", return_value=MagicMock()),          patch.object(dispositivos, "buscar_do_dono", return_value={"id": "dev-celular"}),          patch.object(database.db, "registrar_leitura_da_sessao",
                       side_effect=lambda jwt, d, leitura, cliente=None: gravadas.append(leitura) or len(gravadas)):
         for ini in range(0, len(noite), lote.MAX_LEITURAS_POR_LOTE):
             parte = noite[ini:ini + lote.MAX_LEITURAS_POR_LOTE]

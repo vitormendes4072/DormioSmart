@@ -118,6 +118,9 @@ export type PerfilDoServidor = {
   updated_at?: string | null;
   /** A rota criou a linha agora, porque faltava. Ver o docstring da rota. */
   perfil_criado_agora?: boolean;
+  /** LGPD-12: quando e em que versão o consentimento destacado foi dado. */
+  consentimento_saude_em?: string | null;
+  consentimento_saude_versao?: string | null;
 };
 
 /** Estado do formulário. `idade` é texto porque campo de formulário é texto —

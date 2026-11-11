@@ -3,6 +3,8 @@ import { useState } from "react";
 import { CartaoDaNoite } from "../components/CartaoDaNoite";
 import { ListaDeNoites } from "../components/ListaDeNoites";
 import { useEnvioDoCelular } from "../hooks/useEnvioDoCelular";
+import { usePerfil } from "../contexts/PerfilContext";
+import { consentimentoVigente, registrarConsentimento } from "../lib/consentimento";
 import { noiteNativaDisponivel } from "../lib/noiteNativa";
 
 /**
@@ -17,7 +19,18 @@ import { noiteNativaDisponivel } from "../lib/noiteNativa";
  */
 export function Noite() {
   const nativo = noiteNativaDisponivel();
-  const enviar = useEnvioDoCelular(nativo);
+  const { perfil, recarregar } = usePerfil();
+  // LGPD-12: sem o consentimento vigente, o servidor recusa o envio (403); o
+  // envio só se prepara depois dele, e as épocas esperam no aparelho.
+  const vigente = consentimentoVigente(perfil);
+  const enviar = useEnvioDoCelular(nativo && vigente);
+  const consentimento = {
+    vigente,
+    registrar: async () => {
+      await registrarConsentimento();
+      await recarregar();
+    },
+  };
   const [versao, setVersao] = useState(0);
 
   return (
@@ -29,7 +42,11 @@ export function Noite() {
 
       {nativo ? (
         <>
-          <CartaoDaNoite enviar={enviar} aoMudar={() => setVersao((v) => v + 1)} />
+          <CartaoDaNoite
+            enviar={enviar}
+            aoMudar={() => setVersao((v) => v + 1)}
+            consentimento={consentimento}
+          />
           <div className="space-y-3">
             <h2 className="text-base font-semibold text-foreground">Noites neste aparelho</h2>
             <ListaDeNoites recarregar={versao} />

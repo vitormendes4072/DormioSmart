@@ -97,6 +97,9 @@ MIGRACOES_APLICADAS = (
     # Os estados dos dados de teste passaram de "Dormindo"/"Orfa" a "Repouso",
     # porque a 016 recusa estado fora de ("Repouso", "Movimento").
     "016_validacao_no_banco.sql",
+    # LGPD-12 (10/11): o consentimento destacado. A Ana e o Bruno do cenario
+    # consentem (gravado pelo dono do banco); a Carol, sem perfil, nao.
+    "017_consentimento_destacado.sql",
 )
 
 VARIAVEL = "DORMIO_RLS_DATABASE_URL"
@@ -267,6 +270,16 @@ def cenario(_conexao_dona, esquema):
         # (pelo dono) simula a conta cujo gatilho não rodou, que é o caso do
         # `migrations/DIAGNOSTICO-perfil-nao-criado.sql`.
         cursor.execute("delete from public.profiles where id = %s", (CAROL,))
+
+        # LGPD-12 (017): a Ana e o Bruno consentiram, como quem ja usa o app.
+        # Sem isso, a gravacao pela sessao e o pareamento recusam -- e os
+        # testes de isolamento passariam a testar o consentimento, nao o RLS.
+        cursor.execute(
+            "update public.profiles set consentimento_saude_em = now(), "
+            "consentimento_saude_versao = public.versao_do_consentimento() "
+            "where id in (%s, %s)",
+            (ANA, BRUNO),
+        )
 
         # O trigger `on_auth_user_created` da 001 deve ter criado os profiles.
         cursor.execute(

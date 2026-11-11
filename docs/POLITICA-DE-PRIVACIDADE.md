@@ -314,12 +314,19 @@ tratada como dado de saúde (seção 2.5), a base é a do **art. 11, I** da Lei 
 específicas. Os dados que não são de saúde (e-mail, nome, idade, nome do
 dispositivo) seguem no art. 7º, I.
 
-⚠️ **O que existe hoje, e o que falta.** O consentimento é manifestado ao criar
-a conta, ao autorizar o sensor no navegador e, no aplicativo para Android, a cada
-vez que você toca em *Iniciar a noite*. **Ainda não há uma tela própria e
-destacada** para o consentimento sobre a série de movimento e a estimativa de
-sono — é o que o art. 11, I pede, e ela está em desenvolvimento. Até ela existir,
-esta lacuna fica declarada aqui.
+**Como você consente.** Antes da primeira noite no aplicativo e da primeira
+coleta no navegador, aparece uma tela própria, *Antes de começar: seus dados de
+sono*, que diz o que é medido, o que se estima a partir disso, que é tratado como
+dado de saúde, que não é diagnóstico e como apagar tudo. O botão *Concordo* só se
+habilita depois de você marcar a caixa de que leu; *Agora não* fecha a tela e
+nada é medido. Registramos a data (pelo relógio do servidor) e a versão do texto
+que você aceitou. Sem esse registro, o servidor recusa gravar as medições feitas
+com a sua sessão, parear um dispositivo novo e calcular a estimativa. Se o texto
+da tela mudar, a versão muda, e a tela aparece de novo.
+
+Um dispositivo de travesseiro que **já estava pareado** antes desta tela existir
+continua enviando: o consentimento é pedido no pareamento, e um dispositivo novo
+não se pareia sem ele.
 
 Você pode revogar o consentimento a qualquer momento apagando sua conta (seção
 6.4). O uso em pesquisa tem consentimento próprio, pelo termo de participação
@@ -579,6 +586,9 @@ Mudanças materiais — nova categoria de dado, nova finalidade, novo operador �
 serão anunciadas antes de entrarem em vigor. A data no topo indica a última
 revisão.
 
+- **10 de novembro de 2026, segunda revisão:** a tela de consentimento
+  específico e destacado para os dados de sono, com data e versão registradas
+  (seção 4).
 - **10 de novembro de 2026:** o aplicativo para Android (seções 2.2, 2.3, 6.4 e
   6.7); a estimativa de sono e vigília (seção 3, item 6); a série de movimento
   tratada como dado de saúde e a base legal do art. 11, I (seções 2.4, 2.5 e 4);
@@ -606,7 +616,7 @@ O que esta política teve de declarar como ausente, e que vira item:
 | ~~Sem tela para corrigir nome e e-mail~~ | §6.3 | ✅ **Fechada em 17/10** pelo `UI-11` (nome e e-mail) e pelo `PERFIL-01` (idade, e o nome passando a gravar em `profiles`). A sugestão original — *"barato: a policy de `update` em `profiles` já existe"* — estava certa na conclusão e errada no motivo: nenhum código de produção tocava `profiles`. Ver §5 ocorrência 4 das lições |
 | **A política não acompanhou o `UI-11` no mesmo dia** | §6.3 | ⚠️ Não é lacuna de produto, é de processo: a tela saiu na manhã de 17/10 e esta política continuou dizendo que ela não existia. Ocorrência 5 do §6 das lições. O mecanismo que faltaria para pegar isso **não existe** — nada liga uma afirmação desta política a um teste |
 | Idade declarada de menor de 18 não tem tratamento próprio | §2.1 | `LGPD-05` — decidir entre exigir consentimento de responsável, restringir o cadastro a maiores de 18, ou manter a lacuna declarada. **É decisão de produto, não de implementação** |
-| **Sem consentimento específico e destacado para a série de movimento** | §4 | ✏️ *10/11:* a série passou a ser tratada como dado de saúde (art. 11, I), que pede essa tela. Item `LGPD-12`. Até lá, a lacuna fica declarada no texto |
+| ~~Sem consentimento específico e destacado para a série de movimento~~ | §4 | ✅ *10/11:* fechada pelo `LGPD-12` (migração 017 e a tela). ⚠️ **Ordem do release:** a seção 4 descreve a trava do banco, então só vai ao ar com a 017 aplicada. Fica de fora o dispositivo de travesseiro já pareado, por decisão do autor |
 | **As medidas de movimento por época não aparecem no painel nem saem no CSV** | §6.1 | ✏️ *10/11:* disponíveis só por `GET /api/features`. Acrescentar ao CSV fecha a lacuna |
 | **A exclusão da conta não apaga os arquivos do celular** | §6.4 | ✏️ *10/11:* declarado. Apagar as noites locais junto com a conta é uma mudança no app |
 | ~~A validação do servidor é contornável na própria conta~~ | §9 | ✅ *10/11:* fechada pelo `SEC-18` (migração 016), aplicada na produção no mesmo dia (`SEC-21`). A coerência de `total` e o "sensor mudo" continuam só no servidor |

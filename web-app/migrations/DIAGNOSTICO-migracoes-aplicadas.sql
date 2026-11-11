@@ -154,7 +154,19 @@ marcas (migracao, item, marca, presente) as (values
     ('016', 'SEC-18', 'parear_dispositivo com teto e formato do hash',
         coalesce((select pg_get_functiondef(to_regprocedure('public.parear_dispositivo(text,text,text)')) like '%limite de 10 dispositivos%'), false)),
     ('016', 'SEC-18', 'gatilho devices_revogacao_definitiva',
-        exists (select 1 from pg_trigger where tgname = 'devices_revogacao_definitiva'))
+        exists (select 1 from pg_trigger where tgname = 'devices_revogacao_definitiva')),
+    -- 017: o consentimento destacado. As colunas, a funcao que o grava, o
+    -- gatilho que impede escrever direto, e a trava na gravacao pela sessao.
+    ('017', 'LGPD-12', 'colunas do consentimento em profiles',
+        exists (select 1 from col where nome = 'profiles.consentimento_saude_versao')
+        and exists (select 1 from col where nome = 'profiles.consentimento_saude_em')),
+    ('017', 'LGPD-12', 'funcao consentir_dado_de_saude',
+        to_regprocedure('public.consentir_dado_de_saude(text)') is not null),
+    ('017', 'LGPD-12', 'gatilho profiles_consentimento_so_pela_funcao',
+        exists (select 1 from pg_trigger where tgname = 'profiles_consentimento_so_pela_funcao')),
+    ('017', 'LGPD-12', 'gravacao pela sessao exige o consentimento',
+        coalesce((select pg_get_functiondef(to_regprocedure('public.registrar_leitura_da_sessao(uuid,jsonb)')) like '%consentimento para dado de saude pendente%'
+                     and pg_get_functiondef(to_regprocedure('public.parear_dispositivo(text,text,text)')) like '%consentimento para dado de saude pendente%'), false))
 ),
 esquema as (
     select migracao, min(item) as item,

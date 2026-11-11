@@ -8534,6 +8534,64 @@ As consultas de 10/11 na produção (5.1 e 5.3 da auditoria) deram zero leitura 
 
 **Procedência.** Captura de tela do painel e resultado da conferência colados pelo autor em 10/11. `web-app/migrations/013_retencao_por_inatividade.sql`.
 
+# 2026-11-10 (xii) — LGPD-12: o consentimento destacado, com a trava no banco
+
+**O problema, como foi entendido no início.** Desde o `LGPD-11`, a política trata a série de movimento e a estimativa de sono como dado de saúde (art. 11, I). Esse artigo pede consentimento **específico e destacado**. O que existia era o consentimento do cadastro, o do sensor no navegador e o toque em *Iniciar a noite*, e a §4 declarava a lacuna. Uma tela sozinha não basta: um cliente que pule a tela, ou uma chamada direta à API, gravaria do mesmo jeito.
+
+**Hipótese de trabalho.** O consentimento é um registro no banco (data pelo relógio do banco e versão do texto), gravado só por uma função. As funções de gravação pela sessão e de pareamento recusam quem não o tem na versão vigente. O backend traduz essa recusa num `403` com o motivo, e não num `503`, que o app leria como servidor fora do ar e reenviaria para sempre. A tela vem antes da primeira noite e da primeira coleta. O caminho do token (o dispositivo do travesseiro já pareado) **não** é travado, por decisão do autor ("travado só no pareamento"): um dispositivo novo não se pareia sem o consentimento.
+
+**O que foi testado, e como.**
+- **Migração 017:**
+  - duas colunas em `profiles`;
+  - `versao_do_consentimento()` = `2026-11-10`;
+  - `consentir_dado_de_saude(p_versao)`, que só aceita a versão vigente e usa `now()`;
+  - um gatilho que impede `authenticated`/`anon` de escrever as colunas direto, inclusive ao criar o perfil;
+  - a trava em `registrar_leitura_da_sessao` e em `parear_dispositivo` (`42501`).
+- **RLS:** `test_rls_consentimento.py`, 12 testes contra Postgres 17 em Docker.
+- **Mutação:** 5 sabotagens novas:
+  - a gravação sem a trava;
+  - o pareamento sem a trava;
+  - a trava aceitando qualquer versão;
+  - o gatilho fora;
+  - a função aceitando qualquer versão.
+- **Backend:**
+  - `consentimento.py`;
+  - `POST /api/me/consentimento` (`409` na versão errada);
+  - as travas `403` no lote pela sessão, nos dois pareamentos e em `GET /api/inferencia`;
+  - `test_consentimento.py` confere que as três constantes de versão (banco, backend, frontend) são iguais.
+- **Frontend:**
+  - `TelaDeConsentimento`, um diálogo em que o *Concordo* só liga com a caixa marcada;
+  - o portão `usePortaoDoConsentimento` no `CartaoDaNoite` (app) e em `Coletar` (navegador);
+  - 10 testes novos.
+- **Controles positivos fora do banco:**
+  - o portão sabotado para rodar sempre derruba 4 testes da tela;
+  - a trava do backend desligada derruba os 4 testes de `403`.
+- **Diagnóstico e verificador de migrações:** a 017 ganhou 4 marcas, e a ordem real da produção termina nela.
+
+**Resultado medido** (Windows 11, nesta branch):
+- backend 525 passam;
+- frontend 561 passam em 43 arquivos, com `tsc` limpo;
+- RLS 259 passam (Postgres 17);
+- mutação **50/50**;
+- o verificador de migrações acerta os 17 estados e a ordem real, com a 017.
+
+**Adaptação.**
+- Em `Coletar`, a preparação do dispositivo passou a esperar o consentimento. Sem consentimento, a tela ficava em "Preparando..." sem botão nenhum, porque a preparação pareia e o pareamento recusaria. Entrou um botão *Começar a registrar* que abre a tela.
+- A política (§4) descreve a tela, o registro e a exceção do dispositivo já pareado.
+
+**O que deu errado no caminho.**
+- **Teste do backend:** um teste novo (o do banco fora do ar) caiu porque a fixture automática, que dá o consentimento por padrão aos testes antigos, também o cobria. Faltava a marca `sem_consentimento`.
+- **Edições:** a fixture de módulo do `test_noite_do_app.py` roda antes da automática e precisou do próprio patch. Um script de edição abortou no meio e deixou uma edição por aplicar, que foi refeita à mão.
+- **Controle positivo do backend:** a primeira versão inseriu a sabotagem depois da linha de assinatura, antes da docstring, e quebrou a sintaxe. Foi refeita.
+
+**Risco em aberto.**
+- **Ordem do release (`LGPD-13`):** a 017 precisa ser aplicada **junto** com o release. Sem ela, a rota nova falha e a política descreve uma trava que não existe. Com ela e sem o release, o backend antigo grava pela sessão sem consentimento, o banco recusa, e o app antigo recebe erro.
+- **Quem já tem conta passa pela tela na próxima noite.** Isso inclui o autor e as noites de teste.
+- **Não feito:** o percurso no emulador, prometido no plano. O app aponta para o backend de produção, que não tem a rota nem a 017; fica para depois do release.
+- **Dispositivo de travesseiro já pareado:** continua gravando sem o consentimento, por decisão do autor, declarado na política.
+
+**Procedência.** `web-app/migrations/017_consentimento_destacado.sql`, `web-app/tests/rls/test_rls_consentimento.py`, `web-app/tests/test_consentimento.py`, `frontend/src/components/TelaDeConsentimento.test.tsx`; execuções de 10/11 nesta máquina.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
