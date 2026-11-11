@@ -1,7 +1,13 @@
 # Contrato de dados — Smart Dormio
 
-**Versão:** 2.8.0 · **Itens:** API-03, DATA-01, DATA-02, SEC-02, SEC-03, DASH-05, DASH-06, DATA-04, APP-01, SEC-06, SEC-07, APP-08, DASH-08, DASH-12, DASH-13, DATA-07a, DATA-07b, DATA-07c, ML-INF
+**Versão:** 2.9.0 · **Itens:** API-03, DATA-01, DATA-02, SEC-02, SEC-03, DASH-05, DASH-06, DATA-04, APP-01, SEC-06, SEC-07, APP-08, DASH-08, DASH-12, DASH-13, DATA-07a, DATA-07b, DATA-07c, ML-INF, CAL-03
 
+> **2.9.0 (MINOR — nada quebra em campo):** dois campos opcionais junto do vetor da
+> época, `gn` (a norma da gravidade média, em g) e `cal` (0 ou 1: se as amostras
+> passaram por uma autocalibração aceita), seção 2.6, "Calibração pela gravidade".
+> Gravados nas colunas `g_norma` e `calibrada` (migração 018). Payload sem eles
+> continua correto.
+>
 > **2.8.0 (MINOR — nada quebra em campo):** rota nova de leitura, `GET /api/inferencia`,
 > que estima sono ou vigília por época sobre a janela pedida, com o modelo
 > `ml-inf-cabeca-v2` (seção 2.6, "Inferência no servidor"). Nada da ingestão mudou.
@@ -346,6 +352,26 @@ A medição está travada em
 - **Ausente continua sendo o caso normal**, e continuará sendo depois que o
   firmware novo existir: dispositivo velho em campo é dispositivo válido.
 - `fs` é número em (0, 200] Hz.
+
+#### Calibração pela gravidade: `gn` e `cal` (v2.9.0, `CAL-03`)
+
+O acelerômetro tem, por eixo, desvio e erro de escala; parado, ele lê 0,991 a
+1,020 g conforme a posição (Moto E7, diário de 10/11 iv), e o ENMO lê o excesso
+como movimento. O app corrige cada amostra com uma autocalibração pela
+gravidade (van Hees et al., 2014; `firmware/nucleo/calibracao.h`) e manda dois
+campos opcionais junto de `f`:
+
+| Campo | Unidade | Faixa | O que é |
+|---|---|---|---|
+| `gn` | g | [0, 8] | A **norma** da gravidade média da época — o vetor de que `g` é a direção. Parada, a época deveria dar 1 g; o quanto se afasta é o erro de calibração que sobrou. |
+| `cal` | — | 0 ou 1 | Se as amostras da época passaram por uma calibração aceita. `0`: o app novo, sem calibração (ainda sem épocas paradas bastantes). |
+
+- Os dois exigem `f`; sozinhos são `400` (`campo gn exige f`).
+- `gn` fora de [0, 8] g, ou `cal` diferente de 0 e 1, é `400`.
+- Ausentes é o caso normal do travesseiro e do app antigo: a coluna fica nula.
+- **Os valores de `f`, `ax`/`ay`/`az` e `gn` de uma época com `cal: 1` já são
+  os calibrados.** Não há como reconstruir o bruto no servidor: a época não leva
+  a calibração usada, só a marca.
 
 #### Persistência (migração 010)
 
@@ -897,6 +923,7 @@ unidade alterada, novo header obrigatório). **MINOR** = campo opcional novo.
 
 | Versão | Data | Mudança |
 |---|---|---|
+| 2.9.0 | 2026-11-11 | **MINOR.** `gn` e `cal`, opcionais e só com `f` (`CAL-03`): a norma da gravidade média da época e a marca de calibração. Validados na ingestão (`validacao._validar_calibracao`) e no banco (`sleep_data_calibracao_valida`), gravados em `g_norma` e `calibrada` (migração 018). Payload sem eles continua correto. |
 | 2.8.0 | 2026-11-08 | **MINOR.** `GET /api/inferencia` (`ML-INF`): sono ou vigília por época sobre a janela pedida, com o modelo `ml-inf-cabeca-v2`, calculado a cada pedido e não gravado; `422` abaixo de 23 épocas válidas. O `/health` passa a informar `modelo`. A ingestão não muda |
 | 2.7.0 | 2026-10-30 | **MINOR.** A seção 2.6 implementada (`DATA-07b` (d) e (e)): `f`/`g`/`fs` emitidos pelo firmware (só época de 30 s com vetor dentro das faixas), validados na ingestão, gravados em dez colunas nomeadas (migração 010) e servidos por `GET /api/features`, que deriva `inclinacao_rel` e `d_angulo` sobre a janela pedida, com `d_angulo` nulo depois de buraco. Payload sem `f` não muda |
 | 2.6.0 | 2026-10-30 | **MINOR.** `POST /api/data/lote` (seção 5.2, `API-03`): até 60 leituras por requisição, resposta com `aceitas`, `rejeitadas` e `pendentes` por índice. O `POST /api/data` não muda |

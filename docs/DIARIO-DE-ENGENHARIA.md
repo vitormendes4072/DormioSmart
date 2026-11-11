@@ -8812,6 +8812,72 @@ As consultas de 10/11 na produção (5.1 e 5.3 da auditoria) deram zero leitura 
 
 **Procedência.** Resultados das consultas e captura do painel colados pelo autor em 11/11; `get_deployment` da Vercel; documentação da Vercel sobre regiões de funções; testes nesta máquina (Windows 11), backend 526 passam.
 
+# 2026-11-11 (vii) — CAL-03, etapa 1: a autocalibração no núcleo, no contrato e no banco
+
+**O problema, como foi entendido no início.** O acelerômetro tem desvio e erro de escala por eixo (etapa 0: no Moto E7, a gravidade parada vai de 0,991 a 1,020 g conforme a posição), e o ENMO lê o excesso como movimento: 23 mg com a tela para baixo, sem movimento nenhum, na noite de 10/11. O sinal bruto não sobe ao servidor, então a correção tem de acontecer no aparelho, antes do ENMO, e o dado tem de dizer qual época foi corrigida. A etapa 1 é a conta, o contrato e o banco. Guardar os pontos entre noites e estimar no app é a etapa 2.
+
+**Hipótese de trabalho.** O método de van Hees et al. (2014), o do GGIR, com uma diferença deliberada: cada eixo usa só o que os pontos identificam.
+- **Completo:** o eixo passou de ±0,3 g dos dois lados, e se estimam desvio e escala.
+- **Desvio:** passou de um lado só, e se estima só o desvio.
+- **Fixo:** não passou, e o eixo fica como está.
+
+Um celular deitado só mexe em z, e é z que pesa na norma nessa posição. O GGIR recusaria calibrar. A temperatura só entra com 2 °C de faixa entre os pontos (PROVISÓRIO). A calibração só é aceita se o erro cair e ficar abaixo de 10 mg; senão, nada é corrigido.
+
+**O que foi testado, e como.**
+- **Referência em Python** (`ml/src/calibracao.py`), com erros sintéticos do tamanho dos do Moto E7. Cinco casos:
+  - esfera;
+  - deitado com a tela para cima e para baixo;
+  - só para cima;
+  - pontos ruidosos;
+  - poucos pontos.
+
+  `ml/testes/test_calibracao.py` (11 testes) confere a recuperação dos parâmetros e grava o dourado `dourado_calibracao.json`.
+- **Núcleo C++** (`firmware/nucleo/calibracao.{h,cpp}`): a mesma conta, conferida contra o dourado (`make calibracao`, 185 verificações), com 10 sabotagens (`make mutacao-calibracao`).
+- **No coletor do celular:** cada amostra é calibrada em g antes da cadeia, e o payload ganha `gn` (a norma da gravidade média da época) e `cal` (0 ou 1). O travesseiro não manda nenhum dos dois. Três sabotagens novas no coletor: a calibração não aplicada, `cal` sempre 0 e `gn` perdido.
+- **Servidor:**
+  - contrato 2.9.0;
+  - `validacao._validar_calibracao` (18 testes em `test_calibracao_na_ingestao.py`);
+  - migração 018, com as colunas `g_norma` e `calibrada`, a restrição `sleep_data_calibracao_valida` e as duas funções de gravação refeitas a partir da 016 e da 017;
+  - 10 testes de RLS e 4 sabotagens no banco;
+  - 3 marcas da 018 no diagnóstico.
+- **Política §2.2:** descreve as duas colunas; o teste que liga as colunas à política acusou a falta antes.
+
+**Resultado medido** (Windows 11; núcleo em contêiner `gcc:13`; banco em Postgres 17):
+- **Referência:**
+  - esfera: erro de 9,73 → 0,48 mg;
+  - deitado: 15,46 → 0,59 mg, só z calibrado;
+  - só para cima: 1,23 → 0,63 mg, só o desvio de z.
+
+  Os casos ruidoso e com poucos pontos foram recusados.
+- **O C++ bate com o Python** em 1e-8 nos nove parâmetros, nos erros e nas amostras de conferência. A mutação da calibração deu 10/10.
+- **O coletor, com o erro do eixo z do Moto E7, parado de tela para baixo:** o ENMO parado foi de **19,29 mg para 0,000 mg**, e o `gn` de 1,0193 para 1,00000 g. Uma calibração recusada deixa o ENMO igual ao de sem calibração.
+- **Suítes:**
+  - núcleo 341 + 157 + 152 + 456 + 85 + 314 + 185, 0 falhas;
+  - mutações: coletor 15/15, cadeia 29/29, paridade 15/15, fila 14/14, laço 4/4;
+  - ML 310;
+  - backend 544;
+  - RLS 269;
+  - mutação do banco 54/54;
+  - verificador de migrações com os 18 estados e a ordem real terminando na 018.
+
+**Adaptação.**
+- **Sabotagens do coletor:** três delas procuravam as linhas de conversão reescritas e foram atualizadas para o código novo, com a mesma sabotagem.
+- **Tolerância da recuperação da escala:** foi de 2e-4 para 5e-4, porque o ruído simulado já dá 2,07e-4.
+
+**O que deu errado no caminho.**
+- **Tolerância apertada demais:** o primeiro teste da esfera falhou com a escala a 2,07e-4 da verdade contra 2e-4 de tolerância. Era o tamanho do ruído, não um defeito.
+- **Comando barrado:** um comando com `docker run --rm` e substituição de caminho foi barrado pela verificação de segurança, por ambiguidade de leitura. Nada foi apagado, e foi refeito em passos separados.
+- **Teste de RLS do token:** procurou a leitura numa segunda sessão, que não a via porque cada sessão volta atrás no fim. Passou a conferir na mesma transação.
+- **NaN no JSON:** o caso NaN mandado como número deu erro de JSON (22P02) em vez da restrição. Passou a ir como texto, como os testes da 016.
+
+**Risco em aberto.**
+- **Etapa 2 (`CAL-03`):** o app ainda não guarda pontos nem estima; até lá, toda época sai com `cal: 0`.
+- **Ordem de produção:** a 018 tem de entrar antes do release do backend 2.9.0. Com o backend novo e o banco antigo, `gn` e `cal` se perderiam em silêncio.
+- **Limiares provisórios:** a faixa mínima de temperatura (2 °C) e o critério de época parada (10 mg) são provisórios, a validar na etapa 3.
+- **Noites anteriores:** ficam sem correção (declarado em `LIMITACOES-TCC.md`).
+
+**Procedência.** Execuções desta entrada; erros sintéticos da bancada da etapa 0 (diário, 10/11 iv).
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

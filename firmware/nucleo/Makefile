@@ -12,6 +12,7 @@
 #   make c2       as pecas da arquitetura C2 (FIFO, anti-aliasing, cadeia, lote)
 #   make fila     a fila na flash (FW-08) contra uma flash NOR simulada
 #   make mutacao-fila  sabota a fila e exige que a suite dela ACUSE
+#   make calibracao  a autocalibracao (CAL-03) contra ml/testes/dourado_calibracao.json
 #   make cadeia   a cadeia C2 inteira contra ml/testes/vetor_dourado_cadeia_c2.json
 #   make mutacao-cadeia  sabota a cadeia C2 e exige que o dourado dela ACUSE
 #   make mutacao  sabota o nucleo e exige que a paridade ACUSE
@@ -29,11 +30,11 @@ CXXFLAGS := -std=c++11 -Wall -Wextra -Wpedantic -Wshadow -O2 -g \
 FONTES := epoca.cpp payload.cpp filtro.cpp caracteristicas.cpp \
           fifo_mpu.cpp reamostragem.cpp cadeia_c2.cpp lote.cpp \
           registro_flash.cpp fila_flash.cpp epoca_c2.cpp envio_da_fila.cpp \
-          coletor_celular.cpp
+          coletor_celular.cpp calibracao.cpp
 CABECALHOS := epoca.h buffer.h cadencia.h reconexao.h relogio.h payload.h \
               filtro.h caracteristicas.h fifo_mpu.h reamostragem.h cadeia_c2.h lote.h \
               registro_flash.h fila_flash.h epoca_c2.h envio_da_fila.h radio.h \
-              coletor_celular.h
+              coletor_celular.h calibracao.h
 
 # O leitor de JSON NAO esta em FONTES de proposito: ele e instrumento de
 # teste, mora em `testes/` e nao deve embarcar. Se um dia aparecer em FONTES,
@@ -45,10 +46,11 @@ CABECALHOS_TESTE := testes/leitor_json.h
 # os dois lados leem o MESMO arquivo, sem etapa de transcodificacao no meio.
 DOURADO := ../../ml/testes/vetor_dourado.json
 DOURADO_CADEIA := ../../ml/testes/vetor_dourado_cadeia_c2.json
+DOURADO_CALIBRACAO := ../../ml/testes/dourado_calibracao.json
 
-.PHONY: todos testes dourado c2 cadeia fila celular mutacao mutacao-cadeia mutacao-fila mutacao-coletor capacidade limpar
+.PHONY: todos testes dourado c2 cadeia fila celular calibracao mutacao-calibracao mutacao mutacao-cadeia mutacao-fila mutacao-coletor capacidade limpar
 
-todos: testes dourado c2 cadeia fila celular
+todos: testes dourado c2 cadeia fila celular calibracao
 
 testes: bin/testes
 	@./bin/testes
@@ -103,6 +105,19 @@ celular: bin/testes_coletor_celular
 	  exit 1; }
 	@./bin/testes_coletor_celular $(DOURADO_CADEIA)
 
+# A autocalibracao pela gravidade (CAL-03) contra o dourado gravado pela
+# referencia em Python (`ml/src/calibracao.py`). Mesma regra do `dourado`.
+calibracao: bin/testes_calibracao
+	@test -f $(DOURADO_CALIBRACAO) || { \
+	  echo "  ERRO: $(DOURADO_CALIBRACAO) nao existe."; \
+	  echo "  Rode: cd ../../ml && python -m pytest testes/test_calibracao.py"; \
+	  exit 1; }
+	@./bin/testes_calibracao $(DOURADO_CALIBRACAO)
+
+# Fora de `todos`: recompila a calibracao uma vez por sabotador.
+mutacao-calibracao:
+	@sh testes/verificar_calibracao_por_mutacao.sh
+
 # Fora de `todos`, como as outras mutacoes: recompila o coletor por sabotador.
 mutacao-coletor:
 	@sh testes/verificar_coletor_por_mutacao.sh
@@ -143,6 +158,11 @@ bin/testes_coletor_celular: testes/testes_coletor_celular.cpp $(FONTES) $(CABECA
                             $(FONTES_TESTE) $(CABECALHOS_TESTE)
 	@mkdir -p bin
 	$(CXX) $(CXXFLAGS) -I. testes/testes_coletor_celular.cpp $(FONTES) $(FONTES_TESTE) -o $@
+
+bin/testes_calibracao: testes/testes_calibracao.cpp $(FONTES) $(CABECALHOS) \
+                       $(FONTES_TESTE) $(CABECALHOS_TESTE)
+	@mkdir -p bin
+	$(CXX) $(CXXFLAGS) -I. testes/testes_calibracao.cpp $(FONTES) $(FONTES_TESTE) -o $@
 
 bin/capacidade: capacidade.cpp $(FONTES) $(CABECALHOS)
 	@mkdir -p bin

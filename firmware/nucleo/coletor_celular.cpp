@@ -86,10 +86,17 @@ void ColetorCelular::amostrar(uint64_t t_us, float ax_ms2, float ay_ms2, float a
        n_pendentes_ >= CAPACIDADE_DA_DRENAGEM)) {
     drenar();
   }
+  // Em g, calibrada (CAL-03), e so entao na escala do MPU: a correcao vem
+  // antes de tudo que a cadeia faz com a amostra, ENMO inclusive.
+  const double bruta[3] = {static_cast<double>(ax_ms2 / G_PADRAO_MS2),
+                           static_cast<double>(ay_ms2 / G_PADRAO_MS2),
+                           static_cast<double>(az_ms2 / G_PADRAO_MS2)};
+  double g[3];
+  aplicar_calibracao(calibracao_, static_cast<double>(temperatura_c_), bruta, g);
   AmostraBruta &a = pendentes_[n_pendentes_];
-  a.x = g_para_lsb(ax_ms2 / G_PADRAO_MS2);
-  a.y = g_para_lsb(ay_ms2 / G_PADRAO_MS2);
-  a.z = g_para_lsb(az_ms2 / G_PADRAO_MS2);
+  a.x = g_para_lsb(static_cast<float>(g[0]));
+  a.y = g_para_lsb(static_cast<float>(g[1]));
+  a.z = g_para_lsb(static_cast<float>(g[2]));
   if (n_pendentes_ == 0) t_primeira_pendente_us_ = t_us;
   n_pendentes_++;
   t_ultima_us_ = t_us;
@@ -124,6 +131,10 @@ ResultadoDoColetor ColetorCelular::proximo(char *destino, uint32_t tamanho, uint
   FeaturesDeEpoca f_enviada;
   if (tem_features) {
     f_enviada = desquantizar(quantizar(f), static_cast<uint16_t>(AMOSTRAS_NA_GRADE));
+    // A fila de flash nao carrega `gn` nem a marca; o celular nao passa por
+    // ela, e manda os dois (CAL-03).
+    f_enviada.gn = f.gn;
+    f_enviada.calibrada = calibracao_.aceita ? 1 : 0;
   }
 
   const Epoca e = epoca_da_grade(info.indice, grade_x_, grade_y_, grade_z_, AMOSTRAS_NA_GRADE,

@@ -16,7 +16,7 @@ NUCLEO=$(cd "$AQUI/.." && pwd)
 DOURADO="$NUCLEO/../../ml/testes/vetor_dourado_cadeia_c2.json"
 CXX=${CXX:-g++}
 BANDEIRAS="-std=c++11 -w -O2 -fno-exceptions -fno-rtti"
-FONTES="epoca.cpp payload.cpp filtro.cpp caracteristicas.cpp fifo_mpu.cpp reamostragem.cpp cadeia_c2.cpp lote.cpp registro_flash.cpp fila_flash.cpp epoca_c2.cpp envio_da_fila.cpp coletor_celular.cpp"
+FONTES="epoca.cpp payload.cpp filtro.cpp caracteristicas.cpp fifo_mpu.cpp reamostragem.cpp cadeia_c2.cpp lote.cpp registro_flash.cpp fila_flash.cpp epoca_c2.cpp envio_da_fila.cpp coletor_celular.cpp calibracao.cpp"
 
 falhas=0
 total=0
@@ -93,32 +93,59 @@ caso "drenagem depois de a amostra nova entrar (carimba o antes do buraco com o 
        n_pendentes_ >= CAPACIDADE_DA_DRENAGEM)) {
     drenar();
   }
+  // Em g, calibrada (CAL-03), e so entao na escala do MPU: a correcao vem
+  // antes de tudo que a cadeia faz com a amostra, ENMO inclusive.
+  const double bruta[3] = {static_cast<double>(ax_ms2 / G_PADRAO_MS2),
+                           static_cast<double>(ay_ms2 / G_PADRAO_MS2),
+                           static_cast<double>(az_ms2 / G_PADRAO_MS2)};
+  double g[3];
+  aplicar_calibracao(calibracao_, static_cast<double>(temperatura_c_), bruta, g);
   AmostraBruta &a = pendentes_[n_pendentes_];
-  a.x = g_para_lsb(ax_ms2 / G_PADRAO_MS2);
-  a.y = g_para_lsb(ay_ms2 / G_PADRAO_MS2);
-  a.z = g_para_lsb(az_ms2 / G_PADRAO_MS2);
+  a.x = g_para_lsb(static_cast<float>(g[0]));
+  a.y = g_para_lsb(static_cast<float>(g[1]));
+  a.z = g_para_lsb(static_cast<float>(g[2]));
   if (n_pendentes_ == 0) t_primeira_pendente_us_ = t_us;
   n_pendentes_++;
   t_ultima_us_ = t_us;" \
   "  const bool drenar_agora = n_pendentes_ > 0 &&
       (t_us - t_ultima_drenagem_us_ >= INTERVALO_DE_DRENAGEM_US ||
        n_pendentes_ >= CAPACIDADE_DA_DRENAGEM - 1);
+  // Em g, calibrada (CAL-03), e so entao na escala do MPU: a correcao vem
+  // antes de tudo que a cadeia faz com a amostra, ENMO inclusive.
+  const double bruta[3] = {static_cast<double>(ax_ms2 / G_PADRAO_MS2),
+                           static_cast<double>(ay_ms2 / G_PADRAO_MS2),
+                           static_cast<double>(az_ms2 / G_PADRAO_MS2)};
+  double g[3];
+  aplicar_calibracao(calibracao_, static_cast<double>(temperatura_c_), bruta, g);
   AmostraBruta &a = pendentes_[n_pendentes_];
-  a.x = g_para_lsb(ax_ms2 / G_PADRAO_MS2);
-  a.y = g_para_lsb(ay_ms2 / G_PADRAO_MS2);
-  a.z = g_para_lsb(az_ms2 / G_PADRAO_MS2);
+  a.x = g_para_lsb(static_cast<float>(g[0]));
+  a.y = g_para_lsb(static_cast<float>(g[1]));
+  a.z = g_para_lsb(static_cast<float>(g[2]));
   if (n_pendentes_ == 0) t_primeira_pendente_us_ = t_us;
   n_pendentes_++;
   t_ultima_us_ = t_us;
   if (drenar_agora) drenar();"
 
 caso "conversao para g com 9,81 em vez de 9,80665" acusa \
-  "  a.x = g_para_lsb(ax_ms2 / G_PADRAO_MS2);" \
-  "  a.x = g_para_lsb(ax_ms2 / 9.81f);"
+  "  const double bruta[3] = {static_cast<double>(ax_ms2 / G_PADRAO_MS2)," \
+  "  const double bruta[3] = {static_cast<double>(ax_ms2 / 9.81f),"
 
 caso "eixo trocado na conversao" acusa \
-  "  a.y = g_para_lsb(ay_ms2 / G_PADRAO_MS2);" \
-  "  a.y = g_para_lsb(az_ms2 / G_PADRAO_MS2);"
+  "                           static_cast<double>(ay_ms2 / G_PADRAO_MS2)," \
+  "                           static_cast<double>(az_ms2 / G_PADRAO_MS2),"
+
+# CAL-03: a calibracao entra na amostra e a marca sai no payload.
+caso "calibracao definida e nao aplicada" acusa \
+  "  aplicar_calibracao(calibracao_, static_cast<double>(temperatura_c_), bruta, g);" \
+  "  g[0] = bruta[0]; g[1] = bruta[1]; g[2] = bruta[2];"
+
+caso "payload sempre diz cal 0" acusa \
+  "    f_enviada.calibrada = calibracao_.aceita ? 1 : 0;" \
+  "    f_enviada.calibrada = 0;"
+
+caso "gn perdido na ida e volta da fila" acusa \
+  "    f_enviada.gn = f.gn;" \
+  ""
 
 caso "quantizacao trunca em vez de arredondar" acusa \
   "  return static_cast<int16_t>(lroundf(lsb));" \
