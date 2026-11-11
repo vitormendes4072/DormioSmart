@@ -1,0 +1,55 @@
+{
+  "versao": "ml-inf-cabeca-v1",
+  "features": [
+    "enmo_media",
+    "enmo_desvio",
+    "enmo_max",
+    "mag_din_media",
+    "zcr",
+    "p_frac"
+  ],
+  "coeficientes": [
+    0.02175846258622139,
+    -0.2255226303437547,
+    0.195625182234351,
+    -3.9809045887698677,
+    0.1576352708617043,
+    2.6923292399577856
+  ],
+  "intercepto": 0.22878114244780168,
+  "medias": [
+    0.01189624207586765,
+    0.0031179395966344165,
+    0.03652205671039155,
+    0.006303487431147108,
+    0.4089903837388751,
+    0.008270011105416027
+  ],
+  "escalas": [
+    0.009156576389190216,
+    0.007689259956908,
+    0.08736087963539262,
+    0.017335713812543417,
+    0.06944115608563994,
+    0.044194720346153495
+  ],
+  "limiar": 0.5,
+  "comparacao": ">",
+  "classe_positiva": 1,
+  "treino": {
+    "dataset": "Wearanize+ OA",
+    "braco": "cabeca",
+    "qualidade": "original",
+    "n_participantes": 92,
+    "commit": "4ee0ffe01a4d522560adb39d5ecac473ae899cd1",
+    "hash_config": "aec203907e6f",
+    "sha256_dados": "711fbe35bbdad148f39a139a50a30816d8d7dd681f8939ec6a4c29d8e010f61a"
+  },
+  "atribuicao": {
+    "colecao": "https://doi.org/10.34973/xrmf-5726",
+    "colecao_primaria": "https://doi.org/10.34973/j6jf-9e62",
+    "artigo": "https://doi.org/10.1093/sleepadvances/zpaf094",
+    "licenca_do_pacote": "https://creativecommons.org/licenses/by/4.0/",
+    "alteracoes": "Modelo derivado do Wearanize+ OA."
+  }
+}

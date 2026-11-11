@@ -110,7 +110,63 @@ marcas (migracao, item, marca, presente) as (values
             select 1 from pg_constraint
              where conrelid = to_regclass('public.profiles') and contype = 'c'
                and conname <> 'profiles_idade_maioridade'
-               and pg_get_constraintdef(oid) ilike '%idade%'))
+               and pg_get_constraintdef(oid) ilike '%idade%')),
+    -- 013: retenção por inatividade. As duas funções E a exclusão pelo
+    -- titular já passando por `_eliminar_titular` (sem isso, as duas listas de
+    -- deletes divergiriam). O AGENDAMENTO não é marca: depende da extensão
+    -- `pg_cron`, que é do painel — sai numa linha própria, abaixo.
+    ('013', 'LGPD-02', 'função _eliminar_titular',
+        to_regprocedure('public._eliminar_titular(uuid)') is not null),
+    ('013', 'LGPD-02', 'função expurgar_contas_inativas',
+        to_regprocedure('public.expurgar_contas_inativas()') is not null),
+    ('013', 'LGPD-09', 'expurgo considera a renovacao de sessao',
+        coalesce((select pg_get_functiondef(to_regprocedure('public.expurgar_contas_inativas()')) like '%auth.sessions%'), false)),
+    ('013', 'LGPD-02', 'apagar_minha_conta usa _eliminar_titular',
+        coalesce((select pg_get_functiondef(to_regprocedure('public.apagar_minha_conta()')) like '%public._eliminar_titular(auth.uid())%'), false)),
+    -- 014: as duas funções de gravação devolvem o tipo do id (uuid). Com
+    -- bigint, TODA gravação falha com "invalid input syntax for type bigint".
+    -- O `on conflict` da 011 continua conferido nas marcas da 011.
+    ('014', 'DATA-10', 'registrar_leitura devolve uuid',
+        coalesce((select prorettype = 'uuid'::regtype from pg_proc where oid = to_regprocedure('public.registrar_leitura(text,jsonb)')), false)),
+    ('014', 'DATA-10', 'registrar_leitura_da_sessao devolve uuid',
+        coalesce((select prorettype = 'uuid'::regtype from pg_proc where oid = to_regprocedure('public.registrar_leitura_da_sessao(uuid,jsonb)')), false)),
+    -- 015: a chave de `sleep_data.user_id` com `on delete cascade`. Sem ela,
+    -- apagar o usuário direto (o painel do Supabase) é recusado.
+    ('015', 'DATA-12', 'sleep_data_user_id_fkey com cascata',
+        coalesce((select confdeltype = 'c' from pg_constraint
+                   where conname = 'sleep_data_user_id_fkey'
+                     and conrelid = to_regclass('public.sleep_data')), false)),
+    -- 016: a validacao dentro do banco. As restricoes VALIDADAS (uma `not
+    -- valid` que ficou para tras indicaria a 016 pela metade), as funcoes com a
+    -- recusa do futuro e o pareamento com o teto, e o gatilho da revogacao.
+    ('016', 'SEC-18', 'restricoes de faixa validadas em sleep_data',
+        (select count(*) = 7 from pg_constraint
+          where conrelid = to_regclass('public.sleep_data') and convalidated
+            and conname in ('sleep_data_faixa_aceleracao', 'sleep_data_faixa_giroscopio',
+                            'sleep_data_faixa_temperatura', 'sleep_data_estado_valido',
+                            'sleep_data_agregacao_valida', 'sleep_data_faixa_features',
+                            'sleep_data_gravidade_unitaria'))),
+    ('016', 'SEC-18', 'restricao devices_nome_tamanho validada',
+        exists (select 1 from pg_constraint where conname = 'devices_nome_tamanho' and convalidated)),
+    ('016', 'SEC-18', 'gravacao recusa captured_at no futuro',
+        coalesce((select pg_get_functiondef(to_regprocedure('public.registrar_leitura_da_sessao(uuid,jsonb)')) like '%SEC-18: captured_at no futuro%'
+                     and pg_get_functiondef(to_regprocedure('public.registrar_leitura(text,jsonb)')) like '%SEC-18: captured_at no futuro%'), false)),
+    ('016', 'SEC-18', 'parear_dispositivo com teto e formato do hash',
+        coalesce((select pg_get_functiondef(to_regprocedure('public.parear_dispositivo(text,text,text)')) like '%limite de 10 dispositivos%'), false)),
+    ('016', 'SEC-18', 'gatilho devices_revogacao_definitiva',
+        exists (select 1 from pg_trigger where tgname = 'devices_revogacao_definitiva')),
+    -- 017: o consentimento destacado. As colunas, a funcao que o grava, o
+    -- gatilho que impede escrever direto, e a trava na gravacao pela sessao.
+    ('017', 'LGPD-12', 'colunas do consentimento em profiles',
+        exists (select 1 from col where nome = 'profiles.consentimento_saude_versao')
+        and exists (select 1 from col where nome = 'profiles.consentimento_saude_em')),
+    ('017', 'LGPD-12', 'funcao consentir_dado_de_saude',
+        to_regprocedure('public.consentir_dado_de_saude(text)') is not null),
+    ('017', 'LGPD-12', 'gatilho profiles_consentimento_so_pela_funcao',
+        exists (select 1 from pg_trigger where tgname = 'profiles_consentimento_so_pela_funcao')),
+    ('017', 'LGPD-12', 'gravacao pela sessao exige o consentimento',
+        coalesce((select pg_get_functiondef(to_regprocedure('public.registrar_leitura_da_sessao(uuid,jsonb)')) like '%consentimento para dado de saude pendente%'
+                     and pg_get_functiondef(to_regprocedure('public.parear_dispositivo(text,text,text)')) like '%consentimento para dado de saude pendente%'), false))
 ),
 esquema as (
     select migracao, min(item) as item,
@@ -139,4 +195,16 @@ dados as (
 select migracao, item, aplicada, detalhe, faltando from esquema
 union all
 select migracao, item, aplicada, detalhe, faltando from dados
+union all
+-- 013, o agendamento: informativo. `cron.job` só existe com a extensão, então
+-- a contagem é montada em tempo de execução (mesmo motivo da 002 acima).
+select '013 agendamento'::text, 'LGPD-02'::text, null::boolean,
+       case when to_regclass('cron.job') is null
+            then 'pg_cron NÃO ligado: o expurgo por inatividade não está agendado'
+            else (xpath('/row/c/text()', query_to_xml(
+                      'select count(*) as c from cron.job where jobname = ''dormio-expurgo-por-inatividade''',
+                      false, true, '')))[1]::text
+                 || ' job(s) dormio-expurgo-por-inatividade — 1 é o esperado'
+       end,
+       null::text
 order by migracao;

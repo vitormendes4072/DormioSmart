@@ -9,8 +9,10 @@ import { Dashboard } from "./pages/Dashboard";
 import { Landing } from "./pages/Landing";
 import { Login } from "./pages/Login";
 import { NovaSenha } from "./pages/NovaSenha";
+import { Noite } from "./pages/Noite";
 import { Register } from "./pages/Register";
 import { Settings } from "./pages/Settings";
+import { noiteNativaDisponivel } from "./lib/noiteNativa";
 
 // Sob demanda (LGPD-01 (b)): a política traz o `react-markdown` e o texto
 // inteiro, e não deve pesar no pacote de quem nunca a abre (UI-15).
@@ -35,7 +37,9 @@ export default function App() {
         {/* Pagina publica: quem chega pelo link precisa entender o projeto
             antes de ver um formulario. Fica fora dos guardas — visitante e
             usuario logado veem a mesma pagina, com o botao mudando de destino. */}
-        <Route path="/" element={<Landing />} />
+        {/* APP-02, etapa 4: no app Android, o comeco e a noite (ou o login, pelo
+            guarda). A pagina de apresentacao e para quem chega pelo site. */}
+        <Route path="/" element={noiteNativaDisponivel() ? <Navigate to="/noite" replace /> : <Landing />} />
 
         <Route element={<RotaDeVisitante />}>
           <Route path="/login" element={<Login />} />
@@ -59,6 +63,7 @@ export default function App() {
           <Route element={<Layout />}>
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/coletar" element={<Coletar />} />
+            <Route path="/noite" element={<Noite />} />
             <Route path="/configuracoes" element={<Settings />} />
           </Route>
         </Route>

@@ -41,6 +41,7 @@ A separação é deliberada:
 | `POST` | `/api/data/lote` | `X-Device-Token` (ou sessão) | `200` com `aceitas`/`rejeitadas`/`pendentes` · `400` · `401` · `413` mais de 60 · `503` nada gravado (`API-03`, contrato 2.6.0 §5.2) |
 | `GET` | `/api/sleep-history` | `Bearer <JWT>` | `200` com as leituras do usuário · `401` |
 | `GET` | `/api/features?device&desde&ate` | `Bearer <JWT>` | `200` com as 8 features por época e o `g_ref` da janela · `400` parâmetro faltando, sem fuso ou janela > 24 h · `401` · `503` (`DATA-07b`, contrato 2.7.0 §2.6) |
+| `GET` | `/api/inferencia?device&desde&ate` | `Bearer <JWT>` | `200` com `prob_sono` e `classe` por época, calculadas sobre a janela e não gravadas · `400` como `/api/features` · `401` · `422` menos de 23 épocas válidas · `503` consulta ou modelo indisponível (`ML-INF`, contrato 2.8.0 §2.6) |
 | `GET` | `/api/devices` | `Bearer <JWT>` | `200` · `503` |
 | `POST` | `/api/devices` | `Bearer <JWT>` | `201` com o token **exibido uma única vez** |
 | `PATCH` | `/api/devices/<id>` | `Bearer <JWT>` | `200` · `404` |
@@ -49,7 +50,7 @@ A separação é deliberada:
 | `GET` | `/api/me/perfil` | `Bearer <JWT>` | `200` com o perfil (criado na primeira leitura, `perfil_criado_agora`) · `503` |
 | `PATCH` | `/api/me/perfil` | `Bearer <JWT>` | `200` · `400` valor inválido · `503` (`PERFIL-01`) |
 | `DELETE` | `/api/me` | `Bearer <JWT>` | `200` com o recibo da eliminação · `400` sem o corpo de confirmação · `503` (LGPD, migração `006`) |
-| `GET` | `/health` | nenhuma | `200` saudável · `503` banco indisponível |
+| `GET` | `/health` | nenhuma | `200` saudável · `503` banco indisponível; `modelo` diz a versão do modelo carregado ou `"indisponivel"`, sem mudar o código |
 
 O contrato do dado que trafega está em [`../docs/DATA-CONTRACT.md`](../docs/DATA-CONTRACT.md).
 
@@ -72,8 +73,11 @@ Para gerar leituras sem hardware, com o servidor no ar e o token de um dispositi
 
 ```bash
 export DORMIO_DEVICE_TOKEN="<token>"   # Windows: $env:DORMIO_DEVICE_TOKEN="<token>"
-python fake_sensor.py                  # DORMIO_API_URL troca o destino (padrão: o local)
+python fake_sensor.py                  # leitura avulsa em /api/data; DORMIO_API_URL troca o destino
 ```
+
+O formato da arquitetura C2 (épocas com características, em lote) é o do
+`scripts/simulador_c2.py`, que roda pelo ambiente do `ml/` — ver o `README.md` da raiz.
 
 ### Variáveis de ambiente
 
@@ -200,7 +204,7 @@ web-app/
 ├── features_noite.py    # as duas features angulares que só o servidor calcula (DATA-07b)
 ├── validacao.py         # validação da leitura antes de persistir
 ├── database.py          # camada Supabase
-├── fake_sensor.py       # simulador de leituras
+├── fake_sensor.py       # simulador do caminho avulso (/api/data); o da C2 é scripts/simulador_c2.py
 ├── teste_conexao.py     # confere a credencial em uso contra o Supabase
 ├── migrations/          # SQL versionado
 └── tests/               # pytest (tests/rls/ fala com um Postgres de verdade)

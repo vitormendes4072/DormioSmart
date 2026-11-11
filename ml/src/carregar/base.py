@@ -40,11 +40,14 @@ class ConjuntoEpocas:
     id_sujeito: np.ndarray        # (n_epocas,) string — a chave do split
     nomes_features: tuple[str, ...]
     meta: dict = field(default_factory=dict)
+    segmentos: np.ndarray | None = None
 
     def __post_init__(self) -> None:
         n = self.X.shape[0]
         if not (self.y.shape[0] == n == self.id_sujeito.shape[0]):
             raise ValueError("X, y e id_sujeito com comprimentos diferentes")
+        if self.segmentos is not None and len(self.segmentos) != n:
+            raise ValueError("segmentos com comprimento diferente de X")
 
     def __len__(self) -> int:
         return int(self.X.shape[0])

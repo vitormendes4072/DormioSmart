@@ -3,8 +3,22 @@ import json
 from pathlib import Path
 import subprocess
 import sys
+import pytest
 
-from ferramentas.comparar_reproducao import comparar, comparar_pastas, hash_texto
+from ferramentas.comparar_reproducao import comparar, comparar_pastas, hash_texto, conferir_fontes_historicas
+
+
+def test_guarda_historica_acusa_adulteracao_e_historico_ausente():
+    ml = Path(__file__).resolve().parents[1]
+    original = json.loads((ml / 'experimentos/saida/ml15/manifesto.json').read_text(encoding='utf-8'))
+    assert conferir_fontes_historicas(ml, original)
+    adulterado = dict(original, fontes={'src/epocas.py': '0' * 64})
+    with pytest.raises(ValueError, match='adulterada/divergente'):
+        conferir_fontes_historicas(ml, adulterado)
+    with pytest.raises(ValueError, match='indisponível'):
+        conferir_fontes_historicas(ml, dict(original, base_codigo='0' * 40))
+    with pytest.raises(ValueError, match='inválida/vazia'):
+        conferir_fontes_historicas(ml, dict(original, fontes={}))
 
 
 def test_igualdade_tolerancia_e_nan():
@@ -77,7 +91,7 @@ def test_evidencias_publicadas_cobrem_a_rodada_completa():
     assert comparar_pastas(ml / 'experimentos/saida', novos) == salvo
     assert all(not json.loads(p.read_text(encoding='utf-8')).get('parcial') for p in novos.glob('*.json'))
     manifesto = json.loads((rodada / 'manifesto.json').read_text(encoding='utf-8'))
-    assert all(hash_texto(ml / nome) == sha for nome, sha in manifesto['fontes'].items())
+    assert conferir_fontes_historicas(ml, manifesto)
     f1 = json.loads((rodada / 'f1_complementar.json').read_text(encoding='utf-8'))
     assert len(f1) == 132
     assert sum(r['n_matrizes_verificadas'] for r in f1) == 9687

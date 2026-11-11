@@ -16,6 +16,11 @@ Scripts SQL versionados, aplicados **em ordem numérica** no Supabase
 | 009 | `009_privilegios_padrao_do_supabase.sql` | SEC-12 | Revoga **nominalmente** o que os privilégios padrão do Supabase dão a `anon`/`authenticated` em funções, e muda o padrão para funções futuras. Pode rodar antes ou depois da 007. |
 | 010 | `010_vetor_de_caracteristicas.sql` | DATA-07b | O vetor de características: dez colunas nomeadas em `sleep_data`, restrição tudo-ou-nada, e as duas funções de gravação recriadas para extraí-las. **Aplicar ANTES do release do backend da v2.7.0** (`DATA-07f`): na ordem inversa, `f` validado seria descartado com `201`. Não quebra o backend anterior. ✅ Aplicada na produção em 30/10, antes do release (diagnóstico com 4 de 4 marcas). |
 | 011 | `011_leitura_idempotente.sql` | DATA-08 | Índice único parcial em `(device_id, captured_at, epoca_segundos)` e as duas funções de gravação com `on conflict`: o reenvio da mesma época devolve o id que já existe, sem duplicar. **Antes de aplicar, rode `CONFERIR-duplicatas-antes-da-011.sql`** (só leitura): com duplicatas já no banco, a 011 PARA com a contagem e não apaga nada. O backend não muda; não precisa de release. ✅ Aplicada na produção em 01/11 (`DATA-09`): 0 duplicatas antes, 3 de 3 marcas depois. |
+| 012 | `012_idade_minima_18.sql` | LGPD-05/06 | `profiles.idade` passa a aceitar só de 18 a 149 anos, e o comentário da coluna declara as duas finalidades. **Trava:** com perfil abaixo de 18 no banco, PARA com a contagem e não altera nada. ✅ Aplicada na produção em 03/11 (`LGPD-08`). ✏️ *Linha acrescentada em 05/11: a tabela tinha pulado da 011 para a seção seguinte.* |
+| 013 | `013_retencao_por_inatividade.sql` | LGPD-02 | Retenção: conta sem login, leitura nem criação há 12 meses é eliminada por inteiro. Extrai os deletes do titular para `_eliminar_titular(uuid)` (a `apagar_minha_conta()` passa a chamá-la, com o mesmo recibo) e cria `expurgar_contas_inativas()`, sem parâmetro e sem EXECUTE para ninguém. **Ligue antes a extensão `pg_cron`** (Database → Extensions): com ela, a migração agenda o expurgo diário; sem ela, cria as funções e avisa. **Aplicar ANTES do release que publica a seção 7 nova da política**, que descreve o expurgo. O backend não muda. O diagnóstico mostra o agendamento numa linha própria, `013 agendamento`. |
+| 014 | `014_id_da_leitura_uuid.sql` | DATA-10 | **Conserto: sem ela, nenhuma leitura grava.** `registrar_leitura` e `registrar_leitura_da_sessao` declaravam `returns bigint`, e o `sleep_data.id` da produção é uuid — toda gravação falhava com `invalid input syntax for type bigint`. Recria as duas devolvendo uuid, com o mesmo corpo da 011, e refaz os grants (`dormio_ingestao` e `authenticated`). O backend não muda; não há ordem com release. O diagnóstico confere o tipo devolvido (2 marcas). |
+| 015 | `015_cascata_das_leituras.sql` | DATA-12 | A chave de `sleep_data.user_id` ganha o `on delete cascade` que a 001 declara: na produção a coluna já existia (criada pelo painel, sem cascata) e o `add column if not exists` da 001 foi pulado. Sem ela, apagar um usuário direto em `auth.users` (o painel, em Authentication → Delete user) é recusado se ele tiver leituras; a eliminação pelo app não depende dela. Não mexe em dado. O backend não muda. Diagnóstico: 1 marca. |
+| 016 | `016_validacao_no_banco.sql` | SEC-18 | A validação da leitura e do pareamento também dentro do banco: `CHECK` em `sleep_data` com as faixas da `validacao.py` e em `devices.nome`; as funções de gravação recusam captura no futuro; `parear_dispositivo` exige hash SHA-256 e no máximo 10 dispositivos ativos; a revogação vira definitiva para o titular. **Para sem apagar nada** se houver dado existente fora das regras, e diz qual regra e quantas linhas. O backend não muda. Diagnóstico: 5 marcas. |
 
 ## Quais estão aplicadas no banco
 
@@ -24,6 +29,11 @@ Nada registra quais migrações rodaram — são aplicadas à mão. Para saber, 
 linha por migração (`aplicada` true/false, o que falta). A consulta é conferida
 no CI por `tests/migracoes/verificar_migracoes.py`, migração a migração, na
 ordem numérica e na ordem real da produção.
+
+**A estrutura, e não só as marcas:** `CONSULTA-estrutura-do-esquema.sql` (só leitura) lista
+tipos, padrões, chaves, índices e permissões do schema `public`. Serve para comparar a
+produção com o esquema que os testes montam — foi assim que o `DATA-10` e o `DATA-12`
+apareceram. Rodar de novo ao mexer em função que toca coluna.
 
 **Estado da produção em 2026-10-29:** **todas aplicadas** — 001, 003, 004, 005, 006,
 008, 009 e, depois do release (PR #5), 007; a 002 desnecessária. O diagnóstico deu

@@ -1,0 +1,528 @@
+{
+  "codigo": {
+    "antes": "d429d43e1b7bafacae67fbebb9a328942d63efff",
+    "depois": "3273431b6ebec4e3889bd3f01c3593b32dc0137e"
+  },
+  "fontes_git": {
+    "antes": {
+      "commit": "d429d43e1b7bafacae67fbebb9a328942d63efff",
+      "arquivos": {
+        "ml\\config.yaml": "b133e2c0398503c1ccb6836e55b814c40251d979dc1908f86f852972417f8ede",
+        "ml\\experimentos\\_lados.py": "9b049b9d57e962a9434b900d1cedccda825cb0eddfb8b6bd17ce9c355613a6c8",
+        "ml\\experimentos\\_retomada.py": "ce8faeeebf0d33f900fc94216a96d6bb147b83b5bc500225ccc4ae561efeeb5d",
+        "ml\\experimentos\\ml02_baselines.py": "dd9f2875c4086b21bbac7f294000548cb8ee716cab7a0f0b866002ff0ac0e27b",
+        "ml\\experimentos\\ml03_transferencia.py": "e5d4cd3de5ae16a71dfd47a0e5766444efbe2fab589606b9cf812099e76a88dc",
+        "ml\\experimentos\\ml03b_ablacao.py": "89325aacd0570c39c58bdb3bb76b9a4a01872a4501a1b3d2a7bf21e5571078d5",
+        "ml\\experimentos\\ml03b_otimizacoes.py": "2d0aaee5fa627bc211af94f16f04a479952933aa31b7fd4cfca314e0ada42037",
+        "ml\\experimentos\\ml04_validacao_externa.py": "d920dea1704a59d1cd43f60d7ca77c368bc3ad9bf8a728b9dd2ca2265214adc5",
+        "ml\\experimentos\\ml05_teto_interavaliador.py": "e3a9453a0183c127b26f6c62c7a7c6094177eab0dcfd2dfada81b4aafda55aa8",
+        "ml\\experimentos\\ml11_ablacao_features.py": "f56365ae28f980aa33bb8d4c6f4cce13a8c1d3baa1444f3af851ab00ddef2f63",
+        "ml\\experimentos\\ml12_validacao_aninhada.py": "bea5a4889ab73834071af315c7b504fab8e2816e2812f927e1ce9a67e9da7b63",
+        "ml\\experimentos\\quantizacao_features.py": "d77c6cf7ec3dbca359f6e9f322ad20a3db182bdf27a93d8b1a45349545faad72",
+        "ml\\ferramentas\\__init__.py": "c443cf978aaaf1b4236578312530bf41a02c098874050032aca97f1b9af45a17",
+        "ml\\ferramentas\\auditar_f1.py": "84809150c596171c97d5f780a2bc4bc02aaba3f37f8aca2ee33ac4e21ea2f703",
+        "ml\\ferramentas\\auditar_ml16.py": "1c83ca574061ff5c0be8832a8593235ec855a70380a8b6d175e2dfbe06bc133f",
+        "ml\\ferramentas\\baixar_dreamt.py": "710f38f1d58c3138363419fd963d0f0a212b20d2933fd39ea2110ec90804732f",
+        "ml\\ferramentas\\baixar_wearanize.py": "e7a57d7c6d882084f7a252e662466bccf844c1486eba6fa0d3d9145381de1398",
+        "ml\\ferramentas\\comparar_reproducao.py": "d15ffcf4a4ccc77d3f2314babf4c53734f96f18087090e687f9a284d603dc91f",
+        "ml\\ferramentas\\executar_reproducao.py": "3f3e83301312cb43e68f78a7967ac2527b3f67650d16f2770bc3d346af9f8140",
+        "ml\\ferramentas\\rastrear_ml16.py": "f683a774b6233cc02874119265348ce19283a20bc0c43d61057bd32cf71dd1b1",
+        "ml\\ferramentas\\reconstruir_f1.py": "b39a42a860bc2508514c3b15db3adae1ec139cc1578963c84cae9caa5f5aaaa3",
+        "ml\\ferramentas\\rodada_reproducao.py": "5f60c4665d0ee147326a54e04255f9f228ffa801409dc56bd3e23ae06e067b84",
+        "ml\\requirements.txt": "df1e535ac8c264ea38c45063823e7f6a7772108647cd8f21696c9416f90afcde",
+        "ml\\src\\__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "ml\\src\\avaliar.py": "6b568c554dc143c1725aa77aaa1b5bcd4155b530713ff77a7f7e324296177f73",
+        "ml\\src\\baseline.py": "355b21b1f2a1befdb6449b9384dbb5d2ad93250de305d1b94e31793efc15aa1c",
+        "ml\\src\\carregar\\__init__.py": "f3e1ba0693af699f2e96cdb3ad2d0f2e45a1036ffe2905d6ad2b53030eb9472b",
+        "ml\\src\\carregar\\base.py": "76ea0efe6d1e1df6be770ad0cf4e30cab9907de85b769b66b414b43339768782",
+        "ml\\src\\carregar\\newcastle.py": "ba76885146fcf5f1791fedd58fec5823fbb69d834e3719d4ef7cfc561d57ec3a",
+        "ml\\src\\carregar\\sintetico.py": "390010418c99147f3948a8e5e80d0e1e7fed1477861e8877c1f4ac6d7b8adcbe",
+        "ml\\src\\carregar\\walch.py": "a14192a7652d9b68689659cada6940eef227df9d65701ce3a72a002c7887cfcb",
+        "ml\\src\\carregar\\wearanize.py": "426e5d46133c216a5d112b392af63626031f5a902d6ca33e46199adb1843b25f",
+        "ml\\src\\configuracao.py": "1b8de1171d8aca7c91a239f26e9e1e505648233edaa8608097eeef9afbcad1da",
+        "ml\\src\\epocas.py": "b9cf4895c75b3700e86e22311a573a09ae9915ee6bc415ee9c9aecfcf421d38f",
+        "ml\\src\\features.py": "778d04e21afbe9a8abcc6d680bc144699002f22ccb07afb37f181cf6a6e1ec2b",
+        "ml\\src\\modelos.py": "5c1ec6bae55b172609195789745c8c3b33b765353a8b7a176a8d208dc2058542",
+        "ml\\src\\sinal.py": "4751c6bcf946408d0940b9d38b7391c4833f38bfec950c0a3d0d89ebbe08a7e2",
+        "ml\\testes\\dourado_cadeia_c2.py": "c43cf89f8351ebb6fb44dd677e60666a73d32eedbd3ffaa79c3fefdbaaa656af",
+        "ml\\testes\\dourado_casos.py": "20bc7e85c61bead96eafc02891cec7f33f2677120873de2f5294e71a6bf95227",
+        "ml\\testes\\test_auditar_f1.py": "22c60978c8107ad7b50172adb9e8778791504e4116bb89cc7096f3e8940fcfb4",
+        "ml\\testes\\test_auditar_ml16.py": "ac6b824d959558685593b12bdd0b1564ed4f10a717507584d1aa4808f5fa9093",
+        "ml\\testes\\test_avaliar.py": "4ea432097e89e18cd455c2283381d95ca7d9cb97c9f41fe051545a1178e7ff87",
+        "ml\\testes\\test_baixar_dreamt.py": "93901231ec59ce42410899f43998c0bb4be8414145c2ee9a0bdbe1a10f02973c",
+        "ml\\testes\\test_comparar_reproducao.py": "e8795fc791679f8440335cffb90e134a0801ae59165a230411b08db2fd0c7aef",
+        "ml\\testes\\test_dourado_cadeia_c2.py": "063681c8f9f6e00468721e95fe619651bfb76b8aa9713c22c7d4072064cd95bb",
+        "ml\\testes\\test_lados.py": "7445a1056c008e4426e641c77a878e8d36eb1de291060100c8e688b1b2b46288",
+        "ml\\testes\\test_rastrear_ml16.py": "07af1f3155d89d902848ba035919aa1d8e15017b14dfa271a24d9765f89d9b44",
+        "ml\\testes\\test_reamostragem.py": "2b59068449f5211a96c3f00f203690eb763da70852f5029a7afd04dd04d234e3",
+        "ml\\testes\\test_reconstruir_f1.py": "ce8034b190ddeb1164b6c3758800be0cfbc9f4284ee9cbb3a5fcdacb4171bcb9",
+        "ml\\testes\\test_redundancia_angular.py": "bc85580d196b2d3386ec2d89d8991110cdff87e1d538e45561f9fd5443ccdc32",
+        "ml\\testes\\test_retomada.py": "3fa64be42c8b11be97d8a2f094a06386116e06abe2b59693908a94d9a9d7ea9f",
+        "ml\\testes\\test_sanidade_dominio.py": "453f5385883c8953105d37857c575e8872dde7369a8908f97a817f2fa2bed97f",
+        "ml\\testes\\test_vetor_dourado.py": "1f1869ad80842554ec8f2c1083c7674b02637b8ad4c88d1389c94749ce1e1cdb",
+        "ml\\testes\\test_walch.py": "0e0672d320d3259f25690f6c673b9413c209f914dba110b26a5e59f802089c6b",
+        "ml\\testes\\test_wearanize.py": "8afe8b231bebafd770b0e10678244778b6237e85594d10ab271993d48841a696",
+        "ml\\testes\\verificar_vetor_dourado_por_mutacao.py": "4fa8436a5230bbc4d4b4d3795b4555211a05a3219fa08e0df3b938fe1c31bed6"
+      }
+    },
+    "depois": {
+      "commit": "3273431b6ebec4e3889bd3f01c3593b32dc0137e",
+      "arquivos": {
+        "ml\\config.yaml": "b133e2c0398503c1ccb6836e55b814c40251d979dc1908f86f852972417f8ede",
+        "ml\\experimentos\\_lados.py": "9b049b9d57e962a9434b900d1cedccda825cb0eddfb8b6bd17ce9c355613a6c8",
+        "ml\\experimentos\\_retomada.py": "30420d8794641e1305ddbc8c5522bd331d9bda005664f5e2b451ebe18e4dbeac",
+        "ml\\experimentos\\ml02_baselines.py": "4423db6b56338ffcf911b5064d0158bf1e840a24d0eb9589c59256de55f33f37",
+        "ml\\experimentos\\ml03_transferencia.py": "e5d4cd3de5ae16a71dfd47a0e5766444efbe2fab589606b9cf812099e76a88dc",
+        "ml\\experimentos\\ml03b_ablacao.py": "dbb11687ec98894d01998a652894bcb59cb95d022afd0ed824ea99a30d4a2d7b",
+        "ml\\experimentos\\ml03b_otimizacoes.py": "681970287c615315aa2736d392a288ba67efad80136ab80cd6501105dc7c02b2",
+        "ml\\experimentos\\ml04_validacao_externa.py": "1bba70867fc93b175fb34844e9eb024469936c01b049c476366bb0876f3612f0",
+        "ml\\experimentos\\ml05_teto_interavaliador.py": "e3a9453a0183c127b26f6c62c7a7c6094177eab0dcfd2dfada81b4aafda55aa8",
+        "ml\\experimentos\\ml11_ablacao_features.py": "3ac42b956b6bfeb34b1896e7c9a9bfa31288691f393cdafbd2fe60d291f45928",
+        "ml\\experimentos\\ml12_validacao_aninhada.py": "41dad12c6630dc750e47040319d4d21a57d44ba3c84766497c75a239270aeb1d",
+        "ml\\experimentos\\quantizacao_features.py": "af8f43de90dda140ca7680d182e7e8b459eaa1af16d532b89b4fc9573e7426d5",
+        "ml\\ferramentas\\__init__.py": "c443cf978aaaf1b4236578312530bf41a02c098874050032aca97f1b9af45a17",
+        "ml\\ferramentas\\auditar_f1.py": "84809150c596171c97d5f780a2bc4bc02aaba3f37f8aca2ee33ac4e21ea2f703",
+        "ml\\ferramentas\\auditar_ml16.py": "1c83ca574061ff5c0be8832a8593235ec855a70380a8b6d175e2dfbe06bc133f",
+        "ml\\ferramentas\\baixar_dreamt.py": "710f38f1d58c3138363419fd963d0f0a212b20d2933fd39ea2110ec90804732f",
+        "ml\\ferramentas\\baixar_wearanize.py": "e7a57d7c6d882084f7a252e662466bccf844c1486eba6fa0d3d9145381de1398",
+        "ml\\ferramentas\\censo_contexto_ml17.py": "e33e01c921b8723230b2ba0f314ef6204a3d0202bcc12a10199659b5d90fffd5",
+        "ml\\ferramentas\\comparar_reproducao.py": "9392a1eb0e998c458f5d63247bc47597c563c833d6d306893452ed5494f6fcdc",
+        "ml\\ferramentas\\executar_reproducao.py": "3f3e83301312cb43e68f78a7967ac2527b3f67650d16f2770bc3d346af9f8140",
+        "ml\\ferramentas\\rastrear_ml16.py": "f683a774b6233cc02874119265348ce19283a20bc0c43d61057bd32cf71dd1b1",
+        "ml\\ferramentas\\reconstruir_f1.py": "b39a42a860bc2508514c3b15db3adae1ec139cc1578963c84cae9caa5f5aaaa3",
+        "ml\\ferramentas\\rodada_reproducao.py": "5f60c4665d0ee147326a54e04255f9f228ffa801409dc56bd3e23ae06e067b84",
+        "ml\\requirements.txt": "df1e535ac8c264ea38c45063823e7f6a7772108647cd8f21696c9416f90afcde",
+        "ml\\src\\__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "ml\\src\\avaliar.py": "6b568c554dc143c1725aa77aaa1b5bcd4155b530713ff77a7f7e324296177f73",
+        "ml\\src\\baseline.py": "355b21b1f2a1befdb6449b9384dbb5d2ad93250de305d1b94e31793efc15aa1c",
+        "ml\\src\\cache_temporal.py": "c0832d40c826d2a389a0aded47374bae6aa4ae27fa7391471c2ce35538ea3d06",
+        "ml\\src\\carregar\\__init__.py": "7e1557f6c5be29cd178ebbfdd9da60435340b86142d09ee787af65878cdc38c2",
+        "ml\\src\\carregar\\base.py": "9322f3b9deb23c1108b5b9be7c6829989389710164433d70e0b4c6237feac18b",
+        "ml\\src\\carregar\\newcastle.py": "ba76885146fcf5f1791fedd58fec5823fbb69d834e3719d4ef7cfc561d57ec3a",
+        "ml\\src\\carregar\\sintetico.py": "390010418c99147f3948a8e5e80d0e1e7fed1477861e8877c1f4ac6d7b8adcbe",
+        "ml\\src\\carregar\\walch.py": "a14192a7652d9b68689659cada6940eef227df9d65701ce3a72a002c7887cfcb",
+        "ml\\src\\carregar\\wearanize.py": "426e5d46133c216a5d112b392af63626031f5a902d6ca33e46199adb1843b25f",
+        "ml\\src\\configuracao.py": "1b8de1171d8aca7c91a239f26e9e1e505648233edaa8608097eeef9afbcad1da",
+        "ml\\src\\epocas.py": "b551556efce16729ccd3109184445fd69c608c49e44f0e20d0789594ce6d0a3f",
+        "ml\\src\\features.py": "778d04e21afbe9a8abcc6d680bc144699002f22ccb07afb37f181cf6a6e1ec2b",
+        "ml\\src\\modelos.py": "e9928690c7376ade5cb0eac77864059f73b1ae29e156a5f95afe77b9fd63cfab",
+        "ml\\src\\sinal.py": "4751c6bcf946408d0940b9d38b7391c4833f38bfec950c0a3d0d89ebbe08a7e2",
+        "ml\\testes\\dourado_cadeia_c2.py": "c43cf89f8351ebb6fb44dd677e60666a73d32eedbd3ffaa79c3fefdbaaa656af",
+        "ml\\testes\\dourado_casos.py": "20bc7e85c61bead96eafc02891cec7f33f2677120873de2f5294e71a6bf95227",
+        "ml\\testes\\test_auditar_f1.py": "22c60978c8107ad7b50172adb9e8778791504e4116bb89cc7096f3e8940fcfb4",
+        "ml\\testes\\test_auditar_ml16.py": "ac6b824d959558685593b12bdd0b1564ed4f10a717507584d1aa4808f5fa9093",
+        "ml\\testes\\test_avaliar.py": "4ea432097e89e18cd455c2283381d95ca7d9cb97c9f41fe051545a1178e7ff87",
+        "ml\\testes\\test_baixar_dreamt.py": "93901231ec59ce42410899f43998c0bb4be8414145c2ee9a0bdbe1a10f02973c",
+        "ml\\testes\\test_cache_temporal.py": "3265febbb83a96e09d74ead2268441676b3dfd4b528fe8c03a2dbb1efea45463",
+        "ml\\testes\\test_censo_ml17.py": "5fe1ff59afac46b713006a4d6c0f16190dff262a6b46ad95a60ec428feee4cce",
+        "ml\\testes\\test_comparar_reproducao.py": "c4595750e6f24c453dde005fc512a79626c62ca076746d7d79f12b0f5c269ce3",
+        "ml\\testes\\test_consumidores_temporais.py": "a0426a500183d3d23646f40c2d8a288c58733fdf6ce67622f42e11d27db21d61",
+        "ml\\testes\\test_controles_ml17.py": "83e2296e08e4c7e58ddb02d6ea581818829dfa3ecb569f26ab3a7ae9a787acda",
+        "ml\\testes\\test_dourado_cadeia_c2.py": "063681c8f9f6e00468721e95fe619651bfb76b8aa9713c22c7d4072064cd95bb",
+        "ml\\testes\\test_fronteiras_contexto.py": "92b60973e2dc45161bfd0794b874e14732363a7bfa703cb69ae08ee0527d8c09",
+        "ml\\testes\\test_lados.py": "7445a1056c008e4426e641c77a878e8d36eb1de291060100c8e688b1b2b46288",
+        "ml\\testes\\test_rastrear_ml16.py": "07af1f3155d89d902848ba035919aa1d8e15017b14dfa271a24d9765f89d9b44",
+        "ml\\testes\\test_reamostragem.py": "2b59068449f5211a96c3f00f203690eb763da70852f5029a7afd04dd04d234e3",
+        "ml\\testes\\test_reconstruir_f1.py": "ce8034b190ddeb1164b6c3758800be0cfbc9f4284ee9cbb3a5fcdacb4171bcb9",
+        "ml\\testes\\test_redundancia_angular.py": "bc85580d196b2d3386ec2d89d8991110cdff87e1d538e45561f9fd5443ccdc32",
+        "ml\\testes\\test_retomada.py": "3fa64be42c8b11be97d8a2f094a06386116e06abe2b59693908a94d9a9d7ea9f",
+        "ml\\testes\\test_sanidade_dominio.py": "453f5385883c8953105d37857c575e8872dde7369a8908f97a817f2fa2bed97f",
+        "ml\\testes\\test_vetor_dourado.py": "1f1869ad80842554ec8f2c1083c7674b02637b8ad4c88d1389c94749ce1e1cdb",
+        "ml\\testes\\test_walch.py": "0e0672d320d3259f25690f6c673b9413c209f914dba110b26a5e59f802089c6b",
+        "ml\\testes\\test_wearanize.py": "8afe8b231bebafd770b0e10678244778b6237e85594d10ab271993d48841a696",
+        "ml\\testes\\verificar_vetor_dourado_por_mutacao.py": "4fa8436a5230bbc4d4b4d3795b4555211a05a3219fa08e0df3b938fe1c31bed6"
+      }
+    }
+  },
+  "executor_commit": "11fa3751088ca123d121f921f69e9813dd1c6d59",
+  "executor_sha256": "d5855969a5e6e39c7ee905ec291114356e73214df0cd34a9da35b2e2a384ecb9",
+  "executor_sha256_utf8_lf": "d5855969a5e6e39c7ee905ec291114356e73214df0cd34a9da35b2e2a384ecb9",
+  "analise_commit": "3eadf884882b9feade13afaae1a6f1e3033eeba7",
+  "censo_integral_local_sha256": "f362ff82c35ddf4c4caa4e5c563760e90072e3e878642715001e22b8c8db7b26",
+  "caches_total": 116,
+  "caches_agregado_sha256": "d2c3bfd41ed7e3c0fa17783828e7dd55847691caf2ba3c370c5676380097ad49",
+  "ambiente": {
+    "python": "3.11.9 (tags/v3.11.9:de54cf5, Apr  2 2024, 10:12:12) [MSC v.1938 64 bit (AMD64)]",
+    "bibliotecas": {
+      "numpy": "2.2.6",
+      "scipy": "1.15.3",
+      "pandas": "2.3.3",
+      "scikit-learn": "1.7.2",
+      "threadpoolctl": "3.6.0"
+    },
+    "pools": [
+      {
+        "user_api": "blas",
+        "internal_api": "openblas",
+        "num_threads": 1,
+        "prefix": "libscipy_openblas",
+        "version": "0.3.28",
+        "threading_layer": "pthreads",
+        "architecture": "Haswell"
+      },
+      {
+        "user_api": "blas",
+        "internal_api": "openblas",
+        "num_threads": 1,
+        "prefix": "libscipy_openblas",
+        "version": "0.3.29",
+        "threading_layer": "pthreads",
+        "architecture": "Haswell"
+      },
+      {
+        "user_api": "openmp",
+        "internal_api": "openmp",
+        "num_threads": 1,
+        "prefix": "vcomp",
+        "version": null
+      }
+    ]
+  },
+  "ambientes_identicos": true,
+  "execucoes": {
+    "antes/newcastle": {
+      "status": "concluido",
+      "segundos": 29.075270891189575,
+      "utc_inicio": "2026-11-05T22:08:55.891432+00:00",
+      "utc_fim": "2026-11-05T22:09:24.966703+00:00",
+      "codigo": "d429d43e1b7bafacae67fbebb9a328942d63efff",
+      "hash_entradas": {
+        "wearanize/cabeca": {
+          "sha256": "2e4c83a4d7be466225c778d86490ea0aa1df4b86c909df19aea166132e1a2223",
+          "n_epocas": 87795,
+          "n_features": 8
+        },
+        "wearanize/cabeca_e4": {
+          "sha256": "f6c8d62d2cd145cf39045f00f448cac75272d3e9588861866f4f78ee08fe8765",
+          "n_epocas": 87795,
+          "n_features": 8
+        },
+        "wearanize/pulso": {
+          "sha256": "e5a13adebcc02452987a0abbeb147fcec7580300645eb0a5f45337a2a45a5611",
+          "n_epocas": 87795,
+          "n_features": 8
+        },
+        "newcastle": {
+          "sha256": "49e0bc22692387f87ced7e2ff69f4c4121eecb5da81d301117fa186c8f4165ac",
+          "n_epocas": 30440,
+          "n_features": 8
+        }
+      },
+      "n_avisos": 0,
+      "n_capturas": 13,
+      "avisos_por_tipo": {}
+    },
+    "antes/walch_principal": {
+      "status": "concluido",
+      "segundos": 27.705044746398926,
+      "utc_inicio": "2026-11-05T22:08:55.871798+00:00",
+      "utc_fim": "2026-11-05T22:09:23.576842+00:00",
+      "codigo": "d429d43e1b7bafacae67fbebb9a328942d63efff",
+      "hash_entradas": {
+        "wearanize/cabeca": {
+          "sha256": "2e4c83a4d7be466225c778d86490ea0aa1df4b86c909df19aea166132e1a2223",
+          "n_epocas": 87795,
+          "n_features": 8
+        },
+        "wearanize/cabeca_e4": {
+          "sha256": "f6c8d62d2cd145cf39045f00f448cac75272d3e9588861866f4f78ee08fe8765",
+          "n_epocas": 87795,
+          "n_features": 8
+        },
+        "wearanize/pulso": {
+          "sha256": "e5a13adebcc02452987a0abbeb147fcec7580300645eb0a5f45337a2a45a5611",
+          "n_epocas": 87795,
+          "n_features": 8
+        },
+        "walch_principal": {
+          "sha256": "5607c9e5b87afa9fbe7e5c4aea301fc8e94bed3b43785d5d615b76a5fe8aa542",
+          "n_epocas": 23303,
+          "n_features": 8
+        }
+      },
+      "n_avisos": 0,
+      "n_capturas": 13,
+      "avisos_por_tipo": {}
+    },
+    "antes/walch_todos": {
+      "status": "concluido",
+      "segundos": 26.335098028182983,
+      "utc_inicio": "2026-11-05T22:09:30.365982+00:00",
+      "utc_fim": "2026-11-05T22:09:56.701080+00:00",
+      "codigo": "d429d43e1b7bafacae67fbebb9a328942d63efff",
+      "hash_entradas": {
+        "wearanize/cabeca": {
+          "sha256": "2e4c83a4d7be466225c778d86490ea0aa1df4b86c909df19aea166132e1a2223",
+          "n_epocas": 87795,
+          "n_features": 8
+        },
+        "wearanize/cabeca_e4": {
+          "sha256": "f6c8d62d2cd145cf39045f00f448cac75272d3e9588861866f4f78ee08fe8765",
+          "n_epocas": 87795,
+          "n_features": 8
+        },
+        "wearanize/pulso": {
+          "sha256": "e5a13adebcc02452987a0abbeb147fcec7580300645eb0a5f45337a2a45a5611",
+          "n_epocas": 87795,
+          "n_features": 8
+        },
+        "walch_todos": {
+          "sha256": "56f6b48f10ca27e0a0d516fb40165a9c4f911e59732bf84e3a02164ec6a171f9",
+          "n_epocas": 25250,
+          "n_features": 8
+        }
+      },
+      "n_avisos": 0,
+      "n_capturas": 13,
+      "avisos_por_tipo": {}
+    },
+    "antes/lados": {
+      "status": "concluido",
+      "segundos": 32.819345474243164,
+      "utc_inicio": "2026-11-05T22:09:31.960842+00:00",
+      "utc_fim": "2026-11-05T22:10:04.780187+00:00",
+      "codigo": "d429d43e1b7bafacae67fbebb9a328942d63efff",
+      "hash_entradas": {
+        "wearanize/cabeca": {
+          "sha256": "2e4c83a4d7be466225c778d86490ea0aa1df4b86c909df19aea166132e1a2223",
+          "n_epocas": 87795,
+          "n_features": 8
+        },
+        "wearanize/cabeca_e4": {
+          "sha256": "f6c8d62d2cd145cf39045f00f448cac75272d3e9588861866f4f78ee08fe8765",
+          "n_epocas": 87795,
+          "n_features": 8
+        },
+        "wearanize/pulso": {
+          "sha256": "e5a13adebcc02452987a0abbeb147fcec7580300645eb0a5f45337a2a45a5611",
+          "n_epocas": 87795,
+          "n_features": 8
+        },
+        "newcastle/esquerdo": {
+          "sha256": "49e0bc22692387f87ced7e2ff69f4c4121eecb5da81d301117fa186c8f4165ac",
+          "n_epocas": 30440,
+          "n_features": 8
+        },
+        "newcastle/direito": {
+          "sha256": "0a2df3e78c9ad08f95cd279dd4bd164a574ec56e823bd0c3d859a337e9a4d6ff",
+          "n_epocas": 29385,
+          "n_features": 8
+        }
+      },
+      "n_avisos": 0,
+      "n_capturas": 24,
+      "avisos_por_tipo": {}
+    },
+    "antes/otimizacoes": {
+      "status": "concluido",
+      "segundos": 1014.4825794696808,
+      "utc_inicio": "2026-11-05T22:10:02.415454+00:00",
+      "utc_fim": "2026-11-05T22:26:56.898033+00:00",
+      "codigo": "d429d43e1b7bafacae67fbebb9a328942d63efff",
+      "hash_entradas": {
+        "wearanize/cabeca": {
+          "sha256": "2e4c83a4d7be466225c778d86490ea0aa1df4b86c909df19aea166132e1a2223",
+          "n_epocas": 87795,
+          "n_features": 8
+        },
+        "wearanize/cabeca_e4": {
+          "sha256": "f6c8d62d2cd145cf39045f00f448cac75272d3e9588861866f4f78ee08fe8765",
+          "n_epocas": 87795,
+          "n_features": 8
+        },
+        "wearanize/pulso": {
+          "sha256": "e5a13adebcc02452987a0abbeb147fcec7580300645eb0a5f45337a2a45a5611",
+          "n_epocas": 87795,
+          "n_features": 8
+        }
+      },
+      "n_avisos": 0,
+      "n_capturas": 9,
+      "avisos_por_tipo": {}
+    },
+    "depois/newcastle": {
+      "status": "concluido",
+      "segundos": 25.140430688858032,
+      "utc_inicio": "2026-11-05T22:10:11.452795+00:00",
+      "utc_fim": "2026-11-05T22:10:36.593225+00:00",
+      "codigo": "3273431b6ebec4e3889bd3f01c3593b32dc0137e",
+      "hash_entradas": {
+        "wearanize/cabeca": {
+          "sha256": "2e4c83a4d7be466225c778d86490ea0aa1df4b86c909df19aea166132e1a2223",
+          "n_epocas": 87795,
+          "n_features": 8
+        },
+        "wearanize/cabeca_e4": {
+          "sha256": "f6c8d62d2cd145cf39045f00f448cac75272d3e9588861866f4f78ee08fe8765",
+          "n_epocas": 87795,
+          "n_features": 8
+        },
+        "wearanize/pulso": {
+          "sha256": "e5a13adebcc02452987a0abbeb147fcec7580300645eb0a5f45337a2a45a5611",
+          "n_epocas": 87795,
+          "n_features": 8
+        },
+        "newcastle": {
+          "sha256": "49e0bc22692387f87ced7e2ff69f4c4121eecb5da81d301117fa186c8f4165ac",
+          "n_epocas": 30440,
+          "n_features": 8
+        }
+      },
+      "n_avisos": 0,
+      "n_capturas": 13,
+      "avisos_por_tipo": {}
+    },
+    "depois/walch_principal": {
+      "status": "concluido",
+      "segundos": 24.89883327484131,
+      "utc_inicio": "2026-11-05T22:10:42.455310+00:00",
+      "utc_fim": "2026-11-05T22:11:07.354143+00:00",
+      "codigo": "3273431b6ebec4e3889bd3f01c3593b32dc0137e",
+      "hash_entradas": {
+        "wearanize/cabeca": {
+          "sha256": "2e4c83a4d7be466225c778d86490ea0aa1df4b86c909df19aea166132e1a2223",
+          "n_epocas": 87795,
+          "n_features": 8
+        },
+        "wearanize/cabeca_e4": {
+          "sha256": "f6c8d62d2cd145cf39045f00f448cac75272d3e9588861866f4f78ee08fe8765",
+          "n_epocas": 87795,
+          "n_features": 8
+        },
+        "wearanize/pulso": {
+          "sha256": "e5a13adebcc02452987a0abbeb147fcec7580300645eb0a5f45337a2a45a5611",
+          "n_epocas": 87795,
+          "n_features": 8
+        },
+        "walch_principal": {
+          "sha256": "5607c9e5b87afa9fbe7e5c4aea301fc8e94bed3b43785d5d615b76a5fe8aa542",
+          "n_epocas": 23303,
+          "n_features": 8
+        }
+      },
+      "n_avisos": 0,
+      "n_capturas": 13,
+      "avisos_por_tipo": {}
+    },
+    "depois/walch_todos": {
+      "status": "concluido",
+      "segundos": 26.504425764083862,
+      "utc_inicio": "2026-11-05T22:11:13.478637+00:00",
+      "utc_fim": "2026-11-05T22:11:39.983063+00:00",
+      "codigo": "3273431b6ebec4e3889bd3f01c3593b32dc0137e",
+      "hash_entradas": {
+        "wearanize/cabeca": {
+          "sha256": "2e4c83a4d7be466225c778d86490ea0aa1df4b86c909df19aea166132e1a2223",
+          "n_epocas": 87795,
+          "n_features": 8
+        },
+        "wearanize/cabeca_e4": {
+          "sha256": "f6c8d62d2cd145cf39045f00f448cac75272d3e9588861866f4f78ee08fe8765",
+          "n_epocas": 87795,
+          "n_features": 8
+        },
+        "wearanize/pulso": {
+          "sha256": "e5a13adebcc02452987a0abbeb147fcec7580300645eb0a5f45337a2a45a5611",
+          "n_epocas": 87795,
+          "n_features": 8
+        },
+        "walch_todos": {
+          "sha256": "56f6b48f10ca27e0a0d516fb40165a9c4f911e59732bf84e3a02164ec6a171f9",
+          "n_epocas": 25250,
+          "n_features": 8
+        }
+      },
+      "n_avisos": 0,
+      "n_capturas": 13,
+      "avisos_por_tipo": {}
+    },
+    "depois/lados": {
+      "status": "concluido",
+      "segundos": 31.148587942123413,
+      "utc_inicio": "2026-11-05T22:11:46.550990+00:00",
+      "utc_fim": "2026-11-05T22:12:17.699578+00:00",
+      "codigo": "3273431b6ebec4e3889bd3f01c3593b32dc0137e",
+      "hash_entradas": {
+        "wearanize/cabeca": {
+          "sha256": "2e4c83a4d7be466225c778d86490ea0aa1df4b86c909df19aea166132e1a2223",
+          "n_epocas": 87795,
+          "n_features": 8
+        },
+        "wearanize/cabeca_e4": {
+          "sha256": "f6c8d62d2cd145cf39045f00f448cac75272d3e9588861866f4f78ee08fe8765",
+          "n_epocas": 87795,
+          "n_features": 8
+        },
+        "wearanize/pulso": {
+          "sha256": "e5a13adebcc02452987a0abbeb147fcec7580300645eb0a5f45337a2a45a5611",
+          "n_epocas": 87795,
+          "n_features": 8
+        },
+        "newcastle/esquerdo": {
+          "sha256": "49e0bc22692387f87ced7e2ff69f4c4121eecb5da81d301117fa186c8f4165ac",
+          "n_epocas": 30440,
+          "n_features": 8
+        },
+        "newcastle/direito": {
+          "sha256": "0a2df3e78c9ad08f95cd279dd4bd164a574ec56e823bd0c3d859a337e9a4d6ff",
+          "n_epocas": 29385,
+          "n_features": 8
+        }
+      },
+      "n_avisos": 0,
+      "n_capturas": 24,
+      "avisos_por_tipo": {}
+    },
+    "depois/otimizacoes": {
+      "status": "concluido",
+      "segundos": 918.7456076145172,
+      "utc_inicio": "2026-11-05T22:12:23.325402+00:00",
+      "utc_fim": "2026-11-05T22:27:42.071010+00:00",
+      "codigo": "3273431b6ebec4e3889bd3f01c3593b32dc0137e",
+      "hash_entradas": {
+        "wearanize/cabeca": {
+          "sha256": "2e4c83a4d7be466225c778d86490ea0aa1df4b86c909df19aea166132e1a2223",
+          "n_epocas": 87795,
+          "n_features": 8
+        },
+        "wearanize/cabeca_e4": {
+          "sha256": "f6c8d62d2cd145cf39045f00f448cac75272d3e9588861866f4f78ee08fe8765",
+          "n_epocas": 87795,
+          "n_features": 8
+        },
+        "wearanize/pulso": {
+          "sha256": "e5a13adebcc02452987a0abbeb147fcec7580300645eb0a5f45337a2a45a5611",
+          "n_epocas": 87795,
+          "n_features": 8
+        }
+      },
+      "n_avisos": 0,
+      "n_capturas": 9,
+      "avisos_por_tipo": {}
+    }
+  },
+  "fontes_analise_sha256_utf8_lf": {
+    "censo_contexto_ml17.py": "493817324587f8a41dc88674c3dfa8bd1b8c5010371af4dd79b095f37642076c",
+    "comparar_ml17.py": "de83a078e79044ead1bf63b7abf9d3aa3ad5507bd764c257dcf7ba5089cda960",
+    "conferir_predicoes_ml17.py": "0357f0ffb0683dd13968f4e113893633a60b271dd442e43f9f3c4d01d76659a2",
+    "resumir_ml17.py": "b080755c372238d25a103339f65fb67861d63b85db19ec17a7a67cba849ff053",
+    "auditar_resumos_ml17.py": "271791dba5f6e17844de6d1e6e0cf1e5c1da2a6769c4edfca14af2fe48fa384e"
+  },
+  "arquivos_publicos_sha256_utf8_lf": {
+    "comparacao.json": "09ab2dc8f84ae552c3e0299e4198330202ec9fc516ee7fc60a6fc9023275d8df",
+    "f1_complementar.json": "62b32c2b70bd8d21c63138859c7f581d860184695c4b54b68fa6f0ddb95d4b27",
+    "efeitos.json": "c9133793ebcda70749a3f7ad9ff31f2b6c2a4a76e8eaa28edb5d4e444f138dc7",
+    "censo.json": "8ae9c11ff0ce35d8a9773874d3f526f76b8903d31d15cca23b2413167dbe8dc6",
+    "lados_intra_sujeito.json": "8ae28bafc991bf6f78ea1f196f756db43d92a874ad51cd96691b7d31ba9e9afb",
+    "verificacao_predicoes.json": "46d728499ebe5ce084c058abfd2f9c92d736b81ccef5e2c899ea0b513721650d"
+  },
+  "atribuicao_wearanize_oa": {
+    "colecao": "https://doi.org/10.34973/xrmf-5726",
+    "colecao_primaria": "https://doi.org/10.34973/j6jf-9e62",
+    "artigo": "https://doi.org/10.1093/sleepadvances/zpaf094",
+    "licenca_do_pacote": "https://creativecommons.org/licenses/by/4.0/",
+    "alteracoes": "M\u00e9tricas calculadas pelo projeto; compara\u00e7\u00e3o de contexto global e segmentado.",
+    "uso": "Pesquisa cient\u00edfica, sem tentativa de identifica\u00e7\u00e3o; cr\u00e9ditos completos na cole\u00e7\u00e3o."
+  },
+  "privacidade": "Somente agregados; notas e \u00edndices individuais, predi\u00e7\u00f5es/r\u00f3tulos ficam locais."
+}

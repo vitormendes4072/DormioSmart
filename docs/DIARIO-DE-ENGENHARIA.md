@@ -7014,6 +7014,1584 @@ rastreada na raiz do repositório principal, e não foi tocada.
 `docs/REPRODUCAO-ML-15.md` e `docs/RASTREABILIDADE-ML-16.md`; conferências e comparadores
 independentes rodados nesta máquina em 05/11.
 
+---
+
+# 2026-11-05 (ii) — o release da `API-05`, da `UI-24` e do `DEMO-03`
+
+**O problema, como foi entendido no início.** Depois da integração das PRs #79–#84 e da
+conciliação (#85), `develop` tinha três mudanças de comportamento do site — `API-05`, `UI-24`,
+`DEMO-03` — e os itens de cálculo e de ML, que não mudam o site.
+
+**Hipótese de trabalho.** Que o release mudasse só a validação das consultas, o carregamento do
+histórico no painel e o modo demonstração do servidor de desenvolvimento.
+
+**O que foi testado, e como.** Diff `main..develop` restrito a `web-app/`, `frontend/` e
+`vercel.json` (três arquivos de produção); PR #86 com 9 checks; deploy acompanhado pela API de
+deployments; depois, `/health`, as rotas sem credencial e com `Bearer` inválido,
+`/api/sleep-history` com limites de fuso misturado, `/privacidade`, o pacote publicado, e um login
+do autor com o painel.
+
+**Resultado medido.** Deploy `7584696406`, `success`, SHA `5fa9ab6`. `/health` `200`, banco ok;
+rotas sem credencial e `Bearer` inválido → `401`; `/api/sleep-history` com fusos misturados e sem
+credencial → `401`; `/privacidade` `200`. O pacote publicado tem um trecho compatível com a guarda
+nova do `useHistorico` — indício, não prova, por ser código minificado. **O autor confirmou o login
+e o painel.**
+
+**Adaptação.** Nenhuma.
+
+**O que deu errado no caminho.** Nada nesta etapa.
+
+**Risco em aberto.** O `400` da `API-05` não foi exercitado na produção: exige sessão válida e
+parâmetros que nenhum cliente envia hoje. As sete branches das PRs #79–#85 e as worktrees da outra
+ferramenta seguem existindo até autorização para apagar.
+
+**Procedência.** PR #86 (`5fa9ab6`); deployment de produção `7584696406`; as rotas e o pacote de
+`https://dormio-smart.vercel.app`, 05/11; a confirmação do autor; backlog `API-05`, `UI-24`.
+
+---
+
+# 2026-11-05 (iii) — limpeza depois da integração, e uma cópia que seguiu uma junction
+
+**O problema, como foi entendido no início.** Integradas e lançadas as PRs #79–#84, o autor
+autorizou apagar as branches da rodada e as worktrees da outra ferramenta. As worktrees guardavam,
+fora do Git, duas coisas que não podiam se perder: uma seção "Concluído" do `ROADMAP.md` (local,
+gitignorado) em três delas, e os logs, caches e checkpoints da ML-15 e da ML-16, citados pelos
+relatórios como "locais e ignorados".
+
+**Hipótese de trabalho.** Que bastasse levar as seções do `ROADMAP.md` para o principal e copiar as
+duas pastas de evidência para `ml/dados/processado/` do repositório principal antes de remover as
+worktrees.
+
+**O que foi testado, e como.** As seções do `ROADMAP.md` comparadas com o principal e acrescentadas
+com o texto original. A evidência copiada com `cp -a`, e depois — refeito — com `robocopy /E /XJ`;
+as pastas conferidas arquivo a arquivo (caminho e tamanho) contra a origem. Antes de cada remoção,
+as worktrees varridas por links (`-Attributes ReparsePoint`). Os dados brutos originais contados
+(arquivos e bytes) depois de cada passo.
+
+**Resultado medido.** Três seções do `ROADMAP.md` (API-05, UI-24, ML-14) que só existiam nas
+worktrees passaram ao principal. Sete branches apagadas, locais e no GitHub; cinco worktrees
+removidas. A evidência ficou no repositório principal, igual à origem: **ML-15 207/207, ML-16
+90/90**. Os dados brutos originais terminaram como começaram: **676 arquivos, 54,1 GB**.
+
+**Adaptação.** A cópia passou a excluir junctions (`robocopy /XJ`); as duas junctions foram
+desfeitas como link (`rmdir`, sem `/s`) antes de remover as worktrees; as duas cópias acidentais
+foram apagadas depois de conferido que não continham link nenhum — o disco voltou a 126,7 GB
+livres.
+
+**O que deu errado no caminho.** A pasta de evidência de cada execução continha `ml/dados/bruto`
+como **junction** para os dados brutos reais — o `REPRODUCAO-ML-15.md` dizia isso, e não foi
+conferido antes de copiar. O `cp -a` seguiu o link e **duplicou os datasets**: 58 GB na pasta da
+ML-15 e 51 GB, parciais, na da ML-16. E a interrupção da tarefa não parou a cópia: o shell morreu, o
+`cp.exe` filho não, e só a queda do espaço livre (41,3 → 25,3 GB) denunciou; o processo foi
+encontrado e encerrado. Nenhum dado original foi alterado — a cópia só lia —, mas o passo seguinte,
+remover a worktree com a junction dentro, poderia ter apagado os datasets. Lições: §5 ocorrência 10
+e §6 ocorrência 9, com as regras 13 e 8. A pasta vazia de uma worktree (um arquivo de 0 byte) não
+pôde ser apagada, provavelmente por estar em uso pelo app da outra ferramenta, e ficou.
+
+**Risco em aberto.** Execuções futuras que liguem dados brutos por junction repetem a armadilha; a
+regra 13 da §5 e o item correspondente das instruções para a outra ferramenta cobrem isso, mas
+dependem de serem lidos. As pastas de nível de cima em `.codex/worktrees/` ficaram vazias.
+
+**Procedência.** Comandos desta sessão em 05/11; `ml/dados/processado/ml15_reproducao/` e
+`ml16/` (locais, ignorados); `ROADMAP.md` (local); `docs/LICOES-APRENDIDAS.md` §5 e §6.
+
+---
+
+# 2026-11-05 (iv) — `AGENTS.md`: regras para dois agentes em paralelo
+
+**O problema, como foi entendido no início.** Desde 04/11 o projeto tem dois agentes de código
+trabalhando ao mesmo tempo (o Codex e o Claude Code). A primeira rodada de integração (PRs #79–#84)
+mostrou o custo de não haver regra comum: conflitos em todo merge nos mesmos documentos (diário,
+backlog, contagem, tabela de testes do `CLAUDE.md`), notas de contagem calculadas sobre bases
+diferentes, o campo "O que deu errado no caminho" ausente ou fora do lugar em sete entradas, e uma
+cópia de evidência que seguiu uma junction para os dados brutos (entrada (iii)).
+
+**Hipótese de trabalho.** Que um `AGENTS.md` na raiz — que o Codex lê automaticamente — com a
+divisão por área, a sincronia com `develop` antes da revisão e as regras dos arquivos de conflito
+garantido reduzisse esses conflitos, sem duplicar o `CLAUDE.md` (que continua valendo e vence onde
+divergirem).
+
+**O que foi testado, e como.** O texto conferido contra o `CLAUDE.md` (Gitflow estrito, práticas
+não negociáveis, arquivos locais) e contra as lições §5 e §6; as três conferências de documentos
+rodadas na branch.
+
+**Resultado medido.** `AGENTS.md` com 20 regras em seis grupos: antes do trabalho, divisão, branches
+e PRs, arquivos de conflito garantido, o que conta como verificado, dados locais e texto do TCC. O
+`CLAUDE.md` passa a apontá-lo entre os documentos de leitura obrigatória.
+
+**Adaptação.** A primeira versão da regra 8 permitia "PRs empilhadas"; o `CLAUDE.md` exige que toda
+PR aponte para `develop`. A regra foi reescrita: a branch pode partir de outra PR aberta, mas a PR
+aponta para `develop`, com a ordem de merge no corpo.
+
+**O que deu errado no caminho.** A leitura cruzada achou uma divergência antiga no próprio
+`CLAUDE.md`: a prática 1 dizia "os sete campos fixos" do diário, e as entradas têm oito desde que
+"O que deu errado no caminho" virou campo fixo. Corrigido com nota datada.
+
+**Risco em aberto.** As regras dependem de serem lidas e seguidas; nenhuma é verificada por script.
+A divisão por área é de partida e muda conforme o autor indicar os itens.
+
+**Procedência.** `AGENTS.md`; `CLAUDE.md` (documentos de referência e prática 1); entradas
+2026-11-05 (i) e (iii); `docs/LICOES-APRENDIDAS.md` §5 e §6.
+
+---
+
+# 2026-11-05 (v) — ML-13: preparação e integridade da DREAMT
+
+**O problema, como foi entendido no início.** A branch da ML-13 tinha um conferidor de hashes, mas os dados permaneciam no ZIP. O autor pediu primeiro a sincronização com develop e a leitura das regras; depois aprovou a preparação e validação, exigindo caminho explícito sem junction, testes de manifesto antes da correção e a consolidação da sincronia nesta mesma entrada. A etapa termina antes do carregador e da avaliação externa.
+
+**Hipótese de trabalho.** O ZIP disponível pode fornecer somente o subconjunto necessário de v2.2.0; o conferidor só é confiável se exigir as 103 entradas esperadas, além de verificar os arquivos que encontra. Um manifesto vazio/incompleto não pode diminuir silenciosamente a cobertura.
+
+**O que foi testado, e como.** Nesta máquina Windows local, PowerShell e Python 3.11.9: git fetch origin, leitura de AGENTS.md/CLAUDE.md e registros, criação de worktree para a branch existente e merge de origin/develop 16232bf (merge 48af004), com as três conferências. Foram criados 13 testes artificiais no ml/: íntegros, arquivo ausente, adulteração, manifesto ausente, vazio, omissão de CSV, omissão de cada metadado, ID trocado com 103 entradas, linha malformada, duplicata e entradas de 100 Hz fora do escopo. Rodados antes de editar o conferidor e repetidos em cópia congelada do código anterior; depois, com a correção e na suíte completa. O script anterior está em cb65881, não no develop, portanto a prova usa essa versão efetivamente existente, sem contar erro de import como detecção. Extração em fluxo de apenas 104 membros selecionados do ZIP, com tamanho, CRC e SHA-256; manifesto local comparado byte a byte ao do ZIP; nova leitura dos 103 alvos pelo conferidor corrigido. Varredura sem seguir reparse points na worktree e no armazenamento. Apenas Metadata.txt, LICENSE.txt e cabeçalho de CSV foram lidos semanticamente; rótulos, features e desempenho não foram analisados.
+
+**Resultado medido.** Antes da correção, 8 dos 13 testes falharam e 5 passaram; a execução congelada confirmou a mesma contagem. Depois, 13/13 passaram; suíte ML completa: 190 passam. 100 CSVs, três metadados e SHA256SUMS.txt extraídos: 104 arquivos, 14.108.986.504 bytes. Os 104 CRCs selecionados conferem e os 103 SHA-256 oficiais conferem, sem arquivos ausentes ou somas diferentes; os hashes foram calculados durante a extração e de novo no conferidor. Nenhuma junction/reparse point na worktree ou no armazenamento. Não foi conferido o CRC integral do grupo de 100 Hz que permaneceu no ZIP. A ML-13 segue aberta; sobre origin/develop 16232bf, passa de L3 para L0 com total 39, L0 10/L1 14/L2 7/L3 8.
+
+**Adaptação.** A branch existente foi reutilizada em worktree própria, preservando o trabalho de cb65881. O conferidor passou a exigir os nomes dos 100 CSVs de v2.2.0 e dos três metadados; os outros arquivos do manifesto oficial não substituem esses alvos. Extração em pasta externa ao checkout, sem ligações ao diretório bruto principal, mantendo o ZIP original. O campo de sincronia (v) foi incorporado a esta única entrada da ML-13. O plano do carregador e as previsões P1–P3 foram registrados antes de qualquer avaliação e aguardam aprovação; hipóteses relativas às unidades/grade vindas da documentação ainda precisam de inspeção nos sinais.
+
+**O que deu errado no caminho.** Na sincronia, os primeiros comandos Git apontaram para a worktree da ML-16 já removida e falharam com "not a git repository"; o fetch foi feito pelo repositório principal sem editar seu checkout, e a execução seguiu na worktree da ML-13. A consulta inicial do item .git via PowerShell não o encontrou; o Git com o acesso necessário identificou as referências. Nesta preparação, uma leitura tentou abrir test_baixar_wearanize.py, que não existe; a lista foi conferida com rg --files. A impressão inicial de Metadata.txt falhou em cp1252 no símbolo μ; foi repetida com saída UTF-8. Nenhum desses comandos alterou os dados brutos. As oito reprovações dos testes no conferidor anterior foram controles esperados, não erros operacionais.
+
+**Risco em aberto.** Integridade dos bytes não demonstra validade da grade, unidade, rótulos ou transferência de desempenho. Faltam inspeção, protocolo de carregamento, controles e avaliação externa. O plano explicita caminho --dados-brutos, ausência de junctions, fronteiras de contexto/HMM e preservação da procedência histórica; alterações compartilhadas exigem escopo aprovado. CSVs e informações individuais permanecem restritos e fora do Git. Dados ficam em armazenamento externo estável e logs/JSON/JUnit na pasta ignorada da ML-13; os caminhos completos foram informados ao autor. Parada no passo 4, aguardando aprovação, sem inferência nem treino na DREAMT.
+
+**Procedência.** feature/ML-13-coorte-dreamt; origem cb6588198a225088408554845e058dd54e2e7ffd; base origin/develop 16232bf7bebe09537b88a31669c55737b5733bd9; merge 48af0048d6911813ebf72540e2068dedaae671bc. ml/ferramentas/baixar_dreamt.py, ml/testes/test_baixar_dreamt.py, docs/ML-13-PREPARACAO-DREAMT.md e docs/PLANO-ML-13-COORTE-DREAMT.md. Evidência privada em ml/dados/processado/ml13_preparacao/; dados externos no diretório lógico dados-locais/dreamt-2.2.0; nenhum caminho de máquina publicado.
+
+---
+
+# 2026-11-05 (vi) — ML-17: diagnóstico, código e controles de fronteira
+
+**O problema, como foi entendido no início.** O autor repassou a revisão da #90 e aprovou a correção de fronteiras como ML-17 antes da avaliação DREAMT. O plano próprio foi aprovado com duas PRs (código/caches, depois rodadas/relatório), separação dos defeitos de janela das regressões HMM/Viterbi que já funcionavam, dourados intactos e censo de contexto anterior aos treinamentos.
+
+**Hipótese de trabalho.** Separar participantes não basta quando o filtro de épocas apaga lacunas. Preservar gravação e índice original permite respeitar segmentos e medir depois quanto os efeitos das janelas ±2/±11 dependem do defeito, sem pressupor seu tamanho.
+
+**O que foi testado, e como.** Windows local, PowerShell e Python 3.11.9. Fetch/read de develop d429d43 e regras, auditoria de todas as chamadas e antecedente ML-12 (30/10 iv). Manifesto do ZIP comparado byte a byte com a cópia separada, complemento registrado na #90 já mesclada. Seis testes de fronteira executados contra cópia congelada do develop antes de editar os fontes. Depois, suíte completa; controles de janela global, lacuna apagada, cache antigo aceito, HMM/Viterbi juntando participantes; guarda de fonte histórica adulterada, commit indisponível e manifesto vazio. Testados consumidores reais do ML-04, persistência de índices e retomada. Arquivos dourados/firmware comparados por diff. Regeneração de caches iniciada com caminhos externos explícitos, em diretório ignorado, sem treino. As três conferências passam após integrar develop 42c1e75. Na revisão, guarda AST em todos os consumidores, com apenas os controles globais ML-12/ML-15/censo; 11 chamadas dos cinco grupos apontados foram sabotadas isoladamente, omitindo segmentos e passando None, 22 mutações. Guarda também rodada nos fontes Git de d429d43 e 42c1e75.
+
+**Resultado medido.** No develop: quatro testes falham por valores de janela (±2/±11 entre participantes e em lacunas), dois passam (transições HMM/Viterbi entre participantes). Corrigido inicialmente: suíte completa 217 passa; cinco sabotagens detectadas. Na revisão: 223 testes passam; 5/5 grupos e 22/22 mutações acusadas; a guarda rejeita 16 chamadas nos dois códigos antigos. Os testes dourados não mudaram. Dourados: 40 + 19 testes passam, nenhuma edição nos arquivos/vetores ou firmware. Hash do manifesto confirmado novamente: bf3f4d71fa9959c30d48598278013df0d6db8afa05bad770411e28f101780c3a. ML-17 continua aberta sobre develop 42c1e75 (já inclui DOC-16/DOC-17 e REQ-01); a contagem integrada é 39, L0 10/L1 14/L2 7/L3 8. Ainda não há comparação de desempenho nem resultado DREAMT.
+
+**Adaptação.** #90 já integrada quando a consulta ocorreu; registro complementado no corpo sem alterar develop. Contexto por segmento centralizado; caches ml17-v1 preservam índices/gravação e recusam legado. As chamadas reais foram migradas; contexto global deliberado da ML-12 e adaptador histórico da ML-15 ficam identificados. Guarda ML-15 passa a conferir os fontes no commit registrado, mantendo evidência/manifesto intactos e histórico no CI. Diretórios e checkpoints novos evitam reutilizar resultados antigos. O plano foi atualizado com os três ajustes aprovados; censo distingue vizinhança de mudança numérica e exige igualdade de entradas.
+
+**O que deu errado no caminho.** Na análise, consultas rg usaram nomes presumidos da reprodução ML-15; corrigidas com rg --files. Consultas extensas foram truncadas e repetidas em trechos menores. A conferência de documentos no sandbox da worktree nova não consultou o Git; repetida com acesso necessário. Na implementação, leituras tentaram abrir conftest.py/test_pipeline.py e pytest.ini na raiz, que não existem; o arquivo real é ml/pytest.ini. Nenhum desses comandos alterou brutos ou históricos. Na revisão, o primeiro mutante da comparação de punhos alterou o argumento de _prever na mesma linha, em vez da chamada interna de empilhar_contexto; o seletor foi corrigido para escolher a função e as 22 mutações foram repetidas. A suíte no sandbox negou rename de CSV artificial (222 passam, 1 erro de permissão); repetida com acesso normal do Windows, sem alterar o teste. Leituras extensas foram truncadas; trechos relevantes relidos. As quatro falhas deliberadas no develop são prova do defeito, não erro operacional.
+
+**Risco em aberto.** Efeito quantitativo não medido: segunda PR da ML-17. Antes dela, concluir preparação e informar censo por coorte/braço, sem atribuir ao contexto uma eventual diferença nas entradas. ML-13 continua aberta e não será avaliada antes da correção/revisão e eventual adendo às previsões. Brutos externos preservados; cache/log/JUnit realocados para dados-locais/ml17-evidencias-2026-11-05/, fora da worktree e do Git (614 arquivos, tamanho/SHA-256 conferidos, robocopy /E /XJ, origem removida depois da conferência). Nenhuma junction criada; evidência ML-13 não foi copiada. Caminhos locais completos informados ao autor. Caches novos ainda não são resultados de validação de modelos.
+
+**Procedência.** origin/develop d429d43e1b7bafacae67fbebb9a328942d63efff; branch bugfix/ML-17-fronteiras-contexto; docs/PLANO-ML-17-FRONTEIRAS-CONTEXTO.md; docs/ML-17-CODIGO-E-TESTES.md; fontes/testes desta PR; JUnit antes.xml/depois.xml em dados-locais/ml17-evidencias-2026-11-05/; manifesto ML-15 mantido; entrada ML-12 de 30/10 (iv).
+---
+
+# 2026-11-05 (vii) — ML-17: rodadas completas, dispersão e adendo antes da DREAMT
+
+**O problema, como foi entendido no início.** Segunda PR da ML-17, dependente da #91: medir a correção de contexto/segmentação com códigos congelados, entradas iguais e diferenças por participante/célula. O autor exigiu duas PRs, distinguir defeitos de janela das regressões HMM/Viterbi que já passavam, dourados intactos e censo informado antes das rodadas.
+
+**Hipótese de trabalho.** Uma comparação sobre os mesmos X/y/IDs isola a correção do código; um efeito pequeno na média não implica efeito pequeno em cada pessoa. A escolha ±11 e P1–P3 precisam ser reavaliadas nas coortes anteriores sem usar DREAMT para ajustar parâmetros.
+
+**O que foi testado, e como.** Windows local, Python 3.11.9. CI #91 verde; reconstrução dos caches e censo comunicado antes de treinar. Protocolo/executor commitados em 11fa375 antes das rodadas. Código antigo d429d43 e corrigido 3273431 exportados do Git sem resultados/checkpoints antigos. Dez execuções (cinco grupos por versão), 69 células em cada: Newcastle esquerdo, Walch principal/todos, punhos e baseline/8b/9 LOSO completo dos três braços, 92 participantes. Mesmas entradas carregadas, hashes e ambiente conferidos, uma thread nativa e até dois processos. Bootstrap pareado de 2.000 reamostragens, seed 20260910, médias/desvios/ICs/máximos por pessoa/célula. Verificador sem src/avaliar recompôs cinco métricas das predições; comparação da repetição ML-04/ML-04b. Testes independentes dos resumos públicos e sabotagem da média; guardas históricas no commit registrado. Suíte ML completa e três conferências; diff dos dourados/firmware e varredura sem seguir reparse points.
+
+**Resultado medido.** 69 células antes/depois completas, zero avisos, entradas/ambientes iguais. 144 capturas verificadas, erro absoluto máximo 0 (atol 1e-12). Repetição: 24 células, 730.560 predições, zero divergência. Suíte 236 passa, inclusive 40 + 19 dourados intactos. Censo ±2/±11: Wearanize 385/2.090 de 87.795 por braço; Newcastle esquerdo 104/572 de 30.440, direito 100/550 de 29.385; Walch principal 347/1.489 de 23.303, todos 367/1.599 de 25.250. Fração máxima individual alterada em ±11: 14,263% Wearanize, 32,333% Walch. Maior |Δκ| médio entre células 0,015003; em outra célula, média -0,011205 e Δκ individual -0,209959 (955 épocas, 49 de vigília). Maior Δespecificidade individual -0,346154, média da célula -0,006366 (1.147 épocas, 26 de vigília). As direções primárias ±11/HMM permanecem, com ICs pertinentes excluindo zero; quatro sinais de médias secundárias mudam com ICs incluindo zero antes/depois. Nenhuma mudança de sinal em contrastes LOSO/punhos. ML-17 concluída na segunda branch; ordem #91 antes da PR de rodadas. Sobre develop 42c1e75920bfc4f09c14ac65251cc90e1f6352b1 (DOC-16/REQ-01 fechados e DOC-17 aberto), saldo zero após abrir/fechar ML-17: 38 abertos, L0 9/L1 14/L2 7/L3 8.
+
+**Adaptação.** O censo exato detectou diferenças apenas nos ângulos Newcastle (máximo 2,842170943040401e-14 graus; médias absolutas nas oito features 6,221342976485442e-17 esquerdo e 6,588159205405496e-17 direito). Y/IDs/ordem, outras seis features e Wearanize/Walch são exatos. As duas versões usaram o mesmo X reconstruído; não se declara reprodução bit a bit dos históricos. Padrão do censo permanece exato; opção angular explícita até 3e-14 registra o desvio legado. Causa não determinada. P1–P3 originais preservadas, com adendo datado para os sinais secundários inconclusivos, antes de qualquer DREAMT. Pacote de resumos preparado ainda sem commit, com vetores de notas anônimos: decisão de publicação pendente. Proposta enviada de publicar agregados/manifesto/verificadores e manter notas individuais locais. Licença OA local CC BY 4.0 lida e hash registrado no relatório; páginas oficiais exigem pesquisa científica e não identificação. A interpretação de permissão de derivados não equivale a garantia de privacidade. Rótulos/predições/caches permanecem locais. A análise histórica aponta commits, sem congelar arquivos atuais.
+
+**O que deu errado no caminho.** A preparação Walch recebeu a pasta acima de labels/ e parou com FileNotFoundError; o caminho real do pacote foi identificado e passado explicitamente. A primeira conferência exata bloqueou corretamente a pequena diferença Newcastle; os desvios foram quantificados antes dos ajustes de modelos. Na integração, o primeiro stash apply foi tentado antes de resolver os conflitos de CI/CLAUDE e não foi aplicado; repetido depois da resolução, com conciliação manual dos registros. Nenhum bruto/cache histórico foi sobrescrito. Falhas deliberadas dos controles não foram tratadas como erro operacional.
+
+**Risco em aberto.** ML-17 pronta para revisão/integração, não mesclada pelo Codex. ML-13 permanece aberta: carregador e avaliação DREAMT ainda não feitos. Não houve ablação para separar quantitativamente janela, transições e reinício HMM. ICs são pontuais por célula, não corrigidos por multiplicidade nem por novo treino a cada bootstrap. ML-02 real, ablação completa, RF, seleção/aninhada e quantização não foram refeitos; seus históricos não representam automaticamente o código corrigido. Caches/logs/execuções movidos com robocopy /E /XJ para dados-locais/ml17-evidencias-2026-11-05/, fora da worktree; 614 arquivos conferidos por tamanho/SHA-256 antes de remover a origem; brutos originais externos intactos. Nenhuma junction/reparse point na worktree/execuções ou nas três raízes brutas consultadas. Caminhos absolutos informados ao autor. Sensor no travesseiro não validado por estas bases.
+
+**Procedência.** PR #91; fontes d429d43e1b7bafacae67fbebb9a328942d63efff e 3273431b6ebec4e3889bd3f01c3593b32dc0137e; executor 11fa3751088ca123d121f921f69e9813dd1c6d59; análise 2a8f51d7fb26c038811310ba4d536abab57f37a2; branch bugfix/ML-17-rodadas-comparadas. docs/ML-17-PROTOCOLO-RODADAS.md, docs/RELATORIO-ML-17-CONTEXTO.md, docs/ADENDO-ML-13-APOS-ML-17.md; resumos versionados em ml/experimentos/saida/ml17/; manifesto e verificadores; evidência privada realocada em dados-locais/ml17-evidencias-2026-11-05/, inventário REALOCACAO.json. Comparador e verificador de predições reexecutados no destino sem diferenças. Manifesto original preservado, inclusive caminhos históricos; executor congelado não foi adaptado à realocação.
+
+---
+
+# 2026-11-05 (viii) — DOC-16: a arquitetura adotada no resto do texto do TCC
+
+**O problema, como foi entendido no início.** As inserções `CALC-01` a `CALC-04` reescreveram a
+6.4 do TCC para o sono leve com a fila do sensor, mas o resto do texto continuava descrevendo o
+*Deep Sleep* com despertar por movimento. O `DOC-16` listava cinco lugares (Justificativa, 5.4,
+5.5, 5.6 e a 6.5 com a Figura 5).
+
+**Hipótese de trabalho.** Que bastasse reescrever esses cinco trechos, num arquivo de inserção
+com o texto atual ao lado do novo, como nas `CALC-*`.
+
+**O que foi testado, e como.** O "Copy of Produto 5" (30/09) lido inteiro pelo conector do Drive
+e varrido por termos da arquitetura antiga (*Deep Sleep*, *wake*, despertar, interrupção,
+evento de movimento, GPIO27, AI > L). Cada fato do texto novo conferido no código: o
+`firmware/sketch.ino` e o `firmware/nucleo/` (tarefas, 1,7 s, 10 min, FIFO de 1.024 B, grade
+de 32 Hz, divisão do lote no `413`), o `docs/DATA-CONTRACT.md` v2.7.0 (6 características e a
+gravidade enviadas; 2 derivadas no servidor) e a `ARQ-01`. Os trechos citados como "texto atual"
+conferidos por script contra o documento, com controle positivo. A Figura 5 nova desenhada em
+SVG e convertida para PNG pelo Edge em modo sem janela, e conferida por inspeção da imagem.
+
+**Resultado medido.** `../documento/INSERCAO-DOC-16-ARQUITETURA-NO-TEXTO.md` (fora do Git) com
+**13 pontos em 9 seções**, e `figura5-fluxo-firmware-c2.svg`/`.png`. Os 17 trechos citados
+estão no documento palavra por palavra (17/17); trocando uma palavra de um deles, o script
+acusa (16/17). Nenhuma inserção `CALC-*` estava colada no documento.
+
+**Adaptação.** O alcance era maior que o listado: a varredura achou a arquitetura antiga também
+na Introdução (dois parágrafos), num objetivo específico, no Quadro 1, na 6.3.1, em quatro
+trechos da 6.3.3, na 6.3.6 e no cronograma. O mais relevante deles é o volume de dados: o texto
+estimava "dezenas a poucas centenas" de registros por noite, porque só o movimento gerava
+registro; na arquitetura adotada toda época gera, e o número é fixo, 960 por noite de 8 h. O
+objetivo específico ficou com duas saídas para o autor decidir com o orientador, porque
+reescrever um objetivo para caber no resultado é diferente de corrigir uma descrição. A 6.5 nova
+diz que o firmware de produto ainda não rodou na placa.
+
+**O que deu errado no caminho.** A primeira versão da Figura 5 tinha uma decisão "Passaram
+10 min?" cuja saída "sim" seguia para as duas raias ao mesmo tempo, com uma seta sem destino
+claro; virou uma etapa, "A cada 10 min, avisa a tarefa de envio". A primeira chamada do Edge
+pelo Bash terminou sem gerar o PNG e sem erro; pelo PowerShell, com `Start-Process -Wait`,
+gerou. A 6.5 nova citava a 7.5 para os testes do firmware, e a 7.5 do documento não os menciona
+(está na contagem de 9/09); a referência saiu do texto e virou ponto do `DOC-17`. O script que
+confere as citações quebrou na primeira execução por uma barra invertida dentro do *heredoc*.
+
+**Risco em aberto.** O texto só muda quando o autor colar, e na ordem: as `CALC-01` a `04`
+primeiro. O texto do TCC não tem resultado nenhum do classificador, e a 6.6 o trata como
+condicional — contradição com a 6.4.4 nova até o `DOC-17`, que depende da `ML-17`. A 6.5 nova
+descreve um firmware que não rodou na placa; a placa pode mudar algum detalhe (`FW-05`).
+
+**Procedência.** "Copy of Produto 5" (Google Docs, 30/09), lido em 05/11; `firmware/sketch.ino`,
+`firmware/nucleo/` (`fifo_mpu.h`, `reamostragem.h`, `payload.h`, `lote.cpp`),
+`docs/DATA-CONTRACT.md`, `web-app/lote.py`, `docs/DECISAO-ARQ-01-CADENCIA.md`; inserções
+`CALC-01` a `CALC-04`; backlog `DOC-16`, `DOC-17`.
+
+---
+
+# 2026-11-05 (ix) — REQ-01: os requisitos do dispositivo, com critério e estado
+
+**O problema, como foi entendido no início.** Um objetivo específico do TCC promete "definir os
+requisitos iniciais (dimensões, conforto, autonomia, aquecimento, custo e segurança)", e o
+cronograma do texto marca a atividade como concluída em março e abril. A leitura do "Copy of
+Produto 5" para o `DOC-16` mostrou que o texto não tem seção de requisitos. O `REQ-01` estava no
+backlog havia semanas, com uma linha só.
+
+**Hipótese de trabalho.** Que a maior parte dos requisitos já tivesse número no repositório —
+autonomia, potência, armazenamento sem rede, volume de dados, segurança dos dados — e que bastasse
+reuni-los com critério verificável, deixando explícito o que depende de bancada ou de decisão.
+
+**O que foi testado, e como.** Um script novo, `scripts/requisitos_dispositivo.py`, que não cria
+modelo: importa o `estudo_cadencia.py` e lê do firmware a partição `dormio`, o tamanho do setor da
+fila e o intervalo de envio. O `--conferir` trava 26 números, entre eles a tabela inteira de
+capacidade por consumo de placa. Controle positivo: partição reduzida a 1 MiB no
+`partitions.csv`, e envio a cada 5 min no `sketch.ino`, cada um numa execução, com os arquivos
+restaurados depois. As referências a testes no documento (invariância a rotação, dourado, fila,
+RLS) conferidas por busca no repositório.
+
+**Resultado medido.** `docs/REQUISITOS-DISPOSITIVO.md` com 23 requisitos em seis dimensões. O
+`--conferir` passa com 26 números; a partição reduzida reprovou dois (32 704 → 16 320 registros;
+272,5 → 136 h), o envio a cada 5 min reprovou 18 (épocas por lote 20 → 10, e todas as correntes,
+potências e capacidades, que dependem do rádio). O resultado mais útil é a tabela do RD-10: uma semana ligado pede **383 mAh**
+só com os circuitos integrados e até **2 552 mAh** com 10 mA de consumo fixo da placa no pior caso
+— a bateria não se escolhe pelo modelo, e sim pela medição da placa. Inserção para o TCC em
+`../documento/INSERCAO-REQ-01-REQUISITOS.md`: 6.2.3 nova, com o Quadro 3 novo e a lista das
+referências a renumerar (Quadros 3 a 6 → 4 a 7).
+
+**Adaptação.** Dois critérios não têm fonte no repositório e entraram como **propostas**, marcadas
+assim, para os autores e o orientador confirmarem: 7 dias sem recarga e no máximo 1 °C de elevação
+na face do travesseiro. O critério térmico é comparativo de propósito, para não citar um limite
+normativo de temperatura de contato que ninguém leu (`DOC-06b`). Custo e dimensões ficaram
+"abertos", sem número inventado.
+
+**O que deu errado no caminho.** A tabela de renumeração da inserção atribuía a referência ao
+"Quadro 5" à 7.2, e ela está na 7.3; e contava três ocorrências de "Quadro 3" na 6.3.3, quando são
+duas. Os dois erros foram achados conferindo a seção de cada linha no texto extraído, antes de
+entregar. A nota sobre o Quadro 2 dizia que o firmware não usa as bibliotecas Adafruit; elas
+seguem nos três programas auxiliares, e a frase foi corrigida. A primeira versão do script
+imprimia a contagem de números conferidos como literal, e não contada. E a primeira leitura das
+sabotagens foi feita com a saída cortada (`tail`), o que daria "quatro" reprovações para o envio a
+cada 5 min; refeita com a saída inteira, são 18.
+
+**Risco em aberto.** Os dois valores propostos podem mudar, e a tabela de capacidade depende dos
+7 dias. Nada do documento foi medido na placa; cinco requisitos esperam a solda. O LED de energia
+da DevKit V1, citado no RD-15, é conhecimento geral da placa, não verificado nesta.
+
+**Procedência.** `docs/REQUISITOS-DISPOSITIVO.md`; `scripts/requisitos_dispositivo.py`;
+`scripts/estudo_cadencia.py`; `firmware/partitions.csv`, `firmware/nucleo/fila_flash.h`,
+`firmware/sketch.ino`; `docs/CALCULOS-TCC.md` Z.3–Z.4; "Copy of Produto 5" (30/09), lido em 05/11.
+
+---
+
+# 2026-11-05 (x) — DOC-06b: as citações do TCC conferidas contra as fontes
+
+**O problema, como foi entendido no início.** O `DOC-06b` pede que os autores leiam o que citam,
+porque "referência conferida não é artigo lido". Ninguém tinha conferido se cada fonte diz o que
+o texto atribui a ela, e é o primeiro lugar que um avaliador abre.
+
+**Hipótese de trabalho.** Que as referências existissem e estivessem certas na forma (as
+anteriores do projeto foram conferidas no `DOC-06`), e que os problemas, se houvesse, fossem de
+paráfrase.
+
+**O que foi testado, e como.** As 22 referências e as 35 frases que as citam extraídas do "Copy of
+Produto 5" (30/09). Os 9 artigos localizados pelo DOI na Europe PMC: metadados e resumo pela API,
+texto completo (`fullTextXML`) para o Skarpsno, o Liu, o Yuan e o De Fazio, com busca do trecho
+que sustenta ou contradiz cada frase. As fontes técnicas abertas no endereço citado; a LGPD no
+Planalto; o Gil por uma cópia digitalizada e o sumário de outra. As correções de texto conferidas
+por script contra o documento (4/4 trechos citados como "texto atual" encontrados).
+
+**Resultado medido.** Metadados dos 9 artigos conferem. **SKARPSNO et al. (2017) contradiz o
+texto:** a discussão do artigo diz que os sintomas de insônia não se associaram aos movimentos
+noturnos, e o texto afirmava a associação. **A página da TDK citada responde 404.** Quatro
+imprecisões: o YUAN (2024) é revisão só de actigrafia de pulso, citado duas vezes para "combinar
+sinais", e a terceira citação particulariza "REM e sono profundo"; o SMITH (2018) é mais restrito
+que "método válido"; as correntes do ESP32 vêm da folha de dados, não do guia citado. Três
+referências da lista sem citação. O ENMO da `CALC-03` sem fonte: VAN HEES et al. (2013), localizado.
+Confere o resto: De Fazio, Liu (98,42 %, 30 pessoas, sob o colchão), Boiko, Yoshihi, Walch, Bliwise
+pelo título, a lei e o Gil p. 17. Entregas: `docs/CONFERENCIA-DE-CITACOES.md`;
+`../documento/CORRECOES-CITACOES.md` (fora do Git); as inserções `CALC-01`, `CALC-02`, `CALC-03`,
+`CALC-04` e `DOC-16` ajustadas só dentro dos blocos a colar.
+
+**Adaptação.** Os sítios das editoras (MDPI) recusaram acesso automatizado (403); a leitura passou
+à Europe PMC, que tem os textos completos dos artigos abertos. Para a folha de dados da Espressif,
+cujo PDF não pôde ser lido aqui, a referência nova vai com versão e ano em branco, marcados para
+os autores preencherem da capa — melhor que um número inventado. O `DOC-06b` não fecha: o item é a
+leitura pelos autores, e a página diz o que ler primeiro.
+
+**O que deu errado no caminho.** A primeira tentativa de ler o MPU-6050 usou o endereço
+`…/mpu-6050/`, que não é o da referência; o da referência (`…/mpu-6000/`) também responde 404, e
+isso virou achado. Uma cópia da folha de dados num sítio de universidade exigia login, e outra
+voltou HTML. Um extrator de texto do PDF da Espressif, escrito às pressas, travou numa expressão
+regular e foi interrompido; conferi pela lista de processos que nenhum ficou rodando (§6, regra 8
+das lições). A tabela de vereditos tinha duas seções erradas (5.7 por 5.8; 5.6 por 5.7), corrigidas
+conferindo a seção de cada linha no texto extraído. **A minha própria inserção do `DOC-16`, de
+horas antes, citava a página quebrada da TDK e o guia da Espressif para correntes** — o mesmo erro
+que esta conferência acha no texto antigo.
+
+**Risco em aberto.** As correções só valem coladas, e o colchete da folha da Espressif precisa ser
+preenchido. Os livros (Gil p. 41, Bello, Elkington) não foram conferidos. A leitura dos autores
+segue sendo o item (`DOC-06b`).
+
+**Procedência.** "Copy of Produto 5" (30/09), lido em 05/11; Europe PMC (DOIs na página);
+`docs/CONFERENCIA-DE-CITACOES.md`; `../documento/CORRECOES-CITACOES.md`; `scripts/calculos_tcc.py`
+(seções da folha de dados do MPU-6050 e Tabela 4-2 da do ESP32).
+
+---
+
+# 2026-11-05 (xi) — LGPD-02: retenção por inatividade de 12 meses
+
+**O problema, como foi entendido no início.** Não havia política de retenção: uma leitura ficava
+no banco até o titular apagar a conta, e a seção 7 da política declarava isso como lacuna. O
+backlog aceitava as duas saídas, prazo ou declaração formal, mas não o silêncio.
+
+**Hipótese de trabalho.** Que o padrão do mercado de aparelhos de sono — guardar enquanto a conta
+é usada, apagar na exclusão — servisse, completado pela regra que resolve a conta esquecida:
+eliminar por inteiro a conta sem uso há 12 meses. O autor aprovou essa combinação depois de ver
+como Oura e Fitbit tratam o tema.
+
+**O que foi testado, e como.** Migração `013`, com a lista de deletes do titular extraída para
+`_eliminar_titular(uuid)` e o expurgo em `expurgar_contas_inativas()`. `test_rls_retencao.py`
+contra Postgres 16 em Docker, cada teste semeando contas com datas recuadas numa transação
+revertida. Controle positivo de três formas: a suíte sem a `013` numa cópia da árvore; três
+sabotagens novas no `verificar_por_mutacao.py`; e o diagnóstico rodado depois de reaplicar a
+`006` por cima da `013`. Também a suíte RLS inteira, o `verificar_migracoes.py`, o backend e os
+testes da página da política no frontend.
+
+**Resultado medido.** RLS **193** (174 + 19). Sem a `013`, **17 dos 19** testes novos caem; os 2
+que passam são os de recusa ("usuário logado não chama"), que sem a função passam porque ela não
+existe — no código real passam por duas barreiras, o EXECUTE revogado e o `security invoker`.
+Mutação **35/35**: ignorar a última leitura derrubou 3 testes; liberar o expurgo para
+`authenticated`, 1; a eliminação sem dispositivos, 5, inclusive o da exclusão pelo próprio
+titular — prova de que os dois caminhos usam a mesma lista. Diagnóstico nos **13 estados**, e
+com a `apagar_minha_conta()` revertida à da 006 a `013` cai para 2 de 3 marcas. Backend **453**;
+frontend da política 12/12.
+
+**Adaptação.** O prazo ficou dentro da função, sem parâmetro, pelo mesmo motivo da
+`apagar_minha_conta()` não ter parâmetro de usuário: um `(1)` digitado por engano apagaria quem
+não entra há um mês. As duas funções novas são `security invoker`, para não criar mais uma
+função que eleva privilégio. O agendamento ficou condicional ao `pg_cron`, e o diagnóstico o
+mostra numa linha informativa, porque o Postgres de teste não tem a extensão. A política só pode
+descrever o mecanismo depois de ele existir: a `013` vai à produção ANTES do release que publica a
+seção 7 nova — a ordem inversa da do `LGPD-06` —, e isso virou o `LGPD-09`. A seção 7 diz que não
+há aviso prévio, porque não há SMTP (`LGPD-10`), e que o plano gratuito do Supabase não faz cópia
+de segurança, conferido na documentação dele.
+
+**O que deu errado no caminho.** Na primeira resposta ao autor, chamei a saída "guardar enquanto
+a conta existir" de a mais fraca; a pesquisa mostrou que é o padrão do mercado, e a recomendação
+foi refeita. O `verificar_migracoes.py` imprimia "os 12 estados" como texto fixo, e passou a
+contá-los. Uma edição por script Python e outra por `sed` não pegaram a linha do texto fixo, que
+tinha o travessão; foi feita com a ferramenta de edição. O README das migrações tinha pulado a
+`012`, e a linha dela entrou junto com a da `013`.
+
+**Risco em aberto.** Nada disso vale na produção até o autor aplicar a `013` e ligar o `pg_cron`
+(`LGPD-09`); até lá, o release não pode levar a seção 7 nova. O sinal de login é o
+`last_sign_in_at` do Supabase, que muda no login, não a cada renovação de sessão: quem só usa
+uma sessão aberta por mais de 12 meses, sem dispositivo enviando, seria tratado como inativo —
+caso improvável, e a leitura do dispositivo já mantém a conta. Sem aviso por e-mail
+(`LGPD-10`). A guarda de 5 anos de pesquisa, se o orientador confirmar voluntários sob comitê de
+ética, seria cláusula própria, fora deste expurgo.
+
+**Procedência.** `web-app/migrations/013_retencao_por_inatividade.sql`;
+`web-app/tests/rls/test_rls_retencao.py`, `verificar_por_mutacao.py`, `esquema_base.sql`,
+`conftest.py`; `web-app/tests/migracoes/verificar_migracoes.py`;
+`web-app/migrations/DIAGNOSTICO-migracoes-aplicadas.sql` e `README.md`;
+`docs/POLITICA-DE-PRIVACIDADE.md`, seções 7 e 10; documentação de backups do Supabase, lida em 05/11.
+
+---
+
+# 2026-11-06 (xii) — SIM-02: o simulador fala a C2
+
+**O problema, como foi entendido no início.** Com a defesa adiada para depois do MVP, a pergunta
+passou a ser o que impede o produto de funcionar de ponta a ponta. Um dos buracos: o
+`web-app/fake_sensor.py` ainda falava o protocolo da v1.1 — leitura avulsa a `/api/data` a cada
+3 s, sem `ts`, `epoca_s` nem `f`/`g`/`fs`. O caminho que o firmware C2 vai usar (lote em
+`/api/data/lote`, as duas características angulares derivadas no servidor, `/api/features`) não
+era exercitado por nada, e não havia como demonstrá-lo antes da solda.
+
+**Hipótese de trabalho.** Que um simulador que gere o sinal na grade de 32 Hz e calcule as
+características pela PRÓPRIA referência (`ml/src/features.py::features_de_epoca`, que o firmware
+copia e com que o modelo foi treinado) seja indistinguível do dispositivo para o servidor, sem uma
+terceira implementação das características. A FIFO a 50 Hz não foi simulada: ela tem vetor dourado
+próprio, e o alvo aqui é o contrato e o servidor.
+
+**O que foi testado, e como.** `scripts/simulador_c2.py`, rodado pelo ambiente do `ml/` (numpy e
+scipy não entram no backend da Vercel); o envio usa só a biblioteca padrão.
+`ml/testes/test_simulador_c2.py` confere o simulador contra o código do servidor
+(`validar_leitura`, `validar_captacao`, `lote.extrair_leituras`, `features_noite.derivar_noite`) e
+contra constantes lidas dos arquivos do firmware (`payload.h`, `lote.h`, `epoca_c2.cpp`,
+`sketch.ino`) e do `device_auth.py`. Controle positivo: 7 sabotagens no simulador. Ponta a ponta,
+fora do CI: uma noite de 8 h pela rota Flask real `/api/data/lote` e depois `GET /api/features`,
+só com o banco trocado por um falso. Também o modo tempo real, a seco, por duas épocas, e as suítes
+completas de ML e do backend.
+
+**Resultado medido.** 24 testes; ML **190 → 214**; backend **453**, inalterado. Sabotagens
+**7/7**: `ts` no fim da época (1 teste cai), lote de 61 (4), 413 sem dividir pela metade (1),
+vigília com amplitude de sono (1), `g` não unitário (5), `f` em ordem invertida (2), pendente
+tratado como aceito (2). Na rota real: 960 aceitas, 0 rejeitadas, 16 requisições; o
+`/api/features` devolveu as 960 épocas, uma só sem `d_angulo` (a primeira), e as 18 viradas do
+gabarito aparecem com `d_angulo` de 20° a 62°; no sono quieto, no máximo 5,7°. Na semente dos
+testes, a mediana do ENMO acordado é 4,4 vezes a do sono quieto (3,6 mg contra 0,82 mg).
+
+**Adaptação.** O plano dizia "lotes de 20, como o firmware". Lendo o `sketch.ino` antes de
+escrever: o firmware acorda o envio a cada 10 min (~20 épocas), mas esvazia a fila em lotes de
+**até 60** (`MAX_LEITURAS_POR_LOTE`). O modo noite usa 60, e o tempo real envia a cada 20. O
+`fake_sensor.py` ficou, como o simulador do caminho avulso, que continua no contrato e cujos
+testes do critério de movimento importam dele. Nada foi enviado à produção: o backend local fala
+com o Supabase do `.env`, e enviar é gravar na conta dona do token — isso fica com o autor.
+
+**O que deu errado no caminho.** O padrão "23h de ontem" falhou na primeira execução, à 01h11: a
+noite de ontem ainda não tinha terminado, e o servidor recusa `ts` no futuro. Passou a ser "as 23h
+mais recentes cuja noite já terminou", com teste para madrugada, meio-dia e 23h30. O limiar de 5
+vezes no teste de separação do ENMO foi chute; a medida deu 4,4, e o limiar foi para 3 — sem mexer
+no modelo de sinal para caber no teste. O script das sabotagens quebrou na quinta, lendo em UTF-8
+a saída do pytest em cp1252; o `finally` restaurou o arquivo, e a rodada foi refeita inteira. O
+script da ponta a ponta errou duas vezes antes de rodar (esqueci de passar o transporte falso; o
+`device` da consulta precisa ser um uuid).
+
+**Risco em aberto.** Com `f` em ordem invertida, o **servidor aceitou** as leituras: a ordem
+errada cabe nas faixas, como o contrato já avisa no §2.6. Só o teste que recalcula as
+características pelo nome a pegou; do lado do firmware, quem protege é o vetor dourado. O sinal é
+sintético: serve à corrente e à demonstração, e nenhum número de classificador medido sobre ele
+pode entrar no TCC como resultado — o gabarito existe para conferir a `ML-INF` funcionando, não a
+acurácia dela. O envio à conta de demonstração na produção não foi exercitado.
+
+**Procedência.** `scripts/simulador_c2.py`; `ml/testes/test_simulador_c2.py`; `README.md`,
+`web-app/README.md` e `docs/DATA-CONTRACT.md` (a menção aos simuladores); `firmware/sketch.ino`
+(`INTERVALO_DE_ENVIO_US`, `enviar_pendentes`), `firmware/nucleo/lote.h`, `payload.h`,
+`epoca_c2.cpp`; backlog `SIM-02`.
+
+---
+
+# 2026-11-06 (xiii) — ML-17: publicação agregada e auditoria das notas locais
+
+**O problema, como foi entendido no início.** O autor aprovou publicar apenas resumos e manifesto na segunda PR da ML-17. O pacote preparado ainda continha vetores anônimos de notas; as evidências já estavam fora da worktree. Era preciso exportar somente agregados e distinguir o que o clone público confere do que depende das notas locais.
+
+**Hipótese de trabalho.** Preservar os resultados completos externos e exportar campos agregados explícitos permite manter médias, dispersão e extremos sem publicar notas ou índices individuais. Os hashes do manifesto congelado podem conferir os dados no novo local sem junction e sem reescrever a procedência da execução.
+
+**O que foi testado, e como.** Nesta máquina Windows local, PowerShell, Python 3.11.9 pinado. Fetch e integração de origin/develop 1b5c82c nas duas branches, preservando entradas viii a xi e itens dos demais autores. Suíte ML completa, com os controles positivos novamente executados: cinco grupos de consumidores/22 mutações, guardas históricas e fontes/cache/censo adulterados. Publicação: os três JSONs anteriores com notas reprovam pela guarda de campos individuais; projeção agregada passa; vetores e índice de extremo inseridos deliberadamente reprovam; média pública adulterada reprova pelo hash, não por uma recomposição sem notas. Conferência de executor realocado aceita LF/CRLF, mas reprova mudança de expressão. Exportação com --cache/--censo novos, conferidos pelos hashes originais. Auditoria local independente com math.fsum/statistics.stdev e comparação exata dos agregados públicos com a projeção das notas; não usa src/avaliar nem recompõe ICs bootstrap. Três conferências de documentos, diff dos dourados/firmware e inspeção de reparse points antes da entrega.
+
+**Resultado medido.** 245 testes ML passam, incluindo 40 + 19 dourados intactos. Os 69 conjuntos de células geraram 345 combinações célula/métrica auditadas localmente, zero divergências nas médias/desvios/extremos; a projeção coincide com os agregados públicos. Verificador de predições repetido na exportação: 144 capturas, cinco métricas, erro máximo zero; repetição Newcastle, 730.560 predições e zero diferença. Sete JSONs públicos, sem notas ou índices individuais; hashes normalizados UTF-8/LF e fontes de análise registrados no manifesto. Na base develop 1b5c82c, a primeira PR abre ML-17 (39 a 40, L0 8 a 9); esta entrega fecha (40 a 39, L0 9 a 8), L1 14/L2 7/L3 10. Nenhum novo treinamento, avaliação DREAMT ou alteração do código numérico nesta etapa.
+
+**Adaptação.** Exportador usa campos agregados explícitos, guarda adicional de notas e hashes dos seis resumos; a atribuição Wearanize+ OA identifica coleção, referências, licença e cálculos do projeto. Testes públicos verificam contrato, integridade e fontes históricas; a recomposição das estatísticas a partir das notas é uma ferramenta local separada. A realocação é atendida por argumentos, mantendo manifesto/caches/execuções originais intactos; tolerância de fim de linha do executor não se aplica aos dados. Proposta e escolha expressa do autor registradas no relatório. Diário vi/vii permanece antes de viii/ix; as novas entradas x/xi foram preservadas.
+
+**O que deu errado no caminho.** Uma consulta de inspeção presumiu a chave newcastle_esquerdo no censo e recebeu KeyError; a estrutura real usa newcastle/esquerdo. Um patch tentou excluir e recriar o mesmo arquivo numa chamada e foi recusado, sem alteração; aplicado como atualização separada. A primeira exportação após a sincronia recusou o hash do executor: o Git convertera LF para CRLF. Censo e código normalizado conferiam; foi acrescentado controle explícito para somente essa conversão, com teste de alteração real de código que reprova. Conflitos de contagem/linha ML foram conciliados com os registros novos do develop, sem substituir o estado dos outros itens.
+
+**Risco em aberto.** Integração depende de revisão; ordem #91 antes desta PR, ambas para develop, sem merge pelo Codex. As limitações das rodadas e os quatro sinais secundários inconclusivos estão no relatório/adendo, não foram resolvidos pela publicação agregada. CI sem datasets não valida numericamente as médias contra notas ausentes; a auditoria completa é local e os hashes não são assinatura de autenticidade. ML-13 continua aberta, sem carregador/avaliação DREAMT. Evidência em dados-locais/ml17-evidencias-2026-11-05/, fora da worktree, com brutos no armazenamento original e sem junctions; o executor de treinamento congelado ainda registra os caminhos originais, ao passo que a análise aceita os caminhos realocados.
+
+**Procedência.** Segunda branch bugfix/ML-17-rodadas-comparadas, dependente da #91. develop 1b5c82c70262604f57d49faad4bcdafc71488ef1; executor 11fa3751088ca123d121f921f69e9813dd1c6d59; código antes d429d43 e depois 3273431; análise/exportação 3eadf88. docs/RELATORIO-ML-17-CONTEXTO.md e docs/ADENDO-ML-13-APOS-ML-17.md; ml/experimentos/saida/ml17/manifesto.json; ferramentas/resumir_ml17.py e auditar_resumos_ml17.py; evidência privada REALOCACAO.json, auditoria-agregados-06nov.json e publicacao-06nov.xml na pasta externa informada ao autor.
+
+
+---
+
+# 2026-11-06 (xiv) — ML-13: validação externa DREAMT
+
+**O problema, como foi entendido no início.** Após a integração da ML-17, avaliar a terceira coorte externa com P1–P3 congeladas. A preparação da versão 2.2.0 já estava integrada. Faltavam a inspeção da grade, o carregador por caminho explícito e a avaliação com as quatro configurações e os três braços do ML-04.
+
+**Hipótese de trabalho.** No braço pulso, κ de ±11 acima de zero, ganho conjunto de κ e especificidade com ±11 sobre ±2 e queda de especificidade com HMM sobre ±2. O protocolo exige 30 s alinhados ao PSG e separação de gravações e lacunas.
+
+**O que foi testado, e como.** Windows local, Python 3.11.9 e bibliotecas pinadas. Branch avançada para b5335ac. Executados 103 hashes oficiais e inspeção de cinco colunas nas 100 gravações. Os dois testes direcionados à CLI reprovaram na base, pois a opção dreamt era rejeitada. Suíte local com os casos de escala, fase, pares ACC adulterados, lacuna, cauda truncada, coluna ausente, passagem de caminho, contexto global deliberado e ordem de notas invertida. Controles históricos da ML-17 repetidos na suíte. Protocolo commitado em c328342 antes dos resultados. Cache congelado Wearanize conferido pelo SHA-256 e pelas fontes de 3273431, com conferência da seleção atual de 92 participantes e dos três hashes X/y/IDs antes do treino. Executado ML-04 com uma thread nativa. A contagem dos pools foi verificada em processo separado com os mesmos imports e ambiente. Exportação recompôs médias e desvios para 65 combinações célula/métrica e conferiu a cobertura das 13 matrizes somadas. Lidos Metadata.txt, PhysioNet e a descrição original. Executadas as três conferências do repositório.
+
+**Resultado medido.** 203.531.428 linhas contínuas de 64 Hz com pares ACC idênticos. Três gravações com fases PSG incompatíveis, 233 transições fora da fase inicial e máximo de 120 em uma gravação. Nos 97 arquivos avaliados, 77.738 épocas e 101 segmentos após excluir 97 caudas e quatro épocas sem rótulo. O máximo por gravação foi um em cada categoria de descarte. P1 κ 0,4218 com IC95 [0,3867, 0,4562]. P2 Δκ +0,030 e Δespecificidade +0,054, ambos ICs acima de zero. P3 Δespecificidade −0,052, IC abaixo de zero. Maior |Δκ| individual 0,3672 em cabeça-E4/±11+HMM (média +0,0355). Maior queda individual de especificidade −0,4000 em cabeça/±11+HMM (média −0,0013). 278 testes passaram. Backlog sobre b5335ac passou de 39 para 38 abertos, L0 de 8 para 7, L1 14, L2 7, L3 10.
+
+**Adaptação.** Critério de uma única fase PSG fixado antes da rodada. Três gravações excluídas por ambiguidade, sem usar desempenho para decidir. O carregador recupera a grade nativa de 32 Hz de pares duplicados, converte para g e conserva o índice original ao filtrar. Uma cópia auditada do cache ML-17 foi identificada para o código atual, mantendo dados e segmentos. A exportação mantém agregados com ICs, dispersão, contagem válida e extremos sem identificadores. P1–P3 e adendo de 05/11 preservados.
+
+**O que deu errado no caminho.** A consulta Git no sandbox retornou que a operação exigia uma worktree e foi repetida com acesso ao Git compartilhado. A seleção pytest com -k cli também encontrou o caso de colunas clínicas, que falhou antes de o módulo existir. O preparo de cache inicialmente omitiu --item, exigido pela CLI. A segunda preparação foi encerrada após verificar a cópia equivalente do cache ML-17. O teste de exportação primeiro encontrou a chave de IC incompatível com a guarda de publicação. Em seguida, a sabotagem tentou inverter uma tupla com reverse. Ajustados o esquema e a fixture, a suíte passou. Depois de gerar o pacote, o CI encontrou o novo JSON na raiz histórica da ML-14, fora do inventário de 18 arquivos. Reproduzido localmente (19 arquivos), movido para saida/ml13/ e repetida a suíte com o pacote final.
+
+**Risco em aberto.** As três fases ambíguas limitam o resultado à coorte avaliável. Os ICs são por participante e refletem as configurações congeladas. O desempenho no travesseiro exige validação física. A exportação de um modelo de inferência no servidor é trabalho da ML-INF. Evidência em dados-locais/ml13-dreamt-avaliacao-2026-11-06 e brutos em dados-locais/dreamt-2.2.0 e no armazenamento Wearanize original. Seis raízes verificadas sem junctions. Revisão e merge ficam com os responsáveis.
+
+**Procedência.** feature/ML-13-coorte-dreamt sobre b5335acb9e0164d9be6f471602eb83fe15f1782c. Protocolo/código executado c328342367de4079b99a6f7c420e4768ac8230b6. docs/ML-13-PROTOCOLO-TEMPORAL.md, docs/RELATORIO-ML-13-DREAMT.md, ml/experimentos/saida/ml13/agregados.json. Resultado individual, log, ambiente, cache auditado e JUnit ficam na evidência externa.
+
+
+---
+
+# 2026-11-07 — ML-13: controles de fronteira na avaliação DREAMT
+
+**O problema, como foi entendido no início.** A revisão da #98 encontrou duas lacunas nos testes. A guarda de contexto só exigia o argumento segmentos, e o teste da grade PSG não exercitava diretamente o descarte de uma época com dois estágios.
+
+**Hipótese de trabalho.** Um caso com dois participantes e uma lacuna deve acusar a junção indevida pela janela e pelo Viterbi. O rótulo da época só pode ser usado quando o estágio original é uniforme, inclusive quando os dois estágios são ambos de sono.
+
+**O que foi testado, e como.** No Windows local, Python 3.11.9. Foi exercitada a entrada real rodar do ML-04 na coorte DREAMT, com catálogo, treino e destino sintéticos. Na variante de janela, o teste compara a matriz recebida pelo classificador com as janelas de referência. Na variante HMM, usa probabilidades fixas, roda o Viterbi real e confere a matriz de confusão. Foram executadas quatro mutações isoladas nos fontes, restaurados após cada execução. As três de segmentação juntam toda a matriz, apenas a lacuna ou apenas os participantes. A quarta aceita o estágio da primeira amostra. A suíte foi repetida após restaurar todos os fontes.
+
+**Resultado medido.** Cada mutação de segmentação derrubou os dois casos da CLI de avaliação. A mutação de rótulo derrubou os dois casos de estágio misto (W/N2 e N1/N2). Os sete casos novos passam com a implementação correta. A suíte completa passou com 285 testes. P1 no diário xiv foi corrigido de 0,4224 para 0,4218, conforme o JSON e o relatório.
+
+**Adaptação.** A regra de uniformidade existente foi extraída para uma função testável, preservando o controle de fase no carregador. Os testes separam o resultado esperado da função que produz os segmentos. Nenhuma nova rodada de modelos foi necessária para esse controle sintético.
+
+**O que deu errado no caminho.** Uma leitura tentou expansão de chaves no PowerShell. A primeira suíte completa foi iniciada antes do recibo final das mutações. A suíte foi repetida depois que a restauração foi confirmada e os 285 casos passaram novamente.
+
+**Risco em aberto.** A cobertura verifica fronteiras e rótulos com sinais artificiais. As limitações da coorte real continuam no relatório da ML-13. Nesta etapa os testes usam apenas arquivos sintéticos temporários, sem dados brutos ou junctions. O próximo item é o artefato de modelo da ML-INF.
+
+**Procedência.** Base origin/develop 8859101, branch bugfix/ML-13-cobertura-dreamt. Revisão da #98, ml/testes/test_dreamt.py e ml/src/carregar/dreamt.py.
+
+
+---
+
+# 2026-11-07 (ii) — ML-INF: treino, validação e exportação de cabeça
+
+**O problema, como foi entendido no início.** Entregar o modelo de seis características e o vetor dourado que a integração do backend consumirá. O autor escolheu o braço cabeça por ser a posição corporal mais próxima do produto, que recebe movimento através do travesseiro.
+
+**Hipótese de trabalho.** O modelo balanceado com escala aprendida só no treino deve reproduzir as probabilidades do scikit-learn quando o backend recebe o campo f. O LOSO mede generalização entre participantes da cabeça. As três coortes externas medem generalização a pessoas e coortes de punho.
+
+**O que foi testado, e como.** Windows local, Python 3.11.9. Protocolo e código fixados em 4ee0ffe antes dos resultados. Foram reconferidos inventário, bytes e X/y/IDs dos caches da ML-17 e 103 SHA-256 da DREAMT. Executados 92 folds LOSO, um ajuste com os 92 participantes e três avaliações externas congeladas. Pools nativos medidos com uma thread no próprio processo. A auditoria independente recompôs médias com scikit-learn e contou as oito matrizes a partir de y e predições locais. Os testes repetem o payload SIM-02, conferem ordem canônica e reproduzem predict_proba por aritmética da biblioteca padrão. Controles positivos executados ao incluir a pessoa de teste na dobra, inverter a ordem das features e adulterar um coeficiente. Os três controles reprovaram antes da restauração.
+
+**Resultado medido.** 289 testes passaram no Windows. As quatro avaliações retiveram 92/27/29/97 participantes e 87.795/30.440/23.303/77.738 épocas. κ médio 0,3640/−0,0002/0,3652/0,0337 para LOSO, Newcastle, Walch e DREAMT. O maior |Δκ| em um participante foi 0,6825 no LOSO, com média +0,3640. Na DREAMT, |Δκ| máximo 0,4386 com média +0,0337. A alta especificidade na Newcastle e na DREAMT veio com sensibilidades por época de 0,047% e 12,65%. O máximo erro da auditoria das médias foi 1,11e-16. Quatro payloads e duas entradas sintéticas próximas ao limiar conferiram na tolerância de 1e-12 e classe exata. O backlog mantém a ML-INF aberta pela integração.
+
+**Adaptação.** Cabeça original chega a 32 Hz pelo antialias comum e evita acrescentar saturação e quantização E4 ao sinal. Isso aproxima o pré-processamento da C2 sem presumir resolução efetiva igual. Os agregados registram desempenho baixo onde houve colapso para vigília. Os coeficientes e a fixture são versionados com procedência, licença e tolerância. As predições e notas individuais ficam externas.
+
+**O que deu errado no caminho.** O primeiro comando de mutação não tinha permissão de escrita na worktree recém-criada. O arquivo foi conferido e as mutações foram executadas com acesso de escrita, restauradas e seguidas da suíte completa.
+
+**Risco em aberto.** O teste de integração pela inferência real cabe à PR de backend. Os sensores das bases ficam presos à cabeça ou ao pulso. No produto o movimento chega pela espuma, com atenuação e atraso esperados ainda a medir. A variante ±11 exige avaliação própria. A evidência está em dados-locais/ml-inf-cabeca-2026-11-07 e os brutos DREAMT e caches ML-17 permanecem em suas pastas externas. Quatro raízes conferidas sem junctions.
+
+**Procedência.** feature/ML-INF-modelo-cabeca, descendente da PR #99, sobre develop 8859101. docs/ML-INF-PROTOCOLO-MVP.md, docs/RELATORIO-ML-INF-MVP.md, ml/experimentos/ml_inf.py, ml/modelos/ml-inf-cabeca-v1.json e ml/testes/fixtures/ml-inf-cabeca-v1-dourado.json.
+
+---
+
+# 2026-11-07 (iii) — ML-INF v2: reproduzir e exportar o modelo validado
+
+**O problema.** A v1 exportou seis features, escala global e uma época isolada. A revisão da #100 pediu o mesmo pipeline validado no ML-04 e na ML-13. Na Newcastle, a v1 detectou 10 de 21.270 épocas de sono.
+
+**Hipótese.** O modelo de cabeça original com oito features, z-score por gravação e contexto ±11 reproduz os agregados publicados quando recebe as entradas históricas. O mesmo JSON deve reproduzir a pontuação do scikit-learn em noites simuladas que passam pela derivação angular do servidor.
+
+**O que foi testado.** No Windows local, Python 3.11.9, foram reconferidos os 103 SHA-256 DREAMT e os caches da ML-17. Rodaram 92 ajustes LOSO, o treino final, quatro avaliações externas e duas noites C2 de 960 e 959 épocas. Uma auditoria independente refez κ e confusões. Os JSONs publicados e o caminho de classificação do ML-04 foram lidos no Git. Nove controles positivos acusaram z-score por pessoa, contexto global, corte em 45 s, piso de 22, ausência de conversão angular, JSON v1, ordem invertida, coeficiente adulterado e empate como sono.
+
+**Resultado medido.** 299 testes de ML passaram após restaurar as mutações. κ da v2 no LOSO foi 0,4569. O JSON reproduziu κ 0,2953 na Newcastle, 0,4082 e 0,4123 nas variantes Walch e 0,3470 na DREAMT, com os ICs publicados e maior diferença por participante igual a zero. Na DREAMT, Δκ médio entre v2 e v1 foi +0,3133 e o maior módulo individual foi 0,7194. Nenhuma gravação histórica ficou abaixo do piso. Nos dourados, a probabilidade conferiu em 1e-12 e a classe foi exata, inclusive no empate em 0,5.
+
+**Adaptação.** A ordem original das métricas foi recuperada para reproduzir a sequência de amostras do bootstrap. No contrato do modelo, d_angulo ausente na borda vira zero antes do z-score. O histórico conserva o cálculo angular de origem. Os testes expõem o efeito da lacuna, do limiar temporal e da referência por noite ou por trecho.
+
+**O que deu errado no caminho.** O fetch inicial foi bloqueado pela sandbox na administração Git da worktree e foi repetido com a permissão apropriada. Houve globs incompatíveis com PowerShell e uma consulta CIM sem acesso. A primeira conferência de documentos acusou o relatório ainda fora do índice. A primeira rodada parou no IC da Newcastle, com desvio máximo de 0,00558 nos limites por causa da ordem do bootstrap. Na suíte isolada, o Windows negou a renomeação de um CSV sintético no temporário da sandbox. A suíte foi repetida fora da sandbox.
+
+**Risco em aberto.** A rota consumidora e sua execução dos dourados ficam na PR de backend. As coortes externas são de punho e o sensor Wearanize de cabeça é preso à cabeça. No produto a espuma pode atenuar e atrasar o movimento. Dados e notas individuais em dados-locais, com a evidência da rodada em ml-inf-cabeca-v2-2026-11-07-final. Worktree e raízes de execução conferidas sem junctions.
+
+**Procedência.** PR #100, branch feature/ML-INF-modelo-cabeca. Protocolo anterior à rodada em e8e4875 e execução definitiva em 367cd96. docs/ML-INF-PROTOCOLO-V2.md, docs/RELATORIO-ML-INF-V2.md, ml/experimentos/ml_inf_v2.py, ml/modelos/ml-inf-cabeca-v2.json e agregados da ML-13, ML-17 e ML-INF.
+
+---
+
+# 2026-11-08 (i) — ML-INF: a inferência no backend, sob demanda
+
+**O problema, como foi entendido no início.** O modelo `ml-inf-cabeca-v2` estava no repositório (PR #100), mas nada o aplicava a uma noite do dispositivo. O backlog e o §9 do plano de ML previam um job em lote no backend ao fim da sessão.
+
+**Hipótese de trabalho.** Partir da saída que `/api/features` já monta (`derivar_noite` sobre a janela pedida) e aplicar o modelo em Python puro, sem numpy, reproduz o `predict_proba` do scikit-learn a 1e-12 nas duas noites douradas da v2. E calcular a cada pedido, sem gravar, é mais simples e mais seguro que o lote: não exige migração, não guarda dado de saúde inferido e não obriga o servidor a decidir sozinho quando uma sessão acabou, que é o `ESC-01`.
+
+**O que foi testado, e como.** Windows local, Python 3.13 (o CI usa 3.11). O módulo novo é `web-app/inferencia.py`, a rota `GET /api/inferencia` e o modelo copiado byte a byte para `web-app/modelos/`, porque o pacote da Vercel parte de `web-app/app.py`. Os testes estão em `web-app/tests/test_inferencia.py`:
+- o contrato do modelo: o v1 e onze adulterações são recusados, e o SHA-256 da cópia é o do `ml/`;
+- as duas noites douradas, do payload à classe, pelo caminho real da linha do banco;
+- os três casos de limiar;
+- o piso de 23, contando só épocas válidas;
+- a grade de 30 s a 32 Hz, aplicada antes da derivação;
+- a lacuna de 45 e de 45,001 s e o contexto preso ao segmento;
+- o desvio abaixo de 1e-9;
+- os códigos da rota e o dono vindo do JWT.
+
+Depois, 14 sabotagens, uma por regra.
+
+**Resultado medido.** O backend passou de 453 para 493 testes. Nas noites douradas, a maior diferença de probabilidade foi 6e-15 (a régua é 1e-12), com as classes iguais e 1 e 2 segmentos, em cerca de 60 ms por noite de 960 épocas. Na primeira rodada, as sabotagens deram 11/14: três passaram e mostraram buracos nos testes, que foram corrigidos. Na segunda, 14/14. O contrato de dados subiu para 2.8.0 (MINOR), e o `/health` passou a informar o modelo carregado.
+
+**Adaptação.** Deixei de lado o lote previsto no plano e o substituí pelo cálculo sob demanda; a nota está no §9. O modelo carrega na primeira chamada. Se falhar, só a rota de inferência responde 503 e o `/health` diz `"indisponivel"` sem mudar o código, porque a ingestão não pode parar por causa do modelo. A validação de parâmetros saiu de `/api/features` para uma função comum às duas rotas.
+
+**O que deu errado no caminho.** As três sabotagens que passaram:
+- **Piso contando as linhas recebidas:** os testes só usavam épocas válidas, então contar as recebidas dava o mesmo número. Entrou um caso com 22 válidas e duas fora da grade.
+- **Empate virando sono:** o teste do limiar aplicava `z > 0` por conta própria, em vez da regra do módulo. A regra virou a função `classe(z)`, que o teste chama.
+- **Piso do desvio ignorado:** a coluna constante tem desvio exatamente 0, então trocar o piso por `s > 0` dava o mesmo resultado. Entrou um caso com ruído de 1e-13.
+
+O script de sabotagem restaura os arquivos com `git checkout`, então o código precisou ser commitado antes de rodá-lo. Sem isso, a primeira restauração teria apagado o trabalho.
+
+**Risco em aberto.**
+- O z-score é calculado sobre a janela pedida, e o modelo foi treinado com noites inteiras: uma janela curta pode classificar a mesma época de outro jeito. A resposta devolve a janela e um aviso.
+- Nenhuma tela mostra a estimativa ainda. O `DASH-04` não deve mostrá-la antes de a política de privacidade declarar a inferência sobre saúde (`LGPD-03`).
+- O empacotamento do JSON na Vercel foi conferido pelo `/health` do preview (ver a PR); a produção só depois do release.
+- O desempenho no travesseiro continua sem medição (`VAL-02`).
+
+**Procedência.** Branch `feature/ML-INF-backend`, sobre o `develop` `010f741`. `web-app/inferencia.py`, `web-app/routes.py`, `web-app/modelos/ml-inf-cabeca-v2.json`, `web-app/tests/test_inferencia.py`, `docs/DATA-CONTRACT.md` §2.6 e §7, `docs/ML-DATASETS-E-PLANO.md` §9.
+
+---
+
+# 2026-11-08 (ii) — APP-02, etapa 1: a casca do app Android e o núcleo do firmware no celular
+
+**O problema, como foi entendido no início.** O autor quer registrar noites reais antes da solda. A coleta pelo navegador não registra a noite: o `devicemotion` para quando a tela bloqueia (`useColeta.ts`). O iPhone do autor não tem serviço em segundo plano para o acelerômetro. Ele tem um Motorola Android antigo que pode ficar dedicado à coleta. O `APP-02` estava no pós-banca; o autor o trouxe para o L0 e aprovou um plano em seis etapas. Esta entrada é a primeira: a casca do app e o cálculo no aparelho.
+
+**Hipótese de trabalho.**
+- **Casca:** o frontend atual, empacotado com Capacitor, serve de casca. Só a coleta precisa ser nativa.
+- **Cálculo:** se o app compilar `firmware/nucleo/` pelo NDK, o celular envia o mesmo payload da placa, com as mesmas features. O `ColetorCelular` entrega à `CadeiaC2` drenagens montadas a partir do instante de cada amostra, carimbadas meio passo depois da última.
+- **Critério:** as features do celular ficam dentro das mesmas tolerâncias de validade do dourado da cadeia.
+
+**O que foi testado, e como.** Windows 11. O núcleo rodou num contêiner `gcc:13`; o app, com o JDK 21 do Android Studio.
+- **Coletor (`make celular`):** lê `ml/testes/vetor_dourado_cadeia_c2.json` e entrega cada amostra no instante verdadeiro, em m/s², sem e com 2 ms de variação no carimbo. Compara as features com o pipeline do `ml/`. Confere também:
+  - que o instante reconstruído é o do gerador, contra as drenagens do arquivo;
+  - o payload: `ts`, `epoca_s`, `t` e o vetor pela ida e volta da quantização da fila;
+  - a taxa de 100 Hz, uma amostra fora de ordem, um buraco de 5 minutos e a quantização.
+- **Sabotagens:** `make mutacao-coletor`, com 12 sabotadores.
+- **Firmware inteiro:** `make`, `sintaxe`, `capacidade`, `mutacao-cadeia`, `mutacao-fila` e `laco`.
+- **App:** o APK de depuração foi compilado, e `llvm-nm` listou as funções JNI exportadas.
+- **Frontend:** `vitest`, `tsc` e `vite build`, nos modos do site e do app.
+
+**Resultado medido.**
+- **Coletor:** 288 verificações, 0 falhas. As maiores diferenças contra o pipeline foram `enmo` 2,6e-6 g, `enmo_max` 9,6e-5 g, `mag_din_media` 0,86 %, `zcr` 0 e `p_frac` 5 amostras, e `g` 0,065 grau, dentro das tolerâncias da placa. O coletor ocupa 56,9 KiB.
+- **Sabotagens:** 12 de 12 deram o resultado esperado — 9 acusadas, o caso limpo passa e 2 pontos cegos declarados.
+- **Firmware:** as contagens anteriores não mudaram (341, 157, 152, 456 e 84), e `mutacao-cadeia` (29/29), `mutacao-fila` (14/14) e `laco` (4/4) passaram.
+- **App:** o APK traz `libdormio_nucleo.so` em `armeabi-v7a` (213 KB), `arm64-v8a` (356 KB) e `x86_64` (340 KB), com as 8 funções JNI.
+- **Frontend:** 494 testes (489 + 5); o endereço do backend aparece só no build do app (1 ocorrência no pacote do app, 0 no do site).
+
+**Adaptação.**
+- **Endereço da API:** a página roda em `https://localhost` dentro do app, então as chamadas à API ganharam `urlDaApi`. É vazio no site; no build `--mode app`, recebe o endereço de produção.
+- **CORS:** o `CapacitorHttp` faz as requisições pelo HTTP nativo, e o backend não precisou de CORS.
+- **Unidade:** o coletor quantiza o sinal do celular na escala do MPU6050 da C2.
+- **Temperatura:** usa a da bateria no lugar da do chip.
+- **Taxa:** a cadeia só aceita 40 a 60 Hz. Se o celular entregar outra taxa, as épocas são recusadas e contadas; a primeira noite mostra qual é o caso.
+- **Origem:** passou a ficar 3 s depois da primeira amostra (`ANTECEDENCIA_DA_ORIGEM_US`), porque a época 0 precisa de 0,5 s de sinal antes dela e de folga para o ajuste.
+- **Worktree:** foi criada em `../wt-app`, num caminho curto, e não em `.claude/worktrees/`, porque o CMake e o NDK no Windows falham com caminhos longos.
+
+**O que deu errado no caminho.**
+- **Gradle sem rede local:** a primeira compilação falhou com "Unable to establish loopback connection", inclusive fora do sandbox. O JDK no Windows abre um socket de domínio Unix no diretório temporário, e o temporário do ambiente não serviu. Com `-Djdk.net.unixdomain.tmpdir` apontando para uma pasta comum, passou.
+- **Caminho do SDK:** o `local.properties` saiu com barras invertidas sem escape e deu "Invalid file path"; foi trocado por barras normais.
+- **Makefile:** uma edição por Python deixou um `\n` literal e duas linhas emendadas, o que foi visto no `cat -A` e corrigido à mão.
+- **Teste sintético:** começava o sinal na origem, e a época 0 saiu recusada. A recusa estava certa; o teste é que estava errado, e daí veio a constante da antecedência.
+- **Previsões de ponto cego:** errei duas.
+  - A conversão com 9,81 em vez de 9,80665 é acusada: o `enmo` mede o desvio de 1 g, e 0,035 % de escala já vira viés.
+  - O sabotador de "drenar depois da amostra nova" apagava toda drenagem e acusava pelo motivo errado. Foi reescrito para só mudar a ordem; aí fica de fato cego.
+
+**Risco em aberto.**
+- **Execução:** o teste com o Java chamando o C++ de verdade espera a etapa 2, com emulador ou aparelho.
+- **Taxa do Motorola:** não se sabe a taxa que ele entrega. Se ficar fora de 40 a 60 Hz, a etapa 2 precisa decidir entre decimação e outra rota, com o autor.
+- **Pontos cegos:** o carimbo sem o meio passo e a ordem da drenagem não são acusados.
+- **Instrumento:** o celular é outro instrumento, e o que ele medir vale para ele (`ARQUITETURA-DE-CAPTACAO.md` §5).
+- **iOS:** segue sem rota de coleta em segundo plano (`APP-04`).
+- **Etapas pendentes:** o serviço, o envio, a tela e a noite real são as etapas 2 a 6 do `APP-02`.
+
+**Procedência.** Branch `feature/APP-02-app-android`, sobre o `develop` `f9bff8c`. `firmware/nucleo/coletor_celular.{h,cpp}`, `firmware/nucleo/testes/testes_coletor_celular.cpp`, `firmware/nucleo/testes/verificar_coletor_por_mutacao.sh`, `firmware/nucleo/Makefile`, `firmware/nucleo/README.md`, `frontend/android/` (casca do Capacitor 8.4.3, `app/src/main/cpp/` e `NucleoNativo.java`), `frontend/capacitor.config.ts`, `frontend/vite.config.ts`, `frontend/src/lib/api.ts` e `coleta.ts`, `.github/workflows/ci.yml`, e o backlog, a arquitetura de captação e o `CLAUDE.md`.
+
+---
+
+# 2026-11-09 (i) — APP-02, etapa 2: o serviço que registra a noite com a tela apagada
+
+**O problema, como foi entendido no início.** Na etapa 1, o app compilava e o núcleo rodava no host, mas nada registrava a noite: o Java nunca tinha chamado o C++ num aparelho. Faltava um serviço que mantivesse o acelerômetro ligado com a tela apagada, sob o Doze do Android, gravasse cada época no aparelho e sobrevivesse à morte do processo. Faltava também a tela para ligá-lo.
+
+**Hipótese de trabalho.**
+- **Serviço:** um serviço em primeiro plano basta. Ele tem notificação fixa, o tipo `health` no Android 14+ (com `HIGH_SAMPLING_RATE_SENSORS`, sem permissão em tempo de execução e sem o limite de 6 h), uma trava parcial de CPU e o acelerômetro a 20 ms entregue em lotes de 1 s.
+- **Gravação:** uma linha sincronizada com o disco por época perde no máximo a época em curso.
+- **Retomada:** `START_STICKY`, junto com um estado gravado, permite continuar a noite no mesmo arquivo depois de o sistema matar o processo.
+
+**O que foi testado, e como.** Windows 11, emulador Pixel 6 com Android 37 (API 37, páginas de 16 KB, x86_64), JDK 21 do Android Studio.
+- **JVM (`./gradlew :app:testDebugUnitTest`):** o `RelogioDoSensor` (carimbo em ns para µs na base do `elapsedRealtime`, com o deslocamento de aparelhos que usam outra base), o `ArquivoDaNoite` e o `EstadoDaNoite`.
+- **Emulador (`connectedDebugAndroidTest`):**
+  - o `NucleoNativoTest`: o Java chama o C++, um sinal de 50 Hz produz o payload do contrato e um de 100 Hz é recusado por taxa;
+  - o `ServicoDaNoiteTest`: o serviço grava épocas com o sensor do emulador e encerra limpo.
+- **Roteiro `longa`:** 10 min com a bateria simulada desligada, a tela apagada e `dumpsys deviceidle force-idle`.
+- **Retomada:** a noite iniciada pelo app, depois `kill -9` no processo pelo `adb`.
+- **Sabotagens:**
+  - 6 no Java e 2 no frontend, por script;
+  - 3 no emulador: temperatura em décimos, sem `START_STICKY` e sem a trava.
+- **Frontend:** `vitest`, `tsc` e `vite build`.
+
+**Resultado medido.**
+- **Noite simulada:** 10 min em Doze profundo (`IDLE`) deram **20 de 20 épocas (100 %)**, taxa medida de 50,000 Hz, 30.350 amostras, nenhuma recusada e temperatura da bateria de 25,0 °C.
+- **Retomada:** depois do `kill -9`, o Android reiniciou o serviço em 1 s ("Scheduling restart of crashed service … in 1000ms"). O estado ficou com `retomadas=1`, e o mesmo arquivo continuou: 4 épocas, com intervalos de 30, 54,7 e 30 s. A lacuna aparece como intervalo, sem época inventada.
+- **Testes:** JVM 8/8; emulador 4 passando e 3 pulados (os roteiros, que só rodam por argumento); frontend 509 (494 + 15).
+- **Sabotagens:** 6/6 do Java e 2/2 do frontend acusadas; no emulador, temperatura em décimos acusada (`t = 250.0`) e 2 pontos cegos (ver abaixo).
+
+**Adaptação.**
+- **Backup desligado:** o modelo do Capacitor vinha com `allowBackup="true"`, e o Android copiaria as noites, que são dado de saúde, para a nuvem do Google sem a política dizer isso.
+- **Páginas de 16 KB:** a biblioteca nativa passou a ser ligada com `max-page-size=16384`, porque o Android 37 não carrega biblioteca alinhada a 4 KB.
+- **Noite interrompida:** o estado gravado pode dizer "ativa" com o serviço morto (forçado a parar). O plugin agora informa `rodando`, e o cartão avisa a interrupção e oferece retomar.
+- **Gatilho de roteiro:** um gatilho por `adb` (`--es roteiro iniciar/encerrar`) entrou na `MainActivity`, valendo só com `BuildConfig.DEBUG`, para o serviço nascer no processo do app.
+
+**O que deu errado no caminho.**
+- **Computador dormiu:** a primeira noite simulada parou depois de ~6 min, porque o Windows entrou em suspensão (Kernel-Power 42 às 23:16:04, retorno às 00:54:48) e pausou o emulador. A época que atravessou o salto saiu recusada por taxa, o que está certo. A rodada foi refeita com o computador impedido de dormir.
+- **Instrumentação mata sem retomada:** a primeira tentativa de retomada iniciou o serviço pela instrumentação. Quando o `am instrument` termina, ele encerra o processo de um jeito que o Android não reinicia, e isso deixou o estado "ativa" sem serviço. Foi o que revelou o caso da noite interrompida na tela.
+- **Linha de base falsa:** o script de sabotagem chamava `gradlew.bat` sem caminho, e o `cmd` deste ambiente não procura na pasta atual. A linha de base falhou e as seis primeiras "acusações" não valiam; com `.\gradlew.bat` a linha de base passou, e só então as sabotagens contaram.
+- **Testes de componente:** `jest-dom` não existe no projeto, e o teste de componente precisava do `// @vitest-environment jsdom`.
+- **Compilação:** a pasta gerada pelo `cap sync` não existia na worktree nova, então foi preciso rodar o `build:app` antes do Gradle.
+- **Tarefa do Gradle:** o `assembleDebugAndroidTest` da raiz falhou num subprojeto do Capacitor (classe Kotlin duplicada); a tarefa certa é `:app:assembleDebugAndroidTest`.
+
+**Risco em aberto.** Dois pontos cegos, e o emulador não responde a nenhum dos dois:
+- **(a) `kill -9` não reproduz o sistema matando o app:** o Android 37 trata o `kill -9` de um serviço em primeiro plano como falha e o reinicia com ou sem `START_STICKY`. O caso que o `START_STICKY` cobre (falta de memória, fabricante encerrando de madrugada) não foi reproduzido.
+- **(b) O emulador não suspende a CPU:** sem a trava, a noite de 5 min deu 10/10.
+
+O Motorola, na etapa 5, responde aos dois.
+
+Os roteiros rodam no processo da instrumentação, que pode receber tratamento diferente do de um app comum; a noite pelo botão da tela, no aparelho, é a prova que falta. O envio ao servidor é a etapa 3, e até lá as épocas ficam só no aparelho. O iOS segue sem rota (`APP-04`).
+
+**Procedência.** Branch `feature/APP-02-servico-da-noite`, sobre o `develop` `3d396b5`.
+- **Serviço e ponte:** `frontend/android/app/src/main/java/app/dormiosmart/coleta/` (`ServicoDaNoite`, `NoitePlugin`, `ArquivoDaNoite`, `EstadoDaNoite`, `RelogioDoSensor`, `MainActivity`), `AndroidManifest.xml`, `app/build.gradle`, `app/src/main/cpp/CMakeLists.txt`.
+- **Testes:** `app/src/test/` e `app/src/androidTest/` (`NucleoNativoTest`, `ServicoDaNoiteTest`, `RoteiroDaNoiteTest`).
+- **Frontend:** `frontend/src/lib/noiteNativa.ts`, `frontend/src/components/CartaoDaNoite.tsx`, `frontend/src/pages/Coletar.tsx`.
+
+---
+
+# 2026-11-09 (ii) — APP-02, etapa 3: as noites do app vão para a conta
+
+**O problema, como foi entendido no início.** A etapa 2 deixava as noites só no aparelho. Para elas chegarem ao painel e à `/api/inferencia`, era preciso enviá-las ao servidor sem perder época e sem duplicar. As condições do aparelho tornam isso delicado: a noite pode terminar sem rede, a sessão pode vencer e o app pode morrer no meio de um envio.
+
+**Hipótese de trabalho.**
+- **Backend:** não precisa mudar. O `POST /api/data/lote` já responde, item a item, aceita, rejeitada ou pendente; o caminho por sessão do celular (`APP-08`) já existe; e a migração 011 deixa o reenvio idempotente.
+- **Aparelho:** basta um ponto, por noite, de até onde o servidor confirmou. Ele só avança, e avança só até a primeira pendente.
+- **Onde fica o envio:** no lado web do app, onde está a sessão que o Supabase renova. O nativo continua sem token.
+
+**O que foi testado, e como.**
+- **JVM:** o `ArquivoDaNoite` ganhou o progresso (`.enviado`), a leitura por faixa e a listagem das noites. A leitura passou a ignorar uma linha ainda sem a quebra final, porque a tela lê o arquivo enquanto o serviço grava.
+- **vitest:**
+  - o laço `enviarNoites`: tudo aceito em lotes de 60, retomada do ponto, pendente no meio, rejeitadas, `401` e sem rede, queda entre gravar e marcar, várias noites, noite já enviada;
+  - o `enviarLote`;
+  - o cartão: envio sozinho ao abrir, nenhum envio durante a noite, envio ao encerrar, falha que fica na tela, sem dispositivo ou sessão.
+- **Fixture:** uma noite de 16 min gravada pelo serviço no emulador Pixel 6 (Android 37), copiada intacta para `web-app/tests/fixtures/noite_do_app_emulador.jsonl`. O `test_noite_do_app.py`:
+  - passa cada linha pela validação real;
+  - manda a noite pelo lote da sessão com o banco mockado;
+  - passa as linhas EXATAS que a rota entregou à gravação pela inferência.
+- **Sabotagens:** 6 por script (4 no envio, 2 no nativo) e 2 na fixture (`fs` 50, `total` incoerente).
+
+**Resultado medido.**
+- **Noite do emulador:** 32 épocas, 0 recusadas, 50,000 Hz.
+- **Fixture no backend:** 7/7 testes passando. As 32 épocas são aceitas pela validação, entram pelo lote todas aceitas, o vetor chega ao banco coluna a coluna, e a inferência classifica as 32, em 1 segmento, sem nenhuma excluída.
+- **Suítes:**
+
+  | Suíte | Antes | Agora |
+  |---|---|---|
+  | Backend | 493 | 500 |
+  | Frontend | 509 | 528 |
+  | JVM | 8 | 13 |
+
+- **Sabotagens:** 6/6 acusadas com a linha de base limpa; as 2 da fixture derrubam 3 testes cada uma.
+
+**Adaptação.**
+- **A regra do ponto:** o ponto avança só pelo prefixo resolvido do lote. Avançar por cima de uma pendente perderia a época; parar antes de uma aceita só reenvia, e o servidor deduplica.
+- **Rejeitada conta como resolvida:** reenviar não adianta, como já decide o firmware. Ela é contada, e o primeiro motivo vai para a tela.
+- **Teste da inferência:** passou a usar o que a rota gravou, e não uma conversão minha.
+
+**O que deu errado no caminho.**
+- **Escape:** a gravação do ponto saiu com uma quebra de linha literal dentro da string Java, o mesmo deslize de escape do Makefile da etapa 1.
+- **Testes errados meus, dois:**
+  - um teste JVM esperava 60 épocas a partir da linha 50 de uma noite de 100, onde só restam 50;
+  - o teste do lote esperava um campo `f` na gravação, mas a ingestão converte o vetor em colunas nomeadas.
+
+  Os dois foram corrigidos no teste, sem mudar o código.
+- **Idioma:** respondi em inglês por engano durante a gravação da noite, e o autor pediu de volta o português.
+
+**Risco em aberto.**
+- **Sem produção:** nenhum envio contra a produção ainda. A primeira noite enviada com login de verdade é a da etapa 5, no Motorola; eu não entro com a senha do autor.
+- **Noite plana:** o acelerômetro do emulador é constante. A fixture prova formato e caminho, não acurácia (`VAL-02`).
+- **Ponte nativa:** os três métodos novos do plugin não têm teste no emulador. A lógica deles está no `ArquivoDaNoite`, testada na JVM, e o plugin só converte tipos.
+- **Etapas pendentes:** a tela completa é a etapa 4.
+
+**Procedência.** Branch `feature/APP-02-envio-da-noite`, sobre o `develop` `0e32ff5`.
+- **Nativo:** `frontend/android/app/src/main/java/app/dormiosmart/coleta/ArquivoDaNoite.java` e `NoitePlugin.java`.
+- **Frontend:** `frontend/src/lib/envioDaNoite.ts`, `frontend/src/lib/coleta.ts` (`enviarLote`), `frontend/src/lib/noiteNativa.ts`, `frontend/src/components/CartaoDaNoite.tsx`, `frontend/src/pages/Coletar.tsx`.
+- **Backend:** `web-app/tests/test_noite_do_app.py` e a fixture do emulador.
+
+---
+
+# 2026-11-09 (iii) — APP-02, etapa 4: a tela da noite no app
+
+**O problema, como foi entendido no início.** Até a etapa 3, a noite no app era um cartão provisório dentro da página Coletar. Para a noite real (etapa 5) faltavam quatro coisas:
+- o antes, com a posição do celular que o protocolo compara (fronha × colchão);
+- o depois, com as noites gravadas, o envio e o diário de sono;
+- um lugar próprio no app;
+- uma proteção para o risco de aquecimento do celular abafado na fronha.
+
+O autor não estava em casa nem era noite, então a etapa veio antes da noite real.
+
+**Hipótese de trabalho.**
+- **A tela:** uma rota `/noite`, só no app, com três momentos. Ela não mostra sono e vigília, que são inferência sobre saúde e esperam a política (`LGPD-03`, `DASH-04`).
+- **Anotações:** a posição e o diário ficam num arquivo ao lado da noite, no aparelho, sem passar pelo servidor.
+- **Calor:** um corte no serviço, porque um aviso na tela não protege quem dorme.
+
+**O que foi testado, e como.**
+- **JVM:** `NotasDaNoite` (grava, junta, apaga a chave com valor vazio, não mistura noites, recusa chave desconhecida, posição inválida, texto longo e nome fora do padrão) e `CorteDeTemperatura` (abaixo, no limite e acima de 45 °C).
+- **vitest:**
+  - a posição obrigatória no cartão e o aviso de não carregar;
+  - a lista de noites: ordem, posição, envio, cobertura, noite encerrada pelo calor, diário salvo na noite certa, "Ver no painel" só com algo enviado;
+  - o resumo da noite gravada;
+  - a navegação no site e no app.
+- **Emulador Pixel 6, Android 37:** a noite iniciada com `posicao=fronha` e a bateria simulada a 46,0 °C (`dumpsys battery set temp 460`). Antes disso, a notificação com a permissão concedida. Depois, a suíte do emulador de novo.
+- **Sabotagens:** 7 por script.
+
+**Resultado medido.**
+- **Posição e calor:** a posição ficou anotada desde o início da noite. A 46,0 °C, o serviço encerrou a noite sozinho em 26 s (a temperatura é lida a cada 30 s), com `fim=temperatura`, e parou.
+- **Notificação:** mostra "Aparelho a 25.0 °C. Toque para ver ou encerrar."
+- **Suítes:**
+
+  | Suíte | Antes | Agora |
+  |---|---|---|
+  | Frontend | 528 | 542 |
+  | JVM | 13 | 20 |
+  | Emulador | 4 + 3 pulados | 4 + 3 pulados, sem regressão |
+
+- **Sabotagens:** 7/7 acusadas. A do teto de cobertura passou na primeira rodada e só foi acusada depois de um teste novo.
+
+**Adaptação.**
+- **Coletar:** no app, o cartão da página Coletar virou um atalho para `/noite`, e o envio saiu dali para um hook (`useEnvioDoCelular`).
+- **Diário:** o formulário não reescreve a posição nem o motivo do fim; só grava os campos do diário.
+- **Gatilho de depuração:** passou a repassar a posição, para o roteiro do emulador.
+- **Conselho contraditório:** a introdução do cartão, escrita na etapa 2, dizia "deixe o celular carregando", ao lado do aviso novo de não carregar na fronha. Foi reescrita.
+
+**O que deu errado no caminho.**
+- **Sabotagem que passou:** a da cobertura passou porque nenhum teste tinha mais épocas do que cabem entre a primeira e a última; o caso da retomada sobreposta entrou.
+- **Notificação vazia:** a primeira busca pelo texto da notificação veio vazia porque o app estava com notificações desligadas (`importance=NONE`). No Android 13+, sem a permissão, o serviço roda com a notificação escondida, e o gatilho de depuração não pede a permissão; quem pede é o botão da tela. Com `pm grant`, o texto apareceu.
+
+**Risco em aberto.**
+- **O limite de 45 °C** é um valor de partida conservador, não medido no aparelho nem tirado de folha de dados. Fica para ajustar com o orientador, junto do `REQ-01` (no máximo 1 °C de elevação no dispositivo).
+- **Botões não percorridos no emulador:** o fluxo pela tela de verdade (botões, permissão de notificação e de bateria) não foi percorrido, porque a tela exige login, e eu não entro com a senha do autor. O percurso pelos botões fica para a etapa 5, no Motorola, com o autor; o que se testou no emulador foi o serviço, pelo gatilho de depuração.
+- **Anotações locais:** ficam no aparelho e se perdem se o app for desinstalado antes da análise.
+
+**Procedência.** Branch `feature/APP-02-tela-da-noite`, sobre o `develop` `762e938`.
+- **Nativo:** `frontend/android/.../NotasDaNoite.java`, `CorteDeTemperatura.java`, `ServicoDaNoite.java`, `NoitePlugin.java`, `MainActivity.java`.
+- **Frontend:** `frontend/src/pages/Noite.tsx`, `components/ListaDeNoites.tsx`, `CartaoDaNoite.tsx`, `nav.ts`, `hooks/useEnvioDoCelular.ts`, `lib/noiteNativa.ts`, `App.tsx`, `pages/Coletar.tsx`, e os testes.
+
+---
+
+# 2026-11-09 (iv) — APP-02, etapa 4: o percurso pelos botões da tela da noite
+
+**O problema, como foi entendido no início.** A etapa 4 testou o serviço pelo gatilho de depuração e a tela pelo `vitest`, mas ninguém tinha tocado nos botões da tela de verdade. O autor pediu esse percurso criando uma conta de testes. Não criei: o app no emulador fala com o Supabase de **produção**, e criar conta ou digitar credencial num sistema de produção não é permitido, mesmo para teste. Isso só vale em ambiente local ou de teste, e o projeto ainda não tem um Supabase de teste (`INFRA-02`).
+
+**Hipótese de trabalho.** O modo demonstração (`?demo=1`, `DEMO-02`) libera as telas protegidas só no build de desenvolvimento. Um pacote do frontend construído em modo de desenvolvimento, dentro do app, permite percorrer a `/noite` inteira com toques reais, sem conta e sem tocar a produção. O login e o envio ficam de fora, porque não há sessão; o envio já é coberto pela fixture do backend.
+
+**O que foi testado, e como.** No emulador Pixel 6 (Android 37):
+- **Toques:** reais, por `adb shell input tap`. A posição de cada botão foi lida pelo depurador do WebView (CDP), e cada passo foi fotografado.
+- **Fluxo percorrido:**
+  - iniciar sem posição;
+  - escolher a posição;
+  - iniciar e aceitar a permissão de notificação do sistema;
+  - os números durante a noite;
+  - a isenção de bateria, com o diálogo do sistema;
+  - encerrar;
+  - a lista;
+  - as anotações, com o texto digitado pelo teclado do emulador.
+- **Exceção:** os três campos de hora foram preenchidos pelo depurador, porque o seletor de hora do Android não se presta a toques automatizados.
+- **Conferência:** o arquivo `.notas` lido no aparelho.
+
+**Resultado medido.**
+- **O que funcionou:**
+  - iniciar sem posição não começa nada (sem arquivo, sem serviço);
+  - a permissão de notificação é pedida e, aceita, a notificação mostra "Aparelho a 25.0 °C";
+  - durante a noite, a tela mostrou 2 épocas, 100 %, 50.0 Hz, 0 recusadas e 25.0 °C;
+  - a isenção de bateria pôs o app na lista de exceções do sistema e o link sumiu;
+  - encerrar parou o serviço e anotou `fim=usuario`;
+  - as anotações gravaram no `.notas` a posição, as três horas, os despertares e o fim, e o campo esvaziado saiu do arquivo;
+  - no app, o `/` leva à `/noite` (ou ao login), e não à página de apresentação.
+- **Três problemas que os testes automáticos não pegaram:**
+  1. o botão "Iniciar a noite" desabilitado tinha a mesma cara do habilitado;
+  2. a noite em andamento aparecia na lista como terminada, com o nome do arquivo como título, um visto verde "0 de 0" de enviada e anotações disponíveis;
+  3. depois de encerrar, os números da noite ficavam sob o botão de iniciar, sem título.
+
+  Os três foram corrigidos: opacidade no desabilitado, "Noite em andamento" sem envio nem anotações (o plugin passou a marcar a noite ativa), e "Última noite". Cada correção ganhou um teste, e as 4 sabotagens que as desfazem foram acusadas.
+- **Na volta ao emulador:** botão com opacidade 0,5, "Noite em andamento" na lista e "Última noite" no cartão.
+- **Suítes:** frontend 546 (+4), JVM 20, emulador 4 passando e 3 pulados.
+
+**Adaptação.**
+- **Sem conta:** o percurso foi feito em modo demonstração, sem conta.
+- **Configuração temporária:** a do Capacitor (o caminho inicial e, numa tentativa, o servidor de desenvolvimento) não foi versionada e foi desfeita. O app voltou ao build normal antes das suítes.
+
+**O que deu errado no caminho.**
+- **Tela em branco:** o app apontado para o servidor de desenvolvimento abriu em branco. O Vite no Windows escuta no IPv6 (`::1`), e o `10.0.2.2` do emulador chega ao IPv4.
+- **A ferramenta de preview:** sempre subia a configuração do repositório principal, sem as dependências do Capacitor, e ignorava a que eu escrevi. Troquei o servidor por um pacote construído em modo de desenvolvimento.
+- **O `DEV` desligado:** `--mode development` sozinho não liga o `DEV` no Vite; faltava `NODE_ENV=development`.
+- **A árvore de acessibilidade do Android:** não expôs os textos do WebView, então os botões foram localizados pelo depurador.
+- **O depurador** recusou a conexão com cabeçalho `Origin`.
+- **Erros meus:**
+  - o ajudante tocou no título do diálogo de permissão em vez de "Allow";
+  - a tecla Voltar, usada para fechar o teclado, fechou o app;
+  - um texto foi para o campo errado porque a página rolou entre o cálculo da posição e o toque. Repetido conferindo o foco antes de digitar, o campo certo recebeu o texto: o problema era meu, não do app.
+
+**Risco em aberto.**
+- **Login e envio:** continuam sem percurso de ponta a ponta no app. São da etapa 5, com o autor e a conta dele, ou de um Supabase de teste (`INFRA-02`), que permitiria a mim criar uma conta de teste.
+- **A lista durante a noite:** mostra as épocas da última leitura (só relê depois de uma ação); o cartão de cima mostra os números ao vivo.
+- **O percurso pelos botões não é automatizado:** foi feito uma vez, à mão, com scripts locais.
+
+**Procedência.** Branch `feature/APP-02-tela-da-noite` (PR #105). `frontend/src/components/CartaoDaNoite.tsx`, `ListaDeNoites.tsx`, `lib/noiteNativa.ts`, `android/.../NoitePlugin.java`, e os testes. As fotos e os scripts do percurso ficaram locais, fora do repositório.
+
+---
+
+# 2026-11-09 (v) — DATA-10: nenhuma leitura gravava na produção
+
+**O problema, como foi entendido no início.** Na primeira noite de teste do app no celular real (`APP-02`, Moto E7, Android 10), o sensor e o serviço funcionaram, mas o envio das 8 épocas falhou. O autor mostrou o painel do Supabase perguntando se havia problema lá. O painel não mostrava erro; os logs de execução da Vercel mostravam, em cada `POST /api/data/lote`, `invalid input syntax for type bigint` (22P02) e a resposta 503.
+
+**Hipótese de trabalho.** `registrar_leitura` e `registrar_leitura_da_sessao` declaram `returns bigint` e `v_id bigint` desde a 005, e a 011 manteve isso. Se o `sleep_data.id` da produção é uuid, o `returning id into v_id` falha em toda gravação. Isso vale para os três caminhos: dispositivo, celular e navegador. Os testes não pegavam porque o `tests/rls/esquema_base.sql` criava o id como `bigserial`.
+
+**O que foi testado, e como.**
+- **Controle positivo antes do conserto:** o `esquema_base.sql` passou a criar o id como `uuid primary key default gen_random_uuid()`, como na produção, e a suíte de RLS rodou sem a 014.
+- **O conserto:** a migração `014_id_da_leitura_uuid.sql`. Ela apaga e recria as duas funções devolvendo uuid, com o corpo da 011 (o `on conflict` e a busca do id existente), e refaz os grants da 007/009: `dormio_ingestao` na do token, `authenticated` na da sessão, nada para `public`/`anon`. Mudar o tipo devolvido exige `drop`, e o `drop` leva os grants junto.
+- **O diagnóstico:** `DIAGNOSTICO-migracoes-aplicadas.sql` ganhou duas marcas da 014, o tipo devolvido de cada função.
+- **Ambiente:** tudo contra `postgres:16` em Docker, no Windows.
+
+**Resultado medido.**
+- **Sem a 014, com o esquema de teste corrigido:** 17 testes falham e 176 passam, todos com o mesmo `invalid input syntax for type bigint` da produção. Antes da troca do tipo, passavam os 193.
+- **Com a 014:** RLS **193 passam**.
+- **Mutação do RLS:** 35/35. A sabotagem que recria `registrar_leitura` também passou a devolver uuid; com bigint, ela cairia pelo motivo errado.
+- **Verificador de migrações:** acerta os **14 estados**. Até a 013, a 014 sai `F`; depois dela, `T`. A ordem real da produção também passa, com a 014 no fim.
+- **Backend:** 500 passam (ele não muda).
+- **Produção:** **não aplicada ainda.** Aplicar é o `DATA-11`, com o autor no SQL Editor.
+
+**Adaptação.** O plano previa só a migração. O controle positivo exigiu mexer no esquema de teste, que agora reproduz a produção no tipo do id.
+
+**O que deu errado no caminho.**
+- **O tipo errado vem da 005 (escrita em 27/09)** e foi copiado pelas 007, 010 e 011. Não foi notado porque nada gravou na produção por essas funções até a noite do celular: a placa não está soldada, e as noites de teste anteriores não passavam pela produção. Quando a produção passou a usar as funções não foi reconstituído.
+- **O monitor (`INFRA-03`) não pega:** ele chama o `/health`, que só lê.
+- **Postgres de verdade não bastou:** a suíte de RLS foi feita contra um Postgres real justamente para não ser enganada por mock (§4, ocorrência 1). Ainda assim, o esquema era imitado de memória e errou o tipo da coluna mais usada. Registrado no §4 das lições como ocorrência 7, com a regra 7.
+- **A pergunta do autor apontava para o Supabase:** o painel estava saudável, e o erro só apareceu nos logs da Vercel.
+
+**Risco em aberto.**
+- **Até a 014 ser aplicada,** nenhuma leitura grava na produção (`DATA-11`).
+- **As 8 épocas da noite de teste** estão guardadas no celular (`.jsonl` sem `.enviado`). O app reenvia ao abrir; isso confirma o conserto de ponta a ponta, e ainda não rodou.
+- **Outras divergências de tipo:** não houve varredura de outras colunas do `esquema_base.sql` contra a produção. A regra 7 do §4 manda conferir ao mexer em função que toca coluna; uma varredura completa pediria uma consulta de só leitura na produção pelo autor.
+
+**Procedência.** Branch `bugfix/DATA-10-id-da-leitura-uuid`. `web-app/migrations/014_id_da_leitura_uuid.sql`, `web-app/tests/rls/esquema_base.sql`, `conftest.py`, `verificar_por_mutacao.py`, `web-app/tests/migracoes/verificar_migracoes.py`, `DIAGNOSTICO-migracoes-aplicadas.sql`, `migrations/README.md`. Logs de execução da Vercel de 09/11.
+
+
+---
+
+# 2026-11-09 (vi) — DATA-11: a 014 na produção, e o celular grava
+
+**O problema, como foi entendido no início.** A 014 (`DATA-10`, PR #106) consertava o tipo devolvido pelas funções de gravação, mas só no repositório. Até ser aplicada, nenhuma leitura gravava na produção. As 8 épocas da noite de teste esperavam no celular.
+
+**Hipótese de trabalho.** Aplicar a 014 no SQL Editor basta: o backend não muda, e o app reenvia sozinho, ao abrir, o que não tem `.enviado`.
+
+**O que foi testado, e como.**
+- **Aplicação e diagnóstico:** o autor aplicou a 014 e rodou o `DIAGNOSTICO-migracoes-aplicadas.sql`.
+- **Reenvio:** o autor abriu o app no Moto E7.
+- **Conferência:** o resultado foi conferido daqui, nos logs de execução da Vercel, pelo conector.
+
+**Resultado medido.**
+- **Diagnóstico:** a 014 saiu `true`, com **2 de 2 marcas**. As 001–012 saíram como antes, e a 002 com 0 leituras sem dono. A 013 saiu `false`, com 0 de 3 marcas e o `pg_cron` desligado; isso era esperado, porque aplicá-la é o `LGPD-09`, antes do próximo release.
+- **Reenvio:** às 22:00:51–55 UTC, um `POST /api/data/lote` fez a autenticação (`auth/v1/user` 200) e a consulta do dispositivo da conta (200), e chamou **8 vezes `registrar_leitura_da_sessao`, todas com 200**. A resposta foi **200**.
+- **Comparação:** antes da 014, o mesmo envio dava 503 com `invalid input syntax for type bigint`.
+
+**Adaptação.** Nenhuma.
+
+**O que deu errado no caminho.** Nada nesta etapa.
+
+**Risco em aberto.**
+- **O caminho do token** (`registrar_leitura`, o do dispositivo) recebeu a mesma correção e passa nos testes, mas **não foi chamado na produção**: a placa não está soldada.
+- **O que ficou gravado:** não conferi as 8 linhas no banco nem o painel; o que está medido é o `200` de cada gravação. A noite aparecer no painel e na inferência fica para a etapa 5 (`APP-02`).
+- **A 013 continua pendente** (`LGPD-09`).
+
+**Procedência.** Diagnóstico rodado pelo autor no SQL Editor, 09/11. Logs de execução da Vercel, produção, 09/11 22:00 UTC.
+
+---
+
+# 2026-11-09 (vii) — DATA-12: o esquema de teste como a produção, e a cascata das leituras
+
+**O problema, como foi entendido no início.** O `DATA-10` mostrou que o esquema de teste divergia da produção no tipo do id. Restava saber se havia outras divergências da mesma classe antes da primeira noite real.
+
+**Hipótese de trabalho.** Uma consulta só de leitura do catálogo, rodada nos dois bancos, mostra a diferença inteira de uma vez: tipos, padrões, chaves, índices, permissões e funções. O banco de teste foi montado na ordem real da produção, sem a 013, que lá não está aplicada.
+
+**O que foi testado, e como.**
+- **A consulta:** `migrations/CONSULTA-estrutura-do-esquema.sql` foi rodada pelo autor no SQL Editor e, por mim, no banco de teste (`postgres:16` em Docker, Windows). Foram 78 linhas de cada lado, comparadas uma a uma.
+- **O que divergiu:**
+  - a chave de `sleep_data.user_id` não tem `on delete cascade` na produção e tem no teste;
+  - `user_id` tem padrão `auth.uid()` na produção;
+  - `created_at` aceita nulo na produção;
+  - a produção tem dois índices antigos (`idx_sleep_data_created_at`, `idx_sleep_data_user`).
+- **O que bateu:** as 8 funções (retorno, definer, `search_path`, permissões), o RLS e as permissões das 4 tabelas, e as demais restrições e índices.
+- **A versão:** as permissões da produção trazem o privilégio `m` (MAINTAIN), que só existe a partir do Postgres 17.
+- **A causa:** a tabela e a coluna `user_id` foram criadas pelo painel do Supabase antes das migrações. A 001 usa `add column if not exists user_id ... on delete cascade`, e na produção a coluna já existia: a linha inteira foi pulada, a cascata junto. É a mesma causa do `DATA-10`, em outra coluna.
+- **O efeito:** `apagar_minha_conta` e `_eliminar_titular` apagam as leituras antes do usuário, então a eliminação pelo app funciona. Apagar o usuário direto em `auth.users`, que é o que o painel faz, é recusado se houver leituras.
+- **O conserto:**
+  - o `esquema_base.sql` cria `sleep_data` como a produção, para que a 001 pule a coluna como lá;
+  - a migração `015_cascata_das_leituras.sql` recria a chave com a cascata;
+  - `test_rls_cascata.py` cobre o caso com 3 testes: a exclusão direta leva as leituras, não toca nas do outro usuário, e a chave tem cascata;
+  - a sabotagem `leituras_sem_cascata` entrou na mutação;
+  - o diagnóstico ganhou a marca da 015;
+  - a matriz do CI ganhou o Postgres 17.
+
+**Resultado medido.**
+- **Sem a 015, com o esquema novo:** os 3 testes caem, dois com `ForeignKeyViolation` em `sleep_data_user_id_fkey`, que é o erro que a produção daria, e um com `confdeltype='a'`.
+- **Com a 015:** RLS **196 passam** no Postgres 16, e **196** no 17, em Docker local.
+- **Mutação:** **36/36**; a nova caiu por 3 testes.
+- **Verificador de migrações:** **15 estados** e a ordem real.
+- **Estrutura no Postgres 17:** montado como a produção e sem a 015, o banco de teste reproduz as linhas de `sleep_data` e as permissões com `m` da produção.
+- **Produção:** a 015 **não foi aplicada**; é o `DATA-13`.
+
+**Adaptação.** O plano previa sabotar `_eliminar_titular`, tirando o `delete` das leituras, como controle positivo. Ao ler o teste, vi que ele já confere `leituras_apagadas == 1` no recibo, e acusaria essa sabotagem com ou sem cascata. O ponto cego que eu tinha anunciado ao autor não existia nessa forma. O controle passou a ser a exclusão direta do usuário, que nenhum teste exercitava.
+
+**O que deu errado no caminho.**
+- **Afirmações minhas erradas ao autor:**
+  - disse que o bug do `DATA-10` "passou nove dias escondido"; o tipo vem da 005, de 27/09;
+  - disse que tirar o `delete` das leituras passaria nos testes; não passaria.
+
+  As duas foram corrigidas na conversa.
+- **A consulta:** a primeira versão falhou no Postgres (`text || "char"` ambíguo, no `provolatile`) e foi corrigida antes de ir ao autor.
+
+**Risco em aberto.**
+- **Até a 015 ser aplicada** (`DATA-13`), excluir pelo painel um usuário com leituras é recusado.
+- **Ficaram de fora, de propósito:** o padrão `auth.uid()` e o `created_at` anulável. Não mudam comportamento, porque as funções sempre passam o dono e nunca gravam `created_at`.
+- **A comparação é retrato de 09/11.** Mudança feita pelo painel depois disso não aparece sozinha; a consulta versionada é para repetir.
+- **A versão exata da produção** (17.x) não foi lida. Foi inferida pelo privilégio `m`.
+
+**Procedência.** Branch `bugfix/DATA-12-esquema-como-a-producao`. `web-app/tests/rls/esquema_base.sql`, `test_rls_cascata.py`, `conftest.py`, `verificar_por_mutacao.py`, `web-app/migrations/015_cascata_das_leituras.sql`, `CONSULTA-estrutura-do-esquema.sql`, `DIAGNOSTICO-migracoes-aplicadas.sql`, `README.md`, `web-app/tests/migracoes/verificar_migracoes.py`, `.github/workflows/ci.yml`. Resultado da consulta na produção colado pelo autor em 09/11.
+
+---
+
+# 2026-11-10 (i) — DATA-13: a 015 na produção
+
+**O problema, como foi entendido no início.** A 015 (`DATA-12`, PR #108) dava à chave de `sleep_data.user_id` a cascata que a 001 declara, mas só no repositório. Na produção, apagar um usuário com leituras pelo painel do Supabase continuava recusado.
+
+**Hipótese de trabalho.** Aplicar a 015 no SQL Editor basta. O backend não muda, a migração não mexe em dado, e foi testada antes num Postgres 17 montado como a produção, com 501 leituras: aplicou, rodou duas vezes sem efeito e acendeu a marca.
+
+**O que foi testado, e como.**
+- **Pelo celular:** o autor aplicou a 015 e rodou uma conferência curta, a marca da 015 e `select version()`. Os arquivos foram passados no chat, porque ele não conseguia abri-los no celular.
+- **O diagnóstico completo:** rodado em seguida, com a consulta sem comentários.
+
+**Resultado medido.**
+- **Conferência curta:** `cascata_ok = true`. A versão é **PostgreSQL 17.6** (aarch64).
+- **Diagnóstico completo:**
+  - a 015 saiu `true`, com 1 de 1 marca;
+  - as 001, 003–012 e 014 saíram `true`, com as mesmas marcas de antes;
+  - a 002 saiu com 0 leituras sem dono;
+  - a 013 saiu `false`, com 0 de 3 marcas e o `pg_cron` desligado, como esperado: aplicá-la é o `LGPD-09`.
+
+**Adaptação.** O diagnóstico foi passado ao autor sem os comentários, para caber na tela do celular. O conteúdo das consultas é o mesmo do arquivo versionado.
+
+**O que deu errado no caminho.** Nada na produção. Do meu lado, um comando de registro travou por um `cat` sem entrada, e foi interrompido e refeito.
+
+**Risco em aberto.**
+- **A exclusão pelo painel não foi exercitada na produção.** Não há conta de teste lá, e apagar uma conta real não é teste. O comportamento foi medido no Postgres 17 local (`DATA-12`).
+- **A 013 continua pendente** (`LGPD-09`).
+
+**Procedência.** Resultados colados pelo autor em 10/11, no SQL Editor da produção.
+
+---
+
+# 2026-11-10 (ii) — APP-10: o envio de uma noite inteira
+
+**O problema, como foi entendido no início.** A auditoria de 10/11 (achado AUD-01; o relatório ainda não está versionado) mostrou que o envio de uma noite inteira pelo app não termina sozinho. O teste de 09/11 no celular tinha 8 épocas e passou; uma noite real tem cerca de 960.
+
+**Hipótese de trabalho.** Duas causas somadas:
+- **No backend:** `registrar_leitura_da_sessao` monta um cliente Supabase novo a cada leitura. Isso abre uma conexão por leitura, e por isso cada gravação leva cerca de 0,5 s na produção.
+- **No app:** o lote do servidor para aos 6 s e devolve o resto como pendente, e o laço do app parava na primeira pendente, com mensagem de erro.
+
+**O que foi testado, e como.**
+- **A latência da produção:** lida nos logs da Vercel de 09/11, 22:00:51 a 22:00:55 UTC. As 8 gravações saíram a cada 0,49 s em média.
+- **A reprodução:** `POST /api/data/lote` pelo cliente de teste do Flask, com 60 épocas da fixture do emulador e a gravação falsa esperando 0,49 s (Windows, Python 3.13).
+- **Parte A, o app (`envioDaNoite.ts`):** o laço segue do ponto novo enquanto a requisição resolver ao menos uma época e o aparelho mover o ponto; sem avanço, para. A tela mostra o progresso em vez da mensagem de pendência.
+- **Parte B, o backend:** a rota repassa à gravação o cliente que ela já montou para conferir o dispositivo. É o cliente daquela requisição e daquele JWT; nada fica guardado entre requisições.
+- **Conexões:** um servidor HTTP local contando conexões TCP, com o cliente Supabase real apontado para ele.
+
+**Resultado medido.**
+- **A reprodução, antes:** `200`, com 13 aceitas e 47 pendentes, em 6,4 s. A 13 por tentativa, 960 épocas pediam cerca de 74 toques em "Enviar agora".
+- **Conexões por lote de 60:** 60 antes, 1 depois.
+- **Suítes:** backend **504 passam** (+4), frontend **551 passam** em 42 arquivos (+5), `tsc` limpo, `vite build` ok.
+- **Sabotagens, todas acusadas:**
+  - a rota sem repassar o cliente: 3 testes caem;
+  - o método ignorando o cliente recebido: 3 caem;
+  - o laço parando na primeira pendente: 3 caem no laço e 1 no cartão;
+  - o progresso sem aviso: 1 cai;
+  - a parada só com zero épocas resolvidas, sem olhar o ponto do aparelho: o teste não termina, e foi morto pelo teto de 70 s.
+- **Na produção: nada medido.** O ganho de tempo por leitura com a conexão reaproveitada só aparece depois de um release. O app novo ainda não foi instalado no celular.
+
+**Adaptação.** O plano não previa a guarda do ponto do aparelho. Ao escrever o laço, vi que "seguir enquanto houver avanço" precisa conferir que o ponto andou de fato, e não só que o servidor resolveu épocas. O código anterior já tinha essa falha latente: com o servidor aceitando tudo e o aparelho sem mover o ponto, ele reenviaria o mesmo lote para sempre.
+
+**O que deu errado no caminho.**
+- **A primeira rodada de sabotagens travou.** A sabotagem que devolvia o laço antigo caiu justamente no laço infinito descrito acima, num teste novo, e o vitest ficou mais de 6 minutos preso: um laço de microtarefas bloqueia até o tempo limite do próprio teste. Interrompi, matei os processos, restaurei o arquivo pela cópia e refiz com `timeout` e filtro de teste. A árvore foi conferida igual antes e depois, por hash do `git diff`.
+- **Um teste existente acoplado à assinatura:** o `test_noite_do_app.py` usava um `lambda` de três parâmetros no lugar da gravação e passou a receber `cliente`.
+
+**Risco em aberto.**
+- **A parte B só vale na produção com um release.** A `main` está 33 merges atrás da `develop`; o release levaria a rota de inferência e a seção 7 da política, que exige a 013 antes (`LGPD-09`). Sem release, a parte A sozinha faz a noite subir, em cerca de 9 minutos com o app aberto (estimado: 74 requisições de 6 a 7 s).
+- **O teste da guarda do ponto não falha, trava.** Se alguém a remover, o CI fica preso até o tempo limite do job, em vez de acusar o teste.
+- **Quanto a conexão única reduz o tempo por leitura** não foi medido. Se ainda não couberem 60 em 6 s, a saída é uma função no banco que receba o lote inteiro (`API-06`).
+- **O app no celular** precisa ser recompilado e reinstalado para a parte A valer.
+
+**Procedência.** Branch `bugfix/APP-10-envio-da-noite-inteira`. `frontend/src/lib/envioDaNoite.ts`, `frontend/src/components/CartaoDaNoite.tsx`, `web-app/database.py`, `web-app/routes.py` e os testes `envioDaNoite.test.ts`, `CartaoDaNoite.test.tsx`, `test_lote.py` e `test_noite_do_app.py`. Logs de execução da Vercel de 09/11.
+
+---
+
+# 2026-11-10 (iii) — APP-02, etapa 5: a primeira noite real no Moto E7, e o viés da orientação
+
+**O problema, como foi entendido no início.** A etapa 5 do `APP-02` era a primeira noite real, com o app no Moto E7 (Android 10), na conta do autor. As perguntas eram quatro: o app aguenta a noite inteira com a tela apagada, o Android o deixa trabalhar, os dados chegam ao banco, e o que o modelo diz da noite.
+
+**Hipótese de trabalho.** Com o serviço em primeiro plano, a trava de energia e a isenção de bateria, a cobertura passa de 95 %. O envio de manhã esbarraria no AUD-01, já corrigido no código (`APP-10`, PR #110) mas ainda não instalado no aparelho; não haveria perda de dado.
+
+**O que foi testado, e como.**
+- **A noite:** o autor dormiu com o app registrando, com o celular no colchão. De manhã encerrou a noite e enviou.
+- **O que o celular gravou:** copiado pelo cabo USB, com `adb exec-out run-as`, para fora do repositório: o arquivo da noite (815 linhas), as anotações e o estado do serviço.
+- **O que chegou ao banco:** consulta de contagem por hora (`captured_at`), rodada pelo autor no SQL Editor. Ela não traz nenhum dado de leitura.
+- **A inferência:** o mesmo modelo e o mesmo código do servidor (`inferencia.inferir_janela`, `ml-inf-cabeca-v2`), rodados localmente sobre as linhas do arquivo, convertidas como a ingestão as grava. Nada foi chamado na produção.
+- **O controle do viés:** a mesma inferência com o viés do trecho virado subtraído da medida de movimento. É só diagnóstico, para medir o tamanho do efeito.
+
+**Resultado medido.**
+- **Cobertura:** de 03:02 a 09:52 (horário de Brasília), **815 de 821 épocas (99,3 %)**. Os 6 buracos têm uma época cada (60 s entre duas linhas), e o estado do serviço os conta como `sem_payload=6`.
+- **O serviço e o sensor:** **0 retomadas**; taxa de 49,506 Hz; 0 épocas recusadas; 960 amostras e o vetor completo em todas.
+- **Temperatura:** de 25,5 °C a 16,9 °C, com pico de 26,8 °C, longe do corte de 45 °C.
+- **O banco:** **815 épocas**, das 03:02 às 09:52, as mesmas do celular. **Nada se perdeu.** O envio pediu vários toques, como o AUD-01 previa.
+- **A validação do backend:** 0 das 815 épocas reprovadas.
+- **A inferência:** 78,2 % das épocas como sono, com nove blocos de vigília de 5 min ou mais. O autor relatou uma noite ruim, ansioso, acordando várias vezes; a comparação época a época não é possível, porque as horas de deitar, dormir e acordar ficaram em branco nas anotações.
+- **O celular virado:** às 06:04 o autor pegou o celular para ver a hora e o largou com a tela para baixo, e às 07:38 o desvirou. As duas viradas (172° e 174° entre épocas vizinhas) caíram dentro de blocos que o modelo marcou como vigília (06:00 a 06:10 e 07:38 a 07:43). O gesto foi aceito, gravado e lido como despertar, o que está correto.
+- **O viés da orientação:** virado, o acelerômetro do Moto lê a gravidade maior, e a medida de movimento sobe sem movimento nenhum.
+
+  | Trecho | Épocas | Movimento (mediana) | Magnitude (mediana) |
+  |---|---:|---:|---:|
+  | Tela para cima, 03:02 a 06:04 | 362 | 0,50 mg | 9,84 m/s² |
+  | Tela para baixo, 06:04 a 07:37 | 186 | **23,12 mg** | 10,06 m/s² |
+  | Tela para cima, 07:38 a 09:52 | 267 | 0,95 mg | 9,84 m/s² |
+
+- **O efeito no modelo:** com o viés subtraído, o sono passa de 78,2 % para 79,6 %, e dois blocos curtos de vigília somem (08:06 a 08:11 e 09:30 a 09:38). Nesta noite o efeito é pequeno porque o trecho virado é curto e a normalização é por noite. Não há garantia de que seja pequeno com o celular virado por metade da noite.
+- **O app corrigido:** instalado no aparelho com `adb install -r` depois da cópia; as duas noites continuam lá, marcadas como enviadas (815 de 815).
+
+**Adaptação.** O plano não previa medir o efeito da orientação. Ele apareceu na análise e virou o item `CAL-03` (autocalibração pela gravidade).
+
+**O que deu errado no caminho.**
+- **Os logs da Vercel:** o plano gratuito guarda só uma hora, e os envios da madrugada não estavam mais lá. A contagem veio da consulta no banco.
+- **As anotações em branco:** sem as horas, a comparação com o modelo ficou qualitativa.
+- **Erro meu:** escrevi ao autor que o viés "soma cerca de 23 mg" sem dizer que é mediana do trecho; a tabela acima corrige.
+
+**Risco em aberto.**
+- **O viés da orientação no modelo:** só medido nesta noite, num trecho de 1 h 33 min. O item é o `CAL-03`.
+- **Uma noite não mede acurácia:** falta referência e mais noites (`VAL-02`). Numa noite de vigília quieta, o modelo deve superestimar o sono, como toda actigrafia (`LIMITACOES-TCC.md` X.1).
+- **O envio corrigido no aparelho** ainda não foi exercitado numa noite real; a próxima noite confere.
+- **O erro do sensor muda com a temperatura**, que caiu 8,6 °C nesta noite. Isso não foi separado do efeito da orientação.
+
+**Procedência.** Arquivos do celular copiados para fora do repositório (não versionados: são dado de sono do autor). Consulta de contagem colada pelo autor em 10/11. O relatório da auditoria de 10/11 (AUD-01) não está versionado.
+
+---
+
+# 2026-11-10 (iv) — CAL-03, etapa 0: o erro de cada eixo do acelerômetro do Moto E7
+
+**O problema, como foi entendido no início.** Na noite de 10/11 (entrada iii), com a tela para baixo, o Moto E7 leu a gravidade 2,2 % maior, e a medida de movimento subiu para 23 mg sem movimento nenhum. A etapa 0 do `CAL-03` mede o erro de cada eixo deste aparelho, com o celular parado em seis posições, para saber de onde vem o viés e quanto dele uma calibração explica.
+
+**Hipótese de trabalho.** O erro é de desvio e escala por eixo, o modelo clássico de calibração de acelerômetro. Com cada eixo apontado para cima e para baixo, a média dos dois valores dá o desvio, e a meia diferença dá a escala.
+
+**O que foi testado, e como.**
+- **O teste:** o autor gravou pelo app o celular parado sobre a mesa, 10 min em cada uma de seis posições: tela para cima, tela para baixo, em pé normal, em pé invertido, de lado com os botões para cima e para baixo. Cada posição foi uma "noite" separada, de 16:40 a 17:46 (horário de Brasília), na posição "outra" do app, fora do carregador.
+- **A cópia:** pelo cabo USB, com `adb exec-out run-as`, para fora do repositório.
+- **A seleção:** cada arquivo é uma posição. A primeira e a última época foram descartadas (o toque nos botões), e ficaram só as épocas paradas (`mag_din_media` < 10 mg): 16 a 22 por posição.
+- **O valor por eixo:** a mediana de `ax`, `ay`, `az` das épocas paradas. No payload, esses três valores são os da amostra de **maior magnitude** da época, e não a média. O desvio não sofre com isso: o excesso do pico entra com o mesmo sinal da gravidade e se cancela na média entre as duas posições. A escala sofre, e foi corrigida pelo excesso medido.
+- **O excesso do pico:** onde a magnitude passa de 1 g, a medida de movimento (média por amostra do que passa de 1 g) dá a magnitude média. A diferença para a do pico ficou em 2,0 a 3,0 mg, média de 0,024 m/s².
+- **A conferência:** a calibração estimada na mesa, aplicada à noite de 10/11.
+
+**Resultado medido.**
+- **Sem calibração**, a magnitude parada varia de **0,991 g a 1,020 g** conforme a posição. A medida de movimento só enxerga o que passa de 1 g, e por isso o "piso" dela muda com a posição:
+
+  | Posição | Magnitude parada | Movimento (mediana) |
+  |---|---:|---:|
+  | Tela para cima | 1,0041 g | 4,20 mg |
+  | Tela para baixo | 1,0198 g | **18,71 mg** |
+  | Em pé, normal | 0,9933 g | 0,00 mg |
+  | Em pé, invertido | 0,9910 g | 0,00 mg |
+  | De lado, botões para cima | 0,9980 g | 0,00 mg |
+  | De lado, botões para baixo | 1,0175 g | **17,76 mg** |
+
+- **O erro por eixo** (temperatura do aparelho de 25,7 a 27,8 °C):
+
+  | Eixo | Desvio | Escala |
+  |---|---:|---:|
+  | x | −0,095 m/s² (−9,7 mg) | +0,76 % |
+  | y | +0,015 m/s² (+1,5 mg) | −0,87 % |
+  | z | −0,075 m/s² (−7,6 mg) | +1,17 % |
+
+- **Na própria mesa:** com a calibração, as seis posições ficam entre **1,0002 g e 1,0015 g**. Esse número é de ajuste, e não de validação: são seis posições para seis parâmetros.
+- **Na noite de 10/11, a conferência que vale:** a diferença entre tela para cima e tela para baixo era de **22,1 mg** (1,0002 contra 1,0223 g) e passa a **7,9 mg** (0,9957 contra 1,0036 g). A calibração de mesa explica **64 %** do viés da noite.
+- **O que sobra:** a noite foi a 18 °C (mediana), e a mesa a 26 a 27 °C. O resíduo é compatível com o erro do sensor variando com a temperatura, mas isso **não foi medido** de forma separada.
+
+**Adaptação.**
+- **Cada posição numa noite separada:** o roteiro previa uma noite só, trocando de posição, e o autor iniciou e encerrou uma noite por posição. Ficou melhor, porque cada arquivo é uma posição.
+- **O excesso do pico:** o plano não previa estimá-lo; ele apareceu ao ler o que `ax`, `ay`, `az` significam no payload.
+
+**O que deu errado no caminho.**
+- **As seis gravações foram para a conta do autor na produção.** O app envia sozinho ao abrir, e as seis "noites" de teste, cerca de 120 épocas, estão no histórico como se fossem sono. O app não tem como marcar uma gravação como teste.
+- **O roteiro de bancada que escrevi** não dizia que o app enviaria as gravações. Devia ter dito.
+
+**Risco em aberto.**
+- **A temperatura:** o erro muda com ela, e uma calibração feita a 26 °C deixa 8 mg de viés a 18 °C. A etapa 1 do `CAL-03` precisa de um termo de temperatura, como o método de van Hees já prevê.
+- **Uma gravação de teste vira noite:** não há marca de gravação de teste, e o histórico do autor tem seis noites falsas de 10 min. Item novo `APP-11`.
+- **Um aparelho só:** os números valem para este Moto E7. Outro celular tem outro erro.
+
+**Procedência.** Arquivos do celular copiados para fora do repositório; o cálculo foi feito na hora, em script local. Nenhum dado de sono entrou no repositório.
+
+---
+
+# 2026-11-10 (v) — APP-12: preparar o app para testadores (a parte técnica)
+
+**O problema, como foi entendido no início.** O autor quer mandar o app a amigos com Android, para juntar mais noites. Hoje só existe o APK de depuração: assinado com a chave de teste do Android Studio, depurável, com a depuração do WebView ligada e o gatilho de teste da `MainActivity`. E não havia guia de instalação.
+
+**Hipótese de trabalho.** Basta um APK de release assinado com uma chave do autor, guardada fora do repositório (que é público), e um guia em duas partes: como gerar o APK e como o testador instala e usa. A parte que não é técnica (comitê de ética, política de privacidade e consentimento) fica com o autor e o orientador, e o documento diz que o envio espera por ela.
+
+**O que foi testado, e como.**
+- **A chave fora do repositório:** o `app/build.gradle` passou a ler `~/.dormio/assinatura.properties`, ou o caminho de `DORMIO_ASSINATURA`. Sem o arquivo, o release sai sem assinatura, em vez de cair para a chave de depuração. O `.gitignore` do Android passou a recusar `*.jks`, `*.keystore`, `*.p12` e `assinatura.properties`; essas linhas vinham comentadas do modelo do Capacitor.
+- **A versão:** `versionName` 1.0.0.
+- **O build:** `assembleRelease` no Windows, JDK do Android Studio, em três casos:
+  1. sem o arquivo de assinatura;
+  2. com uma chave **descartável** de teste, gerada com senha aleatória no scratchpad e apagada em seguida;
+  3. a comparação com o de depuração.
+- **As conferências:** `apksigner verify` e `aapt2 dump badging`, a etiqueta `application-debuggable`.
+- **A depuração do WebView:** lida no código do Capacitor 8 (`CapConfig.java`): o padrão de `webContentsDebuggingEnabled` é o tipo do build, desligado no release.
+
+**Resultado medido.**
+- **Sem o arquivo:** `app-release-unsigned.apk`, e o `apksigner verify` recusa ("DOES NOT VERIFY"). É o comportamento pedido: não instala.
+- **Com a chave descartável:** `app-release.apk`, e o `apksigner verify` aceita (esquema v2).
+- **Depurável:** a etiqueta `application-debuggable` aparece no APK de depuração e não no de release (controle positivo: o de depuração tem).
+- **A versão no APK:** `versionName='1.0.0'`, `targetSdkVersion 36`.
+- **O `.gitignore`:** o `git check-ignore` confirma a regra para `.jks`, `.keystore` e `assinatura.properties`.
+- **O guia:** `docs/DISTRIBUICAO-DO-APP.md`, com a chave e o APK para o autor; a instalação, a conta, a bateria por marca, a noite, o envio e a saída para o testador. Os rótulos de tela citados ("Cadastre-se", "Criar conta", "Excluir minha conta", o link da bateria) foram conferidos no código.
+- **Nada foi enviado a ninguém**, e nenhuma chave de verdade foi criada: a chave é do autor e ele a cria sozinho.
+
+**Adaptação.** O plano não previa a variável `DORMIO_ASSINATURA`. Ela existe para testar a assinatura com uma chave descartável sem tocar no arquivo de verdade do autor, nem mudar a pasta do usuário, o que moveria também o cache do Gradle.
+
+**O que deu errado no caminho.** O guia saiu com dois rótulos errados ("Criar conta" como primeiro botão, quando a tela de entrada mostra "Cadastre-se"; e "Excluir conta" em vez de "Excluir minha conta"). Corrigidos depois de conferir o código das telas.
+
+**Risco em aberto.**
+- **A decisão que não é técnica:** comitê de ética, política de privacidade (AUD-04) e consentimento, antes de qualquer envio (`LGPD-03`).
+- **A recuperação de senha não chega aos testadores** (`AUTH-06`); o guia avisa.
+- **Só o Moto E7 foi testado.** Xiaomi e Samsung encerram apps em segundo plano com mais força; o guia dá os passos por marca, mas eles não foram conferidos num aparelho dessas marcas.
+- **Gravação de teste vira noite** (`APP-11`); o guia pede para não fazer.
+- **O build de release não roda no CI.** O CI não tem job Android (AUD-06 da auditoria de 10/11).
+
+**Procedência.** Branch `feature/APP-12-distribuicao-para-testadores`. `frontend/android/app/build.gradle`, `frontend/android/.gitignore`, `docs/DISTRIBUICAO-DO-APP.md`.
+
+---
+
+# 2026-11-10 (vi) — Registro: a auditoria de 10/11 vira itens, e as pendências do autor numa lista só
+
+**O problema, como foi entendido no início.** O autor pediu: "deixe registrado tudo o que precisamos fazer". Havia três lugares desencontrados:
+- **A auditoria de 10/11** (Fable 5.2) tinha 12 achados num relatório não versionado, e só o AUD-01 virara item (`APP-10`).
+- **As pendências do autor** estavam espalhadas pela memória do Claude e pelo `ROADMAP.md` local, com itens já feitos misturados aos abertos.
+- **Duas contagens erradas** que a auditoria apontou (AUD-08) seguiam nos documentos.
+
+**Hipótese de trabalho.**
+- **Os achados:** cada um vira item no backlog, com a evidência da auditoria e a correção proposta. O relatório é versionado, com o mapa de cada achado para o item que o carrega, como o de 31/10.
+- **As contagens:** corrigidas no próprio registro.
+- **As pendências do autor:** uma lista só, por tipo, sem o que já foi feito.
+
+**O que foi testado, e como.**
+- **Os IDs:** conferidos livres em `origin/feature/APP-12-distribuicao-para-testadores` antes de usar.
+- **As conferências:** `conferir_backlog --conferir`, `consolidar_registro --conferir` e `conferir_docs_versionados`.
+- **A varredura do relatório:** nome de pessoa e caminho de máquina, antes de versionar.
+
+**Resultado medido.**
+- **Itens novos, 9:**
+
+  | Camada | Item | Achado |
+  |---|---|---|
+  | L0 | `SEC-18` | AUD-02 e AUD-03 |
+  | L0 | `SEC-19` | AUD-10 |
+  | L0 | `SEC-20` | AUD-12 |
+  | L0 | `DATA-14` | AUD-11 |
+  | L0 | `CI-09` | AUD-06 |
+  | L0 | `CI-10` | AUD-07 |
+  | L0 | `CI-11` | AUD-09 |
+  | L0 | `LGPD-11` | AUD-04 |
+  | L3 | `REL-01` | AUD-05, com a pergunta sobre `last_sign_in_at` |
+
+- **Contagem:** 42 → **51 abertos**; L0 12 → **20**; L3 10 → **11**. O `conferir_backlog` passa.
+- **AUD-08:**
+  - o `CLAUDE.md` ganhou a nota da mutação da fila: **14/14** medido, contra os 13/13 de 31/10;
+  - o `UI-15` ganhou o pacote medido: **925 kB**, contra 876 kB.
+  - A contagem de 42 arquivos do frontend já tinha sido corrigida pelo `APP-10`.
+- **O relatório:** `docs/AUDITORIA-2026-11-10-fable.md`, versionado com o mapa dos achados. Nenhum nome nem caminho de máquina.
+- **As pendências do autor:** reescritas em seis grupos (orientador, produção, app, texto, dados, GitHub), na memória do Claude e no `ROADMAP.md` local, que não é versionado.
+
+**Adaptação.** Esta branch parte da do `APP-12` (PR #113, ainda aberta), porque o backlog e o diário são arquivos de conflito garantido. A PR aponta para `develop`; o corpo dela diz a ordem de merge.
+
+**O que deu errado no caminho.** Nada nesta etapa.
+
+**Risco em aberto.**
+- **Nove itens novos de uma vez:** a L0 dobrou de tamanho, e nenhum deles foi priorizado. A prioridade é do autor.
+- **Itens que esperam outros:** o `SEC-18` e o `REL-01` pedem consultas na produção que só o autor roda (5.1 e 5.2 da auditoria).
+
+**Procedência.** Branch `chore/REG-auditoria-e-pendencias`, a partir de `feature/APP-12-distribuicao-para-testadores` (`545f7f6`). `docs/BACKLOG-COMPLETO.md`, `docs/AUDITORIA-2026-11-10-fable.md`, `CLAUDE.md`.
+
+---
+
+# 2026-11-10 (vii) — LGPD-11: a política de privacidade alcança o app e a inferência
+
+**O problema, como foi entendido no início.** A auditoria de 10/11 (AUD-04 e AUD-05) apontou que a política não descrevia o app nativo nem a inferência de sono. A leitura inteira da política contra o código achou mais:
+
+| Seção | A política dizia | O sistema faz |
+|---|---|---|
+| §2.2 | O celular só coleta com a tela de coleta aberta | O app coleta a noite toda, com a tela apagada |
+| §2.2 | Não citava | As seis medidas de movimento e a direção da gravidade, gravadas desde a migração 010 (30/10) |
+| §2.3 | No aparelho ficam só a sessão e o tema | Ficam também os arquivos das noites (que ficam depois de enviados) e as anotações |
+| §2.4 | Nada "infere condição de saúde" | A rota de inferência estima sono e vigília |
+| §6.1 | Não há dado coletado que o app não mostre | As medidas de movimento não aparecem no painel nem saem no CSV |
+| §6.4 | Excluir a conta apaga tudo | Os arquivos no celular ficam |
+| §9 | "Toda leitura enviada é validada", "146 testes" | A validação é contornável (`SEC-18`); são 196 testes |
+
+**Hipótese de trabalho.** O autor decidiu duas coisas antes da conversa com o orientador:
+- **A série de movimento e a inferência são tratadas como dado de saúde**, por precaução. A base legal passa ao art. 11, I (consentimento específico e destacado).
+- **O uso em pesquisa só acontece por termo próprio.**
+
+A política pode ser reescrita para dizer o que o sistema faz hoje, inclusive a lacuna de não haver ainda a tela de consentimento destacado. E um teste pode ligar as colunas gravadas à seção 2.2, para que coluna nova não passe sem a política.
+
+**O que foi testado, e como.**
+- **O texto:** `docs/POLITICA-DE-PRIVACIDADE.md`, com a regra que governa a política ("o que o sistema faz hoje, não o que se pretende"):
+  - §2.2: todos os campos e o app nativo;
+  - §2.3: o que fica no aparelho;
+  - §2.4 e §2.5: a inferência e o dado de saúde;
+  - §3: a finalidade 6, a estimativa, e o uso em pesquisa por termo;
+  - §4: a base do art. 11, I e a lacuna da tela;
+  - §5.3, §6.1, §6.4, §6.7 e §9;
+  - o topo e a §10;
+  - quatro lacunas novas nas notas.
+- **O termo:** `docs/TERMO-DE-PARTICIPACAO.md`, como rascunho, com os nomes como marcadores e três conferências antes do uso (o orientador e o CEP, a política publicada e a revisão jurídica).
+- **O teste novo:** `web-app/tests/test_politica_cobre_as_colunas.py`. Ele lê nas migrações reais as colunas que `registrar_leitura` e `registrar_leitura_da_sessao` inserem, na versão mais recente de cada uma, e exige que cada coluna tenha descrição e que a descrição esteja na §2.2 (o `user_id`, na §3).
+- **Os controles positivos**, numa cópia da árvore:
+  1. uma migração nova que grava uma coluna a mais;
+  2. a política sem o trecho da direção da gravidade;
+  3. a política de antes desta revisão, a de `develop`.
+- **O ambiente:** Windows, Python 3.13 e Node 24.
+
+**Resultado medido.**
+- **O teste novo:** 5 passam.
+- **Os três controles** foram acusados, com 2 testes caindo em cada um. No terceiro, a política antiga reprova exatamente nas colunas que não citava: o número de amostras, as seis medidas de movimento, a direção da gravidade e a taxa de amostragem.
+- **Os testes da página da política:** 12 passam. O texto continua com só `[CONTROLADOR]` e `[CONTATO]` como marcadores.
+- **Backend:** **509 passam** (+5). **Frontend:** **551 passam**.
+
+**Adaptação.** O plano previa a tela de consentimento destacado como parte B, para depois. A política declara a falta dela como lacuna, e ela virou o item `LGPD-12`.
+
+**O que deu errado no caminho.** A primeira versão do teste reprovou por um falso negativo: a frase "associar cada leitura ao seu dono" está quebrada em duas linhas no Markdown. O teste passou a normalizar o espaço antes de comparar.
+
+**Risco em aberto.**
+- **A política nova só vale publicada:** ela entra no mesmo release que a inferência (`REL-01`), e esse release exige a 013 antes (`LGPD-09`).
+- **A tela de consentimento destacado** (`LGPD-12`): até ela existir, a base legal do art. 11, I fica com a lacuna declarada.
+- **O termo depende do orientador** (CEP), e a base legal do uso em pesquisa pode mudar com isso.
+- **Sem revisão jurídica:** a política continua avisando que não foi revisada.
+- **O teste só cobre as colunas:** a §2.3 (o que fica no celular), as finalidades e os direitos continuam sem teste.
+
+**Procedência.** Branch `feature/LGPD-11-politica-do-app`. `docs/POLITICA-DE-PRIVACIDADE.md`, `docs/TERMO-DE-PARTICIPACAO.md`, `web-app/tests/test_politica_cobre_as_colunas.py`.
+
+---
+
+# 2026-11-10 (viii) — SEC-18: a validação da leitura e do pareamento dentro do banco
+
+**O problema, como foi entendido no início.** A auditoria de 10/11 (AUD-02 e AUD-03) mostrou que a validação vivia só no Flask. Quem tem conta chama `registrar_leitura_da_sessao` direto, porque a chave anon e o endereço são públicos, e grava `NaN`, captura em 2099 e época −5 na própria conta. Em `devices`: nome de 100 000 caracteres, 500 dispositivos numa chamada, `token_hash` escolhido pelo cliente, e a revogação desfeita por `update`. Nada cruza contas, mas contamina o dado que o trabalho analisa.
+
+**Hipótese de trabalho.** Restrições `CHECK` com **as mesmas** faixas da `validacao.py`, nem mais largas nem mais estreitas. Mais estreita faria uma leitura aceita pelo backend falhar na gravação, e o dispositivo reenviaria para sempre. O resto:
+- a recusa do futuro nas duas funções de gravação;
+- formato do hash e teto de dispositivos no pareamento;
+- um gatilho que barra a desrevogação.
+
+As consultas de 10/11 na produção (5.1 e 5.3 da auditoria) deram zero leitura fora das regras, no máximo 2 dispositivos por conta e nome de até 12 caracteres.
+
+**O que foi testado, e como.**
+- **A migração `016_validacao_no_banco.sql`:**
+  - sete `CHECK` em `sleep_data` e um em `devices.nome` (até 60 caracteres), todos `NOT VALID`;
+  - um bloco que confere o que já existe contra cada restrição (lendo a própria definição dela no catálogo) e para com a contagem se algo falhar;
+  - depois, `VALIDATE`;
+  - as duas funções de gravação com o corpo da 014 e a recusa de `captured_at` mais de 5 min no futuro;
+  - `parear_dispositivo` com o corpo da 007, o formato SHA-256 do hash e o teto de 10 ativos;
+  - o gatilho `devices_revogacao_definitiva`, que só barra os papéis do cliente; o dono do banco continua podendo, para manutenção.
+- **Os testes:** `test_rls_validacao_no_banco.py`, com 48 casos, contra `postgres:17` em Docker no Windows:
+  - **as bordas tiradas das constantes da `validacao.py`:** cada uma passa no banco, e um passo além é recusado com `23514`;
+  - **a chamada direta da auditoria**, recusada;
+  - **o caminho do token** (`dormio_ingestao`), que recusa também;
+  - **a leitura antiga sem o vetor**, que continua válida;
+  - **o pareamento e a revogação**;
+  - **a noite do emulador**, inteira pelo banco.
+- **A mutação do RLS:** 8 sabotagens novas. Uma delas é uma faixa **mais estreita** que a do Flask (`enmo_max` até 15 g, em vez de 16).
+- **O verificador de migrações:** o 16º estado, e uma verificação nova: a 016 num banco com dado antigo fora das regras tem de parar sem apagar nada; num banco limpo, aplica inteira.
+- **O diagnóstico:** 5 marcas da 016.
+
+**Resultado medido.**
+- **RLS:** **244 passam** (196 + 48).
+- **Mutação:** **44/44**.
+- **Verificador:** **16 estados** e a ordem real. Com dado ruim, a 016 parou, informou `sleep_data_faixa_temperatura: 1 linha(s)`, não aplicou nenhuma restrição e a linha ficou. Sem dado ruim, aplicou.
+- **Backend:** 509 passam (o backend não muda).
+
+**Adaptação.**
+- **O formato do hash e o teto** ficaram na função de pareamento, e não como `CHECK` em `device_tokens`. É a única porta de criação (desde a 007), e os dados de teste gravam hashes curtos direto na tabela.
+- **Coerência de `total` e "sensor mudo"** ficaram fora: são regras sobre o payload do dispositivo, não sobre o domínio da coluna.
+
+**O que deu errado no caminho.**
+- **Um teste de segurança passou a testar o mecanismo errado.** A sabotagem antiga `insert_liberado` (liberar o insert direto em `sleep_data`) passou a derrubar só 1 teste em vez de 2. Três testes de negação inseriam leituras com estados inventados ("Direto", "Injetado", "Digitado"), e a regra de estado da 016 passou a recusá-las **antes** da policy: o teste continuava verde, recusado pelo motivo errado. É a ocorrência clássica do §1 das lições. Corrigidos para usar um estado válido **e conferir o código do erro** (`42501`, falta de privilégio, e não `23514`); a sabotagem voltou a 2.
+- **Erros meus no teste novo:**
+  - `NaN` mandado como número quebrava o JSON (a auditoria o mandou como texto);
+  - "1 + tolerância" na gravidade já seria recusado pelo próprio Flask, que limita cada componente a [−1, 1].
+- **O verificador:** consultava depois da falha esperada sem `rollback`.
+- **Um script meu de inserção das sabotagens** tinha aspas conflitantes, e foi refeito sem alterar o arquivo.
+
+**Risco em aberto.**
+- **A 016 não está na produção** (`SEC-21`). Até lá, a §9 da política continua declarando a lacuna, e muda depois da aplicação.
+- **O volume por chamada** continua sem limite, de propósito, e só afeta a própria conta.
+- **As restrições copiam as faixas do Flask.** Mudar uma faixa exige mudar os dois lados. O teste das bordas acusa a divergência, mas não a impede.
+
+**Procedência.** Branch `bugfix/SEC-18-validacao-no-banco`. `web-app/migrations/016_validacao_no_banco.sql`, `DIAGNOSTICO-migracoes-aplicadas.sql`, `README.md`; `web-app/tests/rls/test_rls_validacao_no_banco.py`, `conftest.py`, `test_rls_ingestao.py`, `test_rls_isolamento.py`, `test_rls_credencial.py`, `verificar_por_mutacao.py`; `web-app/tests/migracoes/verificar_migracoes.py`.
+
+---
+
+# 2026-11-10 (ix) — SEC-21: a 016 na produção
+
+**O problema, como foi entendido no início.** A 016 (`SEC-18`, PR #116) leva a validação da leitura e do pareamento para dentro do banco, mas só no repositório. Até ser aplicada, a chamada direta da auditoria continuava gravando `NaN` e datas de 2099 na própria conta.
+
+**Hipótese de trabalho.** Ela aplica limpa, porque as consultas 5.1 e 5.3 da auditoria, rodadas pelo autor mais cedo no mesmo dia, deram zero leitura fora das regras, no máximo 2 dispositivos por conta e nome de até 12 caracteres. E se não aplicasse, pararia sem apagar nada.
+
+**O que foi testado, e como.**
+- **Pelo celular:** o autor aplicou a 016 no SQL Editor, numa versão sem os comentários, para caber na tela.
+- **A versão sem comentários:** foi conferida antes, por mim, num Postgres 17 montado como a produção (001 a 015, sem a 013). Aplicou e deu 5 de 5 marcas no diagnóstico.
+- **A conferência:** em seguida, o autor rodou uma consulta curta, só leitura, com as mesmas marcas do diagnóstico.
+
+**Resultado medido.**
+- **Na produção:** `regras_validadas = 7` (as sete restrições de `sleep_data`, validadas); `nome_ok`, `futuro_ok`, `teto_ok` e `revogacao_ok` todos `true`.
+- **Sem dado ruim:** a migração não parou, então nenhuma linha antiga estava fora das regras.
+
+**Adaptação.** A §9 da política deixou de dizer que a validação é contornável na própria conta, e a lacuna correspondente foi fechada nas notas.
+
+**O que deu errado no caminho.** Nada nesta etapa.
+
+**Risco em aberto.**
+- **O diagnóstico completo não foi rodado;** a consulta curta cobre só as marcas da 016.
+- **O caminho normal com a 016 ainda não foi exercitado na produção:** a próxima noite do app confere que ele continua gravando.
+- **A política nova** continua esperando o release (`REL-01`).
+
+**Procedência.** Resultado colado pelo autor em 10/11. `docs/POLITICA-DE-PRIVACIDADE.md` §9.
+
+---
+
+# 2026-11-10 (x) — LGPD-09: a 013 passa a contar a sessão aberta como uso
+
+**O problema, como foi entendido no início.** Antes de aplicar a 013 (expurgo por inatividade), o `REL-01` pedia para conferir se o Supabase atualiza `last_sign_in_at` quando a sessão é só renovada. A 013 decidia "conta sem uso há 12 meses" por três sinais: a criação da conta, o último login e a última leitura.
+
+**Hipótese de trabalho.** O `last_sign_in_at` só muda num login. O app mantém a sessão aberta e a renova sozinho. Então quem usa o painel sem sair e sem dispositivo enviando leituras seria apagado em 12 meses, ainda ativo.
+
+**O que foi testado, e como.**
+- **O código do Supabase Auth:** lido pelo navegador. `UpdateLastSignInAt` grava só o campo, e a correção da PR #2655 (versão 2.195.0, agosto de 2026) diz que o caminho v2 "cria a sessão diretamente e nunca chamava `UpdateLastSignInAt`" — o campo é gravado na criação da sessão. Nenhuma fonte lida diz que a renovação o atualiza. Isso não foi confirmado pelo código da renovação.
+- **Na produção:** duas consultas só de leitura, rodadas pelo autor, sem e-mail nem identificador. As colunas de `auth.sessions`, e quantas contas tinham a sessão renovada depois do último login (`updated_at` da sessão contra `last_sign_in_at`).
+- **A correção:** na 013, ainda não aplicada em lugar nenhum além dos testes, o uso de uma sessão entrou como quarto sinal: o maior entre a criação, a `updated_at` e a `refreshed_at` de `auth.sessions`.
+- **Depois, a pedido do autor, o código do Supabase Auth** (`internal/tokens/service.go`, `internal/models/sessions.go`, `internal/models/cleanup.go` e a biblioteca `pop`):
+  - a renovação grava `refreshed_at`, `user_agent` e `ip` (`UpdateOnlyRefreshInfo`), e **não** a `updated_at`: a `pop` só atualiza a `updated_at` quando ela está na lista de colunas;
+  - a `refreshed_at` é `timestamp` sem fuso, em UTC;
+  - a limpeza só apaga sessão ativa com prazo absoluto ou por inatividade configurados (`not_after`, *timebox*).
+- **O esquema de teste:** ganhou `auth.sessions`, com exclusão em cascata a partir do usuário.
+- **Os testes novos:**
+  - a sessão renovada há 1 mês, com login há 13 meses e sem dispositivo, **fica**;
+  - login e sessão há 13 meses **saem**, e a sessão sai junto.
+- **Os controles:** a sabotagem `expurgo_ignora_a_sessao` na mutação; uma marca da 013 no diagnóstico; e a ordem real da produção no verificador, que passou a ter a 013 depois da 014, da 015 e da 016, como vai acontecer.
+- **O ambiente:** `postgres:17` em Docker, no Windows.
+
+**Resultado medido.**
+- **Na produção:** **6 contas, 3 com sessão, 2 com a sessão renovada depois do último login**, com distância máxima de **1 dia, 16 h e 31 min**. A hipótese se confirmou.
+- **As colunas de `auth.sessions`** incluem `updated_at` e `refreshed_at`.
+- **A medição na produção desmentiu a minha leitura do código, e confirmou a primeira explicação.** Uma terceira consulta, só de leitura, rodada pelo autor:
+
+  | Medida | Resultado |
+  |---|---|
+  | Tipo da `refreshed_at` | `timestamp without time zone` |
+  | Sessões / renovadas | 4 / 2 |
+  | Renovadas em que a `refreshed_at` passou da `updated_at` | **0** |
+  | Sessões em que a `updated_at` mudou depois da criação | **2** |
+  | Sessões com prazo de validade (`not_after`) | 0 |
+  | Contas com sessão criada depois do último login | **0** |
+
+  Ou seja: **na produção, a renovação move a `updated_at` junto com a `refreshed_at`**. A biblioteca do Supabase atualiza a `updated_at` por conta própria, e a minha leitura dela estava incompleta. E o defeito de login sem `last_sign_in_at` não aparece nos dados. A explicação original — a renovação de uma sessão aberta não toca o `last_sign_in_at` — é a que vale.
+- **Os três campos ficam assim mesmo:** a `refreshed_at` é o campo que o código do Supabase grava explicitamente na renovação, e a `updated_at` é a que a produção mostrou mudar. Ler os dois cobre uma mudança futura em qualquer um.
+- **O controle que separou as duas versões:** com a 013 da primeira correção (só a `updated_at`), o caso "sessão só renovada há 1 mês" (`refreshed_at` recente, `updated_at` velha) **foi apagado**. Com os três campos, fica.
+- **RLS:** **247 passam** (+3). **Mutação:** **45/45** (+1, a sabotagem agora tira a `refreshed_at`). **Verificador:** os 16 estados e a ordem real nova.
+
+**Adaptação.** A correção entrou na própria 013 e não numa migração nova: ela nunca foi aplicada, e aplicar uma versão sabidamente errada para consertá-la em seguida seria pior. O cabeçalho dela registra a mudança.
+
+**O que deu errado no caminho.**
+- **Duas conclusões minhas, cada uma tirada de uma fonte só.** A primeira correção usou só a `updated_at`, tirando da consulta que ela acompanhava a renovação, sem ter conferido. Depois, ao ler o código do Supabase, concluí o contrário — que a renovação não a mexia — e escrevi ao autor que a primeira explicação estava errada. A medição na produção mostrou que a primeira estava certa e que a leitura do código estava incompleta.
+- **Os testes não decidiriam a questão** nem num sentido nem no outro: eu mesmo escolhia as datas dos casos de teste. Eles reproduzem a minha hipótese, e não o Supabase (§1 das lições). Quem decidiu foi a consulta na produção.
+- **Os três campos,** que entraram por causa da leitura errada do código, ficam: são a defesa contra uma mudança futura em qualquer um. Também afirmei ao autor que a `refreshed_at` é sem fuso sem ter conferido; o código depois confirmou, e a consulta de confirmação lê o tipo na produção.
+
+**Risco em aberto.**
+- **Sessão encerrada:** se a pessoa sair do app (logout), a sessão é apagada e o sinal some. Aí valem o login e as leituras, como antes.
+- **O comportamento do Supabase:** medido na produção em 10/11, com 2 sessões renovadas. Uma mudança futura do Supabase pode voltar a abrir o risco, e nenhum teste daqui pega isso; os três campos reduzem esse risco, mas não o eliminam.
+- **A 013 ainda não foi aplicada** (`LGPD-09`).
+
+**Procedência.** Branch `bugfix/LGPD-09-sessao-conta-como-uso`. `web-app/migrations/013_retencao_por_inatividade.sql`, `DIAGNOSTICO-migracoes-aplicadas.sql`; `web-app/tests/rls/esquema_base.sql`, `test_rls_retencao.py`, `verificar_por_mutacao.py`; `web-app/tests/migracoes/verificar_migracoes.py`; `docs/POLITICA-DE-PRIVACIDADE.md` §7. Consultas coladas pelo autor em 10/11.
+
+---
+
+# 2026-11-10 (xi) — LGPD-09: a 013 na produção, com o expurgo agendado
+
+**O problema, como foi entendido no início.** A 013 (retenção por inatividade), corrigida antes de ser aplicada para contar a sessão como uso (entrada x, PR #118), precisava entrar na produção com o `pg_cron` ligado. É o primeiro item do `REL-01`: a seção 7 nova da política descreve o expurgo, e não pode ser publicada antes de ele existir.
+
+**Hipótese de trabalho.** A 013 aplica limpa e não apaga ninguém na primeira execução. A consulta 5.2 da auditoria deu 0 contas, e a versão corrigida só acrescenta sinais de uso, ou seja, só pode manter mais contas.
+
+**O que foi testado, e como.**
+- **Antes, por mim:** uma versão da 013 sem os comentários, num Postgres 17 montado na ordem real da produção (001–012 e 014–016, e a 013 por último). Ela aplicou, deu 4 de 4 marcas, o expurgo rodado à mão não apagou ninguém, e uma segunda execução passou.
+- **Pelo autor, no celular:**
+  1. ligou o `pg_cron` em Database → Extensions (schema `pg_catalog`, o padrão);
+  2. rodou a 013 no SQL Editor;
+  3. rodou uma consulta curta de conferência.
+
+**Resultado medido.**
+- **Na produção:** `_eliminar_titular`, `expurgar_contas_inativas`, a exclusão de conta passando por `_eliminar_titular` e o sinal da sessão no expurgo — os quatro `true`.
+- **O agendamento:** `pg_cron` ligado (1) e **1 agendamento** `dormio-expurgo-por-inatividade`, diário às 04:17 UTC.
+- **A produção fica com 001–016**, todas aplicadas (a 002 desnecessária).
+
+**Adaptação.** A descrição interna da função de expurgo (`comment on function`) ainda citava só "criação, login nem leitura". Ela foi corrigida na versão aplicada para incluir o uso de sessão, e o arquivo do repositório foi alinhado a ela neste registro.
+
+**O que deu errado no caminho.** Nada nesta etapa.
+
+**Risco em aberto.**
+- **O primeiro expurgo agendado ainda não rodou;** a próxima execução é às 04:17 UTC. A execução pode ser conferida em `cron.job_run_details`.
+- **O diagnóstico completo não foi rodado:** a consulta curta cobre as marcas da 013 e o agendamento.
+- **O resto do `REL-01`:** a decisão sobre o `LGPD-12` e o release em si.
+
+**Procedência.** Captura de tela do painel e resultado da conferência colados pelo autor em 10/11. `web-app/migrations/013_retencao_por_inatividade.sql`.
+
+# 2026-11-10 (xii) — LGPD-12: o consentimento destacado, com a trava no banco
+
+**O problema, como foi entendido no início.** Desde o `LGPD-11`, a política trata a série de movimento e a estimativa de sono como dado de saúde (art. 11, I). Esse artigo pede consentimento **específico e destacado**. O que existia era o consentimento do cadastro, o do sensor no navegador e o toque em *Iniciar a noite*, e a §4 declarava a lacuna. Uma tela sozinha não basta: um cliente que pule a tela, ou uma chamada direta à API, gravaria do mesmo jeito.
+
+**Hipótese de trabalho.** O consentimento é um registro no banco (data pelo relógio do banco e versão do texto), gravado só por uma função. As funções de gravação pela sessão e de pareamento recusam quem não o tem na versão vigente. O backend traduz essa recusa num `403` com o motivo, e não num `503`, que o app leria como servidor fora do ar e reenviaria para sempre. A tela vem antes da primeira noite e da primeira coleta. O caminho do token (o dispositivo do travesseiro já pareado) **não** é travado, por decisão do autor ("travado só no pareamento"): um dispositivo novo não se pareia sem o consentimento.
+
+**O que foi testado, e como.**
+- **Migração 017:**
+  - duas colunas em `profiles`;
+  - `versao_do_consentimento()` = `2026-11-10`;
+  - `consentir_dado_de_saude(p_versao)`, que só aceita a versão vigente e usa `now()`;
+  - um gatilho que impede `authenticated`/`anon` de escrever as colunas direto, inclusive ao criar o perfil;
+  - a trava em `registrar_leitura_da_sessao` e em `parear_dispositivo` (`42501`).
+- **RLS:** `test_rls_consentimento.py`, 12 testes contra Postgres 17 em Docker.
+- **Mutação:** 5 sabotagens novas:
+  - a gravação sem a trava;
+  - o pareamento sem a trava;
+  - a trava aceitando qualquer versão;
+  - o gatilho fora;
+  - a função aceitando qualquer versão.
+- **Backend:**
+  - `consentimento.py`;
+  - `POST /api/me/consentimento` (`409` na versão errada);
+  - as travas `403` no lote pela sessão, nos dois pareamentos e em `GET /api/inferencia`;
+  - `test_consentimento.py` confere que as três constantes de versão (banco, backend, frontend) são iguais.
+- **Frontend:**
+  - `TelaDeConsentimento`, um diálogo em que o *Concordo* só liga com a caixa marcada;
+  - o portão `usePortaoDoConsentimento` no `CartaoDaNoite` (app) e em `Coletar` (navegador);
+  - 10 testes novos.
+- **Controles positivos fora do banco:**
+  - o portão sabotado para rodar sempre derruba 4 testes da tela;
+  - a trava do backend desligada derruba os 4 testes de `403`.
+- **Diagnóstico e verificador de migrações:** a 017 ganhou 4 marcas, e a ordem real da produção termina nela.
+
+**Resultado medido** (Windows 11, nesta branch):
+- backend 525 passam;
+- frontend 561 passam em 43 arquivos, com `tsc` limpo;
+- RLS 259 passam (Postgres 17);
+- mutação **50/50**;
+- o verificador de migrações acerta os 17 estados e a ordem real, com a 017.
+
+**Adaptação.**
+- Em `Coletar`, a preparação do dispositivo passou a esperar o consentimento. Sem consentimento, a tela ficava em "Preparando..." sem botão nenhum, porque a preparação pareia e o pareamento recusaria. Entrou um botão *Começar a registrar* que abre a tela.
+- A política (§4) descreve a tela, o registro e a exceção do dispositivo já pareado.
+
+**O que deu errado no caminho.**
+- **Teste do backend:** um teste novo (o do banco fora do ar) caiu porque a fixture automática, que dá o consentimento por padrão aos testes antigos, também o cobria. Faltava a marca `sem_consentimento`.
+- **Edições:** a fixture de módulo do `test_noite_do_app.py` roda antes da automática e precisou do próprio patch. Um script de edição abortou no meio e deixou uma edição por aplicar, que foi refeita à mão.
+- **Controle positivo do backend:** a primeira versão inseriu a sabotagem depois da linha de assinatura, antes da docstring, e quebrou a sintaxe. Foi refeita.
+
+**Risco em aberto.**
+- **Ordem do release (`LGPD-13`):** a 017 precisa ser aplicada **junto** com o release. Sem ela, a rota nova falha e a política descreve uma trava que não existe. Com ela e sem o release, o backend antigo grava pela sessão sem consentimento, o banco recusa, e o app antigo recebe erro.
+- **Quem já tem conta passa pela tela na próxima noite.** Isso inclui o autor e as noites de teste.
+- **Não feito:** o percurso no emulador, prometido no plano. O app aponta para o backend de produção, que não tem a rota nem a 017; fica para depois do release.
+- **Dispositivo de travesseiro já pareado:** continua gravando sem o consentimento, por decisão do autor, declarado na política.
+
+**Procedência.** `web-app/migrations/017_consentimento_destacado.sql`, `web-app/tests/rls/test_rls_consentimento.py`, `web-app/tests/test_consentimento.py`, `frontend/src/components/TelaDeConsentimento.test.tsx`; execuções de 10/11 nesta máquina.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

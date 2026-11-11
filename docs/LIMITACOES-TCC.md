@@ -116,6 +116,16 @@ conforme aumenta a severidade do distúrbio de sono (LI; HALAKI; CHOW, 2025), o 
 uma limitação de particular relevância: a precisão da medida é menor justamente na população
 para a qual a medida seria mais informativa.
 
+**Erro de calibração do sensor, dependente da orientação (medido).** O acelerômetro não lê a
+gravidade igual em todas as posições. Na primeira noite registrada com o aplicativo, num
+celular Moto E7, o aparelho permaneceu 1 h 33 min com a tela voltada para baixo depois de o
+usuário consultá-lo. Nesse trecho, a medida de movimento por época (mediana) foi de 23,1 mg,
+contra 0,5 a 0,95 mg com a tela para cima, sem que houvesse movimento. Nessa noite, o efeito
+sobre a classificação foi pequeno: a proporção de épocas classificadas como sono passou de
+78,2% para 79,6% quando o viés foi subtraído. O efeito depende da duração do trecho afetado
+e do aparelho, e não foi caracterizado além dessa noite (diário de engenharia, 10/11/2026).
+✏️ *Rascunho de 10/11: medição de uma noite, de um aparelho; conferir antes de colar.*
+
 ### X.2 Ausência de estadiamento do sono
 
 O trabalho **não realiza estadiamento do sono** — isto é, não classifica os estágios N1, N2,

@@ -12,6 +12,11 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router";
 
 import { Moldura } from "../components/Blueprint";
+import { TelaDeConsentimento } from "../components/TelaDeConsentimento";
+import { usePerfil } from "../contexts/PerfilContext";
+import { usePortaoDoConsentimento } from "../hooks/usePortaoDoConsentimento";
+import { consentimentoVigente, registrarConsentimento } from "../lib/consentimento";
+import { noiteNativaDisponivel } from "../lib/noiteNativa";
 import { EPOCAS_DISPONIVEIS_S, EPOCA_PADRAO_S, desvio } from "../lib/acelerometro";
 import { ErroApi } from "../lib/api";
 import { prepararDispositivoDoCelular } from "../lib/coleta";
@@ -63,7 +68,20 @@ export function Coletar() {
   const { estado, erro, registros, amostrasNaEpoca, decorridoMs, comecar, parar } =
     useColeta(epoca, dispositivo);
 
+  // LGPD-12: sem o consentimento vigente, o servidor recusa preparar o
+  // dispositivo (403). O preparo espera por ele, e "Começar" abre a tela antes.
+  const { perfil, recarregar } = usePerfil();
+  const vigente = consentimentoVigente(perfil);
+  const portao = usePortaoDoConsentimento({
+    vigente,
+    registrar: async () => {
+      await registrarConsentimento();
+      await recarregar();
+    },
+  });
+
   useEffect(() => {
+    if (!vigente) return;
     let vivo = true;
     prepararDispositivoDoCelular()
       .then((d) => {
@@ -80,7 +98,7 @@ export function Coletar() {
     return () => {
       vivo = false;
     };
-  }, []);
+  }, [vigente]);
 
   const coletando = estado === "coletando";
   const pronto = dispositivo !== null;
@@ -89,6 +107,9 @@ export function Coletar() {
 
   return (
     <div className="space-y-6">
+      {portao.telaAberta && (
+        <TelaDeConsentimento aoConcordar={portao.concordar} aoRecusar={portao.recusar} erro={portao.erro} />
+      )}
       <div>
         <p className="text-xs text-muted-foreground uppercase tracking-wider">
           Registrar movimento
@@ -97,6 +118,25 @@ export function Coletar() {
           Usar este celular como sensor
         </h1>
       </div>
+
+      {/* APP-02: no app Android, a noite inteira e registrada por um servico
+          nativo. No site este cartao nao existe, e o aviso abaixo continua
+          valendo para a coleta pelo navegador. */}
+      {/* APP-02, etapa 4: no app, a noite inteira tem tela própria. */}
+      {noiteNativaDisponivel() && (
+        <Link
+          to="/noite"
+          className="flex items-center justify-between gap-3 rounded-xl border border-primary/40 bg-primary/5 p-4 text-sm"
+        >
+          <span>
+            <span className="font-semibold text-foreground">Registrar a noite inteira</span>
+            <span className="block text-muted-foreground">
+              No app, o registro continua com a tela apagada.
+            </span>
+          </span>
+          <ArrowRight className="w-4 h-4 flex-shrink-0" aria-hidden />
+        </Link>
+      )}
 
       {/* Fixo. Ver a nota no topo do arquivo. Diz primeiro o que FAZER, e
           só depois o porquê — antes começava por "não serve para", que soa
@@ -116,7 +156,17 @@ export function Coletar() {
 
       <Moldura>
         {/* --- o caminho principal: um botão, um estado, uma saída --- */}
-        {erroDePreparo ? (
+        {!vigente ? (
+          // LGPD-12: antes do consentimento não há preparo (o servidor recusaria);
+          // o botão abre a tela, e depois dela o aparelho se prepara.
+          <button
+            onClick={() => portao.pedir(() => undefined)}
+            className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 font-semibold text-primary-foreground transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0"
+          >
+            <Play className="w-4 h-4" />
+            Começar a registrar
+          </button>
+        ) : erroDePreparo ? (
           <p className="text-sm text-destructive" role="alert">
             {erroDePreparo}
           </p>
@@ -148,7 +198,7 @@ export function Coletar() {
         ) : (
           <div className="space-y-4">
             <button
-              onClick={() => void comecar()}
+              onClick={() => portao.pedir(() => comecar())}
               className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 font-semibold text-primary-foreground transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0"
             >
               <Play className="w-4 h-4" />

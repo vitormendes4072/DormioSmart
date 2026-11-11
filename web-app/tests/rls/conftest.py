@@ -80,6 +80,26 @@ MIGRACOES_APLICADAS = (
     # `test_rls_idade_maioridade.py` confere a restrição, a trava e a consulta
     # agregada (`CONSULTA-publico-por-faixa.sql`).
     "012_idade_minima_18.sql",
+    # A 013 (LGPD-02, 05/11) extrai os deletes do titular para
+    # `_eliminar_titular` e cria o expurgo por inatividade de 12 meses.
+    # `test_rls_retencao.py` confere quem sai, quem fica e quem não executa;
+    # `test_rls_eliminacao.py`, que a exclusão pelo titular seguiu igual.
+    "013_retencao_por_inatividade.sql",
+    # A 014 (DATA-10, 09/11) recria as duas funções de gravação devolvendo
+    # `uuid`, o tipo de `sleep_data.id` na produção. Sem ela, com o
+    # `esquema_base.sql` igual à produção, 17 testes reprovam com o mesmo
+    # `invalid input syntax for type bigint` que travava a ingestão real.
+    "014_id_da_leitura_uuid.sql",
+    # DATA-12 (09/11): a chave de `sleep_data.user_id` ganha a cascata que a
+    # 001 declara e a produção não tinha. Sem ela, `test_rls_cascata.py` cai.
+    "015_cascata_das_leituras.sql",
+    # SEC-18 (10/11): a validacao da leitura e do pareamento dentro do banco.
+    # Os estados dos dados de teste passaram de "Dormindo"/"Orfa" a "Repouso",
+    # porque a 016 recusa estado fora de ("Repouso", "Movimento").
+    "016_validacao_no_banco.sql",
+    # LGPD-12 (10/11): o consentimento destacado. A Ana e o Bruno do cenario
+    # consentem (gravado pelo dono do banco); a Carol, sem perfil, nao.
+    "017_consentimento_destacado.sql",
 )
 
 VARIAVEL = "DORMIO_RLS_DATABASE_URL"
@@ -251,6 +271,16 @@ def cenario(_conexao_dona, esquema):
         # `migrations/DIAGNOSTICO-perfil-nao-criado.sql`.
         cursor.execute("delete from public.profiles where id = %s", (CAROL,))
 
+        # LGPD-12 (017): a Ana e o Bruno consentiram, como quem ja usa o app.
+        # Sem isso, a gravacao pela sessao e o pareamento recusam -- e os
+        # testes de isolamento passariam a testar o consentimento, nao o RLS.
+        cursor.execute(
+            "update public.profiles set consentimento_saude_em = now(), "
+            "consentimento_saude_versao = public.versao_do_consentimento() "
+            "where id in (%s, %s)",
+            (ANA, BRUNO),
+        )
+
         # O trigger `on_auth_user_created` da 001 deve ter criado os profiles.
         cursor.execute(
             """
@@ -280,7 +310,7 @@ def cenario(_conexao_dona, esquema):
                 """
                 insert into public.sleep_data
                     (user_id, device_id, movimento_total, temp, status)
-                values (%s, %s, %s, 31.0, 'Dormindo')
+                values (%s, %s, %s, 31.0, 'Repouso')
                 returning id
                 """,
                 (usuario, device, movimento),
@@ -292,7 +322,7 @@ def cenario(_conexao_dona, esquema):
         cursor.execute(
             """
             insert into public.sleep_data (movimento_total, temp, status)
-            values (42.0, 30.0, 'Orfa') returning id
+            values (42.0, 30.0, 'Repouso') returning id
             """
         )
         linhas["orfa"] = cursor.fetchone()[0]

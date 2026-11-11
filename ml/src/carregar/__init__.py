@@ -19,14 +19,14 @@ from collections.abc import Iterable
 import numpy as np
 
 from ..configuracao import Config, carregar_config
-from ..epocas import empilhar_contexto, fatiar_epocas
+from ..epocas import empilhar_contexto, fatiar_epocas, segmentos_epocas
 from ..features import NOMES_FEATURES, features_de_epoca
 from ..sinal import reamostrar
 from .base import ConjuntoEpocas, Gravacao
 
 __all__ = ["carregar", "processar_gravacoes", "DATASETS", "POSICOES_WEARANIZE"]
 
-DATASETS = ("newcastle", "sintetico", "walch", "wearanize")
+DATASETS = ("newcastle", "sintetico", "walch", "wearanize", "dreamt")
 
 #: Posições de sensor do Wearanize+. Só este dataset aceita `posicao=`.
 POSICOES_WEARANIZE = ("cabeca", "pulso", "coxa")
@@ -41,7 +41,7 @@ def processar_gravacoes(gravacoes: Iterable[Gravacao], cfg: Config) -> ConjuntoE
     ARMADILHA 4 em `src/carregar/newcastle.py`). Por isso `n_gravacoes` é
     contado no laço, não com `len()`.
     """
-    Xs, ys, ids = [], [], []
+    Xs, ys, ids, segmentos = [], [], [], []
     descartadas = 0
     n_gravacoes = 0
 
@@ -72,7 +72,10 @@ def processar_gravacoes(gravacoes: Iterable[Gravacao], cfg: Config) -> ConjuntoE
         if X.shape[0] == 0:
             continue
 
-        X = empilhar_contexto(X, cfg.contexto_epocas)
+        seg = segmentos_epocas(np.repeat(gr.id_sujeito, len(y)),
+                              np.repeat(n_gravacoes, len(y)), idx[ok])
+        X = empilhar_contexto(X, cfg.contexto_epocas, segmentos=seg)
+        segmentos.append(np.char.add(f'{n_gravacoes}:', seg.astype(str)))
         Xs.append(X)
         ys.append(y)
         ids.append(np.full(X.shape[0], gr.id_sujeito, dtype=object))
@@ -95,6 +98,7 @@ def processar_gravacoes(gravacoes: Iterable[Gravacao], cfg: Config) -> ConjuntoE
             "epocas_descartadas_sem_cobertura": descartadas,
             "hash_config": cfg.hash,
         },
+        segmentos=np.concatenate(segmentos),
     )
 
 
@@ -133,6 +137,19 @@ def carregar(nome: str, cfg: Config | None = None, **opcoes) -> ConjuntoEpocas:
     """
     cfg = cfg or carregar_config()
     nome = nome.lower().strip()
+
+    if nome == "dreamt":
+        if set(opcoes) != {"pasta"} or opcoes["pasta"] is None:
+            raise ValueError("carregar('dreamt') exige pasta explícita")
+        from .dreamt import carregar_features_dreamt
+        dados, perdas, _ = carregar_features_dreamt(opcoes["pasta"], cfg)
+        seg = segmentos_epocas(dados["id"], dados["gravacao"], dados["indice_epoca"])
+        X = empilhar_contexto(dados["X"], cfg.contexto_epocas, segmentos=seg)
+        nomes = tuple(n + (f"__{d:+d}" if d else "")
+                      for d in range(-cfg.contexto_epocas, cfg.contexto_epocas + 1)
+                      for n in NOMES_FEATURES)
+        return ConjuntoEpocas(X, dados["y"], dados["id"], nomes,
+                              dict(perdas, dataset=nome, hash_config=cfg.hash), seg)
 
     if nome == "newcastle":
         if opcoes:

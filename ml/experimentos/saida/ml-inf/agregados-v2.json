@@ -1,0 +1,1123 @@
+{
+  "modelo": "ml-inf-cabeca-v2",
+  "commit": "367cd962062a583b7b16c5f70a31142aad6a5bed",
+  "hash_config": "aec203907e6f",
+  "seed": 20260910,
+  "sha256_manifesto_dreamt": "bf3f4d71fa9959c30d48598278013df0d6db8afa05bad770411e28f101780c3a",
+  "resultados": {
+    "wearanize/cabeca": {
+      "n_epocas": 87795,
+      "n_participantes": 92,
+      "modelo": {
+        "acuracia": {
+          "media": 0.8718108846424427,
+          "desvio": 0.05323308620146599,
+          "ic95": [
+            0.8601678149917773,
+            0.8825848968079789
+          ],
+          "n_valido": 92,
+          "n_total": 92
+        },
+        "especificidade": {
+          "media": 0.8192955453429943,
+          "desvio": 0.15938638731078966,
+          "ic95": [
+            0.7856521860854967,
+            0.851605235027361
+          ],
+          "n_valido": 92,
+          "n_total": 92
+        },
+        "kappa": {
+          "media": 0.4568709617685555,
+          "desvio": 0.19459252563906826,
+          "ic95": [
+            0.4161121465995158,
+            0.4968940950393848
+          ],
+          "n_valido": 92,
+          "n_total": 92
+        },
+        "f1_sono": {
+          "media": 0.9242382756591467,
+          "desvio": 0.034477482806733475,
+          "ic95": [
+            0.9168504989462473,
+            0.9308079302414812
+          ],
+          "n_valido": 92,
+          "n_total": 92
+        },
+        "f1_vigilia": {
+          "media": 0.5143395999997435,
+          "desvio": 0.19237941638935072,
+          "ic95": [
+            0.47513741813073085,
+            0.553461895430336
+          ],
+          "n_valido": 92,
+          "n_total": 92
+        }
+      },
+      "sempre_sono": {
+        "acuracia": {
+          "media": 0.8954502688560396,
+          "desvio": 0.08681502159523524,
+          "ic95": [
+            0.8766405257844115,
+            0.911706226749744
+          ],
+          "n_valido": 92,
+          "n_total": 92
+        },
+        "especificidade": {
+          "media": 0.0,
+          "desvio": 0.0,
+          "ic95": [
+            0.0,
+            0.0
+          ],
+          "n_valido": 92,
+          "n_total": 92
+        },
+        "kappa": {
+          "media": 0.0,
+          "desvio": 0.0,
+          "ic95": [
+            0.0,
+            0.0
+          ],
+          "n_valido": 92,
+          "n_total": 92
+        },
+        "f1_sono": {
+          "media": 0.9424117586221119,
+          "desvio": 0.053782342119980335,
+          "ic95": [
+            0.930715041394704,
+            0.9526749091640366
+          ],
+          "n_valido": 92,
+          "n_total": 92
+        },
+        "f1_vigilia": {
+          "media": 0.0,
+          "desvio": 0.0,
+          "ic95": [
+            0.0,
+            0.0
+          ],
+          "n_valido": 92,
+          "n_total": 92
+        }
+      },
+      "delta_pareado": {
+        "acuracia": {
+          "n_total": 92,
+          "n_pares": 92,
+          "n_invalidos_antes": 0,
+          "n_invalidos_depois": 0,
+          "media": -0.023639384213597067,
+          "desvio": 0.09891682596711401,
+          "minimo": -0.21694480102695768,
+          "maximo": 0.3385826771653543,
+          "max_abs": 0.3385826771653543,
+          "ic95": [
+            -0.043250132386839814,
+            -0.002662170056404734
+          ]
+        },
+        "especificidade": {
+          "n_total": 92,
+          "n_pares": 92,
+          "n_invalidos_antes": 0,
+          "n_invalidos_depois": 0,
+          "media": 0.8192955453429943,
+          "desvio": 0.15938638731078966,
+          "minimo": 0.3247422680412371,
+          "maximo": 1.0,
+          "max_abs": 1.0,
+          "ic95": [
+            0.7851406089722042,
+            0.8515213780614641
+          ]
+        },
+        "kappa": {
+          "n_total": 92,
+          "n_pares": 92,
+          "n_invalidos_antes": 0,
+          "n_invalidos_depois": 0,
+          "media": 0.4568709617685555,
+          "desvio": 0.19459252563906826,
+          "minimo": 0.07802117150772578,
+          "maximo": 0.8623558099718105,
+          "max_abs": 0.8623558099718105,
+          "ic95": [
+            0.4152593812886254,
+            0.49757541710418435
+          ]
+        },
+        "f1_sono": {
+          "n_total": 92,
+          "n_pares": 92,
+          "n_invalidos_antes": 0,
+          "n_invalidos_depois": 0,
+          "media": -0.018173482962965264,
+          "desvio": 0.05565122202383952,
+          "minimo": -0.1252545476324931,
+          "maximo": 0.19598404613770892,
+          "max_abs": 0.19598404613770892,
+          "ic95": [
+            -0.029163980579696543,
+            -0.00662334838201401
+          ]
+        },
+        "f1_vigilia": {
+          "n_total": 92,
+          "n_pares": 92,
+          "n_invalidos_antes": 0,
+          "n_invalidos_depois": 0,
+          "media": 0.5143395999997435,
+          "desvio": 0.19237941638935072,
+          "minimo": 0.10050251256281408,
+          "maximo": 0.9007874015748032,
+          "max_abs": 0.9007874015748032,
+          "ic95": [
+            0.47387987966400574,
+            0.5551156207848679
+          ]
+        }
+      },
+      "confusoes": {
+        "modelo": {
+          "vp": 69578,
+          "vn": 6956,
+          "fp": 2229,
+          "fn": 9032,
+          "n": 87795
+        },
+        "sempre_sono": {
+          "vp": 78610,
+          "vn": 0,
+          "fp": 9185,
+          "fn": 0,
+          "n": 87795
+        }
+      },
+      "cobertura": {
+        "n_gravacoes": 92,
+        "minimo_observado": 555,
+        "abaixo_do_piso": 0
+      },
+      "reproducao": {}
+    },
+    "newcastle": {
+      "n_epocas": 30440,
+      "n_participantes": 27,
+      "modelo": {
+        "acuracia": {
+          "media": 0.7311575538696542,
+          "desvio": 0.1585346052872892,
+          "ic95": [
+            0.6639876654529139,
+            0.7854540758583546
+          ],
+          "n_valido": 27,
+          "n_total": 27
+        },
+        "especificidade": {
+          "media": 0.42591135586629164,
+          "desvio": 0.20066286397505137,
+          "ic95": [
+            0.3594299612627748,
+            0.5019369063507345
+          ],
+          "n_valido": 27,
+          "n_total": 27
+        },
+        "kappa": {
+          "media": 0.29530984191938486,
+          "desvio": 0.22406673851647216,
+          "ic95": [
+            0.21307015800522025,
+            0.3808897840325419
+          ],
+          "n_valido": 27,
+          "n_total": 27
+        },
+        "f1_sono": {
+          "media": 0.7994304177250333,
+          "desvio": 0.16831047513493738,
+          "ic95": [
+            0.7323374723741868,
+            0.8574938702072676
+          ],
+          "n_valido": 27,
+          "n_total": 27
+        },
+        "f1_vigilia": {
+          "media": 0.4479668344934352,
+          "desvio": 0.16627738526704144,
+          "ic95": [
+            0.3871575085446824,
+            0.5105205578949935
+          ],
+          "n_valido": 27,
+          "n_total": 27
+        }
+      },
+      "sempre_sono": {
+        "acuracia": {
+          "media": 0.7033992045893819,
+          "desvio": 0.21053811809671102,
+          "ic95": [
+            0.6164874083283918,
+            0.7756570159781015
+          ],
+          "n_valido": 27,
+          "n_total": 27
+        },
+        "especificidade": {
+          "media": 0.0,
+          "desvio": 0.0,
+          "ic95": [
+            0.0,
+            0.0
+          ],
+          "n_valido": 27,
+          "n_total": 27
+        },
+        "kappa": {
+          "media": 0.0,
+          "desvio": 0.0,
+          "ic95": [
+            0.0,
+            0.0
+          ],
+          "n_valido": 27,
+          "n_total": 27
+        },
+        "f1_sono": {
+          "media": 0.8046849465588203,
+          "desvio": 0.17993653561997416,
+          "ic95": [
+            0.7331642575281586,
+            0.8644014679259288
+          ],
+          "n_valido": 27,
+          "n_total": 27
+        },
+        "f1_vigilia": {
+          "media": 0.0,
+          "desvio": 0.0,
+          "ic95": [
+            0.0,
+            0.0
+          ],
+          "n_valido": 27,
+          "n_total": 27
+        }
+      },
+      "delta_pareado": {
+        "acuracia": {
+          "n_total": 27,
+          "n_pares": 27,
+          "n_invalidos_antes": 0,
+          "n_invalidos_depois": 0,
+          "media": 0.027758349280272324,
+          "desvio": 0.10861329692906643,
+          "minimo": -0.17943925233644864,
+          "maximo": 0.27611940298507465,
+          "max_abs": 0.27611940298507465,
+          "ic95": [
+            -0.012162695573073269,
+            0.07038786498496283
+          ]
+        },
+        "especificidade": {
+          "n_total": 27,
+          "n_pares": 27,
+          "n_invalidos_antes": 0,
+          "n_invalidos_depois": 0,
+          "media": 0.42591135586629164,
+          "desvio": 0.20066286397505137,
+          "minimo": 0.16296296296296298,
+          "maximo": 0.8970588235294118,
+          "max_abs": 0.8970588235294118,
+          "ic95": [
+            0.35489907180597874,
+            0.4995939083379994
+          ]
+        },
+        "kappa": {
+          "n_total": 27,
+          "n_pares": 27,
+          "n_invalidos_antes": 0,
+          "n_invalidos_depois": 0,
+          "media": 0.29530984191938486,
+          "desvio": 0.22406673851647216,
+          "minimo": -0.03983482254102738,
+          "maximo": 0.7118290504687032,
+          "max_abs": 0.7118290504687032,
+          "ic95": [
+            0.21789417923486137,
+            0.37531321934777023
+          ]
+        },
+        "f1_sono": {
+          "n_total": 27,
+          "n_pares": 27,
+          "n_invalidos_antes": 0,
+          "n_invalidos_depois": 0,
+          "media": -0.005254528833787044,
+          "desvio": 0.05815658602326132,
+          "minimo": -0.11690316773947174,
+          "maximo": 0.08560690027170687,
+          "max_abs": 0.11690316773947174,
+          "ic95": [
+            -0.02677319719216701,
+            0.01679638114009857
+          ]
+        },
+        "f1_vigilia": {
+          "n_total": 27,
+          "n_pares": 27,
+          "n_invalidos_antes": 0,
+          "n_invalidos_depois": 0,
+          "media": 0.4479668344934352,
+          "desvio": 0.16627738526704144,
+          "minimo": 0.17040358744394618,
+          "maximo": 0.7688442211055276,
+          "max_abs": 0.7688442211055276,
+          "ic95": [
+            0.38885255263744817,
+            0.5086438743796672
+          ]
+        }
+      },
+      "confusoes": {
+        "modelo": {
+          "vp": 19012,
+          "vn": 3290,
+          "fp": 5880,
+          "fn": 2258,
+          "n": 30440
+        },
+        "sempre_sono": {
+          "vp": 21270,
+          "vn": 0,
+          "fp": 9170,
+          "fn": 0,
+          "n": 30440
+        }
+      },
+      "cobertura": {
+        "n_gravacoes": 27,
+        "minimo_observado": 839,
+        "abaixo_do_piso": 0
+      },
+      "reproducao": {
+        "max_diferenca_probabilidade": 0.0,
+        "kappa_alvo": 0.29530984191938486,
+        "ic95": [
+          0.21307015800522025,
+          0.3808897840325419
+        ],
+        "n_valido": 27,
+        "max_diferenca_por_participante": 0.0
+      }
+    },
+    "walch_principal": {
+      "n_epocas": 23303,
+      "n_participantes": 29,
+      "modelo": {
+        "acuracia": {
+          "media": 0.8721832057699735,
+          "desvio": 0.06735090496409435,
+          "ic95": [
+            0.8461165103617454,
+            0.8951766845723907
+          ],
+          "n_valido": 29,
+          "n_total": 29
+        },
+        "especificidade": {
+          "media": 0.6442528541646005,
+          "desvio": 0.16947781153690045,
+          "ic95": [
+            0.5823210467314953,
+            0.7057113541152463
+          ],
+          "n_valido": 29,
+          "n_total": 29
+        },
+        "kappa": {
+          "media": 0.4082254608203035,
+          "desvio": 0.20044999277975273,
+          "ic95": [
+            0.33619650616814944,
+            0.4823679855750165
+          ],
+          "n_valido": 29,
+          "n_total": 29
+        },
+        "f1_sono": {
+          "media": 0.9256401136663083,
+          "desvio": 0.04492090103096404,
+          "ic95": [
+            0.9076142392880742,
+            0.9407554649975766
+          ],
+          "n_valido": 29,
+          "n_total": 29
+        },
+        "f1_vigilia": {
+          "media": 0.46895370306694234,
+          "desvio": 0.18739364393852503,
+          "ic95": [
+            0.399265906896838,
+            0.5330030806555046
+          ],
+          "n_valido": 29,
+          "n_total": 29
+        }
+      },
+      "sempre_sono": {
+        "acuracia": {
+          "media": 0.9038375220851921,
+          "desvio": 0.06096115714629321,
+          "ic95": [
+            0.8798601810493077,
+            0.9233015547742252
+          ],
+          "n_valido": 29,
+          "n_total": 29
+        },
+        "especificidade": {
+          "media": 0.0,
+          "desvio": 0.0,
+          "ic95": [
+            0.0,
+            0.0
+          ],
+          "n_valido": 29,
+          "n_total": 29
+        },
+        "kappa": {
+          "media": 0.0,
+          "desvio": 0.0,
+          "ic95": [
+            0.0,
+            0.0
+          ],
+          "n_valido": 29,
+          "n_total": 29
+        },
+        "f1_sono": {
+          "media": 0.9483872547311707,
+          "desvio": 0.035750060986389165,
+          "ic95": [
+            0.9349392549002065,
+            0.9598425607810853
+          ],
+          "n_valido": 29,
+          "n_total": 29
+        },
+        "f1_vigilia": {
+          "media": 0.0,
+          "desvio": 0.0,
+          "ic95": [
+            0.0,
+            0.0
+          ],
+          "n_valido": 29,
+          "n_total": 29
+        }
+      },
+      "delta_pareado": {
+        "acuracia": {
+          "n_total": 29,
+          "n_pares": 29,
+          "n_invalidos_antes": 0,
+          "n_invalidos_depois": 0,
+          "media": -0.03165431631521852,
+          "desvio": 0.07557068740144997,
+          "minimo": -0.21503131524008345,
+          "maximo": 0.09112709832134291,
+          "max_abs": 0.21503131524008345,
+          "ic95": [
+            -0.05821260398780772,
+            -0.004548966125570492
+          ]
+        },
+        "especificidade": {
+          "n_total": 29,
+          "n_pares": 29,
+          "n_invalidos_antes": 0,
+          "n_invalidos_depois": 0,
+          "media": 0.6442528541646005,
+          "desvio": 0.16947781153690045,
+          "minimo": 0.3448275862068966,
+          "maximo": 1.0,
+          "max_abs": 1.0,
+          "ic95": [
+            0.584084951289525,
+            0.7025749398195791
+          ]
+        },
+        "kappa": {
+          "n_total": 29,
+          "n_pares": 29,
+          "n_invalidos_antes": 0,
+          "n_invalidos_depois": 0,
+          "media": 0.4082254608203035,
+          "desvio": 0.20044999277975273,
+          "minimo": 0.06607452339688062,
+          "maximo": 0.828192380586151,
+          "max_abs": 0.828192380586151,
+          "ic95": [
+            0.33720927556493985,
+            0.48199106283508464
+          ]
+        },
+        "f1_sono": {
+          "n_total": 29,
+          "n_pares": 29,
+          "n_invalidos_antes": 0,
+          "n_invalidos_depois": 0,
+          "media": -0.022747141064862444,
+          "desvio": 0.043041551194916754,
+          "minimo": -0.1272382374987484,
+          "maximo": 0.04745355248373351,
+          "max_abs": 0.1272382374987484,
+          "ic95": [
+            -0.03769524252932359,
+            -0.007243802151549426
+          ]
+        },
+        "f1_vigilia": {
+          "n_total": 29,
+          "n_pares": 29,
+          "n_invalidos_antes": 0,
+          "n_invalidos_depois": 0,
+          "media": 0.46895370306694234,
+          "desvio": 0.18739364393852503,
+          "minimo": 0.0847457627118644,
+          "maximo": 0.8484848484848485,
+          "max_abs": 0.8484848484848485,
+          "ic95": [
+            0.4023641144303841,
+            0.5365570372792405
+          ]
+        }
+      },
+      "confusoes": {
+        "modelo": {
+          "vp": 19168,
+          "vn": 1200,
+          "fp": 816,
+          "fn": 2119,
+          "n": 23303
+        },
+        "sempre_sono": {
+          "vp": 21287,
+          "vn": 0,
+          "fp": 2016,
+          "fn": 0,
+          "n": 23303
+        }
+      },
+      "cobertura": {
+        "n_gravacoes": 29,
+        "minimo_observado": 118,
+        "abaixo_do_piso": 0
+      },
+      "reproducao": {
+        "max_diferenca_probabilidade": 0.0,
+        "kappa_alvo": 0.4082254608203035,
+        "ic95": [
+          0.33619650616814944,
+          0.4823679855750165
+        ],
+        "n_valido": 29,
+        "max_diferenca_por_participante": 0.0
+      }
+    },
+    "walch_todos": {
+      "n_epocas": 25250,
+      "n_participantes": 31,
+      "modelo": {
+        "acuracia": {
+          "media": 0.8749574249077702,
+          "desvio": 0.06700112222201247,
+          "ic95": [
+            0.8505470593828485,
+            0.896861921169542
+          ],
+          "n_valido": 31,
+          "n_total": 31
+        },
+        "especificidade": {
+          "media": 0.6449631963407384,
+          "desvio": 0.1755235460055611,
+          "ic95": [
+            0.5833324137677108,
+            0.7048492078520462
+          ],
+          "n_valido": 31,
+          "n_total": 31
+        },
+        "kappa": {
+          "media": 0.4123208557790338,
+          "desvio": 0.19885104224299643,
+          "ic95": [
+            0.3439482428784549,
+            0.48461922093839127
+          ],
+          "n_valido": 31,
+          "n_total": 31
+        },
+        "f1_sono": {
+          "media": 0.9274155046814226,
+          "desvio": 0.04445575293669925,
+          "ic95": [
+            0.9108787439559537,
+            0.9418938288334363
+          ],
+          "n_valido": 31,
+          "n_total": 31
+        },
+        "f1_vigilia": {
+          "media": 0.47208679510854296,
+          "desvio": 0.18486254237503943,
+          "ic95": [
+            0.40852844082668854,
+            0.5375568740812295
+          ],
+          "n_valido": 31,
+          "n_total": 31
+        }
+      },
+      "sempre_sono": {
+        "acuracia": {
+          "media": 0.9055653507719523,
+          "desvio": 0.05972307109454853,
+          "ic95": [
+            0.8832559599715311,
+            0.9258065175321608
+          ],
+          "n_valido": 31,
+          "n_total": 31
+        },
+        "especificidade": {
+          "media": 0.0,
+          "desvio": 0.0,
+          "ic95": [
+            0.0,
+            0.0
+          ],
+          "n_valido": 31,
+          "n_total": 31
+        },
+        "kappa": {
+          "media": 0.0,
+          "desvio": 0.0,
+          "ic95": [
+            0.0,
+            0.0
+          ],
+          "n_valido": 31,
+          "n_total": 31
+        },
+        "f1_sono": {
+          "media": 0.9493841566121373,
+          "desvio": 0.034974175246274816,
+          "ic95": [
+            0.9361191136870887,
+            0.9601256099750202
+          ],
+          "n_valido": 31,
+          "n_total": 31
+        },
+        "f1_vigilia": {
+          "media": 0.0,
+          "desvio": 0.0,
+          "ic95": [
+            0.0,
+            0.0
+          ],
+          "n_valido": 31,
+          "n_total": 31
+        }
+      },
+      "delta_pareado": {
+        "acuracia": {
+          "n_total": 31,
+          "n_pares": 31,
+          "n_invalidos_antes": 0,
+          "n_invalidos_depois": 0,
+          "media": -0.030607925864182046,
+          "desvio": 0.0732597518473767,
+          "minimo": -0.21503131524008345,
+          "maximo": 0.09112709832134291,
+          "max_abs": 0.21503131524008345,
+          "ic95": [
+            -0.05765719533631763,
+            -0.006003058760132163
+          ]
+        },
+        "especificidade": {
+          "n_total": 31,
+          "n_pares": 31,
+          "n_invalidos_antes": 0,
+          "n_invalidos_depois": 0,
+          "media": 0.6449631963407384,
+          "desvio": 0.1755235460055611,
+          "minimo": 0.3448275862068966,
+          "maximo": 1.0,
+          "max_abs": 1.0,
+          "ic95": [
+            0.5842220933337717,
+            0.7067046185400481
+          ]
+        },
+        "kappa": {
+          "n_total": 31,
+          "n_pares": 31,
+          "n_invalidos_antes": 0,
+          "n_invalidos_depois": 0,
+          "media": 0.4123208557790338,
+          "desvio": 0.19885104224299643,
+          "minimo": 0.06607452339688062,
+          "maximo": 0.828192380586151,
+          "max_abs": 0.828192380586151,
+          "ic95": [
+            0.34050847241846727,
+            0.48362256547577137
+          ]
+        },
+        "f1_sono": {
+          "n_total": 31,
+          "n_pares": 31,
+          "n_invalidos_antes": 0,
+          "n_invalidos_depois": 0,
+          "media": -0.02196865193071475,
+          "desvio": 0.04178725389234621,
+          "minimo": -0.1272382374987484,
+          "maximo": 0.04745355248373351,
+          "max_abs": 0.1272382374987484,
+          "ic95": [
+            -0.03757051279699319,
+            -0.008019016788449525
+          ]
+        },
+        "f1_vigilia": {
+          "n_total": 31,
+          "n_pares": 31,
+          "n_invalidos_antes": 0,
+          "n_invalidos_depois": 0,
+          "media": 0.47208679510854296,
+          "desvio": 0.18486254237503943,
+          "minimo": 0.0847457627118644,
+          "maximo": 0.8484848484848485,
+          "max_abs": 0.8484848484848485,
+          "ic95": [
+            0.4072205768527014,
+            0.5380834982150849
+          ]
+        }
+      },
+      "confusoes": {
+        "modelo": {
+          "vp": 20875,
+          "vn": 1275,
+          "fp": 876,
+          "fn": 2224,
+          "n": 25250
+        },
+        "sempre_sono": {
+          "vp": 23099,
+          "vn": 0,
+          "fp": 2151,
+          "fn": 0,
+          "n": 25250
+        }
+      },
+      "cobertura": {
+        "n_gravacoes": 31,
+        "minimo_observado": 118,
+        "abaixo_do_piso": 0
+      },
+      "reproducao": {
+        "max_diferenca_probabilidade": 0.0,
+        "kappa_alvo": 0.4123208557790338,
+        "ic95": [
+          0.3439482428784549,
+          0.48461922093839127
+        ],
+        "n_valido": 31,
+        "max_diferenca_por_participante": 0.0
+      }
+    },
+    "dreamt": {
+      "n_epocas": 77738,
+      "n_participantes": 97,
+      "modelo": {
+        "acuracia": {
+          "media": 0.7583780172249289,
+          "desvio": 0.12558070548173123,
+          "ic95": [
+            0.7325758250847022,
+            0.7817254507448759
+          ],
+          "n_valido": 97,
+          "n_total": 97
+        },
+        "especificidade": {
+          "media": 0.5006628158501937,
+          "desvio": 0.1824995721383465,
+          "ic95": [
+            0.464766714009175,
+            0.5360466306923886
+          ],
+          "n_valido": 97,
+          "n_total": 97
+        },
+        "kappa": {
+          "media": 0.3470445121838041,
+          "desvio": 0.1841940095794306,
+          "ic95": [
+            0.31011951521584274,
+            0.3856656724584914
+          ],
+          "n_valido": 97,
+          "n_total": 97
+        },
+        "f1_sono": {
+          "media": 0.830730585817417,
+          "desvio": 0.12093164935134933,
+          "ic95": [
+            0.8053172811112888,
+            0.8539777509770223
+          ],
+          "n_valido": 97,
+          "n_total": 97
+        },
+        "f1_vigilia": {
+          "media": 0.47213455236756907,
+          "desvio": 0.16197035699397036,
+          "ic95": [
+            0.4392227421033544,
+            0.502476569014711
+          ],
+          "n_valido": 97,
+          "n_total": 97
+        }
+      },
+      "sempre_sono": {
+        "acuracia": {
+          "media": 0.7452487793288223,
+          "desvio": 0.17516854500948442,
+          "ic95": [
+            0.7106114291313164,
+            0.7774962764305423
+          ],
+          "n_valido": 97,
+          "n_total": 97
+        },
+        "especificidade": {
+          "media": 0.0,
+          "desvio": 0.0,
+          "ic95": [
+            0.0,
+            0.0
+          ],
+          "n_valido": 97,
+          "n_total": 97
+        },
+        "kappa": {
+          "media": 0.0,
+          "desvio": 0.0,
+          "ic95": [
+            0.0,
+            0.0
+          ],
+          "n_valido": 97,
+          "n_total": 97
+        },
+        "f1_sono": {
+          "media": 0.8404016697022753,
+          "desvio": 0.13912189421471724,
+          "ic95": [
+            0.8113091777389598,
+            0.8660919354347545
+          ],
+          "n_valido": 97,
+          "n_total": 97
+        },
+        "f1_vigilia": {
+          "media": 0.0,
+          "desvio": 0.0,
+          "ic95": [
+            0.0,
+            0.0
+          ],
+          "n_valido": 97,
+          "n_total": 97
+        }
+      },
+      "delta_pareado": {
+        "acuracia": {
+          "n_total": 97,
+          "n_pares": 97,
+          "n_invalidos_antes": 0,
+          "n_invalidos_depois": 0,
+          "media": 0.013129237896106701,
+          "desvio": 0.12952326413784163,
+          "minimo": -0.3488943488943489,
+          "maximo": 0.25765306122448983,
+          "max_abs": 0.3488943488943489,
+          "ic95": [
+            -0.012299820747369666,
+            0.037397363343796654
+          ]
+        },
+        "especificidade": {
+          "n_total": 97,
+          "n_pares": 97,
+          "n_invalidos_antes": 0,
+          "n_invalidos_depois": 0,
+          "media": 0.5006628158501937,
+          "desvio": 0.1824995721383465,
+          "minimo": 0.040229885057471264,
+          "maximo": 0.9583333333333334,
+          "max_abs": 0.9583333333333334,
+          "ic95": [
+            0.4648839789539286,
+            0.537911940740234
+          ]
+        },
+        "kappa": {
+          "n_total": 97,
+          "n_pares": 97,
+          "n_invalidos_antes": 0,
+          "n_invalidos_depois": 0,
+          "media": 0.3470445121838041,
+          "desvio": 0.1841940095794306,
+          "minimo": -0.03717694536666627,
+          "maximo": 0.7460023461134779,
+          "max_abs": 0.7460023461134779,
+          "ic95": [
+            0.3121076251839267,
+            0.38246497716710065
+          ]
+        },
+        "f1_sono": {
+          "n_total": 97,
+          "n_pares": 97,
+          "n_invalidos_antes": 0,
+          "n_invalidos_depois": 0,
+          "media": -0.009671083884858154,
+          "desvio": 0.07823284543588158,
+          "minimo": -0.2734796006936915,
+          "maximo": 0.1352173838710229,
+          "max_abs": 0.2734796006936915,
+          "ic95": [
+            -0.025506934383354208,
+            0.004722865515930496
+          ]
+        },
+        "f1_vigilia": {
+          "n_total": 97,
+          "n_pares": 97,
+          "n_invalidos_antes": 0,
+          "n_invalidos_depois": 0,
+          "media": 0.47213455236756907,
+          "desvio": 0.16197035699397036,
+          "minimo": 0.0299625468164794,
+          "maximo": 0.807909604519774,
+          "max_abs": 0.807909604519774,
+          "ic95": [
+            0.44102950347565867,
+            0.5032106796135775
+          ]
+        }
+      },
+      "confusoes": {
+        "modelo": {
+          "vp": 50660,
+          "vn": 8327,
+          "fp": 11282,
+          "fn": 7469,
+          "n": 77738
+        },
+        "sempre_sono": {
+          "vp": 58129,
+          "vn": 0,
+          "fp": 19609,
+          "fn": 0,
+          "n": 77738
+        }
+      },
+      "cobertura": {
+        "n_gravacoes": 97,
+        "minimo_observado": 711,
+        "abaixo_do_piso": 0
+      },
+      "reproducao": {
+        "max_diferenca_probabilidade": 0.0,
+        "kappa_alvo": 0.3470445121838041,
+        "ic95": [
+          0.31011951521584274,
+          0.3856656724584914
+        ],
+        "n_valido": 97,
+        "max_diferenca_por_participante": 0.0
+      }
+    }
+  },
+  "paridade_angular": {
+    "continua": {
+      "max_inclinacao_graus": 4.263256414560601e-14,
+      "max_delta_comparavel_graus": 0.0,
+      "max_delta_bordas_graus": 0.0,
+      "n_segmentos": 1
+    },
+    "lacuna": {
+      "max_inclinacao_graus": 3.552713678800501e-14,
+      "max_delta_comparavel_graus": 0.0,
+      "max_delta_bordas_graus": 0.014110132843074837,
+      "n_segmentos": 2
+    }
+  },
+  "pools": [
+    {
+      "user_api": "blas",
+      "internal_api": "openblas",
+      "num_threads": 1,
+      "version": "0.3.29"
+    },
+    {
+      "user_api": "blas",
+      "internal_api": "openblas",
+      "num_threads": 1,
+      "version": "0.3.28"
+    },
+    {
+      "user_api": "openmp",
+      "internal_api": "openmp",
+      "num_threads": 1,
+      "version": null
+    }
+  ],
+  "python": "3.11.9",
+  "sistema": "Windows",
+  "bibliotecas": {
+    "numpy": "2.2.6",
+    "pandas": "2.3.3",
+    "scipy": "1.15.3",
+    "scikit-learn": "1.7.2",
+    "threadpoolctl": "3.6.0"
+  }
+}

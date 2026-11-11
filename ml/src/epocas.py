@@ -14,7 +14,8 @@ from __future__ import annotations
 
 import numpy as np
 
-__all__ = ["fatiar_epocas", "empilhar_contexto"]
+__all__ = ["fatiar_epocas", "empilhar_contexto", "segmentos_epocas",
+           "fatias_segmentos", "aplicar_por_segmento"]
 
 
 def fatiar_epocas(
@@ -59,7 +60,43 @@ def fatiar_epocas(
     return np.stack(blocos), np.asarray(indices, dtype=int)
 
 
-def empilhar_contexto(X: np.ndarray, n_vizinhas: int) -> np.ndarray:
+def segmentos_epocas(ids, gravacoes, indices) -> np.ndarray:
+    """Identidade de sequências contíguas; não une blocos repetidos de um ID."""
+    ids, gravacoes, indices = map(np.asarray, (ids, gravacoes, indices))
+    if any(v.ndim != 1 for v in (ids, gravacoes, indices)) or not (
+        len(ids) == len(gravacoes) == len(indices)
+    ):
+        raise ValueError("identidade temporal com comprimentos/dimensões incompatíveis")
+    if not np.issubdtype(indices.dtype, np.integer) or np.any(indices < 0):
+        raise ValueError("índice original de época deve ser inteiro não negativo")
+    if not len(ids):
+        return np.empty(0, dtype=int)
+    quebra = ((ids[1:] != ids[:-1]) | (gravacoes[1:] != gravacoes[:-1]) |
+              (np.diff(indices) != 1))
+    return np.r_[0, np.cumsum(quebra)]
+
+
+def fatias_segmentos(segmentos):
+    segmentos = np.asarray(segmentos)
+    if segmentos.ndim != 1:
+        raise ValueError("segmentos deve ser um vetor")
+    inicio = 0
+    for fim in np.r_[np.flatnonzero(segmentos[1:] != segmentos[:-1]) + 1, len(segmentos)]:
+        if fim > inicio:
+            yield slice(inicio, int(fim))
+        inicio = int(fim)
+
+
+def aplicar_por_segmento(X, segmentos, funcao):
+    """Aplica uma operação temporal sem unir blocos separados do mesmo ID."""
+    X = np.asarray(X)
+    if len(X) != len(segmentos):
+        raise ValueError("dados e segmentos com comprimentos diferentes")
+    partes = [funcao(X[s]) for s in fatias_segmentos(segmentos)]
+    return np.concatenate(partes) if partes else X.copy()
+
+
+def empilhar_contexto(X: np.ndarray, n_vizinhas: int, *, segmentos=None) -> np.ndarray:
     """Concatena as features das ±n épocas vizinhas a cada época.
 
     A literatura de actigrafia é unânime em que a vizinhança importa: uma época
@@ -71,8 +108,16 @@ def empilhar_contexto(X: np.ndarray, n_vizinhas: int) -> np.ndarray:
     épocas de dormir e acordar, que são justamente as que interessam.
 
     (n, f) -> (n, f * (2*n_vizinhas + 1))
+    Sem ``segmentos``, X deve ser uma única sequência contínua. Matrizes de
+    coorte precisam informar os segmentos preservados desde o sinal bruto.
     """
     X = np.asarray(X, dtype=float)
+    if segmentos is not None:
+        if len(segmentos) != len(X):
+            raise ValueError("X e segmentos com comprimentos diferentes")
+        if not len(X):
+            return np.empty((0, X.shape[1] * (2 * max(0, n_vizinhas) + 1)))
+        return aplicar_por_segmento(X, segmentos, lambda v: empilhar_contexto(v, n_vizinhas))
     if n_vizinhas <= 0:
         return X.copy()
     n = X.shape[0]

@@ -459,12 +459,29 @@ busca por bases públicas com **aceleração bruta + rótulo de PSG por época**
 
 | Base | Situação |
 |---|---|
-| **DREAMT** (Duke, PhysioNet; 100 pacientes, Empatica E4, PSG por técnicos) | **a candidata** — acesso restrito: conta no PhysioNet e termo assinado pelo autor (`ML-13`) |
+| **DREAMT** (Duke, PhysioNet; 100 pacientes, Empatica E4, PSG por técnicos) | **05/11, ML-13:** dados preparados fora do checkout, sem junction; 103 SHA-256 conferidos. Carregador e avaliação ainda pendentes de aprovação. Acesso restrito, sem redistribuição. |
 | BIDSleep (PhysioNet; 47 saudáveis, 253 noites, Apple Watch) | aberta, mas o rótulo é EEG de faixa (Dreem 2), não PSG — só análise secundária |
 | MESA, HCHS, MrOS, SOF (NSRR) | **não servem**: o actígrafo só gravou contagens de 30 s, sem aceleração bruta |
 | Pennsylvania (NIMH Data Archive) | acordo institucional com o NIH — inviável num TCC |
 | Leicester (Plekhanova 2023), 453 adultos (preprint 2025), SOMNIA (peito) | sem dado público confirmado |
 | Base com sensor **na cama, colchão ou travesseiro** + PSG | **nenhuma encontrada** |
+
+**DREAMT — preparação executada em 05/11 (`ML-13`).** 100 CSVs de `data_64Hz/`
+e os metadados foram extraídos do ZIP local; 103/103 hashes oficiais conferiram,
+sem ausências ou diferenças. O conferidor foi corrigido e tem 13 testes artificiais;
+8 falhavam antes da correção. A suíte completa de ML passou 190 testes no Windows,
+Python 3.11.9. Não houve carregamento de features nem avaliação da DREAMT.
+
+O caminho bruto é externo ao checkout e recebido por `--pasta` no conferidor:
+
+```bash
+python -m ferramentas.baixar_dreamt --pasta CAMINHO_DREAMT
+```
+
+Não criar junctions. No próximo passo, carregador e ML-04 receberão
+`--dados-brutos`, conforme o plano ainda sujeito à aprovação. Relatório em
+[ML-13-PREPARACAO-DREAMT.md](../docs/ML-13-PREPARACAO-DREAMT.md); plano e previsão
+registrada em [PLANO-ML-13-COORTE-DREAMT.md](../docs/PLANO-ML-13-COORTE-DREAMT.md).
 
 **Borazio et al. (2014)** — 42 pacientes, registrador de pulso a 100 Hz, PSG,
 aberta (uso científico com crédito) — **foi baixada, inspecionada e descartada.**
@@ -617,3 +634,32 @@ Tudo abaixo **exige execução**, e nada foi executado ainda.
 6. **`ML-03`** — a matriz 3×3 de transferência entre posições, com o teto
    inter-avaliador ao lado. É a contribuição original do trabalho, e agora não
    depende de DUA nenhum.
+
+
+## ML-17 — contexto por participante e segmento (05/11/2026)
+
+A correção impede que a janela atravesse participantes, gravações ou lacunas da
+sequência de épocas retidas. Os caches novos têm contrato temporal versionado;
+o caminho do dado é explícito e não depende de junction. Firmware e testes dos
+vetores dourados permanecem intactos.
+
+Foram refeitas 69 células em cada versão: validação Newcastle/Walch, comparação
+dos punhos e baseline/HMM/±11 no LOSO completo dos três braços. As entradas das
+duas versões são idênticas; os caches históricos Newcastle têm uma diferença
+angular quantificada, por isso não se declara reprodução bit a bit dos históricos.
+
+O [relatório antes/depois](../docs/RELATORIO-ML-17-CONTEXTO.md) apresenta médias,
+ICs, diferenças por participante e máximos. As demais tabelas deste README
+registram suas rodadas históricas; a ML-17 não refez ablação inteira, Random
+Forest, seleção aninhada ou quantização. O [adendo às previsões DREAMT](../docs/ADENDO-ML-13-APOS-ML-17.md)
+preserva P1–P3 e registra os sinais secundários que mudaram, ainda inconclusivos.
+A ML-13 continua aberta; nenhuma avaliação DREAMT foi feita.
+
+Agregados numéricos, manifesto e hashes (sem notas/índices individuais ou
+predições/rótulos) em
+[experimentos/saida/ml17/](experimentos/saida/ml17/). Protocolo e comandos em
+[ML-17-PROTOCOLO-RODADAS.md](../docs/ML-17-PROTOCOLO-RODADAS.md).
+
+Em 06/11, publicação agregada aprovada. A auditoria das médias/desvios/máximos
+usando as notas externas é `ferramentas/auditar_resumos_ml17.py`; seus comandos e
+limites estão no relatório. O CI verifica contrato/hashes e fontes, sem os dados.

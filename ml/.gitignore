@@ -37,3 +37,25 @@ experimentos/saida/ml16/*
 !experimentos/saida/ml16/resultados/
 experimentos/saida/ml16/resultados/*
 !experimentos/saida/ml16/resultados/*.json
+
+# ML-17: apenas resumos e procedência. Predições/rótulos/caches ficam em dados/.
+!experimentos/saida/ml17/
+experimentos/saida/ml17/*
+!experimentos/saida/ml17/comparacao.json
+!experimentos/saida/ml17/f1_complementar.json
+!experimentos/saida/ml17/efeitos.json
+!experimentos/saida/ml17/censo.json
+!experimentos/saida/ml17/lados_intra_sujeito.json
+!experimentos/saida/ml17/verificacao_predicoes.json
+!experimentos/saida/ml17/manifesto.json
+
+# ML-13: a auditoria ML-14 inventaria a raiz das saídas históricas.
+!experimentos/saida/ml13/
+experimentos/saida/ml13/*
+!experimentos/saida/ml13/agregados.json
+
+# ML-INF: só a avaliação agregada. Predições e IDs ficam na saída local.
+!experimentos/saida/ml-inf/
+experimentos/saida/ml-inf/*
+!experimentos/saida/ml-inf/agregados.json
+!experimentos/saida/ml-inf/agregados-v2.json

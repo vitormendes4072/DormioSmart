@@ -34,9 +34,17 @@
 --     reproduzir o GRANT, o teste passaria por falta de permissão e não
 --     provaria nada sobre RLS — o falso-positivo clássico desse tipo de suíte.
 --
---  4. `sleep_data` é criada aqui no estado PRÉ-001 (sem `user_id`, sem
---     `device_id`, com RLS ligado e sem nenhuma policy), porque é assim que
---     a 001 a encontra. Colunas conforme docs/DATA-CONTRACT.md §4.
+--  4. `sleep_data` é criada aqui no estado em que a 001 a encontrou NA
+--     PRODUÇÃO, e não no que a 001 supõe: com RLS ligado, sem policy, sem
+--     `device_id` — e JÁ COM `user_id` (padrão `auth.uid()`, chave estrangeira
+--     SEM cascata), `created_at` anulável e dois índices antigos, todos
+--     criados pelo painel do Supabase antes das migrações. Como a coluna já
+--     existe, o `add column if not exists user_id ... on delete cascade` da
+--     001 é pulado, como foi na produção. Conferido contra a produção em
+--     09/11 (`DATA-12`, `migrations/CONSULTA-estrutura-do-esquema.sql`): até
+--     ali este arquivo criava o id como `bigserial` (`DATA-10`) e sem
+--     `user_id`, e a suíte testava uma cascata que a produção não tinha.
+--     Colunas conforme docs/DATA-CONTRACT.md §4.
 --
 -- O QUE NÃO É REPRODUZIDO
 --
@@ -111,7 +119,23 @@ create table if not exists auth.users (
     id                   uuid primary key default gen_random_uuid(),
     email                text unique,
     raw_user_meta_data   jsonb not null default '{}'::jsonb,
-    created_at           timestamptz not null default now()
+    created_at           timestamptz not null default now(),
+    -- LGPD-02 (05/11): a do Supabase tem; o expurgo por inatividade a le.
+    last_sign_in_at      timestamptz
+);
+
+-- LGPD-09 (10/11): as sessões do Supabase Auth. O expurgo por inatividade lê
+-- a criação, a `updated_at` e a `refreshed_at` (a que a renovação grava): o
+-- `last_sign_in_at` só muda num login, e o app mantém a sessão aberta (medido na produção em 10/11:
+-- em 2 de 6 contas a sessão foi renovada até 1 dia e 16 h depois do último
+-- login). Só as colunas que o projeto usa; a tabela do Supabase tem mais.
+create table if not exists auth.sessions (
+    id          uuid primary key default gen_random_uuid(),
+    user_id     uuid not null references auth.users(id) on delete cascade,
+    created_at  timestamptz default now(),
+    updated_at  timestamptz default now(),
+    -- Como no Supabase: SEM fuso, em UTC. É a que a renovação grava.
+    refreshed_at timestamp
 );
 
 -- ---------------------------------------------------------------------
@@ -148,7 +172,7 @@ $$;
 --    "só funcionava porque o backend usa service_role".
 -- ---------------------------------------------------------------------
 create table if not exists public.sleep_data (
-    id               bigserial primary key,
+    id               uuid primary key default gen_random_uuid(),
     accel_x          double precision,
     accel_y          double precision,
     accel_z          double precision,
@@ -158,8 +182,12 @@ create table if not exists public.sleep_data (
     temp             double precision,
     movimento_total  double precision,
     status           text,
-    created_at       timestamptz not null default now()
+    created_at       timestamptz default now(),
+    -- Do painel, como na produção: padrão auth.uid() e sem `on delete cascade`.
+    user_id          uuid default auth.uid() references auth.users(id)
 );
+create index if not exists idx_sleep_data_created_at on public.sleep_data (created_at desc);
+create index if not exists idx_sleep_data_user       on public.sleep_data (user_id);
 
 alter table public.sleep_data enable row level security;
 

@@ -5,8 +5,10 @@ from datetime import datetime, timezone
 from flask import g, jsonify, request
 from werkzeug.exceptions import HTTPException
 
+import consentimento
 import dispositivos
 import features_noite
+import inferencia
 import lote
 import perfil
 from auth import extrair_bearer, require_auth
@@ -63,7 +65,10 @@ def _resposta_de_falha(e, rota):
 #
 # 2.7.0 (30/10, DATA-07b) e MINOR: `f`/`g`/`fs` validados e gravados, e
 # `GET /api/features`. Payload sem `f` continua sendo o payload correto.
-CONTRATO_DE_DADOS = "2.7.0"
+#
+# 2.8.0 (08/11, ML-INF) e MINOR: `GET /api/inferencia`, rota nova de leitura.
+# Nada da ingestao mudou.
+CONTRATO_DE_DADOS = "2.8.0"
 
 # Frase exigida no corpo de `DELETE /api/me` (SEC-07). Em portugues e em
 # maiusculas de proposito: tem de ser digitada, e nao pode ser o resultado de
@@ -91,12 +96,18 @@ def init_routes(app):
         Sem autenticacao de proposito: um health check que exige credencial e
         inutil para monitoramento externo. Por isso a resposta nao revela nada
         alem de "ok"/"indisponivel" — nunca URL, chave ou erro de driver.
+
+        `modelo` (ML-INF) diz se o JSON do modelo foi empacotado e passou no
+        contrato. Nao muda o codigo de status: a ingestao nao depende dele, e
+        um 503 por causa do modelo esconderia que o banco esta bem.
         """
         banco_ok, motivo = db.verificar_conexao()
+        modelo = inferencia.modelo_carregado()
         corpo = {
             "status": "ok" if banco_ok else "degradado",
             "banco": "ok" if banco_ok else (motivo or "indisponivel"),
             "contrato_de_dados": CONTRATO_DE_DADOS,
+            "modelo": modelo["versao"] if modelo else "indisponivel",
         }
         return jsonify(corpo), (200 if banco_ok else 503)
 
@@ -136,6 +147,30 @@ def init_routes(app):
     #: `inclinacao_rel` passaria a ser contra a postura típica de dias.
     JANELA_MAXIMA_DE_FEATURES_H = 24
 
+    def _janela_de_features():
+        """`(device_id, desde, ate, None)` ou `(None, None, None, resposta 400)`.
+
+        Comum a `/api/features` e `/api/inferencia`: as duas calculam sobre a
+        janela pedida, então as duas exigem a janela inteira e com fuso.
+        """
+        parametros, erro = ler_parametros(request.args)
+        if erro:
+            return None, None, None, (jsonify({"error": erro}), 400)
+        faltando = [n for n, k in (("device", "device_id"), ("desde", "desde"), ("ate", "ate"))
+                    if not parametros[k]]
+        if faltando:
+            return None, None, None, (
+                jsonify({"error": "parametros obrigatorios: " + ", ".join(faltando)}), 400)
+        desde = features_noite.instante_do_banco(parametros["desde"])
+        ate = features_noite.instante_do_banco(parametros["ate"])
+        if desde.tzinfo is None or ate.tzinfo is None:
+            return None, None, None, (
+                jsonify({"error": "'desde' e 'ate' precisam de fuso horario"}), 400)
+        if (ate - desde).total_seconds() > JANELA_MAXIMA_DE_FEATURES_H * 3600:
+            return None, None, None, (
+                jsonify({"error": f"janela acima de {JANELA_MAXIMA_DE_FEATURES_H} h"}), 400)
+        return parametros["device_id"], desde, ate, None
+
     @app.route('/api/features')
     @require_auth
     def get_features():
@@ -147,35 +182,85 @@ def init_routes(app):
         `ESC-01`; até lá, quem pede escolhe, e a resposta devolve o `g_ref` e a
         janela usados.
         """
-        parametros, erro = ler_parametros(request.args)
-        if erro:
-            return jsonify({"error": erro}), 400
-        faltando = [n for n, k in (("device", "device_id"), ("desde", "desde"), ("ate", "ate"))
-                    if not parametros[k]]
-        if faltando:
-            return jsonify({"error": "parametros obrigatorios: " + ", ".join(faltando)}), 400
-        desde = features_noite.instante_do_banco(parametros["desde"])
-        ate = features_noite.instante_do_banco(parametros["ate"])
-        if desde.tzinfo is None or ate.tzinfo is None:
-            return jsonify({"error": "'desde' e 'ate' precisam de fuso horario"}), 400
-        if (ate - desde).total_seconds() > JANELA_MAXIMA_DE_FEATURES_H * 3600:
-            return jsonify({"error": f"janela acima de {JANELA_MAXIMA_DE_FEATURES_H} h"}), 400
+        device_id, desde, ate, falha = _janela_de_features()
+        if falha:
+            return falha
 
         linhas = db.get_features_do_usuario(
-            g.jwt, g.usuario_id, parametros["device_id"], desde.isoformat(), ate.isoformat())
+            g.jwt, g.usuario_id, device_id, desde.isoformat(), ate.isoformat())
         if linhas is None:
             return jsonify({"error": "consulta indisponivel"}), 503
 
         epocas = [e for e in map(features_noite.epoca_da_linha, linhas) if e is not None]
         saida, g_ref = features_noite.derivar_noite(epocas)
         return jsonify({
-            "device_id": parametros["device_id"],
+            "device_id": device_id,
             "desde": desde.isoformat(),
             "ate": ate.isoformat(),
             "ordem_features": list(features_noite.ORDEM_FEATURES),
             "g_ref": g_ref,
             "lacuna_maxima_s": features_noite.LACUNA_MAXIMA_S,
             "epocas": saida,
+        })
+
+    #: Vai na resposta, junto do número: o alcance do que foi validado.
+    AVISO_DA_INFERENCIA = (
+        "Estimativa de sono e vigilia a partir do movimento, por um modelo validado "
+        "em coortes com sensor de punho e de cabeca, nao no travesseiro. "
+        "Normalizada sobre a janela pedida: outra janela pode classificar a mesma "
+        "epoca de outro jeito.")
+
+    @app.route('/api/inferencia')
+    @require_auth
+    def get_inferencia():
+        """Sono/vigília por época de uma janela (ML-INF), sem gravar nada.
+
+        Mesma janela e mesma consulta de `/api/features`; o modelo e as regras
+        estão em `inferencia.py`. `422` quando a janela não tem as épocas que a
+        normalização por noite exige: a conta não é feita, e a resposta diz
+        quantas havia e quantas são precisas.
+        """
+        device_id, desde, ate, falha = _janela_de_features()
+        if falha:
+            return falha
+        modelo = inferencia.modelo_carregado()
+        if modelo is None:
+            return jsonify({"error": "modelo indisponivel"}), 503
+        # LGPD-12: a estimativa de sono é o dado de saúde mais sensível do sistema.
+        client = _cliente_do_usuario()
+        if client is None:
+            return jsonify({"error": "fonte de dados indisponivel"}), 503
+        recusa = _falta_consentimento(client, g.usuario_id)
+        if recusa:
+            return recusa
+
+        linhas = db.get_features_do_usuario(
+            g.jwt, g.usuario_id, device_id, desde.isoformat(), ate.isoformat())
+        if linhas is None:
+            return jsonify({"error": "consulta indisponivel"}), 503
+
+        try:
+            resultado = inferencia.inferir_janela(linhas, modelo)
+        except inferencia.AbaixoDoPiso as e:
+            return jsonify({
+                "error": "epocas insuficientes na janela",
+                "epocas_validas": e.validas,
+                "minimo": e.minimo,
+            }), 422
+        return jsonify({
+            "device_id": device_id,
+            "desde": desde.isoformat(),
+            "ate": ate.isoformat(),
+            "modelo": {
+                "versao": modelo["versao"],
+                "configuracao": modelo["configuracao"],
+                "limiar": modelo["limiar"],
+                "treino": {k: modelo["treino"][k] for k in ("dataset", "braco", "n_participantes")},
+            },
+            "normalizacao": "janela pedida",
+            "classes": {"0": "vigilia", "1": "sono"},
+            "aviso": AVISO_DA_INFERENCIA,
+            **resultado,
         })
 
     # --- Dispositivos do usuário (AUTH-05) ---
@@ -186,6 +271,42 @@ def init_routes(app):
     def _cliente_do_usuario():
         """Cliente com o JWT da requisição, ou None se indisponível."""
         return db.cliente_do_usuario(g.jwt)
+
+    def _falta_consentimento(client, usuario_id):
+        """A resposta de recusa quando falta o consentimento vigente (LGPD-12), ou None.
+
+        O banco já recusa a gravação e o pareamento sem ele (migração 017); responder
+        403 aqui, com o motivo, é o que faz o app pedir o consentimento em vez de
+        tratar a recusa como servidor fora do ar e reenviar para sempre.
+        """
+        situacao = consentimento.estado(client, usuario_id)
+        if situacao is None:
+            return jsonify({"error": "fonte de dados indisponivel"}), 503
+        if not situacao:
+            return jsonify({"error": consentimento.PENDENTE,
+                            "versao_vigente": consentimento.VERSAO}), 403
+        return None
+
+    @app.route('/api/me/consentimento', methods=['POST'])
+    @require_auth
+    def consentir():
+        """O consentimento específico e destacado para dado de saúde (LGPD-12).
+
+        O corpo diz QUAL versão do texto o titular leu. Versão diferente da vigente
+        responde 409, com a vigente: a tela que mostrou um texto antigo não pode
+        registrar consentimento para o texto novo. A data é a do banco.
+        """
+        versao = (request.get_json(silent=True) or {}).get("versao")
+        if versao != consentimento.VERSAO:
+            return jsonify({"error": "versao do texto desatualizada",
+                            "versao_vigente": consentimento.VERSAO}), 409
+        client = _cliente_do_usuario()
+        if client is None:
+            return jsonify({"error": "fonte de dados indisponivel"}), 503
+        recibo = consentimento.registrar(client, versao)
+        if not recibo:
+            return jsonify({"error": "consentimento nao registrado (fonte indisponivel)"}), 503
+        return jsonify(recibo), 200
 
     @app.route('/api/devices')
     @require_auth
@@ -216,6 +337,9 @@ def init_routes(app):
         client = _cliente_do_usuario()
         if client is None:
             return jsonify({"error": "fonte de dados indisponivel"}), 503
+        recusa = _falta_consentimento(client, g.usuario_id)
+        if recusa:
+            return recusa
 
         token = gerar_token()
         device = dispositivos.criar(client, nome, hash_token(token), tipo)
@@ -253,6 +377,9 @@ def init_routes(app):
         client = _cliente_do_usuario()
         if client is None:
             return jsonify({"error": "fonte de dados indisponivel"}), 503
+        recusa = _falta_consentimento(client, g.usuario_id)
+        if recusa:
+            return recusa
 
         device = dispositivos.primeiro_do_tipo(client, g.usuario_id, "celular")
         if device is not None:
@@ -489,6 +616,14 @@ def init_routes(app):
         if client is None:
             return None, "fonte de dados indisponivel", 503
 
+        # LGPD-12: sem o consentimento vigente, nada é gravado (o banco recusa
+        # também). 403 e não 503: reenviar não adianta enquanto ele faltar.
+        situacao = consentimento.estado(client, usuario_id)
+        if situacao is None:
+            return None, "fonte de dados indisponivel", 503
+        if not situacao:
+            return None, consentimento.PENDENTE, 403
+
         device = dispositivos.buscar_do_dono(client, usuario_id, device_id)
         if device is None:
             # Inexistente, revogado e "de outra pessoa" respondem igual:
@@ -498,8 +633,10 @@ def init_routes(app):
         # `buscar_do_dono` não devolve `user_id` (não está em CAMPOS). O `jwt`
         # segue junto porque a gravação deste caminho vai pelo cliente do
         # USUÁRIO, não por chave privilegiada: a função no banco deriva o dono
-        # de `auth.uid()` (SEC-06).
-        return dict(device, user_id=usuario_id, jwt=jwt), None, 200
+        # de `auth.uid()` (SEC-06). O `cliente` segue também (APP-10): é o
+        # mesmo que acabou de conferir o dispositivo, e a gravação o reusa em
+        # vez de abrir uma conexão por leitura.
+        return dict(device, user_id=usuario_id, jwt=jwt, cliente=client), None, 200
 
     def _gravar_leitura(caminho, device, content):
         """Valida, traduz e grava UMA leitura (FIX-02, SEC-03, SEC-06).
@@ -572,7 +709,7 @@ def init_routes(app):
             gravado = db.registrar_leitura(device["token_hash"], payload)
         else:
             gravado = db.registrar_leitura_da_sessao(
-                device["jwt"], device["id"], payload
+                device["jwt"], device["id"], payload, cliente=device.get("cliente")
             )
 
         if not gravado:
