@@ -8978,6 +8978,43 @@ Um celular deitado só mexe em z, e é z que pesa na norma nessa posição. O GG
 
 **Procedência.** Conferência colada pelo autor em 11/11; `get_deployment` e requisições públicas desta máquina; a saída serial do diagnóstico, guardada fora do repositório; fotos da solda enviadas pelo autor.
 
+# 2026-11-11 (x) — APP-12: a chave do autor e o primeiro APK de release
+
+**O problema, como foi entendido no início.** Com o `CAL-03` na produção (entrada ix), faltava o app chegar aos celulares. Eram dois APKs com papéis diferentes: o de depuração para o celular do autor, que instala por cima do que já está lá sem apagar as noites, e o de release para os testadores, assinado com uma chave do autor. A chave não existia: não havia `~/.dormio` nesta máquina.
+
+**Hipótese de trabalho.**
+- **A chave:** o autor cria a chave e o `assinatura.properties` seguindo o `docs/DISTRIBUICAO-DO-APP.md`, sem que eu veja a senha, e o Gradle assina sozinho.
+- **O seu celular:** o de depuração tem a mesma assinatura do app instalado e atualiza sem desinstalar.
+
+**O que foi testado, e como.**
+- **A chave:** o autor gerou-a com o `keytool` do Android Studio (RSA de 4096 bits, validade de 10 000 dias), escreveu o `assinatura.properties` e copiou a pasta `.dormio` para um pendrive. Eu conferi só que os dois arquivos existiam e que os quatro campos estavam preenchidos, sem ler os valores.
+- **O build:** `npm run build:app` e `./gradlew assembleRelease` a partir de `develop` (`4811f57`, o código da produção). O de depuração, `assembleDebug`, veio do mesmo código.
+- **A conferência:** `apksigner verify --print-certs` e `aapt2 dump badging` no APK de release.
+- **A entrega:** os dois APKs enviados ao autor pelo app.
+
+**Resultado medido.**
+- **APK de release:** 4,4 MB, `versionCode` 1, `versionName` 1.0.0, alvo do SDK 36.
+  - Assinatura v2 verificada, um assinante, certificado com o nome do autor (`O=SmartDormio, C=BR`), SHA-256 `06b2e4f9…d14a`.
+  - Sem `application-debuggable`.
+- **APK de depuração:** 5,8 MB, o mesmo código.
+- **Nenhum dos dois foi instalado num aparelho nesta entrada:** o celular do autor não estava mais no USB.
+
+**Adaptação.**
+- **O comando do guia:** no PowerShell, o `keytool` com o caminho entre aspas precisa do `&` na frente. O guia mostrava o comando sem ele, e o primeiro uso deu erro de sintaxe.
+- **O "ã" de "São Paulo":** foi gravado como "S?o Paulo" no certificado, pela codificação do terminal. É só identificação, não afeta a assinatura.
+
+**O que deu errado no caminho.**
+- **O comando do guia** não funcionava como estava no PowerShell (acima).
+- **Tentei instalar o de depuração no celular pelo `adb`,** mas o aparelho já tinha sido desconectado. O APK foi entregue por arquivo.
+
+**Risco em aberto.**
+- **O aval do orientador sobre o comitê de ética e o termo de consentimento (`LGPD-03`) continua pendente.** Os testadores são pessoas, e as noites deles entram no trabalho. Mandar o APK antes disso é decisão do autor, e o `APP-12` a registra como a primeira pendência.
+- **A troca de assinatura:** o celular do autor fica no APK de depuração. Trocar para o de release exige desinstalar, porque as assinaturas são diferentes, e isso apagaria as noites guardadas nele.
+- **A primeira instalação real** do APK de release ainda não aconteceu.
+- **O guia:** precisa do `&` no comando do `keytool` (`DOC`, pendência pequena, feita nesta mesma entrada).
+
+**Procedência.** Saídas do `apksigner` e do `aapt2` nesta máquina em 11/11; a confirmação do autor de que salvou a pasta no pendrive.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
