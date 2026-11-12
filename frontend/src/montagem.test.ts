@@ -288,6 +288,101 @@ describe("montagem real das telas (UI-17)", PRAZO, () => {
     expect(links.some((a) => a.getAttribute("href") === "/privacidade")).toBe(true);
   });
 
+  it("abre Configurações pelo menu da demonstração sem montar ações da conta", async () => {
+    await montar("/dashboard?demo=1");
+    const links = await screen.findAllByRole("link", { name: "Configurações" });
+    expect(links.map((link) => link.getAttribute("href"))).toEqual([
+      "/configuracoes?demo=1", "/configuracoes?demo=1",
+    ]);
+    fireEvent.click(links[0]);
+    expect(await screen.findByRole("heading", { name: "Aparência" })).toBeTruthy();
+    expect(screen.getByText(/editar o perfil, gerenciar dispositivos/i)).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Exportar meus dados (CSV)" })).toBeNull();
+    expect(vi.mocked(fetch).mock.calls.some(([url]) => String(url).startsWith("/api/devices"))).toBe(false);
+  });
+
+  it("mostra o status de envio de um dispositivo que ainda não tem leituras", async () => {
+    const original = vi.mocked(fetch).getMockImplementation()!;
+    vi.mocked(fetch).mockImplementation((entrada, opcoes) =>
+      String(entrada).startsWith("/api/devices")
+        ? Promise.resolve(respostaJson([{
+            id: "dispositivo-teste", nome: "Sensor de teste", tipo: "travesseiro",
+            last_seen_at: null, revoked_at: null,
+          }]))
+        : original(entrada, opcoes),
+    );
+    await montar("/dashboard");
+    expect(await screen.findByText("Nunca enviou")).toBeTruthy();
+  });
+
+  it("avisa quando o CSV contém apenas as leituras disponíveis no limite da consulta", async () => {
+    const original = vi.mocked(fetch).getMockImplementation()!;
+    const criarUrl = vi.fn(() => "blob:csv");
+    const url = class extends URL {};
+    Object.assign(url, { createObjectURL: criarUrl, revokeObjectURL: vi.fn() });
+    vi.stubGlobal("URL", url);
+    const clique = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+    const leitura = { created_at: "2026-11-01T00:00:00Z", movimento_total: 9.81, temp: null, status: "Repouso" };
+    let quantidade = 1000;
+    vi.mocked(fetch).mockImplementation((entrada, opcoes) =>
+      String(entrada).startsWith("/api/sleep-history")
+        ? Promise.resolve(respostaJson(Array.from({ length: quantidade }, () => leitura)))
+        : original(entrada, opcoes),
+    );
+
+    try {
+      await montar("/configuracoes");
+      const exportar = await screen.findByRole("button", { name: "Exportar meus dados (CSV)" });
+      fireEvent.click(exportar);
+      expect(await screen.findByText(/o arquivo pode estar incompleto/i)).toBeTruthy();
+      expect(criarUrl).toHaveBeenCalledTimes(1);
+      expect(clique).toHaveBeenCalledTimes(1);
+
+      quantidade = 1;
+      fireEvent.click(exportar);
+      await screen.findByRole("button", { name: "Exportar meus dados (CSV)" });
+      expect(screen.queryByText(/o arquivo pode estar incompleto/i)).toBeNull();
+      expect(clique).toHaveBeenCalledTimes(2);
+    } finally {
+      clique.mockRestore();
+    }
+  });
+
+  it("a rota /historico monta o histórico autenticado com filtro e estado vazio", async () => {
+    const original = vi.mocked(fetch).getMockImplementation()!;
+    let responder: ((resposta: Response) => void) | undefined;
+    vi.mocked(fetch).mockImplementation((entrada, opcoes) => {
+      if (!String(entrada).startsWith("/api/sleep-history")) return original(entrada, opcoes);
+      return new Promise((resolve) => { responder = resolve; });
+    });
+
+    await montar("/historico");
+    expect(await screen.findByRole("heading", { name: "Histórico de sessões", level: 1 })).toBeTruthy();
+    expect(await screen.findByText("Carregando sessões...")).toBeTruthy();
+    await act(async () => responder!(respostaJson([])));
+    expect(await screen.findByText("Nenhuma sessão no período selecionado.")).toBeTruthy();
+
+    fireEvent.change(screen.getByRole("combobox", { name: "Período do histórico" }), { target: { value: "30" } });
+    expect(await screen.findByText("Carregando sessões...")).toBeTruthy();
+    await act(async () => responder!(new Response(JSON.stringify({ error: "Serviço indisponível" }), { status: 503 })));
+    expect(await screen.findByText("Não foi possível carregar")).toBeTruthy();
+
+    vi.mocked(fetch).mockImplementation(original);
+    fireEvent.click(screen.getByRole("button", { name: "Tentar novamente" }));
+    expect(await screen.findByText("Nenhuma sessão no período selecionado.")).toBeTruthy();
+    const pedidos = vi.mocked(fetch).mock.calls
+      .map(([caminho]) => new URL(String(caminho), "http://localhost"))
+      .filter(({ pathname }) => pathname === "/api/sleep-history");
+    const recortes = pedidos.map(({ searchParams }) => Date.parse(searchParams.get("desde") ?? ""));
+    expect(recortes.at(-1)!).toBeLessThan(recortes[0]);
+  });
+
+  it("a rota /dispositivos monta o gerenciamento para a sessão autenticada", async () => {
+    await montar("/dispositivos");
+    expect(await screen.findByRole("heading", { name: "Dispositivos", level: 1 })).toBeTruthy();
+    expect(await screen.findByText("Nenhum dispositivo pareado")).toBeTruthy();
+  });
+
   it("a rota /configuracoes existe e passa pelos guardas até o Layout", async () => {
     await montar("/configuracoes");
 

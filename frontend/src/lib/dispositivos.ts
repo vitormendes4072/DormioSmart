@@ -72,6 +72,17 @@ export function estaAtivo(dispositivo: Dispositivo): boolean {
   return dispositivo.revoked_at === null;
 }
 
+// O sensor envia em lotes a cada 10 min (RD-07). A janela admite dois ciclos.
+const JANELA_DE_ENVIO_RECENTE_MS = 20 * 60_000;
+
+export function classificarUltimoEnvio(dispositivo: Dispositivo, agora = Date.now()) {
+  if (!estaAtivo(dispositivo)) return "Credencial revogada";
+  if (!dispositivo.last_seen_at) return "Nunca enviou";
+  const idadeMs = agora - Date.parse(dispositivo.last_seen_at);
+  if (!Number.isFinite(idadeMs) || idadeMs < 0) return "Horário indisponível";
+  return idadeMs < JANELA_DE_ENVIO_RECENTE_MS ? "Enviou recentemente" : "Sem envio recente";
+}
+
 /**
  * "nunca" quando o dispositivo ainda não enviou nada.
  *

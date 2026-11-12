@@ -1,5 +1,5 @@
-import { AlertTriangle, Check, Copy, Cpu, Loader2, Pencil, Plus, X } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { AlertTriangle, Check, Copy, Cpu, Loader2, Pencil, Plus, Radio, Smartphone, X } from "lucide-react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 
 import { ErroApi } from "../lib/api";
 import {
@@ -18,7 +18,7 @@ import {
 } from "../lib/dispositivos";
 import { INPUT_CLS } from "../lib/ui";
 
-export function MeusDispositivos() {
+export function MeusDispositivos({ mostrarPareamento = true }: { mostrarPareamento?: boolean }) {
   const [lista, setLista] = useState<Dispositivo[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
@@ -94,11 +94,11 @@ export function MeusDispositivos() {
         </p>
       ) : null}
 
-      {lista.length === 0 ? (
+      {lista.length === 0 ? (!erro && (
         <div className="rounded-xl border border-dashed border-border px-4 py-6 text-center">
           <p className="text-sm text-muted-foreground">Nenhum dispositivo pareado</p>
         </div>
-      ) : (
+      )) : (
         <ul className="space-y-2">
           {lista.map((dispositivo) => (
             <LinhaDoDispositivo
@@ -116,7 +116,7 @@ export function MeusDispositivos() {
           propria. Soltos entre a lista e o botao, os radios pareciam
           propriedade dos dispositivos ja listados — "qual deles e o
           travesseiro?" — quando na verdade descrevem o PROXIMO a ser criado. */}
-      <div className="rounded-xl border border-border p-4 space-y-3">
+      <div id="pareamento-dispositivo" hidden={!mostrarPareamento} className="space-y-3 rounded-xl border border-border bg-card p-4">
         <p className="text-sm font-semibold text-foreground">Parear novo dispositivo</p>
 
         <fieldset className="space-y-2" disabled={pareando}>
@@ -267,13 +267,7 @@ function LinhaDoDispositivo({
   }
 
   return (
-    <li
-      className={`flex items-center gap-3 rounded-xl border border-border px-4 py-3 ${
-        ativo ? "" : "opacity-60"
-      }`}
-    >
-      <Cpu className={`w-4 h-4 flex-shrink-0 ${ativo ? "text-primary" : "text-muted-foreground"}`} />
-
+    <CartaoDeDispositivo tipo={dispositivo.tipo}>
       <div className="flex-1 min-w-0">
         {editando ? (
           <div className="flex items-center gap-2">
@@ -318,8 +312,9 @@ function LinhaDoDispositivo({
                   livre do usuario e nao classifica nada. */}
               {rotuloDoTipo(dispositivo.tipo)}
               {" · "}
-              {ativo ? descreverUltimoContato(dispositivo) : "revogado"}
+              {dispositivo.last_seen_at ? `Último envio ${descreverUltimoContato(dispositivo)}` : "Ainda sem envios"}
             </p>
+            <EstadoDoDispositivo ativo={ativo}>{ativo ? "Credencial ativa" : "Revogado"}</EstadoDoDispositivo>
           </>
         )}
       </div>
@@ -342,6 +337,29 @@ function LinhaDoDispositivo({
           </button>
         </div>
       ) : null}
+    </CartaoDeDispositivo>
+  );
+}
+
+export function CartaoDeDispositivo({ tipo, children }: { tipo?: TipoDeDispositivo; children: ReactNode }) {
+  const Icone = tipo === "celular" ? Smartphone : tipo === "travesseiro" ? Radio : Cpu;
+  return (
+    <li className="flex min-h-24 items-center gap-3 rounded-[14px] border border-border bg-card p-4 shadow-sm">
+      <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
+        <Icone className="size-4" aria-hidden />
+      </span>
+      {children}
     </li>
+  );
+}
+
+export function EstadoDoDispositivo({ ativo, children }: { ativo: boolean; children: ReactNode }) {
+  return (
+    <span className={`mt-2 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold ${ativo
+      ? "bg-emerald-500/10 text-emerald-800 dark:text-emerald-300"
+      : "bg-amber-500/10 text-amber-800 dark:text-amber-300"}`}>
+      <span className="size-1.5 rounded-full bg-current" aria-hidden />
+      {children}
+    </span>
   );
 }

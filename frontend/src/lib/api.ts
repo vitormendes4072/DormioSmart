@@ -139,6 +139,9 @@ async function extrairMensagemDeErro(resposta: Response): Promise<string> {
  */
 export const LIMITE_DO_PAINEL = 2000;
 
+/** A consulta única ao Supabase pode atingir o teto antes do limite pedido. */
+export const LIMIAR_DE_HISTORICO_PARCIAL = 1000;
+
 export type FiltroDeHistorico = {
   /** Recorta por instrumento. Ausente = todos os dispositivos do usuario. */
   dispositivo?: string | null;

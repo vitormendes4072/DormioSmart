@@ -25,20 +25,22 @@ export function CardMetrica({
   const temValor = valor !== null && valor !== undefined;
 
   return (
-    <div className="bg-card border border-border rounded-2xl p-5">
-      <div className="flex items-center justify-between gap-2 mb-4">
-        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+    <div className="min-w-0 min-h-[109px] rounded-[14px] border border-border bg-card p-3 shadow-sm sm:min-h-[119px] sm:p-4">
+      <div className="flex items-center justify-between gap-2 mb-2">
+        <p className="text-[10px] font-bold text-muted-foreground">
           {rotulo}
         </p>
-        <Icone className={`w-4 h-4 flex-shrink-0 ${corDoIcone}`} />
+        <span className={`grid size-8 shrink-0 place-items-center rounded-lg bg-primary/10 ${corDoIcone}`}>
+          <Icone className="size-4" aria-hidden />
+        </span>
       </div>
-      <p className="text-2xl font-bold text-foreground">
+      <p className="text-[22px] font-extrabold leading-tight tracking-tight text-foreground sm:text-[25px]">
         {temValor ? valor : "--"}
         {temValor && unidade ? (
           <span className="text-sm font-medium text-muted-foreground ml-1">{unidade}</span>
         ) : null}
       </p>
-      <p className="text-xs text-muted-foreground mt-1">{detalhe ?? " "}</p>
+      <p className="mt-1 text-[10px] leading-tight text-muted-foreground">{detalhe ?? " "}</p>
     </div>
   );
 }
