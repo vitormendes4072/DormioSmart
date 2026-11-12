@@ -264,11 +264,32 @@ class Database:
             if client is None:
                 return None
             linhas = []
-            inicio = 0
             while len(linhas) < limite:
                 consulta = (client.table("sleep_data")
-                    .select("id, created_at, movimento_total, temp, status, device_id, "
-                            "epoca_segundos, captured_at")
+                    .select(
+                        "id, created_at, movimento_total, temp, status, device_id, "
+                        # `epoca_segundos` diz QUANTO TEMPO a linha resume. Sem
+                        # ele, o painel nao consegue distinguir "duas horas de
+                        # repouso" de "duas horas sem leitura nenhuma" — e passava
+                        # a reportar buraco de coleta como pausa (DASH-09).
+                        "epoca_segundos, "
+                        # `captured_at` diz QUANDO a linha foi medida (DASH-12).
+                        # `created_at` e a hora de CHEGADA, gerada pelo banco. Sem
+                        # este campo, o painel aceitava a DURACAO declarada pelo
+                        # dispositivo e ignorava o INSTANTE declarado pelo mesmo
+                        # dispositivo — incoerencia que fazia latencia de rede
+                        # parecer irregularidade de cadencia, e que faria o buffer
+                        # offline do HW-05 chegar todo empilhado em poucos
+                        # segundos de `created_at`.
+                        #
+                        # A ORDENACAO segue por `created_at`: ele nunca e nulo
+                        # (`default now()`), e ordenar por uma coluna que pode ser
+                        # nula deixaria as linhas antigas em posicao arbitraria.
+                        # O id desempata chegadas no mesmo instante.
+                        # O cliente reordena pelo instante de medicao com fallback
+                        # — ver `instanteDaLeitura` em `types/sleep.ts`.
+                        "captured_at"
+                    )
                     .eq("user_id", usuario_id))
                 if device_id:
                     consulta = consulta.eq("device_id", device_id)
@@ -284,12 +305,13 @@ class Database:
                 tamanho = min(1000, limite - len(linhas))
                 resposta = (consulta.order("created_at", desc=True)
                             .order("id", desc=True)
-                            .range(inicio, inicio + tamanho - 1).execute())
+                            .limit(tamanho).execute())
                 pagina = resposta.data or []
                 linhas.extend(pagina)
                 if len(pagina) < tamanho:
                     break
-                inicio += tamanho
+                ultima = pagina[-1]
+                cursor = ultima["created_at"], ultima["id"]
             return linhas
         except Exception:
             logger.exception("Falha ao consultar sleep_data do usuario.")

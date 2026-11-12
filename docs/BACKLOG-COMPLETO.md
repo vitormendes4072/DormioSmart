@@ -57,7 +57,8 @@
 Até 29/10 esta linha mandava rodar o `DATA-03`, fechado em 28/10.)* **Se tem um fim de semana:** solde. **Se tem um mês sem ferro de solda:** escreva os
 `CALC-*` e `DIAG-*`, que são o que a banca lê.
 
-**Contagem:** 58 itens abertos · **L0: 29** · L1: 15 · L2: 6 · L3: 8. *(Recontado linha a linha em 03/11, e não por delta; desde o `DOC-13`, o CI reconta.)*
+**Contagem:** 56 itens abertos · **L0: 27** · L1: 15 · L2: 6 · L3: 8. *(Recontado linha a linha em 03/11, e não por delta; desde o `DOC-13`, o CI reconta.)*
+*(12/11, sétima parte, sobre `develop` `01c9da5`: fecham DATA-15 e API-08 nesta PR, ambos L0. 58−2 = 56 abertos, L0 29−2 = 27.)*
 *(12/11, sexta parte, sobre `develop` `2662622`: o `FW-12` (o sketch não cabia na RAM do ESP32) abriu e fechou no mesmo dia, fora da contagem; entrou `CI-12` (L0, compilar para o chip no CI). 57+1 = 58 abertos, L0 28+1 = 29.)*
 *(12/11, quinta parte, sobre `develop` `1276d56`: fechou `HW-09` (L1, o contato do sensor refeito e testado nas 6 posições). 58−1 = 57 abertos, L1 16−1 = 15.)*
 *(12/11, quarta parte, sobre `develop` `ba851f4`: fechou a Etapa 0 (L3, a solda, feita em 11/11). 59−1 = 58 abertos, L3 9−1 = 8. A ordem de execução e os donos de cada item: `docs/PLANO-CLAUDE-CODEX.md`.)*
@@ -248,7 +249,7 @@ E um **peso**: 🔴 caminho crítico da defesa · 🟡 importante · ⚪ polimen
        CI-12                                ← 12/11: compilar para o ESP32 no CI
        INFRA-05                              ← 11/11: o backend perto do banco
        API-07 · UI-25                       ← 12/11: recebimento e pareamento
-       API-08 · DATA-15 · UI-26 · UI-27     ← 12/11: revisão do frontend do Codex
+       UI-26 · UI-27     ← 12/11: revisão do frontend do Codex
        UI-28 · UI-29 · APP-15               ← 12/11: análises de frontend do Codex
 
    L3  TAMBÉM DEPENDE DE VOCÊ:
@@ -447,8 +448,8 @@ diagrama** — que é o que a banca lê.
 
 | Item | O quê | Peso |
 |---|---|:---:|
-| **API-08** 🟠 *(novo — 12/11, achado na revisão do frontend do Codex)* | **O histórico responde 200 com lista vazia quando o banco falha.** `database.get_leituras_do_usuario` engole a exceção e devolve `[]` (`except Exception: return []`), então `GET /api/sleep-history` diz "sem leituras" quando, na verdade, não conseguiu consultar. O resto do backend já separa os dois (`AUTH-08`: fonte fora do ar é `503`). **Correção:** a função devolver `None` na falha e a rota responder `503`; o painel e o Histórico mostrarem "não foi possível carregar" e não "nenhuma leitura". Testes com o banco simulado falhando. | 🟠 |
-| **DATA-15** 🟠 *(novo — 12/11, achado na revisão do frontend do Codex)* | **O histórico e o CSV param em 1 000 linhas.** `GET /api/sleep-history` faz uma consulta só, e o Supabase devolve no máximo 1 000 linhas (`max-rows`): uma noite de 8 h já tem 960 épocas, e duas noites passam do teto. O frontend só avisa que "pode estar incompleto" (PR #138). `GET /api/features` já pagina (`PAGINA_DE_FEATURES`). **Confirmado em produção depois do release #142 (12/11 (ix)):** na conta real, a janela de 7 dias já soma exatamente 1 000 leituras e o aviso aparece. **Correção:** paginar o histórico do mesmo jeito (ou expor o total e o cursor), e o CSV baixar a janela inteira. Fecha a causa do `UI-26`. | 🟠 |
+| **API-08** ✅ *(12/11, PR #146)* | O histórico devolve 503 quando o banco falha e 200 com lista vazia quando a consulta funciona sem leituras. O painel e o Histórico exibem a falha. Testado com banco simulado. Diário, 12/11 (xiv). | ✅ |
+| **DATA-15** ✅ *(12/11, PR #146)* | O histórico supera o teto de 1 000 linhas do Supabase respeitando o limite da API. O CSV percorre todas as páginas pelo cursor de chegada e ID. O teste de inserção concorrente retornou 1 500 IDs distintos em 1 500 linhas. Diário, 12/11 (xiv). | ✅ |
 | **UI-26** 🟡 *(novo — 12/11, achado na revisão do frontend do Codex)* | **Uma sessão truncada pode aparecer como "Completa".** O Histórico e o painel classificam a cobertura pelo trecho que a API devolveu; se o corte do `DATA-15` cair no meio de uma sessão sem lacuna no trecho devolvido, ela sai como completa. **Correção:** depois do `DATA-15`, a sessão que toca a borda da consulta truncada é "parcial", nunca "completa". | 🟡 |
 | **UI-27** 🟡 *(novo — 12/11, achado na revisão do frontend do Codex)* | **Uma coleta encerrada antes de 30 s grava zero registros, sem aviso.** A coleta pelo navegador resume em janelas de 30 s, e encerrar antes de fechar a primeira deixa a sessão vazia. **Correção:** avisar na tela até a primeira janela fechar ("o primeiro registro sai em N s"), e ao encerrar antes dizer que nada foi gravado. Validar num celular físico, com o reinício de sessão do PR #138. | 🟡 |
 | **UI-28** 🟡 *(novo — 12/11, das análises de frontend do Codex, `docs/ANALISE-FRONTEND-UX-UI.md`)* | **O diálogo de consentimento e o seletor de tema não estão completos para teclado.** `TelaDeConsentimento.tsx` declara `role="dialog"` e `aria-modal`, mas não põe o foco no diálogo ao abrir, não o prende ali (Tab sai para o conteúdo de trás) e não o devolve ao botão de origem; `Escape` não fecha. `SeletorDeTema.tsx` é um `radiogroup` sem as setas. **Correção:** foco inicial, contenção e devolução no diálogo, `Escape` igual a "Agora não"; setas no seletor (ou rádios nativos). Testes com `userEvent.tab()`, e uma passada com leitor de tela no Android. | 🟡 |

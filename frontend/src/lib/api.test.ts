@@ -146,6 +146,21 @@ describe("urlDaApi (APP-02)", () => {
 });
 
 describe("exportação paginada", () => {
+  it("envia o cursor da última leitura ao pedir a segunda página", async () => {
+    const ultima = { id: "ultima", created_at: "2026-11-01T00:00:00+00:00" };
+    const pagina = Array.from({ length: 1999 }, () => ({ id: "anterior", created_at: "2026-11-02T00:00:00Z" }));
+    const fetchSimulado = vi.fn()
+      .mockResolvedValueOnce(resposta(200, [...pagina, ultima]))
+      .mockResolvedValueOnce(resposta(200, []));
+    vi.stubGlobal("fetch", fetchSimulado);
+
+    expect(await buscarHistoricoCompleto()).toHaveLength(2000);
+    expect(fetchSimulado).toHaveBeenCalledTimes(2);
+    const url = new URL(fetchSimulado.mock.calls[1][0], "https://exemplo.test");
+    expect(url.searchParams.get("cursor_tempo")).toBe(ultima.created_at);
+    expect(url.searchParams.get("cursor_id")).toBe(ultima.id);
+  });
+
   it("não retorna dados parciais se a segunda página falha", async () => {
     const linha = { id: "00000000-0000-0000-0000-000000000001", created_at: "2026-11-01T00:00:00Z" };
     vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce(resposta(200, Array(2000).fill(linha)))
