@@ -9128,6 +9128,26 @@ Um celular deitado só mexe em z, e é z que pesa na norma nessa posição. O GG
 
 **Procedência.** Execuções desta entrada; parâmetros da bancada de 11/11 (entrada xi).
 
+---
+
+# 2026-11-12 — Planejamento de recebimento, pareamento e bateria
+
+**O problema.** A pausa de recebimento, o pareamento guiado e a telemetria de bateria tinham propostas sem itens próprios no backlog.
+
+**Hipótese.** Registrar as entregas com dependências e critérios de aceite permite priorizar o trabalho de aplicação e planejar a bancada.
+
+**O que foi testado.** IDs conferidos no Git e scripts de conferência documental no Windows.
+
+**Resultado medido.** Quatro itens abertos, dois em L0 e dois em L1. Contagem de 52 itens abertos sobre develop e620ad3.
+
+**Adaptação.** A pausa preserva a fila e a credencial. O pareamento manual precede o QR. A medição de bateria pode avançar em paralelo com a bancada.
+
+**O que deu errado no caminho.** O ID APP-13 já constava no registro de correções e foi descartado antes da edição.
+
+**Risco em aberto.** A implementação e as validações de aplicação, firmware e bancada permanecem pendentes.
+
+**Procedência.** Plano registrado a pedido do autor, com referências nas quatro linhas do backlog.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
