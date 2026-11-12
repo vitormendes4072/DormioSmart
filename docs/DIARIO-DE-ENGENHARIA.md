@@ -9314,6 +9314,36 @@ Um celular deitado só mexe em z, e é z que pesa na norma nessa posição. O GG
 
 **Procedência.** O relatório de passagem do Codex (local, fora do repositório); GitHub (PRs #131–#140); a revisão e as execuções desta entrada, em 12/11, Windows 11.
 
+# 2026-11-12 (ix) — o release #142, e o `DATA-15` visto na conta real
+
+**O problema, como foi entendido no início.** O frontend do protótipo (PRs #134–#139) estava em `develop`, validado só com dados simulados. O autor aprovou o release para a produção.
+
+**Hipótese de trabalho.** Como nada mudou no backend nem nos dados enviados, o release não deve mexer em `/health`, nas respostas sem login nem no que a conta real já tem. O que só a conta real mostra é se as telas novas leem as leituras de verdade.
+
+**O que foi testado, e como.**
+- **O release:** a PR #142 (`develop` → `main`), CI 18/18, mesclada em `5f5f209`.
+- **O deploy:** o deployment de produção do GitHub aponta para `5f5f209`; `X-Vercel-Id` em `gru1`.
+- **Sem login:** `/health`, `/api/sleep-history` e `/api/features` sem token, e a raiz.
+- **Com login (o autor, na conta real, pelo navegador):** a visão geral, o Histórico (últimos 7 dias) e Dispositivos.
+
+**Resultado medido.**
+- **Produção:** `/health` `200`, banco ok, contrato 2.9.0, modelo `ml-inf-cabeca-v2`; as duas rotas de dados `401` sem token; a raiz `200`.
+- **Visão geral:** carrega as sessões reais, com os cartões de tempo medido, leituras com movimento, maior intervalo parado e cobertura, e o gráfico de movimento.
+- **Dispositivos:** os dois aparelhos da conta, cada um com o último envio e a credencial ativa.
+- **Histórico:** lista as sessões da janela e **mostra o aviso de limite**: as sessões somam exatamente 1 000 leituras, o teto do `max-rows`. A visão geral diz o mesmo de outro jeito ("leituras ficaram de fora").
+
+**Adaptação.**
+- **O `DATA-15` deixou de ser hipótese:** com poucas noites de uso, a janela de 7 dias já bate no teto, e as noites mais antigas somem do Histórico. O aviso do PR #138 funciona, mas a correção (paginar `GET /api/sleep-history` como `GET /api/features`) passa a ser a primeira do L0.
+
+**O que deu errado no caminho.** Nada no release.
+
+**Risco em aberto.**
+- **O `DATA-15` em produção:** o Histórico e o CSV de qualquer janela com mais de 1 000 leituras estão incompletos.
+- **O `UI-26`:** a sessão mais antiga da lista é a que toca o corte. Desta vez saiu "Com lacunas", mas a classificação dela não é confiável enquanto o `DATA-15` não for corrigido.
+- **`API-08` e `UI-27`** continuam no código.
+
+**Procedência.** GitHub (PR #142, CI e deployments); `curl` na produção, em 12/11; as telas da conta real, vistas pelo autor e mostradas ao Claude na conversa (não versionadas: são dados de uma pessoa).
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
