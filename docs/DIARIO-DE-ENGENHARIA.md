@@ -9015,6 +9015,63 @@ Um celular deitado só mexe em z, e é z que pesa na norma nessa posição. O GG
 
 **Procedência.** Saídas do `apksigner` e do `aapt2` nesta máquina em 11/11; a confirmação do autor de que salvou a pasta no pendrive.
 
+# 2026-11-11 (xi) — CAL-01: o sensor do travesseiro calibrado na bancada, e um contato que falha ao virar
+
+**O problema, como foi entendido no início.** Com o MPU6050 soldado (entrada ix), o monitor ao vivo mostrou o sensor parado lendo 0,89 g com o chip para cima e 1,14 g com o chip para baixo. Isso é um desvio grande no eixo Z, do tamanho do que a bancada de 25/08 tinha medido (−1,06 m/s²) e atribuído, então, a contato ruim. O `CAL-01` é a calibração de 6 posições desta unidade, na escala (±8 g) e no filtro (21 Hz) do firmware.
+
+**Hipótese de trabalho.**
+- **O erro é do sensor:** com a solda nova, o diagnóstico de I²C não acusou contato ruim.
+- **Desvio e escala por eixo:** as 6 posições dão os dois.
+- **O estimador do projeto:** o de autocalibração (`ml/src/calibracao.py`, o mesmo do núcleo) deve concordar com o método clássico e ser robusto à posição que não ficou nivelada.
+
+**O que foi testado, e como.**
+- **O sketch:** `firmware/caracterizacao/` (biblioteca Adafruit, ±8 g, 21 Hz, 500 amostras por posição), gravado pelo `arduino-cli` na COM3. O autor posicionava a placa, apoiada num livro, e eu mandava o Enter pela serial.
+- **O contato:** a primeira tentativa falhou (abaixo). Repeti o `diagnostico-i2c` com o autor mexendo nos fios de propósito.
+- **As 6 posições, medidas uma a uma**, com a placa reiniciada antes de cada uma.
+- **As contas:** o método clássico ((cima + baixo)/2 e (cima − baixo)/2g) e o estimador de van Hees com os 6 pontos, sem o termo de temperatura, porque 6 pontos não sustentam 9 parâmetros.
+- **A validação independente:** a calibração aplicada a 6 janelas paradas do monitor ao vivo de mais cedo, em outras posições e noutro momento, que não entraram no ajuste.
+
+**Resultado medido** (sensor de 27,8 a 32,1 °C, aquecendo durante a sessão):
+
+| Posição | ax | ay | az (m/s²) | \|a\| (g) | Ruído (m/s²) |
+|---|---:|---:|---:|---:|---:|
+| Z+ | 0,461 | −0,462 | 8,768 | 0,897 | 0,020 |
+| Z− | 0,681 | −0,242 | −11,318 | 1,157 | 0,014 |
+| X+ | 10,123 | 0,891 | 0,097 | 1,036 | 0,027 |
+| X− | −9,441 | −0,188 | −0,905 | 0,967 | 0,017 |
+| Y+ | −0,369 | 9,584 | −1,863 | 0,996 | 0,014 |
+| Y− | 0,435 | −10,044 | −1,132 | 1,032 | 0,019 |
+
+| Eixo | Clássico: desvio / escala | van Hees: desvio / escala |
+|---|---|---|
+| X | +34,8 mg / 0,9975 | +42,3 mg / 1,0057 |
+| Y | −23,5 mg / 1,0007 | −21,1 mg / 1,0033 |
+| Z | **−130,0 mg** / 1,0241 | **−130,0 mg** / 1,0245 |
+
+- **No Z, que é o que pesa, os dois métodos concordam:** −130 mg e escala de +2,4 %.
+- **No X diferem em 7,5 mg:** a posição X+ ficou inclinada 10,2°, e o método clássico supõe o eixo na vertical. As outras posições ficaram entre 0,8 e 5,7°.
+- **O van Hees fecha as 6 posições em 1,000 g.** É ajuste (6 parâmetros, 6 pontos), não validação.
+- **A validação independente:** nas 6 janelas do monitor, o erro RMS da gravidade parada vai de **83,6 mg para 2,3 mg** com a calibração do van Hees.
+- **O efeito no ENMO, sem calibração:** parado com o chip para baixo, ele leria ~157 mg de movimento que não existe; com o chip para cima, a gravidade lida a 0,897 g esconderia qualquer movimento abaixo de ~100 mg. É dez vezes o erro do Moto E7.
+
+**Adaptação.**
+- **Posições medidas uma a uma:** o sketch mede as 6 em sequência e para de vez numa leitura impossível. Com o contato falhando ao virar (abaixo), reiniciei a placa antes de cada posição e anotei qual era. O rótulo que o sketch imprime ("Z+") vale só para a primeira.
+- **O monitor ao vivo** (fora do repositório, em `~/.dormio-tools/`) serviu de conjunto independente para a validação.
+
+**O que deu errado no caminho.**
+- **Leituras zeradas:** a primeira posição saiu tremendo (ruído 0,79), e a segunda, toda zerada, com a temperatura em 36,5 °C (o registrador zerado). Isso se repetiu duas vezes ao virar a placa de chip para baixo, e uma vez com um peso sobre os fios.
+- **A causa provável:** o contato do VCC falha **por um instante** quando a placa é virada ou os fios são forçados. O MPU6050 reinicia e volta em modo de repouso, o padrão do chip ao ligar. A biblioteca só o acorda no começo do sketch, então ele segue lendo zero com o contato já de volta. Reiniciando a placa, mede normal.
+- **O diagnóstico com os fios sendo mexidos:** passou (0 falhas de barramento, nenhum bloco zerado), porque ele reconfigura o sensor a cada passada. A falha é momentânea, não permanente.
+- **Um diagnóstico meu, errado:** no monitor ao vivo eu tinha concluído que o chip era um clone, porque o \|a\| diferia 13 % entre as escalas de ±2 g e ±8 g. A diferença era da posição do sensor em cada teste, não da escala: com o chip para cima, as duas dão 0,89 g. Corrigi com o autor.
+
+**Risco em aberto.**
+- **`HW-09`:** o contato que falha ao virar precisa de solda refeita e de alívio de tensão nos fios, antes de o sensor ir para dentro de um travesseiro, onde ele vira o tempo todo.
+- **`FW-11`:** o firmware do travesseiro não usa a calibração. E ele não percebe o sensor reiniciado em repouso: leria zero a noite toda. O `sketch.ino` precisa aplicar os parâmetros e reacordar o sensor quando a leitura zerar.
+- **A temperatura:** subiu 4,3 °C durante a sessão, e o termo de temperatura não foi estimado.
+- **Uma unidade só:** os números valem para este módulo.
+
+**Procedência.** A saída serial da sessão, guardada fora do repositório; as contas feitas com `ml/src/calibracao.py` nesta máquina em 11/11.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
