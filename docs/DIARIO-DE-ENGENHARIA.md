@@ -9344,6 +9344,35 @@ Um celular deitado só mexe em z, e é z que pesa na norma nessa posição. O GG
 
 **Procedência.** GitHub (PR #142, CI e deployments); `curl` na produção, em 12/11; as telas da conta real, vistas pelo autor e mostradas ao Claude na conversa (não versionadas: são dados de uma pessoa).
 
+# 2026-11-12 (x) — as análises de frontend do Codex, revisadas e versionadas
+
+**O problema, como foi entendido no início.** Na conferência da integração, todo o trabalho commitado do Codex estava na `develop`, mas dois documentos citados no diário (10/11 (xv) e (xvi), 11/11 (i)–(iv)), `ANALISE-FRONTEND-UX-UI.md` e `CATALOGO-TELAS-FRONTEND.md`, existiam só numa worktree do Codex, sem commit. O autor pediu para versioná-los com revisão.
+
+**Hipótese de trabalho.** As análises têm valor para o texto e para o backlog, mas foram escritas antes do frontend do protótipo (12/11), e o catálogo depende de capturas locais, uma delas com dados reais.
+
+**O que foi testado, e como.**
+- **Dados pessoais e de máquina:** busca por nomes, e-mails, caminhos, tokens e URLs nos dois textos; leitura integral.
+- **As imagens:** as 31 referências do catálogo, e o que o próprio catálogo diz de cada captura.
+- **Os achados:** cada um conferido contra a `develop` de 12/11 (`TelaDeConsentimento.tsx`, `SeletorDeTema.tsx`, `Dashboard.tsx`, `ListaDeNoites.tsx`, `Layout.tsx`, `LIMITE_DO_PAINEL`) e contra o backlog.
+
+**Resultado medido.**
+- **Nenhum nome, e-mail, caminho de máquina ou segredo** nos textos.
+- **As imagens:** 3,7 MB. Três delas mostram dados ou telas de uma pessoa (a noite no Moto E7, a recuperação de senha editada por IA, o formulário real de nova senha), e o próprio catálogo diz que a do Moto E7 não deve ser publicada. As 31 referências viraram notas "captura local, não versionada".
+- **Os achados:** seis continuam no código. Dois já tinham item (`DATA-15` e `UI-27`); os outros quatro não tinham nenhum e viraram três itens. O comentário de `Layout.tsx` já foi corrigido.
+
+**Adaptação.**
+- **Os documentos entram em `docs/` com um aviso no início:** retrato de 10/11, o que mudou com o frontend do protótipo e a situação de cada achado em 12/11.
+- **Os achados sem item viraram itens** (regra 2): `UI-28` (teclado no diálogo de consentimento e no seletor de tema), `UI-29` (o texto da ordem da tabela do painel) e `APP-15` (falha ao listar as noites aparece como lista vazia).
+
+**O que deu errado no caminho.** Nada.
+
+**Risco em aberto.**
+- **As descrições de navegação, painel, coleta e configurações estão desatualizadas.** O aviso diz isso, mas o texto não foi reescrito.
+- **As capturas e o PDF continuam só na worktree do Codex.** Se ela for apagada, somem. Cabe ao autor guardá-las fora dela.
+- **O terceiro documento (`REVISAO-PROTOTIPO-SMARTDORMIO.md`)** não foi incluído.
+
+**Procedência.** A worktree do Codex `release-121-registro` (arquivos sem commit, de 10–11/11); `develop` `2f128d4`; a revisão desta entrada, em 12/11, Windows 11.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
