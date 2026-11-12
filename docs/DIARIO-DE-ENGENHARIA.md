@@ -9399,6 +9399,36 @@ Um celular deitado só mexe em z, e é z que pesa na norma nessa posição. O GG
 
 **Procedência.** Backlog e código na `develop` `ba851f4`; o pedido do autor na conversa de 12/11; Windows 11.
 
+# 2026-11-12 (xii) — HW-09: o contato do sensor refeito, e a queda provocada de propósito
+
+**O problema, como foi entendido no início.** Na bancada do `CAL-01` (11/11), virar a placa de chip para baixo zerou o sensor três vezes: o VCC caía por uma fração de segundo, o MPU6050 reiniciava dormindo e seguia lendo zero. O autor refez as soldas e prendeu os fios.
+
+**Hipótese de trabalho.** Com a junta refeita e o fio sem tensão, nenhuma virada derruba a alimentação; se derrubar, o sensor volta dormindo e o monitor, que não o reacorda, mostra zero até o fim, o que torna a queda impossível de passar despercebida.
+
+**O que foi testado, e como.**
+- **O instrumento:** o `monitor-ao-vivo` (ferramenta de bancada fora do repositório; ±8 g, 5 leituras/s, acorda o sensor só no `setup`), gravado na placa pelo `arduino-cli`, lido pela COM3 por um script em PowerShell e analisado por um script que conta erros de I2C e leituras com \|a\| < 0,5 g, por posição.
+- **O teste:** o autor passou pelas 6 posições, ~10 s em cada uma, com viradas firmes e os fios balançados, durante 4 min.
+- **Controle positivo do analisador:** 5 leituras zeradas inseridas numa cópia da gravação.
+- **Controle positivo na placa:** o autor soltou o fio do VCC no pino 3V3 por ~2 s, com a placa parada, e o encaixou de volta.
+
+**Resultado medido.**
+- **O teste:** 1 201 leituras, as 6 posições vistas, **0 erros de I2C, 0 leituras zeradas**. Chip para baixo: 75 leituras, \|a\| mediano 1,163 g (o valor cru do `CAL-01`). A leitura mais baixa, 0,498 g, caiu no meio de uma virada, com os três eixos com valor, e a seguinte já estava em 0,91 g; as outras abaixo de 0,7 g também são viradas.
+- **O analisador:** acusou as 5 zeradas inseridas (6 no total, contando a da virada).
+- **A placa:** com o VCC solto, 15 erros de I2C; religado, **220 leituras seguidas com zero exato** até o fim da gravação. O mecanismo é o de 11/11, e o teste o vê.
+
+**Adaptação.** Nenhuma no plano: o `HW-09` fecha, e a onda 1 do Claude (`FW-07` (c), `HW-08`) está destravada.
+
+**O que deu errado no caminho.**
+- **A primeira gravação de 4 min começou antes de o autor estar na bancada** e só pegou a placa parada. Foi refeita.
+- **O leitor da serial cortou 105 linhas** ("27.3 chip para CIMA"): o `ReadLine` com tempo esgotado entrega pedaço de linha. Todas no trecho parado; o analisador as ignora.
+- **O `monitor-ao-vivo` rotula o sensor zerado como "chip para BAIXO"** (com z = 0, o teste do lado cai no ramo negativo). O rótulo engana, mas o \|a\| = 0 não.
+
+**Risco em aberto.**
+- **Um teste de 4 min não é uma noite.** O contato agora aguenta viradas de bancada; a prova de que aguenta horas é a vigia da FIFO do `FW-11` contando reacordados numa noite (`FW-07` (c), `VAL-01`).
+- **O encaixe do jumper do lado da ESP32 continua sendo um ponto de falha** (o controle o soltou com a mão). O encapsulamento é o `HW-04`.
+
+**Procedência.** Placa e sensor do autor, COM3, Windows 11, 12/11; capturas locais fora do repositório (`hw09-b.txt`, `hw09-controle.txt`, no diretório temporário da sessão).
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
