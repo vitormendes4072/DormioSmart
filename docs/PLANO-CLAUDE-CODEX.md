@@ -90,8 +90,8 @@ estiverem mesclados, e não quando todos os da onda anterior estiverem.
 | # | Item | O que é | Depende de |
 |---|---|---|---|
 | 1.8 | `FW-07` (c) | Gravar o `sketch.ino` na placa; ler pelo serial os prazos da FIFO, o pior trabalho e a deriva do relógio | `HW-09` |
-| 1.9 | `FW-05` | Medir na placa a FIFO de verdade, a taxa real e o transbordo | 1.8 |
-| 1.10 | `SEC-15` (c) | O handshake TLS na placa contra a produção | 1.8 |
+| 1.9 | `FW-05` ✅ *(12/11)* | Medir na placa a FIFO de verdade, a taxa real e o transbordo | 1.8 |
+| 1.10 | `SEC-15` (c) ✅ *(12/11)* | O handshake TLS na placa contra a produção | 1.8 |
 | 1.11 | `FW-08` (c) | A fila na flash na placa: Wi-Fi desligado, religado, reenvio sem duplicata | 1.8 |
 | 1.12 | `HW-08` | O I2C na bancada: pull-ups, 100 e 400 kHz | `HW-09` |
 | 1.13 | **Integração e release R1** | Revisar e mesclar 1.1–1.7; release com login real | as PRs do Codex |
