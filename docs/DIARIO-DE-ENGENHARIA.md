@@ -9268,6 +9268,52 @@ Um celular deitado só mexe em z, e é z que pesa na norma nessa posição. O GG
 
 **Procedência.** Plano registrado a pedido do autor, com referências nas quatro linhas do backlog.
 
+# 2026-11-12 (viii) — a landing e o release #133, e a integração do frontend do protótipo
+
+**O problema, como foi entendido no início.** Enquanto o Claude estava sem cota, o autor seguiu com o Codex. A landing nova (#132) e o release #133 (a landing e o código do `FW-11`) foram para a produção **sem entrada no diário** e sem a linha de release no `CLAUDE.md`. Ficaram abertas a pilha de frontend #134–#139 e a #140 (itens do backlog). O autor pediu ao Claude a revisão de tudo e a integração.
+
+**Hipótese de trabalho.** O relatório de passagem do Codex está certo, mas cada afirmação dele se confere no GitHub e no código antes de integrar. O que foi ao ar se revisa como código público.
+
+**O que foi testado, e como.**
+- **O estado:** `gh pr list` e `git log` (main em `e788090`, develop em `e620ad3`), `/health` da produção e `get_deployment`.
+- **A landing em produção** (`frontend/public/landing-prototipo.html`, 2 294 linhas):
+  - recursos externos, chamadas de rede, armazenamento e comunicação com a página de fora;
+  - o `sandbox` do iframe;
+  - o texto visível, procurando promessas que o trabalho não sustenta (diagnóstico, estadiamento, precisão).
+- **A pilha #134–#139:**
+  - a trava do consentimento na coleta (`LGPD-12`);
+  - o modo demonstração (`estaEmModoDemo`, só com `import.meta.env.DEV`);
+  - as rotas novas atrás do `RotaProtegida`;
+  - o caminho dos dados;
+  - `tsc`, `vitest` e `vite build` na ponta (`57b683f`), numa worktree separada.
+- **A integração:**
+  - #134 a #139 mescladas em ordem;
+  - conferido que a `develop` ficou igual à ponta testada;
+  - a #140 com o conflito do diário resolvido, renumerando a entrada dela para (vii), e CI 18/18.
+
+**Resultado medido.**
+- **Produção:** `/health` `200`, contrato 2.9.0, modelo `ml-inf-cabeca-v2`, `gru1`.
+- **A landing, segurança:** sem script ou estilo externo, sem `fetch`, formulário, armazenamento ou `postMessage`. O iframe roda sem `allow-same-origin`.
+- **A landing, texto:** diz que não identifica fases do sono nem faz diagnóstico, e marca os números como "ilustrativos" e "a validar" e a sessão de exemplo como "dados fictícios".
+- **A pilha:** a trava do consentimento continua intacta; o modo demonstração não liga na produção; nada mudou nos dados enviados. Na ponta, **572 testes em 44 arquivos**, `tsc` limpo, build ok (o mesmo número do relatório).
+- **A `develop` depois das seis:** idêntica à ponta testada (`git diff 57b683f` vazio).
+- **O defeito do histórico, confirmado no código:** `get_leituras_do_usuario` devolve `[]` quando a consulta falha (`except Exception: return []`) e pede no máximo 1 000 linhas de uma vez, ao passo que a de features pagina.
+
+**Adaptação.**
+- **Os riscos que as entradas da pilha apontavam sem item** viraram itens (`API-08`, `UI-26`, `UI-27`, `DATA-15`), como a regra 2 do projeto exige.
+- **Uma informação desatualizada no relatório:** o Moto E7 está, desde 11/11 à noite, com o APK de depuração com a autocalibração (entrada x e a instalação daquele dia), e não com o de 10/11.
+
+**O que deu errado no caminho.**
+- **A branch da #140** estava aberta numa worktree do Codex, e o `git checkout` recusou. A resolução foi feita numa worktree própria e enviada para a mesma branch.
+- **Processo:** a #138 usou o prefixo `fix/`, que o CI não roda no push. Foi verificada pelo run da PR, mas fora da convenção (`bugfix/`).
+
+**Risco em aberto.**
+- **O frontend integrado** (painel, coleta, dispositivos, histórico e configurações) está em `develop`, ainda não na produção, e foi validado com dados simulados. Falta conferir com uma conta e leituras reais depois do release.
+- **Os defeitos registrados** (`API-08`, `UI-26`, `UI-27`, `DATA-15`) continuam no código.
+- **A landing pública** tem links de lojas (Shopee, Adafruit). É decisão do autor se ficam numa página acadêmica.
+
+**Procedência.** O relatório de passagem do Codex (local, fora do repositório); GitHub (PRs #131–#140); a revisão e as execuções desta entrada, em 12/11, Windows 11.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
