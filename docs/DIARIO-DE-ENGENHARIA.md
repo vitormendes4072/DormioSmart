@@ -9483,6 +9483,26 @@ Um celular deitado só mexe em z, e é z que pesa na norma nessa posição. O GG
 
 **Procedência.** PR #146, revisão da paginação por posição e testes de regressão executados no Windows sobre a branch da PR atualizada com `develop` `01c9da5`.
 
+---
+
+# 2026-11-12 (xv) — UI-26: sessão na borda do limite do histórico
+
+**O problema.** Um trecho contínuo na borda da resposta podia aparecer como Completa.
+
+**Hipótese.** Preservar a leitura na borda da ordenação da API permite identificar a sessão que pode ter sido cortada.
+
+**O que foi testado.** No Windows, o Histórico recebeu duas sessões em uma resposta de 2 000 leituras e em outra de 1 999. Troquei a comparação do limite para 9999 e reexecutei o teste.
+
+**Resultado medido.** Um teste falhou em develop e um falhou com 9999 pela ausência de Parcial. Com a correção, só a sessão na borda foi marcada e ambas ficaram completas abaixo do limite.
+
+**Adaptação.** O Histórico e o painel compartilham a identificação da borda. A cobertura numérica segue descrevendo o trecho observado.
+
+**O que deu errado no caminho.** Nada além das falhas esperadas nos controles.
+
+**Risco em aberto.** A API não informa se há mais leituras quando chega exatamente ao limite. O UI-30 trata as noites ausentes da janela.
+
+**Procedência.** Testes executados no Windows sobre develop 952371c.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

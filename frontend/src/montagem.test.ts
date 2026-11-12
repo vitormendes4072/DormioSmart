@@ -338,6 +338,33 @@ describe("montagem real das telas (UI-17)", PRAZO, () => {
     } finally { clique.mockRestore(); }
   });
 
+  it("marca somente a sessão na borda de uma resposta no limite", async () => {
+    const original = vi.mocked(fetch).getMockImplementation()!;
+    const agora = Date.now();
+    const leitura = (distancia: number) => ({
+      created_at: new Date(agora - distancia).toISOString(),
+      movimento_total: 9.81, temp: null, status: "Repouso", epoca_segundos: 30,
+      device_id: "dispositivo",
+    });
+    const recentes = [leitura(30_000), leitura(60_000)];
+    const antigas = Array.from({ length: 1998 }, (_, i) => leitura(86_400_000 + i * 30_000));
+    let dados = [...recentes, ...antigas];
+    vi.mocked(fetch).mockImplementation((entrada, opcoes) =>
+      String(entrada).startsWith("/api/sleep-history")
+        ? Promise.resolve(respostaJson(dados))
+        : original(entrada, opcoes),
+    );
+
+    await montar("/historico");
+    expect(await screen.findByText("Parcial")).toBeTruthy();
+    expect(screen.getAllByText("Completa")).toHaveLength(1);
+
+    dados = [...recentes, ...antigas.slice(0, -1)];
+    fireEvent.change(screen.getByRole("combobox", { name: "Período do histórico" }), { target: { value: "30" } });
+    await waitFor(() => expect(screen.getAllByText("Completa")).toHaveLength(2));
+    expect(screen.queryByText("Parcial")).toBeNull();
+  });
+
   it("a rota /historico monta o histórico autenticado com filtro e estado vazio", async () => {
     const original = vi.mocked(fetch).getMockImplementation()!;
     let responder: ((resposta: Response) => void) | undefined;
