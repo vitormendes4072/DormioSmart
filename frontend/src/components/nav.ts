@@ -1,5 +1,5 @@
 import { estaEmModoDemo, PARAMETRO_DEMO } from "../lib/demo";
-import { Home, Moon, Settings, Smartphone, type LucideIcon } from "lucide-react";
+import { Home, Moon, Radio, Settings, Smartphone, type LucideIcon } from "lucide-react";
 
 import { noiteNativaDisponivel } from "../lib/noiteNativa";
 
@@ -14,6 +14,7 @@ export type ItemNav = {
 export const ITENS_NAV: ItemNav[] = [
   { to: "/dashboard", label: "Início", icon: Home },
   { to: "/coletar", label: "Coletar", icon: Smartphone },
+  { to: "/dispositivos", label: "Dispositivos", icon: Radio },
   { to: "/configuracoes", label: "Configurações", icon: Settings },
 ];
 
@@ -28,10 +29,10 @@ export function itensDeNavegacao(nativo: boolean = noiteNativaDisponivel()): Ite
   return nativo ? [ITEM_NOITE, ...ITENS_NAV] : ITENS_NAV;
 }
 
-/** As duas telas com demonstração própria compartilham a navegação local. */
+/** As telas com demonstração própria compartilham a navegação local. */
 export function destinoDoWorkspace(to: string, busca: string): string {
   const rota = to.split("#", 1)[0];
-  if ((rota !== "/dashboard" && rota !== "/coletar") || !estaEmModoDemo(busca)) return to;
+  if ((rota !== "/dashboard" && rota !== "/coletar" && rota !== "/dispositivos") || !estaEmModoDemo(busca)) return to;
 
   const fragmento = to.slice(rota.length);
   return `${rota}?${PARAMETRO_DEMO}=1${fragmento}`;

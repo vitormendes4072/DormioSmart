@@ -15,6 +15,7 @@ import {
 } from "recharts";
 
 import { BarraDoWorkspace } from "../components/BarraDoWorkspace";
+import { destinoDoWorkspace } from "../components/nav";
 import { CardMetrica } from "../components/CardMetrica";
 import { Carregando, FalhaAoCarregar, SemLeituras } from "../components/EstadoDaTela";
 import { NotaDeEscopo } from "../components/NotaDeEscopo";
@@ -112,7 +113,7 @@ function descreverPeriodo(inicioMs: number, fimMs: number): string {
 }
 
 export function Dashboard() {
-  const { hash, key } = useLocation();
+  const { hash, key, search } = useLocation();
   const padraoDaLacuna = useId();
   const gradienteDoGrafico = useId();
   // `null` = todos os dispositivos. O recorte por instrumento (DASH-05) e
@@ -177,7 +178,7 @@ export function Dashboard() {
         <NotaDeEscopo />
         <div id="sessoes-recentes"><SemLeituras /></div>
         <div id="resumo-dispositivo">
-          <Link to="/configuracoes" className="text-sm font-semibold text-primary">Gerenciar dispositivos</Link>
+          <Link to={destinoDoWorkspace("/dispositivos", search)} className="text-sm font-semibold text-primary">Gerenciar dispositivos</Link>
         </div>
       </div>
     );
@@ -463,7 +464,7 @@ export function Dashboard() {
             <p className="mt-1 font-medium text-foreground">{verTudo ? "Todas as sessões disponíveis" : "Sessão mais recente"}</p>
             {periodoExibido && <p className="mt-1 text-xs text-muted-foreground">{periodoExibido}</p>}
           </div>
-          <Link to="/configuracoes" className="mt-auto rounded-lg border border-border px-3 py-2 text-center text-sm font-semibold text-foreground hover:bg-secondary">
+          <Link to={destinoDoWorkspace("/dispositivos", search)} className="mt-auto rounded-lg border border-border px-3 py-2 text-center text-sm font-semibold text-foreground hover:bg-secondary">
             Gerenciar dispositivos
           </Link>
         </aside>

@@ -9168,6 +9168,26 @@ Um celular deitado só mexe em z, e é z que pesa na norma nessa posição. O GG
 
 **Procedência.** Protótipo e mudança aprovados pelo autor. Branch derivada da PR #134, com develop e620ad3 já incorporado.
 
+---
+
+# 2026-11-12 (iii) — Tela de dispositivos
+
+**O problema.** O menu Dispositivos apontava para um resumo no painel e o gerenciamento ficava em Configurações. Faltava a página própria prevista no protótipo.
+
+**Hipótese.** Uma rota dedicada com cartões e a ação de pareamento no cabeçalho aproxima o fluxo do protótipo e reaproveita as operações autenticadas.
+
+**O que foi testado.** Build e suíte do frontend no Windows. No Chromium local, navegação pelo botão do painel e menu móvel, estado ativo do menu, interruptor por teclado, abertura do pareamento demonstrativo e acesso sem sessão à rota real. O teste de montagem foi repetido com a rota removida como controle.
+
+**Resultado medido.** Build aprovado e 566 testes passaram em 43 arquivos. O controle produziu uma falha por ausência do título da tela. Em 1240 px e 390 px a navegação manteve o modo demonstrativo, com zero chamadas à API de dispositivos. A tela coube em 390 px e o acesso real sem sessão redirecionou ao login.
+
+**Adaptação.** O interruptor altera somente o estado local da demonstração. A lista real mostra a validade da credencial e o último envio. Pareamento, renomeação e revogação reutilizam o gerenciamento existente. A revogação pede confirmação e invalida a credencial.
+
+**O que deu errado no caminho.** O Vite devolveu 504 por dependência otimizada desatualizada na primeira prévia. A validação passou em outra porta com um contexto de navegador limpo.
+
+**Risco em aberto.** As ações reais de pareamento, renomeação e revogação não foram executadas contra uma conta e um aparelho físicos nesta etapa.
+
+**Procedência.** Protótipo e plano aprovados pelo autor. Branch derivada da PR #135, com develop e620ad3 já incorporado.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
