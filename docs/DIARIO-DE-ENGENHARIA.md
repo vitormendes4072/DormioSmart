@@ -9314,6 +9314,65 @@ Um celular deitado só mexe em z, e é z que pesa na norma nessa posição. O GG
 
 **Procedência.** O relatório de passagem do Codex (local, fora do repositório); GitHub (PRs #131–#140); a revisão e as execuções desta entrada, em 12/11, Windows 11.
 
+# 2026-11-12 (ix) — o release #142, e o `DATA-15` visto na conta real
+
+**O problema, como foi entendido no início.** O frontend do protótipo (PRs #134–#139) estava em `develop`, validado só com dados simulados. O autor aprovou o release para a produção.
+
+**Hipótese de trabalho.** Como nada mudou no backend nem nos dados enviados, o release não deve mexer em `/health`, nas respostas sem login nem no que a conta real já tem. O que só a conta real mostra é se as telas novas leem as leituras de verdade.
+
+**O que foi testado, e como.**
+- **O release:** a PR #142 (`develop` → `main`), CI 18/18, mesclada em `5f5f209`.
+- **O deploy:** o deployment de produção do GitHub aponta para `5f5f209`; `X-Vercel-Id` em `gru1`.
+- **Sem login:** `/health`, `/api/sleep-history` e `/api/features` sem token, e a raiz.
+- **Com login (o autor, na conta real, pelo navegador):** a visão geral, o Histórico (últimos 7 dias) e Dispositivos.
+
+**Resultado medido.**
+- **Produção:** `/health` `200`, banco ok, contrato 2.9.0, modelo `ml-inf-cabeca-v2`; as duas rotas de dados `401` sem token; a raiz `200`.
+- **Visão geral:** carrega as sessões reais, com os cartões de tempo medido, leituras com movimento, maior intervalo parado e cobertura, e o gráfico de movimento.
+- **Dispositivos:** os dois aparelhos da conta, cada um com o último envio e a credencial ativa.
+- **Histórico:** lista as sessões da janela e **mostra o aviso de limite**: as sessões somam exatamente 1 000 leituras, o teto do `max-rows`. A visão geral diz o mesmo de outro jeito ("leituras ficaram de fora").
+
+**Adaptação.**
+- **O `DATA-15` deixou de ser hipótese:** com poucas noites de uso, a janela de 7 dias já bate no teto, e as noites mais antigas somem do Histórico. O aviso do PR #138 funciona, mas a correção (paginar `GET /api/sleep-history` como `GET /api/features`) passa a ser a primeira do L0.
+
+**O que deu errado no caminho.** Nada no release.
+
+**Risco em aberto.**
+- **O `DATA-15` em produção:** o Histórico e o CSV de qualquer janela com mais de 1 000 leituras estão incompletos.
+- **O `UI-26`:** a sessão mais antiga da lista é a que toca o corte. Desta vez saiu "Com lacunas", mas a classificação dela não é confiável enquanto o `DATA-15` não for corrigido.
+- **`API-08` e `UI-27`** continuam no código.
+
+**Procedência.** GitHub (PR #142, CI e deployments); `curl` na produção, em 12/11; as telas da conta real, vistas pelo autor e mostradas ao Claude na conversa (não versionadas: são dados de uma pessoa).
+
+# 2026-11-12 (x) — as análises de frontend do Codex, revisadas e versionadas
+
+**O problema, como foi entendido no início.** Na conferência da integração, todo o trabalho commitado do Codex estava na `develop`, mas dois documentos citados no diário (10/11 (xv) e (xvi), 11/11 (i)–(iv)), `ANALISE-FRONTEND-UX-UI.md` e `CATALOGO-TELAS-FRONTEND.md`, existiam só numa worktree do Codex, sem commit. O autor pediu para versioná-los com revisão.
+
+**Hipótese de trabalho.** As análises têm valor para o texto e para o backlog, mas foram escritas antes do frontend do protótipo (12/11), e o catálogo depende de capturas locais, uma delas com dados reais.
+
+**O que foi testado, e como.**
+- **Dados pessoais e de máquina:** busca por nomes, e-mails, caminhos, tokens e URLs nos dois textos; leitura integral.
+- **As imagens:** as 31 referências do catálogo, e o que o próprio catálogo diz de cada captura.
+- **Os achados:** cada um conferido contra a `develop` de 12/11 (`TelaDeConsentimento.tsx`, `SeletorDeTema.tsx`, `Dashboard.tsx`, `ListaDeNoites.tsx`, `Layout.tsx`, `LIMITE_DO_PAINEL`) e contra o backlog.
+
+**Resultado medido.**
+- **Nenhum nome, e-mail, caminho de máquina ou segredo** nos textos.
+- **As imagens:** 3,7 MB. Três delas mostram dados ou telas de uma pessoa (a noite no Moto E7, a recuperação de senha editada por IA, o formulário real de nova senha), e o próprio catálogo diz que a do Moto E7 não deve ser publicada. As 31 referências viraram notas "captura local, não versionada".
+- **Os achados:** seis continuam no código. Dois já tinham item (`DATA-15` e `UI-27`); os outros quatro não tinham nenhum e viraram três itens. O comentário de `Layout.tsx` já foi corrigido.
+
+**Adaptação.**
+- **Os documentos entram em `docs/` com um aviso no início:** retrato de 10/11, o que mudou com o frontend do protótipo e a situação de cada achado em 12/11.
+- **Os achados sem item viraram itens** (regra 2): `UI-28` (teclado no diálogo de consentimento e no seletor de tema), `UI-29` (o texto da ordem da tabela do painel) e `APP-15` (falha ao listar as noites aparece como lista vazia).
+
+**O que deu errado no caminho.** Nada.
+
+**Risco em aberto.**
+- **As descrições de navegação, painel, coleta e configurações estão desatualizadas.** O aviso diz isso, mas o texto não foi reescrito.
+- **As capturas e o PDF continuam só na worktree do Codex.** Se ela for apagada, somem. Cabe ao autor guardá-las fora dela.
+- **O terceiro documento (`REVISAO-PROTOTIPO-SMARTDORMIO.md`)** não foi incluído.
+
+**Procedência.** A worktree do Codex `release-121-registro` (arquivos sem commit, de 10–11/11); `develop` `2f128d4`; a revisão desta entrada, em 12/11, Windows 11.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
