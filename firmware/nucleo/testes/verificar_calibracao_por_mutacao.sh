@@ -26,7 +26,7 @@ rodar() { # rodar DE PARA -> define ACUSOU (sim|nao|quebrado)
   para=$2
   ACUSOU=quebrado
   W=$(mktemp -d)
-  cp "$NUCLEO/calibracao.cpp" "$NUCLEO/calibracao.h" "$W"/
+  cp "$NUCLEO/calibracao.cpp" "$NUCLEO/calibracao.h" "$NUCLEO/fifo_mpu.h" "$W"/
   mkdir -p "$W/testes"
   cp "$AQUI/leitor_json.h" "$AQUI/leitor_json.cpp" "$AQUI/testes_calibracao.cpp" "$W/testes/"
   if [ -n "$de" ]; then

@@ -85,7 +85,7 @@ bool FilaNaFlash::montar() {
 }
 
 ResultadoDaGuarda FilaNaFlash::guardar(const Epoca &e, const VetorDeFeatures *vetor,
-                                       const InstanteDaEpoca &instante) {
+                                       const InstanteDaEpoca &instante, bool calibrada) {
   if (!montada_) return FILA_NAO_MONTADA;
 
   // Acha um slot em branco a partir da cabeca. No primeiro slot de um setor,
@@ -126,6 +126,7 @@ ResultadoDaGuarda FilaNaFlash::guardar(const Epoca &e, const VetorDeFeatures *ve
   r.bandeiras = 0;
   if (vetor) r.bandeiras |= REGISTRO_TEM_FEATURES;
   if (instante.e_parede) r.bandeiras |= REGISTRO_INSTANTE_E_PAREDE;
+  if (calibrada) r.bandeiras |= REGISTRO_CALIBRADA;
   r.entregue = ENTREGUE_PENDENTE;
   r.instante_s = instante.segundos;
   r.epoca = e;
@@ -224,7 +225,10 @@ ResultadoDeMontagem montar_payload_do_registro(const RegistroDeEpoca &r, uint16_
   }
   // A cadeia C2 entrega sempre 960 pontos por epoca de 30 s, e e esse o
   // denominador de `zcr` e `p_frac` (`desquantizar` precisa dele).
-  const FeaturesDeEpoca f = desquantizar(r.vetor, static_cast<uint16_t>(AMOSTRAS_NA_GRADE));
+  FeaturesDeEpoca f = desquantizar(r.vetor, static_cast<uint16_t>(AMOSTRAS_NA_GRADE));
+  // A marca sai junto do vetor (contrato 2.9.0); o `gn` nao, porque o
+  // registro nao o guarda (FW-11: caberia so aumentando o registro).
+  f.calibrada = r.calibrada() ? 1 : 0;
   return montar_payload(r.epoca, usar, mono_ms, destino, tamanho, escritos, &f, TAXA_DA_GRADE_HZ,
                         features_incluidas);
 }

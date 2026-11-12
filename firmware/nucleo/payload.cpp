@@ -148,8 +148,8 @@ ResultadoDeMontagem montar_payload(const Epoca &e, const ResolucaoDeParede &pare
     usado += static_cast<uint32_t>(m);
 
     // CAL-03 (contrato 2.9.0): a norma da gravidade media e a marca de
-    // calibracao. Opcionais: o vetor da fila de flash nao carrega nenhum dos
-    // dois, e o payload do travesseiro fica como era. `gn` fora de [0, 8] g
+    // calibracao. Opcionais: o registro da fila de flash nao guarda `gn`, e a
+    // marca vem do bit `REGISTRO_CALIBRADA` (FW-11). `gn` fora de [0, 8] g
     // (o fundo de escala da C2) e omitido, como o servidor o recusaria.
     if (dentro(f.gn, 0.0, 8.0)) {
       const int q = snprintf(destino + usado, tamanho - usado, ",\"gn\":%.9g", f.gn);
