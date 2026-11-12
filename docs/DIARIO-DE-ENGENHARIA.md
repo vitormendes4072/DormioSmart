@@ -9134,15 +9134,15 @@ Um celular deitado só mexe em z, e é z que pesa na norma nessa posição. O GG
 
 **O problema.** O painel já calculava cobertura, movimento e lacunas, mas o recorte e a distinção visual entre repouso e falta de leitura precisavam ficar mais claros.
 
-**Hipótese.** Exibir sessão, instrumento e intervalo no cabeçalho e usar hachura para interrupções melhora a leitura sem alterar as consultas ou o cálculo.
+**Hipótese.** Exibir sessão, instrumento e intervalo no cabeçalho e usar hachura para interrupções melhora a leitura sem alterar as consultas ou o cálculo. A composição foi revista a partir do HTML do autor, com quatro métricas, gráfico de linha, cartão do dispositivo e sessões recentes.
 
 **O que foi testado.** Build e suíte do frontend no Windows, além de navegação em Chromium local com demonstração em 1440 px e 390 px, uma interrupção injetada nas leituras simuladas e uma lista vazia.
 
-**Resultado medido.** 564 testes em 43 arquivos e build aprovados. As duas larguras não tiveram rolagem horizontal. A interrupção simulada mostrou a legenda e o padrão hachurado. A lista vazia mostrou a mensagem de ausência de leituras.
+**Resultado medido.** 564 testes em 43 arquivos e build aprovados. As duas larguras não tiveram rolagem horizontal. O cartão ficou ao lado do gráfico em 1440 px e abaixo em 390 px. A interrupção simulada mostrou a legenda e o padrão hachurado, e a linha foi interrompida. A lista vazia mostrou a mensagem de ausência de leituras.
 
-**Adaptação.** A cobertura fica junto do tempo medido e o eixo categórico foi preservado. A legenda informa que a largura da faixa não representa a duração da interrupção.
+**Adaptação.** A cobertura ganhou cartão próprio para seguir a composição do protótipo. O último envio e as sessões vêm dos dados já disponíveis. O eixo categórico foi preservado. A legenda informa que a largura da faixa não representa a duração da interrupção.
 
-**O que deu errado no caminho.** A primeira prévia devolveu 504 por dependência otimizada desatualizada. Um servidor com reotimização resolveu. Remover uma única leitura não gerou interrupção na regra existente. A verificação foi refeita removendo seis leituras consecutivas.
+**O que deu errado no caminho.** A primeira prévia devolveu 504 por dependência otimizada desatualizada. Um servidor com reotimização resolveu. Remover uma única leitura não gerou interrupção na regra existente. A verificação foi refeita removendo seis leituras consecutivas. Na revisão visual, um teste de privacidade atingiu o timeout de 5 s na suíte paralela. A suíte inteira passou ao repetir com quatro workers, sem alterar o teste.
 
 **Risco em aberto.** As verificações no navegador usaram demonstração local. Falta revisão com sessão e leituras reais.
 

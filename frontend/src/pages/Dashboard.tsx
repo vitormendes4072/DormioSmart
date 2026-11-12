@@ -1,9 +1,11 @@
-import { Activity, Clock, Pause, Waves } from "lucide-react";
+import { Activity, Clock, Gauge, Pause, Radio } from "lucide-react";
 import { useId, useState, type ReactNode } from "react";
+import { Link } from "react-router";
 import {
   Bar,
-  BarChart,
-  Cell,
+  Area,
+  ComposedChart,
+  Line,
   ReferenceLine,
   ResponsiveContainer,
   Tooltip,
@@ -18,8 +20,8 @@ import { AvisoDeMistura, SeletorDeDispositivo } from "../components/SeletorDeDis
 import { useDispositivos } from "../hooks/useDispositivos";
 import { useHistorico } from "../hooks/useHistorico";
 import { LIMITE_DO_PAINEL } from "../lib/api";
-import { descreverRecorte, serieMisturaInstrumentos } from "../lib/dispositivos";
-import { agruparEmSessoes } from "../lib/cobertura";
+import { descreverRecorte, descreverUltimoContato, serieMisturaInstrumentos } from "../lib/dispositivos";
+import { agruparEmSessoes, calcularCobertura } from "../lib/cobertura";
 import {
   calcularMetricas,
   formatarDuracao,
@@ -107,6 +109,7 @@ function descreverPeriodo(inicioMs: number, fimMs: number): string {
 
 export function Dashboard() {
   const padraoDaLacuna = useId();
+  const gradienteDoGrafico = useId();
   // `null` = todos os dispositivos. O recorte por instrumento (DASH-05) e
   // opcional: sem ele o painel se comporta como antes.
   const [dispositivo, setDispositivo] = useState<string | null>(null);
@@ -123,6 +126,10 @@ export function Dashboard() {
   const instrumento = dispositivos.length === 1 && dispositivo === null
     ? descreverRecorte(dispositivos, dispositivos[0].id)
     : descreverRecorte(dispositivos, dispositivo);
+
+  const dispositivoDoResumo = dispositivo === null && dispositivos.length === 1
+    ? dispositivos[0]
+    : dispositivos.find((item) => item.id === dispositivo);
 
   const seletor = (
     <SeletorDeDispositivo
@@ -170,6 +177,7 @@ export function Dashboard() {
   // Por padrão mostra a ÚLTIMA sessão, que é a resposta para "e agora?".
   // Quem quiser o histórico inteiro troca no seletor.
   const sessoes = agruparEmSessoes(leituras);
+  const sessoesRecentes = sessoes.slice(-3).reverse();
   const ultima = sessoes.length > 0 ? sessoes[sessoes.length - 1] : null;
   const leiturasVisiveis = verTudo || ultima === null ? leituras : ultima.leituras;
 
@@ -216,7 +224,7 @@ export function Dashboard() {
     .slice(0, 8);
 
   return (
-    <div className="space-y-6">
+    <div className="mx-auto max-w-7xl space-y-5">
       <Cabecalho
         periodo={
           cob.trechos.length > 0
@@ -246,15 +254,11 @@ export function Dashboard() {
         />
       )}
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2 sm:gap-3 xl:grid-cols-4">
         <CardMetrica
           rotulo="Tempo medido"
           valor={formatarDuracao(cob.tempoCobertoMs)}
-          detalhe={
-            pctCoberto == null
-              ? "Tempo com leitura"
-              : `${pctCoberto.toFixed(0)}% de uma janela de ${formatarDuracao(cob.janelaMs)}`
-          }
+          detalhe="Tempo com leituras na janela exibida"
           icone={Clock}
           corDoIcone="text-blue-400"
         />
@@ -277,11 +281,12 @@ export function Dashboard() {
           corDoIcone="text-indigo-400"
         />
         <CardMetrica
-          rotulo="Intensidade"
-          valor={m.intensidadeMedia == null ? null : m.intensidadeMedia.toFixed(2)}
-          unidade="m/s²"
-          detalhe={`média do repouso · limiar ${LIMIAR_DE_MOVIMENTO.toFixed(1).replace(".", ",")}`}
-          icone={Waves}
+          rotulo="Cobertura da coleta"
+          valor={pctCoberto == null ? null : `${pctCoberto.toFixed(0)}%`}
+          detalhe={pctCoberto == null
+            ? "Janela sem duração calculável"
+            : `${formatarDuracao(cob.tempoCobertoMs)} de ${formatarDuracao(cob.janelaMs)}`}
+          icone={Gauge}
           corDoIcone="text-primary"
         />
       </div>
@@ -296,123 +301,203 @@ export function Dashboard() {
           continua na tela, e em qualquer captura dela, mas não na frente. */}
       <NotaDeEscopo />
 
-      <figure aria-labelledby="titulo-linha-do-tempo" className="bg-card border border-border rounded-2xl p-4 sm:p-6">
-        <div className="flex items-start justify-between gap-4 mb-5 flex-wrap">
-          <div>
-            <h2 id="titulo-linha-do-tempo" className="text-base font-semibold text-foreground">Movimento ao longo do tempo</h2>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Desvio do repouso ao longo da captação · |magnitude − 9,81 m/s²|
+      <div className="grid gap-3 xl:grid-cols-[minmax(0,1.8fr)_minmax(220px,0.9fr)]">
+        <figure aria-labelledby="titulo-linha-do-tempo" className="min-w-0 rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
+          <div className="flex items-start justify-between gap-4 mb-5 flex-wrap">
+            <div>
+              <h2 id="titulo-linha-do-tempo" className="text-base font-semibold text-foreground">Movimento ao longo do tempo</h2>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Desvio do repouso ao longo da captação · |magnitude − 9,81 m/s²|
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted-foreground">
+              <span className="flex items-center gap-1.5">
+                <span className="w-3 h-3 rounded-sm inline-block" style={{ background: COR_REPOUSO }} />
+                Intensidade medida
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="w-3 h-3 rounded-sm inline-block" style={{ background: COR_MOVIMENTO }} />
+                Leitura com movimento
+              </span>
+              <span className="flex items-center gap-1.5">
+                {/* Tracejada, como a linha do grafico. */}
+                <span
+                  className="w-3 inline-block border-t-2 border-dashed"
+                  style={{ borderColor: COR_MOVIMENTO }}
+                />
+                Limiar {LIMIAR_DE_MOVIMENTO.toFixed(1).replace(".", ",")}
+              </span>
+              {temLacuna && (
+                <span className="flex items-center gap-1.5">
+                  <span className="inline-block size-3 rounded-sm border border-muted-foreground/40 bg-[repeating-linear-gradient(135deg,transparent_0_2px,currentColor_2px_3px)]" />
+                  Sem medição
+                </span>
+              )}
+            </div>
+          </div>
+          <div className="h-52 sm:h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <ComposedChart data={serieComLacuna} margin={{ top: 4, right: 4, left: -12, bottom: 0 }}>
+                <defs>
+                  <linearGradient id={gradienteDoGrafico} x1="0" x2="0" y1="0" y2="1">
+                    <stop offset="0%" stopColor={COR_REPOUSO} stopOpacity={0.26} />
+                    <stop offset="100%" stopColor={COR_REPOUSO} stopOpacity={0} />
+                  </linearGradient>
+                  <pattern id={padraoDaLacuna} width="6" height="6" patternUnits="userSpaceOnUse">
+                    <rect width="6" height="6" fill="var(--muted-foreground)" fillOpacity={0.12} />
+                    <path d="M-1 1L1 -1M0 6L6 0M5 7L7 5" stroke="var(--muted-foreground)" strokeOpacity={0.65} />
+                  </pattern>
+                </defs>
+                <XAxis
+                  dataKey="hora"
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fill: "var(--muted-foreground)", fontSize: 11, fontFamily: "Outfit" }}
+                  minTickGap={24}
+                />
+                {/* `width` explícito porque o padrão do recharts é 60px, que num
+                    gráfico de ~310px no celular consome um quinto da área útil.
+                    Mas 32px era estreito demais: com um evento de 20 m/s², os
+                    rótulos viravam "l.0" e ".0" — cortados ao meio. 40px cabe
+                    dois dígitos, e o formato larga a casa decimal acima de 10,
+                    onde ela não informa nada. */}
+                <YAxis
+                  width={40}
+                  tickCount={4}
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fill: "var(--muted-foreground)", fontSize: 11, fontFamily: "Outfit" }}
+                  tickFormatter={(v: number) => (v >= 10 ? v.toFixed(0) : v.toFixed(1))}
+                />
+                <Tooltip
+                  content={<TooltipDoGrafico />}
+                  cursor={{ fill: "var(--secondary)", fillOpacity: 0.5 }}
+                />
+                {/* A fronteira da decisao, desenhada (DASH-07).
+                    Sem ela o grafico engana: numa captacao so de repouso o eixo
+                    se ajusta ao maior valor, as barras enchem a altura toda e
+                    parece muito movimento — quando na verdade nada chegou perto
+                    do limiar. Foi exatamente o que aconteceu na primeira coleta
+                    com hardware real, em 2026-08-24.
+                    O tracado da landing ja mostrava a faixa de limiar; aqui,
+                    onde o dado e real, ela importa mais.
+                    `ifOverflow="extendDomain"` garante que a linha apareca
+                    mesmo quando todos os pontos ficam abaixo dela. */}
+                <ReferenceLine
+                  y={LIMIAR_DE_MOVIMENTO}
+                  ifOverflow="extendDomain"
+                  stroke={COR_MOVIMENTO}
+                  strokeDasharray="5 4"
+                  strokeWidth={1.5}
+                />
+                {/* A lacuna vira uma coluna cinza de altura cheia. O eixo é
+                    categórico — cada leitura ocupa a mesma largura — então um
+                    buraco de duas horas ficava visualmente idêntico a dez
+                    segundos. Sem esta coluna, a tela não mostrava que a coleta
+                    tinha caído (DASH-09). */}
+                {temLacuna && (
+                  <Bar
+                    dataKey="alturaDaLacuna"
+                    radius={[3, 3, 0, 0]}
+                    isAnimationActive={false}
+                    fill={`url(#${padraoDaLacuna})`}
+                  />
+                )}
+                <Area
+                  type="linear"
+                  dataKey="intensidade"
+                  stroke="none"
+                  fill={`url(#${gradienteDoGrafico})`}
+                  connectNulls={false}
+                  isAnimationActive={false}
+                />
+                <Line
+                  type="linear"
+                  dataKey="intensidade"
+                  stroke={COR_REPOUSO}
+                  strokeWidth={2.5}
+                  connectNulls={false}
+                  isAnimationActive={false}
+                  dot={({ cx, cy, payload }: { cx?: number; cy?: number; payload?: PontoDaSerie }) =>
+                    payload?.movimento && cx != null && cy != null
+                      ? <circle key={`${cx}-${cy}`} cx={cx} cy={cy} r={3} fill={COR_MOVIMENTO} />
+                      : <g key={`${cx}-${cy}`} />
+                  }
+                />
+              </ComposedChart>
+            </ResponsiveContainer>
+          </div>
+          {temLacuna && (
+            <figcaption className="mt-3 text-xs text-muted-foreground">
+              As faixas hachuradas indicam intervalos sem medição. A largura das faixas
+              não representa a duração da lacuna.
+            </figcaption>
+          )}
+        </figure>
+        <aside aria-label="Resumo do dispositivo" className="flex flex-col gap-4 rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
+          <h2 className="text-base font-semibold text-foreground">Seu dispositivo</h2>
+          <div className="flex items-start gap-3">
+            <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
+              <Radio className="size-5" aria-hidden />
+            </span>
+            <p className="min-w-0 break-words text-sm font-medium text-foreground">
+              {dispositivoDoResumo ? instrumento : "Todos os dispositivos"}
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted-foreground">
-            <span className="flex items-center gap-1.5">
-              <span className="w-3 h-3 rounded-sm inline-block" style={{ background: COR_REPOUSO }} />
-              Repouso
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="w-3 h-3 rounded-sm inline-block" style={{ background: COR_MOVIMENTO }} />
-              Movimento
-            </span>
-            <span className="flex items-center gap-1.5">
-              {/* Tracejada, como a linha do grafico. */}
-              <span
-                className="w-3 inline-block border-t-2 border-dashed"
-                style={{ borderColor: COR_MOVIMENTO }}
-              />
-              Limiar {LIMIAR_DE_MOVIMENTO.toFixed(1).replace(".", ",")}
-            </span>
-            {temLacuna && (
-              <span className="flex items-center gap-1.5">
-                <span className="inline-block size-3 rounded-sm border border-muted-foreground/40 bg-[repeating-linear-gradient(135deg,transparent_0_2px,currentColor_2px_3px)]" />
-                Sem medição
-              </span>
-            )}
+          {dispositivoDoResumo ? (
+            <dl className="space-y-1 border-t border-border pt-3 text-sm">
+              <dt className="text-muted-foreground">Último envio</dt>
+              <dd className="font-medium text-foreground">{descreverUltimoContato(dispositivoDoResumo)}</dd>
+            </dl>
+          ) : (
+            <p className="border-t border-border pt-3 text-sm text-muted-foreground">
+              {dispositivos.length > 1
+                ? "Selecione um dispositivo para consultar seu último envio."
+                : "Nenhum dispositivo disponível para detalhar."}
+            </p>
+          )}
+          <div className="border-t border-border pt-3 text-sm">
+            <p className="text-muted-foreground">Sessão exibida</p>
+            <p className="mt-1 font-medium text-foreground">{verTudo ? "Todas as sessões disponíveis" : "Sessão mais recente"}</p>
           </div>
-        </div>
-        <div className="h-52 sm:h-64">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={serieComLacuna} margin={{ top: 4, right: 4, left: -12, bottom: 0 }}>
-              <defs>
-                <pattern id={padraoDaLacuna} width="6" height="6" patternUnits="userSpaceOnUse">
-                  <rect width="6" height="6" fill="var(--muted-foreground)" fillOpacity={0.12} />
-                  <path d="M-1 1L1 -1M0 6L6 0M5 7L7 5" stroke="var(--muted-foreground)" strokeOpacity={0.65} />
-                </pattern>
-              </defs>
-              <XAxis
-                dataKey="hora"
-                axisLine={false}
-                tickLine={false}
-                tick={{ fill: "var(--muted-foreground)", fontSize: 11, fontFamily: "Outfit" }}
-                minTickGap={24}
-              />
-              {/* `width` explícito porque o padrão do recharts é 60px, que num
-                  gráfico de ~310px no celular consome um quinto da área útil.
-                  Mas 32px era estreito demais: com um evento de 20 m/s², os
-                  rótulos viravam "l.0" e ".0" — cortados ao meio. 40px cabe
-                  dois dígitos, e o formato larga a casa decimal acima de 10,
-                  onde ela não informa nada. */}
-              <YAxis
-                width={40}
-                tickCount={4}
-                axisLine={false}
-                tickLine={false}
-                tick={{ fill: "var(--muted-foreground)", fontSize: 11, fontFamily: "Outfit" }}
-                tickFormatter={(v: number) => (v >= 10 ? v.toFixed(0) : v.toFixed(1))}
-              />
-              <Tooltip
-                content={<TooltipDoGrafico />}
-                cursor={{ fill: "var(--secondary)", fillOpacity: 0.5 }}
-              />
-              {/* A fronteira da decisao, desenhada (DASH-07).
-                  Sem ela o grafico engana: numa captacao so de repouso o eixo
-                  se ajusta ao maior valor, as barras enchem a altura toda e
-                  parece muito movimento — quando na verdade nada chegou perto
-                  do limiar. Foi exatamente o que aconteceu na primeira coleta
-                  com hardware real, em 2026-08-24.
-                  O tracado da landing ja mostrava a faixa de limiar; aqui,
-                  onde o dado e real, ela importa mais.
-                  `ifOverflow="extendDomain"` garante que a linha apareca
-                  mesmo quando todos os pontos ficam abaixo dela. */}
-              <ReferenceLine
-                y={LIMIAR_DE_MOVIMENTO}
-                ifOverflow="extendDomain"
-                stroke={COR_MOVIMENTO}
-                strokeDasharray="5 4"
-                strokeWidth={1.5}
-              />
-              {/* A lacuna vira uma coluna cinza de altura cheia. O eixo é
-                  categórico — cada leitura ocupa a mesma largura — então um
-                  buraco de duas horas ficava visualmente idêntico a dez
-                  segundos. Sem esta coluna, a tela não mostrava que a coleta
-                  tinha caído (DASH-09). */}
-              {temLacuna && (
-                <Bar
-                  dataKey="alturaDaLacuna"
-                  radius={[3, 3, 0, 0]}
-                  isAnimationActive={false}
-                  fill={`url(#${padraoDaLacuna})`}
-                />
-              )}
-              {/* Animacao desligada de proposito: o dashboard recarrega os
-                  dados periodicamente, e reanimar as barras a cada atualizacao
-                  vira ruido visual. Tambem torna a captura de tela confiavel —
-                  com animacao, um print pode pegar as barras no meio do
-                  crescimento e mostrar valores que nao existem. */}
-              <Bar dataKey="intensidade" radius={[3, 3, 0, 0]} isAnimationActive={false}>
-                {serie.map((ponto, i) => (
-                  <Cell key={i} fill={ponto.movimento ? COR_MOVIMENTO : COR_REPOUSO} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-        {temLacuna && (
-          <figcaption className="mt-3 text-xs text-muted-foreground">
-            As faixas hachuradas indicam intervalos sem medição. A largura das faixas
-            não representa a duração da lacuna.
-          </figcaption>
-        )}
-      </figure>
+          <Link to="/configuracoes" className="mt-auto rounded-lg border border-border px-3 py-2 text-center text-sm font-semibold text-foreground hover:bg-secondary">
+            Gerenciar dispositivos
+          </Link>
+        </aside>
+      </div>
+
+      {sessoesRecentes.length > 0 && (
+        <section aria-labelledby="sessoes-recentes" className="rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
+          <h2 id="sessoes-recentes" className="text-base font-semibold text-foreground">Sessões recentes</h2>
+          <p className="mt-1 text-xs text-muted-foreground">Últimas sessões do dispositivo ou do conjunto selecionado.</p>
+          <div className="mt-4 overflow-x-auto">
+            <table className="w-full min-w-[32rem] text-left text-sm">
+              <thead className="border-b border-border text-xs text-muted-foreground">
+                <tr>
+                  <th scope="col" className="pb-2 pr-4">Período</th>
+                  <th scope="col" className="pb-2 pr-4">Tempo medido</th>
+                  <th scope="col" className="pb-2">Cobertura</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {sessoesRecentes.map((sessao) => {
+                  const resumo = calcularCobertura(sessao.leituras);
+                  const cobertura = resumo.janelaMs > 0
+                    ? `${((resumo.tempoCobertoMs / resumo.janelaMs) * 100).toFixed(0)}%`
+                    : "—";
+                  return (
+                    <tr key={sessao.inicio}>
+                      <td className="py-3 pr-4">{descreverPeriodo(sessao.inicio, sessao.fim)}</td>
+                      <td className="py-3 pr-4">{formatarDuracao(resumo.tempoCobertoMs)}</td>
+                      <td className="py-3">{cobertura}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
         <div className="lg:col-span-2 bg-card border border-border rounded-2xl p-4 sm:p-6">
@@ -531,12 +616,12 @@ function Cabecalho({
   acao?: ReactNode;
 }) {
   return (
-    <header className="flex flex-wrap items-start justify-between gap-4 rounded-2xl border border-border bg-card p-4 sm:p-6">
+    <header className="flex flex-wrap items-end justify-between gap-4 py-2">
       <div className="min-w-0">
         <p className="text-xs text-muted-foreground uppercase tracking-wider">
           {recorte ?? "Visão geral"}
         </p>
-        <h1 className="text-xl sm:text-2xl font-semibold text-foreground mt-1">
+        <h1 className="mt-1 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
           Movimento durante o repouso
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">{instrumento}</p>

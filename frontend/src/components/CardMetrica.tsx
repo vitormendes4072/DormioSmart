@@ -25,12 +25,14 @@ export function CardMetrica({
   const temValor = valor !== null && valor !== undefined;
 
   return (
-    <div className="bg-card border border-border rounded-2xl p-5">
+    <div className="min-w-0 rounded-2xl border border-border bg-card p-3 shadow-sm sm:p-4">
       <div className="flex items-center justify-between gap-2 mb-4">
         <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
           {rotulo}
         </p>
-        <Icone className={`w-4 h-4 flex-shrink-0 ${corDoIcone}`} />
+        <span className={`grid size-8 shrink-0 place-items-center rounded-lg bg-primary/10 ${corDoIcone}`}>
+          <Icone className="size-4" aria-hidden />
+        </span>
       </div>
       <p className="text-2xl font-bold text-foreground">
         {temValor ? valor : "--"}
