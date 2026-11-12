@@ -33,7 +33,7 @@ export function itensDeNavegacao(nativo: boolean = noiteNativaDisponivel()): Ite
 /** As telas com demonstração própria compartilham a navegação local. */
 export function destinoDoWorkspace(to: string, busca: string): string {
   const rota = to.split("#", 1)[0];
-  if ((rota !== "/dashboard" && rota !== "/coletar" && rota !== "/dispositivos" && rota !== "/historico") || !estaEmModoDemo(busca)) return to;
+  if ((rota !== "/dashboard" && rota !== "/coletar" && rota !== "/dispositivos" && rota !== "/historico" && rota !== "/configuracoes") || !estaEmModoDemo(busca)) return to;
 
   const fragmento = to.slice(rota.length);
   return `${rota}?${PARAMETRO_DEMO}=1${fragmento}`;

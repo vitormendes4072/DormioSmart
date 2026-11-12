@@ -3,6 +3,7 @@ import { NavLink, useLocation, useNavigate } from "react-router";
 
 import { useAuth } from "../contexts/AuthContext";
 import { usePerfil } from "../contexts/PerfilContext";
+import { estaEmModoDemo } from "../lib/demo";
 import { nomeDoPerfil } from "../lib/perfil";
 
 import { destinoDoWorkspace, itensDeNavegacao } from "./nav";
@@ -13,6 +14,7 @@ import { MarcaDoProduto } from "./MarcaDoProduto";
 export function Sidebar({ painel = false }: { painel?: boolean }) {
   const navigate = useNavigate();
   const { search } = useLocation();
+  const demo = estaEmModoDemo(search);
   const { usuario, carregando, sair } = useAuth();
   const { perfil, carregando: carregandoPerfil } = usePerfil();
 
@@ -64,7 +66,7 @@ export function Sidebar({ painel = false }: { painel?: boolean }) {
         {painel && configuracoes && (
           <>
             <p className="px-3 pb-2 pt-7 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Preferências</p>
-            <NavLink to={configuracoes.to} className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground">
+            <NavLink to={destinoDoWorkspace(configuracoes.to, search)} className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground">
               <configuracoes.icon className="size-4" aria-hidden /> {configuracoes.label}
             </NavLink>
           </>
@@ -78,14 +80,14 @@ export function Sidebar({ painel = false }: { painel?: boolean }) {
           </div>
           <div className="min-w-0">
             <p className="text-sm font-medium text-foreground truncate">
-              {carregando || carregandoPerfil ? "..." : (nome || "Conta")}
+              {demo ? "Demonstração" : carregando || carregandoPerfil ? "..." : (nome || "Conta")}
             </p>
             <p className="text-xs text-muted-foreground truncate">
-              {carregando ? "" : (usuario?.email ?? "não autenticada")}
+              {demo || carregando ? "" : (usuario?.email ?? "não autenticada")}
             </p>
           </div>
         </div>
-        <button
+        {!demo && <button
           onClick={async () => {
             await sair();
             navigate("/login");
@@ -94,7 +96,7 @@ export function Sidebar({ painel = false }: { painel?: boolean }) {
         >
           <LogOut className="w-4 h-4" />
           Sair
-        </button>
+        </button>}
       </div>
     </aside>
   );

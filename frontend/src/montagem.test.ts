@@ -288,6 +288,33 @@ describe("montagem real das telas (UI-17)", PRAZO, () => {
     expect(links.some((a) => a.getAttribute("href") === "/privacidade")).toBe(true);
   });
 
+  it("abre Configurações pelo menu da demonstração sem montar ações da conta", async () => {
+    await montar("/dashboard?demo=1");
+    const links = await screen.findAllByRole("link", { name: "Configurações" });
+    expect(links.map((link) => link.getAttribute("href"))).toEqual([
+      "/configuracoes?demo=1", "/configuracoes?demo=1",
+    ]);
+    fireEvent.click(links[0]);
+    expect(await screen.findByRole("heading", { name: "Aparência" })).toBeTruthy();
+    expect(screen.getByText(/editar o perfil, gerenciar dispositivos/i)).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Exportar meus dados (CSV)" })).toBeNull();
+    expect(vi.mocked(fetch).mock.calls.some(([url]) => String(url).startsWith("/api/devices"))).toBe(false);
+  });
+
+  it("mostra o status de envio de um dispositivo que ainda não tem leituras", async () => {
+    const original = vi.mocked(fetch).getMockImplementation()!;
+    vi.mocked(fetch).mockImplementation((entrada, opcoes) =>
+      String(entrada).startsWith("/api/devices")
+        ? Promise.resolve(respostaJson([{
+            id: "dispositivo-teste", nome: "Sensor de teste", tipo: "travesseiro",
+            last_seen_at: null, revoked_at: null,
+          }]))
+        : original(entrada, opcoes),
+    );
+    await montar("/dashboard");
+    expect(await screen.findByText("Nunca enviou")).toBeTruthy();
+  });
+
   it("avisa quando o CSV contém apenas as leituras disponíveis no limite da consulta", async () => {
     const original = vi.mocked(fetch).getMockImplementation()!;
     const criarUrl = vi.fn(() => "blob:csv");
