@@ -9208,6 +9208,26 @@ Um celular deitado só mexe em z, e é z que pesa na norma nessa posição. O GG
 
 **Procedência.** Protótipo e plano aprovados pelo autor. Branch derivada da PR #136, com develop e620ad3 incorporado.
 
+---
+
+# 2026-11-12 (v) — Correções de coleta e exportação
+
+**O problema.** Uma nova coleta mantinha os registros da anterior. O navegador bloqueava o JSON do simulador na landing. O CSV podia baixar apenas parte dos dados sem avisar.
+
+**Hipótese.** Limpar a lista ao iniciar a coleta, autorizar downloads no iframe da landing e sinalizar o possível limite do CSV corrige os três fluxos.
+
+**O que foi testado.** No Windows, build e suíte do frontend. Teste do hook com movimento sintético e envio pendente. Montagem autenticada com resposta simulada de 1000 linhas seguida de resposta de uma linha. Chromium com a landing da versão anterior e com o build da correção.
+
+**Resultado medido.** 570 testes passaram em 44 arquivos. Os dois testes novos falharam antes da correção, com implementações idênticas às de develop e620ad3. A segunda sessão começou com zero registros mesmo após concluir o envio anterior. O CSV exibiu aviso com 1000 linhas e o retirou com uma linha. O JSON foi bloqueado antes e baixado como smartdormio-leitura-23-15-00.json depois.
+
+**Adaptação.** O resumo fica visível ao encerrar e é limpo ao iniciar outra sessão. A landing permite o download dentro do iframe existente. O CSV reaproveita o limiar usado pelo Histórico para avisar sobre possível truncamento.
+
+**O que deu errado no caminho.** A primeira tentativa no servidor de desenvolvimento não renderizou a landing a tempo. A repetição com o build de produção servido localmente concluiu o teste.
+
+**Risco em aberto.** O CSV continua sujeito ao limite da API. O reinício da coleta foi validado com eventos sintéticos, sem repetir a operação em um aparelho físico.
+
+**Procedência.** Correções aprovadas pelo autor após revisão da versão da PR #137. Branch derivada dessa PR, com develop e620ad3 incorporado.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
