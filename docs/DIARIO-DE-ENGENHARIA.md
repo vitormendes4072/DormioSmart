@@ -9148,6 +9148,26 @@ Um celular deitado só mexe em z, e é z que pesa na norma nessa posição. O GG
 
 **Procedência.** Mudança aprovada pelo autor e executada na branch de visão geral do dashboard, baseada em develop e620ad3.
 
+---
+
+# 2026-11-12 (ii) — Nova coleta
+
+**O problema.** O painel já usava o layout do protótipo, mas a tela de coleta ainda tinha a composição anterior. O link de Nova coleta também descartava o parâmetro da demonstração local.
+
+**Hipótese.** Reaproveitar o cabeçalho e a navegação do painel e destacar o estado e o tempo da sessão aproxima a experiência do protótipo. Manter o parâmetro nos links entre as telas demonstrativas preserva a navegação sem login.
+
+**O que foi testado.** Build e suíte do frontend no Windows. Em Chromium, navegação do painel à coleta com 1240 px e 390 px, início e encerramento do cronômetro, retorno ao Histórico e acesso direto à coleta sem conta.
+
+**Resultado medido.** Build aprovado e 564 testes aprovados em 43 arquivos. O cronômetro avançou de 00:00:00 para 00:00:01, a simulação encerrou sem requisições de escrita, a tela móvel coube na largura e a rota real sem sessão redirecionou ao login.
+
+**Adaptação.** O modo local usa somente o cronômetro. A tela autenticada mantém consentimento, preparo do aparelho, acelerômetro e envio pela implementação existente. Os links de Histórico e Dispositivos apontam para as seções do painel também quando acionados da coleta.
+
+**O que deu errado no caminho.** O ambiente restrito impediu o Vitest de renomear arquivos temporários. A suíte passou ao executar com permissão para o cache. A primeira porta da prévia estava ocupada e o navegador validou a tela em outra porta. A repetição da comparação com a prévia anterior não foi concluída porque ela estava indisponível.
+
+**Risco em aberto.** A validação no navegador usou dados de demonstração. Falta testar uma sessão autenticada com acelerômetro físico.
+
+**Procedência.** Protótipo e mudança aprovados pelo autor. Branch derivada da PR #134, com develop e620ad3 já incorporado.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

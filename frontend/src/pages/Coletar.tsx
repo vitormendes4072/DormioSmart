@@ -1,17 +1,17 @@
 import {
+  Activity,
   AlertTriangle,
   ArrowRight,
   Check,
   Loader2,
   Play,
-  Smartphone,
   Square,
   X,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Link } from "react-router";
 
-import { Moldura } from "../components/Blueprint";
+import { BarraDoWorkspace } from "../components/BarraDoWorkspace";
 import { TelaDeConsentimento } from "../components/TelaDeConsentimento";
 import { usePerfil } from "../contexts/PerfilContext";
 import { usePortaoDoConsentimento } from "../hooks/usePortaoDoConsentimento";
@@ -19,6 +19,7 @@ import { consentimentoVigente, registrarConsentimento } from "../lib/consentimen
 import { noiteNativaDisponivel } from "../lib/noiteNativa";
 import { EPOCAS_DISPONIVEIS_S, EPOCA_PADRAO_S, desvio } from "../lib/acelerometro";
 import { ErroApi } from "../lib/api";
+import { estaEmModoDemo } from "../lib/demo";
 import { prepararDispositivoDoCelular } from "../lib/coleta";
 import { formatarDuracao } from "../lib/metricas";
 import { contarFalhas, resumoDaSessao } from "../lib/sessaoDeColeta";
@@ -58,6 +59,122 @@ import { GRAVIDADE, LIMIAR_DE_MOVIMENTO } from "../types/sleep";
  */
 
 export function Coletar() {
+  return estaEmModoDemo() ? <ColetaDemonstrativa /> : <ColetaReal />;
+}
+
+const CLASSE_INICIAR = "inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground hover:opacity-90";
+const CLASSE_ENCERRAR = "inline-flex items-center gap-2 rounded-xl bg-destructive px-5 py-2.5 text-sm font-semibold text-destructive-foreground hover:opacity-90";
+
+function TelaDaColeta({ children }: { children: ReactNode }) {
+  return (
+    <div className="mx-auto max-w-[1540px] space-y-3.5">
+      <header>
+        <BarraDoWorkspace secao="Nova coleta" />
+        <h1 className="text-2xl font-extrabold tracking-tight text-foreground sm:text-[27px]">Nova coleta</h1>
+        <p className="mt-0.5 text-xs text-muted-foreground">Inicie uma sessão de registro de movimento.</p>
+      </header>
+      <div className="flex items-start gap-2 rounded-xl border border-amber-500/30 border-l-4 bg-amber-500/10 px-3 py-3 text-sm text-foreground">
+        <AlertTriangle className="size-4 shrink-0 text-amber-700 dark:text-amber-300" aria-hidden />
+        <p><strong>Importante.</strong> Mantenha a tela ligada e esta página aberta. A coleta pelo navegador é indicada para sessões curtas e não cobre uma noite de sono.</p>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function CartaoDaColeta({
+  decorridoMs,
+  titulo,
+  estado,
+  descricao,
+  children,
+}: {
+  decorridoMs: number;
+  titulo: string;
+  estado: string;
+  descricao: string;
+  children: ReactNode;
+}) {
+  const segundos = Math.floor(decorridoMs / 1000);
+  const horario = [Math.floor(segundos / 3600), Math.floor(segundos / 60) % 60, segundos % 60]
+    .map((parte) => String(parte).padStart(2, "0")).join(":");
+  return (
+    <section aria-labelledby="titulo-cartao-coleta" className="flex min-h-[390px] flex-col items-center justify-center rounded-[14px] border border-border bg-card px-4 py-6 text-center shadow-sm">
+      <span className="grid size-20 place-items-center rounded-full bg-primary/10 text-primary sm:size-24">
+        <Activity className="size-7" aria-hidden />
+      </span>
+      <h2 id="titulo-cartao-coleta" className="mt-3 text-lg font-extrabold text-foreground">{titulo}</h2>
+      <p className="mt-2 max-w-md text-sm text-muted-foreground">{descricao}</p>
+      <p aria-label="Tempo decorrido" className="mt-5 text-4xl font-extrabold tabular-nums tracking-tight text-foreground">{horario}</p>
+      <p role="status" className="mb-4 mt-3 rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
+        {estado}
+      </p>
+      {children}
+    </section>
+  );
+}
+
+function Orientacoes({ demo = false }: { demo?: boolean }) {
+  return (
+    <div className="grid gap-3 sm:grid-cols-2">
+      <section className="rounded-[14px] border border-border bg-card p-4 shadow-sm">
+        <h2 className="text-sm font-bold text-foreground">Como se preparar</h2>
+        <ol className="mt-2 list-decimal space-y-1 pl-4 text-xs text-muted-foreground">
+          <li>Apoie o celular em uma superfície estável.</li>
+          <li>Mantenha esta página aberta e a tela ligada.</li>
+          <li>Inicie o registro e permaneça próximo ao aparelho.</li>
+        </ol>
+      </section>
+      <section className="rounded-[14px] border border-border bg-card p-4 shadow-sm">
+        <h2 className="text-sm font-bold text-foreground">O que será registrado</h2>
+        <p className="mt-2 text-xs text-muted-foreground">
+          {demo ? "Esta demonstração exibe somente o cronômetro da sessão."
+            : "O acelerômetro mede movimentos. Os registros enviados podem ser consultados no painel."}
+        </p>
+      </section>
+    </div>
+  );
+}
+
+function ColetaDemonstrativa() {
+  const [inicio, setInicio] = useState<number | null>(null);
+  const [decorridoMs, setDecorridoMs] = useState(0);
+  const [encerrada, setEncerrada] = useState(false);
+  useEffect(() => {
+    if (inicio === null) return;
+    const timer = window.setInterval(() => setDecorridoMs(Date.now() - inicio), 250);
+    return () => window.clearInterval(timer);
+  }, [inicio]);
+
+  const coletando = inicio !== null;
+  return (
+    <TelaDaColeta>
+      <CartaoDaColeta
+        decorridoMs={decorridoMs}
+        titulo={coletando ? "Coleta em andamento" : encerrada ? "Sessão encerrada" : "Pronto para começar?"}
+        estado={coletando ? "Simulação em andamento" : encerrada ? "Simulação encerrada" : "Aguardando início"}
+        descricao="Modo de demonstração. O cronômetro simula uma sessão sem usar sensores nem gravar dados."
+      >
+        {coletando ? (
+          <button type="button" className={CLASSE_ENCERRAR} onClick={() => {
+            setDecorridoMs(Date.now() - inicio);
+            setInicio(null);
+            setEncerrada(true);
+          }}>Encerrar simulação</button>
+        ) : (
+          <button type="button" className={CLASSE_INICIAR} onClick={() => {
+            setDecorridoMs(0);
+            setEncerrada(false);
+            setInicio(Date.now());
+          }}>Iniciar simulação</button>
+        )}
+      </CartaoDaColeta>
+      <Orientacoes demo />
+    </TelaDaColeta>
+  );
+}
+
+function ColetaReal() {
   const [epoca, setEpoca] = useState<number>(EPOCA_PADRAO_S);
   // Pareamento automático (APP-08): a sessão já identifica o dono, então o
   // aparelho prepara o próprio dispositivo sem o usuário ver credencial.
@@ -105,24 +222,17 @@ export function Coletar() {
   const falhas = contarFalhas(registros);
   const resumo = resumoDaSessao(registros);
 
+  const iniciouSessao = decorridoMs > 0 || resumo.total > 0;
+  const situacao = erroDePreparo || erro ? "Atenção necessária"
+    : coletando ? "Registrando"
+    : vigente && !pronto ? "Preparando aparelho"
+    : iniciouSessao ? "Sessão encerrada" : "Aguardando início";
+
   return (
-    <div className="space-y-6">
+    <TelaDaColeta>
       {portao.telaAberta && (
         <TelaDeConsentimento aoConcordar={portao.concordar} aoRecusar={portao.recusar} erro={portao.erro} />
       )}
-      <div>
-        <p className="text-xs text-muted-foreground uppercase tracking-wider">
-          Registrar movimento
-        </p>
-        <h1 className="text-xl sm:text-2xl font-semibold text-foreground mt-1">
-          Usar este celular como sensor
-        </h1>
-      </div>
-
-      {/* APP-02: no app Android, a noite inteira e registrada por um servico
-          nativo. No site este cartao nao existe, e o aviso abaixo continua
-          valendo para a coleta pelo navegador. */}
-      {/* APP-02, etapa 4: no app, a noite inteira tem tela própria. */}
       {noiteNativaDisponivel() && (
         <Link
           to="/noite"
@@ -138,24 +248,14 @@ export function Coletar() {
         </Link>
       )}
 
-      {/* Fixo. Ver a nota no topo do arquivo. Diz primeiro o que FAZER, e
-          só depois o porquê — antes começava por "não serve para", que soa
-          como defeito em vez de instrução. */}
-      <div className="flex gap-3 rounded-xl border border-amber-500/40 bg-amber-500/5 p-4">
-        <AlertTriangle className="w-5 h-5 flex-shrink-0 text-amber-500" aria-hidden />
-        <div className="text-sm text-muted-foreground space-y-1.5">
-          <p className="font-semibold text-foreground">Deixe a tela ligada e o app aberto.</p>
-          <p>
-            O navegador desliga o sensor quando a tela bloqueia — então isto{" "}
-            <strong className="font-semibold">não cobre uma noite de sono</strong>. Serve
-            para sessões de alguns minutos, com o aparelho apoiado e você por perto. Para a
-            noite inteira é preciso o sensor no travesseiro.
-          </p>
-        </div>
-      </div>
-
-      <Moldura>
-        {/* --- o caminho principal: um botão, um estado, uma saída --- */}
+      <CartaoDaColeta
+        decorridoMs={decorridoMs}
+        titulo={coletando ? "Coleta em andamento" : iniciouSessao ? "Resumo da sessão" : "Pronto para começar?"}
+        estado={situacao}
+        descricao={coletando
+          ? `${resumo.total} ${resumo.total === 1 ? "registro" : "registros"} nesta sessão`
+          : "Use o acelerômetro deste celular para registrar movimentos durante uma sessão curta."}
+      >
         {!vigente ? (
           // LGPD-12: antes do consentimento não há preparo (o servidor recusaria);
           // o botão abre a tela, e depois dela o aparelho se prepara.
@@ -164,7 +264,7 @@ export function Coletar() {
             className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 font-semibold text-primary-foreground transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0"
           >
             <Play className="w-4 h-4" />
-            Começar a registrar
+            Iniciar coleta
           </button>
         ) : erroDePreparo ? (
           <p className="text-sm text-destructive" role="alert">
@@ -177,22 +277,12 @@ export function Coletar() {
           </p>
         ) : coletando ? (
           <div className="space-y-4">
-            <div className="flex items-baseline gap-2">
-              <Smartphone className="w-5 h-5 self-center animate-pulse text-primary" aria-hidden />
-              <span className="text-2xl font-semibold tabular-nums text-foreground">
-                {formatarDuracao(decorridoMs)}
-              </span>
-              <span className="text-sm text-muted-foreground">
-                · {resumo.total} {resumo.total === 1 ? "registro" : "registros"}
-              </span>
-            </div>
-
             <button
               onClick={parar}
               className="inline-flex items-center gap-2 rounded-xl bg-destructive px-5 py-2.5 font-semibold text-destructive-foreground transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0"
             >
               <Square className="w-4 h-4" />
-              Parar
+              Encerrar sessão
             </button>
           </div>
         ) : (
@@ -202,7 +292,7 @@ export function Coletar() {
               className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 font-semibold text-primary-foreground transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0"
             >
               <Play className="w-4 h-4" />
-              Começar a registrar
+              Iniciar coleta
             </button>
 
             {/* A saída. Sem isto a pessoa coleta e a tela não a leva a lugar
@@ -238,8 +328,8 @@ export function Coletar() {
             {erro}
           </p>
         )}
-      </Moldura>
-
+      </CartaoDaColeta>
+      <Orientacoes />
 
       {/* --- as engrenagens, recolhidas --- */}
       <details className="rounded-xl border border-border/70 bg-card">
@@ -300,7 +390,7 @@ export function Coletar() {
           )}
         </div>
       </details>
-    </div>
+    </TelaDaColeta>
   );
 }
 

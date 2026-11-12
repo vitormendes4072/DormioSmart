@@ -10,7 +10,7 @@ import { Sidebar } from "./Sidebar";
  *  quem não tem sessão) é o AUTH-04 — hoje qualquer URL é acessível. */
 export function Layout() {
   const { pathname } = useLocation();
-  const painel = pathname === "/dashboard";
+  const painel = pathname === "/dashboard" || pathname === "/coletar";
   return (
     <div className="bg-background min-h-screen">
       {estaEmModoDemo() && !painel ? <FaixaDemo /> : null}

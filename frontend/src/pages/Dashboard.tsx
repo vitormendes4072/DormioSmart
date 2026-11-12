@@ -1,6 +1,6 @@
-import { Activity, Clock, Gauge, Moon, Pause, Radio, Sun } from "lucide-react";
-import { useId, useState, type ReactNode } from "react";
-import { Link } from "react-router";
+import { Activity, Clock, Gauge, Pause, Radio } from "lucide-react";
+import { useEffect, useId, useState, type ReactNode } from "react";
+import { Link, useLocation } from "react-router";
 import {
   Bar,
   Area,
@@ -14,14 +14,13 @@ import {
   YAxis,
 } from "recharts";
 
+import { BarraDoWorkspace } from "../components/BarraDoWorkspace";
 import { CardMetrica } from "../components/CardMetrica";
 import { Carregando, FalhaAoCarregar, SemLeituras } from "../components/EstadoDaTela";
 import { NotaDeEscopo } from "../components/NotaDeEscopo";
 import { AvisoDeMistura, SeletorDeDispositivo } from "../components/SeletorDeDispositivo";
 import { useDispositivos } from "../hooks/useDispositivos";
 import { usePerfil } from "../contexts/PerfilContext";
-import { useTema } from "../hooks/useTema";
-import { estaEmModoDemo } from "../lib/demo";
 import { nomeDoPerfil } from "../lib/perfil";
 import { useHistorico } from "../hooks/useHistorico";
 import { LIMITE_DO_PAINEL } from "../lib/api";
@@ -113,6 +112,7 @@ function descreverPeriodo(inicioMs: number, fimMs: number): string {
 }
 
 export function Dashboard() {
+  const { hash, key } = useLocation();
   const padraoDaLacuna = useId();
   const gradienteDoGrafico = useId();
   // `null` = todos os dispositivos. O recorte por instrumento (DASH-05) e
@@ -127,6 +127,12 @@ export function Dashboard() {
     dispositivo,
     limite: LIMITE_DO_PAINEL,
   });
+
+  useEffect(() => {
+    if (!carregando && hash) {
+      document.getElementById(hash.slice(1))?.scrollIntoView();
+    }
+  }, [carregando, hash, key]);
 
   const instrumento = dispositivos.length === 1 && dispositivo === null
     ? descreverRecorte(dispositivos, dispositivos[0].id)
@@ -620,29 +626,10 @@ function Cabecalho({
 }) {
   const { perfil } = usePerfil();
   const nome = nomeDoPerfil(perfil).split(/\s+/)[0];
-  const { aplicado, definirPreferencia } = useTema();
-  const escuro = aplicado === "dark";
 
   return (
     <header>
-      <div className="mb-6 flex items-center justify-between gap-3">
-        <p className="text-[10px] text-muted-foreground">Smart Dormio <span className="mx-2">/</span> Visão geral</p>
-        <div className="flex items-center gap-2">
-          {estaEmModoDemo() && (
-            <span title="Dados simulados, sem medições reais do dispositivo" className="rounded-full bg-amber-500/15 px-2.5 py-1.5 text-[9px] font-bold uppercase tracking-wide text-amber-800 dark:text-amber-300">
-              <span aria-hidden="true">● </span> Dados de demonstração
-            </span>
-          )}
-          <button
-            type="button"
-            aria-label={escuro ? "Ativar tema claro" : "Ativar tema escuro"}
-            onClick={() => definirPreferencia(escuro ? "claro" : "escuro")}
-            className="grid size-9 shrink-0 place-items-center rounded-xl border border-border bg-card text-muted-foreground hover:text-primary"
-          >
-            {escuro ? <Sun className="size-4" aria-hidden /> : <Moon className="size-4" aria-hidden />}
-          </button>
-        </div>
-      </div>
+      <BarraDoWorkspace secao="Visão geral" />
       <div className="flex flex-wrap items-end justify-between gap-3 pb-1">
         <div className="min-w-0">
           <h1 className="text-2xl font-extrabold tracking-tight text-foreground sm:text-[27px]">
