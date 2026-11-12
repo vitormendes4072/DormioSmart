@@ -475,6 +475,8 @@ acompanhamento clínico de distúrbios do sono. Não foi submetido a validação
 informações que apresenta ao usuário limitam-se ao registro de movimento e a métricas dele
 derivadas. O sistema não substitui polissonografia nem avaliação por profissional de saúde.
 
+Do lado do dispositivo, a memória do microcontrolador é um limite medido. O firmware de captação, com Wi-Fi e conexão segura, ocupa 111 464 B de RAM estática (34 % dos 320 KB) e deixa cerca de 13 KB de folga até o teto dessa região; a primeira versão completa não cabia, e foi preciso mover o texto do lote de envio para a memória dinâmica (medido em 12/11/2026, `arduino-esp32` 3.3.12). Funções novas no dispositivo — por exemplo, um segundo sensor ou a classificação embarcada — disputam essa margem e exigem nova medição.
+
 ### X.7 Limitações de segurança da camada de autenticação
 
 A autenticação do sistema é delegada a um serviço gerenciado de identidade (Supabase Auth),

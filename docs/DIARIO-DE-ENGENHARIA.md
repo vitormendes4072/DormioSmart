@@ -9429,6 +9429,40 @@ Um celular deitado só mexe em z, e é z que pesa na norma nessa posição. O GG
 
 **Procedência.** Placa e sensor do autor, COM3, Windows 11, 12/11; capturas locais fora do repositório (`hw09-b.txt`, `hw09-controle.txt`, no diretório temporário da sessão).
 
+# 2026-11-12 (xiii) — FW-12: o firmware não cabia na RAM do ESP32
+
+**O problema, como foi entendido no início.** Ao começar o `FW-07` (c), gravar o `sketch.ino` na placa, a compilação para o ESP32 falhou no link: a RAM estática (`dram0_0_seg`) estourou em 18 088 B. Era a primeira vez que o sketch completo, com Wi-Fi e TLS, era compilado para o chip. Todos os testes de firmware passavam, inclusive o `make sintaxe`, que diz que o sketch "liga com o núcleo".
+
+**Hipótese de trabalho.** O estouro vem dos vetores estáticos do sketch somados ao que o `arduino-esp32` 3.3.12 reserva para Wi-Fi e TLS. Tirar da RAM estática o maior deles, reservando-o uma vez no `setup`, fecha a conta sem mudar o protocolo.
+
+**O que foi testado, e como.**
+- **Os maiores estáticos:** `nm` sobre o objeto do sketch compilado para o chip.
+- **A correção numa cópia fora do repositório, antes do plano**, e depois no repositório: `json_do_lote` (31 200 B) no heap, com aviso e envio desligado se a reserva falhar.
+- **`scripts/compilar_sketch_esp32.py`:** monta o sketch numa pasta temporária com o `secrets.example.h` no papel do `secrets.h`, compila com o `partitions.csv` do projeto e lê o resumo de memória.
+- **Controle positivo:** o mesmo script com o `sketch.ino` da `develop`.
+- **Os testes do firmware no host**, em contêiner `gcc:13`: `make`, `make sintaxe`, `make laco`, `make capacidade`.
+
+**Resultado medido.**
+- **Os estáticos:** `json_do_lote` 31 200 B, `cadeia` 24 224 B, `acumulador` 19 208 B, `rascunho` e as três grades 3 840 B cada.
+- **Com a correção:** programa 1 085 336 B (53 % da fatia `factory`); **RAM fixa 111 464 B (34 %), 216 216 B para o heap**; folga de ~13 KB até o teto da RAM estática.
+- **Controle positivo:** com o sketch da `develop`, o script reprova com "a região dram0_0_seg estourou em 18 088 B" e sai com 1.
+- **Host:** `make` 185 verificações, 0 falhas; `sintaxe` liga; `laco` 8/8 como esperado; `capacidade` com a tabela válida.
+
+**Adaptação.**
+- **O `FW-12` abre e fecha no mesmo dia**, saído do `FW-07` (c), que segue aberto: a gravação na placa e a leitura de 40 min vêm depois deste merge.
+- **O CI não compila para o chip.** Isso virou o `CI-12`, na trilha do Claude da onda 2.
+- **O limite foi para as `LIMITACOES-TCC.md` (X.6)**, e a ocorrência para o §1 das lições (13): uma verificação cujo nome promete a placa e cujo alcance é o PC.
+
+**O que deu errado no caminho.**
+- **A primeira edição do aviso quebrou a string:** o `\n` virou uma quebra de linha de verdade no script de edição, e a compilação para o chip acusou a aspa sem fim. Corrigido no editor.
+- **Um comando de registro não rodou** por aspas desbalanceadas no shell; foi refeito como arquivo.
+
+**Risco em aberto.**
+- **A folga é de ~13 KB.** Um vetor estático novo no sketch pode estourar de novo sem que o CI veja, até o `CI-12`.
+- **O heap durante o envio não foi medido.** São 216 KB antes do Wi-Fi e do TLS; o mínimo real aparece na placa (`FW-07` (c)).
+
+**Procedência.** `arduino-cli` 1.6.0 com `esp32:esp32` 3.3.12, Windows 11; contêiner `gcc:13`; branch `bugfix/FW-12-ram-do-sketch`, 12/11.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
