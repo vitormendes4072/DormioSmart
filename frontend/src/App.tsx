@@ -7,6 +7,7 @@ import { Layout } from "./components/Layout";
 import { Coletar } from "./pages/Coletar";
 import { Dispositivos } from "./pages/Dispositivos";
 import { Dashboard } from "./pages/Dashboard";
+import { Historico } from "./pages/Historico";
 import { Landing } from "./pages/Landing";
 import { Login } from "./pages/Login";
 import { NovaSenha } from "./pages/NovaSenha";
@@ -64,6 +65,7 @@ export default function App() {
           <Route element={<Layout />}>
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/coletar" element={<Coletar />} />
+            <Route path="/historico" element={<Historico />} />
             <Route path="/dispositivos" element={<Dispositivos />} />
             <Route path="/noite" element={<Noite />} />
             <Route path="/configuracoes" element={<Settings />} />

@@ -1,5 +1,5 @@
-import { Activity, Clock3, LayoutGrid, LogOut, User } from "lucide-react";
-import { Link, NavLink, useLocation, useNavigate } from "react-router";
+import { Activity, LayoutGrid, LogOut, User } from "lucide-react";
+import { NavLink, useLocation, useNavigate } from "react-router";
 
 import { useAuth } from "../contexts/AuthContext";
 import { usePerfil } from "../contexts/PerfilContext";
@@ -27,13 +27,12 @@ export function Sidebar({ painel = false }: { painel?: boolean }) {
 
   const destinos = itensDeNavegacao();
   const navegacao = painel
-    ? destinos.filter(({ to }) => to !== "/configuracoes" && to !== "/dispositivos").map((item) => {
+    ? destinos.filter(({ to }) => to !== "/configuracoes").map((item) => {
         if (item.to === "/dashboard") return { ...item, label: "Visão geral", icon: LayoutGrid };
         if (item.to === "/coletar") return { ...item, label: "Nova coleta", icon: Activity };
         return item;
       })
     : destinos;
-  const dispositivos = destinos.find(({ to }) => to === "/dispositivos");
   const configuracoes = destinos.find(({ to }) => to === "/configuracoes");
 
   return (
@@ -62,21 +61,8 @@ export function Sidebar({ painel = false }: { painel?: boolean }) {
             {label}
           </NavLink>
         ))}
-        {painel && dispositivos && configuracoes && (
+        {painel && configuracoes && (
           <>
-            <Link to={destinoDoWorkspace("/dashboard#sessoes-recentes", search)} className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground">
-              <Clock3 className="size-4" aria-hidden /> Histórico
-            </Link>
-            <NavLink
-              to={destinoDoWorkspace(dispositivos.to, search)}
-              className={({ isActive }) =>
-                `flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium ${isActive
-                  ? "bg-primary/15 text-primary"
-                  : "text-muted-foreground hover:bg-secondary hover:text-foreground"}`
-              }
-            >
-              <dispositivos.icon className="size-4" aria-hidden /> {dispositivos.label}
-            </NavLink>
             <p className="px-3 pb-2 pt-7 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Preferências</p>
             <NavLink to={configuracoes.to} className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground">
               <configuracoes.icon className="size-4" aria-hidden /> {configuracoes.label}

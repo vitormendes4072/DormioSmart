@@ -288,6 +288,35 @@ describe("montagem real das telas (UI-17)", PRAZO, () => {
     expect(links.some((a) => a.getAttribute("href") === "/privacidade")).toBe(true);
   });
 
+  it("a rota /historico monta o histórico autenticado com filtro e estado vazio", async () => {
+    const original = vi.mocked(fetch).getMockImplementation()!;
+    let responder: ((resposta: Response) => void) | undefined;
+    vi.mocked(fetch).mockImplementation((entrada, opcoes) => {
+      if (!String(entrada).startsWith("/api/sleep-history")) return original(entrada, opcoes);
+      return new Promise((resolve) => { responder = resolve; });
+    });
+
+    await montar("/historico");
+    expect(await screen.findByRole("heading", { name: "Histórico de sessões", level: 1 })).toBeTruthy();
+    expect(await screen.findByText("Carregando sessões...")).toBeTruthy();
+    await act(async () => responder!(respostaJson([])));
+    expect(await screen.findByText("Nenhuma sessão no período selecionado.")).toBeTruthy();
+
+    fireEvent.change(screen.getByRole("combobox", { name: "Período do histórico" }), { target: { value: "30" } });
+    expect(await screen.findByText("Carregando sessões...")).toBeTruthy();
+    await act(async () => responder!(new Response(JSON.stringify({ error: "Serviço indisponível" }), { status: 503 })));
+    expect(await screen.findByText("Não foi possível carregar")).toBeTruthy();
+
+    vi.mocked(fetch).mockImplementation(original);
+    fireEvent.click(screen.getByRole("button", { name: "Tentar novamente" }));
+    expect(await screen.findByText("Nenhuma sessão no período selecionado.")).toBeTruthy();
+    const pedidos = vi.mocked(fetch).mock.calls
+      .map(([caminho]) => new URL(String(caminho), "http://localhost"))
+      .filter(({ pathname }) => pathname === "/api/sleep-history");
+    const recortes = pedidos.map(({ searchParams }) => Date.parse(searchParams.get("desde") ?? ""));
+    expect(recortes.at(-1)!).toBeLessThan(recortes[0]);
+  });
+
   it("a rota /dispositivos monta o gerenciamento para a sessão autenticada", async () => {
     await montar("/dispositivos");
     expect(await screen.findByRole("heading", { name: "Dispositivos", level: 1 })).toBeTruthy();
