@@ -68,7 +68,7 @@ estiverem mesclados, e não quando todos os da onda anterior estiverem.
 |---|---|---|---|---|
 | 0.1 | Etapa 0 | Claude | Fechar no backlog "soldar os pinos do MPU6050" (feito em 11/11); o que sobrou é o `HW-09` | o quadro do backlog volta a dizer a verdade |
 | 0.2 | — | Claude | Este plano versionado, e o `AGENTS.md` apontando para ele | o Codex lê o plano sozinho |
-| 0.3 | `HW-09` | Autor | Refazer as soldas do sensor e prender os fios; o Claude conduz o teste nas 6 posições com o monitor ao vivo | toda a bancada (onda 1, trilha Claude) |
+| 0.3 | `HW-09` ✅ *(12/11)* | Autor | Refazer as soldas do sensor e prender os fios; o Claude conduz o teste nas 6 posições com o monitor ao vivo | toda a bancada (onda 1, trilha Claude) |
 | 0.4 | `INFRA-05` | Autor | Depois da próxima noite com o celular, rodar a consulta do lote; o Claude fecha o item | `API-06` |
 
 ### Onda 1 — o que já afeta a produção, e a placa ganhando vida
@@ -116,6 +116,7 @@ estiverem mesclados, e não quando todos os da onda anterior estiverem.
 | 2.7 | `CI-10` | O Python do CI igual ao da Vercel | — |
 | 2.8 | `CI-09` | Um job para o app Android | — |
 | 2.9 | `CI-11` | Os dois harnesses de mutação com mensagem certa | — |
+| 2.9b | `CI-12` | Compilar o `sketch.ino` para o ESP32 no CI (`scripts/compilar_sketch_esp32.py`) | — |
 | 2.10 | `SEC-13` | A suíte de RLS sem reaplicar os GRANTs no fim | — |
 | 2.11 | `SEC-20` | Cabeçalhos de segurança no `vercel.json` | — |
 | 2.12 | **Integração e release R2** | | |

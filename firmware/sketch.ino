@@ -51,6 +51,7 @@
 #include <freertos/semphr.h>
 #include <freertos/task.h>
 #include <sys/time.h>
+#include <stdlib.h>
 #include <time.h>
 
 #include <atomic>
@@ -137,7 +138,13 @@ static float grade_x[AMOSTRAS_NA_GRADE], grade_y[AMOSTRAS_NA_GRADE], grade_z[AMO
 static uint64_t origem_us = 0;
 
 static RegistroDeEpoca rascunho[MAX_LEITURAS_POR_LOTE];
-static char json_do_lote[MAX_LEITURAS_POR_LOTE * 520];
+// O texto do lote (31 200 B) fica no heap, reservado uma vez no `setup`
+// (FW-12, 12/11). Como vetor estatico ele estourava a RAM estatica do ESP32
+// (`dram0_0_seg`) em 18 088 B com o Wi-Fi e o TLS do arduino-esp32 3.3.12 --
+// o que nenhum teste no host via, porque o host nao tem esse limite.
+// `scripts/compilar_sketch_esp32.py` compila para o chip e mede a folga.
+static const size_t TAMANHO_JSON_DO_LOTE = MAX_LEITURAS_POR_LOTE * 520;
+static char *json_do_lote = 0;
 
 // Diagnostico para o log -- e para a bancada, onde "0 transbordos em 8 h" vai
 // sair daqui. Cada campo tem um so escritor (a medicao, no nucleo 1, ou o
@@ -441,12 +448,15 @@ static void sincronizar_relogio() {
 // Envia ate `LOTES_POR_VOLTA` lotes. Devolve false se a volta terminou em
 // falha (para a politica de reconexao recuar).
 static bool enviar_pendentes() {
+  // Sem o buffer (o heap negou no `setup`), nada sai -- e nada se perde: as
+  // epocas seguem na fila da flash. Falha conta como volta ruim (recuo).
+  if (json_do_lote == 0) return false;
   uint32_t max_no_lote = MAX_LEITURAS_POR_LOTE;
   for (uint32_t volta = 0; volta < LOTES_POR_VOLTA; volta++) {
     const ResolucaoDeParede p = copia_da_parede();
     xSemaphoreTake(mutex_fila, portMAX_DELAY);
     const PreparoDoLote preparo =
-        preparar_lote(&fila, p, rascunho, max_no_lote, json_do_lote, sizeof(json_do_lote));
+        preparar_lote(&fila, p, rascunho, max_no_lote, json_do_lote, TAMANHO_JSON_DO_LOTE);
     xSemaphoreGive(mutex_fila);
     contadores.descartadas_no_envio += preparo.descartados;
     if (preparo.no_lote == 0) {
@@ -550,6 +560,12 @@ void setup() {
   } else {
     Serial.println("ERRO: particao `dormio` nao encontrada. Grave com firmware/partitions.csv.");
     Serial.println("      Medindo assim mesmo, mas NADA sera guardado nem enviado.");
+  }
+
+  json_do_lote = static_cast<char *>(malloc(TAMANHO_JSON_DO_LOTE));
+  if (json_do_lote == 0) {
+    Serial.printf("ERRO: sem %u B de heap para o lote. Medindo e guardando, sem enviar.\n",
+                  static_cast<unsigned>(TAMANHO_JSON_DO_LOTE));
   }
 
   calibracao = calibracao_da_unidade();

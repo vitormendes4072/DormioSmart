@@ -9399,6 +9399,70 @@ Um celular deitado só mexe em z, e é z que pesa na norma nessa posição. O GG
 
 **Procedência.** Backlog e código na `develop` `ba851f4`; o pedido do autor na conversa de 12/11; Windows 11.
 
+# 2026-11-12 (xii) — HW-09: o contato do sensor refeito, e a queda provocada de propósito
+
+**O problema, como foi entendido no início.** Na bancada do `CAL-01` (11/11), virar a placa de chip para baixo zerou o sensor três vezes: o VCC caía por uma fração de segundo, o MPU6050 reiniciava dormindo e seguia lendo zero. O autor refez as soldas e prendeu os fios.
+
+**Hipótese de trabalho.** Com a junta refeita e o fio sem tensão, nenhuma virada derruba a alimentação; se derrubar, o sensor volta dormindo e o monitor, que não o reacorda, mostra zero até o fim, o que torna a queda impossível de passar despercebida.
+
+**O que foi testado, e como.**
+- **O instrumento:** o `monitor-ao-vivo` (ferramenta de bancada fora do repositório; ±8 g, 5 leituras/s, acorda o sensor só no `setup`), gravado na placa pelo `arduino-cli`, lido pela COM3 por um script em PowerShell e analisado por um script que conta erros de I2C e leituras com \|a\| < 0,5 g, por posição.
+- **O teste:** o autor passou pelas 6 posições, ~10 s em cada uma, com viradas firmes e os fios balançados, durante 4 min.
+- **Controle positivo do analisador:** 5 leituras zeradas inseridas numa cópia da gravação.
+- **Controle positivo na placa:** o autor soltou o fio do VCC no pino 3V3 por ~2 s, com a placa parada, e o encaixou de volta.
+
+**Resultado medido.**
+- **O teste:** 1 201 leituras, as 6 posições vistas, **0 erros de I2C, 0 leituras zeradas**. Chip para baixo: 75 leituras, \|a\| mediano 1,163 g (o valor cru do `CAL-01`). A leitura mais baixa, 0,498 g, caiu no meio de uma virada, com os três eixos com valor, e a seguinte já estava em 0,91 g; as outras abaixo de 0,7 g também são viradas.
+- **O analisador:** acusou as 5 zeradas inseridas (6 no total, contando a da virada).
+- **A placa:** com o VCC solto, 15 erros de I2C; religado, **220 leituras seguidas com zero exato** até o fim da gravação. O mecanismo é o de 11/11, e o teste o vê.
+
+**Adaptação.** Nenhuma no plano: o `HW-09` fecha, e a onda 1 do Claude (`FW-07` (c), `HW-08`) está destravada.
+
+**O que deu errado no caminho.**
+- **A primeira gravação de 4 min começou antes de o autor estar na bancada** e só pegou a placa parada. Foi refeita.
+- **O leitor da serial cortou 105 linhas** ("27.3 chip para CIMA"): o `ReadLine` com tempo esgotado entrega pedaço de linha. Todas no trecho parado; o analisador as ignora.
+- **O `monitor-ao-vivo` rotula o sensor zerado como "chip para BAIXO"** (com z = 0, o teste do lado cai no ramo negativo). O rótulo engana, mas o \|a\| = 0 não.
+
+**Risco em aberto.**
+- **Um teste de 4 min não é uma noite.** O contato agora aguenta viradas de bancada; a prova de que aguenta horas é a vigia da FIFO do `FW-11` contando reacordados numa noite (`FW-07` (c), `VAL-01`).
+- **O encaixe do jumper do lado da ESP32 continua sendo um ponto de falha** (o controle o soltou com a mão). O encapsulamento é o `HW-04`.
+
+**Procedência.** Placa e sensor do autor, COM3, Windows 11, 12/11; capturas locais fora do repositório (`hw09-b.txt`, `hw09-controle.txt`, no diretório temporário da sessão).
+
+# 2026-11-12 (xiii) — FW-12: o firmware não cabia na RAM do ESP32
+
+**O problema, como foi entendido no início.** Ao começar o `FW-07` (c), gravar o `sketch.ino` na placa, a compilação para o ESP32 falhou no link: a RAM estática (`dram0_0_seg`) estourou em 18 088 B. Era a primeira vez que o sketch completo, com Wi-Fi e TLS, era compilado para o chip. Todos os testes de firmware passavam, inclusive o `make sintaxe`, que diz que o sketch "liga com o núcleo".
+
+**Hipótese de trabalho.** O estouro vem dos vetores estáticos do sketch somados ao que o `arduino-esp32` 3.3.12 reserva para Wi-Fi e TLS. Tirar da RAM estática o maior deles, reservando-o uma vez no `setup`, fecha a conta sem mudar o protocolo.
+
+**O que foi testado, e como.**
+- **Os maiores estáticos:** `nm` sobre o objeto do sketch compilado para o chip.
+- **A correção numa cópia fora do repositório, antes do plano**, e depois no repositório: `json_do_lote` (31 200 B) no heap, com aviso e envio desligado se a reserva falhar.
+- **`scripts/compilar_sketch_esp32.py`:** monta o sketch numa pasta temporária com o `secrets.example.h` no papel do `secrets.h`, compila com o `partitions.csv` do projeto e lê o resumo de memória.
+- **Controle positivo:** o mesmo script com o `sketch.ino` da `develop`.
+- **Os testes do firmware no host**, em contêiner `gcc:13`: `make`, `make sintaxe`, `make laco`, `make capacidade`.
+
+**Resultado medido.**
+- **Os estáticos:** `json_do_lote` 31 200 B, `cadeia` 24 224 B, `acumulador` 19 208 B, `rascunho` e as três grades 3 840 B cada.
+- **Com a correção:** programa 1 085 336 B (53 % da fatia `factory`); **RAM fixa 111 464 B (34 %), 216 216 B para o heap**; folga de ~13 KB até o teto da RAM estática.
+- **Controle positivo:** com o sketch da `develop`, o script reprova com "a região dram0_0_seg estourou em 18 088 B" e sai com 1.
+- **Host:** `make` 185 verificações, 0 falhas; `sintaxe` liga; `laco` 8/8 como esperado; `capacidade` com a tabela válida.
+
+**Adaptação.**
+- **O `FW-12` abre e fecha no mesmo dia**, saído do `FW-07` (c), que segue aberto: a gravação na placa e a leitura de 40 min vêm depois deste merge.
+- **O CI não compila para o chip.** Isso virou o `CI-12`, na trilha do Claude da onda 2.
+- **O limite foi para as `LIMITACOES-TCC.md` (X.6)**, e a ocorrência para o §1 das lições (13): uma verificação cujo nome promete a placa e cujo alcance é o PC.
+
+**O que deu errado no caminho.**
+- **A primeira edição do aviso quebrou a string:** o `\n` virou uma quebra de linha de verdade no script de edição, e a compilação para o chip acusou a aspa sem fim. Corrigido no editor.
+- **Um comando de registro não rodou** por aspas desbalanceadas no shell; foi refeito como arquivo.
+
+**Risco em aberto.**
+- **A folga é de ~13 KB.** Um vetor estático novo no sketch pode estourar de novo sem que o CI veja, até o `CI-12`.
+- **O heap durante o envio não foi medido.** São 216 KB antes do Wi-Fi e do TLS; o mínimo real aparece na placa (`FW-07` (c)).
+
+**Procedência.** `arduino-cli` 1.6.0 com `esp32:esp32` 3.3.12, Windows 11; contêiner `gcc:13`; branch `bugfix/FW-12-ram-do-sketch`, 12/11.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
