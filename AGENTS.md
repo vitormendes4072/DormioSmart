@@ -24,6 +24,9 @@
      integração das PRs.
 
    Item fora da sua área: perguntar ao autor antes.
+   ✏️ *12/11:* a divisão item por item, a ordem em ondas, os arquivos de cada trilha e as migrações
+   reservadas estão em [`docs/PLANO-CLAUDE-CODEX.md`](docs/PLANO-CLAUDE-CODEX.md) — ler antes de
+   começar qualquer item.
 5. **IDs novos:** antes de criar um item (`HW-xx`, `ML-xx`…), conferir em `origin/develop`
    atualizado que o ID está livre, e dizer ao autor qual vai usar. Dois itens com o mesmo ID
    quebram o backlog.
