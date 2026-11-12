@@ -1,5 +1,7 @@
 // @vitest-environment jsdom
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { useState } from "react";
 import { MemoryRouter } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -29,6 +31,41 @@ describe("TelaDeConsentimento (LGPD-12)", () => {
     expect(screen.getByRole("dialog")).toBeTruthy();
     for (const item of TEXTO_DO_CONSENTIMENTO) expect(screen.getByText(item)).toBeTruthy();
     expect(screen.getByRole("link", { name: /política de privacidade/i }).getAttribute("href")).toBe("/privacidade");
+  });
+
+  it("contém Tab e devolve o foco ao fechar com Escape", async () => {
+    const usuario = userEvent.setup();
+    const aoConcordar = vi.fn(async () => {});
+    function Tela() {
+      const [aberta, setAberta] = useState(false);
+      return (
+        <>
+          <button onClick={() => setAberta(true)}>Abrir consentimento</button>
+          {aberta && <TelaDeConsentimento aoConcordar={aoConcordar} aoRecusar={() => setAberta(false)} />}
+          <button>Fora do diálogo</button>
+        </>
+      );
+    }
+    render(<MemoryRouter><Tela /></MemoryRouter>);
+    const origem = screen.getByRole("button", { name: "Abrir consentimento" });
+    await usuario.tab();
+    expect(document.activeElement).toBe(origem);
+    await usuario.keyboard("{Enter}");
+    expect(document.activeElement).toBe(screen.getByRole("heading"));
+
+    const politica = screen.getByRole("link", { name: /política de privacidade/i });
+    const recusar = screen.getByRole("button", { name: "Agora não" });
+    await usuario.tab();
+    expect(document.activeElement).toBe(politica);
+    await usuario.tab({ shift: true });
+    expect(document.activeElement).toBe(recusar);
+    await usuario.tab();
+    expect(document.activeElement).toBe(politica);
+
+    await usuario.keyboard("{Escape}");
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(document.activeElement).toBe(origem);
+    expect(aoConcordar).not.toHaveBeenCalled();
   });
 
   it("o Concordo só liga depois de marcar a caixa", async () => {
