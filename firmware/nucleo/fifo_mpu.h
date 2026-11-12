@@ -98,6 +98,38 @@ EstadoDaLeitura avaliar_fifo(uint16_t fifo_count, uint8_t int_status);
 // e no maximo `teto_bytes` (o buffer de quem chama).
 uint16_t bytes_para_ler(uint16_t fifo_count, uint16_t teto_bytes);
 
+// ── O sensor que adormeceu (FW-11) ─────────────────────────────────────
+//
+// Uma queda de alimentacao de uma fracao de segundo (o contato que falhou ao
+// virar a placa, na bancada de 11/11) reinicia o MPU6050, e ele volta como
+// sai de fabrica: DORMINDO (bit SLEEP em PWR_MGMT_1) e com a FIFO desligada.
+// FIFO_COUNT passa a dizer 0 para sempre -- uma leitura "ok" e vazia --, e
+// sem nada que perceba o resto da noite vira lacuna, sem aviso.
+//
+// A regra: N drenagens seguidas sem amostra nenhuma mandam CONFERIR o sensor
+// (em funcionamento normal, cada drenagem traz ~85 amostras). So a conferencia
+// decide reconfigurar: FIFO vazia com o sensor acordado nao mexe em nada.
+const uint8_t DRENAGENS_VAZIAS_PARA_CONFERIR = 3;
+const uint8_t MPU_PWR1_SLEEP = 1u << 6;
+
+class VigiaDaFifo {
+ public:
+  VigiaDaFifo() : vazias_(0) {}
+  // Uma drenagem lida com sucesso, com `amostras` amostras. Devolve true
+  // quando completa `DRENAGENS_VAZIAS_PARA_CONFERIR` vazias seguidas -- e
+  // recomeca a contagem, para conferir de novo so depois de outras N.
+  bool observar(uint16_t amostras);
+  uint8_t vazias() const { return vazias_; }
+
+ private:
+  uint8_t vazias_;
+};
+
+// Com os registradores lidos do sensor: true se ele precisa ser configurado
+// de novo -- dormindo, FIFO desligada no USER_CTRL, ou o acelerometro fora do
+// FIFO_EN. Qualquer um dos tres e o estado de quem reiniciou.
+bool sensor_precisa_reconfigurar(uint8_t pwr_mgmt_1, uint8_t user_ctrl, uint8_t fifo_en);
+
 // Converte `n_bytes` lidos de FIFO_R_W em amostras. Devolve quantas escreveu
 // em `destino` (no maximo `capacidade`). Bytes que nao completam uma amostra
 // sao ignorados -- quem chamou leu mais do que `bytes_para_ler` mandou.

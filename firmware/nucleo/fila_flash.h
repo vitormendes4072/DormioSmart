@@ -107,8 +107,9 @@ class FilaNaFlash {
   bool montar();
 
   // Grava uma epoca. `vetor` nulo = sem features (o payload sai sem `f`).
+  // `calibrada`: as amostras passaram pela calibracao da unidade (FW-11).
   ResultadoDaGuarda guardar(const Epoca &e, const VetorDeFeatures *vetor,
-                            const InstanteDaEpoca &instante);
+                            const InstanteDaEpoca &instante, bool calibrada = false);
 
   // Copia ate `max` registros pendentes, do mais antigo, para `destino`.
   // Devolve quantos copiou. Nao tira nada da fila.

@@ -99,5 +99,98 @@ sabotar "4. deriva medida depois de sincronizar" \
   "      parede.sincronizar(mono_ms, unix_ms);
       deriva_no_intervalo = medir_deriva(parede, mono_ms, unix_ms);"
 
+
+# ── FW-11: o sketch contra um MPU6050 falso (`sensor_do_sketch.cpp`) ─────
+# Outra copia dos stubs: o relogio vem do teste, e o `Wire` chama o sensor de
+# mentira em vez de devolver "nada".
+echo
+echo "O sketch contra um MPU6050 falso (FW-11):"
+cp -r "$AQUI/stubs-arduino" "$W/stubs-sensor"
+troca "$W/stubs-sensor/esp_timer.h" "inline int64_t esp_timer_get_time() { return 0; }" \
+  "int64_t esp_timer_get_time();"
+troca "$W/stubs-sensor/esp_sleep.h" "inline int esp_sleep_enable_timer_wakeup(uint64_t) { return 0; }" \
+  "int esp_sleep_enable_timer_wakeup(uint64_t);"
+troca "$W/stubs-sensor/esp_sleep.h" "inline int esp_light_sleep_start() { return 0; }" \
+  "int esp_light_sleep_start();"
+troca "$W/stubs-sensor/freertos/task.h" "inline void vTaskDelay(const TickType_t) {}" \
+  "void vTaskDelay(const TickType_t);"
+python3 - "$W/stubs-sensor/Arduino.h" <<'PYSTUB' || exit 2
+import sys
+p = sys.argv[1]
+s = open(p).read().replace("\r\n", "\n")
+i = s.find("class WireStub {")
+j = s.find("extern WireStub Wire;")
+if i < 0 or j < 0 or s.count("class WireStub {") != 1:
+    sys.exit("TROCA QUEBRADA: a classe WireStub mudou")
+novo = """void wire_begin_tx(uint8_t);
+void wire_write(uint8_t);
+uint8_t wire_end_tx();
+uint8_t wire_request(size_t);
+int wire_read();
+class WireStub {
+ public:
+  void begin(int, int) {}
+  void setClock(uint32_t) {}
+  void beginTransmission(uint8_t a) { wire_begin_tx(a); }
+  uint8_t endTransmission() { return wire_end_tx(); }
+  uint8_t endTransmission(bool) { return wire_end_tx(); }
+  size_t write(uint8_t v) { wire_write(v); return 1; }
+  uint8_t requestFrom(uint8_t, size_t n) { return wire_request(n); }
+  uint8_t requestFrom(uint8_t, size_t n, bool) { return wire_request(n); }
+  int available() { return 1; }
+  int read() { return wire_read(); }
+};
+"""
+open(p, "w").write(s[:i] + novo + s[j:])
+PYSTUB
+cp "$W/stubs/secrets.h" "$W/stubs-sensor/secrets.h"
+$CXX -std=c++11 -w -c -I"$W/stubs-sensor" "$FIRMWARE/nucleo_amalgama.cpp" -o "$W/amalgama-sensor.o" || exit 2
+$CXX -std=c++11 -w -c -I"$W/stubs-sensor" "$W/stubs-sensor/stubs.cpp" -o "$W/stubs-sensor.o" || exit 2
+
+rodar_sensor() { # rodar_sensor SKETCH -> 0 passou, 1 acusou, 2 nao compilou
+  $CXX -std=c++11 -w -x c++ -I"$W/stubs-sensor" -I"$FIRMWARE" -include Arduino.h \
+    -DSKETCH="\"$1\"" "$AQUI/sensor_do_sketch.cpp" -x none "$W/amalgama-sensor.o" \
+    "$W/stubs-sensor.o" -o "$W/sensor" 2>"$W/erro" || { cat "$W/erro"; return 2; }
+  "$W/sensor" >"$W/saida" 2>&1
+}
+
+rodar_sensor "$FIRMWARE/sketch.ino"
+r=$?
+grep -v '^\[\|^Calibracao' "$W/saida"
+if [ $r -ne 0 ]; then
+  echo "FALHOU -- o sketch.ino nao calibra ou nao reacorda o sensor como o FW-11 promete."
+  exit 1
+fi
+
+echo
+echo "Sabotadores do SENSOR NO SKETCH -- o teste tem de acusar:"
+sabotar_sensor() { # sabotar_sensor ROTULO DE PARA
+  total=$((total + 1))
+  cp "$FIRMWARE/sketch.ino" "$W/sabotado.ino"
+  troca "$W/sabotado.ino" "$2" "$3"
+  rodar_sensor "$W/sabotado.ino"
+  r=$?
+  n=$(grep -c "FALHA" "$W/saida")
+  if [ $r -eq 1 ]; then
+    printf '  %-48s acusou (%s falhas)\n' "$1" "$n"
+  else
+    printf '  %-48s NAO ACUSOU (saida %s)\n' "$1" "$r"
+    falhas=$((falhas + 1))
+  fi
+}
+
+sabotar_sensor "5. calibracao da unidade nao aplicada" \
+  "  if (n > 0) calibrar_amostras(calibracao, ler_temperatura_c(), amostras, n);" \
+  "  // sem calibracao"
+sabotar_sensor "6. ninguem confere o sensor" \
+  "  if (vigia.observar(n)) conferir_sensor();" \
+  "  vigia.observar(n);"
+sabotar_sensor "7. reconfigura mesmo com o sensor acordado" \
+  "  if (!sensor_precisa_reconfigurar(pwr1, user, fifo_en)) return;" \
+  "  (void)sensor_precisa_reconfigurar(pwr1, user, fifo_en);"
+sabotar_sensor "8. reacordar sem configurar o sensor" \
+  "  const bool ok = configurar_mpu();" \
+  "  const bool ok = true;"
+
 echo "$((total - falhas))/$total como esperado"
 [ $falhas -eq 0 ]

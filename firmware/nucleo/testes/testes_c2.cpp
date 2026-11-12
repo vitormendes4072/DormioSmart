@@ -12,6 +12,7 @@
 
 #include "../buffer.h"
 #include "../cadeia_c2.h"
+#include "../calibracao.h"
 #include "../epoca.h"
 #include "../epoca_c2.h"
 #include "../fifo_mpu.h"
@@ -688,6 +689,73 @@ static void testar_payload_com_features() {
             "buffer curto para o vetor: recusa, nao corta o JSON no meio");
 }
 
+// ── FW-11: a calibracao da unidade e o sensor que adormeceu ───────────
+
+static void testar_calibrar_amostras() {
+  secao("FW-11: calibrar as amostras da FIFO");
+  // O erro de Z da bancada de 11/11: desvio do sensor -130 mg, escala +2,4 %.
+  // A calibracao inversa (o que o van Hees estimou) leva a gravidade parada a 1 g.
+  Calibracao c;
+  c.aceita = true;
+  c.modos[2] = EIXO_COMPLETO;
+  c.escala[2] = 0.976115;
+  c.desvio[2] = 0.12692;
+  // Parado, chip para baixo: o eixo Z leu -11,318 m/s2 = -1,1541 g (o |a| da pose,
+  // 1,157 g, inclui X e Y).
+  AmostraBruta a[2];
+  a[0].x = 0; a[0].y = 0; a[0].z = static_cast<int16_t>(lround(-1.1541 * LSB_POR_G));
+  a[1] = a[0];
+  calibrar_amostras(c, 30.0, a, 2);
+  VERIFICAR_PROX(lsb_para_g(a[0].z), -1.0, 0.002, "chip para baixo calibrado le -1 g");
+  VERIFICAR(a[0].x == 0 && a[0].y == 0, "eixos sem calibracao nao mudam");
+  VERIFICAR(a[1].z == a[0].z, "todas as amostras do lote sao calibradas");
+
+  // Recusada: nada muda, byte a byte.
+  AmostraBruta b = {123, -456, 7890};
+  Calibracao recusada = c;
+  recusada.aceita = false;
+  calibrar_amostras(recusada, 30.0, &b, 1);
+  VERIFICAR(b.x == 123 && b.y == -456 && b.z == 7890, "calibracao recusada nao mexe");
+
+  // A volta para inteiro e a do celular: arredonda e satura em +-8 g.
+  Calibracao ganho;
+  ganho.aceita = true;
+  ganho.modos[0] = EIXO_COMPLETO;
+  ganho.escala[0] = 2.0;
+  AmostraBruta s = {30000, 0, 0};
+  calibrar_amostras(ganho, 25.0, &s, 1);
+  VERIFICAR(s.x == 32767, "satura em +8 g, sem dar a volta no inteiro");
+  AmostraBruta r = {1, 0, 0};
+  ganho.escala[0] = 1.6;  // 1,6 LSB -> 2
+  calibrar_amostras(ganho, 25.0, &r, 1);
+  VERIFICAR(r.x == 2, "arredonda, nao trunca");
+}
+
+static void testar_vigia_da_fifo() {
+  secao("FW-11: a vigia da FIFO vazia");
+  VigiaDaFifo v;
+  VERIFICAR(!v.observar(0) && !v.observar(0), "duas vazias ainda nao conferem");
+  VERIFICAR(v.observar(0), "a terceira vazia seguida manda conferir");
+  VERIFICAR(v.vazias() == 0, "depois de mandar conferir, a contagem recomeca");
+  VERIFICAR(!v.observar(0) && !v.observar(0) && v.observar(0), "e manda de novo depois de outras 3");
+  VigiaDaFifo w;
+  w.observar(0);
+  w.observar(0);
+  VERIFICAR(!w.observar(85), "uma drenagem com amostras zera a contagem");
+  VERIFICAR(!w.observar(0) && !w.observar(0), "vazias depois de uma cheia contam do zero");
+  VERIFICAR(DRENAGENS_VAZIAS_PARA_CONFERIR == 3, "N = 3 (~5 s de FIFO vazia)");
+}
+
+static void testar_sensor_precisa_reconfigurar() {
+  secao("FW-11: o sensor que reiniciou");
+  const uint8_t user_ok = MPU_USER_CTRL_FIFO_EN;
+  VERIFICAR(!sensor_precisa_reconfigurar(0x00, user_ok, C2_FIFO_EN), "acordado e configurado: nao mexe");
+  VERIFICAR(sensor_precisa_reconfigurar(0x40, 0x00, 0x00), "o estado de quem reiniciou (PWR1 = 0x40)");
+  VERIFICAR(sensor_precisa_reconfigurar(MPU_PWR1_SLEEP, user_ok, C2_FIFO_EN), "dormindo");
+  VERIFICAR(sensor_precisa_reconfigurar(0x00, 0x00, C2_FIFO_EN), "FIFO desligada no USER_CTRL");
+  VERIFICAR(sensor_precisa_reconfigurar(0x00, user_ok, 0x00), "acelerometro fora do FIFO_EN");
+}
+
 int main() {
   printf("Nucleo do firmware Dormio -- pecas da arquitetura C2 (FW-07)\n");
 
@@ -710,6 +778,9 @@ int main() {
   testar_payload_com_features();
   testar_epoca_da_grade();
   testar_coordenacao_do_radio();
+  testar_calibrar_amostras();
+  testar_vigia_da_fifo();
+  testar_sensor_precisa_reconfigurar();
 
   printf("\n-----------------------------------------\n");
   printf("%d verificacoes, %d falhas\n", total, falhas);

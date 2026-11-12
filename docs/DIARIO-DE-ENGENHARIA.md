@@ -9072,6 +9072,62 @@ Um celular deitado só mexe em z, e é z que pesa na norma nessa posição. O GG
 
 **Procedência.** A saída serial da sessão, guardada fora do repositório; as contas feitas com `ml/src/calibracao.py` nesta máquina em 11/11.
 
+# 2026-11-11 (xii) — FW-11: o firmware do travesseiro calibra e reacorda o sensor
+
+**O problema, como foi entendido no início.** A bancada do `CAL-01` (entrada xi) deixou duas coisas para o firmware.
+- **A calibração não era usada:** o `sketch.ino` não corrigia nada, e com −130 mg em Z o ENMO leria movimento fantasma numa posição e esconderia movimento pequeno na outra.
+- **O sensor que reinicia volta adormecido:** uma queda de alimentação de uma fração de segundo (o contato que falhou ao virar a placa) faz o MPU6050 voltar dormindo e com a FIFO desligada. Lendo o firmware, o efeito era pior do que o backlog dizia: a FIFO passa a responder "0 bytes" como uma leitura normal, as épocas seguintes são recusadas por falta de amostra, e **o resto da noite vira lacuna**, sem aviso.
+
+**Hipótese de trabalho.**
+- **(a) Calibração fixa da bancada:** aplicada a cada amostra da FIFO, antes da cadeia, pelo `aplicar_calibracao` do núcleo (o mesmo do celular). A marca vai num bit livre do registro da flash, sem aumentar o registro; o `gn` fica de fora.
+- **(b) Recuperação do sensor:** 3 drenagens seguidas vazias mandam conferir o sensor; dormindo ou com a FIFO desligada, ele é reconfigurado; acordado, nada muda.
+
+**O que foi testado, e como** (contêiner `gcc:13`, Windows 11).
+- **Núcleo:**
+  - `calibrar_amostras` (calibração no lugar, arredondando e saturando como o `g_para_lsb` do celular);
+  - `VigiaDaFifo` e `sensor_precisa_reconfigurar`;
+  - o bit `REGISTRO_CALIBRADA` gravado, relido depois de um reset e saindo como `"cal":1`.
+
+  São 18 verificações novas no `testes_c2` e 9 no `testes_fila_flash`.
+- **Sketch:**
+  - `firmware/calibracao_da_unidade.h`, versionado, com os parâmetros do van Hees de 11/11 e a procedência;
+  - `drenar()` calibra e alimenta a vigia, e `conferir_sensor()` lê PWR_MGMT_1, USER_CTRL e FIFO_EN e reconfigura;
+  - o contador `reacordados` aparece no log;
+  - `fila.guardar` recebe a marca;
+  - `nucleo_amalgama.cpp` inclui a `calibracao.cpp`.
+- **O sketch contra um MPU6050 falso** (`testes/sensor_do_sketch.cpp`, no `make laco`): um sensor de mentira que guarda os registradores, entrega amostras com o erro de Z da bancada, reinicia dormindo num reset e pode "cair" no meio da noite. Roda o `drenar`, o `fechar_epocas` e o `conferir_sensor` de verdade.
+- **Sabotagens:**
+  - 4 no sketch (calibração não aplicada; ninguém conferindo; reconfigurar com o sensor acordado; "reacordar" sem configurar);
+  - 5 no núcleo (a vigia com 2; a cheia que não zera; o sensor dormindo visto como acordado; truncar; não saturar).
+
+**Resultado medido.**
+- **Na grade da época, o eixo Z lê −0,9995 g**, contra os −1,1541 g crus que o sensor falso entrega, que são os da bancada.
+- **Com o sensor caindo no meio da noite:** duas drenagens vazias não mexem; na terceira o sensor é reconfigurado e volta a encher a FIFO, e a drenagem seguinte traz amostras.
+- **Com o sensor acordado e a FIFO vazia**, 6 drenagens não reconfiguram nada.
+- **Só a época 0 foi recusada**, porque a origem é o boot.
+- **Núcleo:** 341 + 157 + 170 + 456 + 94 + 320 + 185, 0 falhas.
+- **Mutações:** cadeia **34/34** (+5), laço **8/8** (+4), coletor 17/17, fila 14/14, calibração 11/11, paridade 15/15.
+- **Sketches:** os 4 compilam, e o de produto liga com o núcleo.
+
+**Adaptação.**
+- **O teste do laço que existia não servia:** o `Wire` falso dele falha toda leitura, porque só mede o tempo das voltas. A variante nova tem outra cópia dos stubs, com o `Wire` ligado ao sensor de mentira.
+- **O registro no backlog estava impreciso:** dizia "leria zero a noite toda"; o certo é "não lê nada", porque a FIFO não enche.
+
+**O que deu errado no caminho.**
+- **Valor errado num teste do núcleo:** usei −1,1568 g como leitura do Z, que é o |a| da posição, e o certo é −1,1541 g (o Z sozinho). O teste falhou por 0,2 mg acima da tolerância.
+- **Recusa da época 0:** a checagem "nenhuma época recusada" era rígida demais, porque a época 0 é recusada também no sketch de verdade. Passou a ser "no máximo 1", com a contagem impressa (deu 1).
+- **Scripts de mutação:**
+  - o da cadeia tem a própria lista de fontes, e as 29 sabotagens saíram "não compila" até eu incluir a `calibracao.cpp`;
+  - o da calibração passou a copiar o `fifo_mpu.h`, que a `calibracao.h` agora inclui.
+
+**Risco em aberto.**
+- **Na placa:** o firmware com estas mudanças não foi gravado; a conferência vai junto com o `FW-07` (c), que precisa do `secrets.h` do autor.
+- **Parâmetros fixos:** sem termo de temperatura, e valem para esta unidade.
+- **O `gn` do travesseiro:** não vai ao servidor, porque o registro da flash não o guarda.
+- **Reacordar não corrige o contato:** se ele falhar o tempo todo, o contador sobe a cada queda, e a correção é o `HW-09`.
+
+**Procedência.** Execuções desta entrada; parâmetros da bancada de 11/11 (entrada xi).
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

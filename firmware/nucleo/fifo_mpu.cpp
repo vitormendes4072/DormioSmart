@@ -12,6 +12,26 @@ EstadoDaLeitura avaliar_fifo(uint16_t fifo_count, uint8_t int_status) {
   return LEITURA_OK;
 }
 
+bool VigiaDaFifo::observar(uint16_t amostras) {
+  if (amostras > 0) {
+    vazias_ = 0;
+    return false;
+  }
+  if (vazias_ < 255) vazias_++;
+  if (vazias_ >= DRENAGENS_VAZIAS_PARA_CONFERIR) {
+    vazias_ = 0;
+    return true;
+  }
+  return false;
+}
+
+bool sensor_precisa_reconfigurar(uint8_t pwr_mgmt_1, uint8_t user_ctrl, uint8_t fifo_en) {
+  if ((pwr_mgmt_1 & MPU_PWR1_SLEEP) != 0) return true;
+  if ((user_ctrl & MPU_USER_CTRL_FIFO_EN) == 0) return true;
+  if ((fifo_en & C2_FIFO_EN) == 0) return true;
+  return false;
+}
+
 uint16_t bytes_para_ler(uint16_t fifo_count, uint16_t teto_bytes) {
   uint16_t n = fifo_count < teto_bytes ? fifo_count : teto_bytes;
   return static_cast<uint16_t>(n - n % BYTES_POR_AMOSTRA);

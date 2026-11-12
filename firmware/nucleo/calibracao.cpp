@@ -184,4 +184,30 @@ Calibracao estimar_calibracao(const double (*p)[3], const double *t, uint32_t n)
   return c;
 }
 
+// g -> LSB da C2, arredondando e saturando em +-8 g. A mesma conta de
+// `g_para_lsb` (`coletor_celular.cpp`), que nao e incluida aqui para a
+// calibracao nao depender do coletor do celular.
+static int16_t para_lsb(double g) {
+  const double lsb = g * static_cast<double>(LSB_POR_G);
+  if (!(lsb == lsb)) return 0;
+  if (lsb >= 32767.0) return 32767;
+  if (lsb <= -32768.0) return -32768;
+  return static_cast<int16_t>(lround(lsb));
+}
+
+void calibrar_amostras(const Calibracao &c, double temp_c, AmostraBruta *amostras, uint16_t n) {
+  if (!c.aceita || amostras == 0) return;
+  for (uint16_t i = 0; i < n; i++) {
+    AmostraBruta &a = amostras[i];
+    const double bruta[3] = {static_cast<double>(lsb_para_g(a.x)),
+                             static_cast<double>(lsb_para_g(a.y)),
+                             static_cast<double>(lsb_para_g(a.z))};
+    double g[3];
+    aplicar_calibracao(c, temp_c, bruta, g);
+    a.x = para_lsb(g[0]);
+    a.y = para_lsb(g[1]);
+    a.z = para_lsb(g[2]);
+  }
+}
+
 }  // namespace dormio
