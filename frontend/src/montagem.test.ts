@@ -56,7 +56,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-import { act, fireEvent, screen } from "@testing-library/react";
+import { act, fireEvent, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { aplicabilidadeDaIdade } from "./lib/aplicabilidade";
@@ -315,37 +315,27 @@ describe("montagem real das telas (UI-17)", PRAZO, () => {
     expect(await screen.findByText("Nunca enviou")).toBeTruthy();
   });
 
-  it("avisa quando o CSV contém apenas as leituras disponíveis no limite da consulta", async () => {
+  it("exporta todas as páginas do histórico", async () => {
     const original = vi.mocked(fetch).getMockImplementation()!;
     const criarUrl = vi.fn(() => "blob:csv");
     const url = class extends URL {};
     Object.assign(url, { createObjectURL: criarUrl, revokeObjectURL: vi.fn() });
     vi.stubGlobal("URL", url);
     const clique = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
-    const leitura = { created_at: "2026-11-01T00:00:00Z", movimento_total: 9.81, temp: null, status: "Repouso" };
-    let quantidade = 1000;
+    const leitura = { id: "00000000-0000-0000-0000-000000000001", created_at: "2026-11-01T00:00:00Z", movimento_total: 9.81, temp: null, status: "Repouso" };
+    let pedidos = 0;
     vi.mocked(fetch).mockImplementation((entrada, opcoes) =>
       String(entrada).startsWith("/api/sleep-history")
-        ? Promise.resolve(respostaJson(Array.from({ length: quantidade }, () => leitura)))
+        ? Promise.resolve(respostaJson(++pedidos === 1 ? Array.from({ length: 2000 }, () => leitura) : [leitura]))
         : original(entrada, opcoes),
     );
-
     try {
       await montar("/configuracoes");
-      const exportar = await screen.findByRole("button", { name: "Exportar meus dados (CSV)" });
-      fireEvent.click(exportar);
-      expect(await screen.findByText(/o arquivo pode estar incompleto/i)).toBeTruthy();
+      fireEvent.click(await screen.findByRole("button", { name: "Exportar meus dados (CSV)" }));
+      await waitFor(() => expect(clique).toHaveBeenCalledTimes(1));
+      expect(pedidos).toBe(2);
       expect(criarUrl).toHaveBeenCalledTimes(1);
-      expect(clique).toHaveBeenCalledTimes(1);
-
-      quantidade = 1;
-      fireEvent.click(exportar);
-      await screen.findByRole("button", { name: "Exportar meus dados (CSV)" });
-      expect(screen.queryByText(/o arquivo pode estar incompleto/i)).toBeNull();
-      expect(clique).toHaveBeenCalledTimes(2);
-    } finally {
-      clique.mockRestore();
-    }
+    } finally { clique.mockRestore(); }
   });
 
   it("a rota /historico monta o histórico autenticado com filtro e estado vazio", async () => {

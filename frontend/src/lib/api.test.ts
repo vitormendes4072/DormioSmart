@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   ErroApi,
   buscarHistorico,
+  buscarHistoricoCompleto,
   definirCallbackDeSessaoExpirada,
   definirProvedorDeToken,
   urlDaApi,
@@ -141,5 +142,14 @@ describe("urlDaApi (APP-02)", () => {
     vi.stubGlobal("fetch", espiao);
     await buscarHistorico();
     expect(espiao.mock.calls[0][0]).toBe("/api/sleep-history");
+  });
+});
+
+describe("exportação paginada", () => {
+  it("não retorna dados parciais se a segunda página falha", async () => {
+    const linha = { id: "00000000-0000-0000-0000-000000000001", created_at: "2026-11-01T00:00:00Z" };
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce(resposta(200, Array(2000).fill(linha)))
+      .mockResolvedValueOnce(resposta(503, { error: "indisponível" })));
+    await expect(buscarHistoricoCompleto()).rejects.toThrow("indisponível");
   });
 });
