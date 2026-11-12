@@ -9463,6 +9463,26 @@ Um celular deitado só mexe em z, e é z que pesa na norma nessa posição. O GG
 
 **Procedência.** `arduino-cli` 1.6.0 com `esp32:esp32` 3.3.12, Windows 11; contêiner `gcc:13`; branch `bugfix/FW-12-ram-do-sketch`, 12/11.
 
+---
+
+# 2026-11-12 (xiv) — DATA-15 e API-08: paginação do histórico e falha do banco
+
+**O problema.** O Supabase cortava o histórico em 1 000 linhas, e indisponibilidade do banco parecia lista vazia. Na revisão da PR #146, uma inserção entre consultas também duplicou uma leitura com paginação por posição.
+
+**Hipótese.** Ordenar por chegada e ID e avançar pelo último par conserva a posição mesmo quando uma leitura mais recente chega entre duas páginas. Separar a falha da lista vazia permite responder 503.
+
+**O que foi testado.** No Windows, banco simulado com inserção entre páginas, empate no horário, filtros de usuário, dispositivo e intervalo em cada página, e falha na segunda consulta. O teste do CSV conferiu o cursor do segundo pedido. Removi as duas atribuições do cursor no frontend e reexecutei o teste.
+
+**Resultado medido.** Na versão anterior da PR, 2 testes de backend falharam: cursor interno repetido e 1 499 IDs distintos em 1 500 linhas, com uma duplicata e uma ausência. Com o cursor interno, 1 500 de 1 500 IDs distintos e sequência esperada intacta. No frontend, o controle sem os parâmetros falhou em 1 de 14 testes porque o segundo pedido não continha o cursor. Com a correção, 549 testes de backend sem RLS, 574 de frontend e o build passaram.
+
+**Adaptação.** Mantive os filtros em cada consulta, usei o par de chegada e ID na API e no banco, e restaurei os comentários sobre duração, medição e chegada no SELECT.
+
+**O que deu errado no caminho.** Nada nesta etapa além das falhas esperadas nos controles positivos.
+
+**Risco em aberto.** O cursor não fornece uma cópia transacional dos dados. Leituras novas acima do cursor podem ficar fora de uma exportação já iniciada. A inserção foi simulada localmente, sem ensaio concorrente no Supabase de produção.
+
+**Procedência.** PR #146, revisão da paginação por posição e testes de regressão executados no Windows sobre a branch da PR atualizada com `develop` `01c9da5`.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

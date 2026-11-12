@@ -58,8 +58,8 @@ def test_history_responde_200_mesmo_com_o_cliente_levantando():
     with patch.object(database.db, "validar_token_de_usuario", return_value="user-1"),          patch.object(database.db, "cliente_do_usuario", side_effect=UnicodeEncodeError(
              "charmap", "x", 0, 1, "nao mapeavel")):
         resp = _client().get("/api/sleep-history", headers={"Authorization": "Bearer jwt"})
-    assert resp.status_code == 200
-    assert resp.get_json() == []
+    assert resp.status_code == 503
+    assert "error" in resp.get_json()
 
 
 def test_get_leituras_do_usuario_degrada_para_lista_vazia():
@@ -67,7 +67,7 @@ def test_get_leituras_do_usuario_degrada_para_lista_vazia():
     # que lia sem RLS. A propriedade continua importando — so que agora no
     # metodo que as rotas de fato usam.
     with _cliente_explode():
-        assert database.db.get_leituras_do_usuario("jwt", "user-1") == []
+        assert database.db.get_leituras_do_usuario("jwt", "user-1") is None
 
 
 # --- os demais metodos tambem nao podem levantar -------------------------
