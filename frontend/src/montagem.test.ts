@@ -56,7 +56,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-import { act, fireEvent, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { aplicabilidadeDaIdade } from "./lib/aplicabilidade";
@@ -358,7 +358,7 @@ describe("montagem real das telas (UI-17)", PRAZO, () => {
     } finally { clique.mockRestore(); }
   });
 
-  it("marca somente a sessão na borda de uma resposta no limite", async () => {
+  function simularSessoesNaBorda(quantidade = 2000) {
     const original = vi.mocked(fetch).getMockImplementation()!;
     const agora = Date.now();
     const leitura = (distancia: number) => ({
@@ -368,21 +368,47 @@ describe("montagem real das telas (UI-17)", PRAZO, () => {
     });
     const recentes = [leitura(30_000), leitura(60_000)];
     const antigas = Array.from({ length: 1998 }, (_, i) => leitura(86_400_000 + i * 30_000));
-    let dados = [...recentes, ...antigas];
+    let dados = [...recentes, ...antigas].slice(0, quantidade);
     vi.mocked(fetch).mockImplementation((entrada, opcoes) =>
       String(entrada).startsWith("/api/sleep-history")
         ? Promise.resolve(respostaJson(dados))
         : original(entrada, opcoes),
     );
 
-    await montar("/historico");
-    expect(await screen.findByText("Parcial")).toBeTruthy();
-    expect(screen.getAllByText("Completa")).toHaveLength(1);
+    return () => { dados = [...recentes, ...antigas.slice(0, -1)]; };
+  }
 
-    dados = [...recentes, ...antigas.slice(0, -1)];
+  it("marca somente a sessão na borda de uma resposta no limite", async () => {
+    const reduzir = simularSessoesNaBorda();
+    await montar("/historico");
+    const tabela = await screen.findByRole("table");
+    const [, recente, antiga] = within(tabela).getAllByRole("row");
+    expect(within(recente).getByText("Completa")).toBeTruthy();
+    expect(within(antiga).getByText("Parcial")).toBeTruthy();
+
+    reduzir();
     fireEvent.change(screen.getByRole("combobox", { name: "Período do histórico" }), { target: { value: "30" } });
     await waitFor(() => expect(screen.getAllByText("Completa")).toHaveLength(2));
     expect(screen.queryByText("Parcial")).toBeNull();
+  });
+
+  it.each([2000, 1999])("aviso de cobertura do painel com %i leituras", async (quantidade) => {
+    simularSessoesNaBorda(quantidade);
+    await montar("/dashboard");
+    const aviso = "Cobertura parcial: a consulta atingiu o limite de leituras.";
+    const verTodas = await screen.findByRole("button", { name: /ver todas/i });
+    expect(screen.queryByText(aviso)).toBeNull();
+    fireEvent.click(verTodas);
+    expect(Boolean(screen.queryByText(aviso))).toBe(quantidade === 2000);
+  });
+
+  it("marca apenas a sessão na borda na tabela do painel", async () => {
+    simularSessoesNaBorda();
+    await montar("/dashboard");
+    const secao = await screen.findByRole("region", { name: "Sessões recentes" });
+    const [, recente, antiga] = within(secao).getAllByRole("row");
+    expect(within(recente).getByText("100%")).toBeTruthy();
+    expect(within(antiga).getByText("100% · Parcial")).toBeTruthy();
   });
 
   it("a rota /historico monta o histórico autenticado com filtro e estado vazio", async () => {

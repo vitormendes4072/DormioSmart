@@ -9495,9 +9495,14 @@ Um celular deitado só mexe em z, e é z que pesa na norma nessa posição. O GG
 
 **Resultado medido.** Um teste falhou em develop e um falhou com 9999 pela ausência de Parcial. Com a correção, só a sessão na borda foi marcada e ambas ficaram completas abaixo do limite.
 
+**Controles positivos da revisão.** Cada sabotagem foi executada isoladamente e desfeita:
+- Trocar `leituras.at(-1)` por `leituras.at(0)` fez falhar “marca somente a sessão na borda de uma resposta no limite”. A linha recente perdeu o rótulo Completa.
+- Apagar o texto do aviso fez falhar “aviso de cobertura do painel com 2000 leituras”. O teste de 1 999 leituras verifica a ausência do aviso.
+- Apagar ` · Parcial` da tabela fez falhar “marca apenas a sessão na borda na tabela do painel”. A linha antiga perdeu a marca.
+
 **Adaptação.** O Histórico e o painel compartilham a identificação da borda. A cobertura numérica segue descrevendo o trecho observado.
 
-**O que deu errado no caminho.** Nada além das falhas esperadas nos controles.
+**O que deu errado no caminho.** A primeira coleta da saída dos testes falhou ao imprimir um caractere no console CP1252. Reexecutei os três controles com Python em UTF-8.
 
 **Risco em aberto.** A API não informa se há mais leituras quando chega exatamente ao limite. O UI-30 trata as noites ausentes da janela.
 
