@@ -9128,6 +9128,26 @@ Um celular deitado só mexe em z, e é z que pesa na norma nessa posição. O GG
 
 **Procedência.** Execuções desta entrada; parâmetros da bancada de 11/11 (entrada xi).
 
+---
+
+# 2026-11-12 — Visão geral do dashboard
+
+**O problema.** O painel já calculava cobertura, movimento e lacunas, mas o recorte e a distinção visual entre repouso e falta de leitura precisavam ficar mais claros.
+
+**Hipótese.** Exibir sessão, instrumento e intervalo no cabeçalho e usar hachura para interrupções melhora a leitura sem alterar as consultas ou o cálculo.
+
+**O que foi testado.** Build e suíte do frontend no Windows, além de navegação em Chromium local com demonstração em 1440 px e 390 px, uma interrupção injetada nas leituras simuladas e uma lista vazia.
+
+**Resultado medido.** 564 testes em 43 arquivos e build aprovados. As duas larguras não tiveram rolagem horizontal. A interrupção simulada mostrou a legenda e o padrão hachurado. A lista vazia mostrou a mensagem de ausência de leituras.
+
+**Adaptação.** A cobertura fica junto do tempo medido e o eixo categórico foi preservado. A legenda informa que a largura da faixa não representa a duração da interrupção.
+
+**O que deu errado no caminho.** A primeira prévia devolveu 504 por dependência otimizada desatualizada. Um servidor com reotimização resolveu. Remover uma única leitura não gerou interrupção na regra existente. A verificação foi refeita removendo seis leituras consecutivas.
+
+**Risco em aberto.** As verificações no navegador usaram demonstração local. Falta revisão com sessão e leituras reais.
+
+**Procedência.** Mudança aprovada pelo autor e executada na branch de visão geral do dashboard, baseada em develop e620ad3.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

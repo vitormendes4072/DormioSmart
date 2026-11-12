@@ -1,5 +1,5 @@
 import { Activity, Clock, Pause, Waves } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { useId, useState, type ReactNode } from "react";
 import {
   Bar,
   BarChart,
@@ -91,7 +91,22 @@ function TooltipDoGrafico({
   );
 }
 
+const FORMATADOR_DE_DATA = new Intl.DateTimeFormat("pt-BR", {
+  day: "2-digit",
+  month: "short",
+  year: "numeric",
+});
+
+function descreverPeriodo(inicioMs: number, fimMs: number): string {
+  const inicio = new Date(inicioMs);
+  const fim = new Date(fimMs);
+  const diaInicial = FORMATADOR_DE_DATA.format(inicio);
+  const diaFinal = FORMATADOR_DE_DATA.format(fim);
+  return `${diaInicial} · ${formatarHora(inicio)} – ${diaFinal === diaInicial ? "" : `${diaFinal} · `}${formatarHora(fim)}`;
+}
+
 export function Dashboard() {
+  const padraoDaLacuna = useId();
   // `null` = todos os dispositivos. O recorte por instrumento (DASH-05) e
   // opcional: sem ele o painel se comporta como antes.
   const [dispositivo, setDispositivo] = useState<string | null>(null);
@@ -104,6 +119,10 @@ export function Dashboard() {
     dispositivo,
     limite: LIMITE_DO_PAINEL,
   });
+
+  const instrumento = dispositivos.length === 1 && dispositivo === null
+    ? descreverRecorte(dispositivos, dispositivos[0].id)
+    : descreverRecorte(dispositivos, dispositivo);
 
   const seletor = (
     <SeletorDeDispositivo
@@ -118,7 +137,7 @@ export function Dashboard() {
   if (carregando) {
     return (
       <div className="space-y-6">
-        <Cabecalho acao={seletor} />
+        <Cabecalho acao={seletor} instrumento={instrumento} />
         <Carregando />
       </div>
     );
@@ -127,7 +146,7 @@ export function Dashboard() {
   if (erro) {
     return (
       <div className="space-y-6">
-        <Cabecalho acao={seletor} />
+        <Cabecalho acao={seletor} instrumento={instrumento} />
         <FalhaAoCarregar mensagem={erro} aoTentarNovamente={recarregar} />
       </div>
     );
@@ -136,7 +155,7 @@ export function Dashboard() {
   if (leituras.length === 0) {
     return (
       <div className="space-y-6">
-        <Cabecalho acao={seletor} />
+        <Cabecalho acao={seletor} instrumento={instrumento} />
         <NotaDeEscopo />
         <SemLeituras />
       </div>
@@ -199,23 +218,13 @@ export function Dashboard() {
   return (
     <div className="space-y-6">
       <Cabecalho
-        // A MESMA janela do card "Medido": do início da cobertura ao fim dela.
-        // Usar a primeira/última leitura aqui fazia o cabeçalho discordar do
-        // card ao lado — "22:00 — 22:19" contra "100% de 20 min" (DASH-11).
-        // O painel "Primeira/Última leitura", mais abaixo, continua com os
-        // instantes das leituras, porque é isso que os rótulos dele prometem.
         periodo={
           cob.trechos.length > 0
-            ? `${formatarHora(new Date(cob.trechos[0].inicio))} — ${formatarHora(
-                new Date(cob.trechos[cob.trechos.length - 1].fim),
-              )}`
+            ? descreverPeriodo(cob.trechos[0].inicio, cob.trechos[cob.trechos.length - 1].fim)
             : undefined
         }
-        // Nome E tipo (DASH-08): "Quarto" não diz se a série veio de um ESP32
-        // no travesseiro ou do celular no colchão.
-        instrumento={
-          dispositivos.length > 1 ? descreverRecorte(dispositivos, dispositivo) : undefined
-        }
+        recorte={verTudo ? "Todas as sessões disponíveis" : "Sessão mais recente"}
+        instrumento={instrumento}
         acao={seletor}
       />
 
@@ -237,37 +246,33 @@ export function Dashboard() {
         />
       )}
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-4">
         <CardMetrica
-          rotulo="Eventos"
-          valor={m.eventosDeMovimento}
-          detalhe={`em ${m.totalLeituras} ${m.totalLeituras === 1 ? "leitura" : "leituras"}`}
-          icone={Activity}
-          corDoIcone="text-amber-400"
-        />
-        <CardMetrica
-          rotulo="Medido"
+          rotulo="Tempo medido"
           valor={formatarDuracao(cob.tempoCobertoMs)}
           detalhe={
             pctCoberto == null
-              ? "tempo com leitura"
-              // A janela é a de COBERTURA (`cob.janelaMs`), a mesma que gerou
-              // o percentual. `m.duracaoDaJanelaMs` mede da primeira à última
-              // leitura e é menor: usá-la aqui produzia frases aritmeticamente
-              // impossíveis, do tipo "4m 0s · 100% de 3m 0s" (DASH-11).
-              : `${pctCoberto.toFixed(0)}% de ${formatarDuracao(cob.janelaMs)}`
+              ? "Tempo com leitura"
+              : `${pctCoberto.toFixed(0)}% de uma janela de ${formatarDuracao(cob.janelaMs)}`
           }
           icone={Clock}
           corDoIcone="text-blue-400"
         />
         <CardMetrica
-          rotulo="Maior pausa"
+          rotulo="Leituras com movimento"
+          valor={m.eventosDeMovimento}
+          detalhe={`de ${m.totalLeituras} ${m.totalLeituras === 1 ? "leitura registrada" : "leituras registradas"}`}
+          icone={Activity}
+          corDoIcone="text-amber-400"
+        />
+        <CardMetrica
+          rotulo="Maior intervalo sem movimento"
           valor={formatarDuracao(m.maiorPeriodoSemMovimentoMs)}
           // "registrado", e não "houve": a afirmação é sobre o registro do
           // aparelho, não sobre o mundo. Dentro de uma captação o aparelho
           // esteve operando e não registrou movimento; a pausa nunca
           // atravessa uma interrupção, que é o defeito do DASH-09.
-          detalhe="sem movimento registrado, na captação"
+          detalhe="Sem movimento registrado, dentro do tempo medido"
           icone={Pause}
           corDoIcone="text-indigo-400"
         />
@@ -291,15 +296,15 @@ export function Dashboard() {
           continua na tela, e em qualquer captura dela, mas não na frente. */}
       <NotaDeEscopo />
 
-      <div className="bg-card border border-border rounded-2xl p-4 sm:p-6">
+      <figure aria-labelledby="titulo-linha-do-tempo" className="bg-card border border-border rounded-2xl p-4 sm:p-6">
         <div className="flex items-start justify-between gap-4 mb-5 flex-wrap">
           <div>
-            <h3 className="text-sm font-semibold text-foreground">Intensidade do movimento</h3>
+            <h2 id="titulo-linha-do-tempo" className="text-base font-semibold text-foreground">Movimento ao longo do tempo</h2>
             <p className="text-xs text-muted-foreground mt-0.5">
               Desvio do repouso ao longo da captação · |magnitude − 9,81 m/s²|
             </p>
           </div>
-          <div className="flex items-center gap-4 text-xs text-muted-foreground">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted-foreground">
             <span className="flex items-center gap-1.5">
               <span className="w-3 h-3 rounded-sm inline-block" style={{ background: COR_REPOUSO }} />
               Repouso
@@ -318,15 +323,21 @@ export function Dashboard() {
             </span>
             {temLacuna && (
               <span className="flex items-center gap-1.5">
-                <span className="w-3 h-3 rounded-sm inline-block bg-muted-foreground/25" />
-                Sem dados
+                <span className="inline-block size-3 rounded-sm border border-muted-foreground/40 bg-[repeating-linear-gradient(135deg,transparent_0_2px,currentColor_2px_3px)]" />
+                Sem medição
               </span>
             )}
           </div>
         </div>
-        <div className="h-44 sm:h-56">
+        <div className="h-52 sm:h-64">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={serieComLacuna} margin={{ top: 4, right: 4, left: -12, bottom: 0 }}>
+              <defs>
+                <pattern id={padraoDaLacuna} width="6" height="6" patternUnits="userSpaceOnUse">
+                  <rect width="6" height="6" fill="var(--muted-foreground)" fillOpacity={0.12} />
+                  <path d="M-1 1L1 -1M0 6L6 0M5 7L7 5" stroke="var(--muted-foreground)" strokeOpacity={0.65} />
+                </pattern>
+              </defs>
               <XAxis
                 dataKey="hora"
                 axisLine={false}
@@ -379,8 +390,7 @@ export function Dashboard() {
                   dataKey="alturaDaLacuna"
                   radius={[3, 3, 0, 0]}
                   isAnimationActive={false}
-                  fill="var(--muted-foreground)"
-                  fillOpacity={0.18}
+                  fill={`url(#${padraoDaLacuna})`}
                 />
               )}
               {/* Animacao desligada de proposito: o dashboard recarrega os
@@ -396,7 +406,13 @@ export function Dashboard() {
             </BarChart>
           </ResponsiveContainer>
         </div>
-      </div>
+        {temLacuna && (
+          <figcaption className="mt-3 text-xs text-muted-foreground">
+            As faixas hachuradas indicam intervalos sem medição. A largura das faixas
+            não representa a duração da lacuna.
+          </figcaption>
+        )}
+      </figure>
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
         <div className="lg:col-span-2 bg-card border border-border rounded-2xl p-4 sm:p-6">
@@ -505,28 +521,29 @@ export function Dashboard() {
 
 function Cabecalho({
   periodo,
+  recorte,
   instrumento,
   acao,
 }: {
   periodo?: string;
-  /** Qual dispositivo produziu a serie. So aparece quando ha mais de um —
-   *  com um so, dizer o nome nao informa nada. */
-  instrumento?: string;
+  recorte?: string;
+  instrumento: string;
   acao?: ReactNode;
 }) {
   return (
-    <div className="flex flex-wrap items-start justify-between gap-3">
+    <header className="flex flex-wrap items-start justify-between gap-4 rounded-2xl border border-border bg-card p-4 sm:p-6">
       <div className="min-w-0">
         <p className="text-xs text-muted-foreground uppercase tracking-wider">
-          {periodo ?? "Monitoramento"}
-          {instrumento ? ` · ${instrumento}` : ""}
+          {recorte ?? "Visão geral"}
         </p>
         <h1 className="text-xl sm:text-2xl font-semibold text-foreground mt-1">
           Movimento durante o repouso
         </h1>
+        <p className="mt-2 text-sm text-muted-foreground">{instrumento}</p>
+        {periodo && <p className="mt-1 text-sm text-muted-foreground">{periodo}</p>}
       </div>
       {acao}
-    </div>
+    </header>
   );
 }
 
