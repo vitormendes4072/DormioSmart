@@ -1,10 +1,11 @@
-import { Activity, Clock, Gauge, Pause, Radio } from "lucide-react";
+import { Activity, Clock, Gauge, Moon, Pause, Radio, Sun } from "lucide-react";
 import { useId, useState, type ReactNode } from "react";
 import { Link } from "react-router";
 import {
   Bar,
   Area,
   ComposedChart,
+  CartesianGrid,
   Line,
   ReferenceLine,
   ResponsiveContainer,
@@ -18,6 +19,10 @@ import { Carregando, FalhaAoCarregar, SemLeituras } from "../components/EstadoDa
 import { NotaDeEscopo } from "../components/NotaDeEscopo";
 import { AvisoDeMistura, SeletorDeDispositivo } from "../components/SeletorDeDispositivo";
 import { useDispositivos } from "../hooks/useDispositivos";
+import { usePerfil } from "../contexts/PerfilContext";
+import { useTema } from "../hooks/useTema";
+import { estaEmModoDemo } from "../lib/demo";
+import { nomeDoPerfil } from "../lib/perfil";
 import { useHistorico } from "../hooks/useHistorico";
 import { LIMITE_DO_PAINEL } from "../lib/api";
 import { descreverRecorte, descreverUltimoContato, serieMisturaInstrumentos } from "../lib/dispositivos";
@@ -164,7 +169,10 @@ export function Dashboard() {
       <div className="space-y-6">
         <Cabecalho acao={seletor} instrumento={instrumento} />
         <NotaDeEscopo />
-        <SemLeituras />
+        <div id="sessoes-recentes"><SemLeituras /></div>
+        <div id="resumo-dispositivo">
+          <Link to="/configuracoes" className="text-sm font-semibold text-primary">Gerenciar dispositivos</Link>
+        </div>
       </div>
     );
   }
@@ -202,6 +210,9 @@ export function Dashboard() {
   const cob = m.cobertura;
   const pctCoberto =
     cob.janelaMs > 0 ? (cob.tempoCobertoMs / cob.janelaMs) * 100 : null;
+  const periodoExibido = cob.trechos.length > 0
+    ? descreverPeriodo(cob.trechos[0].inicio, cob.trechos[cob.trechos.length - 1].fim)
+    : undefined;
   // Coluna inteira de "--" é ruído. O celular não reporta temperatura de chip
   // (contrato v2.0.0 tornou o campo opcional), então numa captação só de
   // celular a coluna nunca tem nada.
@@ -224,14 +235,8 @@ export function Dashboard() {
     .slice(0, 8);
 
   return (
-    <div className="mx-auto max-w-7xl space-y-5">
+    <div className="mx-auto max-w-[1540px] space-y-3.5">
       <Cabecalho
-        periodo={
-          cob.trechos.length > 0
-            ? descreverPeriodo(cob.trechos[0].inicio, cob.trechos[cob.trechos.length - 1].fim)
-            : undefined
-        }
-        recorte={verTudo ? "Todas as sessões disponíveis" : "Sessão mais recente"}
         instrumento={instrumento}
         acao={seletor}
       />
@@ -291,18 +296,8 @@ export function Dashboard() {
         />
       </div>
 
-      {/* Fora do aviso de lacuna de propósito: numa captação de ESP32 com
-          cobertura perfeita — justamente onde TUDO é inferido — não há aviso
-          de lacuna, e a inferência não aparecia em lugar nenhum da tela. */}
-      <NotaDeInferencia cobertura={cob} />
-
-      {/* Depois dos números, e não antes. A revisão apontou que quem abre o
-          painel lia dois parágrafos de ressalva antes de ver qualquer dado —
-          continua na tela, e em qualquer captura dela, mas não na frente. */}
-      <NotaDeEscopo />
-
-      <div className="grid gap-3 xl:grid-cols-[minmax(0,1.8fr)_minmax(220px,0.9fr)]">
-        <figure aria-labelledby="titulo-linha-do-tempo" className="min-w-0 rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
+      <div className="grid gap-3.5 min-[1050px]:grid-cols-[minmax(0,1.8fr)_minmax(220px,0.9fr)]">
+        <figure aria-labelledby="titulo-linha-do-tempo" className="min-w-0 rounded-[14px] border border-border bg-card p-4 shadow-sm">
           <div className="flex items-start justify-between gap-4 mb-5 flex-wrap">
             <div>
               <h2 id="titulo-linha-do-tempo" className="text-base font-semibold text-foreground">Movimento ao longo do tempo</h2>
@@ -348,6 +343,7 @@ export function Dashboard() {
                     <path d="M-1 1L1 -1M0 6L6 0M5 7L7 5" stroke="var(--muted-foreground)" strokeOpacity={0.65} />
                   </pattern>
                 </defs>
+                <CartesianGrid vertical={false} stroke="var(--border)" strokeDasharray="3 5" />
                 <XAxis
                   dataKey="hora"
                   axisLine={false}
@@ -434,7 +430,7 @@ export function Dashboard() {
             </figcaption>
           )}
         </figure>
-        <aside aria-label="Resumo do dispositivo" className="flex flex-col gap-4 rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
+        <aside id="resumo-dispositivo" aria-label="Resumo do dispositivo" className="flex flex-col gap-4 rounded-[14px] border border-border bg-card p-4 shadow-sm">
           <h2 className="text-base font-semibold text-foreground">Seu dispositivo</h2>
           <div className="flex items-start gap-3">
             <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
@@ -459,12 +455,23 @@ export function Dashboard() {
           <div className="border-t border-border pt-3 text-sm">
             <p className="text-muted-foreground">Sessão exibida</p>
             <p className="mt-1 font-medium text-foreground">{verTudo ? "Todas as sessões disponíveis" : "Sessão mais recente"}</p>
+            {periodoExibido && <p className="mt-1 text-xs text-muted-foreground">{periodoExibido}</p>}
           </div>
           <Link to="/configuracoes" className="mt-auto rounded-lg border border-border px-3 py-2 text-center text-sm font-semibold text-foreground hover:bg-secondary">
             Gerenciar dispositivos
           </Link>
         </aside>
       </div>
+
+      {/* Fora do aviso de lacuna de propósito: numa captação de ESP32 com
+          cobertura perfeita — justamente onde TUDO é inferido — não há aviso
+          de lacuna, e a inferência não aparecia em lugar nenhum da tela. */}
+      <NotaDeInferencia cobertura={cob} />
+
+      {/* Depois dos números, e não antes. A revisão apontou que quem abre o
+          painel lia dois parágrafos de ressalva antes de ver qualquer dado —
+          continua na tela, e em qualquer captura dela, mas não na frente. */}
+      <NotaDeEscopo />
 
       {sessoesRecentes.length > 0 && (
         <section aria-labelledby="sessoes-recentes" className="rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
@@ -605,29 +612,47 @@ export function Dashboard() {
 }
 
 function Cabecalho({
-  periodo,
-  recorte,
   instrumento,
   acao,
 }: {
-  periodo?: string;
-  recorte?: string;
   instrumento: string;
   acao?: ReactNode;
 }) {
+  const { perfil } = usePerfil();
+  const nome = nomeDoPerfil(perfil).split(/\s+/)[0];
+  const { aplicado, definirPreferencia } = useTema();
+  const escuro = aplicado === "dark";
+
   return (
-    <header className="flex flex-wrap items-end justify-between gap-4 py-2">
-      <div className="min-w-0">
-        <p className="text-xs text-muted-foreground uppercase tracking-wider">
-          {recorte ?? "Visão geral"}
-        </p>
-        <h1 className="mt-1 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-          Movimento durante o repouso
-        </h1>
-        <p className="mt-2 text-sm text-muted-foreground">{instrumento}</p>
-        {periodo && <p className="mt-1 text-sm text-muted-foreground">{periodo}</p>}
+    <header>
+      <div className="mb-6 flex items-center justify-between gap-3">
+        <p className="text-[10px] text-muted-foreground">Smart Dormio <span className="mx-2">/</span> Visão geral</p>
+        <div className="flex items-center gap-2">
+          {estaEmModoDemo() && (
+            <span title="Dados simulados, sem medições reais do dispositivo" className="rounded-full bg-amber-500/15 px-2.5 py-1.5 text-[9px] font-bold uppercase tracking-wide text-amber-800 dark:text-amber-300">
+              <span aria-hidden="true">● </span> Dados de demonstração
+            </span>
+          )}
+          <button
+            type="button"
+            aria-label={escuro ? "Ativar tema claro" : "Ativar tema escuro"}
+            onClick={() => definirPreferencia(escuro ? "claro" : "escuro")}
+            className="grid size-9 shrink-0 place-items-center rounded-xl border border-border bg-card text-muted-foreground hover:text-primary"
+          >
+            {escuro ? <Sun className="size-4" aria-hidden /> : <Moon className="size-4" aria-hidden />}
+          </button>
+        </div>
       </div>
-      {acao}
+      <div className="flex flex-wrap items-end justify-between gap-3 pb-1">
+        <div className="min-w-0">
+          <h1 className="text-2xl font-extrabold tracking-tight text-foreground sm:text-[27px]">
+            {nome ? `Olá, ${nome}` : "Visão geral"}
+          </h1>
+          <p className="mt-0.5 text-xs text-muted-foreground">Aqui está o resumo dos seus registros de movimento.</p>
+          <p className="sr-only">{instrumento}</p>
+        </div>
+        {acao}
+      </div>
     </header>
   );
 }
