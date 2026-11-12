@@ -15,7 +15,7 @@ import { EditarPerfil } from "../components/EditarPerfil";
 import { ExcluirConta } from "../components/ExcluirConta";
 import { MeusDispositivos } from "../components/MeusDispositivos";
 import { SeletorDeTema } from "../components/SeletorDeTema";
-import { LIMITE_DO_PAINEL, buscarHistorico } from "../lib/api";
+import { LIMIAR_DE_HISTORICO_PARCIAL, LIMITE_DO_PAINEL, buscarHistorico } from "../lib/api";
 import { baixarCsv } from "../lib/exportar";
 import { useAuth } from "../contexts/AuthContext";
 
@@ -141,11 +141,13 @@ function SecaoDados() {
   const [exportando, setExportando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [vazio, setVazio] = useState(false);
+  const [exportacaoParcial, setExportacaoParcial] = useState(false);
 
   async function exportar() {
     setExportando(true);
     setErro(null);
     setVazio(false);
+    setExportacaoParcial(false);
     try {
       // Sem `limite` explicito o backend devolve 20 linhas (DASH-13), e a
       // exportacao que a secao promete como "seus dados" entregava dez
@@ -158,6 +160,7 @@ function SecaoDados() {
         return;
       }
       baixarCsv(leituras);
+      setExportacaoParcial(leituras.length >= LIMIAR_DE_HISTORICO_PARCIAL);
     } catch {
       setErro("Não foi possível carregar suas leituras para exportar.");
     } finally {
@@ -185,6 +188,12 @@ function SecaoDados() {
           {exportando ? "Preparando arquivo..." : "Exportar meus dados (CSV)"}
         </span>
       </button>
+
+      {exportacaoParcial && (
+        <p role="status" className="mt-3 rounded-lg bg-amber-500/10 px-3 py-2 text-xs text-foreground">
+          O arquivo pode estar incompleto. A consulta pode ter atingido o limite de leituras e deixado registros mais antigos de fora.
+        </p>
+      )}
 
       {vazio ? (
         <p className="text-xs text-muted-foreground mt-3">

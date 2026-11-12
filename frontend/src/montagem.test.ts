@@ -288,6 +288,39 @@ describe("montagem real das telas (UI-17)", PRAZO, () => {
     expect(links.some((a) => a.getAttribute("href") === "/privacidade")).toBe(true);
   });
 
+  it("avisa quando o CSV contém apenas as leituras disponíveis no limite da consulta", async () => {
+    const original = vi.mocked(fetch).getMockImplementation()!;
+    const criarUrl = vi.fn(() => "blob:csv");
+    const url = class extends URL {};
+    Object.assign(url, { createObjectURL: criarUrl, revokeObjectURL: vi.fn() });
+    vi.stubGlobal("URL", url);
+    const clique = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+    const leitura = { created_at: "2026-11-01T00:00:00Z", movimento_total: 9.81, temp: null, status: "Repouso" };
+    let quantidade = 1000;
+    vi.mocked(fetch).mockImplementation((entrada, opcoes) =>
+      String(entrada).startsWith("/api/sleep-history")
+        ? Promise.resolve(respostaJson(Array.from({ length: quantidade }, () => leitura)))
+        : original(entrada, opcoes),
+    );
+
+    try {
+      await montar("/configuracoes");
+      const exportar = await screen.findByRole("button", { name: "Exportar meus dados (CSV)" });
+      fireEvent.click(exportar);
+      expect(await screen.findByText(/o arquivo pode estar incompleto/i)).toBeTruthy();
+      expect(criarUrl).toHaveBeenCalledTimes(1);
+      expect(clique).toHaveBeenCalledTimes(1);
+
+      quantidade = 1;
+      fireEvent.click(exportar);
+      await screen.findByRole("button", { name: "Exportar meus dados (CSV)" });
+      expect(screen.queryByText(/o arquivo pode estar incompleto/i)).toBeNull();
+      expect(clique).toHaveBeenCalledTimes(2);
+    } finally {
+      clique.mockRestore();
+    }
+  });
+
   it("a rota /historico monta o histórico autenticado com filtro e estado vazio", async () => {
     const original = vi.mocked(fetch).getMockImplementation()!;
     let responder: ((resposta: Response) => void) | undefined;

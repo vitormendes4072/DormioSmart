@@ -4,7 +4,7 @@ import { useLocation } from "react-router";
 import { BarraDoWorkspace } from "../components/BarraDoWorkspace";
 import { Carregando, FalhaAoCarregar } from "../components/EstadoDaTela";
 import { useHistorico } from "../hooks/useHistorico";
-import { LIMITE_DO_PAINEL } from "../lib/api";
+import { LIMIAR_DE_HISTORICO_PARCIAL, LIMITE_DO_PAINEL } from "../lib/api";
 import { agruparEmSessoes, calcularCobertura } from "../lib/cobertura";
 import { estaEmModoDemo } from "../lib/demo";
 import { formatarDuracao } from "../lib/metricas";
@@ -119,8 +119,7 @@ function SessoesDaConta({ dias }: { dias: number }) {
 
   return (
     <>
-      {/* A consulta do histórico é única e o Supabase pode limitar a resposta a 1000 linhas. */}
-      {leituras.length >= Math.min(LIMITE_DO_PAINEL, 1000) && (
+      {leituras.length >= LIMIAR_DE_HISTORICO_PARCIAL && (
         <p role="status" className="mb-3 rounded-lg bg-amber-500/10 px-3 py-2 text-xs text-foreground">
           A consulta atingiu o limite de leituras. O histórico deste período pode estar incompleto.
         </p>

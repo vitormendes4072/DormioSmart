@@ -382,7 +382,7 @@ export function Landing() {
     <iframe
       title="Smart Dormio — página inicial"
       src={sessao ? "/landing-prototipo.html?sessao=1" : "/landing-prototipo.html"}
-      sandbox="allow-scripts allow-top-navigation-by-user-activation allow-popups allow-popups-to-escape-sandbox"
+      sandbox="allow-scripts allow-top-navigation-by-user-activation allow-popups allow-popups-to-escape-sandbox allow-downloads"
       className="block h-dvh w-full border-0"
     />
   );
