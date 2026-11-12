@@ -18,7 +18,7 @@
 //
 //   0  seq          u32   ordem global de gravacao; 0xFFFFFFFF = slot vazio
 //   4  sessao       u16   qual ligamento do dispositivo gravou
-//   6  bandeiras    u8    REGISTRO_TEM_FEATURES, REGISTRO_INSTANTE_E_PAREDE
+//   6  bandeiras    u8    REGISTRO_TEM_FEATURES, REGISTRO_INSTANTE_E_PAREDE, REGISTRO_CALIBRADA
 //   7  entregue     u8    0xFF pendente, 0x00 entregue -- FORA do CRC
 //   8  instante_s   u32   inicio da epoca: unix s, ou s desde o boot
 //  12  epoca        32 B  a `Epoca` de sempre
@@ -73,6 +73,12 @@ enum BandeirasDoRegistro {
   // monotonico em segundos desde o boot da `sessao` que gravou -- e so
   // resolvivel enquanto esta sessao for a corrente.
   REGISTRO_INSTANTE_E_PAREDE = 1 << 1,
+
+  // As amostras desta epoca passaram pela calibracao da unidade (FW-11): o
+  // payload sai com `"cal":1`. Um bit que estava livre -- o registro nao
+  // cresce, e um registro gravado antes dele (bit em 0) sai, corretamente,
+  // como nao calibrado.
+  REGISTRO_CALIBRADA = 1 << 2,
 };
 
 // POD com larguras fixas: o `static_assert` no .cpp trava tamanho e offsets,
@@ -90,6 +96,7 @@ struct RegistroDeEpoca {
 
   bool tem_features() const { return (bandeiras & REGISTRO_TEM_FEATURES) != 0; }
   bool instante_e_parede() const { return (bandeiras & REGISTRO_INSTANTE_E_PAREDE) != 0; }
+  bool calibrada() const { return (bandeiras & REGISTRO_CALIBRADA) != 0; }
   bool foi_entregue() const { return entregue == ENTREGUE_CONFIRMADO; }
 };
 

@@ -56,8 +56,10 @@
 #include <atomic>
 
 #include "ca_raiz.h"
+#include "calibracao_da_unidade.h"
 #include "midia_flash_esp32.h"
 #include "nucleo/cadeia_c2.h"
+#include "nucleo/calibracao.h"
 #include "nucleo/caracteristicas.h"
 #include "nucleo/envio_da_fila.h"
 #include "nucleo/epoca_c2.h"
@@ -126,6 +128,10 @@ static CoordenacaoDoRadio radio;
 static TaskHandle_t tarefa_envio = 0;
 
 static CadeiaC2 cadeia;
+// A calibracao da unidade (FW-11, `calibracao_da_unidade.h`) e a vigia que
+// percebe o sensor reiniciado. Os dois so sao tocados pela medicao.
+static Calibracao calibracao;
+static VigiaDaFifo vigia;
 static AcumuladorDeFeatures acumulador;
 static float grade_x[AMOSTRAS_NA_GRADE], grade_y[AMOSTRAS_NA_GRADE], grade_z[AMOSTRAS_NA_GRADE];
 static uint64_t origem_us = 0;
@@ -153,6 +159,10 @@ struct Contadores {
   // desde o boot. E aqui que o apagamento de setor da flash aparece: a folha
   // diz ate 400 ms, e so a placa diz quanto e. So a medicao escreve.
   std::atomic<uint32_t> trabalho_max_us;
+  // Vezes que o sensor foi achado dormindo e reconfigurado (FW-11). Cada uma
+  // e uma queda de alimentacao no MPU6050 -- na bancada, o contato que falha
+  // ao virar a placa (`HW-09`). Zero numa noite e o esperado.
+  std::atomic<uint32_t> reacordados;
 };
 // Sem inicializador de proposito: armazenamento estatico ja comeca em zero, e
 // `= {0, ...}` copiaria `atomic`, o que o C++11 do `make sintaxe` recusa.
@@ -211,6 +221,25 @@ static float ler_temperatura_c() {
   return temperatura_mpu_c(static_cast<int16_t>((b[0] << 8) | b[1]));
 }
 
+// FW-11: a FIFO ficou vazia `DRENAGENS_VAZIAS_PARA_CONFERIR` vezes seguidas.
+// Se o sensor reiniciou (queda de alimentacao), ele esta dormindo e com a FIFO
+// desligada, e so volta a medir reconfigurado. Se esta acordado, nao mexe.
+static void conferir_sensor() {
+  uint8_t pwr1 = 0, user = 0, fifo_en = 0;
+  if (!ler_registradores(MPU_REG_PWR_MGMT_1, &pwr1, 1) ||
+      !ler_registradores(MPU_REG_USER_CTRL, &user, 1) ||
+      !ler_registradores(MPU_REG_FIFO_EN, &fifo_en, 1)) {
+    return;  // sem barramento nao ha o que decidir; a proxima volta tenta de novo
+  }
+  if (!sensor_precisa_reconfigurar(pwr1, user, fifo_en)) return;
+  const bool ok = configurar_mpu();
+  contadores.reacordados++;
+  Serial.printf("[sensor] achado dormindo (PWR1 0x%02X, USER_CTRL 0x%02X, FIFO_EN 0x%02X): "
+                "reconfigurado %s; vezes nesta sessao: %u\n",
+                pwr1, user, fifo_en, ok ? "ok" : "COM FALHA",
+                static_cast<unsigned>(contadores.reacordados.load()));
+}
+
 // Uma drenagem. O instante e o da leitura de FIFO_COUNT: e com ele que a
 // contagem acumulada entra na regressao da linha do tempo (`cadeia_c2.h`).
 // So os bytes contados sao lidos -- uma amostra que chegue durante a leitura
@@ -251,7 +280,11 @@ static void drenar() {
     lidos = static_cast<uint16_t>(lidos + bloco);
   }
   const uint16_t n = decodificar_fifo(bytes, lidos, amostras, FIFO_CAPACIDADE_AMOSTRAS);
+  // FW-11: a calibracao da unidade, em cada amostra, antes da cadeia -- o
+  // mesmo ponto do celular. A temperatura e a do chip, lida agora.
+  if (n > 0) calibrar_amostras(calibracao, ler_temperatura_c(), amostras, n);
   cadeia.registrar_drenagem(t_us, amostras, n, false);
+  if (vigia.observar(n)) conferir_sensor();
 }
 
 // Fecha todas as epocas que a cadeia ja consegue fechar e grava cada uma.
@@ -287,7 +320,7 @@ static void fechar_epocas() {
     ResultadoDaGuarda g = FILA_NAO_MONTADA;
     if (fila_ok) {
       xSemaphoreTake(mutex_fila, portMAX_DELAY);
-      g = fila.guardar(e, tem_features ? &v : 0, instante);
+      g = fila.guardar(e, tem_features ? &v : 0, instante, calibracao.aceita);
       xSemaphoreGive(mutex_fila);
     }
     if (g == GUARDADO) {
@@ -485,7 +518,7 @@ static void tarefa_de_envio(void *) {
     }
     Serial.printf("[envio] %s; gravadas %u, sem f %u, recusadas %u, transbordos %u, "
                   "falhas na fila %u, descartadas %u, prazos estourados %u, "
-                  "trabalho max %u ms\n",
+                  "trabalho max %u ms, sensor reacordado %u\n",
                   ok ? "ok" : "FALHOU", static_cast<unsigned>(contadores.epocas_gravadas.load()),
                   static_cast<unsigned>(contadores.sem_features.load()),
                   static_cast<unsigned>(contadores.recusadas.load()),
@@ -493,7 +526,8 @@ static void tarefa_de_envio(void *) {
                   static_cast<unsigned>(contadores.falhas_na_fila.load()),
                   static_cast<unsigned>(contadores.descartadas_no_envio.load()),
                   static_cast<unsigned>(contadores.prazos_estourados.load()),
-                  static_cast<unsigned>(contadores.trabalho_max_us.load() / 1000u));
+                  static_cast<unsigned>(contadores.trabalho_max_us.load() / 1000u),
+                  static_cast<unsigned>(contadores.reacordados.load()));
   }
 }
 
@@ -517,6 +551,11 @@ void setup() {
     Serial.println("ERRO: particao `dormio` nao encontrada. Grave com firmware/partitions.csv.");
     Serial.println("      Medindo assim mesmo, mas NADA sera guardado nem enviado.");
   }
+
+  calibracao = calibracao_da_unidade();
+  Serial.printf("Calibracao da unidade: %s (desvio Z %+.1f mg)\n",
+                calibracao.aceita ? "aplicada" : "NAO aplicada",
+                1000.0 * -calibracao.desvio[2] / calibracao.escala[2]);
 
   Wire.begin(PINO_SDA, PINO_SCL);
   Wire.setClock(400000);
