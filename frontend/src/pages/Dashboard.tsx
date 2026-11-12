@@ -25,7 +25,7 @@ import { usePerfil } from "../contexts/PerfilContext";
 import { nomeDoPerfil } from "../lib/perfil";
 import { useHistorico } from "../hooks/useHistorico";
 import { LIMITE_DO_PAINEL } from "../lib/api";
-import { descreverRecorte, descreverUltimoContato, serieMisturaInstrumentos } from "../lib/dispositivos";
+import { classificarUltimoEnvio, descreverRecorte, descreverUltimoContato, serieMisturaInstrumentos, type Dispositivo } from "../lib/dispositivos";
 import { agruparEmSessoes, calcularCobertura } from "../lib/cobertura";
 import {
   calcularMetricas,
@@ -177,7 +177,13 @@ export function Dashboard() {
         <Cabecalho acao={seletor} instrumento={instrumento} />
         <NotaDeEscopo />
         <div id="sessoes-recentes"><SemLeituras /></div>
-        <div id="resumo-dispositivo">
+        <div id="resumo-dispositivo" className="space-y-3">
+          {dispositivoDoResumo && (
+            <aside aria-label="Resumo do dispositivo" className="rounded-[14px] border border-border bg-card p-4">
+              <h2 className="mb-2 text-sm font-semibold text-foreground">{instrumento}</h2>
+              <DetalhesDoEnvio dispositivo={dispositivoDoResumo} />
+            </aside>
+          )}
           <Link to={destinoDoWorkspace("/dispositivos", search)} className="text-sm font-semibold text-primary">Gerenciar dispositivos</Link>
         </div>
       </div>
@@ -448,10 +454,9 @@ export function Dashboard() {
             </p>
           </div>
           {dispositivoDoResumo ? (
-            <dl className="space-y-1 border-t border-border pt-3 text-sm">
-              <dt className="text-muted-foreground">Último envio</dt>
-              <dd className="font-medium text-foreground">{descreverUltimoContato(dispositivoDoResumo)}</dd>
-            </dl>
+            <div className="border-t border-border pt-3">
+              <DetalhesDoEnvio dispositivo={dispositivoDoResumo} />
+            </div>
           ) : (
             <p className="border-t border-border pt-3 text-sm text-muted-foreground">
               {dispositivos.length > 1
@@ -620,6 +625,26 @@ export function Dashboard() {
         </div>
       </div>
     </div>
+  );
+}
+
+function DetalhesDoEnvio({ dispositivo }: { dispositivo: Dispositivo }) {
+  const estado = classificarUltimoEnvio(dispositivo);
+
+  return (
+    <dl className="space-y-1 text-sm">
+      <dt className="text-muted-foreground">Último envio</dt>
+      <dd className="flex flex-wrap items-center gap-2">
+        {dispositivo.last_seen_at && estado !== "Horário indisponível" && (
+          <span className="font-medium text-foreground">{descreverUltimoContato(dispositivo)}</span>
+        )}
+        <span className={`rounded-full px-2 py-1 text-xs font-semibold ${estado === "Enviou recentemente"
+          ? "bg-emerald-500/10 text-emerald-800 dark:text-emerald-300"
+          : "bg-secondary text-muted-foreground"}`}>
+          {estado}
+        </span>
+      </dd>
+    </dl>
   );
 }
 

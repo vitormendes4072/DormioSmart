@@ -9228,6 +9228,26 @@ Um celular deitado só mexe em z, e é z que pesa na norma nessa posição. O GG
 
 **Procedência.** Correções aprovadas pelo autor após revisão da versão da PR #137. Branch derivada dessa PR, com develop e620ad3 incorporado.
 
+---
+
+# 2026-11-12 (vi) — Configurações na demonstração e último envio
+
+**O problema.** Configurações descartava o modo de demonstração. O painel mostrava o último contato apenas quando havia leituras e não indicava a sua recência.
+
+**Hipótese.** Preservar o parâmetro permite testar o tema sem abrir ações de conta. O horário recebido do servidor permite informar recência para o dispositivo selecionado.
+
+**O que foi testado.** Build, suíte e montagem no Windows. Chromium local em desktop e largura móvel, troca para tema escuro e claro, navegação para a conta pelo link Entrar e observação de chamadas à API na demonstração sem sessão.
+
+**Resultado medido.** 572 testes em 44 arquivos e build aprovados. Antes da correção, dois testes falharam: os dois menus perderam o parâmetro e o painel não mostrou Nunca enviou. Na demonstração, os dois menus preservaram o parâmetro, os dois temas foram aplicados e houve zero chamadas à API.
+
+**Adaptação.** A tela demonstrativa permite alterar o tema e orienta como acessar as funções da conta. O painel usa o horário de último envio e uma janela de 20 minutos, equivalente a dois ciclos previstos no RD-07. Mostra o indicador mesmo quando o dispositivo ainda não tem leituras.
+
+**O que deu errado no caminho.** A primeira tentativa de rodar os testes ocorreu enquanto as dependências ainda eram instaladas. A primeira prévia devolveu 504 em uma dependência do Vite. As verificações foram repetidas após a instalação e em uma nova porta.
+
+**Risco em aberto.** O status foi validado com resposta simulada e ainda precisa ser conferido com um sensor real. O horário informa recência de envio e não comprova presença em tempo real.
+
+**Procedência.** Plano aprovado pelo autor. Branch derivada da PR #138 com develop e620ad3 incorporado. Cadência de envio registrada em RD-07.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

@@ -9,13 +9,14 @@ import {
   User,
 } from "lucide-react";
 import { useState } from "react";
-import { Link, useNavigate } from "react-router";
+import { Link, useLocation, useNavigate } from "react-router";
 
 import { EditarPerfil } from "../components/EditarPerfil";
 import { ExcluirConta } from "../components/ExcluirConta";
 import { MeusDispositivos } from "../components/MeusDispositivos";
 import { SeletorDeTema } from "../components/SeletorDeTema";
 import { LIMIAR_DE_HISTORICO_PARCIAL, LIMITE_DO_PAINEL, buscarHistorico } from "../lib/api";
+import { estaEmModoDemo } from "../lib/demo";
 import { baixarCsv } from "../lib/exportar";
 import { useAuth } from "../contexts/AuthContext";
 
@@ -32,6 +33,7 @@ import { useAuth } from "../contexts/AuthContext";
  * acende e nao faz nada, sim.
  */
 export function Settings() {
+  const { search } = useLocation();
   return (
     <div className="max-w-2xl space-y-5">
       <div className="mb-8">
@@ -40,11 +42,15 @@ export function Settings() {
       </div>
 
       <SecaoAparencia />
-      <SecaoConta />
-      <SecaoDispositivos />
-      <SecaoDados />
-      <SecaoSair />
-      <SecaoExclusao />
+      {estaEmModoDemo(search) ? <SecaoAcessoDemonstrativo /> : (
+        <>
+          <SecaoConta />
+          <SecaoDispositivos />
+          <SecaoDados />
+          <SecaoSair />
+          <SecaoExclusao />
+        </>
+      )}
     </div>
   );
 }
@@ -69,6 +75,26 @@ function Secao({
       {aviso ? <p className="text-xs text-muted-foreground mb-5 mt-1">{aviso}</p> : <div className="mb-5" />}
       {children}
     </section>
+  );
+}
+
+function SecaoAcessoDemonstrativo() {
+  const { sessao } = useAuth();
+
+  return (
+    <Secao
+      titulo="Configurações da conta"
+      icone={User}
+      aviso="Entre na sua conta para editar o perfil, gerenciar dispositivos, exportar dados ou excluir a conta."
+    >
+      <Link
+        to={sessao ? "/configuracoes" : "/login"}
+        state={sessao ? undefined : { de: "/configuracoes" }}
+        className="text-sm font-semibold text-primary hover:underline"
+      >
+        {sessao ? "Abrir configurações da conta" : "Entrar"}
+      </Link>
+    </Secao>
   );
 }
 
