@@ -8926,6 +8926,208 @@ Um celular deitado só mexe em z, e é z que pesa na norma nessa posição. O GG
 
 **Procedência.** Execuções desta entrada; relatórios do Gradle em `frontend/android/app/build/` (não versionados).
 
+# 2026-11-11 (ix) — release #127: a 018 e o backend 2.9.0 na produção; o sensor soldado responde
+
+**O problema, como foi entendido no início.** As etapas 1 e 2 do `CAL-03` estavam em `develop`, mas nada delas na produção. A ordem fixada na etapa 1 era: a 018 antes do backend 2.9.0, e o APK novo só depois dos dois. Na ordem inversa, `gn` e `cal` se perderiam em silêncio. No mesmo dia, o autor soldou o MPU6050 na ESP32, que é a corrente que trava a captação desde agosto.
+
+**Hipótese de trabalho.**
+- A 018 sem comentários aplica limpa na ordem da produção.
+- O release só acrescenta: o backend aceita dois campos opcionais e nada do que já entra muda.
+- A solda passa no `diagnostico-i2c` sem erro de barramento.
+
+**O que foi testado, e como.**
+- **A 018 sem comentários (216 linhas):** aplicada por mim num Postgres 17 montado na ordem real (001–017), com o diagnóstico.
+- **Na produção:** o autor aplicou a 018 no SQL Editor e rodou uma conferência de cinco marcas: colunas, restrição, as duas funções gravando `g_norma` e a trava do consentimento mantida.
+- **Release:** PR #127, CI 10/10; mesclado e publicado pela Vercel. Depois do deploy:
+  - `get_deployment`;
+  - `/health`;
+  - as rotas sem credencial;
+  - o pacote publicado, inclusive o pedaço da página `/privacidade`.
+- **O sensor soldado:** liguei as quatro ligações (VCC → 3V3, GND → GND, SDA → D21, SCL → D22) e conferi pelas fotos do autor o lado do sensor. Instalei o `arduino-cli` 1.6.0 e o pacote ESP32 3.3.12 numa pasta de ferramentas fora do repositório. Compilei e gravei o `firmware/diagnostico-i2c` na COM3 e li a serial.
+
+**Resultado medido.**
+- **A 018 no banco de teste:** 3 de 3 marcas, a 016 e a 017 intactas, nenhuma marca falsa.
+- **A conferência na produção:** os cinco `true`. **Produção com 001–018.**
+- **O deploy:**
+  - `regions: ["gru1"]`, e a resposta vem `gru1::gru1`;
+  - `/health` `200`, `"contrato_de_dados": "2.9.0"` e o modelo `ml-inf-cabeca-v2`;
+  - lote, leitura, consentimento e inferência sem credencial respondem `401`; `/privacidade` responde `200`;
+  - o pedaço da política traz os trechos novos da §2.2, da §2.3 e da §10; o pacote principal traz a linha "Calibração do sensor".
+- **O diagnóstico de I²C, com a placa parada:**
+  - 0 falhas de barramento a 100 e a 400 kHz;
+  - WHO_AM_I `0x68` em 1 000 de 1 000 leituras;
+  - 0 leituras fora do plausível;
+  - |a| de 9,990 a 10,055 m/s².
+- **O sensor lê 10,03 m/s² parado, 2,2 % acima de 9,81.** É o erro que a calibração de bancada (`CAL-01`) mede eixo por eixo.
+
+**Adaptação.**
+- **Gravação da ESP32:** a 921600 bauds falhou ("No more data to read from the serial port") e a 115200 passou.
+- **Rótulos da placa:** o DevKit V1 de 30 pinos do autor rotula os GPIO como D21 e D22, e o 3V3 fica do mesmo lado que eles. O desenho do repositório (`esquemaEletrico/`, de outra placa, de 38 pinos) tem outra disposição; a orientação foi seguir os nomes impressos.
+
+**O que deu errado no caminho.**
+- **Primeira rodada do diagnóstico:** deu 18,8 % de leituras fora do plausível a 100 kHz (|a| de 7,0 a 13,0). Mas teve 0 falhas de barramento e o WHO_AM_I estável, o que é a placa sendo mexida, e não contato ruim. A segunda rodada, parada, deu 0 %.
+- **Relógio do PC:** está cerca de 1h30 atrasado em relação ao GitHub (cabeçalho `Date` da API contra o relógio local). Isso quebrou a verificação de assinatura do índice de bibliotecas do Arduino ("signature expired"); o diagnóstico não precisava dele.
+- **CI da etapa 2:** os dois runs do PR #126 foram criados durante um incidente do GitHub Actions e ficaram "queued" por mais de uma hora, mesmo depois de o incidente fechar. O GitHub os dava como terminados ao cancelar e como em andamento ao re-executar. Fechar e reabrir o PR gerou um run novo, que passou 8/8.
+- **Script de teste da 018:** quebrou numa substituição de caminho com barras invertidas pelo terminal e foi reescrito inteiro.
+
+**Risco em aberto.**
+- **O APK novo:** é o próximo passo (`APP-12`), e só depois dele a calibração chega ao celular.
+- **O login de verdade** depois deste release ainda não foi confirmado pelo autor.
+- **`CAL-01`:** a calibração de bancada do sensor do travesseiro, agora possível com a solda.
+- **O relógio do PC** precisa ser acertado.
+
+**Procedência.** Conferência colada pelo autor em 11/11; `get_deployment` e requisições públicas desta máquina; a saída serial do diagnóstico, guardada fora do repositório; fotos da solda enviadas pelo autor.
+
+# 2026-11-11 (x) — APP-12: a chave do autor e o primeiro APK de release
+
+**O problema, como foi entendido no início.** Com o `CAL-03` na produção (entrada ix), faltava o app chegar aos celulares. Eram dois APKs com papéis diferentes: o de depuração para o celular do autor, que instala por cima do que já está lá sem apagar as noites, e o de release para os testadores, assinado com uma chave do autor. A chave não existia: não havia `~/.dormio` nesta máquina.
+
+**Hipótese de trabalho.**
+- **A chave:** o autor cria a chave e o `assinatura.properties` seguindo o `docs/DISTRIBUICAO-DO-APP.md`, sem que eu veja a senha, e o Gradle assina sozinho.
+- **O seu celular:** o de depuração tem a mesma assinatura do app instalado e atualiza sem desinstalar.
+
+**O que foi testado, e como.**
+- **A chave:** o autor gerou-a com o `keytool` do Android Studio (RSA de 4096 bits, validade de 10 000 dias), escreveu o `assinatura.properties` e copiou a pasta `.dormio` para um pendrive. Eu conferi só que os dois arquivos existiam e que os quatro campos estavam preenchidos, sem ler os valores.
+- **O build:** `npm run build:app` e `./gradlew assembleRelease` a partir de `develop` (`4811f57`, o código da produção). O de depuração, `assembleDebug`, veio do mesmo código.
+- **A conferência:** `apksigner verify --print-certs` e `aapt2 dump badging` no APK de release.
+- **A entrega:** os dois APKs enviados ao autor pelo app.
+
+**Resultado medido.**
+- **APK de release:** 4,4 MB, `versionCode` 1, `versionName` 1.0.0, alvo do SDK 36.
+  - Assinatura v2 verificada, um assinante, certificado com o nome do autor (`O=SmartDormio, C=BR`), SHA-256 `06b2e4f9…d14a`.
+  - Sem `application-debuggable`.
+- **APK de depuração:** 5,8 MB, o mesmo código.
+- **Nenhum dos dois foi instalado num aparelho nesta entrada:** o celular do autor não estava mais no USB.
+
+**Adaptação.**
+- **O comando do guia:** no PowerShell, o `keytool` com o caminho entre aspas precisa do `&` na frente. O guia mostrava o comando sem ele, e o primeiro uso deu erro de sintaxe.
+- **O "ã" de "São Paulo":** foi gravado como "S?o Paulo" no certificado, pela codificação do terminal. É só identificação, não afeta a assinatura.
+
+**O que deu errado no caminho.**
+- **O comando do guia** não funcionava como estava no PowerShell (acima).
+- **Tentei instalar o de depuração no celular pelo `adb`,** mas o aparelho já tinha sido desconectado. O APK foi entregue por arquivo.
+
+**Risco em aberto.**
+- **O aval do orientador sobre o comitê de ética e o termo de consentimento (`LGPD-03`) continua pendente.** Os testadores são pessoas, e as noites deles entram no trabalho. Mandar o APK antes disso é decisão do autor, e o `APP-12` a registra como a primeira pendência.
+- **A troca de assinatura:** o celular do autor fica no APK de depuração. Trocar para o de release exige desinstalar, porque as assinaturas são diferentes, e isso apagaria as noites guardadas nele.
+- **A primeira instalação real** do APK de release ainda não aconteceu.
+- **O guia:** precisa do `&` no comando do `keytool` (`DOC`, pendência pequena, feita nesta mesma entrada).
+
+**Procedência.** Saídas do `apksigner` e do `aapt2` nesta máquina em 11/11; a confirmação do autor de que salvou a pasta no pendrive.
+
+# 2026-11-11 (xi) — CAL-01: o sensor do travesseiro calibrado na bancada, e um contato que falha ao virar
+
+**O problema, como foi entendido no início.** Com o MPU6050 soldado (entrada ix), o monitor ao vivo mostrou o sensor parado lendo 0,89 g com o chip para cima e 1,14 g com o chip para baixo. Isso é um desvio grande no eixo Z, do tamanho do que a bancada de 25/08 tinha medido (−1,06 m/s²) e atribuído, então, a contato ruim. O `CAL-01` é a calibração de 6 posições desta unidade, na escala (±8 g) e no filtro (21 Hz) do firmware.
+
+**Hipótese de trabalho.**
+- **O erro é do sensor:** com a solda nova, o diagnóstico de I²C não acusou contato ruim.
+- **Desvio e escala por eixo:** as 6 posições dão os dois.
+- **O estimador do projeto:** o de autocalibração (`ml/src/calibracao.py`, o mesmo do núcleo) deve concordar com o método clássico e ser robusto à posição que não ficou nivelada.
+
+**O que foi testado, e como.**
+- **O sketch:** `firmware/caracterizacao/` (biblioteca Adafruit, ±8 g, 21 Hz, 500 amostras por posição), gravado pelo `arduino-cli` na COM3. O autor posicionava a placa, apoiada num livro, e eu mandava o Enter pela serial.
+- **O contato:** a primeira tentativa falhou (abaixo). Repeti o `diagnostico-i2c` com o autor mexendo nos fios de propósito.
+- **As 6 posições, medidas uma a uma**, com a placa reiniciada antes de cada uma.
+- **As contas:** o método clássico ((cima + baixo)/2 e (cima − baixo)/2g) e o estimador de van Hees com os 6 pontos, sem o termo de temperatura, porque 6 pontos não sustentam 9 parâmetros.
+- **A validação independente:** a calibração aplicada a 6 janelas paradas do monitor ao vivo de mais cedo, em outras posições e noutro momento, que não entraram no ajuste.
+
+**Resultado medido** (sensor de 27,8 a 32,1 °C, aquecendo durante a sessão):
+
+| Posição | ax | ay | az (m/s²) | \|a\| (g) | Ruído (m/s²) |
+|---|---:|---:|---:|---:|---:|
+| Z+ | 0,461 | −0,462 | 8,768 | 0,897 | 0,020 |
+| Z− | 0,681 | −0,242 | −11,318 | 1,157 | 0,014 |
+| X+ | 10,123 | 0,891 | 0,097 | 1,036 | 0,027 |
+| X− | −9,441 | −0,188 | −0,905 | 0,967 | 0,017 |
+| Y+ | −0,369 | 9,584 | −1,863 | 0,996 | 0,014 |
+| Y− | 0,435 | −10,044 | −1,132 | 1,032 | 0,019 |
+
+| Eixo | Clássico: desvio / escala | van Hees: desvio / escala |
+|---|---|---|
+| X | +34,8 mg / 0,9975 | +42,3 mg / 1,0057 |
+| Y | −23,5 mg / 1,0007 | −21,1 mg / 1,0033 |
+| Z | **−130,0 mg** / 1,0241 | **−130,0 mg** / 1,0245 |
+
+- **No Z, que é o que pesa, os dois métodos concordam:** −130 mg e escala de +2,4 %.
+- **No X diferem em 7,5 mg:** a posição X+ ficou inclinada 10,2°, e o método clássico supõe o eixo na vertical. As outras posições ficaram entre 0,8 e 5,7°.
+- **O van Hees fecha as 6 posições em 1,000 g.** É ajuste (6 parâmetros, 6 pontos), não validação.
+- **A validação independente:** nas 6 janelas do monitor, o erro RMS da gravidade parada vai de **83,6 mg para 2,3 mg** com a calibração do van Hees.
+- **O efeito no ENMO, sem calibração:** parado com o chip para baixo, ele leria ~157 mg de movimento que não existe; com o chip para cima, a gravidade lida a 0,897 g esconderia qualquer movimento abaixo de ~100 mg. É dez vezes o erro do Moto E7.
+
+**Adaptação.**
+- **Posições medidas uma a uma:** o sketch mede as 6 em sequência e para de vez numa leitura impossível. Com o contato falhando ao virar (abaixo), reiniciei a placa antes de cada posição e anotei qual era. O rótulo que o sketch imprime ("Z+") vale só para a primeira.
+- **O monitor ao vivo** (fora do repositório, em `~/.dormio-tools/`) serviu de conjunto independente para a validação.
+
+**O que deu errado no caminho.**
+- **Leituras zeradas:** a primeira posição saiu tremendo (ruído 0,79), e a segunda, toda zerada, com a temperatura em 36,5 °C (o registrador zerado). Isso se repetiu duas vezes ao virar a placa de chip para baixo, e uma vez com um peso sobre os fios.
+- **A causa provável:** o contato do VCC falha **por um instante** quando a placa é virada ou os fios são forçados. O MPU6050 reinicia e volta em modo de repouso, o padrão do chip ao ligar. A biblioteca só o acorda no começo do sketch, então ele segue lendo zero com o contato já de volta. Reiniciando a placa, mede normal.
+- **O diagnóstico com os fios sendo mexidos:** passou (0 falhas de barramento, nenhum bloco zerado), porque ele reconfigura o sensor a cada passada. A falha é momentânea, não permanente.
+- **Um diagnóstico meu, errado:** no monitor ao vivo eu tinha concluído que o chip era um clone, porque o \|a\| diferia 13 % entre as escalas de ±2 g e ±8 g. A diferença era da posição do sensor em cada teste, não da escala: com o chip para cima, as duas dão 0,89 g. Corrigi com o autor.
+
+**Risco em aberto.**
+- **`HW-09`:** o contato que falha ao virar precisa de solda refeita e de alívio de tensão nos fios, antes de o sensor ir para dentro de um travesseiro, onde ele vira o tempo todo.
+- **`FW-11`:** o firmware do travesseiro não usa a calibração. E ele não percebe o sensor reiniciado em repouso: leria zero a noite toda. O `sketch.ino` precisa aplicar os parâmetros e reacordar o sensor quando a leitura zerar.
+- **A temperatura:** subiu 4,3 °C durante a sessão, e o termo de temperatura não foi estimado.
+- **Uma unidade só:** os números valem para este módulo.
+
+**Procedência.** A saída serial da sessão, guardada fora do repositório; as contas feitas com `ml/src/calibracao.py` nesta máquina em 11/11.
+
+# 2026-11-11 (xii) — FW-11: o firmware do travesseiro calibra e reacorda o sensor
+
+**O problema, como foi entendido no início.** A bancada do `CAL-01` (entrada xi) deixou duas coisas para o firmware.
+- **A calibração não era usada:** o `sketch.ino` não corrigia nada, e com −130 mg em Z o ENMO leria movimento fantasma numa posição e esconderia movimento pequeno na outra.
+- **O sensor que reinicia volta adormecido:** uma queda de alimentação de uma fração de segundo (o contato que falhou ao virar a placa) faz o MPU6050 voltar dormindo e com a FIFO desligada. Lendo o firmware, o efeito era pior do que o backlog dizia: a FIFO passa a responder "0 bytes" como uma leitura normal, as épocas seguintes são recusadas por falta de amostra, e **o resto da noite vira lacuna**, sem aviso.
+
+**Hipótese de trabalho.**
+- **(a) Calibração fixa da bancada:** aplicada a cada amostra da FIFO, antes da cadeia, pelo `aplicar_calibracao` do núcleo (o mesmo do celular). A marca vai num bit livre do registro da flash, sem aumentar o registro; o `gn` fica de fora.
+- **(b) Recuperação do sensor:** 3 drenagens seguidas vazias mandam conferir o sensor; dormindo ou com a FIFO desligada, ele é reconfigurado; acordado, nada muda.
+
+**O que foi testado, e como** (contêiner `gcc:13`, Windows 11).
+- **Núcleo:**
+  - `calibrar_amostras` (calibração no lugar, arredondando e saturando como o `g_para_lsb` do celular);
+  - `VigiaDaFifo` e `sensor_precisa_reconfigurar`;
+  - o bit `REGISTRO_CALIBRADA` gravado, relido depois de um reset e saindo como `"cal":1`.
+
+  São 18 verificações novas no `testes_c2` e 9 no `testes_fila_flash`.
+- **Sketch:**
+  - `firmware/calibracao_da_unidade.h`, versionado, com os parâmetros do van Hees de 11/11 e a procedência;
+  - `drenar()` calibra e alimenta a vigia, e `conferir_sensor()` lê PWR_MGMT_1, USER_CTRL e FIFO_EN e reconfigura;
+  - o contador `reacordados` aparece no log;
+  - `fila.guardar` recebe a marca;
+  - `nucleo_amalgama.cpp` inclui a `calibracao.cpp`.
+- **O sketch contra um MPU6050 falso** (`testes/sensor_do_sketch.cpp`, no `make laco`): um sensor de mentira que guarda os registradores, entrega amostras com o erro de Z da bancada, reinicia dormindo num reset e pode "cair" no meio da noite. Roda o `drenar`, o `fechar_epocas` e o `conferir_sensor` de verdade.
+- **Sabotagens:**
+  - 4 no sketch (calibração não aplicada; ninguém conferindo; reconfigurar com o sensor acordado; "reacordar" sem configurar);
+  - 5 no núcleo (a vigia com 2; a cheia que não zera; o sensor dormindo visto como acordado; truncar; não saturar).
+
+**Resultado medido.**
+- **Na grade da época, o eixo Z lê −0,9995 g**, contra os −1,1541 g crus que o sensor falso entrega, que são os da bancada.
+- **Com o sensor caindo no meio da noite:** duas drenagens vazias não mexem; na terceira o sensor é reconfigurado e volta a encher a FIFO, e a drenagem seguinte traz amostras.
+- **Com o sensor acordado e a FIFO vazia**, 6 drenagens não reconfiguram nada.
+- **Só a época 0 foi recusada**, porque a origem é o boot.
+- **Núcleo:** 341 + 157 + 170 + 456 + 94 + 320 + 185, 0 falhas.
+- **Mutações:** cadeia **34/34** (+5), laço **8/8** (+4), coletor 17/17, fila 14/14, calibração 11/11, paridade 15/15.
+- **Sketches:** os 4 compilam, e o de produto liga com o núcleo.
+
+**Adaptação.**
+- **O teste do laço que existia não servia:** o `Wire` falso dele falha toda leitura, porque só mede o tempo das voltas. A variante nova tem outra cópia dos stubs, com o `Wire` ligado ao sensor de mentira.
+- **O registro no backlog estava impreciso:** dizia "leria zero a noite toda"; o certo é "não lê nada", porque a FIFO não enche.
+
+**O que deu errado no caminho.**
+- **Valor errado num teste do núcleo:** usei −1,1568 g como leitura do Z, que é o |a| da posição, e o certo é −1,1541 g (o Z sozinho). O teste falhou por 0,2 mg acima da tolerância.
+- **Recusa da época 0:** a checagem "nenhuma época recusada" era rígida demais, porque a época 0 é recusada também no sketch de verdade. Passou a ser "no máximo 1", com a contagem impressa (deu 1).
+- **Scripts de mutação:**
+  - o da cadeia tem a própria lista de fontes, e as 29 sabotagens saíram "não compila" até eu incluir a `calibracao.cpp`;
+  - o da calibração passou a copiar o `fifo_mpu.h`, que a `calibracao.h` agora inclui.
+
+**Risco em aberto.**
+- **Na placa:** o firmware com estas mudanças não foi gravado; a conferência vai junto com o `FW-07` (c), que precisa do `secrets.h` do autor.
+- **Parâmetros fixos:** sem termo de temperatura, e valem para esta unidade.
+- **O `gn` do travesseiro:** não vai ao servidor, porque o registro da flash não o guarda.
+- **Reacordar não corrige o contato:** se ele falhar o tempo todo, o contador sobe a cada queda, e a correção é o `HW-09`.
+
+**Procedência.** Execuções desta entrada; parâmetros da bancada de 11/11 (entrada xi).
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

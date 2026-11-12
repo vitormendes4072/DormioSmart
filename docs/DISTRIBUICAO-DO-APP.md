@@ -25,6 +25,13 @@ recusa `*.jks`, `*.keystore`, `*.p12` e `assinatura.properties` como segunda def
    keytool -genkeypair -v -keystore dormio-release.jks -alias dormio -keyalg RSA -keysize 4096 -validity 10000
    ```
 
+   No **PowerShell**, com o caminho completo do Android Studio, o comando precisa do `&` na frente
+   (sem ele, dá "Token '-genkeypair' inesperado"; medido em 11/11):
+
+   ```powershell
+   & "C:\Program Files\Android\Android Studio\jbr\bin\keytool.exe" -genkeypair -v -keystore dormio-release.jks -alias dormio -keyalg RSA -keysize 4096 -validity 10000
+   ```
+
    O `keytool` vem com o Android Studio, em `jbr/bin` dentro da pasta de instalação. Ele pede uma
    senha e alguns dados de identificação: nome e cidade bastam.
 3. Na mesma pasta, crie o arquivo `assinatura.properties` com quatro linhas:

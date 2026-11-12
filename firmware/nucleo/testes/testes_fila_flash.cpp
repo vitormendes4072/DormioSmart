@@ -506,9 +506,10 @@ static void testar_payload_do_registro() {
   VERIFICAR(tem(buf, "\"ts\":\"2026-10-31T00:00:30.000Z\""),
             "a hora gravada sobrevive ao reset");
   VERIFICAR(incluiu && tem(buf, "\"f\":[") && tem(buf, "\"fs\":32"), "o vetor vai, com fs = 32 Hz");
-  // CAL-03: o travesseiro nao manda `gn` nem `cal` -- o registro da flash nao
-  // os carrega, e o payload dele fica como era.
-  VERIFICAR(!tem(buf, "\"gn\"") && !tem(buf, "\"cal\""), "o registro da flash nao inventa gn/cal");
+  // CAL-03 / FW-11: o registro da flash nao guarda `gn` (sai sem ele), e a
+  // marca de calibracao sai do bit `REGISTRO_CALIBRADA` -- aqui, nao calibrado.
+  VERIFICAR(!tem(buf, "\"gn\""), "o registro da flash nao inventa gn");
+  VERIFICAR(tem(buf, "\"cal\":0}"), "registro sem o bit sai como cal 0");
 
   // `zcr` volta da contagem: 400/959. Le o quinto numero de `f`.
   const char *p = strstr(buf, "\"f\":[");
@@ -620,6 +621,38 @@ static void testar_envio_da_fila() {
   }
 }
 
+// FW-11: a marca de calibracao vai para a flash, sobrevive a um reset e sai
+// como `"cal":1` -- e o bit nao e confundido com as outras bandeiras.
+static void testar_marca_de_calibracao() {
+  secao("FW-11 -- a marca de calibracao na flash");
+  FlashSimulada flash(4);
+  const VetorDeFeatures v = quantizar(vetor_tipico());
+  ResolucaoDeParede sincronizada;
+  sincronizada.sincronizar(100000, 1793404800000ll);
+  {
+    FilaNaFlash fila(&flash);
+    fila.montar();
+    VERIFICAR(fila.guardar(fabricar(0), &v, instante_para_gravar(sincronizada, 130000), true) == GUARDADO,
+              "guarda a epoca calibrada");
+    VERIFICAR(fila.guardar(fabricar(1), &v, instante_para_gravar(sincronizada, 160000)) == GUARDADO,
+              "e uma sem calibracao");
+  }
+  FilaNaFlash fila(&flash);
+  fila.montar();
+  RegistroDeEpoca r[2];
+  VERIFICAR(fila.ler_pendentes(r, 2) == 2, "as duas voltam do reset");
+  VERIFICAR(r[0].calibrada() && !r[1].calibrada(), "o bit volta como foi gravado");
+  VERIFICAR(r[0].tem_features() && r[0].instante_e_parede(), "as outras bandeiras continuam");
+  char buf[512];
+  uint32_t n = 0;
+  VERIFICAR(montar_payload_do_registro(r[0], fila.sessao(), sincronizada, buf, sizeof(buf), &n) == PAYLOAD_OK,
+            "a calibrada monta");
+  VERIFICAR(tem(buf, "\"cal\":1}"), "e sai com cal 1");
+  VERIFICAR(montar_payload_do_registro(r[1], fila.sessao(), sincronizada, buf, sizeof(buf), &n) == PAYLOAD_OK &&
+                tem(buf, "\"cal\":0}"),
+            "a outra sai com cal 0");
+}
+
 int main() {
   printf("TESTES DA FILA NA FLASH (FW-08)\n");
   testar_registro();
@@ -632,6 +665,7 @@ int main() {
   testar_corte_no_apagamento();
   testar_releitura();
   testar_payload_do_registro();
+  testar_marca_de_calibracao();
   testar_envio_da_fila();
 
   printf("\n-----------------------------------------\n");

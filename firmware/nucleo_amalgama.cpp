@@ -7,6 +7,7 @@
 // entrar aqui -- senao o link falha na IDE (o `make sintaxe` nao linka).
 
 #include "nucleo/cadeia_c2.cpp"
+#include "nucleo/calibracao.cpp"
 #include "nucleo/caracteristicas.cpp"
 #include "nucleo/envio_da_fila.cpp"
 #include "nucleo/epoca.cpp"

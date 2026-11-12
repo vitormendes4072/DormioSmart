@@ -23,7 +23,7 @@ NUCLEO=$(cd "$AQUI/.." && pwd)
 DOURADO="$NUCLEO/../../ml/testes/vetor_dourado_cadeia_c2.json"
 CXX=${CXX:-g++}
 BANDEIRAS="-std=c++11 -w -O2 -fno-exceptions -fno-rtti"
-FONTES="epoca.cpp payload.cpp filtro.cpp caracteristicas.cpp fifo_mpu.cpp reamostragem.cpp cadeia_c2.cpp lote.cpp registro_flash.cpp fila_flash.cpp epoca_c2.cpp envio_da_fila.cpp"
+FONTES="epoca.cpp payload.cpp filtro.cpp caracteristicas.cpp fifo_mpu.cpp reamostragem.cpp cadeia_c2.cpp lote.cpp registro_flash.cpp fila_flash.cpp epoca_c2.cpp envio_da_fila.cpp calibracao.cpp"
 
 falhas=0
 total=0
@@ -255,6 +255,33 @@ esperar "27. deriva com o sinal trocado" unidade relogio.h \
 esperar "28. mede sem sincronia anterior" unidade relogio.h \
   "  d.valida = anterior.valida && mono_agora_ms > anterior.mono_referencia_ms;" \
   "  d.valida = mono_agora_ms > anterior.mono_referencia_ms;"
+
+echo
+echo "Sabotadores do FW-11 (calibracao da unidade, sensor que adormeceu) -- a suite de unidade tem de acusar:"
+esperar "29. vigia confere com 2 drenagens vazias" unidade fifo_mpu.cpp \
+  "  if (vazias_ >= DRENAGENS_VAZIAS_PARA_CONFERIR) {" \
+  "  if (vazias_ >= 2) {"
+
+esperar "30. drenagem cheia nao zera a contagem" unidade fifo_mpu.cpp \
+  "  if (amostras > 0) {
+    vazias_ = 0;
+    return false;
+  }" \
+  "  if (amostras > 0) {
+    return false;
+  }"
+
+esperar "31. sensor dormindo passa por acordado" unidade fifo_mpu.cpp \
+  "  if ((pwr_mgmt_1 & MPU_PWR1_SLEEP) != 0) return true;" \
+  "  (void)pwr_mgmt_1;"
+
+esperar "32. calibrar trunca em vez de arredondar" unidade calibracao.cpp \
+  "  return static_cast<int16_t>(lround(lsb));" \
+  "  return static_cast<int16_t>(lsb);"
+
+esperar "33. calibrar sem saturar em +-8 g" unidade calibracao.cpp \
+  "  if (lsb >= 32767.0) return 32767;" \
+  "  (void)0;"
 
 echo
 echo "-----------------------------------------"

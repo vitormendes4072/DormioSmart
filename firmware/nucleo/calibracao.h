@@ -40,6 +40,8 @@
 
 #include <stdint.h>
 
+#include "fifo_mpu.h"
+
 namespace dormio {
 
 // As constantes da referencia (`ml/src/calibracao.py`). Mudar uma aqui e
@@ -89,6 +91,14 @@ void desfazer_calibracao(const Calibracao &c, double temp_c, const double entrad
 // Estima a partir de `n` epocas paradas: `pontos[i]` e o vetor medio da
 // aceleracao da epoca, em g, BRUTO; `temp_c[i]`, a temperatura dela.
 Calibracao estimar_calibracao(const double (*pontos)[3], const double *temp_c, uint32_t n);
+
+// Calibra `n` amostras do MPU6050 na escala da C2 (`LSB_POR_G`), no lugar
+// (FW-11): o travesseiro aplica a calibracao de bancada da unidade a cada
+// drenagem, antes da cadeia -- o mesmo ponto em que o celular aplica a dele
+// (`ColetorCelular::amostrar`). A volta para inteiro arredonda e satura em
+// +-8 g como `g_para_lsb`, e `testes_c2` confere as duas iguais. Sem `aceita`,
+// nao mexe: a amostra sai byte a byte como entrou.
+void calibrar_amostras(const Calibracao &c, double temp_c, AmostraBruta *amostras, uint16_t n);
 
 }  // namespace dormio
 

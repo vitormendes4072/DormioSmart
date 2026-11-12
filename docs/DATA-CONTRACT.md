@@ -368,7 +368,9 @@ campos opcionais junto de `f`:
 
 - Os dois exigem `f`; sozinhos são `400` (`campo gn exige f`).
 - `gn` fora de [0, 8] g, ou `cal` diferente de 0 e 1, é `400`.
-- Ausentes é o caso normal do travesseiro e do app antigo: a coluna fica nula.
+- Ausentes é o caso normal do app antigo: a coluna fica nula. ✏️ *11/11 (`FW-11`): o
+  firmware do travesseiro manda `cal` (a calibração de bancada da unidade, fixa) e **não**
+  manda `gn`, que o registro da flash não guarda.*
 - **Os valores de `f`, `ax`/`ay`/`az` e `gn` de uma época com `cal: 1` já são
   os calibrados.** Não há como reconstruir o bruto no servidor: a época não leva
   a calibração usada, só a marca.
