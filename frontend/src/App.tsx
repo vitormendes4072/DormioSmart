@@ -5,6 +5,7 @@ import { RotaDeVisitante, RotaProtegida } from "./components/Guardas";
 
 import { Layout } from "./components/Layout";
 import { Coletar } from "./pages/Coletar";
+import { Dispositivos } from "./pages/Dispositivos";
 import { Dashboard } from "./pages/Dashboard";
 import { Landing } from "./pages/Landing";
 import { Login } from "./pages/Login";
@@ -63,6 +64,7 @@ export default function App() {
           <Route element={<Layout />}>
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/coletar" element={<Coletar />} />
+            <Route path="/dispositivos" element={<Dispositivos />} />
             <Route path="/noite" element={<Noite />} />
             <Route path="/configuracoes" element={<Settings />} />
           </Route>

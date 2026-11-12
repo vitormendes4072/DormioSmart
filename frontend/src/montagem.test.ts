@@ -288,6 +288,12 @@ describe("montagem real das telas (UI-17)", PRAZO, () => {
     expect(links.some((a) => a.getAttribute("href") === "/privacidade")).toBe(true);
   });
 
+  it("a rota /dispositivos monta o gerenciamento para a sessão autenticada", async () => {
+    await montar("/dispositivos");
+    expect(await screen.findByRole("heading", { name: "Dispositivos", level: 1 })).toBeTruthy();
+    expect(await screen.findByText("Nenhum dispositivo pareado")).toBeTruthy();
+  });
+
   it("a rota /configuracoes existe e passa pelos guardas até o Layout", async () => {
     await montar("/configuracoes");
 
