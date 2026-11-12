@@ -9373,6 +9373,32 @@ Um celular deitado só mexe em z, e é z que pesa na norma nessa posição. O GG
 
 **Procedência.** A worktree do Codex `release-121-registro` (arquivos sem commit, de 10–11/11); `develop` `2f128d4`; a revisão desta entrada, em 12/11, Windows 11.
 
+# 2026-11-12 (xi) — o plano de execução com o Codex
+
+**O problema, como foi entendido no início.** Com a solda feita e o frontend do protótipo em produção, o autor pediu um plano para os 59 itens abertos, em ordem, dividido entre o Claude e o Codex, para os dois trabalharem ao mesmo tempo sem desalinhamento. Até aqui a divisão era só por área (`AGENTS.md`, item 4), e as integrações de 05/11 e 12/11 mostraram onde os dois colidem: o diário, a contagem do backlog e a ordem das PRs.
+
+**Hipótese de trabalho.** A colisão some se cada onda der às duas trilhas conjuntos de arquivos que não se cruzam, se as migrações tiverem número reservado antes, e se só um agente escrever o plano.
+
+**O que foi testado, e como.**
+- **Cada item aberto:** a linha do backlog, a dependência e os arquivos que toca, na `develop` `ba851f4` (`git ls-tree`, `grep` nas páginas, hooks e módulos do backend).
+- **A contagem depois de fechar a Etapa 0:** `conferir_backlog.py --conferir`.
+- **Os documentos versionados:** `conferir_docs_versionados.py`.
+
+**Resultado medido.**
+- **O plano** (`docs/PLANO-CLAUDE-CODEX.md`) tem quatro ondas, mais o texto do TCC contínuo, as decisões do autor (L3) e uma mensagem-modelo para entregar item ao Codex. As colisões previsíveis viraram dependência explícita: o `UI-26` e o `UI-29` esperam o `DATA-15` (mesmo histórico e mesmo painel), e o `SEC-19` espera o release que leva o `DATA-15` (mesmo `database.py`).
+- **Migrações reservadas:** `019` para o `API-07`, `020` para o `API-06`, `021` para o `DATA-06` e `022` para o `APP-11`.
+- **A Etapa 0 (a solda) estava aberta no backlog um dia depois de feita**, e o quadro ainda a dava como "trava tudo". Foi fechada: 58 abertos, L3 8. O conferidor passou.
+
+**Adaptação.** O `AGENTS.md` aponta para o plano, que o Codex lê sozinho. Só o Claude edita o plano; o Codex propõe mudanças no corpo da PR.
+
+**O que deu errado no caminho.** Nada nesta etapa.
+
+**Risco em aberto.**
+- **O plano é uma previsão de arquivos.** Um item pode precisar de arquivo de outra trilha; a regra 2 do plano manda parar e avisar o autor.
+- **A trilha do Claude na onda 1 depende do autor na bancada** (`HW-09` e o `secrets.h`). Sem isso, só a trilha do Codex anda.
+
+**Procedência.** Backlog e código na `develop` `ba851f4`; o pedido do autor na conversa de 12/11; Windows 11.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
