@@ -1,17 +1,18 @@
 import { Activity, Clock3, LayoutGrid, LogOut, Radio, User } from "lucide-react";
-import { NavLink, useNavigate } from "react-router";
+import { Link, NavLink, useLocation, useNavigate } from "react-router";
 
 import { useAuth } from "../contexts/AuthContext";
 import { usePerfil } from "../contexts/PerfilContext";
 import { nomeDoPerfil } from "../lib/perfil";
 
-import { itensDeNavegacao } from "./nav";
+import { destinoDoWorkspace, itensDeNavegacao } from "./nav";
 import { MarcaDoProduto } from "./MarcaDoProduto";
 
 /** Navegação de desktop. Em telas menores que `md` dá lugar à MobileNav —
  *  uma barra lateral de 224px fixa não cabe num celular. */
 export function Sidebar({ painel = false }: { painel?: boolean }) {
   const navigate = useNavigate();
+  const { search } = useLocation();
   const { usuario, carregando, sair } = useAuth();
   const { perfil, carregando: carregandoPerfil } = usePerfil();
 
@@ -47,7 +48,7 @@ export function Sidebar({ painel = false }: { painel?: boolean }) {
         {navegacao.map(({ to, label, icon: Icon }) => (
           <NavLink
             key={to}
-            to={to}
+            to={destinoDoWorkspace(to, search)}
             className={({ isActive }) =>
               `w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 ${
                 isActive
@@ -62,12 +63,12 @@ export function Sidebar({ painel = false }: { painel?: boolean }) {
         ))}
         {painel && configuracoes && (
           <>
-            <a href="#sessoes-recentes" className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground">
+            <Link to={destinoDoWorkspace("/dashboard#sessoes-recentes", search)} className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground">
               <Clock3 className="size-4" aria-hidden /> Histórico
-            </a>
-            <a href="#resumo-dispositivo" className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground">
+            </Link>
+            <Link to={destinoDoWorkspace("/dashboard#resumo-dispositivo", search)} className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground">
               <Radio className="size-4" aria-hidden /> Dispositivos
-            </a>
+            </Link>
             <p className="px-3 pb-2 pt-7 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Preferências</p>
             <NavLink to={configuracoes.to} className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground">
               <configuracoes.icon className="size-4" aria-hidden /> {configuracoes.label}

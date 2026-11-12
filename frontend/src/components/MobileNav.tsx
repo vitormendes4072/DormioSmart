@@ -1,6 +1,6 @@
-import { NavLink } from "react-router";
+import { NavLink, useLocation } from "react-router";
 
-import { itensDeNavegacao } from "./nav";
+import { destinoDoWorkspace, itensDeNavegacao } from "./nav";
 
 /**
  * Navegação de celular: barra fixa no rodapé, no alcance do polegar.
@@ -15,6 +15,7 @@ import { itensDeNavegacao } from "./nav";
  * Foi para o fim de Configuracoes, que e onde se procura por ele.
  */
 export function MobileNav() {
+  const { search } = useLocation();
   const base =
     "flex-1 flex flex-col items-center justify-center gap-1 py-2.5 text-xs font-medium transition-colors";
 
@@ -23,7 +24,7 @@ export function MobileNav() {
       {itensDeNavegacao().map(({ to, label, icon: Icon }) => (
         <NavLink
           key={to}
-          to={to}
+          to={destinoDoWorkspace(to, search)}
           className={({ isActive }) =>
             `${base} ${isActive ? "text-primary" : "text-muted-foreground"}`
           }
