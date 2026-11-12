@@ -9503,6 +9503,26 @@ Um celular deitado só mexe em z, e é z que pesa na norma nessa posição. O GG
 
 **Procedência.** Testes executados no Windows sobre develop 952371c.
 
+---
+
+# 2026-11-12 (xvi) — UI-29: ordem das leituras recentes
+
+**O problema.** A tabela ordenava pela medição e a legenda dizia que a ordem era de chegada.
+
+**Hipótese.** Explicar a ordenação existente e o fallback de chegada descreve a tabela mesmo com envio atrasado.
+
+**O que foi testado.** No Windows, montei o painel com duas leituras cuja ordem de chegada era inversa à de medição. O teste conferiu as linhas e a legenda. Executei o teste com a legenda antiga.
+
+**Resultado medido.** Com a legenda antiga, a ordem das linhas passou e a asserção da legenda falhou em um teste. Com a legenda corrigida, a sequência e o texto passaram.
+
+**Adaptação.** Mantive o critério de ordenação e explicitei o fallback na legenda.
+
+**O que deu errado no caminho.** Nada além da falha esperada no controle.
+
+**Risco em aberto.** O caso de envio atrasado foi reproduzido com dados simulados.
+
+**Procedência.** Testes no Windows, sobre a UI-26 (478c92c), baseada em develop 952371c.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

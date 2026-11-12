@@ -315,6 +315,26 @@ describe("montagem real das telas (UI-17)", PRAZO, () => {
     expect(await screen.findByText("Nunca enviou")).toBeTruthy();
   });
 
+  it("a legenda das leituras recentes corresponde à ordem de medição", async () => {
+    const original = vi.mocked(fetch).getMockImplementation()!;
+    const agora = Date.now();
+    const instante = (segundos: number) => new Date(agora - segundos * 1000).toISOString();
+    const comum = { movimento_total: 9.81, epoca_segundos: 30 };
+    vi.mocked(fetch).mockImplementation((entrada, opcoes) =>
+      String(entrada).startsWith("/api/sleep-history")
+        ? Promise.resolve(respostaJson([
+          { ...comum, created_at: instante(1), captured_at: instante(60), temp: 31, status: "Repouso" },
+          { ...comum, created_at: instante(2), captured_at: instante(30), temp: 32, status: "Movimento" },
+        ]))
+        : original(entrada, opcoes),
+    );
+    await montar("/dashboard");
+    const recente = await screen.findByText("32.0°C", { selector: "td" });
+    const anterior = screen.getByText("31.0°C", { selector: "td" });
+    expect(recente.closest("tr")?.nextElementSibling).toBe(anterior.closest("tr"));
+    expect(screen.getByText(/da medição mais recente à mais antiga/)).toBeTruthy();
+  });
+
   it("exporta todas as páginas do histórico", async () => {
     const original = vi.mocked(fetch).getMockImplementation()!;
     const criarUrl = vi.fn(() => "blob:csv");

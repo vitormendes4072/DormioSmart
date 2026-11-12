@@ -630,7 +630,7 @@ export function Dashboard() {
           </div>
 
           <p className="text-xs text-muted-foreground mt-4">
-            Cada linha é uma leitura, na ordem em que chegou.
+            Leituras da medição mais recente à mais antiga. Sem horário de medição, vale o horário de chegada.
           </p>
         </div>
       </div>
