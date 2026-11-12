@@ -1,5 +1,5 @@
 import { ArrowRight, BarChart3, BedDouble, Check, Github, Instagram, Moon, Radio, Sun, X } from "lucide-react";
-import { Link } from "react-router";
+import { Link, useSearchParams } from "react-router";
 
 import { Moldura, RotuloDeSecao } from "../components/Blueprint";
 import { MarcaDoProduto } from "../components/MarcaDoProduto";
@@ -104,7 +104,7 @@ const FASE_2 = [
   "Calibrar o modelo com a noite captada",
 ];
 
-export function Landing() {
+function LandingLeve() {
   const { sessao } = useAuth();
   const { aplicado, definirPreferencia } = useTema();
   const temaEscuro = aplicado === "dark";
@@ -367,5 +367,23 @@ export function Landing() {
         </div>
       </footer>
     </div>
+  );
+}
+
+
+/** A apresentação completa usa o HTML do protótipo em um documento isolado. */
+export function Landing() {
+  const { sessao } = useAuth();
+  const [parametros] = useSearchParams();
+
+  if (parametros.get("apresentacao") === "leve") return <LandingLeve />;
+
+  return (
+    <iframe
+      title="Smart Dormio — página inicial"
+      src={sessao ? "/landing-prototipo.html?sessao=1" : "/landing-prototipo.html"}
+      sandbox="allow-scripts allow-top-navigation-by-user-activation allow-popups allow-popups-to-escape-sandbox"
+      className="block h-dvh w-full border-0"
+    />
   );
 }
