@@ -9130,7 +9130,127 @@ Um celular deitado só mexe em z, e é z que pesa na norma nessa posição. O GG
 
 ---
 
-# 2026-11-12 — Planejamento de recebimento, pareamento e bateria
+# 2026-11-12 — Visão geral do dashboard
+
+**O problema.** O painel já calculava cobertura, movimento e lacunas, mas o recorte e a distinção visual entre repouso e falta de leitura precisavam ficar mais claros.
+
+**Hipótese.** Exibir sessão, instrumento e intervalo no cabeçalho e usar hachura para interrupções melhora a leitura sem alterar as consultas ou o cálculo. A composição foi revista a partir do HTML do autor, com quatro métricas, gráfico de linha, cartão do dispositivo e sessões recentes.
+
+**O que foi testado.** Build e suíte do frontend no Windows, além de navegação em Chromium local com demonstração em 1440 px e 390 px, uma interrupção injetada nas leituras simuladas e uma lista vazia. A composição final também foi conferida em 1353 × 603 px, na mesma largura da referência do autor, e o controle de tema foi acionado.
+
+**Resultado medido.** 564 testes em 43 arquivos e build aprovados. As duas larguras não tiveram rolagem horizontal. O cartão ficou ao lado do gráfico em 1440 px e abaixo em 390 px. A interrupção simulada mostrou a legenda e o padrão hachurado, e a linha foi interrompida. A lista vazia mostrou a mensagem de ausência de leituras. Na composição final, o gráfico começou em y = 306 px a 1353 × 603 px e a página não teve rolagem horizontal a 390 px.
+
+**Adaptação.** A cobertura ganhou cartão próprio para seguir a composição do protótipo. O último envio e as sessões vêm dos dados já disponíveis. O eixo categórico foi preservado. O menu lateral usa os grupos do protótipo e leva às seções já existentes. O selo identifica os dados simulados no cabeçalho. A legenda informa que a largura da faixa não representa a duração da interrupção.
+
+**O que deu errado no caminho.** A primeira prévia devolveu 504 por dependência otimizada desatualizada. Um servidor com reotimização resolveu. Remover uma única leitura não gerou interrupção na regra existente. A verificação foi refeita removendo seis leituras consecutivas. Na revisão visual, um teste de privacidade atingiu o timeout de 5 s na suíte paralela. A suíte inteira passou ao repetir com quatro workers, sem alterar o teste.
+
+**Risco em aberto.** As verificações no navegador usaram demonstração local. Falta revisão com sessão e leituras reais.
+
+**Procedência.** Mudança aprovada pelo autor e executada na branch de visão geral do dashboard, baseada em develop e620ad3.
+
+---
+
+# 2026-11-12 (ii) — Nova coleta
+
+**O problema.** O painel já usava o layout do protótipo, mas a tela de coleta ainda tinha a composição anterior. O link de Nova coleta também descartava o parâmetro da demonstração local.
+
+**Hipótese.** Reaproveitar o cabeçalho e a navegação do painel e destacar o estado e o tempo da sessão aproxima a experiência do protótipo. Manter o parâmetro nos links entre as telas demonstrativas preserva a navegação sem login.
+
+**O que foi testado.** Build e suíte do frontend no Windows. Em Chromium, navegação do painel à coleta com 1240 px e 390 px, início e encerramento do cronômetro, retorno ao Histórico e acesso direto à coleta sem conta.
+
+**Resultado medido.** Build aprovado e 564 testes aprovados em 43 arquivos. O cronômetro avançou de 00:00:00 para 00:00:01, a simulação encerrou sem requisições de escrita, a tela móvel coube na largura e a rota real sem sessão redirecionou ao login.
+
+**Adaptação.** O modo local usa somente o cronômetro. A tela autenticada mantém consentimento, preparo do aparelho, acelerômetro e envio pela implementação existente. Os links de Histórico e Dispositivos apontam para as seções do painel também quando acionados da coleta.
+
+**O que deu errado no caminho.** O ambiente restrito impediu o Vitest de renomear arquivos temporários. A suíte passou ao executar com permissão para o cache. A primeira porta da prévia estava ocupada e o navegador validou a tela em outra porta. A repetição da comparação com a prévia anterior não foi concluída porque ela estava indisponível.
+
+**Risco em aberto.** A validação no navegador usou dados de demonstração. Falta testar uma sessão autenticada com acelerômetro físico.
+
+**Procedência.** Protótipo e mudança aprovados pelo autor. Branch derivada da PR #134, com develop e620ad3 já incorporado.
+
+---
+
+# 2026-11-12 (iii) — Tela de dispositivos
+
+**O problema.** O menu Dispositivos apontava para um resumo no painel e o gerenciamento ficava em Configurações. Faltava a página própria prevista no protótipo.
+
+**Hipótese.** Uma rota dedicada com cartões e a ação de pareamento no cabeçalho aproxima o fluxo do protótipo e reaproveita as operações autenticadas.
+
+**O que foi testado.** Build e suíte do frontend no Windows. No Chromium local, navegação pelo botão do painel e menu móvel, estado ativo do menu, interruptor por teclado, abertura do pareamento demonstrativo e acesso sem sessão à rota real. O teste de montagem foi repetido com a rota removida como controle.
+
+**Resultado medido.** Build aprovado e 566 testes passaram em 43 arquivos. O controle produziu uma falha por ausência do título da tela. Em 1240 px e 390 px a navegação manteve o modo demonstrativo, com zero chamadas à API de dispositivos. A tela coube em 390 px e o acesso real sem sessão redirecionou ao login.
+
+**Adaptação.** O interruptor altera somente o estado local da demonstração. A lista real mostra a validade da credencial e o último envio. Pareamento, renomeação e revogação reutilizam o gerenciamento existente. A revogação pede confirmação e invalida a credencial.
+
+**O que deu errado no caminho.** O Vite devolveu 504 por dependência otimizada desatualizada na primeira prévia. A validação passou em outra porta com um contexto de navegador limpo.
+
+**Risco em aberto.** As ações reais de pareamento, renomeação e revogação não foram executadas contra uma conta e um aparelho físicos nesta etapa.
+
+**Procedência.** Protótipo e plano aprovados pelo autor. Branch derivada da PR #135, com develop e620ad3 já incorporado.
+
+---
+
+# 2026-11-12 (iv) — Histórico de sessões
+
+**O problema.** O menu Histórico abria uma seção do dashboard. Faltava a tela dedicada com filtro, tabela e interpretação da cobertura.
+
+**Hipótese.** Reutilizar a formação de sessões e a medição da cobertura permite expor as mesmas grandezas, com um recorte de período e sem misturar dispositivos.
+
+**O que foi testado.** Build e suíte no Windows. Montagem autenticada com API simulada para carregamento, lista vazia, troca de período, erro HTTP e nova tentativa. O controle trocou a árvore de rotas pela de develop. Chromium local verificou os filtros da demonstração, o botão do dashboard, o menu móvel e o redirecionamento sem sessão.
+
+**Resultado medido.** Build aprovado e 568 testes passaram em 43 arquivos. Uma falha esperada com as rotas de develop, por ausência do título. Na demonstração, 7 e 30 dias exibiram 5 sessões e 24 horas exibiram 1. Zero consultas à API de histórico no modo demonstrativo. A 320 px, a tabela rolou dentro do próprio contêiner e a página coube na largura.
+
+**Adaptação.** A consulta autenticada filtra por chegada no servidor e descarta localmente medições anteriores ao recorte. As sessões são agrupadas por dispositivo e o aviso aparece quando a resposta pode ter atingido o limite da consulta. A demonstração usa as datas fixas do protótipo.
+
+**O que deu errado no caminho.** O primeiro servidor local do Vite retornou 504 por dependência otimizada desatualizada. A validação passou em outra porta. A primeira medição da tabela ocorreu antes de o React concluir a navegação e foi repetida aguardando a tabela.
+
+**Risco em aberto.** Falta validar o histórico com uma conta e leituras reais. A API existente também pode devolver uma lista vazia em falhas de infraestrutura, e nesses casos o cliente não tem como distinguir a falha de uma lista vazia legítima.
+
+**Procedência.** Protótipo e plano aprovados pelo autor. Branch derivada da PR #136, com develop e620ad3 incorporado.
+
+---
+
+# 2026-11-12 (v) — Correções de coleta e exportação
+
+**O problema.** Uma nova coleta mantinha os registros da anterior. O navegador bloqueava o JSON do simulador na landing. O CSV podia baixar apenas parte dos dados sem avisar.
+
+**Hipótese.** Limpar a lista ao iniciar a coleta, autorizar downloads no iframe da landing e sinalizar o possível limite do CSV corrige os três fluxos.
+
+**O que foi testado.** No Windows, build e suíte do frontend. Teste do hook com movimento sintético e envio pendente. Montagem autenticada com resposta simulada de 1000 linhas seguida de resposta de uma linha. Chromium com a landing da versão anterior e com o build da correção.
+
+**Resultado medido.** 570 testes passaram em 44 arquivos. Os dois testes novos falharam antes da correção, com implementações idênticas às de develop e620ad3. A segunda sessão começou com zero registros mesmo após concluir o envio anterior. O CSV exibiu aviso com 1000 linhas e o retirou com uma linha. O JSON foi bloqueado antes e baixado como smartdormio-leitura-23-15-00.json depois.
+
+**Adaptação.** O resumo fica visível ao encerrar e é limpo ao iniciar outra sessão. A landing permite o download dentro do iframe existente. O CSV reaproveita o limiar usado pelo Histórico para avisar sobre possível truncamento.
+
+**O que deu errado no caminho.** A primeira tentativa no servidor de desenvolvimento não renderizou a landing a tempo. A repetição com o build de produção servido localmente concluiu o teste.
+
+**Risco em aberto.** O CSV continua sujeito ao limite da API. O reinício da coleta foi validado com eventos sintéticos, sem repetir a operação em um aparelho físico.
+
+**Procedência.** Correções aprovadas pelo autor após revisão da versão da PR #137. Branch derivada dessa PR, com develop e620ad3 incorporado.
+
+---
+
+# 2026-11-12 (vi) — Configurações na demonstração e último envio
+
+**O problema.** Configurações descartava o modo de demonstração. O painel mostrava o último contato apenas quando havia leituras e não indicava a sua recência.
+
+**Hipótese.** Preservar o parâmetro permite testar o tema sem abrir ações de conta. O horário recebido do servidor permite informar recência para o dispositivo selecionado.
+
+**O que foi testado.** Build, suíte e montagem no Windows. Chromium local em desktop e largura móvel, troca para tema escuro e claro, navegação para a conta pelo link Entrar e observação de chamadas à API na demonstração sem sessão.
+
+**Resultado medido.** 572 testes em 44 arquivos e build aprovados. Antes da correção, dois testes falharam: os dois menus perderam o parâmetro e o painel não mostrou Nunca enviou. Na demonstração, os dois menus preservaram o parâmetro, os dois temas foram aplicados e houve zero chamadas à API.
+
+**Adaptação.** A tela demonstrativa permite alterar o tema e orienta como acessar as funções da conta. O painel usa o horário de último envio e uma janela de 20 minutos, equivalente a dois ciclos previstos no RD-07. Mostra o indicador mesmo quando o dispositivo ainda não tem leituras.
+
+**O que deu errado no caminho.** A primeira tentativa de rodar os testes ocorreu enquanto as dependências ainda eram instaladas. A primeira prévia devolveu 504 em uma dependência do Vite. As verificações foram repetidas após a instalação e em uma nova porta.
+
+**Risco em aberto.** O status foi validado com resposta simulada e ainda precisa ser conferido com um sensor real. O horário informa recência de envio e não comprova presença em tempo real.
+
+**Procedência.** Plano aprovado pelo autor. Branch derivada da PR #138 com develop e620ad3 incorporado. Cadência de envio registrada em RD-07.
+
+---
+
+# 2026-11-12 (vii) — Planejamento de recebimento, pareamento e bateria
 
 **O problema.** A pausa de recebimento, o pareamento guiado e a telemetria de bateria tinham propostas sem itens próprios no backlog.
 

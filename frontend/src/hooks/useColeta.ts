@@ -151,7 +151,7 @@ export function useColeta(epocaSegundos: number, dispositivoId: string | null) {
     }
     // Substitui pela mesma referencia mutada: a lista e curta e o objetivo e
     // so refletir o resultado do envio.
-    setRegistros((atuais) => [...atuais]);
+    setRegistros((atuais) => atuais.includes(registro) ? [...atuais] : atuais);
   }, [epocaSegundos]);
 
   const soltarTela = useCallback(() => {
@@ -181,6 +181,7 @@ export function useColeta(epocaSegundos: number, dispositivoId: string | null) {
 
     buffer.current = [];
     inicioRef.current = Date.now();
+    setRegistros([]);
     setAmostrasNaEpoca(0);
     setDecorridoMs(0);
     setEstado("coletando");
