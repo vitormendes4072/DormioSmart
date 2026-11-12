@@ -9188,6 +9188,26 @@ Um celular deitado só mexe em z, e é z que pesa na norma nessa posição. O GG
 
 **Procedência.** Protótipo e plano aprovados pelo autor. Branch derivada da PR #135, com develop e620ad3 já incorporado.
 
+---
+
+# 2026-11-12 (iv) — Histórico de sessões
+
+**O problema.** O menu Histórico abria uma seção do dashboard. Faltava a tela dedicada com filtro, tabela e interpretação da cobertura.
+
+**Hipótese.** Reutilizar a formação de sessões e a medição da cobertura permite expor as mesmas grandezas, com um recorte de período e sem misturar dispositivos.
+
+**O que foi testado.** Build e suíte no Windows. Montagem autenticada com API simulada para carregamento, lista vazia, troca de período, erro HTTP e nova tentativa. O controle trocou a árvore de rotas pela de develop. Chromium local verificou os filtros da demonstração, o botão do dashboard, o menu móvel e o redirecionamento sem sessão.
+
+**Resultado medido.** Build aprovado e 568 testes passaram em 43 arquivos. Uma falha esperada com as rotas de develop, por ausência do título. Na demonstração, 7 e 30 dias exibiram 5 sessões e 24 horas exibiram 1. Zero consultas à API de histórico no modo demonstrativo. A 320 px, a tabela rolou dentro do próprio contêiner e a página coube na largura.
+
+**Adaptação.** A consulta autenticada filtra por chegada no servidor e descarta localmente medições anteriores ao recorte. As sessões são agrupadas por dispositivo e o aviso aparece quando a resposta pode ter atingido o limite da consulta. A demonstração usa as datas fixas do protótipo.
+
+**O que deu errado no caminho.** O primeiro servidor local do Vite retornou 504 por dependência otimizada desatualizada. A validação passou em outra porta. A primeira medição da tabela ocorreu antes de o React concluir a navegação e foi repetida aguardando a tabela.
+
+**Risco em aberto.** Falta validar o histórico com uma conta e leituras reais. A API existente também pode devolver uma lista vazia em falhas de infraestrutura, e nesses casos o cliente não tem como distinguir a falha de uma lista vazia legítima.
+
+**Procedência.** Protótipo e plano aprovados pelo autor. Branch derivada da PR #136, com develop e620ad3 incorporado.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

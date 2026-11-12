@@ -482,7 +482,12 @@ export function Dashboard() {
 
       {sessoesRecentes.length > 0 && (
         <section aria-labelledby="sessoes-recentes" className="rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5">
-          <h2 id="sessoes-recentes" className="text-base font-semibold text-foreground">Sessões recentes</h2>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 id="sessoes-recentes" className="text-base font-semibold text-foreground">Sessões recentes</h2>
+            <Link to={destinoDoWorkspace("/historico", search)} className="text-sm font-semibold text-primary hover:underline">
+              Ver histórico
+            </Link>
+          </div>
           <p className="mt-1 text-xs text-muted-foreground">Últimas sessões do dispositivo ou do conjunto selecionado.</p>
           <div className="mt-4 overflow-x-auto">
             <table className="w-full min-w-[32rem] text-left text-sm">
