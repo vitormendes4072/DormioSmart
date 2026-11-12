@@ -56,7 +56,8 @@
 Até 29/10 esta linha mandava rodar o `DATA-03`, fechado em 28/10.)* **Se tem um fim de semana:** solde. **Se tem um mês sem ferro de solda:** escreva os
 `CALC-*` e `DIAG-*`, que são o que a banca lê.
 
-**Contagem:** 48 itens abertos · **L0: 19** · L1: 14 · L2: 6 · L3: 9. *(Recontado linha a linha em 03/11, e não por delta; desde o `DOC-13`, o CI reconta.)*
+**Contagem:** 49 itens abertos · **L0: 19** · L1: 15 · L2: 6 · L3: 9. *(Recontado linha a linha em 03/11, e não por delta; desde o `DOC-13`, o CI reconta.)*
+*(11/11, terceira parte, sobre `develop` `2fa2f4b`: fechou `CAL-01` (L1, a calibração de bancada do sensor do travesseiro) e entraram `HW-09` e `FW-11` (L1). 48−1+2 = 49 abertos, L1 14−1+2 = 15.)*
 *(11/11, segunda parte, sobre `develop` `d3fe4a6`: entrou `INFRA-05` (L0, o backend em São Paulo, perto do banco). 47+1 = 48 abertos, L0 18+1 = 19.)*
 *(11/11, sobre `develop` `0a86de1`: fecharam `REL-01` e `LGPD-13` (L3) — o release #121 em produção, com a 017, conferido no banco. 49−2 = 47 abertos, L3 11−2 = 9.)*
 *(10/11, décima primeira parte, sobre `develop` `0ea6499`: fechou `LGPD-12` (L0, o consentimento destacado, migração 017) e entrou `LGPD-13` (L3, aplicá-la com o release). 49−1+1 = 49 abertos, L0 19−1 = 18, L3 10+1 = 11.)*
@@ -221,7 +222,7 @@ E um **peso**: 🔴 caminho crítico da defesa · 🟡 importante · ⚪ polimen
                     └───────────────────┬─────────────────────────┘
                                         │
                     ┌───────────────────▼─────────────────────────┐
-   L1  BANCADA ─────►  CAL-01 · VIA-01 · VIA-02 · FW-05         │ 🔴
+   L1  BANCADA ─────►  HW-09 · FW-11 · VIA-01 · VIA-02 · FW-05  │ 🔴
                     │   ARQ-01(c) · ML-12(c) · FW-07(c) · FW-08(c)│
                     │   SEC-15(c) · HW-04/06 · HW-08 · VAL-01 · CALC-05    │
                     └───────────────────┬─────────────────────────┘
@@ -589,7 +590,9 @@ Nada aqui começa antes da **Etapa 0**.
 | Item | O quê | Peso |
 |---|---|:---:|
 | **HW-08** 🟡 *(novo — 04/11, `CALC-04`)* | **Caracterizar o I2C na bancada:** com o módulo desenergizado, identificar e medir os pull-ups SDA/SCL e seus trilhos; verificar outras resistências em paralelo. Após a solda, testar a comunicação a 100 e 400 kHz e, se houver osciloscópio, medir o tempo de subida. Para 10 kΩ a 400 kHz o limite calculado é cerca de 35 pF; decidir frequência ou pull-ups externos com base na montagem, junto com a decisão de VCC do `HW-02`. Não aplicar 5 V ao barramento sem confirmar os trilhos. | 🟡 |
-| **CAL-01** | ✏️ **03/11 (triagem):** absorve o `CAL-02` (repetir a caracterização com o filtro de 21 Hz, na mesma sessão). Caracterização de 6 posições. Sketch pronto em `firmware/caracterizacao/`. Produz viés e escala por eixo desta unidade. O viés de Z medido em 25/08 foi **−1,06 m/s² — 89% do limiar sozinho**, mas através de contato ruim, então é provisório. *Melhorias pendentes no sketch: mostrar o ângulo de cada pose e avisar acima de 8°; detectar troca de sinal entre `+X` e `−X`.* | 🔴 |
+| **CAL-01** ✅ *(fechado em 11/11)* | ✏️ **03/11 (triagem):** absorve o `CAL-02` (repetir a caracterização com o filtro de 21 Hz, na mesma sessão). Caracterização de 6 posições. Sketch pronto em `firmware/caracterizacao/`. Produz viés e escala por eixo desta unidade. O viés de Z medido em 25/08 foi **−1,06 m/s² — 89% do limiar sozinho**, mas através de contato ruim, então é provisório. *Melhorias pendentes no sketch: mostrar o ângulo de cada pose e avisar acima de 8°; detectar troca de sinal entre `+X` e `−X`.* ✅ **11/11, medido na bancada** (±8 g, 21 Hz, 27,8–32,1 °C): desvio **Z −130,0 mg** (os dois métodos), X +34,8/+42,3 mg, Y −23,5/−21,1 mg (clássico/van Hees); escala Z +2,4 %, X e Y dentro de 0,6 %. Validação independente (6 janelas do monitor ao vivo, outras posições): erro da gravidade parada de 83,6 mg para 2,3 mg. O viés de 25/08 era do sensor, não do contato. Aplicar no firmware é o `FW-11`; o contato que falha ao virar, o `HW-09`. Diário, 11/11 (xi). | 🔴 |
+| **HW-09** 🟠 *(novo — 11/11, saído do `CAL-01`)* | **O contato do sensor falha por um instante quando a placa vira.** Na bancada de 11/11, virar a placa de chip para baixo zerou o sensor três vezes: o VCC cai por uma fração de segundo, o MPU6050 reinicia em modo de repouso e segue lendo zero com o contato já de volta. Parada, a mesma ligação passa no `diagnostico-i2c` sem erro. **Correção:** refazer as soldas no sensor (estanho escorrendo pelos dois lados do furo), aliviar a tensão nos fios (fita ou cola quente a ~2 cm da solda) e trocar o jumper se o conector do lado da ESP32 estiver frouxo; depois, virar a placa nas 6 posições com o monitor ao vivo sem nenhuma leitura zerada. **Antes de o sensor ir para dentro do travesseiro.** | 🟠 |
+| **FW-11** 🟠 *(novo — 11/11, saído do `CAL-01`)* | **O firmware do travesseiro aplica a calibração e reacorda o sensor.** (a) O `sketch.ino` não corrige nada: com −130 mg no eixo Z, o ENMO parado leria ~157 mg de movimento fantasma com o chip para baixo e esconderia movimento abaixo de ~100 mg com o chip para cima. Aplicar os parâmetros da bancada do `CAL-01` pelo `aplicar_calibracao` do núcleo (o mesmo do celular), e mandar `cal` e `gn` no payload. (b) Leitura zerada com a temperatura em 36,53 °C é o sensor que reiniciou em repouso (`HW-09`): o firmware tem de detectar e reacordá-lo, em vez de gravar a noite inteira em zero. Testes no host, com o laço do sketch (`make laco`). | 🟠 |
 | **CAL-02** ✅ *(03/11, triagem da auditoria: fundido no `CAL-01` — mesma sessão de bancada, já com o filtro de 21 Hz)* | **Repetir a caracterização depois do `FW-06`.** O filtro passou de 260 Hz para 21 Hz em 10/09, o que muda o ruído de base — e o limiar do `DATA-02` é definido sobre esse ruído. Número medido antes disso não transfere. | ✅ |
 | **VIA-01** | Viabilidade de bancada: 2 min parado → 2 min mexendo a cabeça → 2 min virando o corpo. Pergunta: *os três blocos se separam?* ✏️ *04/11 (`CALC-03`): conferir também o **rótulo** do painel. Ele usa a amostra de **maior módulo** da época (`epoca_c2.cpp`, método "pico da magnitude" do contrato), então um afastamento **para baixo** de g só conta se nenhuma outra amostra da época tiver módulo maior. As características do classificador não têm essa limitação. A bancada mostra se isso importa.* | 🔴 |
 | **VIA-02** | O mesmo protocolo com **celular e travesseiro gravando ao mesmo tempo**. Produz o limiar do celular, a diferença de acoplamento medida e o grupo de controle. | 🔴 |
@@ -633,8 +636,8 @@ Se só houver tempo para uma sequência, é esta:
 1. ✅ ~~**`DATA-03`**~~ — fechado em 28/10, confirmado pelo diagnóstico na produção (em 29/10,
    001–009 aplicadas). ✏️ *(29/10: este passo seguiu aqui como o primeiro do caminho crítico
    um dia depois de fechado.)*
-2. **Soldar** (L3). Tudo abaixo espera.
-3. **`CAL-01`** (~~`CAL-02`~~, fundido nele em 03/11) — calibrar a unidade *depois* do `FW-06`, senão o número não vale.
+2. ✅ ~~**Soldar**~~ (L3). Tudo abaixo espera. ✏️ *11/11: soldado pelo autor; o `diagnostico-i2c` passou parado, e o contato ainda falha ao virar (`HW-09`).*
+3. ✅ ~~**`CAL-01`**~~ (~~`CAL-02`~~, fundido nele em 03/11) — calibrar a unidade *depois* do `FW-06`, senão o número não vale. ✏️ *11/11: feito na bancada; o que segue é o `HW-09` (o contato que falha ao virar) e o `FW-11` (aplicar a calibração no firmware).*
 4. **`VIA-01` + `VIA-02`** — um dia de bancada que produz a viabilidade, o limiar do celular
    e o grupo de controle.
 5. **`VAL-01`** — uma noite real captada. O painel já aguenta. 🛑 **Mas o firmware não:** sem

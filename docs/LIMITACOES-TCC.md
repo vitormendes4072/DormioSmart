@@ -130,6 +130,16 @@ gravidade (van Hees et al., 2014), e cada época leva a marca de se foi corrigid
 registradas antes dela ficam sem correção, porque o sinal bruto não é guardado: só as medidas
 por época. Com um aparelho que nunca muda de posição, só a direção usada é corrigida.*
 
+**Erro do sensor do dispositivo, medido na bancada (11/11/2026).** O MPU6050 do protótipo, numa
+calibração de seis posições (±8 g, filtro de 21 Hz, 27,8 a 32,1 °C), apresentou um desvio de
+−130 mg no eixo Z e de 21 a 42 mg nos eixos X e Y, com erro de escala de até 2,4 %. Parado, ele
+leria a gravidade entre 0,897 g e 1,157 g conforme a posição; sem correção, o ENMO acusaria até
+cerca de 157 mg de movimento inexistente numa posição e ocultaria movimentos de até cerca de
+100 mg na oposta. A calibração estimada reduz o erro da gravidade parada, em posições que não
+entraram no ajuste, de 83,6 mg para 2,3 mg (RMS). Os valores são de uma única unidade, e o
+termo de temperatura não foi estimado.
+✏️ *Rascunho de 11/11; conferir antes de colar. Aplicar a correção no firmware é o `FW-11`.*
+
 ### X.2 Ausência de estadiamento do sono
 
 O trabalho **não realiza estadiamento do sono** — isto é, não classifica os estágios N1, N2,
