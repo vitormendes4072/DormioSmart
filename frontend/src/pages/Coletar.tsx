@@ -182,8 +182,10 @@ function ColetaReal() {
   const [nomeDoDispositivo, setNomeDoDispositivo] = useState<string | null>(null);
   const [erroDePreparo, setErroDePreparo] = useState<string | null>(null);
 
-  const { estado, erro, registros, amostrasNaEpoca, decorridoMs, comecar, parar } =
-    useColeta(epoca, dispositivo);
+  const {
+    estado, erro, registros, amostrasNaEpoca, decorridoMs, comecar, parar,
+    segundosAtePrimeiroRegistro, encerradaSemRegistros,
+  } = useColeta(epoca, dispositivo);
 
   // LGPD-12: sem o consentimento vigente, o servidor recusa preparar o
   // dispositivo (403). O preparo espera por ele, e "Começar" abre a tela antes.
@@ -222,7 +224,7 @@ function ColetaReal() {
   const falhas = contarFalhas(registros);
   const resumo = resumoDaSessao(registros);
 
-  const iniciouSessao = decorridoMs > 0 || resumo.total > 0;
+  const iniciouSessao = estado === "encerrada" || decorridoMs > 0 || resumo.total > 0;
   const situacao = erroDePreparo || erro ? "Atenção necessária"
     : coletando ? "Registrando"
     : vigente && !pronto ? "Preparando aparelho"
@@ -313,6 +315,17 @@ function ColetaReal() {
               </div>
             )}
           </div>
+        )}
+
+        {segundosAtePrimeiroRegistro !== null && (
+          <p className="mt-4 text-sm text-muted-foreground">
+            Primeiro registro em {segundosAtePrimeiroRegistro} s.
+          </p>
+        )}
+        {encerradaSemRegistros && (
+          <p className="mt-4 text-sm text-muted-foreground" role="status">
+            Coleta encerrada sem registros.
+          </p>
         )}
 
         {/* Falha nunca fica dentro dos detalhes recolhidos. */}

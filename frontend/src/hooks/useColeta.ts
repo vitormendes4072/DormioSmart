@@ -50,7 +50,7 @@ export const MENSAGEM_SEM_SINAL =
   "Nenhuma amostra chegou do acelerometro. Computador nao tem esse sensor — " +
   "abra esta pagina no celular.";
 
-export type EstadoDaColeta = "ocioso" | "coletando" | "erro";
+export type EstadoDaColeta = "ocioso" | "coletando" | "encerrada" | "erro";
 
 /**
  * Estado do envio de uma epoca (APP-10).
@@ -104,6 +104,7 @@ export function useColeta(epocaSegundos: number, dispositivoId: string | null) {
   const [registros, setRegistros] = useState<Registro[]>([]);
   const [amostrasNaEpoca, setAmostrasNaEpoca] = useState(0);
   const [decorridoMs, setDecorridoMs] = useState(0);
+  const [primeiraJanelaFechada, setPrimeiraJanelaFechada] = useState(false);
 
   // Refs, e nao estado: o listener dispara dezenas de vezes por segundo, e
   // re-renderizar a cada amostra derrubaria o quadro a quadro da propria
@@ -120,6 +121,7 @@ export function useColeta(epocaSegundos: number, dispositivoId: string | null) {
   jwtRef.current = useAuth().sessao?.access_token ?? null;
 
   const fecharEpoca = useCallback(async () => {
+    setPrimeiraJanelaFechada(true);
     const amostras = buffer.current;
     buffer.current = [];
     setAmostrasNaEpoca(0);
@@ -160,7 +162,9 @@ export function useColeta(epocaSegundos: number, dispositivoId: string | null) {
   }, []);
 
   const parar = useCallback(() => {
-    setEstado("ocioso");
+    const inicio = inicioRef.current;
+    if (inicio !== null) setDecorridoMs(Date.now() - inicio);
+    setEstado("encerrada");
     inicioRef.current = null;
     soltarTela();
   }, [soltarTela]);
@@ -184,6 +188,7 @@ export function useColeta(epocaSegundos: number, dispositivoId: string | null) {
     setRegistros([]);
     setAmostrasNaEpoca(0);
     setDecorridoMs(0);
+    setPrimeiraJanelaFechada(false);
     setEstado("coletando");
 
     // Sem isto a tela bloqueia e o `devicemotion` para. Falhar aqui nao
@@ -244,5 +249,13 @@ export function useColeta(epocaSegundos: number, dispositivoId: string | null) {
   // Solta o wake lock se o componente sair enquanto coletava.
   useEffect(() => () => void wakeLock.current?.release().catch(() => {}), []);
 
-  return { estado, erro, registros, amostrasNaEpoca, decorridoMs, comecar, parar };
+  const segundosAtePrimeiroRegistro = estado === "coletando" && !primeiraJanelaFechada
+    ? Math.max(1, Math.ceil(epocaSegundos - decorridoMs / 1000))
+    : null;
+  const encerradaSemRegistros = estado === "encerrada" && registros.length === 0;
+
+  return {
+    estado, erro, registros, amostrasNaEpoca, decorridoMs, comecar, parar,
+    segundosAtePrimeiroRegistro, encerradaSemRegistros,
+  };
 }
