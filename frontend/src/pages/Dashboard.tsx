@@ -33,6 +33,7 @@ import {
   formatarHora,
   prepararSerie,
   type PontoDaSerie,
+  leituraNaBordaDoLimite,
 } from "../lib/metricas";
 import {
   LIMIAR_DE_MOVIMENTO,
@@ -202,6 +203,8 @@ export function Dashboard() {
   const ultima = sessoes.length > 0 ? sessoes[sessoes.length - 1] : null;
   const leiturasVisiveis = verTudo || ultima === null ? leituras : ultima.leituras;
 
+  const borda = leituraNaBordaDoLimite(leituras, LIMITE_DO_PAINEL);
+  const recorteParcial = borda !== undefined && leiturasVisiveis.includes(borda);
   const m = calcularMetricas(leiturasVisiveis);
   const serie = prepararSerie(leiturasVisiveis, m.cobertura);
   const temLacuna = serie.some((p) => p.lacuna);
@@ -260,6 +263,11 @@ export function Dashboard() {
 
       {/* A coleta teve buracos? Isso precisa aparecer ANTES dos números, e
           não depois — porque é o que decide se eles significam algo. */}
+      {recorteParcial && (
+        <p role="status" className="rounded-xl border border-border px-3 py-3 text-sm text-muted-foreground">
+          Cobertura parcial: a consulta atingiu o limite de leituras.
+        </p>
+      )}
       <AvisoDeLacuna cobertura={cob} />
 
       {/* O recorte, e como sair dele. */}
@@ -513,7 +521,9 @@ export function Dashboard() {
                     <tr key={sessao.inicio}>
                       <td className="py-3 pr-4">{descreverPeriodo(sessao.inicio, sessao.fim)}</td>
                       <td className="py-3 pr-4">{formatarDuracao(resumo.tempoCobertoMs)}</td>
-                      <td className="py-3">{cobertura}</td>
+                      <td className="py-3">
+                        {cobertura}{borda !== undefined && sessao.leituras.includes(borda) ? " · Parcial" : ""}
+                      </td>
                     </tr>
                   );
                 })}
