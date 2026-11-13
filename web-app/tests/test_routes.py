@@ -67,7 +67,7 @@ def test_history_vazio_retorna_200():
 def test_leitura_vazia_sem_cliente():
     # Sem cliente Supabase (credenciais ausentes) → lista vazia, sem exceção.
     with patch.object(database.db, "cliente_do_usuario", return_value=None):
-        assert database.db.get_leituras_do_usuario("jwt", "user-1") == []
+        assert database.db.get_leituras_do_usuario("jwt", "user-1") is None
 
 
 def test_leitura_vazia_em_excecao():
@@ -77,7 +77,7 @@ def test_leitura_vazia_em_excecao():
             raise RuntimeError("falha simulada")
 
     with patch.object(database.db, "cliente_do_usuario", return_value=ClienteRuim()):
-        assert database.db.get_leituras_do_usuario("jwt", "user-1") == []
+        assert database.db.get_leituras_do_usuario("jwt", "user-1") is None
 
 
 def test_nao_existe_leitura_sem_dono(monkeypatch):

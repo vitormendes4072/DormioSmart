@@ -139,8 +139,8 @@ async function extrairMensagemDeErro(resposta: Response): Promise<string> {
  */
 export const LIMITE_DO_PAINEL = 2000;
 
-/** A consulta única ao Supabase pode atingir o teto antes do limite pedido. */
-export const LIMIAR_DE_HISTORICO_PARCIAL = 1000;
+/** A janela do painel pode ultrapassar o limite de leituras da API. */
+export const LIMIAR_DE_HISTORICO_PARCIAL = LIMITE_DO_PAINEL;
 
 export type FiltroDeHistorico = {
   /** Recorta por instrumento. Ausente = todos os dispositivos do usuario. */
@@ -168,4 +168,27 @@ export function montarConsultaDeHistorico(filtro: FiltroDeHistorico = {}): strin
 export async function buscarHistorico(filtro: FiltroDeHistorico = {}): Promise<LeituraSono[]> {
   const dados = await requisitarJson<unknown>(montarConsultaDeHistorico(filtro));
   return Array.isArray(dados) ? (dados as LeituraSono[]) : [];
+}
+
+/** Exporta todas as paginas; uma falha impede baixar um CSV incompleto. */
+export async function buscarHistoricoCompleto(): Promise<LeituraSono[]> {
+  const todas: LeituraSono[] = [];
+  let cursor: { created_at: string; id: string } | null = null;
+  while (true) {
+    const parametros = new URLSearchParams({ limite: String(LIMITE_DO_PAINEL) });
+    if (cursor) {
+      parametros.set("cursor_tempo", cursor.created_at);
+      parametros.set("cursor_id", cursor.id);
+    }
+    const pagina = await requisitarJson<unknown>(`/api/sleep-history?${parametros}`);
+    if (!Array.isArray(pagina)) throw new Error("Resposta de histórico inválida.");
+    todas.push(...pagina as LeituraSono[]);
+    if (pagina.length < LIMITE_DO_PAINEL) return todas;
+    const ultima = pagina[pagina.length - 1] as { created_at?: unknown; id?: unknown };
+    if (typeof ultima.created_at !== "string" || typeof ultima.id !== "string" ||
+        (cursor && cursor.created_at === ultima.created_at && cursor.id === ultima.id)) {
+      throw new Error("Cursor de histórico inválido.");
+    }
+    cursor = { created_at: ultima.created_at, id: ultima.id };
+  }
 }

@@ -20,6 +20,11 @@ import {
   type LeituraSono,
 } from "../types/sleep";
 
+/** A API ordena por chegada; preserve a borda antes de agrupar por medição. */
+export function leituraNaBordaDoLimite(leituras: LeituraSono[], limite: number) {
+  return leituras.length >= limite ? leituras.at(-1) : undefined;
+}
+
 export type Janela = { inicio: Date; fim: Date };
 
 export type Metricas = {
