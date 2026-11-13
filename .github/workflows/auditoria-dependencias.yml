@@ -77,7 +77,9 @@ jobs:
       - name: Configurar Python
         uses: actions/setup-python@v6
         with:
-          python-version: '3.11'
+          # CI-10 (13/11): a versao do backend vem do `.python-version`, o mesmo
+          # arquivo que a Vercel le -- um numero so para o CI e a producao.
+          python-version-file: 'web-app/.python-version'
 
       # Versão fixa: a ferramenta que audita não muda por baixo da auditoria.
       - name: Instalar pip-audit
