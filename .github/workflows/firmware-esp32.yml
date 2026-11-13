@@ -1,0 +1,94 @@
+# CI-12 (13/11) — o sketch.ino compilado PARA O ESP32, e nao so no host.
+#
+# O job `firmware` do ci.yml compila o firmware com stubs do Arduino, e o host
+# nao tem o teto de RAM estatica do chip. Em 12/11 o sketch passava em todos os
+# jobs e nao ligava para o ESP32: a RAM estatica estourava em 18 088 B (FW-12).
+# Este workflow e a unica verificacao que ve esse limite.
+#
+# Fica num arquivo proprio, disparado so por mudancas no firmware, porque baixa
+# a toolchain do ESP32 (~300 MB, com cache) e leva minutos: as PRs do frontend
+# e do backend nao pagam por isso.
+name: Firmware no ESP32
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - "firmware/**"
+      - "scripts/compilar_sketch_esp32.py"
+      - ".github/workflows/firmware-esp32.yml"
+  pull_request:
+    paths:
+      - "firmware/**"
+      - "scripts/compilar_sketch_esp32.py"
+      - ".github/workflows/firmware-esp32.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  # Versoes FIXAS, as mesmas da bancada (diario de 12/11). Trocar uma delas e
+  # decisao: o limite medido muda junto.
+  ARDUINO_CLI_VERSAO: "1.6.0"
+  ARDUINO_CLI_SHA256: "321ee249f44c78053234fec0f36101092bc6021bf24939e15e0cc2449c5ed250"
+  ESP32_CORE: "esp32:esp32@3.3.12"
+  ESP32_INDICE: "https://espressif.github.io/arduino-esp32/package_esp32_index.json"
+
+jobs:
+  esp32:
+    name: Sketch compilado para o ESP32 (RAM e programa)
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: arduino-cli (versao fixa, SHA-256 conferido)
+        run: |
+          set -euo pipefail
+          arquivo="arduino-cli_${ARDUINO_CLI_VERSAO}_Linux_64bit.tar.gz"
+          curl -fsSL -o "$RUNNER_TEMP/$arquivo" \
+            "https://github.com/arduino/arduino-cli/releases/download/v${ARDUINO_CLI_VERSAO}/$arquivo"
+          echo "${ARDUINO_CLI_SHA256}  $RUNNER_TEMP/$arquivo" | sha256sum -c -
+          mkdir -p "$RUNNER_TEMP/arduino-cli"
+          tar -xzf "$RUNNER_TEMP/$arquivo" -C "$RUNNER_TEMP/arduino-cli"
+          echo "ARDUINO_CLI=$RUNNER_TEMP/arduino-cli/arduino-cli" >> "$GITHUB_ENV"
+
+      - name: Cache do pacote esp32
+        uses: actions/cache@v4
+        with:
+          path: ~/.arduino15
+          key: arduino15-${{ env.ESP32_CORE }}-cli-${{ env.ARDUINO_CLI_VERSAO }}
+
+      - name: Pacote esp32 (versao fixa)
+        run: |
+          set -euo pipefail
+          "$ARDUINO_CLI" config init --overwrite
+          "$ARDUINO_CLI" config add board_manager.additional_urls "$ESP32_INDICE"
+          "$ARDUINO_CLI" core update-index
+          "$ARDUINO_CLI" core install "$ESP32_CORE"
+
+      - name: O sketch liga para o chip e sobra heap
+        run: python scripts/compilar_sketch_esp32.py --minimo-livre 150000
+
+      # Controle positivo: a verificacao tem de REPROVAR o defeito que motivou
+      # a sua existencia. A copia volta o texto do lote (31 200 B) para a RAM
+      # estatica, como estava antes do FW-12. Se isto passar a ligar, ou a
+      # verificacao ficou cega, ou o firmware mudou e o sabotador precisa de
+      # outro defeito -- nos dois casos, alguem precisa olhar.
+      - name: Controle positivo — o lote na RAM estatica tem de reprovar
+        run: |
+          set -uo pipefail
+          copia="$RUNNER_TEMP/firmware-sabotado"
+          cp -r firmware "$copia"
+          antes=$(grep -c '^static char \*json_do_lote = 0;' "$copia/sketch.ino")
+          if [ "$antes" != "1" ]; then
+            echo "SABOTADOR QUEBRADO: a linha do buffer do lote casou $antes vezes"
+            exit 1
+          fi
+          sed -i 's/^static char \*json_do_lote = 0;/static char json_do_lote_fixo[31200];\nstatic char *json_do_lote = json_do_lote_fixo;/' "$copia/sketch.ino"
+          if python scripts/compilar_sketch_esp32.py --minimo-livre 150000 --firmware "$copia"; then
+            echo "A verificacao NAO reprovou o firmware sabotado: esta cega."
+            exit 1
+          fi
+          echo "ok: a verificacao reprovou o firmware sabotado, como devia."

@@ -265,6 +265,8 @@ Windows sem ajuste (`DOCS-WIN-01`, `DOCS-WIN-02`, `ML-WIN-01`). Resta uma difere
 
 **Auditoria de dependências** (`CI-08`, 03/11): `.github/workflows/auditoria-dependencias.yml` — `npm audit --audit-level=high` (✏️ *03/11, `SEC-17`: com as ferramentas de teste e build; até ali `--omit=dev`*) e `pip-audit` sobre `web-app/requirements.txt`, quando as dependências mudam e toda segunda-feira (o agendamento só a partir de `main`). Dependência nova ou versão nova passa por ele; para rodar à mão: `cd frontend && npm audit` e `pip-audit -r web-app/requirements.txt`.
 
+✏️ *13/11, `CI-12`: `.github/workflows/firmware-esp32.yml` compila o `sketch.ino` **para o ESP32** (`arduino-cli` 1.6.0, `esp32:esp32` 3.3.12, com cache) quando o firmware muda, e exige que uma cópia sabotada (o lote na RAM estática) reprove.*
+
 **CI:** `.github/workflows/ci.yml`, seis jobs: `test` (backend), `rls` (matriz Postgres 14,
 16 e 17 — ✏️ *09/11, `DATA-12`: a 17 é a da produção* —, mais mutação na 16), `frontend` (vitest, tsc, vite), `ml`, `firmware` e `documentos`.
 **Rodou num runner em 2026-10-28** (execução `40639232458`, `ubuntu-24.04`): os sete jobs
