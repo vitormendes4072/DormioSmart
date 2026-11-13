@@ -44,3 +44,34 @@ it("zera os registros ao iniciar outra sessão, inclusive com um envio anterior 
   expect(result.current.registros).toHaveLength(0);
   expect(enviar).toHaveBeenCalledTimes(1);
 });
+
+it("avisa sobre a primeira janela, o encerramento sem registros e o reinício", async () => {
+  vi.useFakeTimers();
+  vi.stubGlobal("DeviceMotionEvent", class {});
+  enviar.mockResolvedValue(undefined);
+  const { result } = renderHook(() => useColeta(30, "dispositivo-teste"));
+
+  await act(async () => result.current.comecar());
+  expect(result.current.segundosAtePrimeiroRegistro).toBe(30);
+  act(() => result.current.parar());
+  expect(result.current.encerradaSemRegistros).toBe(true);
+  expect(result.current.segundosAtePrimeiroRegistro).toBeNull();
+  expect(enviar).not.toHaveBeenCalled();
+
+  await act(async () => result.current.comecar());
+  expect(result.current.encerradaSemRegistros).toBe(false);
+  expect(result.current.segundosAtePrimeiroRegistro).toBe(30);
+  act(() => {
+    window.dispatchEvent(Object.assign(new Event("devicemotion"), {
+      accelerationIncludingGravity: { x: 0, y: 0, z: 9.81 },
+    }));
+    vi.advanceTimersByTime(29_000);
+  });
+  expect(result.current.segundosAtePrimeiroRegistro).toBe(1);
+  await act(async () => vi.advanceTimersByTime(1000));
+  expect(result.current.registros).toHaveLength(1);
+  expect(result.current.segundosAtePrimeiroRegistro).toBeNull();
+
+  act(() => result.current.parar());
+  expect(result.current.encerradaSemRegistros).toBe(false);
+});

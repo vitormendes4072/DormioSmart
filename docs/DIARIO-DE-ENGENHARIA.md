@@ -9695,6 +9695,26 @@ Os quatro pontos foram corrigidos no `5ed12df`, e as sabotagens reexecutadas na 
 
 **Procedência.** PR #149, implementação `d538c5d`, registros sobre `develop` `745f232`. Testes automatizados no Windows.
 
+---
+
+# 2026-11-12 (xxiii) — UI-27: Primeira janela de coleta
+
+**O problema.** Encerrar antes da primeira janela não explicava a ausência de registros.
+
+**Hipótese.** Exibir a contagem e o aviso torna o estado da coleta visível.
+
+**O que foi testado.** No Windows, simulei relógio e sensor no hook e na rota Coletar. Removi separadamente cada texto da tela e rodei o teste.
+
+**Resultado medido.** O teste do hook falhou em develop pela ausência da contagem. Cada remoção derrubou 1 teste da tela, na asserção do respectivo texto. No preview, o autor confirmou o encerramento aos 11 s, a nova contagem e o primeiro registro. A suíte atualizada passou com 581 testes em 44 arquivos.
+
+**Adaptação.** A contagem usa a duração da primeira janela e reinicia com a sessão.
+
+**O que deu errado no caminho.** Um comando de inspeção usou expansão de chaves incompatível com PowerShell. Repeti a leitura com caminhos explícitos.
+
+**Risco em aberto.** A simulação automatizada não mede a cadência de sensores de outros aparelhos.
+
+**Procedência.** PR #150, implementação `fe85462`, registros sobre `develop` `745f232`. Testes automatizados no Windows.
+
 
 # O que este diário não cobre
 
