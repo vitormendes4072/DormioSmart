@@ -9920,6 +9920,39 @@ No host: `make`, `sintaxe`, `laco` (o stub do `WiFi` ganhou `hostByName` e `IPAd
 
 **Procedência.** Branch `feature/CI-10-python-312` sobre `develop` `58ec5ff`, PR #170; Docker no Windows 11 (`python:3.11-slim`, `python:3.12-slim`); logs de build dos previews da Vercel `dpl_9KXd1JdY7muf8qhXC5WSwWz3jsqY` e `dpl_2mGMaRvmehi6sVzKDcYMSJp1XG5V`; 13/11.
 
+---
+
+# 2026-11-13 (vii) — SEC-20: cabeçalhos de segurança e CSP por hash
+
+**O problema, como foi entendido no início.** A produção só mandava o `Strict-Transport-Security`, que a Vercel põe sozinha (medido com `curl` em 13/11): nada de CSP, `X-Frame-Options`, `nosniff`, `Referrer-Policy` nem `Permissions-Policy`. Não há defeito conhecido que eles fechem; é defesa em profundidade contra um XSS futuro carregar script de fora ou mandar a sessão para outro servidor (AUD-12).
+
+**Hipótese de trabalho.** Uma rota de cabeçalhos no `vercel.json` cobre o site inteiro, e uma CSP que libera script inline **só por hash** não quebra o tema (script inline de propósito, antes da primeira pintura) nem a landing (9 blocos `<script>`). Um conferidor no CI impede que os hashes envelheçam em silêncio.
+
+**O que foi testado, e como.**
+- **O conferidor** (`scripts/conferir_csp.py`), contra o `frontend/dist` do build, com seis sabotagens: um caractere no script do tema (na fonte, com novo build), um num script da landing, um hash a mais, `'unsafe-inline'`, `"continue": false` e sem `X-Frame-Options`; e o `index.html` gerado em CRLF, que tem de passar.
+- **O navegador aplicando a política**, com o `dist` servido localmente com os cabeçalhos do `vercel.json`: uma página com um script inline fora da lista, e uma com o texto exato do script do tema e um verificador em arquivo `.js`, com e sem o hash do tema.
+- **O preview da PR**, lido pela integração da Vercel (cabeçalhos e a landing servida, com os hashes reconferidos sobre ela) e aberto no navegador do app depois do login do autor na Vercel: a landing no iframe, rolada até o simulador; depois do login do autor no Dormio, o painel, o Histórico e o service worker.
+
+**Resultado medido.**
+- **Conferidor:** 6/6 sabotagens acusadas, cada uma pelo motivo certo (o caractere no tema e na landing aparecem como hash faltando **e** hash sobrando); o CRLF passa.
+- **Navegador local:** o script fora da lista foi bloqueado ("CSP APLICADA"); sem o hash do tema, "SCRIPT DO TEMA BLOQUEADO"; com ele, "RODOU: data-theme=light". O login desenha, com as fontes do Google carregadas.
+- **Preview:** os cinco cabeçalhos no `/`, no `/login`, na landing e no `/health`; 10 de 10 hashes batendo com a landing servida. A landing desenha dentro do iframe com `sandbox`, e o gráfico do simulador — que chega vazio no HTML e só existe se o script rodar — aparece. Logado: painel com as sessões e as leituras da conta, Histórico de 7 dias com 4 sessões, `sw.js` registrado. O login em si é uma chamada direta ao `supabase.co`: o `connect-src` está certo.
+
+**Adaptação.** Com `routes` no `vercel.json`, a Vercel não aceita o bloco `headers`; os cabeçalhos entram como a primeira rota, com `"continue": true`. `X-Frame-Options` é `SAMEORIGIN`, e não `DENY`, porque o próprio site põe a landing num iframe. O `connect-src` usa `https://*.supabase.co`, e não o endereço do projeto, para não fixá-lo no repositório e não quebrar previews. O `style-src` mantém `'unsafe-inline'`: o React usa `style=` nos elementos, e hash não cobre atributo.
+
+**O que deu errado no caminho.**
+- **Meu servidor local não serve para julgar a landing:** nele, ela ficava em branco no iframe e esmaecida sozinha **mesmo sem cabeçalho nenhum** — o controle sem cabeçalhos é que mostrou que não era a CSP. A conferência da landing passou ao preview.
+- **O console do navegador do app não mostra violação de CSP, e os scripts que eu injeto pela ferramenta não estão sujeitos a ela** (o `eval` passou com a CSP ativa). Os dois primeiros "console vazio" não provavam nada; o detector que vale é a própria página escrevendo se o script rodou.
+- **O preview fica atrás do login da Vercel.** O autor entrou primeiro no navegador dele, que é outro, e depois no do app.
+
+**Risco em aberto.**
+- **`'unsafe-inline'` em `style-src`:** injeção de CSS continua possível; o efeito é bem menor que o de script, mas existe.
+- **O Google Fonts é uma requisição a terceiro em cada visita** (o IP do visitante vai ao Google). A CSP só a autoriza; servir as fontes do próprio site é decisão do autor, sem item ainda.
+- **Origem nova no frontend** (outra API, outro CDN) tem de entrar na CSP; o navegador bloqueia sem erro na tela, e nenhum teste do frontend vê. Está no `CLAUDE.md`, seção Deploy.
+- **A produção só recebe com o próximo release**; a conferência do release inclui os cabeçalhos e um login de verdade.
+
+**Procedência.** Branch `feature/SEC-20-cabecalhos` sobre `develop` `a0f326d`; Windows 11 (build, conferidor e servidor local); preview da Vercel `dpl_8aPPt7WEwXDtA2xHEwqopkaBPNAr` (`gru1`), lido pela integração da Vercel e pelo navegador do app; 13/11.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
