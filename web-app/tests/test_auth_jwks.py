@@ -110,6 +110,20 @@ def test_recuo_do_jwks_expirado_tem_teto(cenario, monkeypatch):
     agora += 1
     assert cenario.pedir(token) == 503
     assert cenario.buscar.call_count == 3
+    agora += 31
+    assert cenario.pedir(token) == 503
+    assert cenario.buscar.call_count == 4
+
+
+def test_primeiro_kid_desconhecido_com_cache_vencido_e_jwks_fora(cenario, monkeypatch):
+    agora = 100
+    monkeypatch.setattr(auth, "monotonic", lambda: agora)
+    assert cenario.pedir(cenario.token()) == 204
+
+    agora += 301
+    cenario.buscar.side_effect = httpx.ConnectError("indisponivel")
+    assert cenario.pedir(cenario.token(kid="desconhecida")) == 503
+    assert cenario.buscar.call_count == 2
 
 
 @pytest.mark.parametrize("algoritmo", ["HS256", "RS256", "none"])
