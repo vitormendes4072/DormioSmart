@@ -9477,11 +9477,60 @@ Um celular deitado só mexe em z, e é z que pesa na norma nessa posição. O GG
 
 **Adaptação.** Mantive os filtros em cada consulta, usei o par de chegada e ID na API e no banco, e restaurei os comentários sobre duração, medição e chegada no SELECT.
 
-**O que deu errado no caminho.** Nada nesta etapa além das falhas esperadas nos controles positivos.
+**O que deu errado no caminho.** ✏️ *Corrigido em 12/11, na integração: aqui dizia "Nada nesta etapa além das falhas esperadas nos controles positivos".* A primeira versão da PR (`efe5d75`) chegou à revisão com dois defeitos, achados pelo Claude executando, e não pelos testes da PR:
+- **A paginação interna por posição (`range`) duplicava uma leitura** quando outra era gravada entre duas páginas: 1 501 linhas, 1 500 distintas, na sonda da revisão.
+- **Os testes não acusavam os defeitos que diziam cobrir.** O banco falso ignorava `eq`, `gte`, `lte` e `or_`, e, com as duas chamadas `parametros.set` do cursor do CSV removidas de propósito, `api.test.ts` e `montagem.test.ts` seguiam 39/39.
+- **A PR também chegou sem esta entrada e sem o fechamento no backlog**, e havia apagado os comentários do `select` (`DASH-09`, `DASH-12`).
+Os quatro pontos foram corrigidos no `5ed12df`, e as sabotagens reexecutadas na revisão final derrubaram os testes.
 
 **Risco em aberto.** O cursor não fornece uma cópia transacional dos dados. Leituras novas acima do cursor podem ficar fora de uma exportação já iniciada. A inserção foi simulada localmente, sem ensaio concorrente no Supabase de produção.
 
 **Procedência.** PR #146, revisão da paginação por posição e testes de regressão executados no Windows sobre a branch da PR atualizada com `develop` `01c9da5`.
+
+---
+
+# 2026-11-12 (xv) — UI-26: sessão na borda do limite do histórico
+
+**O problema.** Um trecho contínuo na borda da resposta podia aparecer como Completa.
+
+**Hipótese.** Preservar a leitura na borda da ordenação da API permite identificar a sessão que pode ter sido cortada.
+
+**O que foi testado.** No Windows, o Histórico recebeu duas sessões em uma resposta de 2 000 leituras e em outra de 1 999. Troquei a comparação do limite para 9999 e reexecutei o teste.
+
+**Resultado medido.** Um teste falhou em develop e um falhou com 9999 pela ausência de Parcial. Com a correção, só a sessão na borda foi marcada e ambas ficaram completas abaixo do limite.
+
+**Controles positivos da revisão.** Cada sabotagem foi executada isoladamente e desfeita:
+- Trocar `leituras.at(-1)` por `leituras.at(0)` fez falhar “marca somente a sessão na borda de uma resposta no limite”. A linha recente perdeu o rótulo Completa.
+- Apagar o texto do aviso fez falhar “aviso de cobertura do painel com 2000 leituras”. O teste de 1 999 leituras verifica a ausência do aviso.
+- Apagar ` · Parcial` da tabela fez falhar “marca apenas a sessão na borda na tabela do painel”. A linha antiga perdeu a marca.
+
+**Adaptação.** O Histórico e o painel compartilham a identificação da borda. A cobertura numérica segue descrevendo o trecho observado.
+
+**O que deu errado no caminho.** A primeira coleta da saída dos testes falhou ao imprimir um caractere no console CP1252. Reexecutei os três controles com Python em UTF-8.
+
+**Risco em aberto.** A API não informa se há mais leituras quando chega exatamente ao limite. O UI-30 trata as noites ausentes da janela.
+
+**Procedência.** Testes executados no Windows sobre develop 952371c.
+
+---
+
+# 2026-11-12 (xvi) — UI-29: ordem das leituras recentes
+
+**O problema.** A tabela ordenava pela medição e a legenda dizia que a ordem era de chegada.
+
+**Hipótese.** Explicar a ordenação existente e o fallback de chegada descreve a tabela mesmo com envio atrasado.
+
+**O que foi testado.** No Windows, montei o painel com duas leituras cuja ordem de chegada era inversa à de medição. O teste conferiu as linhas e a legenda. Executei o teste com a legenda antiga.
+
+**Resultado medido.** Com a legenda antiga, a ordem das linhas passou e a asserção da legenda falhou em um teste. Com a legenda corrigida, a sequência e o texto passaram.
+
+**Adaptação.** Mantive o critério de ordenação e explicitei o fallback na legenda.
+
+**O que deu errado no caminho.** Nada além da falha esperada no controle.
+
+**Risco em aberto.** O caso de envio atrasado foi reproduzido com dados simulados.
+
+**Procedência.** Testes no Windows, sobre a UI-26 (478c92c), baseada em develop 952371c.
 
 # 2026-11-12 (xvii) — FW-07 (c) na placa: a medição limpa, e o envio que falhava por memória (FW-13)
 
@@ -9523,6 +9572,7 @@ Um celular deitado só mexe em z, e é z que pesa na norma nessa posição. O GG
 - **A deriva de −123 ppm numa gravação de 10 min** destoa das outras; a medida de horas é a do `FW-07` (c).
 
 **Procedência.** Placa e sensor do autor, COM3, `arduino-cli` 1.6.0 com `esp32:esp32` 3.3.12, Windows 11, 12/11; capturas do serial no diretório temporário da sessão (fora do repositório); branch `bugfix/FW-13-lote-do-esp32`.
+
 
 # O que este diário não cobre
 
