@@ -1,5 +1,5 @@
 import { CheckCircle2, Clock, NotebookPen, Thermometer } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router";
 
 import { Moldura } from "./Blueprint";
@@ -108,19 +108,46 @@ export function ListaDeNoites({
   const [noites, setNoites] = useState<NoiteGravada[] | null>(null);
   const [aberta, setAberta] = useState<string | null>(null);
 
-  const ler = useCallback(async () => {
-    try {
-      // A mais recente primeiro: é a que acabou de terminar.
-      setNoites([...(await plugin.noites()).noites].reverse());
-    } catch {
-      setNoites([]);
-    }
-  }, [plugin]);
+  const [falhou, setFalhou] = useState(false);
+  const [tentativa, setTentativa] = useState(0);
 
   useEffect(() => {
-    void ler();
-  }, [ler, recarregar]);
+    let atual = true;
+    setFalhou(false);
 
+    async function ler() {
+      try {
+        // A mais recente primeiro: é a que acabou de terminar.
+        const resultado = await plugin.noites();
+        if (atual) setNoites([...resultado.noites].reverse());
+      } catch {
+        if (atual) {
+          setNoites(null);
+          setFalhou(true);
+        }
+      }
+    }
+
+    void ler();
+    return () => { atual = false; };
+  }, [plugin, recarregar, tentativa]);
+
+  if (falhou) {
+    return (
+      <div className="space-y-2 text-sm">
+        <p role="alert" className="text-destructive">
+          Não foi possível carregar as noites gravadas.
+        </p>
+        <button
+          type="button"
+          onClick={() => setTentativa((valor) => valor + 1)}
+          className="rounded-lg border border-border px-3 py-1.5 font-medium"
+        >
+          Tentar novamente
+        </button>
+      </div>
+    );
+  }
   if (noites === null) return null;
   if (noites.length === 0) {
     return (

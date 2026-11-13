@@ -1,5 +1,5 @@
 import { Loader2, ShieldCheck } from "lucide-react";
-import { useId, useState } from "react";
+import { useId, useLayoutEffect, useRef, useState, type KeyboardEvent } from "react";
 import { Link } from "react-router";
 
 import { TEXTO_DO_CONSENTIMENTO } from "../lib/consentimento";
@@ -25,8 +25,40 @@ export function TelaDeConsentimento({
   const [enviando, setEnviando] = useState(false);
   const titulo = useId();
   const caixa = useId();
+  const cabecalho = useRef<HTMLHeadingElement>(null);
+
+  useLayoutEffect(() => {
+    const origem = document.activeElement;
+    cabecalho.current?.focus();
+    return () => {
+      if (origem instanceof HTMLElement && origem.isConnected) origem.focus();
+    };
+  }, []);
+
+  const aoTeclar = (evento: KeyboardEvent<HTMLDivElement>) => {
+    if (evento.key === "Escape") {
+      evento.preventDefault();
+      if (!enviando) aoRecusar();
+      return;
+    }
+    if (evento.key !== "Tab") return;
+
+    const controles = Array.from(evento.currentTarget.querySelectorAll<HTMLElement>(
+      "a[href], input:not(:disabled), button:not(:disabled)",
+    ));
+    const primeiro = controles[0];
+    const ultimo = controles.at(-1);
+    const foco = document.activeElement;
+    if (!controles.some((controle) => controle === foco)
+        || (evento.shiftKey ? foco === primeiro : foco === ultimo)) {
+      evento.preventDefault();
+      (evento.shiftKey ? ultimo : primeiro)?.focus();
+    }
+  };
 
   const concordar = async () => {
+    // Os dois botões ficam indisponíveis até o registro terminar.
+    cabecalho.current?.focus();
     setEnviando(true);
     try {
       await aoConcordar();
@@ -41,11 +73,12 @@ export function TelaDeConsentimento({
         role="dialog"
         aria-modal="true"
         aria-labelledby={titulo}
+        onKeyDown={aoTeclar}
         className="w-full max-w-md max-h-[90vh] overflow-y-auto rounded-2xl border border-border bg-card p-5 space-y-4"
       >
         <div className="flex items-center gap-2">
           <ShieldCheck className="w-5 h-5 text-primary" aria-hidden />
-          <h2 id={titulo} className="text-base font-semibold text-foreground">
+          <h2 id={titulo} ref={cabecalho} tabIndex={-1} className="text-base font-semibold text-foreground">
             Antes de começar: seus dados de sono
           </h2>
         </div>

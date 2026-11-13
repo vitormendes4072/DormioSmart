@@ -9600,6 +9600,122 @@ Os quatro pontos foram corrigidos no `5ed12df`, e as sabotagens reexecutadas na 
 
 **Procedência.** GitHub (PRs #152–#155 e CI); `develop` `c61b362`; logs da placa de 12/11 (fora do repositório); Windows 11.
 
+# 2026-11-12 (xix) — o release R1 e a conta real
+
+**O problema, como foi entendido no início.** Com o `DATA-15`, o `API-08`, o `UI-26` e o `UI-29` integrados, o autor aprovou o release R1 antes dos itens 1.4–1.7 do plano, porque o corte de 1 000 leituras já afetava o Histórico dele.
+
+**Hipótese de trabalho.** Sem migração e sem mudança de contrato, o release não mexe na ingestão; o que só a conta real mostra é se a paginação e a marca "Parcial" funcionam com os dados de verdade.
+
+**O que foi testado, e como.**
+- **O release:** PR #157 (`develop` → `main`), os 8 jobs do CI e os 2 da Vercel, merge `ed11e81`.
+- **Depois do deploy:** `/health`; `/api/sleep-history` (com e sem cursor) e `/api/features` sem token; `X-Vercel-Id`; o deployment de produção; os textos novos no pacote JavaScript publicado.
+- **O login real do autor:** o Histórico de 7 dias, mostrado ao Claude por captura de tela (não versionada).
+
+**Resultado medido.**
+- **Produção:** `/health` `200`, banco ok, contrato 2.9.0, modelo `ml-inf-cabeca-v2`; as três rotas `401` sem token; `gru1`; deployment de produção em `ed11e81`; o pacote tem `cursor_tempo`, "Cobertura parcial" e "medição mais recente à mais antiga".
+- **O Histórico:** antes do release, 3 sessões e 1 000 leituras; agora **13 sessões, somando exatamente 2 000 leituras** — o teto do painel, acima do teto de 1 000 do Supabase. A sessão mais antiga (a noite de 10/11, 815 épocas no aparelho) aparece com 550 leituras e marcada **"Parcial"**; as outras como "Completa" ou "Com lacunas".
+
+**Adaptação.** O `UI-30` passa de hipótese a defeito confirmado em produção: a janela de 7 dias da conta já tem mais de 2 000 leituras, e o aviso de limite continua.
+
+**O que deu errado no caminho.** A previsão que dei ao autor estava errada: disse que a conta teria ~1 300 leituras e que o aviso sumiria. Não contei as leituras de bancada do travesseiro nem as dos envios de diagnóstico de 12/11; a janela já passa de 2 000.
+
+**Risco em aberto.**
+- **O Histórico de 7 dias continua cortado em 2 000 leituras** — `UI-30`, agora o item de maior efeito na conta real.
+- **As leituras de bancada de 12/11 contam na janela** e empurram as noites reais para fora — `APP-11` (I-9 do plano).
+
+**Procedência.** GitHub (PR #157, CI e deployments); `curl` na produção, 12/11; a tela do autor na conversa; Windows 11.
+
+# 2026-11-12 (xx) — a limpeza das leituras de teste na conta do autor
+
+**O problema, como foi entendido no início.** A conta do autor tinha, misturadas às duas noites reais, leituras de bancada e de teste (de agosto até hoje). Elas entravam no Histórico e no painel como sessões, empurravam as noites reais para fora da janela de 2 000 leituras (`UI-30`) e distorceriam qualquer análise. O autor pediu para apagar tudo o que não fosse noite de sono real.
+
+**Hipótese de trabalho.** Uma regra por duração (manter sessões de 3 h ou mais) separa as noites dos testes; a exclusão roda pelo autor no SQL Editor, depois de uma prévia e de uma conferência que dizem quantas linhas saem.
+
+**O que foi testado, e como.**
+- **A prévia (só leitura):** as sessões da conta por aparelho (buraco de mais de 15 min abre sessão nova), testada antes num Postgres 17 local com dados falsos.
+- **A conferência e a exclusão:** mantêm só as leituras do celular dentro das janelas das duas noites; testadas no Postgres local com noites, testes, bancada e uma segunda conta (que tinha de ficar intocada).
+- **No site:** o Histórico de 7 dias depois da exclusão.
+
+**Resultado medido.**
+- **A prévia na produção:** 11 sessões. Ficam 2 noites do celular (10/11 03:02–09:52, 6,8 h, 815 leituras; 11/11 04:19–12:03, 7,7 h, 930).
+- **A conferência:** 804 saem, 1 745 ficam — os números esperados pela prévia.
+- **Depois da exclusão**, o Histórico mostra só as duas noites, sem o aviso de limite e sem "Parcial"; a noite de 10/11 aparece inteira (6h47m, 815 leituras), e não mais cortada em 550.
+- **No Postgres local**, a mesma exclusão tirou só os testes e não tocou a outra conta.
+
+**Adaptação.** **A regra por duração foi trocada por janelas explícitas:** a bancada do travesseiro de 12/11 (18:53–22:33, 3,7 h, 422 leituras) passava de 3 h e saía como "MANTER". A regra final mantém só as leituras do celular dentro das duas noites.
+
+**O que deu errado no caminho.**
+- **A primeira prévia não trouxe linha nenhuma:** o filtro do e-mail não casou; a versão com `lower(trim(...))` casou.
+- **A primeira execução da exclusão respondeu "No rows returned"** sem dizer quantas saíram (o `returning` não estava na tela); a segunda listou as linhas apagadas, e o Histórico confirmou o estado final.
+- **A regra de 3 h** classificaria uma bancada longa como noite (ver Adaptação).
+
+**Risco em aberto.**
+- **O app ainda não marca gravação de teste** — `APP-11`; sem isso, a próxima bancada volta a poluir a conta.
+- **O `UI-30` deixou de aparecer na conta**, porque a janela de 7 dias tem 1 745 leituras; volta com a terceira noite.
+
+**Procedência.** SQL Editor do Supabase, executado pelo autor em 12/11 (resultados colados na conversa); Postgres 17 local em Docker; a tela do Histórico do autor (não versionada); Windows 11.
+
+---
+
+# 2026-11-12 (xxi) — APP-15: Falha ao listar noites
+
+**O problema.** O erro do plugin aparecia como lista vazia.
+
+**Hipótese.** Separar a falha da resposta vazia permite repetir a consulta.
+
+**O que foi testado.** No Windows, simulei rejeição do plugin seguida de sucesso e acionei Tentar novamente.
+
+**Resultado medido.** Em develop, 1 teste falhou porque aparecia a lista vazia em vez do alerta, e 7 passaram. Com a correção, o alerta apareceu e a noite voltou após repetir a consulta. A suíte original passou com 573 testes.
+
+**Adaptação.** A lista mostra erro e permite tentar novamente, com proteção contra respostas antigas.
+
+**O que deu errado no caminho.** Nada nesta etapa além da falha esperada no controle.
+
+**Risco em aberto.** Validação em aparelho físico pendente.
+
+**Procedência.** PR #148, implementação `c984876`, registros sobre `develop` `745f232`. Testes automatizados no Windows.
+
+---
+
+# 2026-11-12 (xxii) — UI-28: Teclado no consentimento e no tema
+
+**O problema.** O foco escapava do diálogo e o seletor não oferecia navegação de rádio.
+
+**Hipótese.** Gerenciar o foco no diálogo e usar rádios nativos corrige os dois fluxos.
+
+**O que foi testado.** No Windows, usei user-event para abrir, navegar, fechar e restaurar o foco, além de mudar o tema com as setas.
+
+**Resultado medido.** Em develop, 2 testes falharam: o foco ficou no botão de origem e Tab entrou no tema errado. Com a correção, 574 testes passaram.
+
+**Adaptação.** Contive Tab no diálogo, liguei Escape a Agora não e usei rádios nativos.
+
+**O que deu errado no caminho.** O jsdom não fornece CSS.escape. Simulei essa API apenas no teste das setas.
+
+**Risco em aberto.** Validação com leitor de tela em Android pendente.
+
+**Procedência.** PR #149, implementação `d538c5d`, registros sobre `develop` `745f232`. Testes automatizados no Windows.
+
+---
+
+# 2026-11-12 (xxiii) — UI-27: Primeira janela de coleta
+
+**O problema.** Encerrar antes da primeira janela não explicava a ausência de registros.
+
+**Hipótese.** Exibir a contagem e o aviso torna o estado da coleta visível.
+
+**O que foi testado.** No Windows, simulei relógio e sensor no hook e na rota Coletar. Removi separadamente cada texto da tela e rodei o teste.
+
+**Resultado medido.** O teste do hook falhou em develop pela ausência da contagem. Cada remoção derrubou 1 teste da tela, na asserção do respectivo texto. No preview, o autor confirmou o encerramento aos 11 s, a nova contagem e o primeiro registro. A suíte atualizada passou com 581 testes em 44 arquivos.
+
+**Adaptação.** A contagem usa a duração da primeira janela e reinicia com a sessão.
+
+**O que deu errado no caminho.** Um comando de inspeção usou expansão de chaves incompatível com PowerShell. Repeti a leitura com caminhos explícitos.
+
+**Risco em aberto.** A simulação automatizada não mede a cadência de sensores de outros aparelhos.
+
+**Procedência.** PR #150, implementação `fe85462`, registros sobre `develop` `745f232`. Testes automatizados no Windows.
+
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

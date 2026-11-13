@@ -1,4 +1,5 @@
 import { Monitor, Moon, Sun } from "lucide-react";
+import { useId } from "react";
 
 import { useTema } from "../hooks/useTema";
 import type { PreferenciaDeTema } from "../lib/tema";
@@ -11,6 +12,7 @@ const OPCOES: { valor: PreferenciaDeTema; rotulo: string; icone: typeof Sun }[] 
 
 export function SeletorDeTema() {
   const { preferencia, aplicado, definirPreferencia } = useTema();
+  const grupo = useId();
 
   return (
     <div>
@@ -22,21 +24,26 @@ export function SeletorDeTema() {
         {OPCOES.map(({ valor, rotulo, icone: Icone }) => {
           const ativo = preferencia === valor;
           return (
-            <button
+            <label
               key={valor}
-              role="radio"
-              aria-checked={ativo}
-              onClick={() => definirPreferencia(valor)}
-              className={`flex flex-col items-center gap-2 rounded-xl border px-3 py-4 text-sm font-medium transition
+              className={`flex cursor-pointer flex-col items-center gap-2 rounded-xl border px-3 py-4 text-sm font-medium transition focus-within:ring-2 focus-within:ring-ring
                 ${
                   ativo
                     ? "border-primary bg-primary/10 text-primary"
                     : "border-border text-muted-foreground hover:bg-secondary hover:text-foreground"
                 }`}
             >
-              <Icone className="w-5 h-5" />
+              <input
+                type="radio"
+                name={grupo}
+                value={valor}
+                checked={ativo}
+                onChange={() => definirPreferencia(valor)}
+                className="sr-only"
+              />
+              <Icone className="w-5 h-5" aria-hidden />
               {rotulo}
-            </button>
+            </label>
           );
         })}
       </div>

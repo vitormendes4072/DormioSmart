@@ -335,6 +335,40 @@ describe("montagem real das telas (UI-17)", PRAZO, () => {
     expect(screen.getByText(/da medição mais recente à mais antiga/)).toBeTruthy();
   });
 
+  it("conta até o primeiro registro e avisa ao encerrar a coleta sem registros", async () => {
+    const original = vi.mocked(fetch).getMockImplementation()!;
+    vi.stubGlobal("DeviceMotionEvent", class {});
+    vi.mocked(fetch).mockImplementation((entrada, opcoes) => {
+      if (String(entrada) === "/api/me/perfil") {
+        return Promise.resolve(respostaJson({ ...perfilDoServidor, consentimento_saude_versao: "2026-11-10" }));
+      }
+      if (String(entrada) === "/api/devices/celular") {
+        return Promise.resolve(respostaJson({ id: "celular-teste", nome: "Celular de teste" }));
+      }
+      return original(entrada, opcoes);
+    });
+
+    await montar("/coletar");
+    const iniciar = await screen.findByRole("button", { name: "Iniciar coleta" });
+    vi.useFakeTimers();
+    try {
+      await act(async () => fireEvent.click(iniciar));
+      expect(screen.getByText("Primeiro registro em 30 s.")).toBeTruthy();
+      act(() => {
+        window.dispatchEvent(Object.assign(new Event("devicemotion"), {
+          accelerationIncludingGravity: { x: 0, y: 0, z: 9.81 },
+        }));
+        vi.advanceTimersByTime(5000);
+      });
+      expect(screen.getByText("Primeiro registro em 25 s.")).toBeTruthy();
+      fireEvent.click(screen.getByRole("button", { name: "Encerrar sessão" }));
+      expect(screen.getByText("Coleta encerrada sem registros.")).toBeTruthy();
+      expect(screen.queryByText(/Primeiro registro em/)).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("exporta todas as páginas do histórico", async () => {
     const original = vi.mocked(fetch).getMockImplementation()!;
     const criarUrl = vi.fn(() => "blob:csv");
