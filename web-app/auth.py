@@ -46,6 +46,7 @@ class ChavesDoProjeto:
         self.emissor = emissor
         self._chaves = None
         self._vence = 0
+        self._limite_de_recuo = 0
         self._ultima_busca = float("-inf")
         self._falhou = False
         self._lock = Lock()
@@ -57,6 +58,8 @@ class ChavesDoProjeto:
             if atual and kid in self._chaves:
                 return self._chaves[kid]
             if agora - self._ultima_busca < 30:
+                if self._falhou and self._chaves is not None and agora < self._limite_de_recuo:
+                    return self._chaves.get(kid, INDISPONIVEL)
                 return INDISPONIVEL if self._falhou or not atual else None
 
             self._ultima_busca = agora
@@ -78,10 +81,14 @@ class ChavesDoProjeto:
                         novas[kid_da_chave] = jwt.PyJWK.from_dict(chave, algorithm="ES256").key
             except (httpx.HTTPError, ValueError, TypeError, KeyError, AttributeError, jwt.PyJWTError):
                 self._falhou = True
+                if self._chaves is not None and monotonic() < self._limite_de_recuo:
+                    return self._chaves.get(kid, INDISPONIVEL)
                 return INDISPONIVEL
             self._falhou = False
             self._chaves = novas
-            self._vence = monotonic() + 300
+            concluida = monotonic()
+            self._vence = concluida + 300
+            self._limite_de_recuo = concluida + 24 * 3600
             return novas.get(kid)
 
 

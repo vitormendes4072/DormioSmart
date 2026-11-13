@@ -81,6 +81,37 @@ def test_audiencia_errada(cenario):
     assert cenario.pedir(cenario.token(aud="anon")) == 401
 
 
+def test_sub_precisa_ser_uuid(cenario):
+    assert cenario.pedir(cenario.token(sub="nao-e-uuid")) == 401
+
+
+def test_jwks_misto_preserva_a_chave_es256(cenario):
+    chaves = cenario.buscar.return_value.json()["keys"]
+    chaves.append({"kid": "simetrica", "kty": "oct", "alg": "HS256", "k": "dGVzdGU"})
+    cenario.buscar.return_value = httpx.Response(
+        200, json={"keys": chaves}, request=httpx.Request("GET", ISS)
+    )
+    assert cenario.pedir(cenario.token()) == 204
+
+
+def test_recuo_do_jwks_expirado_tem_teto(cenario, monkeypatch):
+    agora = 100
+    monkeypatch.setattr(auth, "monotonic", lambda: agora)
+    token = cenario.token()
+    assert cenario.pedir(token) == 204
+    cenario.buscar.side_effect = httpx.ConnectError("indisponivel")
+    agora += 301
+    assert cenario.pedir(token) == 204
+    assert cenario.pedir(token) == 204
+    assert cenario.pedir(cenario.token(kid="desconhecida")) == 503
+    assert cenario.buscar.call_count == 2
+    agora = 100 + 24 * 3600 - 1
+    assert cenario.pedir(token) == 204
+    agora += 1
+    assert cenario.pedir(token) == 503
+    assert cenario.buscar.call_count == 3
+
+
 @pytest.mark.parametrize("algoritmo", ["HS256", "RS256", "none"])
 def test_algoritmo_fora_da_lista_e_recusado_antes_do_jwks(cenario, algoritmo):
     from base64 import urlsafe_b64encode
