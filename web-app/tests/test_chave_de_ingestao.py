@@ -13,7 +13,10 @@ Nenhum teste pegava porque nenhum chegava ao gateway: estes também não
 chegam -- conferem o arranjo dos cabeçalhos, que é o que a medição mostrou
 que decide. A confirmação contra o serviço é o `/health` depois do deploy.
 """
-from unittest.mock import patch
+from unittest.mock import Mock, patch
+
+from flask import Flask
+from routes import init_routes
 
 import pytest
 
@@ -63,9 +66,26 @@ def test_chave_de_ingestao_nunca_vai_no_apikey(monkeypatch):
     assert cliente.apikey != INGESTAO
 
 
-def test_sem_chave_de_ingestao_segue_com_a_service_role(monkeypatch):
-    cliente = montar(monkeypatch, ingestao=None)
-    assert cliente.apikey == SERVICO and cliente.bearer_do_postgrest == SERVICO
+@pytest.mark.parametrize("legada", ["SUPABASE_SERVICE_ROLE_KEY", "SUPABASE_KEY"])
+def test_chave_legada_nao_substitui_ingestao(monkeypatch, legada):
+    monkeypatch.setenv("SUPABASE_URL", URL)
+    monkeypatch.setenv("SUPABASE_ANON_KEY", ANON)
+    for nome in ("SUPABASE_INGESTAO_KEY", "SUPABASE_SERVICE_ROLE_KEY", "SUPABASE_KEY"):
+        monkeypatch.delenv(nome, raising=False)
+    monkeypatch.setenv(legada, SERVICO)
+    db = database.Database()
+    app = Flask(__name__)
+    init_routes(app)
+    falso = Mock()
+    falso.rpc.side_effect = lambda nome, *args, **kwargs: Mock(
+        execute=Mock(return_value=Mock(data="ok" if nome == "sanidade" else []))
+    )
+    with patch("routes.db", db), patch.object(database, "create_client", return_value=falso) as criar:
+        cliente = app.test_client()
+        saude = cliente.get("/health")
+        ingestao = cliente.post("/api/data", headers={"X-Device-Token": "token-teste"}, json={})
+    assert (saude.status_code, ingestao.status_code) == (503, 503)
+    criar.assert_not_called()
 
 
 def test_chave_de_ingestao_sem_anon_recusa_em_vez_de_cair_para_a_service_role(monkeypatch):

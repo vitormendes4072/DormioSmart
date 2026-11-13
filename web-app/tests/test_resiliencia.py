@@ -100,7 +100,7 @@ def test_registrar_leitura_da_sessao_devolve_none():
 
 def test_verificar_conexao_reporta_falha_sem_levantar():
     with patch.object(database.db, "url", "https://exemplo.supabase.co"), \
-         patch.object(database.db, "key", "chave"), \
+         patch.object(database.db, "ingestao_key", "chave"), \
          _cliente_explode():
         ok, motivo = database.db.verificar_conexao()
     assert ok is False
@@ -120,7 +120,7 @@ def test_post_data_responde_503_e_nao_400_nem_401_quando_o_banco_falha():
 
 def test_health_responde_503_e_nunca_500():
     with patch.object(database.db, "url", "https://exemplo.supabase.co"), \
-         patch.object(database.db, "key", "chave"), \
+         patch.object(database.db, "ingestao_key", "chave"), \
          _cliente_explode():
         resp = _client().get("/health")
     assert resp.status_code == 503

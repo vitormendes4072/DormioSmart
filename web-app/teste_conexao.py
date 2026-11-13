@@ -19,14 +19,10 @@ Para ver volume, use o painel do Supabase, que autentica como você.
 from dotenv import load_dotenv
 load_dotenv()
 
-import os
-
 from database import db
 
 
 def testar():
-    usando_minima = bool(os.environ.get("SUPABASE_INGESTAO_KEY"))
-
     ok, motivo = db.verificar_conexao()
     if ok:
         print("[ok] Conexao com Supabase: SUCESSO")
@@ -37,17 +33,12 @@ def testar():
         print(f"        Motivo: {motivo}")
         print("        Verifique SUPABASE_URL e SUPABASE_INGESTAO_KEY no .env")
 
-    print()
-    if usando_minima:
+    if ok:
         print("[ok] Credencial: SUPABASE_INGESTAO_KEY (papel dormio_ingestao).")
-        print("     Privilegio minimo -- nao le dado de usuario.")
-    else:
-        print("[atencao] Credencial: SUPABASE_SERVICE_ROLE_KEY.")
-        print("          Essa chave IGNORA o RLS e tem acesso total ao banco.")
-        print("          Emita a chave do papel dormio_ingestao e configure")
-        print("          SUPABASE_INGESTAO_KEY -- ver README, secao")
-        print("          'Rotacao da chave de ingestao'.")
+        return 0
+    print("        Confira também SUPABASE_ANON_KEY e a seção 'Rotação da chave de ingestão' no README.")
+    return 1
 
 
 if __name__ == "__main__":
-    testar()
+    raise SystemExit(testar())

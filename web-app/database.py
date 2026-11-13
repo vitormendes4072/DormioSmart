@@ -59,22 +59,9 @@ class Database:
     def __init__(self):
         # Apenas salva as credenciais, NÃO conecta ainda.
         #
-        # A chave do caminho de ingestão (SEC-06). Ordem de preferência:
-        #
-        #   1. SUPABASE_INGESTAO_KEY — JWT do papel `dormio_ingestao`, que só
-        #      tem EXECUTE em três funções e NENHUM privilégio de tabela. É a
-        #      configuração correta; ver migrations/005 e o README.
-        #   2. SUPABASE_SERVICE_ROLE_KEY — cai aqui só até a chave nova ser
-        #      emitida. Funciona, mas NÃO reduz privilégio nenhum: a
-        #      service_role ignora RLS e tem acesso total. O aviso no
-        #      `cliente_de_ingestao` existe para que isso não passe em silêncio.
+        # A ingestão exige o JWT do papel dormio_ingestao (SEC-19).
         self.url = os.environ.get("SUPABASE_URL", "")
         self.ingestao_key = os.environ.get("SUPABASE_INGESTAO_KEY", "")
-        self.key = (
-            self.ingestao_key
-            or os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
-            or os.environ.get("SUPABASE_KEY", "")
-        )
         # Chave anon: usada para validar o JWT do usuario e para montar o
         # cliente por requisicao que carrega esse JWT (AUTH-03). E publica por
         # design — o isolamento vem do RLS, nao do sigilo dela.
@@ -100,22 +87,10 @@ class Database:
         chamadores dependem disso — ver a nota do FIX-08 no topo do arquivo.
         """
         if self._client is None:
-            if not self.url or not self.key:
-                logger.error(
-                    "SUPABASE_URL ou a chave (SUPABASE_SERVICE_ROLE_KEY/SUPABASE_KEY) ausentes."
-                )
+            if not self.url or not self.ingestao_key:
+                logger.error("Configure SUPABASE_URL e SUPABASE_INGESTAO_KEY para a ingestao.")
                 return None
-            if not self.ingestao_key:
-                # Um aviso por processo, no momento em que a chave de alto
-                # privilégio entra em uso de fato. Silenciar isto seria deixar
-                # a configuração insegura parecer a configuração normal.
-                logger.warning(
-                    "Ingestao usando chave de ALTO PRIVILEGIO "
-                    "(SUPABASE_SERVICE_ROLE_KEY). Emita a chave do papel "
-                    "dormio_ingestao e configure SUPABASE_INGESTAO_KEY -- ver "
-                    "web-app/README.md, secao 'Rotacao da chave de ingestao'."
-                )
-            if self.ingestao_key and not self.anon_key:
+            if not self.anon_key:
                 # Sem a anon não há como montar o cliente da chave de ingestão
                 # (ver abaixo). Recusar, e não cair para a service_role: a
                 # configuração pediu privilégio mínimo, e trocá-lo em silêncio
@@ -126,21 +101,18 @@ class Database:
                 )
                 return None
             try:
-                if self.ingestao_key:
-                    # A chave de ingestão vai SÓ no `Authorization`; o `apikey`
-                    # leva a anon (SEC-14, 31/10). O gateway do Supabase só
-                    # aceita no `apikey` as chaves que ele emitiu (anon ou
-                    # service_role) e recusa um JWT de papel próprio com
-                    # `401 Invalid API key` antes de o pedido chegar ao banco.
-                    # Medido contra a produção: apikey = ingestão -> 401; apikey
-                    # = anon e Bearer = ingestão -> 200, papel dormio_ingestao.
-                    # É o mesmo arranjo de `cliente_do_usuario`, com o JWT do
-                    # papel no lugar do JWT do usuário.
-                    cliente = create_client(self.url, self.anon_key)
-                    cliente.postgrest.auth(self.ingestao_key)
-                    self._client = cliente
-                else:
-                    self._client = create_client(self.url, self.key)
+                # A chave de ingestão vai SÓ no `Authorization`; o `apikey`
+                # leva a anon (SEC-14, 31/10). O gateway do Supabase só
+                # aceita no `apikey` as chaves que ele emitiu (anon ou
+                # service_role) e recusa um JWT de papel próprio com
+                # `401 Invalid API key` antes de o pedido chegar ao banco.
+                # Medido contra a produção: apikey = ingestão -> 401; apikey
+                # = anon e Bearer = ingestão -> 200, papel dormio_ingestao.
+                # É o mesmo arranjo de `cliente_do_usuario`, com o JWT do
+                # papel no lugar do JWT do usuário.
+                cliente = create_client(self.url, self.anon_key)
+                cliente.postgrest.auth(self.ingestao_key)
+                self._client = cliente
             except Exception:
                 # exc_info leva o traceback ao log sem interpolar a mensagem do
                 # driver, que pode conter host e credencial.
@@ -452,7 +424,7 @@ class Database:
         de contagem com limite 1 — confirma credencial e alcance de rede sem
         trazer dado.
         """
-        if not self.url or not self.key:
+        if not self.url or not self.ingestao_key:
             return False, "credenciais ausentes"
         try:
             client = self.cliente_de_ingestao()
