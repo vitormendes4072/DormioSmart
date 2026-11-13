@@ -25,8 +25,8 @@ Duas verificações, cada uma num banco novo por cenário:
       controle: se ele não quebrasse nada, a verificação não estaria vendo.
 
 Limites, ditos para não serem descobertos depois: é Postgres puro com os papéis
-e GRANTs imitando o Supabase (`tests/rls/esquema_base.sql` e
-`grants_pos_migracao.sql`), sem o PostgREST na frente; e (2) cobre as operações
+e GRANTs imitando o Supabase (os privilégios padrão de `tests/rls/esquema_base.sql`),
+sem o PostgREST na frente; e (2) cobre as operações
 que o código de `main` faz no banco, não chamadas que o frontend de `main` faça
 além delas.
 
@@ -117,14 +117,11 @@ def montar(bancos, sufixo, migracoes, dado_antigo=False):
     depois = [m for m in migracoes if m not in antes]
     for m in antes:
         rodar(cur, ARQ[m])
-    # Os GRANTs das tabelas que a 001 cria entram UMA vez, aqui — como na
-    # produção, onde elas existem desde agosto. Reaplicá-los DEPOIS das
-    # migrações novas desfaria qualquer `revoke` que uma delas fizesse, e a
-    # verificação (2) não veria uma migração que tira privilégio do código de
-    # main (medido em 28/10: a sabotagem passava). O que as migrações novas
-    # criam herda os privilégios padrão de `esquema_base.sql`, como no Supabase.
-    if "001" in antes:
-        rodar(cur, RLS / "grants_pos_migracao.sql")
+    # Nenhum GRANT de tabela aqui (SEC-13, 13/11). Até 28/10 os GRANTs vinham
+    # DEPOIS das migrações novas e desfaziam o `revoke` de qualquer uma (medido:
+    # a sabotagem passava); de 28/10 a 13/11 entravam uma vez, logo depois da
+    # 001. Os dois eram redundantes: as tabelas da 001, como todas, herdam os
+    # privilégios padrão de `esquema_base.sql`, como no Supabase.
     if dado_antigo:
         # O que existe em produção antes das migrações novas: uma conta e um
         # dispositivo pareado pelo caminho antigo (token_hash em devices).
