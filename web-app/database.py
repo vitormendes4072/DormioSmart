@@ -2,7 +2,6 @@ import logging
 import os
 
 from supabase import create_client
-from supabase_auth.errors import AuthApiError, AuthInvalidJwtError
 from consulta import LIMITE_PADRAO
 
 
@@ -29,21 +28,6 @@ class _Indisponivel:
 
 INDISPONIVEL = _Indisponivel()
 
-
-def _auth_recusou(erro):
-    """O Auth RECUSOU a credencial (4xx), ou o serviço falhou?
-
-    `supabase_auth` levanta `AuthApiError` com o status HTTP quando o servidor
-    responde 4xx sobre o token, e `AuthInvalidJwtError` quando o JWT nem é
-    válido. Rede, 502, 503 e 504 viram `AuthRetryableError`; o resto,
-    `AuthUnknownError` ou exceção comum — tudo isso é indisponibilidade.
-    """
-    if isinstance(erro, AuthInvalidJwtError):
-        return True
-    if isinstance(erro, AuthApiError):
-        status = getattr(erro, "status", None)
-        return isinstance(status, int) and 400 <= status < 500
-    return False
 
 # Log de servidor via `logging`, não `print` (FIX-08).
 #
@@ -134,32 +118,10 @@ class Database:
         return self._client_anon
 
     def validar_token_de_usuario(self, jwt):
-        """Valida o JWT no servidor de Auth.
+        """Valida o JWT do usuario (AUTH-09), preservando o contrato AUTH-08."""
+        from auth import validar_jwt_de_usuario
 
-        Devolve o id do usuario; `None` quando o Auth RECUSA o token; e
-        `INDISPONIVEL` quando o serviço falhou ou o cliente não pôde ser
-        montado (AUTH-08). A rota responde 401 só no primeiro caso de
-        negativa: 401 desloga, e servidor fora do ar não é sessão inválida.
-
-        A validacao e remota de proposito: conferir assinatura localmente
-        exigiria gerenciar chaves (e acertar o algoritmo), enquanto o Auth ja
-        responde de forma autoritativa, inclusive para token revogado.
-        """
-        try:
-            client = self._get_client_anon()
-            if client is None:
-                return INDISPONIVEL
-            resposta = client.auth.get_user(jwt)
-            usuario = getattr(resposta, "user", None)
-            return getattr(usuario, "id", None)
-        except Exception as erro:
-            if _auth_recusou(erro):
-                logger.info("Token de usuario rejeitado.")
-                return None
-            # exc_info leva o traceback ao log sem interpolar a mensagem, que
-            # pode conter o host.
-            logger.warning("Auth indisponivel ao validar token.", exc_info=True)
-            return INDISPONIVEL
+        return validar_jwt_de_usuario(jwt, self.url)
 
     def nome_do_metadado(self, jwt):
         """Nome gravado em `raw_user_meta_data` no cadastro. None se não houver.
