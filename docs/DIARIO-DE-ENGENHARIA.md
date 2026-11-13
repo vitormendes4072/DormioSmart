@@ -9998,6 +9998,26 @@ No host: `make`, `sintaxe`, `laco` (o stub do `WiFi` ganhou `hostByName` e `IPAd
 
 **Procedência.** Branch `bugfix/SEC-13-grants-pos-migracao` sobre `develop` `73bd058`; Docker no Windows 11 (`postgres:17`, `python:3.12-slim`); 13/11.
 
+---
+
+# 2026-11-13 (x) — AUTH-09: validação local de JWT
+
+**O problema.** A validação remota consultava o Auth em cada rota autenticada.
+
+**Hipótese.** Validar ES256 com o JWKS do projeto em cache elimina essa chamada, preservando o JWT original para o RLS e a distinção entre 401 e 503.
+
+**O que foi testado.** No Windows, usei chaves efêmeras, JWKS simulado, rotação, cache, falha de rede e limite de buscas. Medi 50 chamadas por caminho a GET /api/sleep-history pelo cliente de teste Flask, com leitura do banco simulada e 50 ms de atraso simulado no Auth anterior. O controle de algoritmo usa headers fora da lista e verifica que nem o JWKS nem o Auth foram consultados.
+
+**Resultado medido.** Remover a verificação de assinatura, expiração ou emissor derrubou o teste correspondente. Retirar a guarda de role derrubou os casos anon e service_role. Retirar a guarda de algoritmo derrubou HS256, RS256 e none porque acessaram o JWKS. Retirar o limite de buscas derrubou a asserção de uma busca para oito kids desconhecidos. No ensaio local, antes: mediana 51,27 ms, p95 53,07 ms, máximo 54,90 ms. Depois com chave em cache: 1,13 ms, 1,33 ms e 1,44 ms, respectivamente. O pip-audit não encontrou vulnerabilidades conhecidas.
+
+**Adaptação.** PyJWT e cryptography foram fixados porque get_claims da versão 2.28.0 escolhe o algoritmo pelo header e não aceita os parâmetros de emissor, audiência e folga requeridos. A lista permite apenas ES256 e a folga é de 5 s. Não encontrei evidência de sessão legada ativa no material conferido. O JWKS publica só ES256 e a sessão observada é ES256. A API recusa HS256 diretamente. O PostgREST já valida localmente no caminho do RLS, onde a validade do JWT já delimita a janela de revogação.
+
+**O que deu errado no caminho.** A primeira coleta do pytest começou antes da instalação terminar. O primeiro teste de algoritmo tentou usar um JWK público como segredo no codificador, que recusou a preparação. O teste final mede a rejeição antes da busca ou validação local e não simula uma assinatura forjada. A sincronização exigiu reaplicar os registros sobre df0c9a2. Um glob incompatível com PowerShell falhou na inspeção.
+
+**Risco em aberto.** A validade medida é de 1 h, com 5 s de tolerância de relógio na aplicação. O cache de chaves dura 5 min por processo, além da propagação do Supabase. A latência real no preview ou produção continua sem medição.
+
+**Procedência.** Em 13/11, o Claude conferiu a sessão real no preview de develop sem copiar o token: alg ES256, kid prefixo ed5cb5 presente no JWKS, exp − iat 3 600 s, aud e role authenticated, iss igual a SUPABASE_URL/auth/v1. Testes e ensaio local executados no Windows sobre develop 73bd058.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
