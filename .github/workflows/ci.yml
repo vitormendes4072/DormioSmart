@@ -36,7 +36,7 @@ jobs:
         with:
           # CI-10 (13/11): a versao do backend vem do `.python-version`, o mesmo
           # arquivo que a Vercel le -- um numero so para o CI e a producao.
-          python-version-file: '.python-version'
+          python-version-file: 'web-app/.python-version'
 
       - name: Instalar dependências
         run: |
@@ -107,7 +107,7 @@ jobs:
         with:
           # CI-10 (13/11): a versao do backend vem do `.python-version`, o mesmo
           # arquivo que a Vercel le -- um numero so para o CI e a producao.
-          python-version-file: '.python-version'
+          python-version-file: 'web-app/.python-version'
 
       - name: Instalar dependências
         run: |

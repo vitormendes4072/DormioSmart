@@ -19,7 +19,7 @@ RAIZ = Path(__file__).resolve().parents[2]
 
 
 def versao_declarada():
-    texto = (RAIZ / ".python-version").read_text(encoding="utf-8").strip()
+    texto = (RAIZ / "web-app" / ".python-version").read_text(encoding="utf-8").strip()
     maior, menor = texto.split(".")[:2]
     return int(maior), int(menor)
 
