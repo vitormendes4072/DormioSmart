@@ -9836,7 +9836,7 @@ No host: `make`, `sintaxe`, `laco` (o stub do `WiFi` ganhou `hostByName` e `IPAd
 **Resultado medido.**
 - **Cópia sabotada:** "NAO LIGA: a regiao dram0_0_seg estourou em 15 560 B", saída 1.
 - **Firmware atual:** RAM fixa 108 936 B (33 %), 218 744 B para o heap, liga.
-- **O workflow na PR:** ver o resultado da execução na PR (registrado no fechamento quando rodar).
+- **O workflow na PR #166** (execução `43490415459`, `ubuntu-24.04`, 3 min sem cache): SHA-256 do `arduino-cli` `OK`; firmware atual com os **mesmos números da máquina local** (RAM fixa 108 936 B, liga); cópia sabotada "estourou em 15 560 B" e o passo de controle registrou "a verificacao reprovou o firmware sabotado, como devia".
 
 **Adaptação.** O controle positivo ficou dentro do workflow, e não só na máquina de quem mexeu: se o firmware encolher a ponto de a cópia sabotada passar a ligar, o workflow reprova e pede outro sabotador.
 
