@@ -9822,6 +9822,26 @@ No host: `make`, `sintaxe`, `laco` (o stub do `WiFi` ganhou `hostByName` e `IPAd
 
 **Procedência.** Branch `bugfix/FW-16-ntp-pendente` (a partir da do `FW-15`); placa do autor, COM3; `arduino-cli` 1.6.0 com `esp32:esp32` 3.3.12; o `xtensa-esp32-elf-addr2line` do pacote para o backtrace; contêiner `gcc:13`; Windows 11, 13/11.
 
+---
+
+# 2026-11-13 (iii) — UI-30: janela paginada do Histórico
+
+**O problema.** No release R1 o Histórico de 7 dias parava em 2 000 leituras e omitia as sessões mais antigas da janela.
+
+**Hipótese.** Percorrer o cursor existente preserva os filtros e recupera a janela com um limite de trabalho para o celular.
+
+**O que foi testado.** No Windows, simulei 6 700, 32 000 e 32 001 leituras, conferi cursor e filtros, falha na segunda página, progresso na tela, sessão antiga e cancelamento ao trocar o período. Executei o teste de progresso com a tela de develop e, separadamente, cortei após a primeira página, desativei o avanço do cursor e forcei a confirmação a informar que não havia mais dados.
+
+**Resultado medido.** O teste de progresso falhou com a tela antiga. O corte e o cursor imóvel derrubaram separadamente o teste das 6 700 leituras. A confirmação sempre negativa derrubou o teste de 32 001 leituras. Sem sabotagem, 6 700 vieram em quatro pedidos e 32 000 em 16 páginas mais a confirmação. Com 32 001, a confirmação indicou truncamento.
+
+**Adaptação.** O progresso informa a página em andamento de até 16. A tabela é montada uma vez, após a coleta, porque a API pagina por chegada e uma leitura atrasada pode mudar o agrupamento por medição. Mantive o backend e o CSV sem mudanças de contrato.
+
+**O que deu errado no caminho.** Nada além das falhas esperadas nos controles.
+
+**Risco em aberto.** O tempo real de 7 e 30 dias na conta do autor só será medido depois do release. Se 30 dias passar de aproximadamente 10 s, abrir um item próprio para a opção (b), resumos de sessão no servidor. O teto continua aplicável a janelas mais densas.
+
+**Procedência.** Base `develop` `ab1e00e`, testes com respostas simuladas no Windows. O caso de produção anterior está na entrada do release R1.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

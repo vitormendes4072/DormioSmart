@@ -4,6 +4,7 @@ import {
   ErroApi,
   buscarHistorico,
   buscarHistoricoCompleto,
+  buscarJanelaDoHistorico,
   definirCallbackDeSessaoExpirada,
   definirProvedorDeToken,
   urlDaApi,
@@ -166,5 +167,56 @@ describe("exportação paginada", () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce(resposta(200, Array(2000).fill(linha)))
       .mockResolvedValueOnce(resposta(503, { error: "indisponível" })));
     await expect(buscarHistoricoCompleto()).rejects.toThrow("indisponível");
+  });
+});
+
+describe("janela paginada do Histórico", () => {
+  function simular(total: number) {
+    const dados = Array.from({ length: total }, (_, i) => ({
+      created_at: new Date(Date.UTC(2026, 10, 12) - i * 30_000).toISOString(),
+      id: String(i),
+    }));
+    const fetchSimulado = vi.fn(async (caminho: string, opcoes: RequestInit) => {
+      const url = new URL(caminho, "https://exemplo.test");
+      const cursor = url.searchParams.get("cursor_id");
+      const inicio = cursor === null ? 0 : Number(cursor) + 1;
+      expect(url.searchParams.get("cursor_tempo")).toBe(inicio ? dados[inicio - 1].created_at : null);
+      expect(url.searchParams.get("desde")).toBe("2026-10-13");
+      expect(url.searchParams.get("ate")).toBe("2026-11-12");
+      expect(url.searchParams.get("device")).toBe("teste");
+      expect(opcoes.signal).toBeTruthy();
+      return resposta(200, dados.slice(inicio, inicio + Number(url.searchParams.get("limite"))));
+    });
+    vi.stubGlobal("fetch", fetchSimulado);
+    const progresso = vi.fn();
+    const buscar = () => buscarJanelaDoHistorico(
+      { desde: "2026-10-13", ate: "2026-11-12", dispositivo: "teste" },
+      new AbortController().signal, progresso,
+    );
+    return { dados, fetchSimulado, progresso, buscar };
+  }
+
+  it("percorre as 6700 leituras em quatro páginas com progresso", async () => {
+    const { dados, buscar, progresso, fetchSimulado } = simular(6700);
+    expect(await buscar()).toEqual({ leituras: dados, truncada: false });
+    expect(fetchSimulado).toHaveBeenCalledTimes(4);
+    expect(progresso.mock.calls.flat()).toEqual([1, 2, 3, 4]);
+  });
+
+  it.each([[32000, false], [32001, true]])("confirma o teto com %i leituras", async (total, truncada) => {
+    const { dados, buscar, fetchSimulado } = simular(total);
+    expect(await buscar()).toEqual({ leituras: dados.slice(0, 32000), truncada });
+    expect(fetchSimulado).toHaveBeenCalledTimes(17);
+    const confirmacao = new URL(fetchSimulado.mock.calls[16][0], "https://exemplo.test");
+    expect(confirmacao.searchParams.get("limite")).toBe("1");
+    expect(confirmacao.searchParams.get("cursor_id")).toBe("31999");
+  });
+
+  it("rejeita a janela inteira se a segunda página falha", async () => {
+    const { buscar, fetchSimulado } = simular(6700);
+    fetchSimulado.mockImplementationOnce(async () => resposta(200, Array(2000).fill({
+      id: "1999", created_at: "2026-11-12T00:00:00Z",
+    }))).mockResolvedValueOnce(resposta(503, { error: "indisponível" }));
+    await expect(buscar()).rejects.toThrow("indisponível");
   });
 });

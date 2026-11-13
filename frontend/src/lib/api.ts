@@ -170,25 +170,64 @@ export async function buscarHistorico(filtro: FiltroDeHistorico = {}): Promise<L
   return Array.isArray(dados) ? (dados as LeituraSono[]) : [];
 }
 
-/** Exporta todas as paginas; uma falha impede baixar um CSV incompleto. */
+type CursorHistorico = { created_at: string; id: string };
+
+async function paginaDoHistorico(
+  filtro: FiltroDeHistorico,
+  cursor: CursorHistorico | null,
+  signal?: AbortSignal,
+): Promise<LeituraSono[]> {
+  signal?.throwIfAborted();
+  const caminho = montarConsultaDeHistorico(filtro);
+  const parametros = new URLSearchParams();
+  if (cursor) {
+    parametros.set("cursor_tempo", cursor.created_at);
+    parametros.set("cursor_id", cursor.id);
+  }
+  const dados = await requisitarJson<unknown>(cursor ? `${caminho}&${parametros}` : caminho, { signal });
+  signal?.throwIfAborted();
+  if (!Array.isArray(dados)) throw new Error("Resposta de histórico inválida.");
+  return dados as LeituraSono[];
+}
+
+function proximoCursor(pagina: LeituraSono[], anterior: CursorHistorico | null): CursorHistorico {
+  const ultima = pagina.at(-1) as Partial<CursorHistorico> | undefined;
+  if (typeof ultima?.created_at !== "string" || typeof ultima.id !== "string" ||
+      (anterior?.created_at === ultima.created_at && anterior.id === ultima.id)) {
+    throw new Error("Cursor de histórico inválido.");
+  }
+  return { created_at: ultima.created_at, id: ultima.id };
+}
+
+/** Uma falha impede baixar um CSV incompleto. */
 export async function buscarHistoricoCompleto(): Promise<LeituraSono[]> {
   const todas: LeituraSono[] = [];
-  let cursor: { created_at: string; id: string } | null = null;
+  let cursor: CursorHistorico | null = null;
   while (true) {
-    const parametros = new URLSearchParams({ limite: String(LIMITE_DO_PAINEL) });
-    if (cursor) {
-      parametros.set("cursor_tempo", cursor.created_at);
-      parametros.set("cursor_id", cursor.id);
-    }
-    const pagina = await requisitarJson<unknown>(`/api/sleep-history?${parametros}`);
-    if (!Array.isArray(pagina)) throw new Error("Resposta de histórico inválida.");
-    todas.push(...pagina as LeituraSono[]);
+    const pagina = await paginaDoHistorico({ limite: LIMITE_DO_PAINEL }, cursor);
+    todas.push(...pagina);
     if (pagina.length < LIMITE_DO_PAINEL) return todas;
-    const ultima = pagina[pagina.length - 1] as { created_at?: unknown; id?: unknown };
-    if (typeof ultima.created_at !== "string" || typeof ultima.id !== "string" ||
-        (cursor && cursor.created_at === ultima.created_at && cursor.id === ultima.id)) {
-      throw new Error("Cursor de histórico inválido.");
-    }
-    cursor = { created_at: ultima.created_at, id: ultima.id };
+    cursor = proximoCursor(pagina, cursor);
   }
+}
+
+export const MAX_PAGINAS_DO_HISTORICO = 16;
+
+export async function buscarJanelaDoHistorico(
+  filtro: Omit<FiltroDeHistorico, "limite">,
+  signal: AbortSignal,
+  aoPedirPagina: (numero: number) => void,
+): Promise<{ leituras: LeituraSono[]; truncada: boolean }> {
+  const leituras: LeituraSono[] = [];
+  let cursor: CursorHistorico | null = null;
+  for (let numero = 1; numero <= MAX_PAGINAS_DO_HISTORICO; numero++) {
+    aoPedirPagina(numero);
+    const pagina = await paginaDoHistorico({ ...filtro, limite: LIMITE_DO_PAINEL }, cursor, signal);
+    leituras.push(...pagina);
+    if (pagina.length < LIMITE_DO_PAINEL) return { leituras, truncada: false };
+    cursor = proximoCursor(pagina, cursor);
+  }
+
+  const confirmacao = await paginaDoHistorico({ ...filtro, limite: 1 }, cursor, signal);
+  return { leituras, truncada: confirmacao.length > 0 };
 }

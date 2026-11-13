@@ -415,18 +415,31 @@ describe("montagem real das telas (UI-17)", PRAZO, () => {
     return () => { dados = [...recentes, ...antigas.slice(0, -1)]; };
   }
 
-  it("marca somente a sessão na borda de uma resposta no limite", async () => {
-    const reduzir = simularSessoesNaBorda();
+  it("mostra o progresso e inclui a sessão que chega na segunda página do Histórico", async () => {
+    const original = vi.mocked(fetch).getMockImplementation()!;
+    const agora = Date.now();
+    const leitura = (id: number, distancia: number) => ({
+      id: String(id), created_at: new Date(agora - distancia).toISOString(),
+      movimento_total: 9.81, temp: null, status: "Repouso", epoca_segundos: 30,
+    });
+    const primeira = Array.from({ length: 2000 }, (_, i) => leitura(i, (i + 1) * 30_000));
+    const segunda = [leitura(2000, 86_400_000), leitura(2001, 86_430_000)];
+    let responder!: (r: Response) => void;
+    vi.mocked(fetch).mockImplementation((entrada, opcoes) => {
+      if (!String(entrada).startsWith("/api/sleep-history")) return original(entrada, opcoes);
+      const url = new URL(String(entrada), "https://exemplo.test");
+      if (!url.searchParams.has("cursor_id")) return Promise.resolve(respostaJson(primeira));
+      return new Promise((resolve) => { responder = resolve; });
+    });
     await montar("/historico");
+    expect(await screen.findByText(/página 2 de até 16/)).toBeTruthy();
+    expect(screen.queryByRole("table")).toBeNull();
+    await act(async () => responder(respostaJson(segunda)));
     const tabela = await screen.findByRole("table");
     const [, recente, antiga] = within(tabela).getAllByRole("row");
-    expect(within(recente).getByText("Completa")).toBeTruthy();
-    expect(within(antiga).getByText("Parcial")).toBeTruthy();
-
-    reduzir();
-    fireEvent.change(screen.getByRole("combobox", { name: "Período do histórico" }), { target: { value: "30" } });
-    await waitFor(() => expect(screen.getAllByText("Completa")).toHaveLength(2));
-    expect(screen.queryByText("Parcial")).toBeNull();
+    expect(within(recente).getByText("2000")).toBeTruthy();
+    expect(within(antiga).getByText("2")).toBeTruthy();
+    expect(within(tabela).getAllByText("Completa")).toHaveLength(2);
   });
 
   it.each([2000, 1999])("aviso de cobertura do painel com %i leituras", async (quantidade) => {
@@ -451,19 +464,22 @@ describe("montagem real das telas (UI-17)", PRAZO, () => {
   it("a rota /historico monta o histórico autenticado com filtro e estado vazio", async () => {
     const original = vi.mocked(fetch).getMockImplementation()!;
     let responder: ((resposta: Response) => void) | undefined;
+    const sinais: AbortSignal[] = [];
     vi.mocked(fetch).mockImplementation((entrada, opcoes) => {
       if (!String(entrada).startsWith("/api/sleep-history")) return original(entrada, opcoes);
+      if (opcoes?.signal) sinais.push(opcoes.signal);
       return new Promise((resolve) => { responder = resolve; });
     });
 
     await montar("/historico");
     expect(await screen.findByRole("heading", { name: "Histórico de sessões", level: 1 })).toBeTruthy();
-    expect(await screen.findByText("Carregando sessões...")).toBeTruthy();
+    expect(await screen.findByText(/Carregando sessões/)).toBeTruthy();
     await act(async () => responder!(respostaJson([])));
     expect(await screen.findByText("Nenhuma sessão no período selecionado.")).toBeTruthy();
 
     fireEvent.change(screen.getByRole("combobox", { name: "Período do histórico" }), { target: { value: "30" } });
-    expect(await screen.findByText("Carregando sessões...")).toBeTruthy();
+    expect(await screen.findByText(/Carregando sessões/)).toBeTruthy();
+    expect(sinais[0].aborted).toBe(true);
     await act(async () => responder!(new Response(JSON.stringify({ error: "Serviço indisponível" }), { status: 503 })));
     expect(await screen.findByText("Não foi possível carregar")).toBeTruthy();
 

@@ -1,13 +1,12 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "react-router";
 
 import { BarraDoWorkspace } from "../components/BarraDoWorkspace";
 import { Carregando, FalhaAoCarregar } from "../components/EstadoDaTela";
-import { useHistorico } from "../hooks/useHistorico";
-import { LIMITE_DO_PAINEL } from "../lib/api";
+import { buscarJanelaDoHistorico, ErroApi, MAX_PAGINAS_DO_HISTORICO } from "../lib/api";
 import { agruparEmSessoes, calcularCobertura } from "../lib/cobertura";
 import { estaEmModoDemo } from "../lib/demo";
-import { formatarDuracao, leituraNaBordaDoLimite } from "../lib/metricas";
+import { formatarDuracao } from "../lib/metricas";
 import { instanteDaLeitura, type LeituraSono } from "../types/sleep";
 
 const DIA_MS = 24 * 60 * 60 * 1000;
@@ -41,8 +40,8 @@ const EXEMPLOS = SESSOES_DO_PROTOTIPO.map(([ano, mes, dia, minutos, cobertura, l
   };
 });
 
-function resumirSessoes(leituras: LeituraSono[], desdeMs: number): Linha[] {
-  const borda = leituraNaBordaDoLimite(leituras, LIMITE_DO_PAINEL);
+function resumirSessoes(leituras: LeituraSono[], desdeMs: number, truncada: boolean): Linha[] {
+  const borda = truncada ? leituras.at(-1) : undefined;
   const porDispositivo = new Map<string | null, LeituraSono[]>();
   for (const leitura of leituras) {
     // A API recorta pela chegada. Exclui medições antigas enviadas com atraso.
@@ -113,16 +112,42 @@ export function Historico() {
 }
 
 function SessoesDaConta({ dias }: { dias: number }) {
-  const [desde] = useState(() => new Date(Date.now() - dias * DIA_MS).toISOString());
-  const { leituras, carregando, erro, recarregar } = useHistorico({ desde, limite: LIMITE_DO_PAINEL });
-  const linhas = useMemo(() => resumirSessoes(leituras, Date.parse(desde)), [leituras, desde]);
+  const [janela] = useState(() => {
+    const agora = Date.now();
+    return { desde: new Date(agora - dias * DIA_MS).toISOString(), ate: new Date(agora).toISOString() };
+  });
+  const [tentativa, setTentativa] = useState(0);
+  const [pagina, setPagina] = useState(1);
+  const [resultado, setResultado] = useState<Awaited<ReturnType<typeof buscarJanelaDoHistorico>> | null>(null);
+  const [erro, setErro] = useState<string | null>(null);
 
-  if (carregando) return <Carregando mensagem="Carregando sessões..." />;
-  if (erro) return <FalhaAoCarregar mensagem={erro} aoTentarNovamente={recarregar} />;
+  useEffect(() => {
+    const controle = new AbortController();
+    buscarJanelaDoHistorico(janela, controle.signal, setPagina).then(
+      (dados) => { if (!controle.signal.aborted) setResultado(dados); },
+      (falha: unknown) => {
+        if (!controle.signal.aborted) {
+          setErro(falha instanceof ErroApi ? falha.message : "Não foi possível carregar as sessões.");
+        }
+      },
+    );
+    return () => controle.abort();
+  }, [janela, tentativa]);
+
+  const linhas = useMemo(() => resultado
+    ? resumirSessoes(resultado.leituras, Date.parse(janela.desde), resultado.truncada)
+    : [], [resultado, janela]);
+
+  if (erro) return <FalhaAoCarregar mensagem={erro} aoTentarNovamente={() => {
+    setErro(null);
+    setPagina(1);
+    setTentativa((atual) => atual + 1);
+  }} />;
+  if (!resultado) return <Carregando mensagem={`Carregando sessões... página ${pagina} de até ${MAX_PAGINAS_DO_HISTORICO}.`} />;
 
   return (
     <>
-      {leituras.length >= LIMITE_DO_PAINEL && (
+      {resultado.truncada && (
         <p role="status" className="mb-3 rounded-lg bg-amber-500/10 px-3 py-2 text-xs text-foreground">
           A consulta atingiu o limite de leituras. O histórico deste período pode estar incompleto.
         </p>
