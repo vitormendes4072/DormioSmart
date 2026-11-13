@@ -9532,6 +9532,48 @@ Os quatro pontos foram corrigidos no `5ed12df`, e as sabotagens reexecutadas na 
 
 **Procedência.** Testes no Windows, sobre a UI-26 (478c92c), baseada em develop 952371c.
 
+# 2026-11-12 (xvii) — FW-07 (c) na placa: a medição limpa, e o envio que falhava por memória (FW-13)
+
+**O problema, como foi entendido no início.** Com o `FW-12` mesclado, o `sketch.ino` foi gravado na placa para o `FW-07` (c): 41 min de leitura do serial, com o autor deixando a placa parada. O plano era conferir a partição, as épocas, os prazos, o relógio e o envio.
+
+**Hipótese de trabalho.** Se o firmware que passa no host e liga para o chip também mede e envia na placa, o `FW-07` (c), o `FW-05`, o `SEC-15` (c) e parte do `FW-08` (c) saem da mesma gravação.
+
+**O que foi testado, e como.**
+- **A leitura de 41 min** (`sketch.ino` da `develop` `01c9da5`, com o `secrets.h` do autor, sem leitura do arquivo), pela COM3 e por um leitor em PowerShell que reinicia a placa no início.
+- **O envio, que falhou:** uma versão de diagnóstico fora do repositório imprimiu o heap antes do POST e o `lastError` do TLS, com envio a cada 1 min.
+- **A cadeia:** `conferir_tls_firmware.py --producao` no PC; as cifras e os certificados servidos pela Vercel em TLS 1.2; um sketch mínimo na placa (só Wi-Fi e TLS, `GET /health`) com as 4 raízes e com uma 5ª (GlobalSign Root CA, impressão SHA-256 conferida).
+- **A correção (`FW-13`)**, primeiro no diagnóstico (lote de 20), depois na branch: a versão exata da branch gravada e lida por 21 min.
+- **Controle positivo do `SEC-15` (c):** o mesmo firmware com só as raízes ISRG.
+
+**Resultado medido.**
+- **A medição:** 80 épocas em 41 min, todas com features, taxa 49,92–50,01 Hz, 0 transbordos, 0 prazos estourados, pior trabalho 178 ms, sensor nunca reacordado; só a época 0 recusada. Calibração da unidade aplicada (desvio Z −130 mg, o do `CAL-01`).
+- **O relógio:** −20, −17 e −16 ms a cada 10 min contra o NTP (−29 a −33 ppm). Numa gravação de 10 min com o `FW-13`, −123 ppm.
+- **O envio, antes da correção:** `HTTP -1` em todas as voltas. O diagnóstico mostrou `X509 - Certificate verification failed` com 94 KB de heap e maior bloco de 38–55 KB; com a 5ª raiz, `PK - Memory allocation failed` e `X509 - Allocation of memory failed`.
+- **A cadeia está certa:** o PC aceita a cadeia servida (`*.vercel.app` ← WR1 ← GTS Root R1, e um GTS Root R1 com assinatura cruzada da GlobalSign) com as 4 raízes do firmware; na placa, o sketch mínimo deu `GET /health` 200 com as 4 raízes, com 224 KB livres e mínimo de 157 KB — o handshake consome ~67 KB.
+- **Com o `FW-13` (lote de 20):** no diagnóstico, 104 leituras em 6 lotes, `HTTP 200`, fila zerada (as épocas guardadas durante as falhas saíram). Na versão da branch: dois envios, 40 leituras, `HTTP 200`, **heap 116 KB no envio e mínimo atingido 14 772 B**.
+- **Controle positivo do TLS:** só com as raízes ISRG, `HTTP -1` nas duas voltas, com 116 KB livres.
+- **Host:** `make` 185, `sintaxe`, `laco` 8/8, `capacidade`, `mutacao-fila` 14/14; para o chip, RAM fixa 108 904 B (33 %).
+
+**Adaptação.**
+- **O `FW-13` abre e fecha no mesmo dia:** `LEITURAS_POR_LOTE_NO_ESP32 = 20` (o teto do servidor segue 60), `LOTES_POR_VOLTA = 60`, e o heap livre e o mínimo no log do envio.
+- **Fecham o `FW-05` e o `SEC-15`.** O `FW-07` (c) e o `FW-08` (c) ganham as medições de hoje e seguem abertos (a deriva ao longo de horas; o roteiro com o Wi-Fi desligado de propósito).
+- **A folga de ~15 KB virou o `FW-14`.** O limite foi para as `LIMITACOES-TCC.md` (X.6).
+
+**O que deu errado no caminho.**
+- **A primeira hipótese estava errada.** Pelo certificado cruzado da GlobalSign na cadeia, supus que a biblioteca montava o caminho errado; acrescentar a raiz só trocou o erro para falta de memória. A causa apareceu no sketch mínimo, com memória sobrando.
+- **A mensagem do TLS engana:** falta de memória durante a verificação sai como "certificado recusado". Sem o `lastError` e o heap no log, a correção teria ido para as raízes.
+- **O leitor da serial cortou duas linhas** da primeira gravação, uma delas a do primeiro `[lote]`: o código HTTP só apareceu no segundo envio.
+- **O primeiro controle com raízes erradas não removeu as raízes GTS** (o recorte pelos comentários deixou os certificados); foi refeito com uma lista separada.
+- **Uma gravação de diagnóstico usou a tabela de partições padrão** (o sketch mínimo); a área da fila não foi tocada, e a versão seguinte a remontou.
+
+**Risco em aberto.**
+- **Folga de heap de ~15 KB no envio** — `FW-14`.
+- **As leituras de bancada estão na conta do autor**, no aparelho do travesseiro: ~150 épocas de 12/11, 18:44–20:40, com a placa parada na mesa (`APP-11` trata a marcação de teste).
+- **A deriva de −123 ppm numa gravação de 10 min** destoa das outras; a medida de horas é a do `FW-07` (c).
+
+**Procedência.** Placa e sensor do autor, COM3, `arduino-cli` 1.6.0 com `esp32:esp32` 3.3.12, Windows 11, 12/11; capturas do serial no diretório temporário da sessão (fora do repositório); branch `bugfix/FW-13-lote-do-esp32`.
+
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
