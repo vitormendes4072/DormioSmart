@@ -9675,6 +9675,26 @@ Os quatro pontos foram corrigidos no `5ed12df`, e as sabotagens reexecutadas na 
 
 **Procedência.** PR #148, implementação `c984876`, registros sobre `develop` `745f232`. Testes automatizados no Windows.
 
+---
+
+# 2026-11-12 (xxii) — UI-28: Teclado no consentimento e no tema
+
+**O problema.** O foco escapava do diálogo e o seletor não oferecia navegação de rádio.
+
+**Hipótese.** Gerenciar o foco no diálogo e usar rádios nativos corrige os dois fluxos.
+
+**O que foi testado.** No Windows, usei user-event para abrir, navegar, fechar e restaurar o foco, além de mudar o tema com as setas.
+
+**Resultado medido.** Em develop, 2 testes falharam: o foco ficou no botão de origem e Tab entrou no tema errado. Com a correção, 574 testes passaram.
+
+**Adaptação.** Contive Tab no diálogo, liguei Escape a Agora não e usei rádios nativos.
+
+**O que deu errado no caminho.** O jsdom não fornece CSS.escape. Simulei essa API apenas no teste das setas.
+
+**Risco em aberto.** Validação com leitor de tela em Android pendente.
+
+**Procedência.** PR #149, implementação `d538c5d`, registros sobre `develop` `745f232`. Testes automatizados no Windows.
+
 
 # O que este diário não cobre
 
