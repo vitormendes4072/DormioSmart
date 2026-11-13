@@ -94,7 +94,7 @@ Duas semanas sem rede, em resolução plena, **sem degradar uma única vez**.
 > (2) O projeto adotou e versiona a tabela sob medida (`firmware/partitions.csv`, partição
 > `dormio` de 2 MiB), e o registro implementado tem **64 B**, não 40: leva `seq`, sessão,
 > instante e CRC, que a flash exige para sobreviver a um corte de energia. Medido por
-> `make capacidade`: **32 704 registros garantidos = 272,5 h = 11,4 dias**. A tabela acima
+> `make capacidade`: **32 704 registros garantidos = 272,5 h = 11,4 dias** ✏️ *(13/11, `FW-15`: 32 640 = 272,0 h = 11,3 dias, com um setor para o cabeçalho de formato)*. A tabela acima
 > fica como estava, para procedência.
 
 ### Desgaste
