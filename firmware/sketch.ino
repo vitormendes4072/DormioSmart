@@ -424,8 +424,31 @@ static ResolucaoDeParede primeira_sincronia;
 static DerivaDoRelogio deriva_no_intervalo;
 static DerivaDoRelogio deriva_acumulada;
 
+// FW-16 (13/11): o nome do servidor de NTP e resolvido AQUI, nesta tarefa, e o
+// SNTP recebe so o endereco IP. Com o nome, a consulta de DNS do SNTP podia
+// ficar pendente quando o NTP demorava; o `HTTPClient` do envio, ao resolver o
+// nome do servidor logo depois do Wi-Fi religar, limpa o cache de DNS
+// (`NetworkManager::hostByName` -> `dns_clear_cache`), e a limpeza disparava o
+// retorno do SNTP fora da trava da pilha de rede: `assert failed:
+// udp_new_ip_type` e reinicio da placa (arduino-esp32 3.3.12). Parar o SNTP
+// (`esp_sntp_stop`) nao basta -- a consulta pendente continua no DNS; medido na
+// placa. Atencao: `hostByName` devolve 1 no sucesso e o CODIGO DO ERRO na falha.
+static bool resolver_servidor_ntp(const char *nome, char *destino, size_t tamanho) {
+  IPAddress ip;
+  if (WiFi.hostByName(nome, ip) != 1 || ip == IPAddress()) return false;
+  snprintf(destino, tamanho, "%u.%u.%u.%u", ip[0], ip[1], ip[2], ip[3]);
+  return true;
+}
+
 static void sincronizar_relogio() {
-  configTime(0, 0, "pool.ntp.org", "time.nist.gov");  // UTC; o backend guarda UTC
+  // O SNTP guarda o ponteiro do nome: o texto tem de viver alem desta funcao.
+  static char servidor[16];
+  if (!resolver_servidor_ntp("pool.ntp.org", servidor, sizeof(servidor)) &&
+      !resolver_servidor_ntp("time.nist.gov", servidor, sizeof(servidor))) {
+    Serial.println("NTP: o DNS nao resolveu o servidor; sem sincronia nesta volta.");
+    return;
+  }
+  configTime(0, 0, servidor);  // UTC; o backend guarda UTC
   const uint64_t inicio = agora_ms();
   while (agora_ms() - inicio < TIMEOUT_NTP_MS) {
     struct timeval tv;
