@@ -9974,6 +9974,30 @@ No host: `make`, `sintaxe`, `laco` (o stub do `WiFi` ganhou `hostByName` e `IPAd
 **Procedência.** Branch `feature/SEC-20-cabecalhos` sobre `develop` `a0f326d`; Windows 11 (build, conferidor e servidor local); preview da Vercel `dpl_8aPPt7WEwXDtA2xHEwqopkaBPNAr` (`gru1`), lido pela integração da Vercel e pelo navegador do app; 13/11.
 
 
+---
+
+# 2026-11-13 (ix) — SEC-13: a suíte de RLS deixa de desfazer os REVOKEs das migrações
+
+**O problema, como foi entendido no início.** A suíte de RLS rodava `grants_pos_migracao.sql` depois de todas as migrações, reaplicando os GRANTs de `profiles`, `devices` e `sleep_data`. Uma migração que tirasse do usuário acesso às próprias linhas passaria na suíte.
+
+**Hipótese de trabalho.** Desde o `SEC-12`, o `esquema_base.sql` imita os privilégios padrão do Supabase, então os GRANTs do fim são redundantes; tirá-los fecha o ponto cego sem mudar o resultado da suíte.
+
+**O que foi testado, e como.** Postgres 17 em Docker, `python:3.12`. Antes da mudança: a suíte com uma migração sabotada (`revoke select on public.sleep_data from authenticated` no fim da 018), com e sem os GRANTs do fim. Depois: a suíte, a mesma sabotagem e mais duas (`select` em `devices`, `update` em `profiles`), o verificador de migrações, o verificador por mutação e o teste novo com `grant` e com `alter default privileges` acrescentados ao arquivo.
+
+**Resultado medido.**
+- **Antes:** com a sabotagem, **269 passam** (o ponto cego); sem os GRANTs do fim, ela derruba a suíte com "permission denied for table sleep_data"; sem eles e sem sabotagem, 269 passam.
+- **Depois:** **270 passam**. As três sabotagens derrubam 15, 16 e 14 testes. Verificador de migrações OK (18 estados). Mutação **54/54**. O teste novo reprova nos dois controles.
+
+**Adaptação.** O arquivo virou `pos_migracao.sql`, com um `select 1;` — o driver recusa arquivo só de comentário ("can't execute an empty query", 269 erros medidos). O verificador de migrações também deixou de aplicar o arquivo depois da 001.
+
+**O que deu errado no caminho.**
+- **O `\b` da regex do teste novo virou um caractere de controle** ao passar pelo shell, e os dois controles passaram em vez de cair; corrigido com o script escrito em arquivo, e os controles refeitos.
+- **A primeira rodada da mutação deu "269 errors"**: o banco da suíte ficou no mesmo servidor e o `drop role` falhou — é o `CI-11` (1), reproduzido. Num Postgres limpo, 54/54.
+
+**Risco em aberto.** O `CI-11` continua aberto: rodar a mutação num servidor com outro banco que tenha privilégios para os papéis quebra a preparação com mensagem enganosa.
+
+**Procedência.** Branch `bugfix/SEC-13-grants-pos-migracao` sobre `develop` `73bd058`; Docker no Windows 11 (`postgres:17`, `python:3.12-slim`); 13/11.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
