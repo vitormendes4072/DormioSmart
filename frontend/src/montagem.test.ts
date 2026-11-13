@@ -56,7 +56,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-import { act, fireEvent, screen } from "@testing-library/react";
+import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { aplicabilidadeDaIdade } from "./lib/aplicabilidade";
@@ -315,37 +315,100 @@ describe("montagem real das telas (UI-17)", PRAZO, () => {
     expect(await screen.findByText("Nunca enviou")).toBeTruthy();
   });
 
-  it("avisa quando o CSV contém apenas as leituras disponíveis no limite da consulta", async () => {
+  it("a legenda das leituras recentes corresponde à ordem de medição", async () => {
+    const original = vi.mocked(fetch).getMockImplementation()!;
+    const agora = Date.now();
+    const instante = (segundos: number) => new Date(agora - segundos * 1000).toISOString();
+    const comum = { movimento_total: 9.81, epoca_segundos: 30 };
+    vi.mocked(fetch).mockImplementation((entrada, opcoes) =>
+      String(entrada).startsWith("/api/sleep-history")
+        ? Promise.resolve(respostaJson([
+          { ...comum, created_at: instante(1), captured_at: instante(60), temp: 31, status: "Repouso" },
+          { ...comum, created_at: instante(2), captured_at: instante(30), temp: 32, status: "Movimento" },
+        ]))
+        : original(entrada, opcoes),
+    );
+    await montar("/dashboard");
+    const recente = await screen.findByText("32.0°C", { selector: "td" });
+    const anterior = screen.getByText("31.0°C", { selector: "td" });
+    expect(recente.closest("tr")?.nextElementSibling).toBe(anterior.closest("tr"));
+    expect(screen.getByText(/da medição mais recente à mais antiga/)).toBeTruthy();
+  });
+
+  it("exporta todas as páginas do histórico", async () => {
     const original = vi.mocked(fetch).getMockImplementation()!;
     const criarUrl = vi.fn(() => "blob:csv");
     const url = class extends URL {};
     Object.assign(url, { createObjectURL: criarUrl, revokeObjectURL: vi.fn() });
     vi.stubGlobal("URL", url);
     const clique = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
-    const leitura = { created_at: "2026-11-01T00:00:00Z", movimento_total: 9.81, temp: null, status: "Repouso" };
-    let quantidade = 1000;
+    const leitura = { id: "00000000-0000-0000-0000-000000000001", created_at: "2026-11-01T00:00:00Z", movimento_total: 9.81, temp: null, status: "Repouso" };
+    let pedidos = 0;
     vi.mocked(fetch).mockImplementation((entrada, opcoes) =>
       String(entrada).startsWith("/api/sleep-history")
-        ? Promise.resolve(respostaJson(Array.from({ length: quantidade }, () => leitura)))
+        ? Promise.resolve(respostaJson(++pedidos === 1 ? Array.from({ length: 2000 }, () => leitura) : [leitura]))
+        : original(entrada, opcoes),
+    );
+    try {
+      await montar("/configuracoes");
+      fireEvent.click(await screen.findByRole("button", { name: "Exportar meus dados (CSV)" }));
+      await waitFor(() => expect(clique).toHaveBeenCalledTimes(1));
+      expect(pedidos).toBe(2);
+      expect(criarUrl).toHaveBeenCalledTimes(1);
+    } finally { clique.mockRestore(); }
+  });
+
+  function simularSessoesNaBorda(quantidade = 2000) {
+    const original = vi.mocked(fetch).getMockImplementation()!;
+    const agora = Date.now();
+    const leitura = (distancia: number) => ({
+      created_at: new Date(agora - distancia).toISOString(),
+      movimento_total: 9.81, temp: null, status: "Repouso", epoca_segundos: 30,
+      device_id: "dispositivo",
+    });
+    const recentes = [leitura(30_000), leitura(60_000)];
+    const antigas = Array.from({ length: 1998 }, (_, i) => leitura(86_400_000 + i * 30_000));
+    let dados = [...recentes, ...antigas].slice(0, quantidade);
+    vi.mocked(fetch).mockImplementation((entrada, opcoes) =>
+      String(entrada).startsWith("/api/sleep-history")
+        ? Promise.resolve(respostaJson(dados))
         : original(entrada, opcoes),
     );
 
-    try {
-      await montar("/configuracoes");
-      const exportar = await screen.findByRole("button", { name: "Exportar meus dados (CSV)" });
-      fireEvent.click(exportar);
-      expect(await screen.findByText(/o arquivo pode estar incompleto/i)).toBeTruthy();
-      expect(criarUrl).toHaveBeenCalledTimes(1);
-      expect(clique).toHaveBeenCalledTimes(1);
+    return () => { dados = [...recentes, ...antigas.slice(0, -1)]; };
+  }
 
-      quantidade = 1;
-      fireEvent.click(exportar);
-      await screen.findByRole("button", { name: "Exportar meus dados (CSV)" });
-      expect(screen.queryByText(/o arquivo pode estar incompleto/i)).toBeNull();
-      expect(clique).toHaveBeenCalledTimes(2);
-    } finally {
-      clique.mockRestore();
-    }
+  it("marca somente a sessão na borda de uma resposta no limite", async () => {
+    const reduzir = simularSessoesNaBorda();
+    await montar("/historico");
+    const tabela = await screen.findByRole("table");
+    const [, recente, antiga] = within(tabela).getAllByRole("row");
+    expect(within(recente).getByText("Completa")).toBeTruthy();
+    expect(within(antiga).getByText("Parcial")).toBeTruthy();
+
+    reduzir();
+    fireEvent.change(screen.getByRole("combobox", { name: "Período do histórico" }), { target: { value: "30" } });
+    await waitFor(() => expect(screen.getAllByText("Completa")).toHaveLength(2));
+    expect(screen.queryByText("Parcial")).toBeNull();
+  });
+
+  it.each([2000, 1999])("aviso de cobertura do painel com %i leituras", async (quantidade) => {
+    simularSessoesNaBorda(quantidade);
+    await montar("/dashboard");
+    const aviso = "Cobertura parcial: a consulta atingiu o limite de leituras.";
+    const verTodas = await screen.findByRole("button", { name: /ver todas/i });
+    expect(screen.queryByText(aviso)).toBeNull();
+    fireEvent.click(verTodas);
+    expect(Boolean(screen.queryByText(aviso))).toBe(quantidade === 2000);
+  });
+
+  it("marca apenas a sessão na borda na tabela do painel", async () => {
+    simularSessoesNaBorda();
+    await montar("/dashboard");
+    const secao = await screen.findByRole("region", { name: "Sessões recentes" });
+    const [, recente, antiga] = within(secao).getAllByRole("row");
+    expect(within(recente).getByText("100%")).toBeTruthy();
+    expect(within(antiga).getByText("100% · Parcial")).toBeTruthy();
   });
 
   it("a rota /historico monta o histórico autenticado com filtro e estado vazio", async () => {

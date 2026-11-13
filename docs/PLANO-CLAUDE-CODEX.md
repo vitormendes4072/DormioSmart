@@ -77,9 +77,9 @@ estiverem mesclados, e não quando todos os da onda anterior estiverem.
 
 | # | Item | O que é | Arquivos principais | Depende de |
 |---|---|---|---|---|
-| 1.1 | `DATA-15` + `API-08` | Paginar `GET /api/sleep-history` como `GET /api/features`; falha do banco vira `503`, e o painel mostra "não foi possível carregar" | `database.py`, `routes.py`, `lib/api.ts`, `hooks/useHistorico.ts`, `pages/Historico.tsx`, `lib/exportar.ts` | — |
-| 1.2 | `UI-26` | A sessão que toca o corte é "parcial", nunca "completa" | `pages/Historico.tsx`, `lib/metricas.ts` | 1.1 mesclado |
-| 1.3 | `UI-29` | O texto da ordem da tabela do painel | `pages/Dashboard.tsx` | 1.1 mesclado (mexe no painel) |
+| 1.1 | `DATA-15` + `API-08` ✅ *(12/11, #146)* | Paginar `GET /api/sleep-history` como `GET /api/features`; falha do banco vira `503`, e o painel mostra "não foi possível carregar" | `database.py`, `routes.py`, `lib/api.ts`, `hooks/useHistorico.ts`, `pages/Historico.tsx`, `lib/exportar.ts` | — |
+| 1.2 | `UI-26` ✅ *(12/11, #153)* | A sessão que toca o corte é "parcial", nunca "completa" | `pages/Historico.tsx`, `lib/metricas.ts` | 1.1 mesclado |
+| 1.3 | `UI-29` ✅ *(12/11, #154)* | O texto da ordem da tabela do painel | `pages/Dashboard.tsx` | 1.1 mesclado (mexe no painel) |
 | 1.4 | `APP-15` | Erro ao listar as noites deixa de parecer lista vazia | `components/ListaDeNoites.tsx` | — (pode correr junto da 1.1) |
 | 1.5 | `UI-28` | Teclado no diálogo de consentimento e no seletor de tema | `components/TelaDeConsentimento.tsx`, `components/SeletorDeTema.tsx` | — |
 | 1.6 | `UI-27` | Avisar até a primeira janela da coleta fechar | `pages/Coletar.tsx`, `hooks/useColeta.ts` | — |
@@ -90,11 +90,11 @@ estiverem mesclados, e não quando todos os da onda anterior estiverem.
 | # | Item | O que é | Depende de |
 |---|---|---|---|
 | 1.8 | `FW-07` (c) | Gravar o `sketch.ino` na placa; ler pelo serial os prazos da FIFO, o pior trabalho e a deriva do relógio | `HW-09` |
-| 1.9 | `FW-05` | Medir na placa a FIFO de verdade, a taxa real e o transbordo | 1.8 |
-| 1.10 | `SEC-15` (c) | O handshake TLS na placa contra a produção | 1.8 |
+| 1.9 | `FW-05` ✅ *(12/11)* | Medir na placa a FIFO de verdade, a taxa real e o transbordo | 1.8 |
+| 1.10 | `SEC-15` (c) ✅ *(12/11)* | O handshake TLS na placa contra a produção | 1.8 |
 | 1.11 | `FW-08` (c) | A fila na flash na placa: Wi-Fi desligado, religado, reenvio sem duplicata | 1.8 |
 | 1.12 | `HW-08` | O I2C na bancada: pull-ups, 100 e 400 kHz | `HW-09` |
-| 1.13 | **Integração e release R1** | Revisar e mesclar 1.1–1.7; release com login real | as PRs do Codex |
+| 1.13 | **Integração e release R1** ✅ *(12/11, #157, com 1.1–1.3 e o firmware; 1.4–1.7 vão num R1b)* | Revisar e mesclar 1.1–1.7; release com login real | as PRs do Codex |
 
 ### Onda 2 — a primeira noite do travesseiro, e a dívida de segurança e CI
 
@@ -116,6 +116,7 @@ estiverem mesclados, e não quando todos os da onda anterior estiverem.
 | 2.7 | `CI-10` | O Python do CI igual ao da Vercel | — |
 | 2.8 | `CI-09` | Um job para o app Android | — |
 | 2.9 | `CI-11` | Os dois harnesses de mutação com mensagem certa | — |
+| 2.9b | `CI-12` | Compilar o `sketch.ino` para o ESP32 no CI (`scripts/compilar_sketch_esp32.py`) | — |
 | 2.10 | `SEC-13` | A suíte de RLS sem reaplicar os GRANTs no fim | — |
 | 2.11 | `SEC-20` | Cabeçalhos de segurança no `vercel.json` | — |
 | 2.12 | **Integração e release R2** | | |
@@ -170,6 +171,28 @@ estiverem mesclados, e não quando todos os da onda anterior estiverem.
 
 `CI-02` (linter) e `GIT-05` (ponteiros para arquivos que o clone não traz): Claude, quando as ondas 1–3
 estiverem mescladas.
+
+## 7. O que falta investigar (12/11, depois das PRs #146–#155)
+
+Cada linha tem um item no backlog; esta tabela diz **o que precisa ser medido ou decidido**, quem
+puxa e o que dispara a investigação. Ordem: o que bloqueia a primeira noite do travesseiro primeiro.
+
+| # | Investigação | Item | Dono | Como | Gatilho |
+|---|---|---|---|---|---|
+| I-1 | A folga de heap no envio é de ~15 KB (mínimo 14 772 B no TLS). Aguenta uma noite? | `FW-14` | Claude + autor | O log do envio já imprime o mínimo; ler numa noite inteira. Abaixo de ~10 KB: uma conexão TLS por volta, não por lote | `VAL-01` |
+| I-2 | A deriva do relógio ao longo de horas: −29 a −33 ppm em 41 min, e −123 ppm numa gravação de 10 min, que destoa | `FW-07` (c) | Claude + autor | A linha `[relogio]` de uma noite inteira; comparar a acumulada | `VAL-01` |
+| I-3 | A partição da fila nasceu com lixo (1 279 corrompidos) e o CRC-16 pode aceitar um registro falso (~2 % por montagem) | `FW-15` | Claude | Ler a montagem; teste do host com lixo que passa no CRC; apagar a partição na primeira montagem ou ao gravar | antes de `VAL-01` |
+| I-4 | A fila com o Wi-Fi desligado de propósito, e se o reenvio duplica linhas no banco | `FW-08` (c) | Claude + autor | Roteiro na bancada; consulta de duplicatas por `(device_id, captured_at)` no SQL Editor | bancada |
+| I-5 | O I2C: pull-ups e 400 kHz | `HW-08` | Claude + autor | Multímetro e o `diagnostico-i2c` | bancada |
+| I-6 | O tempo de envio de uma noite real com o backend em São Paulo | `INFRA-05`, depois `API-06` | Autor (consulta) + Claude | A consulta do lote depois da próxima noite com o celular | próxima noite |
+| I-7 | O Histórico de 7 dias mostra no máximo 2 000 leituras | `UI-30` | Codex | Paginar a janela pelo cursor ou resumir as sessões no servidor | onda 1 |
+| I-8 | O que o CI não vê: a compilação para o chip | `CI-12` | Claude | Job com `arduino-cli` e `scripts/compilar_sketch_esp32.py` | onda 2 |
+| I-9 | As leituras de bancada de 12/11 na conta do autor (~150 épocas do travesseiro) e as 6 gravações de teste de 10/11 | `APP-11` | Autor (apagar) / Codex (marcar teste) | Decisão do autor | — |
+| I-10 | Conferir em produção, depois do release R1, que o Histórico deixou de cortar em 1 000 e que a sessão da borda sai "Parcial" | `DATA-15`, `UI-26` | Claude + autor | Login real depois do R1 | release R1 |
+
+**Ferramenta, fora do repositório:** o leitor da serial em PowerShell corta linhas quando a leitura
+esgota o tempo, e a partida da placa sai com bytes trocados (o carregador fala a 74 880 baud). Não
+afeta o firmware; pesa na leitura das gravações de bancada.
 
 ## 4. O que só o autor faz (L3), e o que cada decisão destrava
 
