@@ -70,10 +70,12 @@ const SESSAO = {
   user: { id: "11111111-1111-1111-1111-111111111111", email: "titular@exemplo.com" },
 };
 
+let sessaoDoServidor: typeof SESSAO | null = SESSAO;
+
 vi.mock("@supabase/supabase-js", () => ({
   createClient: () => ({
     auth: {
-      getSession: async () => ({ data: { session: SESSAO }, error: null }),
+      getSession: async () => ({ data: { session: sessaoDoServidor }, error: null }),
       // O `AuthContext` chama o `unsubscribe` ao desmontar; sem ele o teste
       // quebraria na limpeza e não no que está sob teste.
       onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
@@ -98,6 +100,7 @@ function respostaJson(corpo: unknown): Response {
 }
 
 beforeEach(() => {
+  sessaoDoServidor = SESSAO;
   // Lidos no topo de `lib/supabase.ts`, então têm de valer antes do import
   // dinâmico. Valores de teste: a suíte não depende do `.env` de ninguém.
   vi.stubEnv("VITE_SUPABASE_URL", "https://projeto-de-teste.supabase.co");
@@ -412,18 +415,31 @@ describe("montagem real das telas (UI-17)", PRAZO, () => {
     return () => { dados = [...recentes, ...antigas.slice(0, -1)]; };
   }
 
-  it("marca somente a sessão na borda de uma resposta no limite", async () => {
-    const reduzir = simularSessoesNaBorda();
+  it("mostra o progresso e inclui a sessão que chega na segunda página do Histórico", async () => {
+    const original = vi.mocked(fetch).getMockImplementation()!;
+    const agora = Date.now();
+    const leitura = (id: number, distancia: number) => ({
+      id: String(id), created_at: new Date(agora - distancia).toISOString(),
+      movimento_total: 9.81, temp: null, status: "Repouso", epoca_segundos: 30,
+    });
+    const primeira = Array.from({ length: 2000 }, (_, i) => leitura(i, (i + 1) * 30_000));
+    const segunda = [leitura(2000, 86_400_000), leitura(2001, 86_430_000)];
+    let responder!: (r: Response) => void;
+    vi.mocked(fetch).mockImplementation((entrada, opcoes) => {
+      if (!String(entrada).startsWith("/api/sleep-history")) return original(entrada, opcoes);
+      const url = new URL(String(entrada), "https://exemplo.test");
+      if (!url.searchParams.has("cursor_id")) return Promise.resolve(respostaJson(primeira));
+      return new Promise((resolve) => { responder = resolve; });
+    });
     await montar("/historico");
+    expect(await screen.findByText(/página 2 de até 16/)).toBeTruthy();
+    expect(screen.queryByRole("table")).toBeNull();
+    await act(async () => responder(respostaJson(segunda)));
     const tabela = await screen.findByRole("table");
     const [, recente, antiga] = within(tabela).getAllByRole("row");
-    expect(within(recente).getByText("Completa")).toBeTruthy();
-    expect(within(antiga).getByText("Parcial")).toBeTruthy();
-
-    reduzir();
-    fireEvent.change(screen.getByRole("combobox", { name: "Período do histórico" }), { target: { value: "30" } });
-    await waitFor(() => expect(screen.getAllByText("Completa")).toHaveLength(2));
-    expect(screen.queryByText("Parcial")).toBeNull();
+    expect(within(recente).getByText("2000")).toBeTruthy();
+    expect(within(antiga).getByText("2")).toBeTruthy();
+    expect(within(tabela).getAllByText("Completa")).toHaveLength(2);
   });
 
   it.each([2000, 1999])("aviso de cobertura do painel com %i leituras", async (quantidade) => {
@@ -448,19 +464,22 @@ describe("montagem real das telas (UI-17)", PRAZO, () => {
   it("a rota /historico monta o histórico autenticado com filtro e estado vazio", async () => {
     const original = vi.mocked(fetch).getMockImplementation()!;
     let responder: ((resposta: Response) => void) | undefined;
+    const sinais: AbortSignal[] = [];
     vi.mocked(fetch).mockImplementation((entrada, opcoes) => {
       if (!String(entrada).startsWith("/api/sleep-history")) return original(entrada, opcoes);
+      if (opcoes?.signal) sinais.push(opcoes.signal);
       return new Promise((resolve) => { responder = resolve; });
     });
 
     await montar("/historico");
     expect(await screen.findByRole("heading", { name: "Histórico de sessões", level: 1 })).toBeTruthy();
-    expect(await screen.findByText("Carregando sessões...")).toBeTruthy();
+    expect(await screen.findByText(/Carregando sessões/)).toBeTruthy();
     await act(async () => responder!(respostaJson([])));
     expect(await screen.findByText("Nenhuma sessão no período selecionado.")).toBeTruthy();
 
     fireEvent.change(screen.getByRole("combobox", { name: "Período do histórico" }), { target: { value: "30" } });
-    expect(await screen.findByText("Carregando sessões...")).toBeTruthy();
+    expect(await screen.findByText(/Carregando sessões/)).toBeTruthy();
+    expect(sinais[0].aborted).toBe(true);
     await act(async () => responder!(new Response(JSON.stringify({ error: "Serviço indisponível" }), { status: 503 })));
     expect(await screen.findByText("Não foi possível carregar")).toBeTruthy();
 
@@ -490,40 +509,113 @@ describe("montagem real das telas (UI-17)", PRAZO, () => {
   });
 });
 
-/**
- * Toda rota declarada no `App.tsx` renderiza alguma coisa.
- *
- * ── POR QUE A LISTA NÃO É ESCRITA AQUI ──────────────────────────────────
- *
- * A ocorrência 4 do §1 das lições é um alvo de `make` com dois dos quatro
- * sketches, porque a lista era manual — e os dois de fora não compilavam. Uma
- * lista de rotas escrita à mão neste arquivo teria o mesmo destino: a rota
- * nova entra no `App.tsx`, ninguém se lembra de acrescentá-la aqui, e a
- * verificação silenciosamente para de acompanhar o aplicativo.
- *
- * Então as rotas saem do próprio `App.tsx`, lido do disco. Rota nova é coberta
- * sozinha; se o padrão deixar de casar, a guarda de contagem reprova em vez de
- * aprovar um conjunto vazio.
- *
- * ── O QUE ESTA VARREDURA PROVA, E O QUE NÃO PROVA ───────────────────────
- *
- * Prova que cada rota monta sem estourar e põe nós na raiz. **Não** prova que
- * a tela certa apareceu, nem que o conteúdo dela está correto — para
- * `/configuracoes` isso está provado acima, uma asserção por coisa afirmada.
- * Para as demais é catraca: pega a tela que deixa de renderizar, não a tela
- * que renderiza errado. As afirmações condicionais do painel (o
- * `AvisoDeLacuna`, a `NotaDeInferencia`, a `NotaDeEscopo` — texto de honestidade
- * científica que o trabalho afirma mostrar e que nunca foi visto renderizado)
- * exigem séries de leitura construídas para satisfazer cada condição, que é
- * trabalho de fixture e não de montagem: é o item `UI-18`.
- *
- * E uma assimetria que precisa estar dita, porque ela é o limite da ideia de
- * derivar a lista da fonte: **esta varredura cobre rota nova, não rota
- * removida.** Apagar um `<Route>` do `App.tsx` encurta a lista, e uma lista
- * mais curta passa. Quem pega a remoção é a asserção nomeada da rota — e hoje
- * existe uma só, a de `/configuracoes` (medida por controle positivo). Para as
- * outras seis, a remoção passaria em silêncio: é a parte do `UI-18`.
- */
+describe("rotas esperadas (UI-18)", PRAZO, () => {
+  it.each([
+    ["/login", /bem-vindo de volta/i],
+    ["/cadastro", /^criar conta$/i],
+    ["/nova-senha", /^nova senha$/i],
+    ["/dashboard", /^olá, titular$|^visão geral$/i],
+    ["/coletar", /^nova coleta$/i],
+    ["/historico", /^histórico de sessões$/i],
+    ["/dispositivos", /^dispositivos$/i],
+    ["/noite", /^a noite inteira$/i],
+    ["/configuracoes", /^configurações$/i],
+  ] as const)("a rota %s mostra sua tela", async (rota, titulo) => {
+    if (rota === "/login" || rota === "/cadastro") sessaoDoServidor = null;
+    await montar(rota);
+    expect(await screen.findByRole("heading", { name: titulo })).toBeTruthy();
+    expect(window.location.pathname).toBe(rota);
+  });
+
+  it("a rota / mostra a página inicial", async () => {
+    await montar("/");
+    expect(await screen.findByTitle("Smart Dormio — página inicial")).toBeTruthy();
+    expect(window.location.pathname).toBe("/");
+  });
+
+  it("a rota /privacidade mostra a política", async () => {
+    await montar("/privacidade");
+    expect(await screen.findByText("Versão preliminar.", {}, { timeout: 5000 })).toBeTruthy();
+    expect(window.location.pathname).toBe("/privacidade");
+  });
+
+  it("a rota * redireciona um endereço desconhecido para /", async () => {
+    await montar("/rota-inexistente");
+    expect(await screen.findByTitle("Smart Dormio — página inicial")).toBeTruthy();
+    expect(window.location.pathname).toBe("/");
+  });
+});
+
+describe("avisos no painel (UI-18)", PRAZO, () => {
+  const lacuna = /faltou medição em/i;
+  const inferencia = /foi estimada pelo intervalo entre elas/i;
+  const escopo = /não realiza estadiamento de sono.*nem diagnóstico clínico/i;
+
+  function responderHistorico(responder: () => Promise<Response>) {
+    const original = vi.mocked(fetch).getMockImplementation()!;
+    vi.mocked(fetch).mockImplementation((entrada, opcoes) =>
+      String(entrada).startsWith("/api/sleep-history") ? responder() : original(entrada, opcoes),
+    );
+  }
+
+  async function montarComLeituras(segundos: number[], epoca: number | null) {
+    const agora = Date.now();
+    responderHistorico(async () => respostaJson(segundos.map((segundo) => ({
+      created_at: new Date(agora - segundo * 1000).toISOString(),
+      movimento_total: 9.81, temp: null, status: "Repouso", epoca_segundos: epoca,
+    }))));
+    await montar("/dashboard");
+    await screen.findByRole("heading", { name: "Leituras recentes" });
+  }
+
+  it("lacuna: mostra o aviso quando há interrupção no recorte", async () => {
+    await montarComLeituras([0, 30, 180, 210], 30);
+    fireEvent.click(await screen.findByRole("button", { name: /ver todas/i }));
+    expect(screen.getByText(lacuna)).toBeTruthy();
+  });
+
+  it("lacuna: omite o aviso com cobertura contínua", async () => {
+    await montarComLeituras([0, 30, 60], 30);
+    expect(screen.queryByText(lacuna)).toBeNull();
+  });
+
+  it("inferência: mostra a nota com cadência estimada e sem lacuna", async () => {
+    await montarComLeituras([0, 30, 60], null);
+    expect(screen.getByText(inferencia)).toBeTruthy();
+    expect(screen.queryByText(lacuna)).toBeNull();
+  });
+
+  it("inferência: omite a nota quando as leituras declaram a duração", async () => {
+    await montarComLeituras([0, 30, 60], 30);
+    expect(screen.queryByText(inferencia)).toBeNull();
+  });
+
+  it("escopo: mostra a nota no painel com leituras", async () => {
+    await montarComLeituras([0, 30, 60], 30);
+    expect(screen.getByText(escopo)).toBeTruthy();
+  });
+
+  it("escopo: mostra a nota no painel sem leituras", async () => {
+    await montar("/dashboard");
+    expect(await screen.findByText(escopo)).toBeTruthy();
+  });
+
+  it("escopo: omite a nota durante o carregamento", async () => {
+    responderHistorico(() => new Promise(() => {}));
+    await montar("/dashboard");
+    expect(await screen.findByText("Carregando leituras...")).toBeTruthy();
+    expect(screen.queryByText(escopo)).toBeNull();
+  });
+
+  it("escopo: omite a nota em caso de erro", async () => {
+    responderHistorico(async () => new Response(JSON.stringify({ error: "Serviço indisponível" }), { status: 503 }));
+    await montar("/dashboard");
+    expect(await screen.findByText("Não foi possível carregar")).toBeTruthy();
+    expect(screen.queryByText(escopo)).toBeNull();
+  });
+});
+
+/** A varredura continua cobrindo rotas novas. As expectativas fixas acima detectam remoções. */
 describe("toda rota do App.tsx monta (UI-17)", PRAZO, () => {
   // `process.cwd()` e não `import.meta.url`: em ambiente jsdom o
   // `import.meta.url` é uma URL `http://`, e `readFileSync` a recusa. O

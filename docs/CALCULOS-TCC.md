@@ -754,7 +754,7 @@ próprio código de armazenamento em ambiente de teste, e não estimada.
 Na arquitetura adotada, cada época — com o vetor de características — é gravada num registro de
 **64 bytes**, com verificação de integridade, numa partição dedicada de **2 MiB** da memória
 *flash*, organizada como registro circular. A leitura da tabela de partições pelo próprio
-código de armazenamento mede **32 704 registros, ou 272,5 h — 11,4 dias** de épocas de 30 s sem
+código de armazenamento mede **32 640 registros, ou 272,0 h — 11,3 dias** ✏️ *(13/11, `FW-15`: um setor passou a ser o cabeçalho de formato; antes 32 704, 272,5 h)* de épocas de 30 s sem
 nenhuma entrega (*medição*). Uma noite de oito horas ocupa menos de 3 % da partição.
 
 Três propriedades da fila, verificadas em ambiente de teste contra uma memória *flash*
@@ -875,7 +875,7 @@ arquivo não virar uma terceira versão divergente dos mesmos números.
 | Correntes por modo do ESP32 | **Especificação** | Espressif, ESP32 Series Datasheet, Tabela 4-2. Condição: **consumo do chip**, não do módulo nem da placa |
 | σ por banda, pisos de ENMO, janela do pull-up, k = 67, razão √(260/21) | **Cálculo** | `scripts/calculos_tcc.py` |
 | Capacidade do buffer (1,07 h / 8,53 h / 960 POSTs) | **Medição** | `firmware/nucleo/capacidade.cpp`, via `make capacidade`; `sizeof(Epoca)` travado por `static_assert`. ✏️ *04/11: é a fila anterior, na RAM; saiu do texto (Z.4.6)* |
-| Capacidade da fila na *flash* (32 704 registros, 272,5 h, 11,4 dias) | **Medição** | `make capacidade`, lendo `firmware/partitions.csv`; registro de 64 B (`registro_flash.h`) |
+| Capacidade da fila na *flash* (32 640 registros, 272,0 h, 11,3 dias; ✏️ 13/11, `FW-15`) | **Medição** | `make capacidade`, lendo `firmware/partitions.csv`; registro de 64 B (`registro_flash.h`) |
 | Intervalo de entrega (10 min) e de esvaziamento (1,7 s) | **Especificação de projeto** | Lidos do firmware por `scripts/estudo_cadencia.py` |
 | Duração de uma entrega completa (2–8 s) | **Estimativa em faixa** | Nenhuma medição; limites de espera do firmware: 20 s (Wi-Fi) + 5 s (NTP) + 8 s (POST), até 20 lotes por conexão |
 | Tempos e corrente da gravação na *flash* | **Estimativa em faixa** | Ordem de grandeza de folhas de memória NOR SPI; o resultado é < 1 % em toda a faixa |

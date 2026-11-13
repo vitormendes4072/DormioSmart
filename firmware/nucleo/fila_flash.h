@@ -61,6 +61,20 @@ namespace dormio {
 const uint32_t TAMANHO_DO_SETOR_BYTES = 4096;
 const uint32_t REGISTROS_POR_SETOR = TAMANHO_DO_SETOR_BYTES / TAMANHO_DO_REGISTRO_FLASH_BYTES;
 
+// ── O cabecalho de formato (FW-15) ─────────────────────────────────────
+// O ULTIMO setor da particao guarda uma marca de formato, e a fila usa os
+// anteriores. Sem a marca -- particao nova, ou com restos de um programa
+// gravado antes com outra tabela de particoes --, a montagem apaga a area e
+// a escreve: lixo nao pode virar registro so porque passou no CRC-16 (1 em
+// 65 536 por slot; medido na placa em 12/11: 1 279 slots sujos, ~2 % de
+// chance por montagem). O cabecalho fica no fim, e nao no comeco, para que o
+// endereco de cada slot continue sendo `slot * 64`.
+const uint32_t SETORES_DO_CABECALHO_DA_FILA = 1;
+const uint16_t VERSAO_DO_FORMATO_DA_FILA = 1;
+const uint32_t TAMANHO_DO_CABECALHO_DA_FILA = 16;
+// "DORMIOF1": 8 bytes, sem o terminador.
+extern const uint8_t MARCA_DO_FORMATO_DA_FILA[8];
+
 // A flash vista pela fila. Enderecos relativos ao inicio da particao. A
 // implementacao do ESP32 esta em `firmware/midia_flash_esp32.h`; a dos
 // testes, em `testes/testes_fila_flash.cpp`.
@@ -84,10 +98,13 @@ struct EstatisticasDaFila {
   uint32_t apagamentos;
   uint32_t corrompidos_na_montagem;
   uint32_t slots_pulados;        // slot sujo encontrado no caminho da cabeca
+  bool formatada_na_montagem;    // a montagem nao achou a marca e apagou a area (FW-15)
+  uint32_t setores_apagados_na_formatacao;
 
   EstatisticasDaFila()
       : guardados(0), confirmados(0), descartes(0), falhas_de_escrita(0), apagamentos(0),
-        corrompidos_na_montagem(0), slots_pulados(0) {}
+        corrompidos_na_montagem(0), slots_pulados(0), formatada_na_montagem(false),
+        setores_apagados_na_formatacao(0) {}
 };
 
 enum ResultadoDaGuarda {
@@ -101,9 +118,11 @@ class FilaNaFlash {
  public:
   explicit FilaNaFlash(MidiaFlash *midia);
 
-  // Le a particao inteira e reconstroi cabeca, cauda e sessao. Devolve false
-  // se a particao nao serve (menos de dois setores, ou tamanho que nao e
-  // multiplo de setor) ou se a leitura falhou.
+  // Confere a marca de formato no ultimo setor; sem ela, apaga a area e a
+  // escreve (FW-15). Depois le a area inteira e reconstroi cabeca, cauda e
+  // sessao. Devolve false se a particao nao serve (menos de tres setores --
+  // dois de dados e o do cabecalho --, ou tamanho que nao e multiplo de
+  // setor) ou se a midia falhou.
   bool montar();
 
   // Grava uma epoca. `vetor` nulo = sem features (o payload sai sem `f`).
@@ -138,10 +157,14 @@ class FilaNaFlash {
   bool slot_em_branco(uint32_t slot, bool *ok);
   bool setor_tem_pendente(uint32_t primeiro_slot, bool *ok);
   void avancar_cauda();
+  bool formato_confere(bool *ok);
+  bool formatar();
+  bool setor_em_branco(uint32_t endereco, bool *ok);
 
   MidiaFlash *midia_;
   bool montada_;
   uint32_t slots_;
+  uint32_t endereco_do_cabecalho_;
   uint32_t cabeca_;
   uint32_t cauda_;
   uint32_t pendentes_;

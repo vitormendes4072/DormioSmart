@@ -7,8 +7,11 @@
 
 namespace dormio {
 
+const uint8_t MARCA_DO_FORMATO_DA_FILA[8] = {'D', 'O', 'R', 'M', 'I', 'O', 'F', '1'};
+
 FilaNaFlash::FilaNaFlash(MidiaFlash *midia)
-    : midia_(midia), montada_(false), slots_(0), cabeca_(0), cauda_(0), pendentes_(0),
+    : midia_(midia), montada_(false), slots_(0), endereco_do_cabecalho_(0), cabeca_(0),
+      cauda_(0), pendentes_(0),
       prox_seq_(1), sessao_(1) {}
 
 EstadoDoSlot FilaNaFlash::ler_slot(uint32_t slot, RegistroDeEpoca *r, bool *ok) {
@@ -31,11 +34,85 @@ bool FilaNaFlash::setor_tem_pendente(uint32_t primeiro_slot, bool *ok) {
   return false;
 }
 
+// O cabecalho: marca (8 B), versao (u16), tamanho do registro (u16) e numero
+// de slots (u32), little-endian. Qualquer diferenca -- inclusive de tamanho
+// da particao -- e outro formato, e a area e refeita.
+static void montar_cabecalho(uint32_t slots, uint8_t *c) {
+  for (uint32_t i = 0; i < TAMANHO_DO_CABECALHO_DA_FILA; i++) c[i] = 0;
+  for (uint32_t i = 0; i < 8; i++) c[i] = MARCA_DO_FORMATO_DA_FILA[i];
+  c[8] = static_cast<uint8_t>(VERSAO_DO_FORMATO_DA_FILA & 0xFF);
+  c[9] = static_cast<uint8_t>(VERSAO_DO_FORMATO_DA_FILA >> 8);
+  c[10] = static_cast<uint8_t>(TAMANHO_DO_REGISTRO_FLASH_BYTES & 0xFF);
+  c[11] = static_cast<uint8_t>(TAMANHO_DO_REGISTRO_FLASH_BYTES >> 8);
+  for (uint32_t i = 0; i < 4; i++) c[12 + i] = static_cast<uint8_t>(slots >> (8 * i));
+}
+
+bool FilaNaFlash::formato_confere(bool *ok) {
+  uint8_t lido[TAMANHO_DO_CABECALHO_DA_FILA];
+  uint8_t esperado[TAMANHO_DO_CABECALHO_DA_FILA];
+  *ok = midia_->ler(endereco_do_cabecalho_, lido, sizeof(lido));
+  if (!*ok) return false;
+  montar_cabecalho(slots_, esperado);
+  for (uint32_t i = 0; i < TAMANHO_DO_CABECALHO_DA_FILA; i++) {
+    if (lido[i] != esperado[i]) return false;
+  }
+  return true;
+}
+
+bool FilaNaFlash::setor_em_branco(uint32_t endereco, bool *ok) {
+  uint8_t bloco[TAMANHO_DO_REGISTRO_FLASH_BYTES];
+  for (uint32_t d = 0; d < TAMANHO_DO_SETOR_BYTES; d += sizeof(bloco)) {
+    *ok = midia_->ler(endereco + d, bloco, sizeof(bloco));
+    if (!*ok) return false;
+    for (uint32_t i = 0; i < sizeof(bloco); i++) {
+      if (bloco[i] != 0xFF) return false;
+    }
+  }
+  return true;
+}
+
+// Apaga so os setores que nao estao em branco (uma placa nova nao gasta
+// apagamento nenhum) e por ultimo escreve o cabecalho: um corte de energia no
+// meio deixa a area sem marca, e a proxima montagem recomeca a formatacao.
+bool FilaNaFlash::formatar() {
+  stats_.formatada_na_montagem = true;
+  stats_.setores_apagados_na_formatacao = 0;
+  const uint32_t setores = endereco_do_cabecalho_ / TAMANHO_DO_SETOR_BYTES + SETORES_DO_CABECALHO_DA_FILA;
+  for (uint32_t s = 0; s < setores; s++) {
+    const uint32_t endereco = s * TAMANHO_DO_SETOR_BYTES;
+    bool ok;
+    if (setor_em_branco(endereco, &ok)) continue;
+    if (!ok) return false;
+    if (!midia_->apagar_setor(endereco)) {
+      stats_.falhas_de_escrita++;
+      return false;
+    }
+    stats_.setores_apagados_na_formatacao++;
+  }
+  uint8_t c[TAMANHO_DO_CABECALHO_DA_FILA];
+  montar_cabecalho(slots_, c);
+  bool ok;
+  if (!midia_->programar(endereco_do_cabecalho_, c, sizeof(c)) || !formato_confere(&ok)) {
+    stats_.falhas_de_escrita++;
+    return false;
+  }
+  return true;
+}
+
 bool FilaNaFlash::montar() {
   montada_ = false;
   const uint32_t bytes = midia_->tamanho();
-  if (bytes % TAMANHO_DO_SETOR_BYTES != 0 || bytes < 2u * TAMANHO_DO_SETOR_BYTES) return false;
-  slots_ = bytes / TAMANHO_DO_REGISTRO_FLASH_BYTES;
+  const uint32_t minimo = (2u + SETORES_DO_CABECALHO_DA_FILA) * TAMANHO_DO_SETOR_BYTES;
+  if (bytes % TAMANHO_DO_SETOR_BYTES != 0 || bytes < minimo) return false;
+  endereco_do_cabecalho_ = bytes - SETORES_DO_CABECALHO_DA_FILA * TAMANHO_DO_SETOR_BYTES;
+  slots_ = endereco_do_cabecalho_ / TAMANHO_DO_REGISTRO_FLASH_BYTES;
+  stats_.formatada_na_montagem = false;
+  {
+    bool ok;
+    if (!formato_confere(&ok)) {
+      if (!ok || !formatar()) return false;
+    }
+  }
 
   bool achou = false;
   uint32_t maior_seq = 0;

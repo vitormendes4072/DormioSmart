@@ -9716,6 +9716,160 @@ Os quatro pontos foram corrigidos no `5ed12df`, e as sabotagens reexecutadas na 
 **Procedência.** PR #150, implementação `fe85462`, registros sobre `develop` `745f232`. Testes automatizados no Windows.
 
 
+# 2026-11-12 (xxiv) — o release R1b
+
+**O problema, como foi entendido no início.** Os itens 1.4–1.6 do plano (`APP-15`, `UI-28`, `UI-27`, PRs #148–#150 do Codex) estavam integrados em `develop` e o autor aprovou levá-los à produção.
+
+**Hipótese de trabalho.** Só frontend, sem migração e sem mudança de contrato: o release não toca a ingestão, e os textos novos aparecem no pacote publicado.
+
+**O que foi testado, e como.** PR #161 (`develop` → `main`), CI e Vercel; depois do deploy, `/health`, `/api/sleep-history` e `/api/features` sem token, `X-Vercel-Id`, o deployment de produção e os três textos novos no JavaScript publicado.
+
+**Resultado medido.** CI e Vercel verdes (12 de 12); merge `96d934c`; deployment de produção em `96d934c`, `gru1`; `/health` `200`, banco ok, contrato 2.9.0, modelo `ml-inf-cabeca-v2`; as duas rotas `401` sem token; no pacote, "Coleta encerrada sem registros", "Primeiro registro em" e "Não foi possível carregar as noites gravadas".
+
+**Adaptação.** Nenhuma.
+
+**O que deu errado no caminho.** Nada nesta etapa.
+
+**Risco em aberto.** O login real depois deste release não foi conferido; a falha do plugin (`APP-15`) só aparece no app Android, que precisa de um APK novo para levar a correção (`APP-12`).
+
+**Procedência.** GitHub (PR #161, CI e deployments); `curl` na produção, 12/11; Windows 11.
+
+---
+
+# 2026-11-12 (xxv) — UI-18: rotas e avisos no painel
+
+**O problema.** A lista de rotas derivada do App não acusa remoções e os avisos do painel não tinham prova de montagem para as condições positivas e negativas.
+
+**Hipótese.** Montar pelo ponto de entrada de produção com expectativas fixas de rota e dados controlados torna as remoções de tela, texto e condição detectáveis.
+
+**O que foi testado.** No Windows, removi individualmente cada uma das 11 rotas com caminho e o fallback `*`. Para cada aviso removi seu texto distintivo e, em outra execução, inverti a condição. Lacuna e inferência são aplicáveis no painel com leituras: a lacuna aparece com perda relevante no recorte e fica ausente com cobertura contínua, e a nota de inferência aparece quando a duração é estimada, mesmo sem lacuna, e fica ausente com duração declarada. Ambos ficam fora dos estados sem leituras, carregando e erro. Escopo foi exercitado nos quatro estados: aparece com e sem leituras após sucesso, e fica ausente ao carregar ou em erro.
+
+**Resultado medido.** As 12 remoções derrubaram o teste nomeado da rota; Histórico, Dispositivos e Configurações tiveram ainda uma falha em teste existente. Para lacuna e inferência, remover o texto derrubou um teste positivo de cada e inverter a condição derrubou um teste negativo de cada. Na lacuna usei valores de preenchimento ao forçar o ramo sem perda para a mutação renderizar em vez de lançar exceção. Remover o texto de escopo derrubou os dois positivos; mover a nota para carregamento e erro derrubou os dois negativos.
+
+**Adaptação.** Mantive a varredura de rotas novas e acrescentei as asserções fixas. A página inicial é identificada pelo título do iframe e a política aguarda o conteúdo carregado sob demanda.
+
+**O que deu errado no caminho.** Um comando usou expansão de chaves incompatível com PowerShell e outro partiu do diretório errado. As primeiras expectativas da página inicial e da saudação não correspondiam à tela. O prazo padrão de um segundo também foi insuficiente para a política sob a suíte completa.
+
+**Risco em aberto.** As leituras são simuladas e a montagem não exercita sensores, navegador físico ou o conteúdo interno do iframe.
+
+**Procedência.** Execuções em Windows, worktree da UI-18 sobre `develop` `6172004`, ponto de entrada `frontend/src/main.tsx`.
+
+# 2026-11-13 (i) — FW-15: a fila da flash ganha um cabeçalho de formato
+
+**O problema, como foi entendido no início.** Na primeira partida do `sketch.ino` na placa (12/11), a montagem da fila contou 1 279 slots corrompidos na partição `dormio`: restos do programa gravado antes com a tabela padrão. A montagem confia em todo slot cujo CRC-16 confere; com ~1 300 slots de lixo, a chance de um passar por acaso é de ~2 % por montagem — e, lendo o código, o efeito é maior que uma época falsa: a montagem toma `seq` e `sessao` do registro, então a numeração e a sessão da fila passariam a vir do lixo.
+
+**Hipótese de trabalho.** Uma marca de formato no último setor, escrita só depois de a área estar limpa, separa "área desta fila" de "qualquer outra coisa"; sem ela, apagar a área custa uma vez e elimina o caso inteiro.
+
+**O que foi testado, e como.**
+- **O defeito:** um teste com um setor de bytes pseudoaleatórios e um slot fabricado com CRC válido, `seq` 0xFFFFFF00 e sessão 0xBEEF, rodado contra o núcleo da `develop` e contra o corrigido, em contêiner `gcc:13`.
+- **O formato:** placa nova (sem apagamento), remontagem sem formatar de novo, versão diferente, corte de energia no meio da formatação, cabeçalho de uma área de outro tamanho.
+- **Mutação:** três sabotagens novas no `make mutacao-fila`.
+- **O resto do núcleo:** `make`, `sintaxe`, `laco`, `capacidade`, `mutacao`, `mutacao-cadeia`, `mutacao-coletor`; a compilação para o chip (`compilar_sketch_esp32.py`); as conferências de cálculos e do buffer.
+- **Na placa:** a versão exata da branch, com o `secrets.h` do autor; a segunda partida; o cabeçalho apagado com `esptool erase_region 0x3FF000 0x1000 --after no-reset` e a partida seguinte; 11 min até o primeiro envio.
+
+**Resultado medido.**
+- **Na `develop`, o teste do lixo falha em 5 verificações:** o lixo vira pendente, a sessão sai dele (0xBEEF+1), os corrompidos continuam, a numeração não começa do 1, e o primeiro pendente é a época 777 fabricada.
+- **Com a correção:** fila **115/115**; `mutacao-fila` **17/17** (a sabotagem "o cabeçalho ignora o tamanho da área" passava, e passou a ser acusada com um teste a mais); `make` 0 falhas, `laco` 8/8, `mutacao-cadeia` 34/34; para o chip, RAM fixa 108 920 B; capacidade **32 640 registros = 272,0 h** (eram 32 704, 272,5 h).
+- **Na placa:** depois da gravação, a montagem foi de 1 087 corrompidos e sessão 7 para **0 corrompidos e sessão 1** (a primeira partida, a que formatou, aconteceu no reinício da própria gravação); a segunda partida não formatou; com o cabeçalho apagado, **"Fila formatada: 0 setores apagados em 5924 ms"** e 0 corrompidos; o primeiro envio não foi conferido: o NTP não respondeu em 5 s e a placa reiniciou dentro do `HTTPClient` (`FW-16`, defeito anterior a este item); as 19 épocas pendentes sobreviveram à reinicialização.
+
+**Adaptação.** O cabeçalho foi para o **último** setor, e não para o primeiro como no plano: assim o endereço de cada slot continua `slot * 64`, e os testes de antes seguem falando de setores de dados (a flash simulada ganhou o setor do cabeçalho). A documentação de capacidade (`CALCULOS-TCC.md`, `DECISAO-BUFFER-E-FEATURES.md`) foi atualizada.
+
+**O que deu errado no caminho.**
+- **A primeira formatação na placa não foi lida:** a gravação reinicia a placa, e o `esptool` também; foi preciso apagar o cabeçalho de novo com `--after no-reset` para ver a linha de formatação.
+- **A sabotagem do tamanho da área passou na primeira rodada** — o campo existia sem teste.
+- **Duas edições quebraram strings de novo** (o `\n` do `printf` e um `\r\n` de arquivo CRLF), corrigidas no editor antes de compilar.
+
+**Risco em aberto.**
+- **O tempo de formatação com a área suja** não foi medido (o caso real já tinha sido formatado sem leitura); com 2 MiB sujos seriam ~512 apagamentos — estimativa de 20–30 s, uma vez.
+- **A montagem lê os 2 MiB a cada partida** (~4–6 s); não é novo, mas pesa no boot.
+- **A placa reinicia no envio quando o NTP demora** — `FW-16`, achado nesta bancada: a consulta de DNS do SNTP fica pendente e a limpeza do cache do `HTTPClient` a dispara fora da trava da pilha de rede.
+
+**Procedência.** Branch `bugfix/FW-15-formato-da-fila`; contêiner `gcc:13`; `arduino-cli` 1.6.0 e `esptool` 5.3.1 com `esp32:esp32` 3.3.12; placa do autor na COM3; Windows 11, 13/11.
+
+# 2026-11-13 (ii) — FW-16: a placa caía no envio quando o NTP demorava
+
+**O problema, como foi entendido no início.** Na bancada do `FW-15`, o primeiro envio derrubou a placa: "NTP nao respondeu" e, no mesmo segundo, `assert failed: udp_new_ip_type … (Required to lock TCPIP core functionality!)` e `SW_CPU_RESET`. O backtrace decodificado com o ELF da compilação mostrou o caminho: `HTTPClient::POST` → `NetworkManager::hostByName` → `dns_clear_cache` → `sntp_dns_found` → `sntp_request` → `dns_gethostbyname` → `udp_new_ip_type`. A consulta de DNS do SNTP ficou pendente quando o NTP passou dos 5 s, e a limpeza do cache feita pelo `HTTPClient` — que o core faz quando o estado do IP muda, isto é, logo depois de o Wi-Fi religar — disparou o retorno do SNTP fora da trava da pilha de rede (`arduino-esp32` 3.3.12).
+
+**Hipótese de trabalho.** O plano aprovado era chamar `esp_sntp_stop()` ao fim de toda tentativa de sincronia. Lendo o `lwip`, o `sntp_stop` não cancela a consulta de DNS pendente — a hipótese precisava de medição antes de ir ao repositório.
+
+**O que foi testado, e como.** Variantes de diagnóstico fora do repositório, com envio a cada 1 min, gravadas na placa e lidas pelo serial:
+- **espera do NTP em 1 ms**, firmware sem correção;
+- **DNS da placa trocado por um endereço que não responde** (`10.255.255.1`, por `esp_netif_set_dns_info`, logo depois de conectar), com o firmware sem correção, com `esp_sntp_stop()` e com a resolução do nome feita pela própria tarefa;
+- a versão da branch com o DNS normal.
+
+No host: `make`, `sintaxe`, `laco` (o stub do `WiFi` ganhou `hostByName` e `IPAddress`) e a compilação para o chip.
+
+**Resultado medido.**
+- **Espera de 1 ms:** não reproduz (a consulta termina antes do envio): `HTTP 200`.
+- **DNS mudo, sem correção:** caiu em **2 de 2** voltas, com o mesmo `assert`.
+- **DNS mudo, com `esp_sntp_stop()`:** caiu em **2 de 2** — a correção do plano não basta.
+- **DNS mudo, com a resolução na própria tarefa (a correção):** **0 de 2**; "NTP: o DNS nao resolveu o servidor; sem sincronia nesta volta", envio `HTTP -1`, épocas na fila.
+- **DNS normal, com a correção:** sincronia em todas as voltas e `HTTP 200` em todos os lotes; saíram as **61 épocas** acumuladas nas quedas e nos testes (a fila sobreviveu a cinco reinícios).
+- **Host:** `make` 0 falhas, `sintaxe` liga, `laco` 8/8; RAM fixa 108 936 B.
+
+**Adaptação.** **A correção mudou em relação ao plano aprovado**: em vez de `esp_sntp_stop()`, o `sketch.ino` resolve `pool.ntp.org` (e, se falhar, `time.nist.gov`) com `WiFi.hostByName` na tarefa de envio e passa ao `configTime` o endereço IP — o SNTP não faz mais DNS nenhum. Como a limpeza do cache só ocorre na primeira resolução depois de o Wi-Fi religar, essa primeira resolução passa a ser a do próprio firmware, antes de o SNTP existir.
+
+**O que deu errado no caminho.**
+- **O primeiro controle (espera de 1 ms) não reproduziu** — a consulta terminava a tempo; foi preciso o DNS mudo.
+- **A correção do plano não funcionou**, e só a medição mostrou isso.
+- **O diagnóstico tratou a falha do `hostByName` como sucesso:** a função devolve o código do erro, não 0, e o SNTP recebeu `0.0.0.0`. A versão do repositório exige `== 1` e IP diferente de zero. Ocorrência no §5 das lições.
+- **A primeira compilação falhou** com `IPAddress(0u)` ambíguo no core; trocado por `IPAddress()`.
+- **O teste do laço falhou** com o stub de `hostByName` devolvendo erro (o sketch pulava a sincronia e a deriva não tinha o que medir); o stub passou a resolver.
+
+**Risco em aberto.**
+- **Sem DNS, a volta fica sem sincronia e sem envio** — comportamento certo, mas uma noite inteira sem DNS grava com o relógio monotônico (resolvido no envio seguinte; `FW-07` (c)).
+- **Mais leituras de bancada entraram na conta do autor** nesta rodada (as 61 épocas, no aparelho do travesseiro, 13/11 14:24–15:45) — `APP-11`.
+
+**Procedência.** Branch `bugfix/FW-16-ntp-pendente` (a partir da do `FW-15`); placa do autor, COM3; `arduino-cli` 1.6.0 com `esp32:esp32` 3.3.12; o `xtensa-esp32-elf-addr2line` do pacote para o backtrace; contêiner `gcc:13`; Windows 11, 13/11.
+
+# 2026-11-13 (iii) — CI-12: o firmware compilado para o ESP32 no CI
+
+**O problema, como foi entendido no início.** O job `firmware` do CI compila o `sketch.ino` com stubs do Arduino no host, que não tem o teto de RAM estática do ESP32. Em 12/11 o sketch passava em todos os jobs e não ligava para o chip (`FW-12`); a única verificação que vê esse limite (`scripts/compilar_sketch_esp32.py`) só rodava à mão.
+
+**Hipótese de trabalho.** Um workflow próprio, disparado só por mudanças no firmware, roda a compilação para o chip com versões fixas, e um passo de controle positivo prova a cada execução que a verificação reprova o defeito que a motivou.
+
+**O que foi testado, e como.**
+- **O script com `--firmware`**, contra uma cópia do firmware com o texto do lote de volta à RAM estática (31 200 B), e contra o firmware atual, na máquina do autor (`arduino-cli` 1.6.0, `esp32:esp32` 3.3.12).
+- **O SHA-256 do `arduino-cli` 1.6.0 Linux 64 bits**, tirado do `1.6.0-checksums.txt` do lançamento oficial.
+- **O workflow**, na própria PR (o caminho do arquivo dispara o filtro).
+
+**Resultado medido.**
+- **Cópia sabotada:** "NAO LIGA: a regiao dram0_0_seg estourou em 15 560 B", saída 1.
+- **Firmware atual:** RAM fixa 108 936 B (33 %), 218 744 B para o heap, liga.
+- **O workflow na PR #166** (execução `43490415459`, `ubuntu-24.04`, 3 min sem cache): SHA-256 do `arduino-cli` `OK`; firmware atual com os **mesmos números da máquina local** (RAM fixa 108 936 B, liga); cópia sabotada "estourou em 15 560 B" e o passo de controle registrou "a verificacao reprovou o firmware sabotado, como devia".
+
+**Adaptação.** O controle positivo ficou dentro do workflow, e não só na máquina de quem mexeu: se o firmware encolher a ponto de a cópia sabotada passar a ligar, o workflow reprova e pede outro sabotador.
+
+**O que deu errado no caminho.** Nada nesta etapa.
+
+**Risco em aberto.**
+- **O workflow depende do índice da Espressif e do GitHub para baixar a toolchain** (com cache, só na primeira execução ou quando a versão mudar).
+- **O `arduino-cli` 1.6.0 é de 10/11**: a versão é a mesma da bancada, de propósito; trocar é decisão registrada.
+- **O heap durante o envio** continua sendo medido só na placa (`FW-14`).
+
+**Procedência.** Branch `feature/CI-12-compilar-esp32`; Windows 11 com `arduino-cli` 1.6.0; o lançamento oficial do `arduino-cli` no GitHub; 13/11.
+
+---
+
+# 2026-11-13 (iv) — UI-30: janela paginada do Histórico
+
+**O problema.** No release R1 o Histórico de 7 dias parava em 2 000 leituras e omitia as sessões mais antigas da janela.
+
+**Hipótese.** Percorrer o cursor existente preserva os filtros e recupera a janela com um limite de trabalho para o celular.
+
+**O que foi testado.** No Windows, simulei 6 700, 32 000 e 32 001 leituras, conferi cursor e filtros, falha na segunda página, progresso na tela, sessão antiga e cancelamento ao trocar o período. Executei o teste de progresso com a tela de develop e, separadamente, cortei após a primeira página, desativei o avanço do cursor e forcei a confirmação a informar que não havia mais dados.
+
+**Resultado medido.** O teste de progresso falhou com a tela antiga. O corte e o cursor imóvel derrubaram separadamente o teste das 6 700 leituras. A confirmação sempre negativa derrubou o teste de 32 001 leituras. Sem sabotagem, 6 700 vieram em quatro pedidos e 32 000 em 16 páginas mais a confirmação. Com 32 001, a confirmação indicou truncamento.
+
+**Adaptação.** O progresso informa a página em andamento de até 16. A tabela é montada uma vez, após a coleta, porque a API pagina por chegada e uma leitura atrasada pode mudar o agrupamento por medição. Mantive o backend e o CSV sem mudanças de contrato.
+
+**O que deu errado no caminho.** Nada além das falhas esperadas nos controles.
+
+**Risco em aberto.** O tempo real de 7 e 30 dias na conta do autor só será medido depois do release. Se 30 dias passar de aproximadamente 10 s, abrir um item próprio para a opção (b), resumos de sessão no servidor. O teto continua aplicável a janelas mais densas.
+
+**Procedência.** Base `develop` `ab1e00e`, testes com respostas simuladas no Windows. O caso de produção anterior está na entrada do release R1.
+
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

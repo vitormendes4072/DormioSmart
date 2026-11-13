@@ -19,6 +19,8 @@
 #define DORMIO_MIDIA_FLASH_ESP32_H
 
 #include <esp_partition.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
 
 #include "nucleo/fila_flash.h"
 
@@ -52,7 +54,13 @@ class MidiaFlashEsp32 : public dormio::MidiaFlash {
   }
 
   bool apagar_setor(uint32_t endereco) {
-    return p_ && esp_partition_erase_range(p_, endereco, dormio::TAMANHO_DO_SETOR_BYTES) == ESP_OK;
+    const bool ok =
+        p_ && esp_partition_erase_range(p_, endereco, dormio::TAMANHO_DO_SETOR_BYTES) == ESP_OK;
+    // A formatacao (FW-15) apaga centenas de setores seguidos no boot: ceder
+    // o processador entre eles deixa o watchdog e o Wi-Fi respirarem. Num
+    // apagamento avulso da fila custa 1 tick.
+    vTaskDelay(1);
+    return ok;
   }
 
  private:

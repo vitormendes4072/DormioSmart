@@ -146,6 +146,12 @@ esperar "13. confirma o lote inteiro, nao o prefixo aceito" envio_da_fila.cpp \
   "  if (d.acao == LOTE_CONFIRMAR && d.confirmar > 0) fila->confirmar(d.confirmar);" \
   "  if (d.acao == LOTE_CONFIRMAR && d.confirmar > 0) fila->confirmar(enviadas);"
 
+esperar "14. (FW-15) monta sem conferir a marca de formato" fila_flash.cpp   "    if (!formato_confere(&ok)) {"   "    if (false && !formato_confere(&ok)) {"
+
+esperar "15. (FW-15) formata sem apagar os setores sujos" fila_flash.cpp   "    if (setor_em_branco(endereco, &ok)) continue;"   "    if (true) continue;"
+
+esperar "16. (FW-15) o cabecalho ignora o tamanho da area" fila_flash.cpp   "  for (uint32_t i = 0; i < 4; i++) c[12 + i] = static_cast<uint8_t>(slots >> (8 * i));"   "  (void)slots;"
+
 echo
 echo "-----------------------------------------"
 echo "$((total - falhas))/$total como esperado"
