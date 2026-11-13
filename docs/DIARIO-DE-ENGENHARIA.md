@@ -9625,9 +9625,79 @@ Os quatro pontos foram corrigidos no `5ed12df`, e as sabotagens reexecutadas na 
 
 **Procedência.** GitHub (PR #157, CI e deployments); `curl` na produção, 12/11; a tela do autor na conversa; Windows 11.
 
+# 2026-11-12 (xx) — a limpeza das leituras de teste na conta do autor
+
+**O problema, como foi entendido no início.** A conta do autor tinha, misturadas às duas noites reais, leituras de bancada e de teste (de agosto até hoje). Elas entravam no Histórico e no painel como sessões, empurravam as noites reais para fora da janela de 2 000 leituras (`UI-30`) e distorceriam qualquer análise. O autor pediu para apagar tudo o que não fosse noite de sono real.
+
+**Hipótese de trabalho.** Uma regra por duração (manter sessões de 3 h ou mais) separa as noites dos testes; a exclusão roda pelo autor no SQL Editor, depois de uma prévia e de uma conferência que dizem quantas linhas saem.
+
+**O que foi testado, e como.**
+- **A prévia (só leitura):** as sessões da conta por aparelho (buraco de mais de 15 min abre sessão nova), testada antes num Postgres 17 local com dados falsos.
+- **A conferência e a exclusão:** mantêm só as leituras do celular dentro das janelas das duas noites; testadas no Postgres local com noites, testes, bancada e uma segunda conta (que tinha de ficar intocada).
+- **No site:** o Histórico de 7 dias depois da exclusão.
+
+**Resultado medido.**
+- **A prévia na produção:** 11 sessões. Ficam 2 noites do celular (10/11 03:02–09:52, 6,8 h, 815 leituras; 11/11 04:19–12:03, 7,7 h, 930).
+- **A conferência:** 804 saem, 1 745 ficam — os números esperados pela prévia.
+- **Depois da exclusão**, o Histórico mostra só as duas noites, sem o aviso de limite e sem "Parcial"; a noite de 10/11 aparece inteira (6h47m, 815 leituras), e não mais cortada em 550.
+- **No Postgres local**, a mesma exclusão tirou só os testes e não tocou a outra conta.
+
+**Adaptação.** **A regra por duração foi trocada por janelas explícitas:** a bancada do travesseiro de 12/11 (18:53–22:33, 3,7 h, 422 leituras) passava de 3 h e saía como "MANTER". A regra final mantém só as leituras do celular dentro das duas noites.
+
+**O que deu errado no caminho.**
+- **A primeira prévia não trouxe linha nenhuma:** o filtro do e-mail não casou; a versão com `lower(trim(...))` casou.
+- **A primeira execução da exclusão respondeu "No rows returned"** sem dizer quantas saíram (o `returning` não estava na tela); a segunda listou as linhas apagadas, e o Histórico confirmou o estado final.
+- **A regra de 3 h** classificaria uma bancada longa como noite (ver Adaptação).
+
+**Risco em aberto.**
+- **O app ainda não marca gravação de teste** — `APP-11`; sem isso, a próxima bancada volta a poluir a conta.
+- **O `UI-30` deixou de aparecer na conta**, porque a janela de 7 dias tem 1 745 leituras; volta com a terceira noite.
+
+**Procedência.** SQL Editor do Supabase, executado pelo autor em 12/11 (resultados colados na conversa); Postgres 17 local em Docker; a tela do Histórico do autor (não versionada); Windows 11.
+
 ---
 
-# 2026-11-12 (xxii) — UI-27: Primeira janela de coleta
+# 2026-11-12 (xxi) — APP-15: Falha ao listar noites
+
+**O problema.** O erro do plugin aparecia como lista vazia.
+
+**Hipótese.** Separar a falha da resposta vazia permite repetir a consulta.
+
+**O que foi testado.** No Windows, simulei rejeição do plugin seguida de sucesso e acionei Tentar novamente.
+
+**Resultado medido.** Em develop, 1 teste falhou porque aparecia a lista vazia em vez do alerta, e 7 passaram. Com a correção, o alerta apareceu e a noite voltou após repetir a consulta. A suíte original passou com 573 testes.
+
+**Adaptação.** A lista mostra erro e permite tentar novamente, com proteção contra respostas antigas.
+
+**O que deu errado no caminho.** Nada nesta etapa além da falha esperada no controle.
+
+**Risco em aberto.** Validação em aparelho físico pendente.
+
+**Procedência.** PR #148, implementação `c984876`, registros sobre `develop` `745f232`. Testes automatizados no Windows.
+
+---
+
+# 2026-11-12 (xxii) — UI-28: Teclado no consentimento e no tema
+
+**O problema.** O foco escapava do diálogo e o seletor não oferecia navegação de rádio.
+
+**Hipótese.** Gerenciar o foco no diálogo e usar rádios nativos corrige os dois fluxos.
+
+**O que foi testado.** No Windows, usei user-event para abrir, navegar, fechar e restaurar o foco, além de mudar o tema com as setas.
+
+**Resultado medido.** Em develop, 2 testes falharam: o foco ficou no botão de origem e Tab entrou no tema errado. Com a correção, 574 testes passaram.
+
+**Adaptação.** Contive Tab no diálogo, liguei Escape a Agora não e usei rádios nativos.
+
+**O que deu errado no caminho.** O jsdom não fornece CSS.escape. Simulei essa API apenas no teste das setas.
+
+**Risco em aberto.** Validação com leitor de tela em Android pendente.
+
+**Procedência.** PR #149, implementação `d538c5d`, registros sobre `develop` `745f232`. Testes automatizados no Windows.
+
+---
+
+# 2026-11-12 (xxiii) — UI-27: Primeira janela de coleta
 
 **O problema.** Encerrar antes da primeira janela não explicava a ausência de registros.
 
@@ -9644,6 +9714,7 @@ Os quatro pontos foram corrigidos no `5ed12df`, e as sabotagens reexecutadas na 
 **Risco em aberto.** A simulação automatizada não mede a cadência de sensores de outros aparelhos.
 
 **Procedência.** PR #150, implementação `fe85462`, registros sobre `develop` `745f232`. Testes automatizados no Windows.
+
 
 # O que este diário não cobre
 

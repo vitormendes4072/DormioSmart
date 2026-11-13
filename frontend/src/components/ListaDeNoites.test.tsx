@@ -92,6 +92,20 @@ describe("ListaDeNoites (APP-02, etapa 4)", () => {
     expect(screen.queryByRole("link", { name: /ver no painel/i })).toBeNull();
   });
 
+  it("mostra a falha do plugin e recupera a lista ao tentar novamente", async () => {
+    const p = plugin([NOITE_ANTIGA]);
+    vi.mocked(p.noites).mockRejectedValueOnce(new Error("falha de leitura"));
+    montar(p);
+
+    expect((await screen.findByRole("alert")).textContent).toMatch(/não foi possível carregar as noites gravadas/i);
+    expect(screen.queryByText(/nenhuma noite gravada/i)).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Tentar novamente" }));
+    expect(await screen.findByTestId("noite-noite-1.jsonl")).toBeTruthy();
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(p.noites).toHaveBeenCalledTimes(2);
+  });
+
   it("sem noites, diz isso", async () => {
     montar(plugin([]));
     expect(await screen.findByText(/nenhuma noite gravada/i)).toBeTruthy();
