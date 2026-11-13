@@ -198,6 +198,12 @@ jobs:
         working-directory: frontend
         run: npm run build
 
+      # SEC-20 (13/11): a CSP do vercel.json libera script inline so por hash.
+      # Mudar um caractere no script do tema ou na landing faz o navegador
+      # bloquear o script na producao; isto reprova antes, contra o site gerado.
+      - name: CSP do vercel.json contra os scripts inline do site
+        run: python3 scripts/conferir_csp.py
+
   ml:
     # CI-04 — a suite do `ml/` passa a rodar sozinha.
     #
