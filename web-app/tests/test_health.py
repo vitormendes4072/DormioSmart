@@ -49,7 +49,7 @@ def test_excecao_no_banco_nao_propaga_para_a_resposta():
 
     with patch.object(database.db, "cliente_de_ingestao", return_value=ClienteRuim()), \
          patch.object(database.db, "url", "https://exemplo.supabase.co"), \
-         patch.object(database.db, "key", "chave-de-teste"):
+         patch.object(database.db, "ingestao_key", "chave-de-teste"):
         ok, motivo = database.db.verificar_conexao()
 
     assert ok is False

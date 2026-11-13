@@ -9920,6 +9920,26 @@ No host: `make`, `sintaxe`, `laco` (o stub do `WiFi` ganhou `hostByName` e `IPAd
 
 **Procedência.** Branch `feature/CI-10-python-312` sobre `develop` `58ec5ff`, PR #170; Docker no Windows 11 (`python:3.11-slim`, `python:3.12-slim`); logs de build dos previews da Vercel `dpl_9KXd1JdY7muf8qhXC5WSwWz3jsqY` e `dpl_2mGMaRvmehi6sVzKDcYMSJp1XG5V`; 13/11.
 
+---
+
+# 2026-11-13 (vii) — SEC-19: credencial dedicada de ingestão
+
+**O problema.** Se faltasse a chave dedicada, a ingestão aceitava credenciais legadas que podiam ter acesso total.
+
+**Hipótese.** Exigir a chave dedicada e a anon mantém o caminho de privilégio mínimo e permite reportar indisponibilidade quando a configuração falta.
+
+**O que foi testado.** Em Windows, Python 3.13.5, executei cada caso de test_chave_legada_nao_substitui_ingestao isoladamente contra develop e contra a correção com apenas seu recuo reintroduzido. A RPC de sanidade devolve ok e a de resolução devolve lista vazia no banco simulado. Com a correção intacta os casos exigem dois 503 e nenhuma criação de cliente.
+
+**Resultado medido.** Os casos SUPABASE_SERVICE_ROLE_KEY e SUPABASE_KEY falharam nas duas versões de controle: o recuo permitiu criar cliente, a sanidade produziu 200 e o token fictício sem dispositivo produziu 401, em vez de 503 nas duas rotas. Com a correção restaurada, pytest registrou 550 aprovados e 270 pulados. Na revisão independente, foram 551 aprovados em `python:3.12` com `CI=true`. O revisor confirmou que retirar a guarda em `verificar_conexao` não muda o resultado: `cliente_de_ingestao()` já devolve `None`, portanto a guarda é redundante.
+
+**Adaptação.** Atualizei o exemplo, o README, o guia de deploy e o diagnóstico. No repositório inteiro, `git grep -n -E 'SERVICE_ROLE|SUPABASE_KEY'` encontrou referências nos testes de ingestão (regressão) e em `CLAUDE.md`, na auditoria de 10/11, no backlog e neste diário (registros de configuração e histórico). Nenhum caminho do backend lê essas variáveis. A ferramenta administrativa `scripts/emitir_chave_de_ingestao.py` não as lê e só menciona `service_role` no comentário introdutório.
+
+**O que deu errado no caminho.** Três testes ainda simulavam o atributo removido e o log novo não era ASCII. Corrigi as simulações e o log, preservando a guarda ASCII. O primeiro banco simulado não aceitava os argumentos posicionais da RPC; ajustei a assinatura e repeti os controles. Uma consulta Git ao metadado da worktree exigiu execução com acesso autorizado.
+
+**Risco em aberto.** Ambiente sem chave dedicada precisa configurá-la antes de receber ingestão. Os testes foram locais, com banco simulado; a suíte reportou 270 casos pulados.
+
+**Procedência.** SEC-19, base `develop` `a0f326d`, que inclui o CI-10 com Python 3.12 fixado em `web-app/.python-version`.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

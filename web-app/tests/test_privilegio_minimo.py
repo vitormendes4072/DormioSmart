@@ -284,16 +284,7 @@ def test_o_env_example_documenta_a_chave_de_ingestao():
     texto = (WEB_APP / ".env.example").read_text(encoding="utf-8")
     assert "SUPABASE_INGESTAO_KEY" in texto, (
         ".env.example nao menciona SUPABASE_INGESTAO_KEY; quem configurar o "
-        "projeto vai usar a service_role sem saber que ha opcao melhor."
-    )
-
-
-def test_o_fallback_para_service_role_avisa():
-    """Cair na service_role é aceitável em transição, mas não em silêncio."""
-    texto = (WEB_APP / "database.py").read_text(encoding="utf-8")
-    assert "logger.warning" in texto and "ALTO PRIVILEGIO" in texto, (
-        "o fallback para SUPABASE_SERVICE_ROLE_KEY tem de emitir aviso: sem "
-        "ele, a configuracao insegura parece a configuracao normal."
+        "projeto nao sabe qual credencial precisa configurar."
     )
 
 
