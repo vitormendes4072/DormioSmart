@@ -2,7 +2,7 @@
 
 Dois caminhos entram nesta API, com credenciais propositalmente diferentes:
 
-  Ingestão (ESP32)  -> X-Device-Token  -> service_role, RLS ignorado (SEC-02)
+  Ingestão (ESP32)  -> X-Device-Token  -> credencial dedicada de ingestao (SEC-19)
   Leitura (usuário) -> Authorization   -> JWT do usuário, RLS APLICADO
 
 Este módulo cuida do segundo. O ponto central é que o backend **repassa o JWT
@@ -13,7 +13,13 @@ que pode ser esquecida numa consulta futura.
 Contrato: docs/DATA-CONTRACT.md v1.2.0, seção 6.
 """
 import logging
-from functools import wraps
+from functools import lru_cache, wraps
+from threading import Lock
+from time import monotonic
+from uuid import UUID
+
+import httpx
+import jwt
 
 from flask import g, jsonify, request
 
@@ -32,6 +38,87 @@ def extrair_bearer(headers):
         return None
     token = valor[len(PREFIXO):].strip()
     return token or None
+
+
+# Um snapshot por projeto e processo, com renovação serializada.
+class ChavesDoProjeto:
+    def __init__(self, emissor):
+        self.emissor = emissor
+        self._chaves = None
+        self._vence = 0
+        self._ultima_busca = float("-inf")
+        self._falhou = False
+        self._lock = Lock()
+
+    def chave(self, kid):
+        with self._lock:
+            agora = monotonic()
+            atual = self._chaves is not None and agora < self._vence
+            if atual and kid in self._chaves:
+                return self._chaves[kid]
+            if agora - self._ultima_busca < 30:
+                return INDISPONIVEL if self._falhou or not atual else None
+
+            self._ultima_busca = agora
+            try:
+                resposta = httpx.get(
+                    self.emissor + "/.well-known/jwks.json",
+                    timeout=httpx.Timeout(2.0),
+                )
+                resposta.raise_for_status()
+                chaves = resposta.json()["keys"]
+                if not isinstance(chaves, list):
+                    raise ValueError("JWKS invalido")
+                novas = {}
+                for chave in chaves:
+                    if chave.get("alg") == "ES256" and chave.get("kty") == "EC" and chave.get("crv") == "P-256":
+                        kid_da_chave = chave["kid"]
+                        if not isinstance(kid_da_chave, str) or not kid_da_chave or kid_da_chave in novas:
+                            raise ValueError("kid invalido no JWKS")
+                        novas[kid_da_chave] = jwt.PyJWK.from_dict(chave, algorithm="ES256").key
+            except (httpx.HTTPError, ValueError, TypeError, KeyError, AttributeError, jwt.PyJWTError):
+                self._falhou = True
+                return INDISPONIVEL
+            self._falhou = False
+            self._chaves = novas
+            self._vence = monotonic() + 300
+            return novas.get(kid)
+
+
+@lru_cache(maxsize=4)
+def chaves_do_projeto(emissor):
+    return ChavesDoProjeto(emissor)
+
+
+def validar_jwt_de_usuario(token, url):
+    try:
+        header = jwt.get_unverified_header(token)
+    except jwt.InvalidTokenError:
+        return None
+    algoritmo = header.get("alg")
+    if algoritmo != "ES256":
+        return None
+    kid = header.get("kid")
+    if not isinstance(kid, str) or not kid:
+        return None
+    if not url:
+        return INDISPONIVEL
+
+    emissor = url.rstrip("/") + "/auth/v1"
+    chave = chaves_do_projeto(emissor).chave(kid)
+    if chave is None or chave is INDISPONIVEL:
+        return chave
+    try:
+        claims = jwt.decode(
+            token, chave, algorithms=["ES256"],
+            issuer=emissor, audience="authenticated", leeway=5,
+            options={"require": ["exp", "iat", "iss", "aud", "sub", "role"], "strict_aud": True},
+        )
+        if claims["role"] != "authenticated":
+            return None
+        return str(UUID(claims["sub"]))
+    except (jwt.InvalidTokenError, ValueError, TypeError, AttributeError, OverflowError):
+        return None
 
 
 def require_auth(rota):
