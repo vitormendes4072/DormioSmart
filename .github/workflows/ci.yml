@@ -34,7 +34,9 @@ jobs:
       - name: Configurar Python
         uses: actions/setup-python@v6
         with:
-          python-version: '3.11'
+          # CI-10 (13/11): a versao do backend vem do `.python-version`, o mesmo
+          # arquivo que a Vercel le -- um numero so para o CI e a producao.
+          python-version-file: 'web-app/.python-version'
 
       - name: Instalar dependências
         run: |
@@ -103,7 +105,9 @@ jobs:
       - name: Configurar Python
         uses: actions/setup-python@v6
         with:
-          python-version: '3.11'
+          # CI-10 (13/11): a versao do backend vem do `.python-version`, o mesmo
+          # arquivo que a Vercel le -- um numero so para o CI e a producao.
+          python-version-file: 'web-app/.python-version'
 
       - name: Instalar dependências
         run: |

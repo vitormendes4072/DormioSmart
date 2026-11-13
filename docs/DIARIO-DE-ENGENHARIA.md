@@ -9890,6 +9890,36 @@ No host: `make`, `sintaxe`, `laco` (o stub do `WiFi` ganhou `hostByName` e `IPAd
 
 **Procedência.** GitHub (PR #168, CI e deployments); `curl` na produção, 13/11; Windows 11.
 
+---
+
+# 2026-11-13 (vi) — CI-10: o Python do CI é o da Vercel
+
+**O problema, como foi entendido no início.** O backend era testado no CI em Python 3.11 e rodava na Vercel em 3.12: o log de build dizia que não havia `.python-version`, `pyproject.toml` nem `Pipfile.lock` e usava a 3.12, o padrão dela. Defeito que dependa da versão passaria pelo CI e apareceria só na produção (achado AUD-07 da auditoria de 10/11).
+
+**Hipótese de trabalho.** Um `.python-version` fixa a versão da Vercel na que ela já usa, sem mudar a produção; o CI lê o mesmo arquivo (`python-version-file`), e um teste prende os dois.
+
+**O que foi testado, e como.**
+- **O teste novo** (`web-app/tests/test_versao_do_python.py`) em contêiner `python:3.11-slim` com `CI=true`, o estado anterior do CI — tem de cair.
+- **A suíte do backend inteira** (`pytest --ignore=tests/rls`) em `python:3.12-slim` com `CI=true`, depois de instalar o `requirements.txt`.
+- **Na PR:** o CI com a versão lida do arquivo, e o log de build do preview da Vercel.
+
+**Resultado medido.**
+- **Em 3.11:** 1 falha, 1 passa — "o CI roda 3.11, e o .python-version (o da Vercel) diz (3, 12)".
+- **Em 3.12 (3.12.16):** **551 passam** (549 + os 2 novos).
+
+- **Preview da Vercel, arquivo na raiz** (`74187c6`): "No Python version specified in .python-version, pyproject.toml, or Pipfile.lock. Using python version: 3.12" — **ignorado**.
+- **Preview da Vercel, arquivo em `web-app/`** (`5014008`): "Using Python 3.12 from web-app/.python-version".
+
+**Adaptação.** O arquivo foi para `web-app/.python-version`: com `builds` no `vercel.json`, o builder Python procura na pasta do entrypoint (`web-app/app.py`), como já fazia com o `requirements.txt`. O CI e o teste leem o mesmo caminho. O ML fica em 3.10 no CI: é a versão em que as dependências pinadas de `ml/requirements.txt` foram verificadas, e o ML não roda na Vercel. O teste só compara a versão no CI (`CI=true`); na máquina de quem desenvolve, o Python instalado não diz nada sobre a produção.
+
+**O que deu errado no caminho.** O plano punha o arquivo na raiz, pela documentação da Vercel, e o teste e o CI passaram assim — os dois liam o arquivo que a Vercel não lia. Só o log de build do preview mostrou. É o §6 das lições: a verificação conferia o arquivo, não o efeito na produção.
+
+**Risco em aberto.**
+- **O arquivo fixa só a versão maior e menor**: um patch diferente entre o CI e a produção não é visto.
+- **Nada no CI confere o log da Vercel**: se o arquivo mudar de lugar de novo, o teste segue passando. Fica na conferência do release (o log de build diz de onde veio a versão).
+
+**Procedência.** Branch `feature/CI-10-python-312` sobre `develop` `58ec5ff`, PR #170; Docker no Windows 11 (`python:3.11-slim`, `python:3.12-slim`); logs de build dos previews da Vercel `dpl_9KXd1JdY7muf8qhXC5WSwWz3jsqY` e `dpl_2mGMaRvmehi6sVzKDcYMSJp1XG5V`; 13/11.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
