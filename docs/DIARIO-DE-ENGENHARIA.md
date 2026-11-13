@@ -9734,6 +9734,26 @@ Os quatro pontos foram corrigidos no `5ed12df`, e as sabotagens reexecutadas na 
 
 **Procedência.** GitHub (PR #161, CI e deployments); `curl` na produção, 12/11; Windows 11.
 
+---
+
+# 2026-11-12 (xxv) — UI-18: rotas e avisos no painel
+
+**O problema.** A lista de rotas derivada do App não acusa remoções e os avisos do painel não tinham prova de montagem para as condições positivas e negativas.
+
+**Hipótese.** Montar pelo ponto de entrada de produção com expectativas fixas de rota e dados controlados torna as remoções de tela, texto e condição detectáveis.
+
+**O que foi testado.** No Windows, removi individualmente cada uma das 11 rotas com caminho e o fallback `*`. Para cada aviso removi seu texto distintivo e, em outra execução, inverti a condição. Lacuna e inferência são aplicáveis no painel com leituras: a lacuna aparece com perda relevante no recorte e fica ausente com cobertura contínua, e a nota de inferência aparece quando a duração é estimada, mesmo sem lacuna, e fica ausente com duração declarada. Ambos ficam fora dos estados sem leituras, carregando e erro. Escopo foi exercitado nos quatro estados: aparece com e sem leituras após sucesso, e fica ausente ao carregar ou em erro.
+
+**Resultado medido.** As 12 remoções derrubaram o teste nomeado da rota; Histórico, Dispositivos e Configurações tiveram ainda uma falha em teste existente. Para lacuna e inferência, remover o texto derrubou um teste positivo de cada e inverter a condição derrubou um teste negativo de cada. Na lacuna usei valores de preenchimento ao forçar o ramo sem perda para a mutação renderizar em vez de lançar exceção. Remover o texto de escopo derrubou os dois positivos; mover a nota para carregamento e erro derrubou os dois negativos.
+
+**Adaptação.** Mantive a varredura de rotas novas e acrescentei as asserções fixas. A página inicial é identificada pelo título do iframe e a política aguarda o conteúdo carregado sob demanda.
+
+**O que deu errado no caminho.** Um comando usou expansão de chaves incompatível com PowerShell e outro partiu do diretório errado. As primeiras expectativas da página inicial e da saudação não correspondiam à tela. O prazo padrão de um segundo também foi insuficiente para a política sob a suíte completa.
+
+**Risco em aberto.** As leituras são simuladas e a montagem não exercita sensores, navegador físico ou o conteúdo interno do iframe.
+
+**Procedência.** Execuções em Windows, worktree da UI-18 sobre `develop` `6172004`, ponto de entrada `frontend/src/main.tsx`.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
