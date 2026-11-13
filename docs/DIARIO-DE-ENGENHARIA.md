@@ -9716,6 +9716,24 @@ Os quatro pontos foram corrigidos no `5ed12df`, e as sabotagens reexecutadas na 
 **Procedência.** PR #150, implementação `fe85462`, registros sobre `develop` `745f232`. Testes automatizados no Windows.
 
 
+# 2026-11-12 (xxiv) — o release R1b
+
+**O problema, como foi entendido no início.** Os itens 1.4–1.6 do plano (`APP-15`, `UI-28`, `UI-27`, PRs #148–#150 do Codex) estavam integrados em `develop` e o autor aprovou levá-los à produção.
+
+**Hipótese de trabalho.** Só frontend, sem migração e sem mudança de contrato: o release não toca a ingestão, e os textos novos aparecem no pacote publicado.
+
+**O que foi testado, e como.** PR #161 (`develop` → `main`), CI e Vercel; depois do deploy, `/health`, `/api/sleep-history` e `/api/features` sem token, `X-Vercel-Id`, o deployment de produção e os três textos novos no JavaScript publicado.
+
+**Resultado medido.** CI e Vercel verdes (12 de 12); merge `96d934c`; deployment de produção em `96d934c`, `gru1`; `/health` `200`, banco ok, contrato 2.9.0, modelo `ml-inf-cabeca-v2`; as duas rotas `401` sem token; no pacote, "Coleta encerrada sem registros", "Primeiro registro em" e "Não foi possível carregar as noites gravadas".
+
+**Adaptação.** Nenhuma.
+
+**O que deu errado no caminho.** Nada nesta etapa.
+
+**Risco em aberto.** O login real depois deste release não foi conferido; a falha do plugin (`APP-15`) só aparece no app Android, que precisa de um APK novo para levar a correção (`APP-12`).
+
+**Procedência.** GitHub (PR #161, CI e deployments); `curl` na produção, 12/11; Windows 11.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
