@@ -34,7 +34,9 @@ jobs:
       - name: Configurar Python
         uses: actions/setup-python@v6
         with:
-          python-version: '3.11'
+          # CI-10 (13/11): a versao do backend vem do `.python-version`, o mesmo
+          # arquivo que a Vercel le -- um numero so para o CI e a producao.
+          python-version-file: 'web-app/.python-version'
 
       - name: Instalar dependências
         run: |
@@ -103,7 +105,9 @@ jobs:
       - name: Configurar Python
         uses: actions/setup-python@v6
         with:
-          python-version: '3.11'
+          # CI-10 (13/11): a versao do backend vem do `.python-version`, o mesmo
+          # arquivo que a Vercel le -- um numero so para o CI e a producao.
+          python-version-file: 'web-app/.python-version'
 
       - name: Instalar dependências
         run: |
@@ -193,6 +197,12 @@ jobs:
       - name: Type-check e build
         working-directory: frontend
         run: npm run build
+
+      # SEC-20 (13/11): a CSP do vercel.json libera script inline so por hash.
+      # Mudar um caractere no script do tema ou na landing faz o navegador
+      # bloquear o script na producao; isto reprova antes, contra o site gerado.
+      - name: CSP do vercel.json contra os scripts inline do site
+        run: python3 scripts/conferir_csp.py
 
   ml:
     # CI-04 — a suite do `ml/` passa a rodar sozinha.

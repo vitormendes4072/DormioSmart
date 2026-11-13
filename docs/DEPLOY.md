@@ -37,10 +37,13 @@ estático chamado `api` capturaria as chamadas da API.
 | Variável | Valor | Vai ao navegador? |
 |---|---|---|
 | `SUPABASE_URL` | URL do projeto | não |
-| `SUPABASE_SERVICE_ROLE_KEY` | *Secret key* (`sb_secret_…`) | **NUNCA** |
+| `SUPABASE_INGESTAO_KEY` | JWT do papel `dormio_ingestao`, emitido por `scripts/emitir_chave_de_ingestao.py` | **NUNCA** |
 | `SUPABASE_ANON_KEY` | *Publishable key* (`sb_publishable_…`) | não |
 | `VITE_SUPABASE_URL` | mesma URL | sim |
 | `VITE_SUPABASE_ANON_KEY` | mesma *Publishable key* | sim |
+
+O backend não lê mais a credencial `service_role`. Sem
+`SUPABASE_INGESTAO_KEY`, a ingestão e o `/health` respondem 503.
 
 Duas coisas fáceis de errar:
 

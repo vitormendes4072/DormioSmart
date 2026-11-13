@@ -16,6 +16,17 @@
   ],
   "routes": [
     {
+      "src": "/(.*)",
+      "headers": {
+        "Content-Security-Policy": "default-src 'self'; script-src 'self' 'sha256-d7ElPmBksqa3XjT9REfK1EpEQ1kuOmNu3oTUOL3aJzM=' 'sha256-UYDE30ukj+iqNFuFJ/ZPlWmrDAE8kOdylKQjFRJsROg=' 'sha256-LfkKun5BFvKLiBUKgXhd3xVTyni3RysNjVsVbvcxKzI=' 'sha256-jCI/euwEDpi5WN5uXQCcXGP7xZ40JvpwQfviCMuA/3U=' 'sha256-bTvnAmDVdWnuOhmprgtrGPQtzrWOCL+8o36R3udUXFM=' 'sha256-0pSzdhs2Wd1yMKtsFZXED/hziSQY0phWdAca3wM3Ywk=' 'sha256-+roGsdWdJ7cFflOh3MhMANooAUTGGhbDaL1IAg113iE=' 'sha256-eYjJawLXBL+AlJgQfJG74chm/7Ka+8feAwU8FncrGUI=' 'sha256-6DL1irgBdSZPkECXIMXlPZG6auFZENeC4NHZ6AC2XJE=' 'sha256-D3QSy3WfcmNgENpnxaQUssCWJawb4juMh2ceQpf0SQ0='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://*.supabase.co; worker-src 'self'; manifest-src 'self'; frame-src 'self'; frame-ancestors 'self'; base-uri 'self'; form-action 'self'; object-src 'none'",
+        "X-Frame-Options": "SAMEORIGIN",
+        "X-Content-Type-Options": "nosniff",
+        "Referrer-Policy": "strict-origin-when-cross-origin",
+        "Permissions-Policy": "camera=(), microphone=(), geolocation=()"
+      },
+      "continue": true
+    },
+    {
       "src": "/api/(.*)",
       "dest": "web-app/app.py"
     },

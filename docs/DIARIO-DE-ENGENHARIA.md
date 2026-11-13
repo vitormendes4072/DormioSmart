@@ -9870,6 +9870,134 @@ No host: `make`, `sintaxe`, `laco` (o stub do `WiFi` ganhou `hostByName` e `IPAd
 **Procedência.** Base `develop` `ab1e00e`, testes com respostas simuladas no Windows. O caso de produção anterior está na entrada do release R1.
 
 
+# 2026-11-13 (v) — o release R2
+
+**O problema, como foi entendido no início.** O `UI-30` (Histórico paginado), o `FW-15`, o `FW-16` e o `CI-12` estavam em `develop`; o autor aprovou o release.
+
+**Hipótese de trabalho.** Só o `UI-30` muda o site, sem migração nem contrato; o firmware e o CI não têm efeito na produção.
+
+**O que foi testado, e como.** PR #168 (`develop` → `main`), CI e Vercel; depois do deploy, `/health`, as rotas de dados sem token, `X-Vercel-Id`, o deployment de produção e o texto do progresso no JavaScript publicado.
+
+**Resultado medido.** CI e Vercel verdes (11 de 11); merge `2fbf17d`; deployment de produção em `2fbf17d`, `gru1`; `/health` `200`, banco ok, contrato 2.9.0, modelo `ml-inf-cabeca-v2`; `/api/sleep-history` e `/api/features` `401` sem token; no pacote, "Carregando sessões" e "de até".
+
+**Adaptação.** Nenhuma.
+
+**O que deu errado no caminho.** Nada nesta etapa.
+
+**Login do autor (13/11):** o Histórico de 7 e de 30 dias carregou "bem rápido", nas palavras dele — sem número; a conta tem hoje ~1 800 leituras (as duas noites e as épocas de bancada de 13/11), uma página só.
+
+**Risco em aberto.** O tempo com semanas de noites (várias páginas) ainda não foi medido; se 30 dias passar de ~10 s, o resumo no servidor vira item próprio (`UI-30`, diário 13/11 (iv)).
+
+**Procedência.** GitHub (PR #168, CI e deployments); `curl` na produção, 13/11; Windows 11.
+
+---
+
+# 2026-11-13 (vi) — CI-10: o Python do CI é o da Vercel
+
+**O problema, como foi entendido no início.** O backend era testado no CI em Python 3.11 e rodava na Vercel em 3.12: o log de build dizia que não havia `.python-version`, `pyproject.toml` nem `Pipfile.lock` e usava a 3.12, o padrão dela. Defeito que dependa da versão passaria pelo CI e apareceria só na produção (achado AUD-07 da auditoria de 10/11).
+
+**Hipótese de trabalho.** Um `.python-version` fixa a versão da Vercel na que ela já usa, sem mudar a produção; o CI lê o mesmo arquivo (`python-version-file`), e um teste prende os dois.
+
+**O que foi testado, e como.**
+- **O teste novo** (`web-app/tests/test_versao_do_python.py`) em contêiner `python:3.11-slim` com `CI=true`, o estado anterior do CI — tem de cair.
+- **A suíte do backend inteira** (`pytest --ignore=tests/rls`) em `python:3.12-slim` com `CI=true`, depois de instalar o `requirements.txt`.
+- **Na PR:** o CI com a versão lida do arquivo, e o log de build do preview da Vercel.
+
+**Resultado medido.**
+- **Em 3.11:** 1 falha, 1 passa — "o CI roda 3.11, e o .python-version (o da Vercel) diz (3, 12)".
+- **Em 3.12 (3.12.16):** **551 passam** (549 + os 2 novos).
+
+- **Preview da Vercel, arquivo na raiz** (`74187c6`): "No Python version specified in .python-version, pyproject.toml, or Pipfile.lock. Using python version: 3.12" — **ignorado**.
+- **Preview da Vercel, arquivo em `web-app/`** (`5014008`): "Using Python 3.12 from web-app/.python-version".
+
+**Adaptação.** O arquivo foi para `web-app/.python-version`: com `builds` no `vercel.json`, o builder Python procura na pasta do entrypoint (`web-app/app.py`), como já fazia com o `requirements.txt`. O CI e o teste leem o mesmo caminho. O ML fica em 3.10 no CI: é a versão em que as dependências pinadas de `ml/requirements.txt` foram verificadas, e o ML não roda na Vercel. O teste só compara a versão no CI (`CI=true`); na máquina de quem desenvolve, o Python instalado não diz nada sobre a produção.
+
+**O que deu errado no caminho.** O plano punha o arquivo na raiz, pela documentação da Vercel, e o teste e o CI passaram assim — os dois liam o arquivo que a Vercel não lia. Só o log de build do preview mostrou. É o §6 das lições: a verificação conferia o arquivo, não o efeito na produção.
+
+**Risco em aberto.**
+- **O arquivo fixa só a versão maior e menor**: um patch diferente entre o CI e a produção não é visto.
+- **Nada no CI confere o log da Vercel**: se o arquivo mudar de lugar de novo, o teste segue passando. Fica na conferência do release (o log de build diz de onde veio a versão).
+
+**Procedência.** Branch `feature/CI-10-python-312` sobre `develop` `58ec5ff`, PR #170; Docker no Windows 11 (`python:3.11-slim`, `python:3.12-slim`); logs de build dos previews da Vercel `dpl_9KXd1JdY7muf8qhXC5WSwWz3jsqY` e `dpl_2mGMaRvmehi6sVzKDcYMSJp1XG5V`; 13/11.
+
+---
+
+# 2026-11-13 (vii) — SEC-19: credencial dedicada de ingestão
+
+**O problema.** Se faltasse a chave dedicada, a ingestão aceitava credenciais legadas que podiam ter acesso total.
+
+**Hipótese.** Exigir a chave dedicada e a anon mantém o caminho de privilégio mínimo e permite reportar indisponibilidade quando a configuração falta.
+
+**O que foi testado.** Em Windows, Python 3.13.5, executei cada caso de test_chave_legada_nao_substitui_ingestao isoladamente contra develop e contra a correção com apenas seu recuo reintroduzido. A RPC de sanidade devolve ok e a de resolução devolve lista vazia no banco simulado. Com a correção intacta os casos exigem dois 503 e nenhuma criação de cliente.
+
+**Resultado medido.** Os casos SUPABASE_SERVICE_ROLE_KEY e SUPABASE_KEY falharam nas duas versões de controle: o recuo permitiu criar cliente, a sanidade produziu 200 e o token fictício sem dispositivo produziu 401, em vez de 503 nas duas rotas. Com a correção restaurada, pytest registrou 550 aprovados e 270 pulados. Na revisão independente, foram 551 aprovados em `python:3.12` com `CI=true`. O revisor confirmou que retirar a guarda em `verificar_conexao` não muda o resultado: `cliente_de_ingestao()` já devolve `None`, portanto a guarda é redundante.
+
+**Adaptação.** Atualizei o exemplo, o README, o guia de deploy e o diagnóstico. No repositório inteiro, `git grep -n -E 'SERVICE_ROLE|SUPABASE_KEY'` encontrou referências nos testes de ingestão (regressão) e em `CLAUDE.md`, na auditoria de 10/11, no backlog e neste diário (registros de configuração e histórico). Nenhum caminho do backend lê essas variáveis. A ferramenta administrativa `scripts/emitir_chave_de_ingestao.py` não as lê e só menciona `service_role` no comentário introdutório.
+
+**O que deu errado no caminho.** Três testes ainda simulavam o atributo removido e o log novo não era ASCII. Corrigi as simulações e o log, preservando a guarda ASCII. O primeiro banco simulado não aceitava os argumentos posicionais da RPC; ajustei a assinatura e repeti os controles. Uma consulta Git ao metadado da worktree exigiu execução com acesso autorizado.
+
+**Risco em aberto.** Ambiente sem chave dedicada precisa configurá-la antes de receber ingestão. Os testes foram locais, com banco simulado; a suíte reportou 270 casos pulados.
+
+**Procedência.** SEC-19, base `develop` `a0f326d`, que inclui o CI-10 com Python 3.12 fixado em `web-app/.python-version`.
+
+---
+
+# 2026-11-13 (viii) — SEC-20: cabeçalhos de segurança e CSP por hash
+
+**O problema, como foi entendido no início.** A produção só mandava o `Strict-Transport-Security`, que a Vercel põe sozinha (medido com `curl` em 13/11): nada de CSP, `X-Frame-Options`, `nosniff`, `Referrer-Policy` nem `Permissions-Policy`. Não há defeito conhecido que eles fechem; é defesa em profundidade contra um XSS futuro carregar script de fora ou mandar a sessão para outro servidor (AUD-12).
+
+**Hipótese de trabalho.** Uma rota de cabeçalhos no `vercel.json` cobre o site inteiro, e uma CSP que libera script inline **só por hash** não quebra o tema (script inline de propósito, antes da primeira pintura) nem a landing (9 blocos `<script>`). Um conferidor no CI impede que os hashes envelheçam em silêncio.
+
+**O que foi testado, e como.**
+- **O conferidor** (`scripts/conferir_csp.py`), contra o `frontend/dist` do build, com seis sabotagens: um caractere no script do tema (na fonte, com novo build), um num script da landing, um hash a mais, `'unsafe-inline'`, `"continue": false` e sem `X-Frame-Options`; e o `index.html` gerado em CRLF, que tem de passar.
+- **O navegador aplicando a política**, com o `dist` servido localmente com os cabeçalhos do `vercel.json`: uma página com um script inline fora da lista, e uma com o texto exato do script do tema e um verificador em arquivo `.js`, com e sem o hash do tema.
+- **O preview da PR**, lido pela integração da Vercel (cabeçalhos e a landing servida, com os hashes reconferidos sobre ela) e aberto no navegador do app depois do login do autor na Vercel: a landing no iframe, rolada até o simulador; depois do login do autor no Dormio, o painel, o Histórico e o service worker.
+
+**Resultado medido.**
+- **Conferidor:** 6/6 sabotagens acusadas, cada uma pelo motivo certo (o caractere no tema e na landing aparecem como hash faltando **e** hash sobrando); o CRLF passa.
+- **Navegador local:** o script fora da lista foi bloqueado ("CSP APLICADA"); sem o hash do tema, "SCRIPT DO TEMA BLOQUEADO"; com ele, "RODOU: data-theme=light". O login desenha, com as fontes do Google carregadas.
+- **Preview:** os cinco cabeçalhos no `/`, no `/login`, na landing e no `/health`; 10 de 10 hashes batendo com a landing servida. A landing desenha dentro do iframe com `sandbox`, e o gráfico do simulador — que chega vazio no HTML e só existe se o script rodar — aparece. Logado: painel com as sessões e as leituras da conta, Histórico de 7 dias com 4 sessões, `sw.js` registrado. O login em si é uma chamada direta ao `supabase.co`: o `connect-src` está certo.
+
+**Adaptação.** Com `routes` no `vercel.json`, a Vercel não aceita o bloco `headers`; os cabeçalhos entram como a primeira rota, com `"continue": true`. `X-Frame-Options` é `SAMEORIGIN`, e não `DENY`, porque o próprio site põe a landing num iframe. O `connect-src` usa `https://*.supabase.co`, e não o endereço do projeto, para não fixá-lo no repositório e não quebrar previews. O `style-src` mantém `'unsafe-inline'`: o React usa `style=` nos elementos, e hash não cobre atributo.
+
+**O que deu errado no caminho.**
+- **Meu servidor local não serve para julgar a landing:** nele, ela ficava em branco no iframe e esmaecida sozinha **mesmo sem cabeçalho nenhum** — o controle sem cabeçalhos é que mostrou que não era a CSP. A conferência da landing passou ao preview.
+- **O console do navegador do app não mostra violação de CSP, e os scripts que eu injeto pela ferramenta não estão sujeitos a ela** (o `eval` passou com a CSP ativa). Os dois primeiros "console vazio" não provavam nada; o detector que vale é a própria página escrevendo se o script rodou.
+- **O preview fica atrás do login da Vercel.** O autor entrou primeiro no navegador dele, que é outro, e depois no do app.
+
+**Risco em aberto.**
+- **`'unsafe-inline'` em `style-src`:** injeção de CSS continua possível; o efeito é bem menor que o de script, mas existe.
+- **O Google Fonts é uma requisição a terceiro em cada visita** (o IP do visitante vai ao Google). A CSP só a autoriza; servir as fontes do próprio site é decisão do autor, sem item ainda.
+- **Origem nova no frontend** (outra API, outro CDN) tem de entrar na CSP; o navegador bloqueia sem erro na tela, e nenhum teste do frontend vê. Está no `CLAUDE.md`, seção Deploy.
+- **A produção só recebe com o próximo release**; a conferência do release inclui os cabeçalhos e um login de verdade.
+
+**Procedência.** Branch `feature/SEC-20-cabecalhos` sobre `develop` `a0f326d`; Windows 11 (build, conferidor e servidor local); preview da Vercel `dpl_8aPPt7WEwXDtA2xHEwqopkaBPNAr` (`gru1`), lido pela integração da Vercel e pelo navegador do app; 13/11.
+
+
+---
+
+# 2026-11-13 (ix) — SEC-13: a suíte de RLS deixa de desfazer os REVOKEs das migrações
+
+**O problema, como foi entendido no início.** A suíte de RLS rodava `grants_pos_migracao.sql` depois de todas as migrações, reaplicando os GRANTs de `profiles`, `devices` e `sleep_data`. Uma migração que tirasse do usuário acesso às próprias linhas passaria na suíte.
+
+**Hipótese de trabalho.** Desde o `SEC-12`, o `esquema_base.sql` imita os privilégios padrão do Supabase, então os GRANTs do fim são redundantes; tirá-los fecha o ponto cego sem mudar o resultado da suíte.
+
+**O que foi testado, e como.** Postgres 17 em Docker, `python:3.12`. Antes da mudança: a suíte com uma migração sabotada (`revoke select on public.sleep_data from authenticated` no fim da 018), com e sem os GRANTs do fim. Depois: a suíte, a mesma sabotagem e mais duas (`select` em `devices`, `update` em `profiles`), o verificador de migrações, o verificador por mutação e o teste novo com `grant` e com `alter default privileges` acrescentados ao arquivo.
+
+**Resultado medido.**
+- **Antes:** com a sabotagem, **269 passam** (o ponto cego); sem os GRANTs do fim, ela derruba a suíte com "permission denied for table sleep_data"; sem eles e sem sabotagem, 269 passam.
+- **Depois:** **270 passam**. As três sabotagens derrubam 15, 16 e 14 testes. Verificador de migrações OK (18 estados). Mutação **54/54**. O teste novo reprova nos dois controles.
+
+**Adaptação.** O arquivo virou `pos_migracao.sql`, com um `select 1;` — o driver recusa arquivo só de comentário ("can't execute an empty query", 269 erros medidos). O verificador de migrações também deixou de aplicar o arquivo depois da 001.
+
+**O que deu errado no caminho.**
+- **O `\b` da regex do teste novo virou um caractere de controle** ao passar pelo shell, e os dois controles passaram em vez de cair; corrigido com o script escrito em arquivo, e os controles refeitos.
+- **A primeira rodada da mutação deu "269 errors"**: o banco da suíte ficou no mesmo servidor e o `drop role` falhou — é o `CI-11` (1), reproduzido. Num Postgres limpo, 54/54.
+
+**Risco em aberto.** O `CI-11` continua aberto: rodar a mutação num servidor com outro banco que tenha privilégios para os papéis quebra a preparação com mensagem enganosa.
+
+**Procedência.** Branch `bugfix/SEC-13-grants-pos-migracao` sobre `develop` `73bd058`; Docker no Windows 11 (`postgres:17`, `python:3.12-slim`); 13/11.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

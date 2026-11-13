@@ -85,7 +85,6 @@ O formato da arquitetura C2 (épocas com características, em lote) é o do
 |---|---|
 | `SUPABASE_URL` | URL do projeto |
 | `SUPABASE_INGESTAO_KEY` | chave da ingestão — papel `dormio_ingestao`, **privilégio mínimo** |
-| `SUPABASE_SERVICE_ROLE_KEY` | *alternativa só para desenvolvimento local* — ignora o RLS, acesso total, e o backend avisa no log enquanto estiver caindo nela. **Não existe na Vercel desde 01/11** (`SEC-14`) |
 | `SUPABASE_ANON_KEY` | chave publicável — valida o JWT e monta o cliente do usuário |
 
 ---
@@ -134,10 +133,10 @@ python scripts/emitir_chave_de_ingestao.py --anos 1
 python web-app/teste_conexao.py     # deve dizer "papel dormio_ingestao"
 curl -s https://SEU-APP/health      # deve responder 200
 
-# 5. Só depois de o /health responder 200 com a chave de ingestão: remover
-#    SUPABASE_SERVICE_ROLE_KEY da Vercel. O backend só a usa como alternativa
-#    à chave de ingestão (database.py, cliente_de_ingestao).
 ```
+
+A chave de ingestão também é obrigatória no desenvolvimento local. Sem
+`SUPABASE_INGESTAO_KEY`, a ingestão e o `/health` respondem 503.
 
 ### Se a chave vazou
 

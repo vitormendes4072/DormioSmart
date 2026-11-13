@@ -113,12 +113,12 @@ estiverem mesclados, e não quando todos os da onda anterior estiverem.
 | 2.4 | `VIA-01` | Bancada: 2 min parado, 2 min mexendo a cabeça, 2 min virando o corpo | onda 1 da placa |
 | 2.5 | `VAL-01` | A primeira noite com o travesseiro (o autor dorme; o Claude analisa) | 2.4 |
 | 2.6 | `DATA-14` | O `t` do celular é a temperatura da bateria: contrato e núcleo | — |
-| 2.7 | `CI-10` | O Python do CI igual ao da Vercel | — |
+| 2.7 | `CI-10` ✅ *(13/11)* | O Python do CI igual ao da Vercel (`.python-version`) | — |
 | 2.8 | `CI-09` | Um job para o app Android | — |
 | 2.9 | `CI-11` | Os dois harnesses de mutação com mensagem certa | — |
 | 2.9b | `CI-12` ✅ *(13/11)* | Compilar o `sketch.ino` para o ESP32 no CI (`scripts/compilar_sketch_esp32.py`) | — |
-| 2.10 | `SEC-13` | A suíte de RLS sem reaplicar os GRANTs no fim | — |
-| 2.11 | `SEC-20` | Cabeçalhos de segurança no `vercel.json` | — |
+| 2.10 | `SEC-13` ✅ *(13/11)* | A suíte de RLS sem reaplicar os GRANTs no fim | — |
+| 2.11 | `SEC-20` ✅ *(13/11)* | Cabeçalhos de segurança no `vercel.json` (CSP por hash, `scripts/conferir_csp.py`) | — |
 | 2.12 | **Integração e release R2** | | |
 
 **Autor:** dormir com o travesseiro (2.5) e levar ao orientador o pacote da seção 4.
