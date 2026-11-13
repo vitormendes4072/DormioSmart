@@ -9574,6 +9574,32 @@ Os quatro pontos foram corrigidos no `5ed12df`, e as sabotagens reexecutadas na 
 **Procedência.** Placa e sensor do autor, COM3, `arduino-cli` 1.6.0 com `esp32:esp32` 3.3.12, Windows 11, 12/11; capturas do serial no diretório temporário da sessão (fora do repositório); branch `bugfix/FW-13-lote-do-esp32`.
 
 
+# 2026-11-12 (xviii) — a integração das PRs #152–#155 e o que falta investigar
+
+**O problema, como foi entendido no início.** O autor aprovou o merge das PRs #152 (registro do `DATA-15`), #153 (`UI-26`), #154 (`UI-29`) e #155 (`FW-13`), e pediu que tudo o que ainda falta investigar ficasse registrado para ser feito.
+
+**Hipótese de trabalho.** Mesclar uma por vez e reconferir a contagem a cada uma evita perder fechamento em resolução de conflito; o que falta investigar já tem item quase sempre, e o que não tiver vira item.
+
+**O que foi testado, e como.**
+- **A integração:** cada PR com `mergeable` conferido, CI 18/18 e `conferir_backlog.py --conferir` depois do merge.
+- **Os conflitos:** a #153 e a #155 conflitaram com a `develop` (backlog e diário); resolvidos numa worktree destacada, enviados para as próprias branches (a da #153 estava aberta numa worktree do Codex), com as três conferências e o CI antes do merge.
+- **O levantamento:** o diário de 12/11, os logs da placa e o backlog, procurando o que foi visto e não tem item.
+
+**Resultado medido.**
+- **As quatro mescladas** em ordem; `develop` `c61b362`, 54 abertos antes deste registro. Na #153, o conflito era entre o texto de abertura do `DATA-15`/`API-08` (vindo da #152) e o fechamento do `UI-26` com o `UI-30` (da #153): ficaram os dois. Na #155, a contagem foi refeita sobre a `develop` com a #153 e a #154 (55−2+1 = 54), e o diário ficou na ordem (xv), (xvi), (xvii).
+- **Sem item até aqui:** a partição da fila nasceu com 1 279 registros corrompidos (restos do programa anterior) e o CRC-16 pode aceitar um falso — virou o `FW-15`. As leituras de bancada do travesseiro na conta do autor entraram como nota no `APP-11`.
+- **A lista do que falta investigar** (dez linhas, com item, dono, método e gatilho) foi para o §7 do `docs/PLANO-CLAUDE-CODEX.md`.
+
+**Adaptação.** O plano marca 1.1–1.3 como feitos.
+
+**O que deu errado no caminho.**
+- **O primeiro laço de merge parou na #153** por `mergeable` ainda `UNKNOWN` logo depois do merge da #152; na segunda tentativa o GitHub já dizia `CONFLICTING`.
+- **A branch da #153 estava aberta numa worktree do Codex**, e o `checkout` recusou; a resolução foi feita destacada e enviada por `HEAD:refs/heads/…`.
+
+**Risco em aberto.** Os da tabela do §7 do plano, cada um com o seu item.
+
+**Procedência.** GitHub (PRs #152–#155 e CI); `develop` `c61b362`; logs da placa de 12/11 (fora do repositório); Windows 11.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
