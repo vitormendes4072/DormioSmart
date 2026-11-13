@@ -9822,6 +9822,33 @@ No host: `make`, `sintaxe`, `laco` (o stub do `WiFi` ganhou `hostByName` e `IPAd
 
 **Procedência.** Branch `bugfix/FW-16-ntp-pendente` (a partir da do `FW-15`); placa do autor, COM3; `arduino-cli` 1.6.0 com `esp32:esp32` 3.3.12; o `xtensa-esp32-elf-addr2line` do pacote para o backtrace; contêiner `gcc:13`; Windows 11, 13/11.
 
+# 2026-11-13 (iii) — CI-12: o firmware compilado para o ESP32 no CI
+
+**O problema, como foi entendido no início.** O job `firmware` do CI compila o `sketch.ino` com stubs do Arduino no host, que não tem o teto de RAM estática do ESP32. Em 12/11 o sketch passava em todos os jobs e não ligava para o chip (`FW-12`); a única verificação que vê esse limite (`scripts/compilar_sketch_esp32.py`) só rodava à mão.
+
+**Hipótese de trabalho.** Um workflow próprio, disparado só por mudanças no firmware, roda a compilação para o chip com versões fixas, e um passo de controle positivo prova a cada execução que a verificação reprova o defeito que a motivou.
+
+**O que foi testado, e como.**
+- **O script com `--firmware`**, contra uma cópia do firmware com o texto do lote de volta à RAM estática (31 200 B), e contra o firmware atual, na máquina do autor (`arduino-cli` 1.6.0, `esp32:esp32` 3.3.12).
+- **O SHA-256 do `arduino-cli` 1.6.0 Linux 64 bits**, tirado do `1.6.0-checksums.txt` do lançamento oficial.
+- **O workflow**, na própria PR (o caminho do arquivo dispara o filtro).
+
+**Resultado medido.**
+- **Cópia sabotada:** "NAO LIGA: a regiao dram0_0_seg estourou em 15 560 B", saída 1.
+- **Firmware atual:** RAM fixa 108 936 B (33 %), 218 744 B para o heap, liga.
+- **O workflow na PR:** ver o resultado da execução na PR (registrado no fechamento quando rodar).
+
+**Adaptação.** O controle positivo ficou dentro do workflow, e não só na máquina de quem mexeu: se o firmware encolher a ponto de a cópia sabotada passar a ligar, o workflow reprova e pede outro sabotador.
+
+**O que deu errado no caminho.** Nada nesta etapa.
+
+**Risco em aberto.**
+- **O workflow depende do índice da Espressif e do GitHub para baixar a toolchain** (com cache, só na primeira execução ou quando a versão mudar).
+- **O `arduino-cli` 1.6.0 é de 10/11**: a versão é a mesma da bancada, de propósito; trocar é decisão registrada.
+- **O heap durante o envio** continua sendo medido só na placa (`FW-14`).
+
+**Procedência.** Branch `feature/CI-12-compilar-esp32`; Windows 11 com `arduino-cli` 1.6.0; o lançamento oficial do `arduino-cli` no GitHub; 13/11.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

@@ -57,7 +57,8 @@
 Até 29/10 esta linha mandava rodar o `DATA-03`, fechado em 28/10.)* **Se tem um fim de semana:** solde. **Se tem um mês sem ferro de solda:** escreva os
 `CALC-*` e `DIAG-*`, que são o que a banca lê.
 
-**Contagem:** 50 itens abertos · **L0: 22** · L1: 14 · L2: 6 · L3: 8. *(Recontado linha a linha em 03/11, e não por delta; desde o `DOC-13`, o CI reconta.)*
+**Contagem:** 49 itens abertos · **L0: 21** · L1: 14 · L2: 6 · L3: 8. *(Recontado linha a linha em 03/11, e não por delta; desde o `DOC-13`, o CI reconta.)*
+*(13/11, terceira parte, sobre `develop` `ab1e00e`: fecha `CI-12` (L0). 50−1 = 49 abertos, L0 22−1 = 21.)*
 *(13/11, segunda parte, sobre a branch do `FW-15`: fecha `FW-16` (L1). 51−1 = 50 abertos, L1 15−1 = 14.)*
 *(13/11, sobre `develop` `20d83e0`: fecha `FW-15` e abre `FW-16` (L1, a placa reinicia no envio quando o NTP não responde). 51−1+1 = 51 abertos, L1 15−1+1 = 15.)*
 *(12/11, sobre `develop` `6172004`: fecha UI-18 (L0). 52−1 = 51 abertos, L0 23−1 = 22.)*
@@ -256,7 +257,6 @@ E um **peso**: 🔴 caminho crítico da defesa · 🟡 importante · ⚪ polimen
        DOC-06b · DOC-17 · APP-02
        SEC-13 · AUTH-09 · CI-02 · GIT-05 · API-06 · CAL-03 · APP-11 · APP-12
        SEC-19 · SEC-20 · DATA-14 · CI-09 · CI-10 · CI-11   ← 10/11: auditoria
-       CI-12                                ← 12/11: compilar para o ESP32 no CI
        INFRA-05                              ← 11/11: o backend perto do banco
        API-07 · UI-25                       ← 12/11: recebimento e pareamento
        UI-30     ← 12/11: revisão do frontend do Codex
@@ -531,7 +531,7 @@ diagrama** — que é o que a banca lê.
 
 | Item | O quê | Peso |
 |---|---|:---:|
-| **CI-12** 🟡 *(novo — 12/11, saído do `FW-12`)* | **O CI não compila o firmware para o ESP32.** O job `firmware` só roda o núcleo no host e a sintaxe com stubs; o estouro de RAM do `FW-12` passou por todos os jobs. **Correção:** um job que instale o `arduino-cli` e o pacote `esp32:esp32` (versão fixada, com cache: ~300 MB) e rode `scripts/compilar_sketch_esp32.py`, reprovando se não ligar ou se a folga para o heap cair abaixo do piso. Controle positivo: o `sketch.ino` com o lote de volta à RAM estática tem de reprovar. Dono: Claude (onda 2 do `docs/PLANO-CLAUDE-CODEX.md`). | 🟡 |
+| **CI-12** ✅ *(novo — 12/11, saído do `FW-12`; fechado em 13/11)* | ✅ **13/11, feito:** `.github/workflows/firmware-esp32.yml`, disparado só por mudanças em `firmware/`, no script ou no próprio workflow. Instala o `arduino-cli` 1.6.0 com o SHA-256 conferido e o `esp32:esp32` 3.3.12 (com cache), e roda `scripts/compilar_sketch_esp32.py --minimo-livre 150000`. **Controle positivo no próprio workflow:** uma cópia do firmware com o texto do lote de volta à RAM estática (31 200 B, o defeito do `FW-12`) tem de reprovar — localmente, "a região dram0_0_seg estourou em 15 560 B". O script ganhou `--firmware PASTA`. Diário, 13/11 (iii). ⬇️ *Texto de abertura:* **O CI não compila o firmware para o ESP32.** O job `firmware` só roda o núcleo no host e a sintaxe com stubs; o estouro de RAM do `FW-12` passou por todos os jobs. **Correção:** um job que instale o `arduino-cli` e o pacote `esp32:esp32` (versão fixada, com cache: ~300 MB) e rode `scripts/compilar_sketch_esp32.py`, reprovando se não ligar ou se a folga para o heap cair abaixo do piso. Controle positivo: o `sketch.ino` com o lote de volta à RAM estática tem de reprovar. Dono: Claude (onda 2 do `docs/PLANO-CLAUDE-CODEX.md`). | ✅ |
 | **CI-09** 🟡 *(novo — 10/11, AUD-06 da auditoria de 10/11 (`docs/AUDITORIA-2026-11-10-fable.md`))* | **O CI não roda nada do app Android.** Os 20 testes de JVM (`testDebugUnitTest`) e o `assembleRelease` só rodam à mão; uma mudança que quebre o app passa no CI inteiro. **Correção:** um job com o JDK 21 e o SDK, rodando `npm run build:app`, `testDebugUnitTest` e `assembleRelease` (sem assinatura). Os testes instrumentados ficam de fora (pedem emulador). | 🟡 |
 | **CI-10** ⚪ *(novo — 10/11, AUD-07 da auditoria de 10/11 (`docs/AUDITORIA-2026-11-10-fable.md`))* | **O Python do CI não é o da produção.** O backend roda no CI em 3.11 e o ML em 3.10; a Vercel roda o backend em 3.12 (log de execução de 09/11). Diferença de versão é onde mora o defeito que só aparece na produção. **Correção:** o job do backend em 3.12, ou fixar a versão da Vercel na 3.11; o ML fica em 3.10, que é a versão em que as dependências pinadas foram verificadas. Conferir antes, no painel da Vercel, a versão configurada. | ⚪ |
 | **CI-11** ⚪ *(novo — 10/11, AUD-09 da auditoria de 10/11 (`docs/AUDITORIA-2026-11-10-fable.md`))* | **Dois harnesses de mutação quebram por causa do ambiente, com mensagem enganosa.** (1) A suíte de RLS apaga os papéis com `drop owned by` e `drop role`; o comentário diz que isso cobre os outros bancos do cluster, e não cobre: um segundo banco no mesmo servidor com permissão para esses papéis derruba os 196 testes na preparação, e a mutação diz "a suíte não passa nem sem sabotagem". (2) O verificador do vetor dourado morre com `TypeError` quando `PYTHONIOENCODING=utf-8` está definido no Windows, porque lê a saída do filho sem declarar a codificação. Os dois medidos em 10/11. **Correção:** banco próprio para a suíte; `encoding="utf-8"` no `subprocess`. | ⚪ |
