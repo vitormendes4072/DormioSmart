@@ -80,9 +80,9 @@ estiverem mesclados, e não quando todos os da onda anterior estiverem.
 | 1.1 | `DATA-15` + `API-08` ✅ *(12/11, #146)* | Paginar `GET /api/sleep-history` como `GET /api/features`; falha do banco vira `503`, e o painel mostra "não foi possível carregar" | `database.py`, `routes.py`, `lib/api.ts`, `hooks/useHistorico.ts`, `pages/Historico.tsx`, `lib/exportar.ts` | — |
 | 1.2 | `UI-26` ✅ *(12/11, #153)* | A sessão que toca o corte é "parcial", nunca "completa" | `pages/Historico.tsx`, `lib/metricas.ts` | 1.1 mesclado |
 | 1.3 | `UI-29` ✅ *(12/11, #154)* | O texto da ordem da tabela do painel | `pages/Dashboard.tsx` | 1.1 mesclado (mexe no painel) |
-| 1.4 | `APP-15` | Erro ao listar as noites deixa de parecer lista vazia | `components/ListaDeNoites.tsx` | — (pode correr junto da 1.1) |
-| 1.5 | `UI-28` | Teclado no diálogo de consentimento e no seletor de tema | `components/TelaDeConsentimento.tsx`, `components/SeletorDeTema.tsx` | — |
-| 1.6 | `UI-27` | Avisar até a primeira janela da coleta fechar | `pages/Coletar.tsx`, `hooks/useColeta.ts` | — |
+| 1.4 | `APP-15` ✅ *(12/11, #148)* | Erro ao listar as noites deixa de parecer lista vazia | `components/ListaDeNoites.tsx` | — (pode correr junto da 1.1) |
+| 1.5 | `UI-28` ✅ *(12/11, #149)* | Teclado no diálogo de consentimento e no seletor de tema | `components/TelaDeConsentimento.tsx`, `components/SeletorDeTema.tsx` | — |
+| 1.6 | `UI-27` ✅ *(12/11, #150)* | Avisar até a primeira janela da coleta fechar | `pages/Coletar.tsx`, `hooks/useColeta.ts` | — |
 | 1.7 | `UI-18` | Provar na tela as notas de honestidade (lacuna, inferência, escopo) | testes do painel | 1.3 mesclado |
 
 **Trilha Claude** (só `firmware/` e `docs/`; precisa do autor na bancada e do `secrets.h` dele):
