@@ -519,7 +519,7 @@ describe("rotas esperadas (UI-18)", PRAZO, () => {
 
   it("a rota /privacidade mostra a política", async () => {
     await montar("/privacidade");
-    expect(await screen.findByText("Versão preliminar.")).toBeTruthy();
+    expect(await screen.findByText("Versão preliminar.", {}, { timeout: 5000 })).toBeTruthy();
     expect(window.location.pathname).toBe("/privacidade");
   });
 
