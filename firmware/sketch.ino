@@ -565,7 +565,15 @@ void setup() {
 
   // Sem a particao, o sketch segue medindo e avisa: parar aqui perderia a
   // noite inteira por uma tabela gravada errado, e o log diz o que fazer.
+  const unsigned long montagem_ms = millis();
   fila_ok = midia.abrir() && fila.montar();
+  if (fila.estatisticas().formatada_na_montagem) {
+    // FW-15: sem a marca de formato (placa nova ou restos de outro programa),
+    // a montagem apagou a area. O que estava pendente antes se perdeu.
+    Serial.printf("Fila formatada: %u setores apagados em %lu ms.\n",
+                  static_cast<unsigned>(fila.estatisticas().setores_apagados_na_formatacao),
+                  millis() - montagem_ms);
+  }
   if (fila_ok) {
     Serial.printf("Fila na flash: %u pendentes, sessao %u, %u corrompidos na montagem.\n",
                   static_cast<unsigned>(fila.pendentes()), static_cast<unsigned>(fila.sessao()),

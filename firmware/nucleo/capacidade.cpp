@@ -141,22 +141,23 @@ static bool medir_fila_na_flash() {
     return false;
   }
 
-  const unsigned long setores = dados->tamanho / TAMANHO_DO_SETOR_BYTES;
+  // O ultimo setor e o cabecalho de formato da fila (FW-15).
+  const unsigned long setores = dados->tamanho / TAMANHO_DO_SETOR_BYTES - SETORES_DO_CABECALHO_DA_FILA;
   const unsigned long slots = setores * REGISTROS_POR_SETOR;
   const unsigned long garantidos = (setores - 1ul) * REGISTROS_POR_SETOR;
   const double horas = static_cast<double>(garantidos) * DURACAO_EPOCA_BASE_S / 3600.0;
   printf("  registro          %u B (epoca %u + vetor %u + seq, sessao, instante, CRC)\n",
          static_cast<unsigned>(sizeof(RegistroDeEpoca)), static_cast<unsigned>(sizeof(Epoca)),
          static_cast<unsigned>(sizeof(VetorDeFeatures)));
-  printf("  particao dormio   0x%lx B = %lu setores de 4 KiB = %lu registros\n", dados->tamanho,
-         setores, slots);
+  printf("  particao dormio   0x%lx B = %lu setores de 4 KiB de dados + 1 de cabecalho = %lu registros\n",
+         dados->tamanho, setores, slots);
   printf("  garantidos        %lu pendentes (um setor fica para a cabeca)\n", garantidos);
   printf("  cobertura         %.1f h = %.1f dias de epocas de 30 s, SEM degradar\n", horas,
          horas / 24.0);
 
   // Para comparar: a tabela padrao do arduino-esp32 (tools/partitions/
   // default.csv, conferida em 31/10), cuja area de dados e 0x160000.
-  const unsigned long padrao = 0x160000ul / TAMANHO_DO_SETOR_BYTES;
+  const unsigned long padrao = 0x160000ul / TAMANHO_DO_SETOR_BYTES - SETORES_DO_CABECALHO_DA_FILA;
   const double h_padrao =
       static_cast<double>((padrao - 1ul) * REGISTROS_POR_SETOR) * DURACAO_EPOCA_BASE_S / 3600.0;
   printf("  (tabela padrao    0x160000 B -> %.1f h = %.1f dias)\n", h_padrao, h_padrao / 24.0);

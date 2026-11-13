@@ -83,7 +83,7 @@ estiverem mesclados, e não quando todos os da onda anterior estiverem.
 | 1.4 | `APP-15` ✅ *(12/11, #148)* | Erro ao listar as noites deixa de parecer lista vazia | `components/ListaDeNoites.tsx` | — (pode correr junto da 1.1) |
 | 1.5 | `UI-28` ✅ *(12/11, #149)* | Teclado no diálogo de consentimento e no seletor de tema | `components/TelaDeConsentimento.tsx`, `components/SeletorDeTema.tsx` | — |
 | 1.6 | `UI-27` ✅ *(12/11, #150)* | Avisar até a primeira janela da coleta fechar | `pages/Coletar.tsx`, `hooks/useColeta.ts` | — |
-| 1.7 | `UI-18` | Provar na tela as notas de honestidade (lacuna, inferência, escopo) | testes do painel | 1.3 mesclado |
+| 1.7 | `UI-18` ✅ *(12/11, #163)* | Provar na tela as notas de honestidade (lacuna, inferência, escopo) | testes do painel | 1.3 mesclado |
 
 **Trilha Claude** (só `firmware/` e `docs/`; precisa do autor na bancada e do `secrets.h` dele):
 
@@ -181,7 +181,7 @@ puxa e o que dispara a investigação. Ordem: o que bloqueia a primeira noite do
 |---|---|---|---|---|---|
 | I-1 | A folga de heap no envio é de ~15 KB (mínimo 14 772 B no TLS). Aguenta uma noite? | `FW-14` | Claude + autor | O log do envio já imprime o mínimo; ler numa noite inteira. Abaixo de ~10 KB: uma conexão TLS por volta, não por lote | `VAL-01` |
 | I-2 | A deriva do relógio ao longo de horas: −29 a −33 ppm em 41 min, e −123 ppm numa gravação de 10 min, que destoa | `FW-07` (c) | Claude + autor | A linha `[relogio]` de uma noite inteira; comparar a acumulada | `VAL-01` |
-| I-3 | A partição da fila nasceu com lixo (1 279 corrompidos) e o CRC-16 pode aceitar um registro falso (~2 % por montagem) | `FW-15` | Claude | Ler a montagem; teste do host com lixo que passa no CRC; apagar a partição na primeira montagem ou ao gravar | antes de `VAL-01` |
+| I-3 ✅ *(13/11, `FW-15`)* | A partição da fila nasceu com lixo (1 279 corrompidos) e o CRC-16 pode aceitar um registro falso (~2 % por montagem) | `FW-15` | Claude | Ler a montagem; teste do host com lixo que passa no CRC; apagar a partição na primeira montagem ou ao gravar | antes de `VAL-01` |
 | I-4 | A fila com o Wi-Fi desligado de propósito, e se o reenvio duplica linhas no banco | `FW-08` (c) | Claude + autor | Roteiro na bancada; consulta de duplicatas por `(device_id, captured_at)` no SQL Editor | bancada |
 | I-5 | O I2C: pull-ups e 400 kHz | `HW-08` | Claude + autor | Multímetro e o `diagnostico-i2c` | bancada |
 | I-6 | O tempo de envio de uma noite real com o backend em São Paulo | `INFRA-05`, depois `API-06` | Autor (consulta) + Claude | A consulta do lote depois da próxima noite com o celular | próxima noite |

@@ -9754,6 +9754,38 @@ Os quatro pontos foram corrigidos no `5ed12df`, e as sabotagens reexecutadas na 
 
 **Procedência.** Execuções em Windows, worktree da UI-18 sobre `develop` `6172004`, ponto de entrada `frontend/src/main.tsx`.
 
+# 2026-11-13 (i) — FW-15: a fila da flash ganha um cabeçalho de formato
+
+**O problema, como foi entendido no início.** Na primeira partida do `sketch.ino` na placa (12/11), a montagem da fila contou 1 279 slots corrompidos na partição `dormio`: restos do programa gravado antes com a tabela padrão. A montagem confia em todo slot cujo CRC-16 confere; com ~1 300 slots de lixo, a chance de um passar por acaso é de ~2 % por montagem — e, lendo o código, o efeito é maior que uma época falsa: a montagem toma `seq` e `sessao` do registro, então a numeração e a sessão da fila passariam a vir do lixo.
+
+**Hipótese de trabalho.** Uma marca de formato no último setor, escrita só depois de a área estar limpa, separa "área desta fila" de "qualquer outra coisa"; sem ela, apagar a área custa uma vez e elimina o caso inteiro.
+
+**O que foi testado, e como.**
+- **O defeito:** um teste com um setor de bytes pseudoaleatórios e um slot fabricado com CRC válido, `seq` 0xFFFFFF00 e sessão 0xBEEF, rodado contra o núcleo da `develop` e contra o corrigido, em contêiner `gcc:13`.
+- **O formato:** placa nova (sem apagamento), remontagem sem formatar de novo, versão diferente, corte de energia no meio da formatação, cabeçalho de uma área de outro tamanho.
+- **Mutação:** três sabotagens novas no `make mutacao-fila`.
+- **O resto do núcleo:** `make`, `sintaxe`, `laco`, `capacidade`, `mutacao`, `mutacao-cadeia`, `mutacao-coletor`; a compilação para o chip (`compilar_sketch_esp32.py`); as conferências de cálculos e do buffer.
+- **Na placa:** a versão exata da branch, com o `secrets.h` do autor; a segunda partida; o cabeçalho apagado com `esptool erase_region 0x3FF000 0x1000 --after no-reset` e a partida seguinte; 11 min até o primeiro envio.
+
+**Resultado medido.**
+- **Na `develop`, o teste do lixo falha em 5 verificações:** o lixo vira pendente, a sessão sai dele (0xBEEF+1), os corrompidos continuam, a numeração não começa do 1, e o primeiro pendente é a época 777 fabricada.
+- **Com a correção:** fila **115/115**; `mutacao-fila` **17/17** (a sabotagem "o cabeçalho ignora o tamanho da área" passava, e passou a ser acusada com um teste a mais); `make` 0 falhas, `laco` 8/8, `mutacao-cadeia` 34/34; para o chip, RAM fixa 108 920 B; capacidade **32 640 registros = 272,0 h** (eram 32 704, 272,5 h).
+- **Na placa:** depois da gravação, a montagem foi de 1 087 corrompidos e sessão 7 para **0 corrompidos e sessão 1** (a primeira partida, a que formatou, aconteceu no reinício da própria gravação); a segunda partida não formatou; com o cabeçalho apagado, **"Fila formatada: 0 setores apagados em 5924 ms"** e 0 corrompidos; o primeiro envio não foi conferido: o NTP não respondeu em 5 s e a placa reiniciou dentro do `HTTPClient` (`FW-16`, defeito anterior a este item); as 19 épocas pendentes sobreviveram à reinicialização.
+
+**Adaptação.** O cabeçalho foi para o **último** setor, e não para o primeiro como no plano: assim o endereço de cada slot continua `slot * 64`, e os testes de antes seguem falando de setores de dados (a flash simulada ganhou o setor do cabeçalho). A documentação de capacidade (`CALCULOS-TCC.md`, `DECISAO-BUFFER-E-FEATURES.md`) foi atualizada.
+
+**O que deu errado no caminho.**
+- **A primeira formatação na placa não foi lida:** a gravação reinicia a placa, e o `esptool` também; foi preciso apagar o cabeçalho de novo com `--after no-reset` para ver a linha de formatação.
+- **A sabotagem do tamanho da área passou na primeira rodada** — o campo existia sem teste.
+- **Duas edições quebraram strings de novo** (o `\n` do `printf` e um `\r\n` de arquivo CRLF), corrigidas no editor antes de compilar.
+
+**Risco em aberto.**
+- **O tempo de formatação com a área suja** não foi medido (o caso real já tinha sido formatado sem leitura); com 2 MiB sujos seriam ~512 apagamentos — estimativa de 20–30 s, uma vez.
+- **A montagem lê os 2 MiB a cada partida** (~4–6 s); não é novo, mas pesa no boot.
+- **A placa reinicia no envio quando o NTP demora** — `FW-16`, achado nesta bancada: a consulta de DNS do SNTP fica pendente e a limpeza do cache do `HTTPClient` a dispara fora da trava da pilha de rede.
+
+**Procedência.** Branch `bugfix/FW-15-formato-da-fila`; contêiner `gcc:13`; `arduino-cli` 1.6.0 e `esptool` 5.3.1 com `esp32:esp32` 3.3.12; placa do autor na COM3; Windows 11, 13/11.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

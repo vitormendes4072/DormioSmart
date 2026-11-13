@@ -44,13 +44,17 @@ static void secao(const char *nome) { printf("\n== %s\n", nome); }
 
 // ── A flash simulada ──────────────────────────────────────────────────
 
+// `setores` e a area de DADOS: a simulada tem um setor a mais, o do
+// cabecalho de formato (FW-15), para que os testes de antes continuem
+// falando de setores de dados.
 class FlashSimulada : public MidiaFlash {
  public:
   explicit FlashSimulada(uint32_t setores)
-      : violacoes(0), n_(setores * TAMANHO_DO_SETOR_BYTES), setores_(setores), orcamento_(-1),
+      : violacoes(0), n_((setores + SETORES_DO_CABECALHO_DA_FILA) * TAMANHO_DO_SETOR_BYTES),
+        setores_(setores), orcamento_(-1),
         desligada_(false), cortar_apagamento_(false), engolir_(false) {
     mem_ = static_cast<uint8_t *>(malloc(n_));
-    apagamentos_ = static_cast<uint32_t *>(calloc(setores, sizeof(uint32_t)));
+    apagamentos_ = static_cast<uint32_t *>(calloc(setores + SETORES_DO_CABECALHO_DA_FILA, sizeof(uint32_t)));
     memset(mem_, 0xFF, n_);
   }
   ~FlashSimulada() {
@@ -653,6 +657,116 @@ static void testar_marca_de_calibracao() {
             "a outra sai com cal 0");
 }
 
+// ── FW-15: a particao nasce com lixo ───────────────────────────────────
+//
+// Na placa, a primeira montagem achou 1 279 slots corrompidos: restos do
+// programa gravado antes com a tabela padrao. O CRC-16 aceita lixo com
+// chance de 1 em 65 536 por slot, ~2 % por montagem com ~1 300 slots sujos.
+// Aqui o lixo e fabricado JA com CRC valido -- o caso raro, forcado -- e com
+// `seq` e `sessao` absurdos: sem formatacao, a montagem confia nele, e a
+// numeracao e a sessao da fila passam a vir do lixo.
+static void testar_lixo_com_crc_valido() {
+  secao("FW-15 -- lixo de outro programa, com CRC valido, nao vira registro");
+  FlashSimulada flash(4);
+  uint8_t *mem = flash.memoria();
+  // Um setor inteiro de bytes "de programa" (pseudoaleatorios, fixos).
+  uint32_t x = 0x2545F491u;
+  for (uint32_t i = TAMANHO_DO_SETOR_BYTES; i < 2u * TAMANHO_DO_SETOR_BYTES; i++) {
+    x ^= x << 13;
+    x ^= x >> 17;
+    x ^= x << 5;
+    mem[i] = static_cast<uint8_t>(x);
+  }
+  // E, no meio dele, um slot que passa no CRC.
+  RegistroDeEpoca falso;
+  memset(&falso, 0, sizeof(falso));
+  falso.seq = 0xFFFFFF00u;
+  falso.sessao = 0xBEEF;
+  falso.epoca = fabricar(777);
+  falso.instante_s = 123;
+  uint8_t bytes[TAMANHO_DO_REGISTRO_FLASH_BYTES];
+  serializar_registro(falso, bytes);
+  memcpy(mem + 70u * TAMANHO_DO_REGISTRO_FLASH_BYTES, bytes, sizeof(bytes));
+
+  FilaNaFlash fila(&flash);
+  VERIFICAR(fila.montar(), "monta");
+  VERIFICAR(fila.pendentes() == 0, "o lixo nao vira pendente (nao vai ao servidor)");
+  VERIFICAR(fila.sessao() == 1, "a sessao nao vem do lixo");
+  VERIFICAR(fila.estatisticas().corrompidos_na_montagem == 0, "nenhum slot sujo depois da montagem");
+  VERIFICAR(gravar(&fila, 0, 3) == 3, "grava depois");
+  RegistroDeEpoca lidos[3];
+  VERIFICAR(fila.ler_pendentes(lidos, 3) == 3 && lidos[0].seq == 1 && lidos[2].seq == 3,
+            "a numeracao comeca do 1, nao do lixo");
+  VERIFICAR(lidos[0].epoca.indice == 0, "e o primeiro pendente e o gravado, nao o 777 do lixo");
+  VERIFICAR(flash.violacoes == 0, "nenhuma violacao de NOR");
+}
+
+static void testar_formato_da_fila() {
+  secao("FW-15 -- o cabecalho de formato");
+  {
+    FlashSimulada flash(4);
+    FilaNaFlash fila(&flash);
+    VERIFICAR(fila.montar() && fila.estatisticas().formatada_na_montagem,
+              "placa nova: a primeira montagem formata");
+    VERIFICAR(fila.estatisticas().setores_apagados_na_formatacao == 0,
+              "e nao gasta apagamento em setor que ja esta em branco");
+    VERIFICAR(fila.slots() == 4u * REGISTROS_POR_SETOR, "a area de dados e a particao menos o cabecalho");
+    VERIFICAR(gravar(&fila, 0, 100) == 100, "grava");
+    FilaNaFlash de_novo(&flash);
+    VERIFICAR(de_novo.montar() && !de_novo.estatisticas().formatada_na_montagem,
+              "com a marca, a segunda montagem NAO formata");
+    VERIFICAR(de_novo.pendentes() == 100 && pendentes_contiguos(&de_novo, 0, 100),
+              "e os pendentes continuam la, em ordem");
+  }
+  {
+    FlashSimulada flash(4);
+    {
+      FilaNaFlash fila(&flash);
+      fila.montar();
+      gravar(&fila, 0, 10);
+    }
+    // Outra versao do formato no cabecalho: o byte 8 e a versao.
+    uint8_t *cab = flash.memoria() + 4u * TAMANHO_DO_SETOR_BYTES;
+    cab[8] = static_cast<uint8_t>(cab[8] & 0x00);  // so leva bits a 0, como a NOR
+    FilaNaFlash fila(&flash);
+    VERIFICAR(fila.montar() && fila.estatisticas().formatada_na_montagem,
+              "versao diferente no cabecalho: formata");
+    VERIFICAR(fila.pendentes() == 0 && fila.sessao() == 1, "e comeca vazia");
+    VERIFICAR(fila.estatisticas().setores_apagados_na_formatacao == 2,
+              "apagando o setor com dados e o do cabecalho");
+  }
+  {
+    FlashSimulada flash(4);
+    memset(flash.memoria(), 0x5A, 2u * TAMANHO_DO_SETOR_BYTES);  // dois setores sujos
+    flash.cortar_no_proximo_apagamento();
+    {
+      FilaNaFlash fila(&flash);
+      VERIFICAR(!fila.montar(), "corte de energia no meio da formatacao: a montagem falha");
+    }
+    flash.religar();
+    FilaNaFlash fila(&flash);
+    VERIFICAR(fila.montar() && fila.estatisticas().formatada_na_montagem,
+              "e a seguinte, sem a marca, formata de novo");
+    VERIFICAR(fila.estatisticas().corrompidos_na_montagem == 0 && fila.pendentes() == 0,
+              "e termina limpa");
+  }
+  {
+    // O cabecalho de uma particao de 4 setores, copiado para o fim de uma de
+    // 5: marca e versao certas, area errada. Tem de formatar.
+    FlashSimulada pequena(4);
+    {
+      FilaNaFlash fila(&pequena);
+      fila.montar();
+    }
+    FlashSimulada grande(5);
+    memcpy(grande.memoria() + 5u * TAMANHO_DO_SETOR_BYTES,
+           pequena.memoria() + 4u * TAMANHO_DO_SETOR_BYTES, TAMANHO_DO_CABECALHO_DA_FILA);
+    FilaNaFlash fila(&grande);
+    VERIFICAR(fila.montar() && fila.estatisticas().formatada_na_montagem,
+              "cabecalho de outro tamanho de area: formata");
+  }
+}
+
 int main() {
   printf("TESTES DA FILA NA FLASH (FW-08)\n");
   testar_registro();
@@ -667,6 +781,8 @@ int main() {
   testar_payload_do_registro();
   testar_marca_de_calibracao();
   testar_envio_da_fila();
+  testar_lixo_com_crc_valido();
+  testar_formato_da_fila();
 
   printf("\n-----------------------------------------\n");
   printf("%d verificacoes, %d falhas\n", total, falhas);
