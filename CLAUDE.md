@@ -265,7 +265,7 @@ Windows sem ajuste (`DOCS-WIN-01`, `DOCS-WIN-02`, `ML-WIN-01`). Resta uma difere
 
 **Auditoria de dependências** (`CI-08`, 03/11): `.github/workflows/auditoria-dependencias.yml` — `npm audit --audit-level=high` (✏️ *03/11, `SEC-17`: com as ferramentas de teste e build; até ali `--omit=dev`*) e `pip-audit` sobre `web-app/requirements.txt`, quando as dependências mudam e toda segunda-feira (o agendamento só a partir de `main`). Dependência nova ou versão nova passa por ele; para rodar à mão: `cd frontend && npm audit` e `pip-audit -r web-app/requirements.txt`.
 
-✏️ *13/11, `CI-10`: o Python do backend no CI vem do `.python-version` da raiz (**3.12**), o mesmo arquivo que a Vercel lê; trocar de versão é trocar esse arquivo, e o `test_versao_do_python.py` reprova se o job e o arquivo divergirem. O ML segue em 3.10 no CI.*
+✏️ *13/11, `CI-10`: o Python do backend no CI vem do `web-app/.python-version` (**3.12**), o mesmo arquivo que a Vercel lê — na pasta do backend, não na raiz, onde a Vercel o ignora; trocar de versão é trocar esse arquivo, e o `test_versao_do_python.py` reprova se o job e o arquivo divergirem. O ML segue em 3.10 no CI.*
 
 ✏️ *13/11, `CI-12`: `.github/workflows/firmware-esp32.yml` compila o `sketch.ino` **para o ESP32** (`arduino-cli` 1.6.0, `esp32:esp32` 3.3.12, com cache) quando o firmware muda, e exige que uma cópia sabotada (o lote na RAM estática) reprove.*
 

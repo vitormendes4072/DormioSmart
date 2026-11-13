@@ -1,8 +1,10 @@
 """O Python que testa o backend no CI e o da producao (CI-10).
 
-A Vercel escolhe o Python do backend pelo `.python-version` da raiz (antes de
+A Vercel escolhe o Python do backend pelo `web-app/.python-version` (antes de
 13/11 nao havia nenhum, e ela caia no padrao dela, 3.12, enquanto o CI testava
-em 3.11). O CI le o mesmo arquivo (`python-version-file`). Este teste prende os
+em 3.11). Fica na pasta do backend, e nao na raiz: com `builds` no
+`vercel.json`, o builder procura o arquivo na pasta do entrypoint -- na raiz,
+o log de build diz que nao ha versao especificada. O CI le o mesmo arquivo (`python-version-file`). Este teste prende os
 dois: se alguem trocar a versao do job sem trocar o arquivo, ou o contrario,
 o CI reprova.
 
