@@ -9625,6 +9625,26 @@ Os quatro pontos foram corrigidos no `5ed12df`, e as sabotagens reexecutadas na 
 
 **Procedência.** GitHub (PR #157, CI e deployments); `curl` na produção, 12/11; a tela do autor na conversa; Windows 11.
 
+---
+
+# 2026-11-12 (xx) — APP-15: Falha ao listar noites
+
+**O problema.** O erro do plugin aparecia como lista vazia.
+
+**Hipótese.** Separar a falha da resposta vazia permite repetir a consulta.
+
+**O que foi testado.** No Windows, simulei rejeição do plugin seguida de sucesso e acionei Tentar novamente.
+
+**Resultado medido.** Em develop, 1 teste falhou porque aparecia a lista vazia em vez do alerta, e 7 passaram. Com a correção, o alerta apareceu e a noite voltou após repetir a consulta. A suíte original passou com 573 testes.
+
+**Adaptação.** A lista mostra erro e permite tentar novamente, com proteção contra respostas antigas.
+
+**O que deu errado no caminho.** Nada nesta etapa além da falha esperada no controle.
+
+**Risco em aberto.** Validação em aparelho físico pendente.
+
+**Procedência.** PR #148, implementação `c984876`, registros sobre `develop` `745f232`. Testes automatizados no Windows.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
