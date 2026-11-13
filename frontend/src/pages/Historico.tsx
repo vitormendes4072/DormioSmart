@@ -4,10 +4,10 @@ import { useLocation } from "react-router";
 import { BarraDoWorkspace } from "../components/BarraDoWorkspace";
 import { Carregando, FalhaAoCarregar } from "../components/EstadoDaTela";
 import { useHistorico } from "../hooks/useHistorico";
-import { LIMIAR_DE_HISTORICO_PARCIAL, LIMITE_DO_PAINEL } from "../lib/api";
+import { LIMITE_DO_PAINEL } from "../lib/api";
 import { agruparEmSessoes, calcularCobertura } from "../lib/cobertura";
 import { estaEmModoDemo } from "../lib/demo";
-import { formatarDuracao } from "../lib/metricas";
+import { formatarDuracao, leituraNaBordaDoLimite } from "../lib/metricas";
 import { instanteDaLeitura, type LeituraSono } from "../types/sleep";
 
 const DIA_MS = 24 * 60 * 60 * 1000;
@@ -22,6 +22,7 @@ type Linha = {
   cobertura: number | null;
   leituras: number;
   lacunas: boolean;
+  parcial?: boolean;
 };
 
 const SESSOES_DO_PROTOTIPO: Array<[number, number, number, number, number, number, boolean]> = [
@@ -41,6 +42,7 @@ const EXEMPLOS = SESSOES_DO_PROTOTIPO.map(([ano, mes, dia, minutos, cobertura, l
 });
 
 function resumirSessoes(leituras: LeituraSono[], desdeMs: number): Linha[] {
+  const borda = leituraNaBordaDoLimite(leituras, LIMITE_DO_PAINEL);
   const porDispositivo = new Map<string | null, LeituraSono[]>();
   for (const leitura of leituras) {
     // A API recorta pela chegada. Exclui medições antigas enviadas com atraso.
@@ -61,6 +63,7 @@ function resumirSessoes(leituras: LeituraSono[], desdeMs: number): Linha[] {
         cobertura: cobertura.janelaMs > 0 ? (100 * cobertura.tempoCobertoMs) / cobertura.janelaMs : null,
         leituras: sessao.leituras.length,
         lacunas: cobertura.lacunas.length > 0,
+        parcial: borda !== undefined && sessao.leituras.includes(borda),
       };
     }),
   ).flat().sort((a, b) => b.inicio - a.inicio);
@@ -119,7 +122,7 @@ function SessoesDaConta({ dias }: { dias: number }) {
 
   return (
     <>
-      {leituras.length >= LIMIAR_DE_HISTORICO_PARCIAL && (
+      {leituras.length >= LIMITE_DO_PAINEL && (
         <p role="status" className="mb-3 rounded-lg bg-amber-500/10 px-3 py-2 text-xs text-foreground">
           A consulta atingiu o limite de leituras. O histórico deste período pode estar incompleto.
         </p>
@@ -145,20 +148,20 @@ function TabelaDeSessoes({ linhas }: { linhas: Linha[] }) {
           </tr>
         </thead>
         <tbody className="divide-y divide-border border-b border-border">
-          {linhas.map(({ chave, inicio, tempo, cobertura, leituras, lacunas }) => (
+          {linhas.map(({ chave, inicio, tempo, cobertura, leituras, lacunas, parcial }) => (
             <tr key={chave}>
               <th scope="row" className="whitespace-nowrap px-2 py-3 font-semibold">{DATA.format(inicio).replace(/ de |\./g, " ").replace(/ +/g, " ")}</th>
               <td className="whitespace-nowrap px-2 py-3">{formatarDuracao(tempo)}</td>
               <td className="px-2 py-3">{cobertura === null ? "—" : `${Math.round(cobertura)}%`}</td>
               <td className="px-2 py-3">{leituras}</td>
               <td className="px-2 py-3 text-right">
-                <span className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2 py-1 text-[11px] font-semibold ${cobertura === null
-                  ? "bg-secondary text-muted-foreground"
-                  : lacunas
-                    ? "bg-amber-500/10 text-amber-800 dark:text-amber-300"
+                <span className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2 py-1 text-[11px] font-semibold ${parcial || lacunas
+                  ? "bg-amber-500/10 text-amber-800 dark:text-amber-300"
+                  : cobertura === null
+                    ? "bg-secondary text-muted-foreground"
                     : "bg-emerald-500/10 text-emerald-800 dark:text-emerald-300"}`}>
                   <span className="size-1.5 rounded-full bg-current" aria-hidden />
-                  {cobertura === null ? "Sem estimativa" : lacunas ? "Com lacunas" : "Completa"}
+                  {parcial ? "Parcial" : cobertura === null ? "Sem estimativa" : lacunas ? "Com lacunas" : "Completa"}
                 </span>
               </td>
             </tr>

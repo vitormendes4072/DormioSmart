@@ -138,13 +138,13 @@ def test_cliente_nao_consegue_pedir_o_dado_de_outro():
 
 # --- degradação -----------------------------------------------------------
 
-def test_falha_de_banco_devolve_lista_vazia_e_nao_500():
-    """FIX-01/FIX-08 continuam valendo no caminho autenticado."""
+def test_falha_de_banco_devolve_503_no_caminho_autenticado():
+    """API-08 distingue indisponibilidade de ausência de leituras."""
     with patch.object(database.db, "validar_token_de_usuario", side_effect=_resolve), \
          patch.object(database.db, "cliente_do_usuario", return_value=None):
         resp = _client().get("/api/sleep-history", headers=_como(JWT_ANA))
-    assert resp.status_code == 200
-    assert resp.get_json() == []
+    assert resp.status_code == 503
+    assert "error" in resp.get_json()
 
 
 def test_validacao_de_token_nunca_levanta():

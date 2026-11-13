@@ -13,7 +13,7 @@ import lote
 import perfil
 from auth import extrair_bearer, require_auth
 from database import INDISPONIVEL, db
-from consulta import ler_parametros
+from consulta import ler_parametros, validar_instante, validar_uuid
 from ingestao import CAMINHO_SESSAO, CAMINHO_TOKEN, extrair_device_id, identificar_caminho
 from device_auth import extrair_token, gerar_token, hash_token
 from validacao import colunas_de_features, validar_captacao, validar_leitura
@@ -121,12 +121,13 @@ def init_routes(app):
         """Leituras do usuário autenticado (AUTH-03, DASH-05, DASH-06).
 
         A consulta usa o JWT de quem pediu, então o RLS aplica a política por
-        dono no banco. Continua devolvendo lista sempre — [] em qualquer
-        falha de infraestrutura, nunca 500 (FIX-01/FIX-08).
+        dono no banco. Uma consulta vazia devolve []; falha de infraestrutura
+        devolve 503 (API-08).
 
         Aceita recorte opcional por `device`, janela `desde`/`ate` e `limite`.
         Sem parâmetro nenhum o comportamento é o de antes: as 20 leituras mais
-        recentes de todos os dispositivos do usuário.
+        recentes de todos os dispositivos do usuário. A exportação percorre
+        o histórico com o par `cursor_tempo` e `cursor_id` da última leitura.
 
         Parâmetro malformado responde **400**, e não lista vazia: um uuid
         digitado errado que devolvesse `[]` faria o usuário concluir que o
@@ -136,16 +137,23 @@ def init_routes(app):
         if erro:
             return jsonify({"error": erro}), 400
 
-        return jsonify(
-            db.get_leituras_do_usuario(
-                g.jwt,
-                g.usuario_id,
-                device_id=parametros["device_id"],
-                desde=parametros["desde"],
-                ate=parametros["ate"],
-                limite=parametros["limite"],
-            )
+        instante = request.args.get("cursor_tempo")
+        identificador = request.args.get("cursor_id")
+        extras = {}
+        if instante is not None or identificador is not None:
+            tempo_valido = validar_instante(instante)
+            id_valido = validar_uuid(identificador)
+            if not tempo_valido or not id_valido or datetime.fromisoformat(tempo_valido).utcoffset() is None:
+                return jsonify({"error": "cursor invalido"}), 400
+            extras["cursor"] = (tempo_valido, id_valido)
+        leituras = db.get_leituras_do_usuario(
+            g.jwt, g.usuario_id, device_id=parametros["device_id"],
+            desde=parametros["desde"], ate=parametros["ate"],
+            limite=parametros["limite"], **extras,
         )
+        if leituras is None:
+            return jsonify({"error": "Não foi possível carregar as leituras."}), 503
+        return jsonify(leituras)
 
     #: A janela de `/api/features`. Uma noite cabe com folga; acima disso, a
     #: `inclinacao_rel` passaria a ser contra a postura típica de dias.
