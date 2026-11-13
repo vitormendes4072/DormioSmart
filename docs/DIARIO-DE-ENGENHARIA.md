@@ -9477,7 +9477,11 @@ Um celular deitado só mexe em z, e é z que pesa na norma nessa posição. O GG
 
 **Adaptação.** Mantive os filtros em cada consulta, usei o par de chegada e ID na API e no banco, e restaurei os comentários sobre duração, medição e chegada no SELECT.
 
-**O que deu errado no caminho.** Nada nesta etapa além das falhas esperadas nos controles positivos.
+**O que deu errado no caminho.** ✏️ *Corrigido em 12/11, na integração: aqui dizia "Nada nesta etapa além das falhas esperadas nos controles positivos".* A primeira versão da PR (`efe5d75`) chegou à revisão com dois defeitos, achados pelo Claude executando, e não pelos testes da PR:
+- **A paginação interna por posição (`range`) duplicava uma leitura** quando outra era gravada entre duas páginas: 1 501 linhas, 1 500 distintas, na sonda da revisão.
+- **Os testes não acusavam os defeitos que diziam cobrir.** O banco falso ignorava `eq`, `gte`, `lte` e `or_`, e, com as duas chamadas `parametros.set` do cursor do CSV removidas de propósito, `api.test.ts` e `montagem.test.ts` seguiam 39/39.
+- **A PR também chegou sem esta entrada e sem o fechamento no backlog**, e havia apagado os comentários do `select` (`DASH-09`, `DASH-12`).
+Os quatro pontos foram corrigidos no `5ed12df`, e as sabotagens reexecutadas na revisão final derrubaram os testes.
 
 **Risco em aberto.** O cursor não fornece uma cópia transacional dos dados. Leituras novas acima do cursor podem ficar fora de uma exportação já iniciada. A inserção foi simulada localmente, sem ensaio concorrente no Supabase de produção.
 
