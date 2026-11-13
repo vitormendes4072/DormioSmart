@@ -12,6 +12,11 @@ pasta tenha o nome do `.ino`), com o `secrets.example.h` no papel do
 
 Uso:
     python scripts/compilar_sketch_esp32.py [--arduino-cli CAMINHO] [--minimo-livre BYTES]
+                                            [--firmware PASTA]
+
+`--firmware` compila outra pasta com a mesma estrutura de `firmware/` -- e o
+que o CI usa para o controle positivo (CI-12): uma copia sabotada tem de
+reprovar.
 
 O `arduino-cli` vem de `--arduino-cli`, da variavel ARDUINO_CLI ou do PATH, com
 o pacote `esp32:esp32` instalado. Sai com 1 se nao ligar, ou se a folga de RAM
@@ -49,13 +54,13 @@ def tamanho_da_aplicacao(particoes: Path) -> int:
     raise SystemExit("partitions.csv sem a fatia `factory`")
 
 
-def montar(destino: Path) -> None:
+def montar(destino: Path, firmware: Path) -> None:
     sketch = destino / "sketch"
     (sketch / "nucleo").mkdir(parents=True)
     for nome in ARQUIVOS_DO_SKETCH:
-        shutil.copy2(FIRMWARE / nome, sketch / nome)
-    shutil.copy2(FIRMWARE / "secrets.example.h", sketch / "secrets.h")
-    for arq in (FIRMWARE / "nucleo").iterdir():
+        shutil.copy2(firmware / nome, sketch / nome)
+    shutil.copy2(firmware / "secrets.example.h", sketch / "secrets.h")
+    for arq in (firmware / "nucleo").iterdir():
         if arq.suffix in (".h", ".cpp"):
             shutil.copy2(arq, sketch / "nucleo" / arq.name)
 
@@ -66,12 +71,14 @@ def main() -> int:
     ap.add_argument("--fqbn", default="esp32:esp32:esp32")
     ap.add_argument("--minimo-livre", type=int, default=150_000,
                     help="RAM minima que precisa sobrar para o heap (Wi-Fi, TLS, o lote)")
+    ap.add_argument("--firmware", type=Path, default=FIRMWARE,
+                    help="pasta com a estrutura de firmware/ (padrao: a do repositorio)")
     args = ap.parse_args()
 
-    teto = tamanho_da_aplicacao(FIRMWARE / "partitions.csv")
+    teto = tamanho_da_aplicacao(args.firmware / "partitions.csv")
     with tempfile.TemporaryDirectory(prefix="dormio-esp32-") as tmp:
         tmp = Path(tmp)
-        montar(tmp)
+        montar(tmp, args.firmware)
         cmd = [args.arduino_cli, "compile", "--fqbn", args.fqbn,
                "--build-property", f"upload.maximum_size={teto}",
                "--build-path", str(tmp / "build"), str(tmp / "sketch")]
