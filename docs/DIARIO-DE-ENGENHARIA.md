@@ -9600,6 +9600,31 @@ Os quatro pontos foram corrigidos no `5ed12df`, e as sabotagens reexecutadas na 
 
 **Procedência.** GitHub (PRs #152–#155 e CI); `develop` `c61b362`; logs da placa de 12/11 (fora do repositório); Windows 11.
 
+# 2026-11-12 (xix) — o release R1 e a conta real
+
+**O problema, como foi entendido no início.** Com o `DATA-15`, o `API-08`, o `UI-26` e o `UI-29` integrados, o autor aprovou o release R1 antes dos itens 1.4–1.7 do plano, porque o corte de 1 000 leituras já afetava o Histórico dele.
+
+**Hipótese de trabalho.** Sem migração e sem mudança de contrato, o release não mexe na ingestão; o que só a conta real mostra é se a paginação e a marca "Parcial" funcionam com os dados de verdade.
+
+**O que foi testado, e como.**
+- **O release:** PR #157 (`develop` → `main`), os 8 jobs do CI e os 2 da Vercel, merge `ed11e81`.
+- **Depois do deploy:** `/health`; `/api/sleep-history` (com e sem cursor) e `/api/features` sem token; `X-Vercel-Id`; o deployment de produção; os textos novos no pacote JavaScript publicado.
+- **O login real do autor:** o Histórico de 7 dias, mostrado ao Claude por captura de tela (não versionada).
+
+**Resultado medido.**
+- **Produção:** `/health` `200`, banco ok, contrato 2.9.0, modelo `ml-inf-cabeca-v2`; as três rotas `401` sem token; `gru1`; deployment de produção em `ed11e81`; o pacote tem `cursor_tempo`, "Cobertura parcial" e "medição mais recente à mais antiga".
+- **O Histórico:** antes do release, 3 sessões e 1 000 leituras; agora **13 sessões, somando exatamente 2 000 leituras** — o teto do painel, acima do teto de 1 000 do Supabase. A sessão mais antiga (a noite de 10/11, 815 épocas no aparelho) aparece com 550 leituras e marcada **"Parcial"**; as outras como "Completa" ou "Com lacunas".
+
+**Adaptação.** O `UI-30` passa de hipótese a defeito confirmado em produção: a janela de 7 dias da conta já tem mais de 2 000 leituras, e o aviso de limite continua.
+
+**O que deu errado no caminho.** A previsão que dei ao autor estava errada: disse que a conta teria ~1 300 leituras e que o aviso sumiria. Não contei as leituras de bancada do travesseiro nem as dos envios de diagnóstico de 12/11; a janela já passa de 2 000.
+
+**Risco em aberto.**
+- **O Histórico de 7 dias continua cortado em 2 000 leituras** — `UI-30`, agora o item de maior efeito na conta real.
+- **As leituras de bancada de 12/11 contam na janela** e empurram as noites reais para fora — `APP-11` (I-9 do plano).
+
+**Procedência.** GitHub (PR #157, CI e deployments); `curl` na produção, 12/11; a tela do autor na conversa; Windows 11.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

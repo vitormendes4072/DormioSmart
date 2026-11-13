@@ -94,7 +94,7 @@ estiverem mesclados, e não quando todos os da onda anterior estiverem.
 | 1.10 | `SEC-15` (c) ✅ *(12/11)* | O handshake TLS na placa contra a produção | 1.8 |
 | 1.11 | `FW-08` (c) | A fila na flash na placa: Wi-Fi desligado, religado, reenvio sem duplicata | 1.8 |
 | 1.12 | `HW-08` | O I2C na bancada: pull-ups, 100 e 400 kHz | `HW-09` |
-| 1.13 | **Integração e release R1** | Revisar e mesclar 1.1–1.7; release com login real | as PRs do Codex |
+| 1.13 | **Integração e release R1** ✅ *(12/11, #157, com 1.1–1.3 e o firmware; 1.4–1.7 vão num R1b)* | Revisar e mesclar 1.1–1.7; release com login real | as PRs do Codex |
 
 ### Onda 2 — a primeira noite do travesseiro, e a dívida de segurança e CI
 
