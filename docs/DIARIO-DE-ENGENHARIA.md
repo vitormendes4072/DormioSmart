@@ -9884,7 +9884,9 @@ No host: `make`, `sintaxe`, `laco` (o stub do `WiFi` ganhou `hostByName` e `IPAd
 
 **O que deu errado no caminho.** Nada nesta etapa.
 
-**Risco em aberto.** O tempo real do Histórico de 7 e 30 dias na conta do autor ainda não foi medido; se 30 dias passar de ~10 s, o resumo no servidor vira item próprio (`UI-30`, diário 13/11 (iv)).
+**Login do autor (13/11):** o Histórico de 7 e de 30 dias carregou "bem rápido", nas palavras dele — sem número; a conta tem hoje ~1 800 leituras (as duas noites e as épocas de bancada de 13/11), uma página só.
+
+**Risco em aberto.** O tempo com semanas de noites (várias páginas) ainda não foi medido; se 30 dias passar de ~10 s, o resumo no servidor vira item próprio (`UI-30`, diário 13/11 (iv)).
 
 **Procedência.** GitHub (PR #168, CI e deployments); `curl` na produção, 13/11; Windows 11.
 
