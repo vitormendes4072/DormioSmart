@@ -46,11 +46,13 @@
 #include <WiFiClientSecure.h>
 #include <Wire.h>
 #include <esp_sleep.h>
+#include <esp_system.h>
 #include <esp_timer.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/semphr.h>
 #include <freertos/task.h>
 #include <sys/time.h>
+#include <stdlib.h>
 #include <time.h>
 
 #include <atomic>
@@ -106,7 +108,17 @@ static const uint32_t TIMEOUT_NTP_MS = 5000;
 static const uint16_t TIMEOUT_POST_MS = 8000;
 // Teto de lotes por volta de envio: uma noite inteira acumulada sao ~16
 // lotes, e o Wi-Fi ligado impede o sono leve da medicao.
-static const uint32_t LOTES_POR_VOLTA = 20;
+// O lote da placa e menor que o teto do servidor (FW-13, 12/11). Com 60
+// leituras, o texto do lote (31 200 B) deixava ~94 KB de heap no envio, e o
+// TLS do arduino-esp32 3.3.12 precisa de ~67 KB num bloco grande: o handshake
+// falhava com "X509 - Certificate verification failed" (falta de memoria
+// relatada como certificado recusado). Com 20, sobram ~117 KB e o envio passa
+// (medido na placa). `MAX_LEITURAS_POR_LOTE` (60) segue sendo o teto do
+// servidor; a placa so manda menos por lote.
+static const uint32_t LEITURAS_POR_LOTE_NO_ESP32 = 20;
+static_assert(LEITURAS_POR_LOTE_NO_ESP32 <= MAX_LEITURAS_POR_LOTE, "lote acima do teto do servidor");
+// 60 lotes de 20 = as mesmas 1 200 leituras por volta de quando o lote era 60.
+static const uint32_t LOTES_POR_VOLTA = 60;
 
 // ── Estado compartilhado ───────────────────────────────────────────────
 //
@@ -136,8 +148,14 @@ static AcumuladorDeFeatures acumulador;
 static float grade_x[AMOSTRAS_NA_GRADE], grade_y[AMOSTRAS_NA_GRADE], grade_z[AMOSTRAS_NA_GRADE];
 static uint64_t origem_us = 0;
 
-static RegistroDeEpoca rascunho[MAX_LEITURAS_POR_LOTE];
-static char json_do_lote[MAX_LEITURAS_POR_LOTE * 520];
+static RegistroDeEpoca rascunho[LEITURAS_POR_LOTE_NO_ESP32];
+// O texto do lote (31 200 B) fica no heap, reservado uma vez no `setup`
+// (FW-12, 12/11). Como vetor estatico ele estourava a RAM estatica do ESP32
+// (`dram0_0_seg`) em 18 088 B com o Wi-Fi e o TLS do arduino-esp32 3.3.12 --
+// o que nenhum teste no host via, porque o host nao tem esse limite.
+// `scripts/compilar_sketch_esp32.py` compila para o chip e mede a folga.
+static const size_t TAMANHO_JSON_DO_LOTE = LEITURAS_POR_LOTE_NO_ESP32 * 520;
+static char *json_do_lote = 0;
 
 // Diagnostico para o log -- e para a bancada, onde "0 transbordos em 8 h" vai
 // sair daqui. Cada campo tem um so escritor (a medicao, no nucleo 1, ou o
@@ -441,12 +459,15 @@ static void sincronizar_relogio() {
 // Envia ate `LOTES_POR_VOLTA` lotes. Devolve false se a volta terminou em
 // falha (para a politica de reconexao recuar).
 static bool enviar_pendentes() {
-  uint32_t max_no_lote = MAX_LEITURAS_POR_LOTE;
+  // Sem o buffer (o heap negou no `setup`), nada sai -- e nada se perde: as
+  // epocas seguem na fila da flash. Falha conta como volta ruim (recuo).
+  if (json_do_lote == 0) return false;
+  uint32_t max_no_lote = LEITURAS_POR_LOTE_NO_ESP32;
   for (uint32_t volta = 0; volta < LOTES_POR_VOLTA; volta++) {
     const ResolucaoDeParede p = copia_da_parede();
     xSemaphoreTake(mutex_fila, portMAX_DELAY);
     const PreparoDoLote preparo =
-        preparar_lote(&fila, p, rascunho, max_no_lote, json_do_lote, sizeof(json_do_lote));
+        preparar_lote(&fila, p, rascunho, max_no_lote, json_do_lote, TAMANHO_JSON_DO_LOTE);
     xSemaphoreGive(mutex_fila);
     contadores.descartadas_no_envio += preparo.descartados;
     if (preparo.no_lote == 0) {
@@ -518,7 +539,7 @@ static void tarefa_de_envio(void *) {
     }
     Serial.printf("[envio] %s; gravadas %u, sem f %u, recusadas %u, transbordos %u, "
                   "falhas na fila %u, descartadas %u, prazos estourados %u, "
-                  "trabalho max %u ms, sensor reacordado %u\n",
+                  "trabalho max %u ms, sensor reacordado %u, heap %u (minimo %u)\n",
                   ok ? "ok" : "FALHOU", static_cast<unsigned>(contadores.epocas_gravadas.load()),
                   static_cast<unsigned>(contadores.sem_features.load()),
                   static_cast<unsigned>(contadores.recusadas.load()),
@@ -527,7 +548,9 @@ static void tarefa_de_envio(void *) {
                   static_cast<unsigned>(contadores.descartadas_no_envio.load()),
                   static_cast<unsigned>(contadores.prazos_estourados.load()),
                   static_cast<unsigned>(contadores.trabalho_max_us.load() / 1000u),
-                  static_cast<unsigned>(contadores.reacordados.load()));
+                  static_cast<unsigned>(contadores.reacordados.load()),
+                  static_cast<unsigned>(esp_get_free_heap_size()),
+                  static_cast<unsigned>(esp_get_minimum_free_heap_size()));
   }
 }
 
@@ -550,6 +573,12 @@ void setup() {
   } else {
     Serial.println("ERRO: particao `dormio` nao encontrada. Grave com firmware/partitions.csv.");
     Serial.println("      Medindo assim mesmo, mas NADA sera guardado nem enviado.");
+  }
+
+  json_do_lote = static_cast<char *>(malloc(TAMANHO_JSON_DO_LOTE));
+  if (json_do_lote == 0) {
+    Serial.printf("ERRO: sem %u B de heap para o lote. Medindo e guardando, sem enviar.\n",
+                  static_cast<unsigned>(TAMANHO_JSON_DO_LOTE));
   }
 
   calibracao = calibracao_da_unidade();

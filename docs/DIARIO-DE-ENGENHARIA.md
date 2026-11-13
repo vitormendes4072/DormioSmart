@@ -9399,6 +9399,232 @@ Um celular deitado só mexe em z, e é z que pesa na norma nessa posição. O GG
 
 **Procedência.** Backlog e código na `develop` `ba851f4`; o pedido do autor na conversa de 12/11; Windows 11.
 
+# 2026-11-12 (xii) — HW-09: o contato do sensor refeito, e a queda provocada de propósito
+
+**O problema, como foi entendido no início.** Na bancada do `CAL-01` (11/11), virar a placa de chip para baixo zerou o sensor três vezes: o VCC caía por uma fração de segundo, o MPU6050 reiniciava dormindo e seguia lendo zero. O autor refez as soldas e prendeu os fios.
+
+**Hipótese de trabalho.** Com a junta refeita e o fio sem tensão, nenhuma virada derruba a alimentação; se derrubar, o sensor volta dormindo e o monitor, que não o reacorda, mostra zero até o fim, o que torna a queda impossível de passar despercebida.
+
+**O que foi testado, e como.**
+- **O instrumento:** o `monitor-ao-vivo` (ferramenta de bancada fora do repositório; ±8 g, 5 leituras/s, acorda o sensor só no `setup`), gravado na placa pelo `arduino-cli`, lido pela COM3 por um script em PowerShell e analisado por um script que conta erros de I2C e leituras com \|a\| < 0,5 g, por posição.
+- **O teste:** o autor passou pelas 6 posições, ~10 s em cada uma, com viradas firmes e os fios balançados, durante 4 min.
+- **Controle positivo do analisador:** 5 leituras zeradas inseridas numa cópia da gravação.
+- **Controle positivo na placa:** o autor soltou o fio do VCC no pino 3V3 por ~2 s, com a placa parada, e o encaixou de volta.
+
+**Resultado medido.**
+- **O teste:** 1 201 leituras, as 6 posições vistas, **0 erros de I2C, 0 leituras zeradas**. Chip para baixo: 75 leituras, \|a\| mediano 1,163 g (o valor cru do `CAL-01`). A leitura mais baixa, 0,498 g, caiu no meio de uma virada, com os três eixos com valor, e a seguinte já estava em 0,91 g; as outras abaixo de 0,7 g também são viradas.
+- **O analisador:** acusou as 5 zeradas inseridas (6 no total, contando a da virada).
+- **A placa:** com o VCC solto, 15 erros de I2C; religado, **220 leituras seguidas com zero exato** até o fim da gravação. O mecanismo é o de 11/11, e o teste o vê.
+
+**Adaptação.** Nenhuma no plano: o `HW-09` fecha, e a onda 1 do Claude (`FW-07` (c), `HW-08`) está destravada.
+
+**O que deu errado no caminho.**
+- **A primeira gravação de 4 min começou antes de o autor estar na bancada** e só pegou a placa parada. Foi refeita.
+- **O leitor da serial cortou 105 linhas** ("27.3 chip para CIMA"): o `ReadLine` com tempo esgotado entrega pedaço de linha. Todas no trecho parado; o analisador as ignora.
+- **O `monitor-ao-vivo` rotula o sensor zerado como "chip para BAIXO"** (com z = 0, o teste do lado cai no ramo negativo). O rótulo engana, mas o \|a\| = 0 não.
+
+**Risco em aberto.**
+- **Um teste de 4 min não é uma noite.** O contato agora aguenta viradas de bancada; a prova de que aguenta horas é a vigia da FIFO do `FW-11` contando reacordados numa noite (`FW-07` (c), `VAL-01`).
+- **O encaixe do jumper do lado da ESP32 continua sendo um ponto de falha** (o controle o soltou com a mão). O encapsulamento é o `HW-04`.
+
+**Procedência.** Placa e sensor do autor, COM3, Windows 11, 12/11; capturas locais fora do repositório (`hw09-b.txt`, `hw09-controle.txt`, no diretório temporário da sessão).
+
+# 2026-11-12 (xiii) — FW-12: o firmware não cabia na RAM do ESP32
+
+**O problema, como foi entendido no início.** Ao começar o `FW-07` (c), gravar o `sketch.ino` na placa, a compilação para o ESP32 falhou no link: a RAM estática (`dram0_0_seg`) estourou em 18 088 B. Era a primeira vez que o sketch completo, com Wi-Fi e TLS, era compilado para o chip. Todos os testes de firmware passavam, inclusive o `make sintaxe`, que diz que o sketch "liga com o núcleo".
+
+**Hipótese de trabalho.** O estouro vem dos vetores estáticos do sketch somados ao que o `arduino-esp32` 3.3.12 reserva para Wi-Fi e TLS. Tirar da RAM estática o maior deles, reservando-o uma vez no `setup`, fecha a conta sem mudar o protocolo.
+
+**O que foi testado, e como.**
+- **Os maiores estáticos:** `nm` sobre o objeto do sketch compilado para o chip.
+- **A correção numa cópia fora do repositório, antes do plano**, e depois no repositório: `json_do_lote` (31 200 B) no heap, com aviso e envio desligado se a reserva falhar.
+- **`scripts/compilar_sketch_esp32.py`:** monta o sketch numa pasta temporária com o `secrets.example.h` no papel do `secrets.h`, compila com o `partitions.csv` do projeto e lê o resumo de memória.
+- **Controle positivo:** o mesmo script com o `sketch.ino` da `develop`.
+- **Os testes do firmware no host**, em contêiner `gcc:13`: `make`, `make sintaxe`, `make laco`, `make capacidade`.
+
+**Resultado medido.**
+- **Os estáticos:** `json_do_lote` 31 200 B, `cadeia` 24 224 B, `acumulador` 19 208 B, `rascunho` e as três grades 3 840 B cada.
+- **Com a correção:** programa 1 085 336 B (53 % da fatia `factory`); **RAM fixa 111 464 B (34 %), 216 216 B para o heap**; folga de ~13 KB até o teto da RAM estática.
+- **Controle positivo:** com o sketch da `develop`, o script reprova com "a região dram0_0_seg estourou em 18 088 B" e sai com 1.
+- **Host:** `make` 185 verificações, 0 falhas; `sintaxe` liga; `laco` 8/8 como esperado; `capacidade` com a tabela válida.
+
+**Adaptação.**
+- **O `FW-12` abre e fecha no mesmo dia**, saído do `FW-07` (c), que segue aberto: a gravação na placa e a leitura de 40 min vêm depois deste merge.
+- **O CI não compila para o chip.** Isso virou o `CI-12`, na trilha do Claude da onda 2.
+- **O limite foi para as `LIMITACOES-TCC.md` (X.6)**, e a ocorrência para o §1 das lições (13): uma verificação cujo nome promete a placa e cujo alcance é o PC.
+
+**O que deu errado no caminho.**
+- **A primeira edição do aviso quebrou a string:** o `\n` virou uma quebra de linha de verdade no script de edição, e a compilação para o chip acusou a aspa sem fim. Corrigido no editor.
+- **Um comando de registro não rodou** por aspas desbalanceadas no shell; foi refeito como arquivo.
+
+**Risco em aberto.**
+- **A folga é de ~13 KB.** Um vetor estático novo no sketch pode estourar de novo sem que o CI veja, até o `CI-12`.
+- **O heap durante o envio não foi medido.** São 216 KB antes do Wi-Fi e do TLS; o mínimo real aparece na placa (`FW-07` (c)).
+
+**Procedência.** `arduino-cli` 1.6.0 com `esp32:esp32` 3.3.12, Windows 11; contêiner `gcc:13`; branch `bugfix/FW-12-ram-do-sketch`, 12/11.
+
+---
+
+# 2026-11-12 (xiv) — DATA-15 e API-08: paginação do histórico e falha do banco
+
+**O problema.** O Supabase cortava o histórico em 1 000 linhas, e indisponibilidade do banco parecia lista vazia. Na revisão da PR #146, uma inserção entre consultas também duplicou uma leitura com paginação por posição.
+
+**Hipótese.** Ordenar por chegada e ID e avançar pelo último par conserva a posição mesmo quando uma leitura mais recente chega entre duas páginas. Separar a falha da lista vazia permite responder 503.
+
+**O que foi testado.** No Windows, banco simulado com inserção entre páginas, empate no horário, filtros de usuário, dispositivo e intervalo em cada página, e falha na segunda consulta. O teste do CSV conferiu o cursor do segundo pedido. Removi as duas atribuições do cursor no frontend e reexecutei o teste.
+
+**Resultado medido.** Na versão anterior da PR, 2 testes de backend falharam: cursor interno repetido e 1 499 IDs distintos em 1 500 linhas, com uma duplicata e uma ausência. Com o cursor interno, 1 500 de 1 500 IDs distintos e sequência esperada intacta. No frontend, o controle sem os parâmetros falhou em 1 de 14 testes porque o segundo pedido não continha o cursor. Com a correção, 549 testes de backend sem RLS, 574 de frontend e o build passaram.
+
+**Adaptação.** Mantive os filtros em cada consulta, usei o par de chegada e ID na API e no banco, e restaurei os comentários sobre duração, medição e chegada no SELECT.
+
+**O que deu errado no caminho.** ✏️ *Corrigido em 12/11, na integração: aqui dizia "Nada nesta etapa além das falhas esperadas nos controles positivos".* A primeira versão da PR (`efe5d75`) chegou à revisão com dois defeitos, achados pelo Claude executando, e não pelos testes da PR:
+- **A paginação interna por posição (`range`) duplicava uma leitura** quando outra era gravada entre duas páginas: 1 501 linhas, 1 500 distintas, na sonda da revisão.
+- **Os testes não acusavam os defeitos que diziam cobrir.** O banco falso ignorava `eq`, `gte`, `lte` e `or_`, e, com as duas chamadas `parametros.set` do cursor do CSV removidas de propósito, `api.test.ts` e `montagem.test.ts` seguiam 39/39.
+- **A PR também chegou sem esta entrada e sem o fechamento no backlog**, e havia apagado os comentários do `select` (`DASH-09`, `DASH-12`).
+Os quatro pontos foram corrigidos no `5ed12df`, e as sabotagens reexecutadas na revisão final derrubaram os testes.
+
+**Risco em aberto.** O cursor não fornece uma cópia transacional dos dados. Leituras novas acima do cursor podem ficar fora de uma exportação já iniciada. A inserção foi simulada localmente, sem ensaio concorrente no Supabase de produção.
+
+**Procedência.** PR #146, revisão da paginação por posição e testes de regressão executados no Windows sobre a branch da PR atualizada com `develop` `01c9da5`.
+
+---
+
+# 2026-11-12 (xv) — UI-26: sessão na borda do limite do histórico
+
+**O problema.** Um trecho contínuo na borda da resposta podia aparecer como Completa.
+
+**Hipótese.** Preservar a leitura na borda da ordenação da API permite identificar a sessão que pode ter sido cortada.
+
+**O que foi testado.** No Windows, o Histórico recebeu duas sessões em uma resposta de 2 000 leituras e em outra de 1 999. Troquei a comparação do limite para 9999 e reexecutei o teste.
+
+**Resultado medido.** Um teste falhou em develop e um falhou com 9999 pela ausência de Parcial. Com a correção, só a sessão na borda foi marcada e ambas ficaram completas abaixo do limite.
+
+**Controles positivos da revisão.** Cada sabotagem foi executada isoladamente e desfeita:
+- Trocar `leituras.at(-1)` por `leituras.at(0)` fez falhar “marca somente a sessão na borda de uma resposta no limite”. A linha recente perdeu o rótulo Completa.
+- Apagar o texto do aviso fez falhar “aviso de cobertura do painel com 2000 leituras”. O teste de 1 999 leituras verifica a ausência do aviso.
+- Apagar ` · Parcial` da tabela fez falhar “marca apenas a sessão na borda na tabela do painel”. A linha antiga perdeu a marca.
+
+**Adaptação.** O Histórico e o painel compartilham a identificação da borda. A cobertura numérica segue descrevendo o trecho observado.
+
+**O que deu errado no caminho.** A primeira coleta da saída dos testes falhou ao imprimir um caractere no console CP1252. Reexecutei os três controles com Python em UTF-8.
+
+**Risco em aberto.** A API não informa se há mais leituras quando chega exatamente ao limite. O UI-30 trata as noites ausentes da janela.
+
+**Procedência.** Testes executados no Windows sobre develop 952371c.
+
+---
+
+# 2026-11-12 (xvi) — UI-29: ordem das leituras recentes
+
+**O problema.** A tabela ordenava pela medição e a legenda dizia que a ordem era de chegada.
+
+**Hipótese.** Explicar a ordenação existente e o fallback de chegada descreve a tabela mesmo com envio atrasado.
+
+**O que foi testado.** No Windows, montei o painel com duas leituras cuja ordem de chegada era inversa à de medição. O teste conferiu as linhas e a legenda. Executei o teste com a legenda antiga.
+
+**Resultado medido.** Com a legenda antiga, a ordem das linhas passou e a asserção da legenda falhou em um teste. Com a legenda corrigida, a sequência e o texto passaram.
+
+**Adaptação.** Mantive o critério de ordenação e explicitei o fallback na legenda.
+
+**O que deu errado no caminho.** Nada além da falha esperada no controle.
+
+**Risco em aberto.** O caso de envio atrasado foi reproduzido com dados simulados.
+
+**Procedência.** Testes no Windows, sobre a UI-26 (478c92c), baseada em develop 952371c.
+
+# 2026-11-12 (xvii) — FW-07 (c) na placa: a medição limpa, e o envio que falhava por memória (FW-13)
+
+**O problema, como foi entendido no início.** Com o `FW-12` mesclado, o `sketch.ino` foi gravado na placa para o `FW-07` (c): 41 min de leitura do serial, com o autor deixando a placa parada. O plano era conferir a partição, as épocas, os prazos, o relógio e o envio.
+
+**Hipótese de trabalho.** Se o firmware que passa no host e liga para o chip também mede e envia na placa, o `FW-07` (c), o `FW-05`, o `SEC-15` (c) e parte do `FW-08` (c) saem da mesma gravação.
+
+**O que foi testado, e como.**
+- **A leitura de 41 min** (`sketch.ino` da `develop` `01c9da5`, com o `secrets.h` do autor, sem leitura do arquivo), pela COM3 e por um leitor em PowerShell que reinicia a placa no início.
+- **O envio, que falhou:** uma versão de diagnóstico fora do repositório imprimiu o heap antes do POST e o `lastError` do TLS, com envio a cada 1 min.
+- **A cadeia:** `conferir_tls_firmware.py --producao` no PC; as cifras e os certificados servidos pela Vercel em TLS 1.2; um sketch mínimo na placa (só Wi-Fi e TLS, `GET /health`) com as 4 raízes e com uma 5ª (GlobalSign Root CA, impressão SHA-256 conferida).
+- **A correção (`FW-13`)**, primeiro no diagnóstico (lote de 20), depois na branch: a versão exata da branch gravada e lida por 21 min.
+- **Controle positivo do `SEC-15` (c):** o mesmo firmware com só as raízes ISRG.
+
+**Resultado medido.**
+- **A medição:** 80 épocas em 41 min, todas com features, taxa 49,92–50,01 Hz, 0 transbordos, 0 prazos estourados, pior trabalho 178 ms, sensor nunca reacordado; só a época 0 recusada. Calibração da unidade aplicada (desvio Z −130 mg, o do `CAL-01`).
+- **O relógio:** −20, −17 e −16 ms a cada 10 min contra o NTP (−29 a −33 ppm). Numa gravação de 10 min com o `FW-13`, −123 ppm.
+- **O envio, antes da correção:** `HTTP -1` em todas as voltas. O diagnóstico mostrou `X509 - Certificate verification failed` com 94 KB de heap e maior bloco de 38–55 KB; com a 5ª raiz, `PK - Memory allocation failed` e `X509 - Allocation of memory failed`.
+- **A cadeia está certa:** o PC aceita a cadeia servida (`*.vercel.app` ← WR1 ← GTS Root R1, e um GTS Root R1 com assinatura cruzada da GlobalSign) com as 4 raízes do firmware; na placa, o sketch mínimo deu `GET /health` 200 com as 4 raízes, com 224 KB livres e mínimo de 157 KB — o handshake consome ~67 KB.
+- **Com o `FW-13` (lote de 20):** no diagnóstico, 104 leituras em 6 lotes, `HTTP 200`, fila zerada (as épocas guardadas durante as falhas saíram). Na versão da branch: dois envios, 40 leituras, `HTTP 200`, **heap 116 KB no envio e mínimo atingido 14 772 B**.
+- **Controle positivo do TLS:** só com as raízes ISRG, `HTTP -1` nas duas voltas, com 116 KB livres.
+- **Host:** `make` 185, `sintaxe`, `laco` 8/8, `capacidade`, `mutacao-fila` 14/14; para o chip, RAM fixa 108 904 B (33 %).
+
+**Adaptação.**
+- **O `FW-13` abre e fecha no mesmo dia:** `LEITURAS_POR_LOTE_NO_ESP32 = 20` (o teto do servidor segue 60), `LOTES_POR_VOLTA = 60`, e o heap livre e o mínimo no log do envio.
+- **Fecham o `FW-05` e o `SEC-15`.** O `FW-07` (c) e o `FW-08` (c) ganham as medições de hoje e seguem abertos (a deriva ao longo de horas; o roteiro com o Wi-Fi desligado de propósito).
+- **A folga de ~15 KB virou o `FW-14`.** O limite foi para as `LIMITACOES-TCC.md` (X.6).
+
+**O que deu errado no caminho.**
+- **A primeira hipótese estava errada.** Pelo certificado cruzado da GlobalSign na cadeia, supus que a biblioteca montava o caminho errado; acrescentar a raiz só trocou o erro para falta de memória. A causa apareceu no sketch mínimo, com memória sobrando.
+- **A mensagem do TLS engana:** falta de memória durante a verificação sai como "certificado recusado". Sem o `lastError` e o heap no log, a correção teria ido para as raízes.
+- **O leitor da serial cortou duas linhas** da primeira gravação, uma delas a do primeiro `[lote]`: o código HTTP só apareceu no segundo envio.
+- **O primeiro controle com raízes erradas não removeu as raízes GTS** (o recorte pelos comentários deixou os certificados); foi refeito com uma lista separada.
+- **Uma gravação de diagnóstico usou a tabela de partições padrão** (o sketch mínimo); a área da fila não foi tocada, e a versão seguinte a remontou.
+
+**Risco em aberto.**
+- **Folga de heap de ~15 KB no envio** — `FW-14`.
+- **As leituras de bancada estão na conta do autor**, no aparelho do travesseiro: ~150 épocas de 12/11, 18:44–20:40, com a placa parada na mesa (`APP-11` trata a marcação de teste).
+- **A deriva de −123 ppm numa gravação de 10 min** destoa das outras; a medida de horas é a do `FW-07` (c).
+
+**Procedência.** Placa e sensor do autor, COM3, `arduino-cli` 1.6.0 com `esp32:esp32` 3.3.12, Windows 11, 12/11; capturas do serial no diretório temporário da sessão (fora do repositório); branch `bugfix/FW-13-lote-do-esp32`.
+
+
+# 2026-11-12 (xviii) — a integração das PRs #152–#155 e o que falta investigar
+
+**O problema, como foi entendido no início.** O autor aprovou o merge das PRs #152 (registro do `DATA-15`), #153 (`UI-26`), #154 (`UI-29`) e #155 (`FW-13`), e pediu que tudo o que ainda falta investigar ficasse registrado para ser feito.
+
+**Hipótese de trabalho.** Mesclar uma por vez e reconferir a contagem a cada uma evita perder fechamento em resolução de conflito; o que falta investigar já tem item quase sempre, e o que não tiver vira item.
+
+**O que foi testado, e como.**
+- **A integração:** cada PR com `mergeable` conferido, CI 18/18 e `conferir_backlog.py --conferir` depois do merge.
+- **Os conflitos:** a #153 e a #155 conflitaram com a `develop` (backlog e diário); resolvidos numa worktree destacada, enviados para as próprias branches (a da #153 estava aberta numa worktree do Codex), com as três conferências e o CI antes do merge.
+- **O levantamento:** o diário de 12/11, os logs da placa e o backlog, procurando o que foi visto e não tem item.
+
+**Resultado medido.**
+- **As quatro mescladas** em ordem; `develop` `c61b362`, 54 abertos antes deste registro. Na #153, o conflito era entre o texto de abertura do `DATA-15`/`API-08` (vindo da #152) e o fechamento do `UI-26` com o `UI-30` (da #153): ficaram os dois. Na #155, a contagem foi refeita sobre a `develop` com a #153 e a #154 (55−2+1 = 54), e o diário ficou na ordem (xv), (xvi), (xvii).
+- **Sem item até aqui:** a partição da fila nasceu com 1 279 registros corrompidos (restos do programa anterior) e o CRC-16 pode aceitar um falso — virou o `FW-15`. As leituras de bancada do travesseiro na conta do autor entraram como nota no `APP-11`.
+- **A lista do que falta investigar** (dez linhas, com item, dono, método e gatilho) foi para o §7 do `docs/PLANO-CLAUDE-CODEX.md`.
+
+**Adaptação.** O plano marca 1.1–1.3 como feitos.
+
+**O que deu errado no caminho.**
+- **O primeiro laço de merge parou na #153** por `mergeable` ainda `UNKNOWN` logo depois do merge da #152; na segunda tentativa o GitHub já dizia `CONFLICTING`.
+- **A branch da #153 estava aberta numa worktree do Codex**, e o `checkout` recusou; a resolução foi feita destacada e enviada por `HEAD:refs/heads/…`.
+
+**Risco em aberto.** Os da tabela do §7 do plano, cada um com o seu item.
+
+**Procedência.** GitHub (PRs #152–#155 e CI); `develop` `c61b362`; logs da placa de 12/11 (fora do repositório); Windows 11.
+
+# 2026-11-12 (xix) — o release R1 e a conta real
+
+**O problema, como foi entendido no início.** Com o `DATA-15`, o `API-08`, o `UI-26` e o `UI-29` integrados, o autor aprovou o release R1 antes dos itens 1.4–1.7 do plano, porque o corte de 1 000 leituras já afetava o Histórico dele.
+
+**Hipótese de trabalho.** Sem migração e sem mudança de contrato, o release não mexe na ingestão; o que só a conta real mostra é se a paginação e a marca "Parcial" funcionam com os dados de verdade.
+
+**O que foi testado, e como.**
+- **O release:** PR #157 (`develop` → `main`), os 8 jobs do CI e os 2 da Vercel, merge `ed11e81`.
+- **Depois do deploy:** `/health`; `/api/sleep-history` (com e sem cursor) e `/api/features` sem token; `X-Vercel-Id`; o deployment de produção; os textos novos no pacote JavaScript publicado.
+- **O login real do autor:** o Histórico de 7 dias, mostrado ao Claude por captura de tela (não versionada).
+
+**Resultado medido.**
+- **Produção:** `/health` `200`, banco ok, contrato 2.9.0, modelo `ml-inf-cabeca-v2`; as três rotas `401` sem token; `gru1`; deployment de produção em `ed11e81`; o pacote tem `cursor_tempo`, "Cobertura parcial" e "medição mais recente à mais antiga".
+- **O Histórico:** antes do release, 3 sessões e 1 000 leituras; agora **13 sessões, somando exatamente 2 000 leituras** — o teto do painel, acima do teto de 1 000 do Supabase. A sessão mais antiga (a noite de 10/11, 815 épocas no aparelho) aparece com 550 leituras e marcada **"Parcial"**; as outras como "Completa" ou "Com lacunas".
+
+**Adaptação.** O `UI-30` passa de hipótese a defeito confirmado em produção: a janela de 7 dias da conta já tem mais de 2 000 leituras, e o aviso de limite continua.
+
+**O que deu errado no caminho.** A previsão que dei ao autor estava errada: disse que a conta teria ~1 300 leituras e que o aviso sumiria. Não contei as leituras de bancada do travesseiro nem as dos envios de diagnóstico de 12/11; a janela já passa de 2 000.
+
+**Risco em aberto.**
+- **O Histórico de 7 dias continua cortado em 2 000 leituras** — `UI-30`, agora o item de maior efeito na conta real.
+- **As leituras de bancada de 12/11 contam na janela** e empurram as noites reais para fora — `APP-11` (I-9 do plano).
+
+**Procedência.** GitHub (PR #157, CI e deployments); `curl` na produção, 12/11; a tela do autor na conversa; Windows 11.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
