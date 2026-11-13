@@ -187,7 +187,7 @@ puxa e o que dispara a investigação. Ordem: o que bloqueia a primeira noite do
 | I-6 | O tempo de envio de uma noite real com o backend em São Paulo | `INFRA-05`, depois `API-06` | Autor (consulta) + Claude | A consulta do lote depois da próxima noite com o celular | próxima noite |
 | I-7 | O Histórico de 7 dias mostra no máximo 2 000 leituras | `UI-30` | Codex | Paginar a janela pelo cursor ou resumir as sessões no servidor | onda 1 |
 | I-8 | O que o CI não vê: a compilação para o chip | `CI-12` | Claude | Job com `arduino-cli` e `scripts/compilar_sketch_esp32.py` | onda 2 |
-| I-9 | As leituras de bancada de 12/11 na conta do autor (~150 épocas do travesseiro) e as 6 gravações de teste de 10/11 | `APP-11` | Autor (apagar) / Codex (marcar teste) | Decisão do autor | — |
+| I-9 ✅ *(12/11: 804 leituras de teste apagadas pelo autor; ficaram as duas noites)* | As leituras de bancada de 12/11 na conta do autor (~150 épocas do travesseiro) e as 6 gravações de teste de 10/11 | `APP-11` | Autor (apagar) / Codex (marcar teste) | Decisão do autor | — |
 | I-10 | Conferir em produção, depois do release R1, que o Histórico deixou de cortar em 1 000 e que a sessão da borda sai "Parcial" | `DATA-15`, `UI-26` | Claude + autor | Login real depois do R1 | release R1 |
 
 **Ferramenta, fora do repositório:** o leitor da serial em PowerShell corta linhas quando a leitura
