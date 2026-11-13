@@ -218,3 +218,27 @@ def test_trigger_de_criacao_de_perfil_esta_blindado(catalogo):
         "handle_new_user e SECURITY DEFINER sem search_path fixo: "
         f"proconfig = {config!r}"
     )
+
+
+def test_o_pos_migracao_nao_concede_privilegio():
+    """O arquivo que roda depois das migrações não pode devolver privilégio (SEC-13).
+
+    Ele roda por último, então um GRANT nele desfaz o `revoke` de qualquer
+    migração: medido em 13/11, uma migração que tirava de `authenticated` o
+    `select` em `sleep_data` passava nos 269 testes enquanto o arquivo
+    reaplicava os GRANTs. Não precisa de banco: é o texto do arquivo.
+    """
+    import pathlib
+    import re
+
+    arquivo = pathlib.Path(__file__).resolve().parent / "pos_migracao.sql"
+    comandos = [
+        linha.strip()
+        for linha in arquivo.read_text(encoding="utf-8").splitlines()
+        if linha.strip() and not linha.strip().startswith("--")
+    ]
+    concessoes = [c for c in comandos if re.match(r"(?i)^(grant|alter\s+default\s+privileges)(\s|$)", c)]
+    assert not concessoes, (
+        f"{arquivo.name} roda depois das migrações e concede privilégio — desfaria "
+        f"o revoke de qualquer migração: {concessoes}"
+    )

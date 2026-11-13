@@ -1,0 +1,28 @@
+-- =====================================================================
+-- pos_migracao.sql — roda DEPOIS de todas as migrações, e não concede nada
+--
+-- Este arquivo existe por um motivo só: `verificar_por_mutacao.py` acrescenta
+-- cada sabotagem ao fim dele, e ela precisa entrar depois das migrações.
+--
+-- NÃO PÔR GRANT AQUI (SEC-13, 13/11). Até 13/11 este arquivo se chamava
+-- `grants_pos_migracao.sql` e dava select/insert/update/delete em `profiles`,
+-- `devices` e `sleep_data` a `anon` e `authenticated`. Rodando por último, ele
+-- DESFAZIA qualquer `revoke` de uma migração: medido em 13/11 (Postgres 17),
+-- uma migração que tirava de `authenticated` o `select` em `sleep_data`
+-- passava nos 269 testes. Sem os GRANTs aqui, a mesma sabotagem derruba a
+-- suíte com "permission denied for table sleep_data".
+--
+-- Os privilégios das tabelas vêm de onde vêm na produção: os privilégios
+-- padrão de `public`, imitados em `esquema_base.sql` (SEC-12). Toda tabela que
+-- uma migração cria já nasce com o GRANT; o que a migração revogar fica
+-- revogado. É por isso que `device_tokens` (SEC-08) não tem acesso: a 007 e a
+-- 009 o revogam, e nada aqui o devolve.
+--
+-- `test_rls_estrutura.py::test_o_pos_migracao_nao_concede_privilegio` reprova
+-- se uma linha `grant` voltar a este arquivo.
+--
+-- O comando abaixo é neutro e está aqui porque o driver recusa um arquivo só
+-- de comentários ("can't execute an empty query").
+-- =====================================================================
+
+select 1;

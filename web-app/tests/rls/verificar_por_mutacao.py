@@ -23,7 +23,7 @@ novo). O custo é de segundos.
     # um só, para investigar
     python tests/rls/verificar_por_mutacao.py --apenas rls_desligado
 
-A sabotagem é aplicada acrescentando SQL ao fim de `grants_pos_migracao.sql`
+A sabotagem é aplicada acrescentando SQL ao fim de `pos_migracao.sql`
 numa CÓPIA da árvore, em /tmp. O repositório não é tocado.
 """
 import argparse
@@ -35,7 +35,7 @@ import tempfile
 
 AQUI = pathlib.Path(__file__).resolve().parent
 WEB_APP = AQUI.parent.parent
-ARQUIVO_ALVO = pathlib.Path("tests/rls/grants_pos_migracao.sql")
+ARQUIVO_ALVO = pathlib.Path("tests/rls/pos_migracao.sql")
 
 # ---------------------------------------------------------------------
 # Os sabotadores.

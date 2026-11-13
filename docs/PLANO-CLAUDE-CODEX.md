@@ -117,7 +117,7 @@ estiverem mesclados, e não quando todos os da onda anterior estiverem.
 | 2.8 | `CI-09` | Um job para o app Android | — |
 | 2.9 | `CI-11` | Os dois harnesses de mutação com mensagem certa | — |
 | 2.9b | `CI-12` ✅ *(13/11)* | Compilar o `sketch.ino` para o ESP32 no CI (`scripts/compilar_sketch_esp32.py`) | — |
-| 2.10 | `SEC-13` | A suíte de RLS sem reaplicar os GRANTs no fim | — |
+| 2.10 | `SEC-13` ✅ *(13/11)* | A suíte de RLS sem reaplicar os GRANTs no fim | — |
 | 2.11 | `SEC-20` ✅ *(13/11)* | Cabeçalhos de segurança no `vercel.json` (CSP por hash, `scripts/conferir_csp.py`) | — |
 | 2.12 | **Integração e release R2** | | |
 

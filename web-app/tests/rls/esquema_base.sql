@@ -99,9 +99,11 @@ grant anon, authenticated, service_role to authenticator;
 --     `anon` — e no banco de teste não havia grant nominal nenhum para revogar.
 --     Na produção havia, e `anon` executava as funções de ingestão.
 --
---     `grants_pos_migracao.sql` continua existindo para as tabelas que a 001
---     cria SOBRE a `sleep_data` pré-existente; o que nasce depois daqui herda
---     estes padrões, como no Supabase.
+--     Toda tabela que uma migração cria herda estes padrões, como no
+--     Supabase — inclusive as da 001. ✏️ SEC-13 (13/11): até ali um
+--     `grants_pos_migracao.sql` reaplicava os GRANTs DEPOIS das migrações e
+--     desfazia o `revoke` de qualquer uma; hoje o arquivo que roda no fim
+--     (`pos_migracao.sql`) não concede nada.
 -- ---------------------------------------------------------------------
 alter default privileges in schema public
     grant all on tables to anon, authenticated, service_role;
@@ -193,9 +195,9 @@ alter table public.sleep_data enable row level security;
 
 -- ---------------------------------------------------------------------
 -- 5. GRANTs do Supabase
---    Aplicados ANTES das migrações; o bloco equivalente para as tabelas
---    criadas pela 001 está em `grants_pos_migracao.sql`, porque GRANT não
---    alcança tabela que ainda não existe.
+--    Aplicados ANTES das migrações, para o que já existe aqui (`sleep_data`
+--    pré-001). As tabelas que as migrações criam recebem o GRANT pelos
+--    privilégios padrão da seção anterior, e não por GRANT posterior (SEC-13).
 -- ---------------------------------------------------------------------
 grant usage on schema public to anon, authenticated, service_role;
 grant usage on schema auth   to anon, authenticated, service_role;

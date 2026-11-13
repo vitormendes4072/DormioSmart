@@ -83,7 +83,7 @@ dado, cria o próprio dispositivo, edita o próprio perfil) são o que impede is
 | Arquivo | O quê |
 |---|---|
 | `esquema_base.sql` | Primitivos do Supabase + `sleep_data` no estado pré-001 |
-| `grants_pos_migracao.sql` | GRANTs nas tabelas criadas pela 001 |
+| `pos_migracao.sql` | Roda depois das migrações e **não concede nada**: é onde `verificar_por_mutacao.py` injeta as sabotagens. Até 13/11 reaplicava os GRANTs e desfazia o `revoke` de qualquer migração (`SEC-13`) |
 | `conftest.py` | Aplica esquema e migrações, semeia duas contas, monta sessões autenticadas |
 | `test_rls_isolamento.py` | O adversarial: A tenta alcançar o dado de B por todo comando (SEC-05) |
 | `test_rls_estrutura.py` | Invariantes do catálogo: RLS ligado, policies esperadas, nada permissivo |

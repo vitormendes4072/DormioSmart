@@ -239,7 +239,11 @@ def esquema(_conexao_dona):
                 pytest.fail(f"migracao ausente: {caminho}", pytrace=False)
             _rodar_sql(cursor, caminho)
 
-        _rodar_sql(cursor, AQUI / "grants_pos_migracao.sql")
+        # Por último, e SEM conceder nada (SEC-13): é o ponto onde
+        # `verificar_por_mutacao.py` injeta as sabotagens. Até 13/11 este
+        # arquivo reaplicava os GRANTs das tabelas e desfazia o `revoke` de
+        # qualquer migração; os privilégios vêm dos padrões de `esquema_base.sql`.
+        _rodar_sql(cursor, AQUI / "pos_migracao.sql")
     return True
 
 
