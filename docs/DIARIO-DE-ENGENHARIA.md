@@ -9998,6 +9998,26 @@ No host: `make`, `sintaxe`, `laco` (o stub do `WiFi` ganhou `hostByName` e `IPAd
 
 **Procedência.** Branch `bugfix/SEC-13-grants-pos-migracao` sobre `develop` `73bd058`; Docker no Windows 11 (`postgres:17`, `python:3.12-slim`); 13/11.
 
+---
+
+# 2026-11-13 (x) — o release R3
+
+**O problema, como foi entendido no início.** O `SEC-19` (a ingestão só com a chave própria), o `SEC-20` (cabeçalhos de segurança e CSP), o `CI-10` e o `SEC-13` estavam em `develop`; o autor pediu o release.
+
+**Hipótese de trabalho.** Só o `SEC-19` e o `SEC-20` mudam o que roda. O `SEC-19` exige a `SUPABASE_INGESTAO_KEY` na Vercel, configurada desde o `SEC-14`; sem ela, a ingestão e o `/health` iriam a `503`. O `SEC-20` muda o que o navegador aceita: uma origem esquecida na CSP quebraria a página sem erro na tela.
+
+**O que foi testado, e como.** PR #174 (`develop` → `main`), CI e Vercel; depois do deploy, `/health`, os cabeçalhos no `/`, no `/login`, na landing e no `/health`, as rotas sem token, com `Bearer` inválido e a ingestão com token falso, e `scripts/conferir_csp.py` contra o HTML servido pela produção. Depois, o login do autor.
+
+**Resultado medido.** CI 12 de 12; merge `3d50f27`; deploy em `gru1`. `/health` `200`, banco ok, contrato 2.9.0, modelo `ml-inf-cabeca-v2` — a chave de ingestão está lá. Os cinco cabeçalhos nas quatro rotas. `/api/sleep-history`, `/api/features`, `Bearer` inválido, ingestão sem token e com token falso: `401`. A CSP contra as páginas servidas: 10 de 10 hashes, sem sobra. **Login do autor (13/11):** a landing, o painel e o Histórico carregaram ("Tudo carregou").
+
+**Adaptação.** Nenhuma.
+
+**O que deu errado no caminho.** Nada nesta etapa.
+
+**Risco em aberto.** O `503` da ingestão sem a chave não foi exercitado na produção (a chave existe, e removê-la derrubaria o envio dos dispositivos). Origem nova no frontend precisa entrar na CSP (`CLAUDE.md`, Deploy).
+
+**Procedência.** GitHub (PR #174, CI e deployment); `curl` na produção e o conferidor contra as páginas servidas, Windows 11; o relato do autor; 13/11.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
