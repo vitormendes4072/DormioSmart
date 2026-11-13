@@ -9786,6 +9786,42 @@ Os quatro pontos foram corrigidos no `5ed12df`, e as sabotagens reexecutadas na 
 
 **Procedência.** Branch `bugfix/FW-15-formato-da-fila`; contêiner `gcc:13`; `arduino-cli` 1.6.0 e `esptool` 5.3.1 com `esp32:esp32` 3.3.12; placa do autor na COM3; Windows 11, 13/11.
 
+# 2026-11-13 (ii) — FW-16: a placa caía no envio quando o NTP demorava
+
+**O problema, como foi entendido no início.** Na bancada do `FW-15`, o primeiro envio derrubou a placa: "NTP nao respondeu" e, no mesmo segundo, `assert failed: udp_new_ip_type … (Required to lock TCPIP core functionality!)` e `SW_CPU_RESET`. O backtrace decodificado com o ELF da compilação mostrou o caminho: `HTTPClient::POST` → `NetworkManager::hostByName` → `dns_clear_cache` → `sntp_dns_found` → `sntp_request` → `dns_gethostbyname` → `udp_new_ip_type`. A consulta de DNS do SNTP ficou pendente quando o NTP passou dos 5 s, e a limpeza do cache feita pelo `HTTPClient` — que o core faz quando o estado do IP muda, isto é, logo depois de o Wi-Fi religar — disparou o retorno do SNTP fora da trava da pilha de rede (`arduino-esp32` 3.3.12).
+
+**Hipótese de trabalho.** O plano aprovado era chamar `esp_sntp_stop()` ao fim de toda tentativa de sincronia. Lendo o `lwip`, o `sntp_stop` não cancela a consulta de DNS pendente — a hipótese precisava de medição antes de ir ao repositório.
+
+**O que foi testado, e como.** Variantes de diagnóstico fora do repositório, com envio a cada 1 min, gravadas na placa e lidas pelo serial:
+- **espera do NTP em 1 ms**, firmware sem correção;
+- **DNS da placa trocado por um endereço que não responde** (`10.255.255.1`, por `esp_netif_set_dns_info`, logo depois de conectar), com o firmware sem correção, com `esp_sntp_stop()` e com a resolução do nome feita pela própria tarefa;
+- a versão da branch com o DNS normal.
+
+No host: `make`, `sintaxe`, `laco` (o stub do `WiFi` ganhou `hostByName` e `IPAddress`) e a compilação para o chip.
+
+**Resultado medido.**
+- **Espera de 1 ms:** não reproduz (a consulta termina antes do envio): `HTTP 200`.
+- **DNS mudo, sem correção:** caiu em **2 de 2** voltas, com o mesmo `assert`.
+- **DNS mudo, com `esp_sntp_stop()`:** caiu em **2 de 2** — a correção do plano não basta.
+- **DNS mudo, com a resolução na própria tarefa (a correção):** **0 de 2**; "NTP: o DNS nao resolveu o servidor; sem sincronia nesta volta", envio `HTTP -1`, épocas na fila.
+- **DNS normal, com a correção:** sincronia em todas as voltas e `HTTP 200` em todos os lotes; saíram as **61 épocas** acumuladas nas quedas e nos testes (a fila sobreviveu a cinco reinícios).
+- **Host:** `make` 0 falhas, `sintaxe` liga, `laco` 8/8; RAM fixa 108 936 B.
+
+**Adaptação.** **A correção mudou em relação ao plano aprovado**: em vez de `esp_sntp_stop()`, o `sketch.ino` resolve `pool.ntp.org` (e, se falhar, `time.nist.gov`) com `WiFi.hostByName` na tarefa de envio e passa ao `configTime` o endereço IP — o SNTP não faz mais DNS nenhum. Como a limpeza do cache só ocorre na primeira resolução depois de o Wi-Fi religar, essa primeira resolução passa a ser a do próprio firmware, antes de o SNTP existir.
+
+**O que deu errado no caminho.**
+- **O primeiro controle (espera de 1 ms) não reproduziu** — a consulta terminava a tempo; foi preciso o DNS mudo.
+- **A correção do plano não funcionou**, e só a medição mostrou isso.
+- **O diagnóstico tratou a falha do `hostByName` como sucesso:** a função devolve o código do erro, não 0, e o SNTP recebeu `0.0.0.0`. A versão do repositório exige `== 1` e IP diferente de zero. Ocorrência no §5 das lições.
+- **A primeira compilação falhou** com `IPAddress(0u)` ambíguo no core; trocado por `IPAddress()`.
+- **O teste do laço falhou** com o stub de `hostByName` devolvendo erro (o sketch pulava a sincronia e a deriva não tinha o que medir); o stub passou a resolver.
+
+**Risco em aberto.**
+- **Sem DNS, a volta fica sem sincronia e sem envio** — comportamento certo, mas uma noite inteira sem DNS grava com o relógio monotônico (resolvido no envio seguinte; `FW-07` (c)).
+- **Mais leituras de bancada entraram na conta do autor** nesta rodada (as 61 épocas, no aparelho do travesseiro, 13/11 14:24–15:45) — `APP-11`.
+
+**Procedência.** Branch `bugfix/FW-16-ntp-pendente` (a partir da do `FW-15`); placa do autor, COM3; `arduino-cli` 1.6.0 com `esp32:esp32` 3.3.12; o `xtensa-esp32-elf-addr2line` do pacote para o backtrace; contêiner `gcc:13`; Windows 11, 13/11.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
