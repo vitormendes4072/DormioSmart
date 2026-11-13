@@ -9870,6 +9870,24 @@ No host: `make`, `sintaxe`, `laco` (o stub do `WiFi` ganhou `hostByName` e `IPAd
 **Procedência.** Base `develop` `ab1e00e`, testes com respostas simuladas no Windows. O caso de produção anterior está na entrada do release R1.
 
 
+# 2026-11-13 (v) — o release R2
+
+**O problema, como foi entendido no início.** O `UI-30` (Histórico paginado), o `FW-15`, o `FW-16` e o `CI-12` estavam em `develop`; o autor aprovou o release.
+
+**Hipótese de trabalho.** Só o `UI-30` muda o site, sem migração nem contrato; o firmware e o CI não têm efeito na produção.
+
+**O que foi testado, e como.** PR #168 (`develop` → `main`), CI e Vercel; depois do deploy, `/health`, as rotas de dados sem token, `X-Vercel-Id`, o deployment de produção e o texto do progresso no JavaScript publicado.
+
+**Resultado medido.** CI e Vercel verdes (11 de 11); merge `2fbf17d`; deployment de produção em `2fbf17d`, `gru1`; `/health` `200`, banco ok, contrato 2.9.0, modelo `ml-inf-cabeca-v2`; `/api/sleep-history` e `/api/features` `401` sem token; no pacote, "Carregando sessões" e "de até".
+
+**Adaptação.** Nenhuma.
+
+**O que deu errado no caminho.** Nada nesta etapa.
+
+**Risco em aberto.** O tempo real do Histórico de 7 e 30 dias na conta do autor ainda não foi medido; se 30 dias passar de ~10 s, o resumo no servidor vira item próprio (`UI-30`, diário 13/11 (iv)).
+
+**Procedência.** GitHub (PR #168, CI e deployments); `curl` na produção, 13/11; Windows 11.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
