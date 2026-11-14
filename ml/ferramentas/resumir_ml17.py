@@ -80,7 +80,7 @@ def ambiente_publico(estado):
 
 def exportar(pasta, saida, executor_ref, cache=None, censo=None):
     m = conferir_evidencia(pasta, cache, censo)
-    executor_ref = subprocess.check_output(['git', 'rev-parse', executor_ref], text=True).strip()
+    executor_ref = subprocess.check_output(['git', 'rev-parse', executor_ref], text=True, encoding="utf-8", errors="replace").strip()
     arquivo = subprocess.check_output(['git', 'show', f'{executor_ref}:ml/ferramentas/rodar_ml17.py'])
     normalizado = lambda b: hashlib.sha256(b.replace(b'\r\n', b'\n')).hexdigest()
     executor_lf = normalizado((ML / 'ferramentas/rodar_ml17.py').read_bytes())
@@ -131,7 +131,7 @@ def exportar(pasta, saida, executor_ref, cache=None, censo=None):
                       'resumir_ml17.py', 'auditar_resumos_ml17.py')
     if any(a != ambientes[0] for a in ambientes):
         raise ValueError('ambientes das execuções diferem')
-    analise_commit = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
+    analise_commit = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True, encoding="utf-8", errors="replace").strip()
     hashes = {}
     for n in fontes_analise:
         hashes[n] = normalizado((ML / 'ferramentas' / n).read_bytes())
