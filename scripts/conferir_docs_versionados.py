@@ -201,7 +201,7 @@ def git(*args: str, raiz: Path) -> str:
 def raiz_do_repo() -> Path:
     r = subprocess.run(
         ("git", "rev-parse", "--show-toplevel"),
-        capture_output=True, text=True,
+        capture_output=True, encoding="utf-8", errors="replace",
         cwd=Path(__file__).resolve().parent,
     )
     if r.returncode != 0:
