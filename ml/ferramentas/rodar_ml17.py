@@ -44,7 +44,7 @@ def preparar(args):
                      cache_sha256={str(p.relative_to(args.cache)): sha(p)
                                    for p in sorted(args.cache.rglob('*')) if p.is_file()})
     for nome, ref in [('antes', args.antes), ('depois', args.depois)]:
-        commit = subprocess.check_output(['git', 'rev-parse', ref], text=True).strip()
+        commit = subprocess.check_output(['git', 'rev-parse', ref], text=True, encoding="utf-8", errors="replace").strip()
         arquivo = subprocess.check_output(['git', 'archive', '--format=zip', commit, 'ml'])
         destino = args.pasta / nome
         with ZipFile(io.BytesIO(arquivo)) as z:
