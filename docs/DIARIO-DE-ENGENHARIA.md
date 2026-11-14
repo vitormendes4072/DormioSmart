@@ -10228,6 +10228,26 @@ Na revisão de bed5c9e, o autor mediu 554 aprovados em Python 3.12 com CI=true e
 **Procedência.** `bugfix/ui-31-origem-temperatura`, base `develop` `7a6a0a0`; Windows, Vitest e Vite; leituras e dispositivos simulados.
 
 
+---
+
+# 2026-11-13 (xix) — API-07: pausar o recebimento por aparelho
+
+**O problema, como foi entendido no início.** A placa do travesseiro envia direto para a conta. Épocas de bancada viravam noites.
+
+**Hipótese de trabalho.** O estado no banco e o lock da linha do aparelho serializam a pausa com a gravação. Rejeições definitivas usam o contrato que a placa e o app já interpretam. Por leitura do cliente web, cada época tem um envio e só `201` conta como gravação.
+
+**O que foi testado, e como.** Windows, pytest com PostgreSQL 17 em Docker para a RLS, rotas Flask com banco simulado e Vitest/Vite para a montagem e o build do frontend.
+
+**Resultado medido.** Frontend **617 em 45 arquivos**, TypeScript e build. Backend e RLS **833 passaram e 1 pulou**. Alterar o padrão para falso derrubou o teste de aparelho habilitado. Retirar a guarda de pausa derrubou o teste de cada RPC por falta de PT409. Retirar o filtro de revogação fez ambas gravarem; manter a pausa sempre ativa fez ambas recusarem a retomada. Mover a rejeição para pendentes derrubou os dois testes do lote. Trocar 409 por 503 derrubou o teste do avulso, e mascarar a credencial revogada derrubou o teste que exige 401. Na tela, ignorar a confirmação derrubou o teste de pausar e retomar; retirar o aviso derrubou o teste do painel vazio.
+
+**Adaptação.** A decisão do autor substituiu a pendência pelo descarte. A interface confirma a perda antes de pausar. O avulso retorna `409` com `aparelho_pausado`, e o lote retorna `200` com rejeições definitivas. A validação de conteúdo conserva a recusa própria para épocas inválidas verificadas antes da decisão do banco.
+
+**O que deu errado no caminho.** A tentativa de consultar pausa via RPC de escrita para conteúdo inválido mudou o contrato de validação e derrubou sete testes. Foi retirada. A fixture da interface omitia `revoked_at: null`. O controle local precisou normalizar CRLF. Na sincronização, foi resolvido o conflito no módulo de dispositivos, preservando a UI-31.
+
+**Risco em aberto.** Medição na placa fica com o autor no `VIA-01`. A placa deve entregar as épocas da bancada enquanto a pausa está ativa e a fila deve drenar antes de retomar. Leituras que ficarem offline até depois da retomada ainda podem chegar à conta.
+
+**Procedência.** Branch `feature/api-07-pausar-recebimento` sobre `develop` `1d39279`. Windows, Python 3.13, PostgreSQL 17 e Node/Vitest. Dados sintéticos.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

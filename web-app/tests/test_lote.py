@@ -375,3 +375,20 @@ def test_revogado_continua_401_sem_chegar_ao_descarte():
         resp = _post({"leituras": [_LEITURA]})
     assert resp.status_code == 401
     registrar.assert_not_called()
+
+@pytest.mark.parametrize("por_token", [False, True])
+def test_rpc_traduz_apenas_o_erro_de_pausa(por_token):
+    from postgrest.exceptions import APIError
+
+    cliente = MagicMock()
+    chamada = cliente.rpc.return_value.execute
+    def gravar():
+        if por_token:
+            with patch.object(database.db, "cliente_de_ingestao", return_value=cliente):
+                return database.db.registrar_leitura("hash", {})
+        return database.db.registrar_leitura_da_sessao("jwt", "id", {}, cliente=cliente)
+
+    chamada.side_effect = APIError({"code": "PT409", "message": "aparelho_pausado"})
+    assert gravar() == "aparelho_pausado"
+    chamada.side_effect = APIError({"code": "PT409", "message": "outro_erro"})
+    assert gravar() is None

@@ -439,7 +439,10 @@ def init_routes(app):
         client = _cliente_do_usuario()
         if client is None:
             return jsonify({"error": "fonte de dados indisponivel"}), 503
-        device = dispositivos.alterar_recebimento(client, g.usuario_id, device_id, corpo["receber_leituras"])
+        try:
+            device = dispositivos.alterar_recebimento(client, g.usuario_id, device_id, corpo["receber_leituras"])
+        except Exception as e:
+            return _resposta_de_falha(e, "/api/devices/recebimento")
         if device is None:
             return jsonify({"error": "dispositivo nao encontrado"}), 404
         return jsonify(device)
