@@ -108,6 +108,24 @@ export function ListaDeNoites({
   const [noites, setNoites] = useState<NoiteGravada[] | null>(null);
   const [aberta, setAberta] = useState<string | null>(null);
 
+  const [erroLocal, setErroLocal] = useState<string | null>(null);
+
+  async function agirNoTeste(noite: NoiteGravada, apagar: boolean) {
+    if (apagar && !window.confirm("Apagar esta gravação de teste do aparelho?")) return;
+    setErroLocal(null);
+    try {
+      const pedido = { arquivo: noite.arquivo };
+      if (apagar) {
+        await plugin.apagarTeste(pedido);
+        setNoites((atuais) => atuais?.filter((item) => item.arquivo !== noite.arquivo) ?? null);
+      } else {
+        await plugin.compartilharTeste(pedido);
+      }
+    } catch {
+      setErroLocal(apagar ? "Não foi possível apagar a gravação." : "Não foi possível compartilhar a gravação.");
+    }
+  }
+
   const [falhou, setFalhou] = useState(false);
   const [tentativa, setTentativa] = useState(0);
 
@@ -157,6 +175,7 @@ export function ListaDeNoites({
 
   return (
     <div className="space-y-3">
+      {erroLocal && <p role="alert">{erroLocal}</p>}
       {noites.map((n) => {
         const r = resumoDaNoiteGravada(n);
         return (
@@ -181,7 +200,7 @@ export function ListaDeNoites({
                 <dd className="tabular-nums">
                   {r.cobertura === null ? "—" : `${Math.round(r.cobertura * 100)} %`}
                 </dd>
-                {!n.ativa && n.epocas > 0 && (
+                {!n.teste && !n.ativa && n.epocas > 0 && (
                   <>
                 <dt className="text-muted-foreground">Envio</dt>
                 <dd className="tabular-nums inline-flex items-center gap-1">
@@ -195,6 +214,21 @@ export function ListaDeNoites({
                   </>
                 )}
               </dl>
+              {n.teste && (
+                <div className="space-y-2 text-sm">
+                  <p>Teste · só neste aparelho</p>
+                  {!n.ativa && (
+                    <div className="flex flex-wrap gap-3">
+                      <button type="button" className="underline" onClick={() => void agirNoTeste(n, false)}>
+                        Compartilhar arquivo
+                      </button>
+                      <button type="button" className="underline" onClick={() => void agirNoTeste(n, true)}>
+                        Apagar gravação de teste
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
               {n.notas?.fim === "temperatura" && (
                 <p className="inline-flex items-center gap-2 text-sm text-destructive" role="alert">
                   <Thermometer className="w-4 h-4" aria-hidden />
@@ -210,7 +244,7 @@ export function ListaDeNoites({
                 >
                   {aberta === n.arquivo ? "Fechar anotações" : "Anotações da noite"}
                 </button>
-                {n.enviadas > 0 && (
+                {!n.teste && n.enviadas > 0 && (
                   <Link to="/dashboard" className="underline text-primary">
                     Ver no painel
                   </Link>

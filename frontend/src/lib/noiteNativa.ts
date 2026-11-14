@@ -80,11 +80,14 @@ export type NoiteGravada = {
   notas?: NotasDaNoite;
   /** A noite ainda está sendo registrada: sem envio nem anotações por enquanto. */
   ativa?: boolean;
+  teste?: boolean;
 };
 
 export interface PluginNoite {
-  iniciar(o?: { posicao?: Posicao }): Promise<{ notificacoes: boolean }>;
+  iniciar(o?: { posicao?: Posicao; teste?: boolean }): Promise<{ notificacoes: boolean }>;
   encerrar(): Promise<void>;
+  compartilharTeste(o: { arquivo: string }): Promise<void>;
+  apagarTeste(o: { arquivo: string }): Promise<void>;
   estado(): Promise<EstadoDaNoite>;
   pedirIsencaoDeBateria(): Promise<{ isentoDeBateria: boolean }>;
   noites(): Promise<{ noites: NoiteGravada[] }>;

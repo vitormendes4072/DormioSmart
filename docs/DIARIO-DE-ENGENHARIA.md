@@ -10125,6 +10125,30 @@ Na revisão de bed5c9e, o autor mediu 554 aprovados em Python 3.12 com CI=true e
 
 **Procedência.** Branch `bugfix/CI-11-harnesses-de-mutacao` sobre `develop` `e95a654`; Docker no Windows 11 (`postgres:16`, `postgres:17`, `python:3.12-slim`); o `ml/.venv` (Python 3.11.9); 13/11.
 
+---
+
+# 2026-11-13 (xv) — APP-11: gravação de teste no Android
+
+**O problema, como foi entendido no início.** Gravações de bancada do celular sincronizavam como noites reais e entravam no Histórico, no painel e na inferência da conta.
+
+**Hipótese de trabalho.** Uma marca local gravada antes da primeira época, verificada na fila e na leitura nativa para envio, mantém o teste no aparelho mesmo após a reabertura. O compartilhamento do JSONL pelo Android permite analisar a bancada, e a exclusão confirmada na lista remove a cópia do aplicativo.
+
+**O que foi testado, e como.** No Windows, Vitest, TypeScript e build web; JUnit 4.13.2 com javac para a suíte JVM, incluindo nova instância de `ArquivoDaNoite` e a mesma operação de reabertura usada pelo serviço. Rodaram controles isolados no portão, na contagem, no lote e no código nativo. A ligação do serviço e do plugin foi conferida no código.
+
+**Resultado medido.** Frontend **611/611 em 45 arquivos**, TypeScript e build concluídos; JVM **34/34**. Com o módulo de envio da `develop`, os dois novos testes de envio falharam. Controles:
+- Com o portão consultando qualquer caixa marcada, “marcar Gravação de teste não libera o início sem consentimento” caiu porque “Concordo” foi habilitado.
+- Sem excluir a gravação de teste da contagem, “gravação de teste não oferece envio manual nem dispara envio automático” caiu porque apareceu “Enviar agora”. Sem excluir do lote, “sincroniza a gravação normal e a legada, mas nunca lê a de teste” caiu porque o lote incluiu o teste.
+- Em `marcaAntesDaPrimeiraEpocaESobreviveAReabertura`, remover a criação da marca derrubou a asserção antes da primeira época, apagar a marca na reabertura derrubou a asserção após a reabertura, e retirar a trava usada por `NoitePlugin.lerEpocas` deixou o caminho nativo ler as épocas e derrubou o teste com “teste entrou no caminho do plugin”.
+- Fazer a leitura para envio devolver lote vazio derrubou `gravacaoNormalEAntigaContinuamDisponiveisParaEnvio`.
+
+**Adaptação.** O consentimento e o modo teste têm rótulos próprios; os testes do aceite consultam o diálogo pelo nome da caixa. A marca fica ao lado do JSONL, e a ausência da marca mantém a sincronização de arquivos antigos. O compartilhamento é iniciado pelo usuário no seletor do Android e abre só o arquivo de medições. A política descreve armazenamento, exclusão e compartilhamento local.
+
+**O que deu errado no caminho.** Dois testes de consentimento usavam uma busca genérica por checkbox, e faltava importar `vi` no teste de envio. O sandbox bloqueou o loopback do teste do Vite e o acesso inicial ao Git compartilhado; a suíte completa rodou com acesso ao loopback. A primeira compilação avulsa da JVM omitiu `CorteDeTemperatura`. O primeiro controle de reabertura alterou indevidamente a abertura do arquivo; a repetição removeu apenas a marca.
+
+**Risco em aberto.** O APK de release e a integração Android passam pelo `app-android.yml`; compartilhamento e reinício do serviço em aparelho físico não foram medidos localmente. A placa do travesseiro envia direto ao servidor. Para a bancada da placa, o item é `API-07`, pausa do recebimento por aparelho. A política no site será atualizada no próximo release.
+
+**Procedência.** `feature/app-11-gravacao-de-teste`, sincronizada com `develop` `ad68bff`; Windows, Node/Vitest e Java/JUnit; gravações sintéticas.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

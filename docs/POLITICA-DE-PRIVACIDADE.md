@@ -191,6 +191,12 @@ impede a coleta por esse caminho e não afeta o restante do aplicativo.
 - **O arquivo de cada noite**, com as épocas descritas na seção 2.2. O arquivo
   **continua no celular depois de enviado**; o aplicativo só marca até onde o
   envio foi confirmado;
+- **As gravações de teste**, quando você marca essa opção antes de iniciar. O
+  arquivo de medições e a marca ficam no celular, fora da sincronização da conta,
+  do Histórico, do painel e da análise no servidor. Na lista do aplicativo, você
+  pode apagar uma gravação encerrada após confirmar ou compartilhar o arquivo de
+  medições pelo Android para análise. Se você compartilhar, o destino que escolher
+  poderá guardar uma cópia.
 - **As anotações da noite**, se você as preencher: onde o celular ficou, a hora
   em que deitou, em que acha que adormeceu e em que acordou, os despertares, uma
   observação livre e o motivo do fim do registro. **As anotações nunca saem do
@@ -203,8 +209,7 @@ impede a coleta por esse caminho e não afeta o restante do aplicativo.
   acelerômetro nas noites seguintes, e **não saem do celular**. Ao lado do
   arquivo de cada noite fica a calibração que ela usou.
 
-Esses arquivos ficam na área privada do aplicativo, que outros aplicativos não
-leem, e **não entram no backup automático do Android** para a nuvem. Eles saem do
+Esses arquivos ficam na área privada do aplicativo, e **não entram no backup automático do Android** para a nuvem. Eles saem do
 celular quando você **desinstala o aplicativo**.
 
 **Não há cookies de rastreamento, de publicidade ou de análise de audiência**, e
