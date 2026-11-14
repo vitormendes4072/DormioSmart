@@ -175,6 +175,9 @@ jobs:
       - name: Controle — outro banco no servidor dá mensagem clara
         if: matrix.postgres == '16'
         run: |
+          # O Actions roda com `bash -e`: sem o `+e`, a falha ESPERADA do pytest
+          # encerrava o passo antes de conferir a mensagem (medido na 1a execucao).
+          set +e
           set -uo pipefail
           cd web-app
           python - <<'PY'

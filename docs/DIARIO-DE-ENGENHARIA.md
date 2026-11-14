@@ -10118,6 +10118,7 @@ Na revisão de bed5c9e, o autor mediu 554 aprovados em Python 3.12 com CI=true e
 **O que deu errado no caminho.**
 - **A primeira "mutação limpa" caiu na checagem nova** — com razão: o passo anterior deixara o banco da suíte com os papéis, e a mutação rodou noutro banco do mesmo servidor. É exatamente o defeito, e a mensagem disse isso.
 - **O primeiro controle do controle não aplicou** (o `sed` com `$` num arquivo CRLF); refeito por número de linha.
+- **O passo de controle no CI reprovou na primeira execução sem dizer nada:** o Actions roda o passo com `bash -e`, e a falha esperada do pytest encerrava o shell antes da conferência da mensagem (a saída ia para um arquivo). `set +e` no início do passo.
 
 **Risco em aberto.**
 - **As 5 chamadas em `ml/experimentos` e `ml/ferramentas`** ficam com o Codex; depois disso, o verificador passa a cobrir o `ml/` inteiro.
