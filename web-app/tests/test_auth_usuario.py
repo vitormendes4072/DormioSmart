@@ -12,6 +12,7 @@ import os
 from flask import Flask
 
 import database
+
 from auth import extrair_bearer
 from routes import init_routes
 
@@ -145,19 +146,3 @@ def test_falha_de_banco_devolve_503_no_caminho_autenticado():
         resp = _client().get("/api/sleep-history", headers=_como(JWT_ANA))
     assert resp.status_code == 503
     assert "error" in resp.get_json()
-
-
-def test_validacao_de_token_nunca_levanta():
-    """Auth fora do ar não levanta (não vira 500) e devolve INDISPONIVEL.
-
-    ✏️ 01/11 (AUTH-08): até aqui o esperado era `None`, que a rota transforma
-    em 401 — e 401 desloga o usuário. Uma falha do Auth não é sessão inválida.
-    """
-    class ClienteRuim:
-        class auth:
-            @staticmethod
-            def get_user(_):
-                raise RuntimeError("auth indisponivel")
-
-    with patch.object(database.db, "_get_client_anon", return_value=ClienteRuim()):
-        assert database.db.validar_token_de_usuario("qualquer") is database.INDISPONIVEL

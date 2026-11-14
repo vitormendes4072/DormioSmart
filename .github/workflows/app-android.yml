@@ -1,0 +1,132 @@
+# CI-09 (13/11) — o app Android compilado e testado no CI.
+#
+# Ate aqui nada do app rodava no CI: os testes de JVM (`testDebugUnitTest`) e o
+# APK de release so rodavam a mao, na maquina do autor. Uma mudanca que
+# quebrasse o app passava no CI inteiro — no Java do servico da noite, no
+# frontend que o `build:app` empacota, e no NUCLEO C++, que o app compila para
+# ARM direto de `firmware/nucleo/` pelo CMake do NDK (o job `firmware` do ci.yml
+# so o compila para o host).
+#
+# Fica num arquivo proprio, disparado so pelo que entra no app, porque baixa o
+# NDK e leva minutos: as PRs do backend e dos documentos nao pagam por isso.
+#
+# Fora daqui, de proposito: os testes instrumentados (pedem emulador) e a
+# assinatura (a chave existe so na maquina do autor e nunca vem ao GitHub).
+name: App Android
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - "frontend/**"
+      - "firmware/nucleo/**"
+      - ".github/workflows/app-android.yml"
+  pull_request:
+    paths:
+      - "frontend/**"
+      - "firmware/nucleo/**"
+      - ".github/workflows/app-android.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  # Versoes FIXAS, as mesmas da maquina do autor (13/11): o NDK e o padrao do
+  # AGP 8.13 e o CMake e o que o app/build.gradle pede. Trocar uma delas muda o
+  # binario do nucleo no celular — e decisao registrada, nao atualizacao.
+  NDK_VERSAO: "27.0.12077973"
+  CMAKE_VERSAO: "3.22.1"
+
+jobs:
+  android:
+    name: App Android (testes JVM e APK de release)
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      # O gradle-wrapper.jar e um binario versionado que o CI executa: confere
+      # que e um wrapper oficial do Gradle, e nao um jar trocado.
+      - name: Wrapper do Gradle e oficial
+        uses: gradle/actions/wrapper-validation@v4
+
+      - name: JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Node 22
+        uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Cache do NDK e do CMake
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ env.ANDROID_HOME }}/ndk/${{ env.NDK_VERSAO }}
+            ${{ env.ANDROID_HOME }}/cmake/${{ env.CMAKE_VERSAO }}
+          key: android-ndk-${{ env.NDK_VERSAO }}-cmake-${{ env.CMAKE_VERSAO }}
+
+      - name: NDK e CMake (versao fixa)
+        run: |
+          set -euo pipefail
+          sdk="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          if [ ! -d "$ANDROID_HOME/ndk/$NDK_VERSAO" ] || [ ! -d "$ANDROID_HOME/cmake/$CMAKE_VERSAO" ]; then
+            yes | "$sdk" --licenses > /dev/null || true
+            "$sdk" --install "ndk;$NDK_VERSAO" "cmake;$CMAKE_VERSAO" > /dev/null
+          fi
+          ls "$ANDROID_HOME/ndk/$NDK_VERSAO/source.properties" "$ANDROID_HOME/cmake/$CMAKE_VERSAO/bin/cmake"
+
+      - name: Gradle (com cache)
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Instalar dependencias do frontend
+        working-directory: frontend
+        run: npm ci
+
+      # `tsc`, o `vite build --mode app` e o `cap sync`: o mesmo caminho do APK
+      # que vai aos testadores (docs/DISTRIBUICAO-DO-APP.md).
+      - name: Empacotar o frontend no app
+        working-directory: frontend
+        run: npm run build:app
+
+      - name: Testes de JVM e APK de release
+        working-directory: frontend/android
+        run: ./gradlew --no-daemon testDebugUnitTest assembleRelease
+
+      # O APK tem de sair SEM assinatura (a chave nao esta aqui) e com o nucleo
+      # nas tres ABIs — a mesma conferencia feita a mao em 08/11 (APP-02).
+      - name: O APK tem o nucleo nas tres ABIs e nao esta assinado
+        working-directory: frontend/android
+        run: |
+          set -euo pipefail
+          apk=$(ls app/build/outputs/apk/release/*.apk)
+          echo "APK: $apk ($(stat -c %s "$apk") bytes)"
+          case "$apk" in *unsigned*) ;; *) echo "o APK de release saiu assinado no CI: de onde veio a chave?"; exit 1 ;; esac
+          falta=0
+          for abi in armeabi-v7a arm64-v8a x86_64; do
+            if unzip -l "$apk" "lib/$abi/libdormio_nucleo.so" > /dev/null; then
+              echo "ok: lib/$abi/libdormio_nucleo.so"
+            else
+              echo "FALTA: lib/$abi/libdormio_nucleo.so"; falta=1
+            fi
+          done
+          exit $falta
+
+      - name: Relatorio dos testes de JVM
+        if: always()
+        working-directory: frontend/android
+        run: |
+          total=0; falhas=0
+          for f in app/build/test-results/testDebugUnitTest/*.xml; do
+            [ -f "$f" ] || continue
+            t=$(grep -o 'tests="[0-9]*"' "$f" | head -1 | tr -dc 0-9)
+            x=$(grep -o 'failures="[0-9]*"' "$f" | head -1 | tr -dc 0-9)
+            total=$((total + t)); falhas=$((falhas + x))
+          done
+          echo "testDebugUnitTest: $total testes, $falhas falhas"

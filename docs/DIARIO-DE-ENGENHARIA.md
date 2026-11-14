@@ -9998,6 +9998,78 @@ No host: `make`, `sintaxe`, `laco` (o stub do `WiFi` ganhou `hostByName` e `IPAd
 
 **Procedência.** Branch `bugfix/SEC-13-grants-pos-migracao` sobre `develop` `73bd058`; Docker no Windows 11 (`postgres:17`, `python:3.12-slim`); 13/11.
 
+---
+
+# 2026-11-13 (x) — o release R3
+
+**O problema, como foi entendido no início.** O `SEC-19` (a ingestão só com a chave própria), o `SEC-20` (cabeçalhos de segurança e CSP), o `CI-10` e o `SEC-13` estavam em `develop`; o autor pediu o release.
+
+**Hipótese de trabalho.** Só o `SEC-19` e o `SEC-20` mudam o que roda. O `SEC-19` exige a `SUPABASE_INGESTAO_KEY` na Vercel, configurada desde o `SEC-14`; sem ela, a ingestão e o `/health` iriam a `503`. O `SEC-20` muda o que o navegador aceita: uma origem esquecida na CSP quebraria a página sem erro na tela.
+
+**O que foi testado, e como.** PR #174 (`develop` → `main`), CI e Vercel; depois do deploy, `/health`, os cabeçalhos no `/`, no `/login`, na landing e no `/health`, as rotas sem token, com `Bearer` inválido e a ingestão com token falso, e `scripts/conferir_csp.py` contra o HTML servido pela produção. Depois, o login do autor.
+
+**Resultado medido.** CI 12 de 12; merge `3d50f27`; deploy em `gru1`. `/health` `200`, banco ok, contrato 2.9.0, modelo `ml-inf-cabeca-v2` — a chave de ingestão está lá. Os cinco cabeçalhos nas quatro rotas. `/api/sleep-history`, `/api/features`, `Bearer` inválido, ingestão sem token e com token falso: `401`. A CSP contra as páginas servidas: 10 de 10 hashes, sem sobra. **Login do autor (13/11):** a landing, o painel e o Histórico carregaram ("Tudo carregou").
+
+**Adaptação.** Nenhuma.
+
+**O que deu errado no caminho.** Nada nesta etapa.
+
+**Risco em aberto.** O `503` da ingestão sem a chave não foi exercitado na produção (a chave existe, e removê-la derrubaria o envio dos dispositivos). Origem nova no frontend precisa entrar na CSP (`CLAUDE.md`, Deploy).
+
+**Procedência.** GitHub (PR #174, CI e deployment); `curl` na produção e o conferidor contra as páginas servidas, Windows 11; o relato do autor; 13/11.
+
+---
+
+# 2026-11-13 (xi) — AUTH-09: validação local de JWT
+
+**O problema.** A validação remota consultava o Auth em cada rota autenticada.
+
+**Hipótese.** Validar ES256 com o JWKS do projeto em cache elimina essa chamada, preservando o JWT original para o RLS e a distinção entre 401 e 503.
+
+**O que foi testado.** No Windows, usei chaves efêmeras, JWKS simulado, rotação, cache, falha de rede e limite de buscas. Medi 50 chamadas por caminho a GET /api/sleep-history pelo cliente de teste Flask, com leitura do banco simulada e 50 ms de atraso simulado no Auth anterior. O controle de algoritmo usa headers fora da lista e verifica que nem o JWKS nem o Auth foram consultados.
+
+**Resultado medido.** Remover a verificação de assinatura, expiração ou emissor derrubou o teste correspondente. Retirar a guarda de role derrubou os casos anon e service_role. Retirar a guarda de algoritmo derrubou HS256, RS256 e none porque acessaram o JWKS. Retirar o limite de buscas derrubou a asserção de uma busca para oito kids desconhecidos. No ensaio local, antes: mediana 51,27 ms, p95 53,07 ms, máximo 54,90 ms. Depois com chave em cache: 1,13 ms, 1,33 ms e 1,44 ms, respectivamente. O pip-audit não encontrou vulnerabilidades conhecidas. Na revisão independente, o Claude registrou 551 aprovados em Python 3.12 com CI=true. Ele verificou três camadas para HS256: a guarda recusa antes de buscar o JWKS, a lista do decode só permite ES256 e, com ambas sabotadas, PyJWT ainda recusa a chave EC como segredo HMAC. Os casos com PEM e ponto EC foram executados pelo revisor.
+
+Na revisão desta branch, a suíte restaurada teve 553 aprovados e 2 pulados. O controle sem recuo fez falhar `test_recuo_do_jwks_expirado_tem_teto` (503 em vez de 204 com cache vencido). Remover UUID fez falhar `test_sub_precisa_ser_uuid` (204 em vez de 401). Trocar o filtro por if True fez falhar `test_jwks_misto_preserva_a_chave_es256` (503 em vez de 204 ao tentar carregar a chave oct).
+
+Na revisão de bed5c9e, o autor mediu 554 aprovados em Python 3.12 com CI=true e identificou dois pontos cegos no except da renovação. Reexecutei os controles isoladamente no Windows. Retirar o teto nesse ramo fez falhar `test_recuo_do_jwks_expirado_tem_teto`: 31 s depois do teto, a quarta tentativa de busca falhou e a rota devolveu 204 em vez de 503. Retirar o valor padrão de `get(kid, INDISPONIVEL)` fez falhar `test_primeiro_kid_desconhecido_com_cache_vencido_e_jwks_fora`: na primeira renovação malsucedida, devolveu 401 em vez de 503. Com ambos restaurados, 554 aprovados e 2 pulados no Windows.
+
+**Adaptação.** PyJWT e cryptography foram fixados porque get_claims da versão 2.28.0 escolhe o algoritmo pelo header e não aceita os parâmetros de emissor, audiência e folga requeridos. A lista permite apenas ES256 e a folga é de 5 s. Se renovar o JWKS falhar, um kid conhecido pode usar a última chave boa até completar 24 h da última busca bem-sucedida. Kid desconhecido durante falha recebe 503. Uma atualização bem-sucedida substitui todas as chaves. Não encontrei evidência de sessão legada ativa no material conferido. O JWKS publica só ES256 e a sessão observada é ES256. A API recusa HS256 diretamente. O PostgREST já valida localmente no caminho do RLS, onde a validade do JWT já delimita a janela de revogação.
+
+**O que deu errado no caminho.** A primeira coleta do pytest começou antes da instalação terminar. O primeiro teste de algoritmo tentou usar um JWK público como segredo no codificador, que recusou a preparação. O teste final mede a rejeição antes da busca ou validação local e não simula uma assinatura forjada. A sincronização exigiu reaplicar os registros sobre df0c9a2. O primeiro merge da revisão foi bloqueado pela entrada local do diário. Preservei e reapliquei a entrada depois do registro do R3. Um glob incompatível com PowerShell falhou na inspeção.
+
+**Risco em aberto.** A validade medida é de 1 h, com 5 s de tolerância de relógio na aplicação. O cache de chaves dura 5 min por processo, além da propagação do Supabase. Sair da conta ou apagá-la não invalida de imediato a assinatura de um JWT já emitido: a API pode aceitá-lo até expirar (até 3 600 s na sessão observada, mais a folga de relógio). Por leitura de código, após exclusão completa, GET /api/sleep-history responde 200 com lista vazia se a consulta ao banco funcionar. GET /api/me/perfil tenta reparar o perfil ausente, mas a FK para auth.users impede recriá-lo e a rota responde 503. Essa análise assume que a exclusão realmente removeu auth.users, conforme o recibo de DELETE /api/me. Medir a mesma rota autenticada antes e depois em produção fica para a conferência do release. O ensaio com 50 ms simulados não substitui essa medição.
+
+**Procedência.** Em 13/11, o Claude conferiu a sessão real no preview de develop sem copiar o token: alg ES256, kid prefixo ed5cb5 presente no JWKS, exp − iat 3 600 s, aud e role authenticated, iss igual a SUPABASE_URL/auth/v1. Testes e ensaio local executados no Windows sobre develop 73bd058.
+
+---
+
+# 2026-11-13 (xii) — CI-09: o app Android compilado e testado no CI
+
+**O problema, como foi entendido no início.** Nada do app Android rodava no CI: os 32 testes de JVM e o APK de release só rodavam na máquina do autor. Uma mudança no Java, no frontend que o `build:app` empacota ou no núcleo C++ — que o app compila para ARM pelo CMake do NDK, e que o job `firmware` só compila para o host — passava no CI inteiro (AUD-06).
+
+**Hipótese de trabalho.** Um workflow próprio, disparado só pelo que entra no app, com o NDK e o CMake nas versões da máquina do autor, roda o mesmo caminho do APK que vai aos testadores, sem a assinatura.
+
+**O que foi testado, e como.** O workflow na PR #177 (`ubuntu-24.04`) e quatro controles positivos, cada um num commit temporário sobre a ponta da branch, revertido depois: um teste JVM que falha, um erro de compilação no Java, um `#error` no núcleo condicionado a `__ANDROID__` (que só o compilador do NDK vê) e o `abiFilters` sem a `x86_64`.
+
+**Resultado medido.**
+- **Execução limpa** (`43525397549`): 32 testes de JVM, 0 falhas; `app-release-unsigned.apk`, 5 182 770 B, com a `libdormio_nucleo.so` em `armeabi-v7a`, `arm64-v8a` e `x86_64`; o Gradle em 1 min 28 s.
+- **C1** (`43525840703`): `RelogioDoSensorTest > controlePositivoDoCi09 FAILED`.
+- **C2** (`43526087787`): `compileDebugJavaWithJavac FAILED`.
+- **C3** (`43526346099`): `buildCMakeRelWithDebInfo[arm64-v8a] FAILED`, `epoca.cpp:164: error: "sabotagem do CI-09: so o NDK ve"`.
+- **C4** (`43526704175`): o passo das ABIs, `FALTA: lib/x86_64/libdormio_nucleo.so`.
+
+**Adaptação.** O plano previa passar a versão do NDK ao Gradle; o AGP não lê essa propriedade, e o `27.0.12077973` já é o padrão do AGP 8.13 — o workflow só o instala, fixo, e o cache guarda. Nenhuma linha do app mudou.
+
+**O que deu errado no caminho.** Nada nesta etapa.
+
+**Risco em aberto.**
+- **Os testes instrumentados** (emulador) e **a assinatura** seguem só na máquina do autor, de propósito.
+- **Se o Google tirar o NDK `27.0.12077973` do repositório**, o passo de instalação falha com mensagem clara; a troca vira item.
+- **O job baixa o NDK na primeira execução**; com o cache, as seguintes não.
+
+**Procedência.** Branch `feature/CI-09-app-android` sobre `develop` `d1c1cdb`, depois `a916940`; GitHub Actions, execuções acima; 13/11.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
