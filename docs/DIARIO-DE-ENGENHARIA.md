@@ -10228,6 +10228,29 @@ Na revisão de bed5c9e, o autor mediu 554 aprovados em Python 3.12 com CI=true e
 **Procedência.** `bugfix/ui-31-origem-temperatura`, base `develop` `7a6a0a0`; Windows, Vitest e Vite; leituras e dispositivos simulados.
 
 
+---
+
+# 2026-11-13 (xix) — o release R5: o contrato 2.10.0 e a origem da temperatura
+
+**O problema, como foi entendido no início.** O `DATA-14` (contrato 2.10.0), o `UI-31` (a origem da temperatura no painel e no CSV) e o `APP-11` (a política descrevendo a gravação de teste) estavam em `develop`; o autor pediu o release.
+
+**Hipótese de trabalho.** Nada exige migração: o backend só muda a versão informada; o site muda o rótulo, o CSV e a política; o app só recebe o `APP-11` e o `DATA-14` com um APK novo.
+
+**O que foi testado, e como.** PR #186 (`develop` → `main`), CI e Vercel; depois do deploy, `/health`, as rotas sem token e com `Bearer` inválido, os cabeçalhos, `scripts/conferir_csp.py` contra as páginas servidas, os textos novos no JavaScript publicado (painel e política). Depois, o login do autor.
+
+**Resultado medido.** CI 13 de 13; merge `ea71a05`; deploy em `gru1`. `/health` `200` com **`contrato_de_dados` 2.10.0**; `401` sem token e com `Bearer` inválido; a CSP contra as páginas servidas, 10 de 10 hashes. No pacote: "Chip MPU6050", "Origem desconhecida" e `origem_temperatura`; a política com o trecho das gravações de teste. **Login do autor (13/11, captura de tela):** a tabela de leituras recentes com a coluna "Temperatura" e a origem "Chip MPU6050" sob cada valor do travesseiro.
+
+**Adaptação.** Nenhuma.
+
+**O que deu errado no caminho.** Nada nesta etapa.
+
+**Risco em aberto.**
+- **O CSV mudou a coluna** `temp_chip` para `temperatura`: planilhas que a liam pelo nome precisam acompanhar.
+- **A captura mostra o travesseiro enviando de 15:42 a 21:37 de 13/11**, parado na mesa (intensidade 0,00–0,07): são épocas de bancada na conta do autor, como as de 12/11. Apagá-las é decisão do autor; o `API-07` (pausar descartando) evita isso daqui em diante.
+- **O celular** só recebe o `APP-11` e o `DATA-14` com um APK novo (`APP-12`).
+
+**Procedência.** GitHub (PR #186, CI e deployment); `curl` na produção e o conferidor da CSP, Windows 11; a captura de tela do autor; 13/11.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
