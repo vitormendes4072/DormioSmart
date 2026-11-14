@@ -10070,6 +10070,34 @@ Na revisão de bed5c9e, o autor mediu 554 aprovados em Python 3.12 com CI=true e
 
 **Procedência.** Branch `feature/CI-09-app-android` sobre `develop` `d1c1cdb`, depois `a916940`; GitHub Actions, execuções acima; 13/11.
 
+---
+
+# 2026-11-13 (xiii) — o release R4: a validação local do JWT em produção
+
+**O problema, como foi entendido no início.** O `AUTH-09` (o JWT do usuário validado pelo JWKS, sem chamar o Auth a cada pedido) estava em `develop`, junto com o `CI-09`. Ele muda a autenticação de toda requisição: um erro nele desloga todo mundo, ou deixa entrar quem não devia. A latência, que era o motivo do item, ainda não tinha sido medida fora de simulação.
+
+**Hipótese de trabalho.** A sessão real do autor é ES256 com `kid` no JWKS (medido no `AUTH-09`), então a validação nova a aceita; a função na Vercel alcança o JWKS do Supabase; e o tempo de uma rota autenticada cai pelo menos o que custava a chamada ao Auth.
+
+**O que foi testado, e como.**
+- **Antes do merge:** 20 pedidos a `/api/sleep-history?limite=1` com a sessão do autor, depois de 3 de aquecimento, do navegador dele (o trecho só imprime tempos; o token não sai do navegador).
+- **PR #178** (`develop` → `main`), CI e Vercel; depois do deploy, `/health`, cabeçalhos, as rotas sem token, `Bearer` inválido, um **HS256 forjado** e um **ES256 com `kid` inexistente**.
+- **Depois do deploy:** os mesmos 20 pedidos, do mesmo navegador, com a mesma sessão.
+
+**Resultado medido.**
+- CI 14 de 14; merge `6b8e52a`; deploy em `gru1`. `/health` `200`, banco ok. Sem token, `Bearer` inválido, HS256 forjado, `kid` inexistente e token de dispositivo falso: `401`. O `401` do `kid` inexistente (e não `503`) mostra que a função buscou o JWKS do Supabase e conferiu que a chave não está lá.
+- **Latência, antes → depois:** mediana **130 → 113 ms**, p90 148 → 142 ms, mínimo 102 → 91 ms, máximo 221 → 161 ms. Os 40 pedidos com a sessão real deram `200`: a validação nova aceita o token do autor.
+
+**Adaptação.** Nenhuma.
+
+**O que deu errado no caminho.** A primeira tentativa de medir foi no navegador do app, onde o autor não estava logado (ele entrou no navegador dele). A medida passou a ser um trecho colado no console do navegador do autor, que só imprime os tempos.
+
+**Risco em aberto.**
+- **O ganho é modesto (~17 ms na mediana, ~13 %)**: o Auth do Supabase fica em São Paulo, perto da função; o grosso do tempo é a ida e volta até a Vercel e a consulta. O ganho que importa é que o pedido deixou de depender do Auth estar no ar.
+- **Janela de revogação:** o token segue aceito até expirar (3 600 s), inclusive depois de sair da conta ou de apagá-la (diário do `AUTH-09`, 13/11 (xi)).
+- **Medida pequena**, de um navegador e de uma conexão; não é de carga.
+
+**Procedência.** GitHub (PR #178, CI e deployment); `curl` na produção, Windows 11; o navegador do autor; 13/11.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
