@@ -33,7 +33,7 @@ logger = logging.getLogger(__name__)
 # protegia: `select=token_hash` via PostgREST devolvia. O conserto de verdade
 # foi tirar a coluna desta tabela (SEC-08 / migrations/007), e é por isso que
 # ela não aparece mais nem como omissão deliberada — ela não existe aqui.
-CAMPOS = "id, nome, tipo, created_at, last_seen_at, revoked_at"
+CAMPOS = "id, nome, tipo, created_at, last_seen_at, revoked_at, receber_leituras"
 
 # Classes de instrumento (DATA-05). Nao e o nome — nome e escolha do usuario.
 # O tipo e o que permite separar acoplamentos diferentes na UI e na analise:
@@ -206,3 +206,17 @@ def revogar(client, usuario_id, device_id, agora):
     except Exception:
         logger.exception("Falha ao revogar device.")
         return None
+
+
+def alterar_recebimento(client, usuario_id, device_id, receber):
+    """Altera o estado do aparelho ativo, sob o RLS do titular."""
+    resposta = (
+        client.table("devices")
+        .update({"receber_leituras": receber})
+        .eq("id", device_id)
+        .eq("user_id", usuario_id)
+        .is_("revoked_at", "null")
+        .execute()
+    )
+    linhas = resposta.data or []
+    return linhas[0] if linhas else None

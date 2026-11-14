@@ -122,6 +122,12 @@ export function Dashboard() {
   const [dispositivo, setDispositivo] = useState<string | null>(null);
   const [verTudo, setVerTudo] = useState(false);
   const dispositivos = useDispositivos();
+  const pausados = dispositivos.filter((d) => !d.revoked_at && d.receber_leituras === false);
+  const avisoDePausa = pausados.length > 0 && (
+    <p role="status" className="rounded-xl border border-destructive/30 p-3 text-sm text-destructive">
+      <strong>Pausado:</strong> {pausados.map((d) => d.nome).join(", ")}. Leituras recebidas durante a pausa são descartadas.
+    </p>
+  );
   // `limite` explicito (DASH-13): sem ele o backend devolve 20 linhas — dez
   // minutos de celular —, e todo o recorte por sessao operava sobre isso
   // enquanto a tela dizia descrever a captação inteira.
@@ -158,6 +164,7 @@ export function Dashboard() {
     return (
       <div className="space-y-6">
         <Cabecalho acao={seletor} instrumento={instrumento} />
+        {avisoDePausa}
         <Carregando />
       </div>
     );
@@ -167,6 +174,7 @@ export function Dashboard() {
     return (
       <div className="space-y-6">
         <Cabecalho acao={seletor} instrumento={instrumento} />
+        {avisoDePausa}
         <FalhaAoCarregar mensagem={erro} aoTentarNovamente={recarregar} />
       </div>
     );
@@ -176,6 +184,7 @@ export function Dashboard() {
     return (
       <div className="space-y-6">
         <Cabecalho acao={seletor} instrumento={instrumento} />
+        {avisoDePausa}
         <NotaDeEscopo />
         <div id="sessoes-recentes"><SemLeituras /></div>
         <div id="resumo-dispositivo" className="space-y-3">
@@ -252,6 +261,7 @@ export function Dashboard() {
         instrumento={instrumento}
         acao={seletor}
       />
+      {avisoDePausa}
 
       {serieMisturaInstrumentos(dispositivos, dispositivo) && (
         <AvisoDeMistura dispositivos={dispositivos} selecionado={dispositivo} />

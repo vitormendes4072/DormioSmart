@@ -529,6 +529,52 @@ describe("montagem real das telas (UI-17)", PRAZO, () => {
     expect(recortes.at(-1)!).toBeLessThan(recortes[0]);
   });
 
+  it("confirma o descarte antes de pausar e retoma em um toque", async () => {
+    const original = vi.mocked(fetch).getMockImplementation()!;
+    const aparelho = { id: "p", nome: "Travesseiro", tipo: "travesseiro", receber_leituras: true, revoked_at: null };
+    const alterar = vi.fn(async (_entrada: RequestInfo | URL, opcoes?: RequestInit) => {
+      Object.assign(aparelho, JSON.parse(String(opcoes?.body)));
+      return respostaJson(aparelho);
+    });
+    const confirmar = vi.spyOn(window, "confirm").mockReturnValueOnce(false).mockReturnValueOnce(true);
+    vi.mocked(fetch).mockImplementation(async (entrada, opcoes) => {
+      if (String(entrada).includes("/api/devices/p/recebimento")) return alterar(entrada, opcoes);
+      if (String(entrada).startsWith("/api/devices")) return respostaJson([aparelho]);
+      return original(entrada, opcoes);
+    });
+    try {
+      await montar("/dispositivos");
+      const pausar = await screen.findByRole("button", { name: /pausar recebimento de travesseiro/i });
+      fireEvent.click(pausar);
+      expect(alterar).not.toHaveBeenCalled();
+      fireEvent.click(pausar);
+      expect(await screen.findByText("Pausado")).toBeTruthy();
+      expect(confirmar).toHaveBeenCalledWith(
+        "Enquanto pausado, as leituras deste aparelho são descartadas e não podem ser recuperadas.",
+      );
+      fireEvent.click(screen.getByRole("button", { name: /retomar recebimento de travesseiro/i }));
+      expect(await screen.findByRole("button", { name: /pausar recebimento de travesseiro/i })).toBeTruthy();
+      expect(screen.queryByText("Pausado")).toBeNull();
+      expect(confirmar).toHaveBeenCalledTimes(2);
+      expect(alterar.mock.calls.map(([, opcoes]) => JSON.parse(String(opcoes?.body)))).toEqual([
+        { receber_leituras: false }, { receber_leituras: true },
+      ]);
+    } finally {
+      confirmar.mockRestore();
+    }
+  });
+
+  it("avisa no painel vazio que o travesseiro está pausado", async () => {
+    const original = vi.mocked(fetch).getMockImplementation()!;
+    vi.mocked(fetch).mockImplementation((entrada, opcoes) =>
+      String(entrada).startsWith("/api/devices")
+        ? Promise.resolve(respostaJson([{ id: "p", nome: "Travesseiro", tipo: "travesseiro", receber_leituras: false }]))
+        : original(entrada, opcoes),
+    );
+    await montar("/dashboard");
+    expect((await screen.findByText("Pausado:")).parentElement?.textContent).toContain("Travesseiro");
+  });
+
   it("a rota /dispositivos monta o gerenciamento para a sessão autenticada", async () => {
     await montar("/dispositivos");
     expect(await screen.findByRole("heading", { name: "Dispositivos", level: 1 })).toBeTruthy();

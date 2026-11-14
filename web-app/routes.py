@@ -76,7 +76,7 @@ def _resposta_de_falha(e, rota):
 # 2.10.0 (13/11, DATA-14) e MINOR: `t` declarado por tipo de aparelho (chip no
 # travesseiro, bateria no celular) e ausente quando nao lido. Nada da ingestao
 # mudou: o `t` ja era opcional e a faixa e a mesma.
-CONTRATO_DE_DADOS = "2.10.0"
+CONTRATO_DE_DADOS = "2.11.0"
 
 # Frase exigida no corpo de `DELETE /api/me` (SEC-07). Em portugues e em
 # maiusculas de proposito: tem de ser digitada, e nao pode ser o resultado de
@@ -430,6 +430,23 @@ def init_routes(app):
             return jsonify({"error": "dispositivo nao encontrado"}), 404
         return jsonify(device)
 
+    @app.route('/api/devices/<device_id>/recebimento', methods=['PUT'])
+    @require_auth
+    def alterar_recebimento(device_id):
+        corpo = request.get_json(silent=True)
+        if not isinstance(corpo, dict) or type(corpo.get("receber_leituras")) is not bool:
+            return jsonify({"error": "receber_leituras deve ser booleano"}), 400
+        client = _cliente_do_usuario()
+        if client is None:
+            return jsonify({"error": "fonte de dados indisponivel"}), 503
+        try:
+            device = dispositivos.alterar_recebimento(client, g.usuario_id, device_id, corpo["receber_leituras"])
+        except Exception as e:
+            return _resposta_de_falha(e, "/api/devices/recebimento")
+        if device is None:
+            return jsonify({"error": "dispositivo nao encontrado"}), 404
+        return jsonify(device)
+
     @app.route('/api/devices/<device_id>/revogar', methods=['POST'])
     @require_auth
     def revogar_device(device_id):
@@ -654,6 +671,13 @@ def init_routes(app):
         # vez de abrir uma conexão por leitura.
         return dict(device, user_id=usuario_id, jwt=jwt, cliente=client), None, 200
 
+    def _persistir_leitura(caminho, device, payload):
+        if caminho == CAMINHO_TOKEN:
+            return db.registrar_leitura(device["token_hash"], payload)
+        return db.registrar_leitura_da_sessao(
+            device["jwt"], device["id"], payload, cliente=device.get("cliente")
+        )
+
     def _gravar_leitura(caminho, device, content):
         """Valida, traduz e grava UMA leitura (FIX-02, SEC-03, SEC-06).
 
@@ -721,13 +745,10 @@ def init_routes(app):
         #
         # O `last_seen_at` do dispositivo é atualizado dentro da própria
         # função, na mesma chamada — ver migrations/005.
-        if caminho == CAMINHO_TOKEN:
-            gravado = db.registrar_leitura(device["token_hash"], payload)
-        else:
-            gravado = db.registrar_leitura_da_sessao(
-                device["jwt"], device["id"], payload, cliente=device.get("cliente")
-            )
+        gravado = _persistir_leitura(caminho, device, payload)
 
+        if gravado == "aparelho_pausado":
+            return False, "aparelho_pausado", 409
         if not gravado:
             return False, "dados nao persistidos (fonte indisponivel)", 503
 
@@ -806,6 +827,11 @@ def init_routes(app):
                     gravado, erro, status = False, None, 503
                 if gravado:
                     resposta["aceitas"].append(indice)
+                elif status == 409 and erro == "aparelho_pausado":
+                    resposta["rejeitadas"].extend(
+                        {"indice": i, "erro": erro} for i in range(indice, len(leituras))
+                    )
+                    break
                 elif status == 503:
                     # O banco não persistiu. Insistir nas próximas só acumula
                     # falha e tempo: param aqui, e o dispositivo reenvia.

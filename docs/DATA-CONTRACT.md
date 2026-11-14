@@ -1,6 +1,6 @@
 # Contrato de dados — Smart Dormio
 
-**Versão:** 2.10.0 · **Itens:** API-03, DATA-01, DATA-02, SEC-02, SEC-03, DASH-05, DASH-06, DATA-04, APP-01, SEC-06, SEC-07, APP-08, DASH-08, DASH-12, DASH-13, DATA-07a, DATA-07b, DATA-07c, ML-INF, CAL-03, DATA-14
+**Versão:** 2.11.0 · **Itens:** API-03, DATA-01, DATA-02, SEC-02, SEC-03, DASH-05, DASH-06, DATA-04, APP-01, SEC-06, SEC-07, APP-08, DASH-08, DASH-12, DASH-13, DATA-07a, DATA-07b, DATA-07c, ML-INF, CAL-03, DATA-14
 
 > **2.10.0 (MINOR — nada quebra em campo):** `t` é a temperatura **do aparelho que mediu**: a
 > do chip do MPU6050 no travesseiro e a da **bateria** no celular — a mesma coisa que a
@@ -673,6 +673,7 @@ campo silenciosamente descartado, que é por isso que o backend ainda deve
 | `401` | `X-Device-Token` ausente, inválido ou revogado |
 | `415` | ✏️ *(01/11, `API-04`)* Corpo sem `Content-Type: application/json`. Até 01/11 respondia `400` |
 | `500` | ✏️ *(01/11, `API-04`)* Erro interno do servidor — a leitura pode ser válida, e o firmware **não** a descarta: recua e reenvia. O corpo é só `{"error": "erro interno"}`; o detalhe fica no log. Até 01/11 este caso respondia `400` com o texto da exceção, e o firmware apagava a leitura |
+| `409` | Aparelho pausado. A leitura foi descartada. Corpo: `{"error":"aparelho_pausado"}`. |
 | `503` | Backend íntegro, mas o banco não persistiu — ou ✏️ *(01/11, `AUTH-08`)* não conseguiu resolver o token (banco fora do ar). Até 01/11 este segundo caso respondia `401`. O firmware trata os dois como "recuar e reenviar" |
 
 `201` só é devolvido se a gravação foi **confirmada** — nunca otimista (FIX-02).
@@ -682,6 +683,21 @@ token devolve `401`, não `400` — quem não se identifica não recebe diagnós
 do próprio payload.
 
 ### 5.2 `POST /api/data/lote` (v2.6.0, API-03)
+
+Desde 2.11.0, a pausa é conferida na transação que gravaria a leitura.
+Ao encontrar a pausa, a API devolve `200` e rejeita todo o sufixo com
+`aparelho_pausado`. Uma resposta para duas épocas enviadas durante a pausa:
+
+```json
+{"aceitas":[],"rejeitadas":[{"indice":0,"erro":"aparelho_pausado"},{"indice":1,"erro":"aparelho_pausado"}],"pendentes":[]}
+```
+
+Uma pausa detectada no meio do lote preserva as decisões do prefixo. O
+aparelho resolve as épocas rejeitadas e pode retomar com a mesma credencial.
+Esta decisão vale para épocas entregues ao servidor durante a pausa. Uma
+época que ainda estiver na flash quando a recepção for retomada pode ser
+enviada depois. Na bancada, mantenha a placa conectada e confirme a drenagem
+da fila durante a pausa antes de retomar.
 
 Várias leituras numa requisição só. Existe porque, na arquitetura do `ARQ-01` (sono leve +
 FIFO), o rádio é **63 %** da corrente média com uma entrega por época, e uma entrega por hora
@@ -947,6 +963,7 @@ unidade alterada, novo header obrigatório). **MINOR** = campo opcional novo.
 
 | Versão | Data | Mudança |
 |---|---|---|
+| 2.11.0 | 2026-11-13 | **MINOR.** API-07: pausar ou retomar o recebimento por aparelho. Descarte explícito durante a pausa, com `aparelho_pausado` no avulso e no lote. |
 | 2.10.0 | 2026-11-13 | **MINOR.** `t` declarado por tipo de aparelho (`DATA-14`): chip do MPU6050 no travesseiro, bateria no celular, ausente quando não lida. O núcleo do celular deixa de mandar os 25,0 °C que inventava sem a temperatura da bateria, e não grava ponto de calibração sem ela. Sem campo novo, sem migração, faixa igual. |
 | 2.9.0 | 2026-11-11 | **MINOR.** `gn` e `cal`, opcionais e só com `f` (`CAL-03`): a norma da gravidade média da época e a marca de calibração. Validados na ingestão (`validacao._validar_calibracao`) e no banco (`sleep_data_calibracao_valida`), gravados em `g_norma` e `calibrada` (migração 018). Payload sem eles continua correto. |
 | 2.8.0 | 2026-11-08 | **MINOR.** `GET /api/inferencia` (`ML-INF`): sono ou vigília por época sobre a janela pedida, com o modelo `ml-inf-cabeca-v2`, calculado a cada pedido e não gravado; `422` abaixo de 23 épocas válidas. O `/health` passa a informar `modelo`. A ingestão não muda |

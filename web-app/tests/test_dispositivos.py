@@ -216,6 +216,34 @@ def test_revogar_marca_a_data_e_mantem_a_linha():
     assert capturado["id"] == "dev-1"
 
 
+def test_pausar_aparelho_revogado_responde_404_sem_alterar_recebimento():
+    aparelho = dict(DEVICE, user_id=ID_ANA, revoked_at="2026-11-13T12:00:00Z", receber_leituras=True)
+    consulta = MagicMock()
+    consulta.update.return_value = consulta
+    consulta.eq.return_value = consulta
+    consulta.is_.return_value = consulta
+    cliente = MagicMock()
+    cliente.table.return_value = consulta
+
+    def executar():
+        if ("revoked_at", "null") in [chamada.args for chamada in consulta.is_.call_args_list]:
+            return MagicMock(data=[])
+        aparelho.update(consulta.update.call_args.args[0])
+        return MagicMock(data=[aparelho])
+
+    consulta.execute.side_effect = executar
+    with _autenticado(), patch.object(database.db, "cliente_do_usuario", return_value=cliente):
+        resposta = _client().put(
+            "/api/devices/dev-1/recebimento",
+            json={"receber_leituras": False},
+            headers=_SESSAO,
+        )
+
+    assert resposta.status_code == 404
+    assert aparelho["receber_leituras"] is True
+    consulta.execute.assert_called_once()
+
+
 # --- degradação -----------------------------------------------------------
 
 def test_banco_indisponivel_responde_503_e_nao_500():
