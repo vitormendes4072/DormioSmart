@@ -10042,6 +10042,34 @@ Na revisão de bed5c9e, o autor mediu 554 aprovados em Python 3.12 com CI=true e
 
 **Procedência.** Em 13/11, o Claude conferiu a sessão real no preview de develop sem copiar o token: alg ES256, kid prefixo ed5cb5 presente no JWKS, exp − iat 3 600 s, aud e role authenticated, iss igual a SUPABASE_URL/auth/v1. Testes e ensaio local executados no Windows sobre develop 73bd058.
 
+---
+
+# 2026-11-13 (xii) — CI-09: o app Android compilado e testado no CI
+
+**O problema, como foi entendido no início.** Nada do app Android rodava no CI: os 32 testes de JVM e o APK de release só rodavam na máquina do autor. Uma mudança no Java, no frontend que o `build:app` empacota ou no núcleo C++ — que o app compila para ARM pelo CMake do NDK, e que o job `firmware` só compila para o host — passava no CI inteiro (AUD-06).
+
+**Hipótese de trabalho.** Um workflow próprio, disparado só pelo que entra no app, com o NDK e o CMake nas versões da máquina do autor, roda o mesmo caminho do APK que vai aos testadores, sem a assinatura.
+
+**O que foi testado, e como.** O workflow na PR #177 (`ubuntu-24.04`) e quatro controles positivos, cada um num commit temporário sobre a ponta da branch, revertido depois: um teste JVM que falha, um erro de compilação no Java, um `#error` no núcleo condicionado a `__ANDROID__` (que só o compilador do NDK vê) e o `abiFilters` sem a `x86_64`.
+
+**Resultado medido.**
+- **Execução limpa** (`43525397549`): 32 testes de JVM, 0 falhas; `app-release-unsigned.apk`, 5 182 770 B, com a `libdormio_nucleo.so` em `armeabi-v7a`, `arm64-v8a` e `x86_64`; o Gradle em 1 min 28 s.
+- **C1** (`43525840703`): `RelogioDoSensorTest > controlePositivoDoCi09 FAILED`.
+- **C2** (`43526087787`): `compileDebugJavaWithJavac FAILED`.
+- **C3** (`43526346099`): `buildCMakeRelWithDebInfo[arm64-v8a] FAILED`, `epoca.cpp:164: error: "sabotagem do CI-09: so o NDK ve"`.
+- **C4** (`43526704175`): o passo das ABIs, `FALTA: lib/x86_64/libdormio_nucleo.so`.
+
+**Adaptação.** O plano previa passar a versão do NDK ao Gradle; o AGP não lê essa propriedade, e o `27.0.12077973` já é o padrão do AGP 8.13 — o workflow só o instala, fixo, e o cache guarda. Nenhuma linha do app mudou.
+
+**O que deu errado no caminho.** Nada nesta etapa.
+
+**Risco em aberto.**
+- **Os testes instrumentados** (emulador) e **a assinatura** seguem só na máquina do autor, de propósito.
+- **Se o Google tirar o NDK `27.0.12077973` do repositório**, o passo de instalação falha com mensagem clara; a troca vira item.
+- **O job baixa o NDK na primeira execução**; com o cache, as seguintes não.
+
+**Procedência.** Branch `feature/CI-09-app-android` sobre `develop` `d1c1cdb`, depois `a916940`; GitHub Actions, execuções acima; 13/11.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
