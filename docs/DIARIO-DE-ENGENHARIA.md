@@ -10207,6 +10207,27 @@ Na revisão de bed5c9e, o autor mediu 554 aprovados em Python 3.12 com CI=true e
 
 **Procedência.** O "Copy of Produto 5" lido pelo conector do Drive em 13/11; `develop` `7a6a0a0`; os scripts de extração e conferência no scratchpad da sessão; 13/11.
 
+---
+
+# 2026-11-13 (xviii) — UI-31: a origem da temperatura no painel e no CSV
+
+**O problema, como foi entendido no início.** O painel e a exportação chamavam de chip tanto a temperatura do MPU6050 no travesseiro quanto a da bateria no celular.
+
+**Hipótese de trabalho.** Associar cada leitura ao tipo cadastrado pelo `device_id` permite identificar a origem conforme o contrato 2.10.0. A ausência de medição aparece como `--` no painel e célula vazia no CSV.
+
+**O que foi testado, e como.** Testes de montagem do painel com os dois tipos e com `t` ausente, teste de CSV com ambos os tipos, origem desconhecida e medição ausente, três mutações isoladas, execução contra a `develop`, suíte e build no Windows.
+
+**Resultado medido.** Frontend **615 testes em 45 arquivos**, TypeScript e build concluídos. Os três testes novos falharam contra a base. Fixar “Chip MPU6050” para ambos derrubou “mostra a origem da temperatura na linha de cada tipo de aparelho”; inventar `0.0°C` derrubou “mostra -- na coluna Temperatura quando a leitura não tem t”; trocar o nome da coluna derrubou “exporta origem_temperatura por aparelho e deixa a origem vazia sem medição ou tipo”.
+
+**Adaptação.** A coluna de valor passa de `temp_chip` a `temperatura`, com `origem_temperatura` ao fim. O painel informa origem desconhecida para temperatura com tipo indisponível. A exportação mantém a medição e deixa a origem vazia se faltar o tipo ou se a consulta de dispositivos falhar.
+
+**O que deu errado no caminho.** O primeiro `npm ci` foi executado na raiz do repositório e refeito em `frontend/`. O primeiro relatório do teste contra a base esbarrou na codificação do console e foi refeito em UTF-8.
+
+**Risco em aberto.** Planilhas externas que consultavam a coluna `temp_chip` pelo nome precisam passar a usar `temperatura`. A origem das linhas antigas depende da disponibilidade do cadastro do aparelho.
+
+**Procedência.** `bugfix/ui-31-origem-temperatura`, base `develop` `7a6a0a0`; Windows, Vitest e Vite; leituras e dispositivos simulados.
+
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

@@ -338,6 +338,42 @@ describe("montagem real das telas (UI-17)", PRAZO, () => {
     expect(screen.getByText(/da medição mais recente à mais antiga/)).toBeTruthy();
   });
 
+  function simularTemperaturas(leituras: Array<{ device_id: string; temp?: number }>) {
+    const original = vi.mocked(fetch).getMockImplementation()!;
+    vi.mocked(fetch).mockImplementation((entrada, opcoes) => {
+      const caminho = String(entrada);
+      if (caminho.startsWith("/api/devices")) return Promise.resolve(respostaJson([
+        { id: "p", nome: "Travesseiro", tipo: "travesseiro" },
+        { id: "c", nome: "Celular", tipo: "celular" },
+      ]));
+      if (caminho.startsWith("/api/sleep-history")) return Promise.resolve(respostaJson(
+        leituras.map((leitura, i) => ({
+          created_at: new Date(Date.now() - i * 30_000).toISOString(),
+          movimento_total: 9.81, status: "Repouso", ...leitura,
+        })),
+      ));
+      return original(entrada, opcoes);
+    });
+  }
+
+  it("mostra a origem da temperatura na linha de cada tipo de aparelho", async () => {
+    simularTemperaturas([{ device_id: "p", temp: 31 }, { device_id: "c", temp: 32 }]);
+    await montar("/dashboard");
+    const tabela = (await screen.findByRole("columnheader", { name: "Temperatura" })).closest("table")!;
+    const chip = await within(tabela).findByText("Chip MPU6050");
+    const bateria = await within(tabela).findByText("Bateria");
+    expect(chip.closest("td")?.textContent).toContain("31.0°C");
+    expect(bateria.closest("td")?.textContent).toContain("32.0°C");
+  });
+
+  it("mostra -- na coluna Temperatura quando a leitura não tem t", async () => {
+    simularTemperaturas([{ device_id: "c" }]);
+    await montar("/dashboard");
+    const cabecalho = await screen.findByRole("columnheader", { name: "Temperatura" });
+    const [, linha] = within(cabecalho.closest("table")!).getAllByRole("row");
+    expect(within(linha).getAllByRole("cell")[(cabecalho as HTMLTableCellElement).cellIndex].textContent).toBe("--");
+  });
+
   it("conta até o primeiro registro e avisa ao encerrar a coleta sem registros", async () => {
     const original = vi.mocked(fetch).getMockImplementation()!;
     vi.stubGlobal("DeviceMotionEvent", class {});

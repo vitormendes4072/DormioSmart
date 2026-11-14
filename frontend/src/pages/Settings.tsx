@@ -18,6 +18,7 @@ import { SeletorDeTema } from "../components/SeletorDeTema";
 import { buscarHistoricoCompleto } from "../lib/api";
 import { estaEmModoDemo } from "../lib/demo";
 import { baixarCsv } from "../lib/exportar";
+import { listarDispositivos } from "../lib/dispositivos";
 import { useAuth } from "../contexts/AuthContext";
 
 /**
@@ -183,7 +184,8 @@ function SecaoDados() {
         setVazio(true);
         return;
       }
-      baixarCsv(leituras);
+      const dispositivos = await listarDispositivos().catch(() => []);
+      baixarCsv(leituras, dispositivos);
     } catch {
       setErro("Não foi possível carregar suas leituras para exportar.");
     } finally {
@@ -195,7 +197,7 @@ function SecaoDados() {
     <Secao
       titulo="Seus dados"
       icone={Shield}
-      aviso="Exporta suas leituras em CSV — instante, magnitude, intensidade, temperatura do chip e estado."
+      aviso="Exporta suas leituras em CSV — instante, magnitude, intensidade, temperatura, origem da temperatura e estado."
     >
       <button
         onClick={exportar}
