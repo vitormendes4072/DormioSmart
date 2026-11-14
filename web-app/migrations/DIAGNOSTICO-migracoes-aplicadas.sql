@@ -176,7 +176,14 @@ marcas (migracao, item, marca, presente) as (values
         exists (select 1 from pg_constraint where conname = 'sleep_data_calibracao_valida')),
     ('018', 'CAL-03', 'as duas funcoes de gravacao guardam g_norma',
         coalesce((select pg_get_functiondef(to_regprocedure('public.registrar_leitura(text,jsonb)')) like '%g_norma%'
-                     and pg_get_functiondef(to_regprocedure('public.registrar_leitura_da_sessao(uuid,jsonb)')) like '%g_norma%'), false))
+                     and pg_get_functiondef(to_regprocedure('public.registrar_leitura_da_sessao(uuid,jsonb)')) like '%g_norma%'), false)),
+    -- 019: a pausa do recebimento. A coluna, e as duas funcoes de gravacao
+    -- recusando a leitura do aparelho pausado.
+    ('019', 'API-07', 'coluna devices.receber_leituras',
+        exists (select 1 from col where nome = 'devices.receber_leituras')),
+    ('019', 'API-07', 'as duas funcoes de gravacao recusam o aparelho pausado',
+        coalesce((select pg_get_functiondef(to_regprocedure('public.registrar_leitura(text,jsonb)')) like '%aparelho_pausado%'
+                     and pg_get_functiondef(to_regprocedure('public.registrar_leitura_da_sessao(uuid,jsonb)')) like '%aparelho_pausado%'), false))
 ),
 esquema as (
     select migracao, min(item) as item,
