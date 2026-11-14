@@ -496,6 +496,10 @@ static void testar_calibracao() {
   cal.aceita = true;
   c.iniciar(origem, parede_de_teste(origem));
   c.definir_calibracao(cal);
+  // DATA-14: o ponto so existe com a temperatura informada (o app a informa
+  // antes da primeira amostra). Ate 13/11 este teste contava com os 25,0 C
+  // que o coletor inventava sozinho.
+  c.definir_temperatura(25.0f);
   p = 0;
   alimentar_parado(&c, origem, 65.0, ultimo, &p);
   VERIFICAR(c.ponto_parado(ponto), "a epoca parada calibrada nao deu ponto");
@@ -509,6 +513,10 @@ static void testar_calibracao() {
   {
     static ColetorCelular m;
     m.iniciar(origem, parede_de_teste(origem));
+    // Com a temperatura informada: sem ela, a trava do DATA-14 tambem
+    // impediria o ponto, e o teste deixaria de exercitar a regra do
+    // movimento (medido em 13/11: a sabotagem do movimento passou).
+    m.definir_temperatura(25.0f);
     uint32_t pm = 0, rm = 0;
     alimentar(&m, origem, -INICIO_SINTETICO_S, 65.0, 50.0, &pm, &rm);
     VERIFICAR(pm >= 2 && m.ultima_teve_features(), "em movimento: %u payloads", pm);
@@ -518,6 +526,43 @@ static void testar_calibracao() {
   }
   printf("  calibracao: ENMO parado %.2f mg -> %.3f mg, gn %.4f -> %.5f g\n", 1000.0 * enmo_sem,
          1000.0 * enmo_com, gn_sem, gn_com);
+}
+
+// DATA-14 (13/11): sem `definir_temperatura`, a temperatura e desconhecida.
+// O payload sai SEM `t` (e JSON valido: nada de "nan"), e nenhuma epoca parada
+// vira ponto de calibracao -- ate 13/11 o coletor inventava 25,0 C e mandava
+// isso como medida.
+static void testar_temperatura_desconhecida() {
+  printf("\n-- temperatura desconhecida (DATA-14) --\n");
+  static ColetorCelular c;
+  static char ultimo[TAMANHO_DO_PAYLOAD];
+  const uint64_t origem = 70000000u;
+  c.iniciar(origem, parede_de_teste(origem));
+  Calibracao cal;
+  cal.aceita = true;
+  cal.modos[2] = EIXO_COMPLETO;
+  cal.escala[2] = 1.0 / ESCALA_Z;
+  cal.desvio[2] = -DESVIO_Z_G / ESCALA_Z;
+  c.definir_calibracao(cal);
+  uint32_t p = 0;
+  alimentar_parado(&c, origem, 65.0, ultimo, &p);
+  VERIFICAR(p >= 2, "sem temperatura: %u payloads (a medicao nao pode parar por isso)", p);
+  VERIFICAR(strstr(ultimo, "\"t\":") == 0, "sem temperatura o payload nao leva t: %s", ultimo);
+  VERIFICAR(strstr(ultimo, "nan") == 0 && strstr(ultimo, "inf") == 0,
+            "sem temperatura o payload nao pode ter nan/inf: %s", ultimo);
+  VERIFICAR(strstr(ultimo, "\"az\":") != 0 && strstr(ultimo, ",\"total\":") != 0,
+            "sem t o resto do payload segue no lugar: %s", ultimo);
+  double ponto[4];
+  VERIFICAR(!c.ponto_parado(ponto), "sem temperatura nao pode haver ponto de calibracao");
+
+  // Informada depois, ela entra no payload seguinte e o ponto volta a existir.
+  c.iniciar(origem, parede_de_teste(origem));
+  c.definir_calibracao(cal);
+  c.definir_temperatura(30.5f);
+  p = 0;
+  alimentar_parado(&c, origem, 65.0, ultimo, &p);
+  VERIFICAR(strstr(ultimo, "\"t\":30.5,") != 0, "informada, a temperatura entra: %s", ultimo);
+  VERIFICAR(c.ponto_parado(ponto) && ponto[3] == 30.5, "informada, o ponto volta: %.2f", ponto[3]);
 }
 
 int main(int argc, char **argv) {
@@ -533,6 +578,7 @@ int main(int argc, char **argv) {
   testar_buraco();
   testar_quantizacao();
   testar_calibracao();
+  testar_temperatura_desconhecida();
   printf("\n-----------------------------------------\n");
   printf("%d verificacoes, %d falhas\n", total, falhas);
   return falhas == 0 ? 0 : 1;
