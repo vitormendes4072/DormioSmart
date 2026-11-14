@@ -463,6 +463,20 @@ static void testar_resposta_do_lote() {
   d = ler(200, "{\"aceitas\":[0,1,2],\"pendentes\":[],\"rejeitadas\":[],"
                "\"extra\":{\"a\":[1,{\"b\":null}],\"c\":true}}", 3);
   VERIFICAR(d.acao == LOTE_CONFIRMAR && d.confirmar == 3, "chave a mais e pulada");
+
+  // API-07 (14/11): aparelho pausado. O servidor responde 200 e rejeita o
+  // sufixo com `aparelho_pausado`; a placa descarta essas epocas (a pausa e
+  // descarte por decisao do titular) e nao recua -- senao a fila nunca
+  // drena na bancada. Corpo literal da PR #187 e o do Flask (chaves em
+  // ordem alfabetica).
+  d = ler(200, "{\"aceitas\":[],\"rejeitadas\":[{\"indice\":0,\"erro\":\"aparelho_pausado\"},"
+               "{\"indice\":1,\"erro\":\"aparelho_pausado\"}],\"pendentes\":[]}", 2);
+  VERIFICAR(d.acao == LOTE_CONFIRMAR && d.confirmar == 2 && d.rejeitadas == 2 && !d.recuar_depois,
+            "pausado: as duas saem da fila, sem recuar");
+  d = ler(200, "{\"aceitas\":[0],\"pendentes\":[],\"rejeitadas\":[{\"erro\":\"aparelho_pausado\","
+               "\"indice\":1},{\"erro\":\"aparelho_pausado\",\"indice\":2}]}", 3);
+  VERIFICAR(d.acao == LOTE_CONFIRMAR && d.confirmar == 3 && d.aceitas == 1 && d.rejeitadas == 2,
+            "pausa no meio do lote: o prefixo gravado e o sufixo descartado saem juntos");
 }
 
 static void testar_resposta_incoerente_nao_apaga_nada() {

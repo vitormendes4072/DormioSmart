@@ -101,6 +101,7 @@ MIGRACOES_APLICADAS = (
     # consentem (gravado pelo dono do banco); a Carol, sem perfil, nao.
     "017_consentimento_destacado.sql",
     "018_calibracao_da_gravidade.sql",
+    "019_pausa_do_recebimento.sql",
 )
 
 VARIAVEL = "DORMIO_RLS_DATABASE_URL"
