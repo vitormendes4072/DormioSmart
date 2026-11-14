@@ -10186,7 +10186,30 @@ Na revisão de bed5c9e, o autor mediu 554 aprovados em Python 3.12 com CI=true e
 
 ---
 
-# 2026-11-13 (xvii) — UI-31: a origem da temperatura no painel e no CSV
+# 2026-11-13 (xvii) — DOC-17: os resultados do classificador no texto do TCC
+
+**O problema, como foi entendido no início.** O texto do TCC não tinha nenhum resultado de aprendizado de máquina (medido em 05/11), e a 6.6 dizia que a validação não tratava de inferência de sono e vigília — com o classificador validado em quatro bases e servido em produção (`GET /api/inferencia`).
+
+**Hipótese de trabalho.** O capítulo em prosa existia (`docs/RESULTADOS-TCC.md`, do `DOC-08`), mas seus números são de antes da correção `ML-17`; uma inserção nova, com cada número tirado dos JSONs versionados, põe o texto em dia sem herdar valor desatualizado.
+
+**O que foi testado, e como.** Lendo pelo conector do Drive: o documento vigente é o **"Copy of Produto 5"**, de 30/09, e não o "Produto 5" que a memória apontava (parado em 10/09). Nele, as bases Wearanize, Newcastle e DREAMT e o κ aparecem **zero** vezes; a 7.5 está na contagem de 09/09; a 7.6 lista como pendentes a solda e as noites; e as inserções de 05/11 (`CALC-03`, `DOC-16`, `REQ-01`) ainda não foram coladas. Os números saíram de um script sobre `ml/experimentos/saida/` (o modelo servido, `ml-inf/agregados-v2.json`; a DREAMT, `ml13/agregados.json`; a `ML-17` depois da correção, `ml17/comparacao.json`; o teto, `ml05_...json`), e um segundo script conferiu que cada número com três ou quatro casas do corpo da seção nova está na tabela de procedência.
+
+**Resultado medido.** A inserção `../documento/INSERCAO-DOC-17-RESULTADOS-DO-CLASSIFICADOR.md` com cinco blocos (6.6; 7.5 nova; 7.6 e 7.7 renumeradas e atualizadas; Quadro 2) e a tabela de procedência de 55 grandezas. **58 de 58** números do corpo da 7.5 conferidos contra ela. Dois achados entram no texto com destaque: na Wearanize (cabeça) e na Walch, **a acurácia do modelo é menor que a do trivial** (0,872 contra 0,895 e contra 0,904) com especificidade de 0,819 e 0,644 contra zero; e P1–P3 confirmadas na DREAMT, a coorte reservada.
+
+**Adaptação.** A seção de resultados ficou condensada (dois quadros e quatro subseções), e não o capítulo Y inteiro: o texto do TCC é de resultados parciais, e o capítulo completo segue no repositório. A contagem de testes da 7.6 é a de hoje, por camada, com a mutação como parágrafo próprio.
+
+**O que deu errado no caminho.** A nota da memória apontava o "Produto 5" de 10/09 como o vigente; o metadado do Drive mostrou o "Copy of Produto 5" de 30/09. Nota corrigida.
+
+**Risco em aberto.**
+- **Colar é do autor**, e há quatro inserções pendentes; a ordem está no topo do arquivo, e aplicar fora dela quebra a numeração de seções e quadros.
+- **Os itens b), c) e d) da 7.7** (limiar provisório, régua por instrumento, base temporal) não foram revistos aqui; parte já mudou (o `DATA-07`, o `UI-30`), e a revisão inteira da 7.7 cabe na próxima rodada do texto.
+- **Nenhum resultado do travesseiro**: depende da `VAL-01`.
+
+**Procedência.** O "Copy of Produto 5" lido pelo conector do Drive em 13/11; `develop` `7a6a0a0`; os scripts de extração e conferência no scratchpad da sessão; 13/11.
+
+---
+
+# 2026-11-13 (xviii) — UI-31: a origem da temperatura no painel e no CSV
 
 **O problema, como foi entendido no início.** O painel e a exportação chamavam de chip tanto a temperatura do MPU6050 no travesseiro quanto a da bateria no celular.
 
@@ -10203,6 +10226,7 @@ Na revisão de bed5c9e, o autor mediu 554 aprovados em Python 3.12 com CI=true e
 **Risco em aberto.** Planilhas externas que consultavam a coluna `temp_chip` pelo nome precisam passar a usar `temperatura`. A origem das linhas antigas depende da disponibilidade do cadastro do aparelho.
 
 **Procedência.** `bugfix/ui-31-origem-temperatura`, base `develop` `7a6a0a0`; Windows, Vitest e Vite; leituras e dispositivos simulados.
+
 
 # O que este diário não cobre
 
