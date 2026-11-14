@@ -10154,7 +10154,7 @@ Na revisão de bed5c9e, o autor mediu 554 aprovados em Python 3.12 com CI=true e
 **Risco em aberto.**
 - **O painel e o CSV ainda dizem "chip"** para as duas temperaturas: `UI-31`, do Codex.
 - **Os celulares só recebem a correção com um APK novo** (`APP-12`, `versionCode` maior); o site, com a versão 2.10.0, no próximo release.
-- **Quantas leituras do celular na produção têm os 25,0 °C inventados não foi medido** (uma consulta do autor por `temp = 25.0` nos aparelhos do tipo celular responde).
+- **Medido pelo autor na produção (13/11, consulta só de leitura):** celular, **2 de 5 397** leituras com `temp = 25.0` exatos; travesseiro, 14 de 818. As duas do celular são indistinguíveis de uma bateria a 25,0 °C de verdade — o efeito, se houve, é de 0,04 %. As 14 do travesseiro são do chip, que sempre lê: medidas reais.
 
 **Procedência.** Branch `bugfix/DATA-14-origem-do-t` sobre `develop` `ad68bff`; Docker no Windows 11 (`gcc:13`, `python:3.12-slim`); 13/11.
 
