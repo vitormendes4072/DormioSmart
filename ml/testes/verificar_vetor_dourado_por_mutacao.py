@@ -268,7 +268,11 @@ def rodar(nome: str, sab: dict, esperar_deteccao: bool = True):
             cwd=arvore,
             env={**os.environ, "DORMIO_REGRAVAR_DOURADO": ""},
             capture_output=True,
-            text=True,
+            # CI-11 (13/11): sem `encoding`, o Windows decodifica a saída do
+            # filho na página de código local; com PYTHONIOENCODING=utf-8 a
+            # leitura falha, `stdout` vem None e a soma abaixo dá TypeError.
+            encoding="utf-8",
+            errors="replace",
         )
         saida = processo.stdout + processo.stderr
 
@@ -318,7 +322,7 @@ def principal():
         [sys.executable, "-m", "pytest", "testes/test_vetor_dourado.py",
          "-q", "--no-header", "-p", "no:cacheprovider"],
         cwd=ML, env={**os.environ, "DORMIO_REGRAVAR_DOURADO": ""},
-        capture_output=True, text=True,
+        capture_output=True, encoding="utf-8", errors="replace",
     )
     if processo.returncode != 0:
         print("FALHOU\n")

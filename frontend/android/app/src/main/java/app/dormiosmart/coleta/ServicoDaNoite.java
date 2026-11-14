@@ -52,6 +52,7 @@ public class ServicoDaNoite extends Service implements SensorEventListener {
     public static final String ACAO_ENCERRAR = "app.dormiosmart.coleta.ENCERRAR";
     /** Extra do INICIAR: onde o celular fica (NotasDaNoite.POSICOES). Etapa 4. */
     public static final String EXTRA_POSICAO = "posicao";
+    public static final String EXTRA_TESTE = "teste";
 
     static final String PASTA = "noites";
     static final String CANAL = "noite";
@@ -118,7 +119,8 @@ public class ServicoDaNoite extends Service implements SensorEventListener {
         arquivo = new ArquivoDaNoite(pasta(this));
         try {
             estado = EstadoDaNoite.ler(arquivo.estado());
-            if (ACAO_INICIAR.equals(acao) && !estado.ativa) {
+            final boolean nova = ACAO_INICIAR.equals(acao) && !estado.ativa;
+            if (nova) {
                 estado = new EstadoDaNoite();
                 estado.ativa = true;
                 estado.inicioUtcMs = System.currentTimeMillis();
@@ -141,7 +143,8 @@ public class ServicoDaNoite extends Service implements SensorEventListener {
                 pararServico();
                 return START_NOT_STICKY;
             }
-            arquivo.abrir(estado.arquivo);
+            if (nova) arquivo.abrirNovaGravacao(estado.arquivo, intent.getBooleanExtra(EXTRA_TESTE, false));
+            else arquivo.abrir(estado.arquivo);
             estado.salvar(arquivo.estado());
         } catch (IOException e) {
             Log.e(TAG, "nao abriu a noite", e);

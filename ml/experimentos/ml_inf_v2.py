@@ -233,7 +233,7 @@ def executar(evidencia_ml17, dados_dreamt, referencia_ml13, saida):
     if (cfg.hash, cfg.seed, cfg.taxa_comum_hz, cfg.epoca_s) != ('aec203907e6f', 20260910, 32, 30):
         raise ValueError('configuração difere do protocolo ML-INF')
     saida.mkdir(parents=True, exist_ok=False)
-    codigo = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=RAIZ, text=True).strip()
+    codigo = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=RAIZ, text=True, encoding="utf-8", errors="replace").strip()
     conjuntos, atribuicao = dados_ml17(evidencia_ml17, cfg, temporal=True)
     ml13, ml17 = ler_json(ML / ML13), ler_json(ML / ML17)
     manifesto = hashlib.sha256((dados_dreamt / 'SHA256SUMS.txt').read_bytes()).hexdigest()

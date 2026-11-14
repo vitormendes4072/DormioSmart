@@ -198,6 +198,44 @@ def _rodar_sql(cursor, caminho):
     cursor.execute(pathlib.Path(caminho).read_text(encoding="utf-8"))
 
 
+PAPEIS_DO_SUPABASE = ("dormio_ingestao", "anon", "authenticated", "service_role", "authenticator")
+
+
+def _papeis_presos_em_outro_banco(cursor, papeis):
+    """Para a preparação se algum papel tiver objeto ou privilégio em OUTRO banco (CI-11).
+
+    Papel é objeto do servidor inteiro, não de um banco. O `drop role` da
+    preparação só funciona se nenhum banco do servidor depender dele, e o
+    `drop owned by` só limpa o banco da conexão.
+    """
+    cursor.execute(
+        """
+        select r.rolname, d.datname, count(*)
+          from pg_shdepend s
+          join pg_roles r    on r.oid = s.refobjid
+          join pg_database d on d.oid = s.dbid
+         where s.refclassid = 'pg_authid'::regclass
+           and r.rolname = any(%s)
+           and s.dbid <> 0
+           and d.datname <> current_database()
+         group by r.rolname, d.datname
+         order by d.datname, r.rolname
+        """,
+        (list(papeis),),
+    )
+    presos = cursor.fetchall()
+    if presos:
+        bancos = sorted({banco for _, banco, _ in presos})
+        detalhe = "; ".join(f"{papel} tem {n} dependência(s) em {banco}" for papel, banco, n in presos)
+        pytest.fail(
+            "Os papéis do Supabase não podem ser recriados: o servidor tem outro banco que depende "
+            f"deles ({', '.join(bancos)}). {detalhe}. Papel é do servidor inteiro, e a preparação "
+            "precisa apagá-los e recriá-los. Use um Postgres só para estes testes, ou apague "
+            f"{', '.join(bancos)} (drop database). Nada foi apagado lá.",
+            pytrace=False,
+        )
+
+
 @pytest.fixture(scope="session")
 def esquema(_conexao_dona):
     """Recria o schema do zero e aplica as migrações REAIS do repositório.
@@ -218,10 +256,18 @@ def esquema(_conexao_dona):
         # limpa. O sintoma foi `test_o_papel_existe_e_nao_ignora_o_rls` falhando
         # numa árvore sem nenhuma sabotagem aplicada.
         #
-        # Neste ponto os papéis não possuem objeto nenhum (os schemas acabaram
-        # de cair), então o drop é seguro. `drop owned by` cobre privilégio
-        # residual em outros bancos do cluster.
-        for papel in ("dormio_ingestao", "anon", "authenticated", "service_role", "authenticator"):
+        # Neste ponto os papéis não possuem objeto nenhum NESTE banco (os
+        # schemas acabaram de cair). ✏️ CI-11 (13/11): aqui dizia que o `drop
+        # owned by` cobria "privilégio residual em outros bancos do cluster", e
+        # é falso — ele só alcança o banco da conexão. Com outro banco no mesmo
+        # servidor em que estes papéis tenham objeto ou privilégio (outra
+        # execução da suíte, por exemplo), o `drop role` falhava com
+        # DependentObjectsStillExist, os 270 testes davam erro de preparação, e
+        # a mutação dizia só "a suíte não passa nem sem sabotagem". A checagem
+        # abaixo para antes, dizendo qual banco e o que fazer. Ela NÃO entra no
+        # outro banco para limpar: isso seria apagar dado de outra coisa.
+        _papeis_presos_em_outro_banco(cursor, PAPEIS_DO_SUPABASE)
+        for papel in PAPEIS_DO_SUPABASE:
             cursor.execute(
                 "select 1 from pg_roles where rolname = %s", (papel,)
             )

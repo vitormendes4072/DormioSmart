@@ -52,7 +52,7 @@ novo, o autor reserva aqui antes.
 | `019` | `API-07` (pausar o recebimento) | Codex |
 | `020` | `API-06` (lote numa chamada) | Codex |
 | `021` | `DATA-06` (o limiar viaja com a leitura) | Codex |
-| `022` | `APP-11` (marcar gravação de teste), se precisar de coluna | Codex |
+| `022` | ~~`APP-11`~~ *(13/11: não precisou — a marca é só local)*; livre | — |
 
 IDs novos de backlog seguem a regra 5 do `AGENTS.md`: conferir em `origin/develop` e avisar o autor.
 
@@ -104,7 +104,7 @@ estiverem mesclados, e não quando todos os da onda anterior estiverem.
 |---|---|---|---|---|
 | 2.1 | `SEC-19` | Tirar o recuo para a `service_role` | `web-app/database.py` | R1 (a 1.1 mexe no mesmo arquivo) |
 | 2.2 | `AUTH-09` | Validar o JWT localmente pelo JWKS | `web-app/auth.py` | 2.1 |
-| 2.3 | `APP-11` | Marcar uma gravação como teste, para que não vire noite | app (tela da noite) e backend; migração `022` só se precisar | o desenho combinado com o Claude, porque toca `frontend/android/` |
+| 2.3 | `APP-11` ✅ *(13/11, #182; só no aparelho, sem backend — a `022` ficou livre)* | Marcar uma gravação como teste, para que não vire noite | app (tela da noite) e backend; migração `022` só se precisar | o desenho combinado com o Claude, porque toca `frontend/android/` |
 
 **Trilha Claude** (`.github/`, `scripts/`, `web-app/tests/rls/`, `firmware/`, `vercel.json`):
 
@@ -112,10 +112,10 @@ estiverem mesclados, e não quando todos os da onda anterior estiverem.
 |---|---|---|---|
 | 2.4 | `VIA-01` | Bancada: 2 min parado, 2 min mexendo a cabeça, 2 min virando o corpo | onda 1 da placa |
 | 2.5 | `VAL-01` | A primeira noite com o travesseiro (o autor dorme; o Claude analisa) | 2.4 |
-| 2.6 | `DATA-14` | O `t` do celular é a temperatura da bateria: contrato e núcleo | — |
+| 2.6 | `DATA-14` ✅ *(13/11; o painel é o `UI-31`, do Codex)* | O `t` do celular é a temperatura da bateria: contrato e núcleo | — |
 | 2.7 | `CI-10` ✅ *(13/11)* | O Python do CI igual ao da Vercel (`.python-version`) | — |
 | 2.8 | `CI-09` ✅ *(13/11)* | Um job para o app Android (`app-android.yml`) | — |
-| 2.9 | `CI-11` | Os dois harnesses de mutação com mensagem certa | — |
+| 2.9 | `CI-11` ✅ *(13/11)* | Os dois harnesses de mutação com mensagem certa | — |
 | 2.9b | `CI-12` ✅ *(13/11)* | Compilar o `sketch.ino` para o ESP32 no CI (`scripts/compilar_sketch_esp32.py`) | — |
 | 2.10 | `SEC-13` ✅ *(13/11)* | A suíte de RLS sem reaplicar os GRANTs no fim | — |
 | 2.11 | `SEC-20` ✅ *(13/11)* | Cabeçalhos de segurança no `vercel.json` (CSP por hash, `scripts/conferir_csp.py`) | — |

@@ -55,6 +55,54 @@ public final class ArquivoDaNoite implements Closeable {
         saida = new FileOutputStream(new File(pasta, nomeDoArquivo), true);
     }
 
+    private File arquivoValidado(String nomeDaGravacao) {
+        if (nomeDaGravacao == null || !nomeDaGravacao.matches("noite-[0-9]+\\.jsonl")) {
+            throw new IllegalArgumentException("arquivo de noite invalido");
+        }
+        return new File(pasta, nomeDaGravacao);
+    }
+
+    public void abrirNovaGravacao(String nomeDaGravacao, boolean teste) throws IOException {
+        if (teste) {
+            if (!pasta.isDirectory() && !pasta.mkdirs()) throw new IOException("pasta indisponivel");
+            if (!marcaDeTeste(nomeDaGravacao).createNewFile()) throw new IOException("marca ja existe");
+        }
+        abrir(nomeDaGravacao);
+    }
+
+    private File marcaDeTeste(String nomeDaGravacao) {
+        return new File(arquivoValidado(nomeDaGravacao).getPath() + ".teste");
+    }
+
+    public boolean deTeste(String nomeDaGravacao) {
+        return marcaDeTeste(nomeDaGravacao).exists();
+    }
+
+    public List<String> faixaParaEnvio(String nomeDaGravacao, int de, int quantas) throws IOException {
+        if (deTeste(nomeDaGravacao)) throw new IOException("gravacao de teste fica no aparelho");
+        return faixa(nomeDaGravacao, de, quantas);
+    }
+
+    public File testeEncerrado(String nomeDaGravacao) throws IOException {
+        final File dados = arquivoValidado(nomeDaGravacao);
+        final EstadoDaNoite atual = EstadoDaNoite.ler(estado());
+        if (!deTeste(nomeDaGravacao) || !dados.isFile() ||
+                (atual.ativa && nomeDaGravacao.equals(atual.arquivo))) {
+            throw new IOException("somente gravacao de teste encerrada");
+        }
+        return dados;
+    }
+
+    public void apagarTeste(String nomeDaGravacao) throws IOException {
+        final File dados = testeEncerrado(nomeDaGravacao);
+        // O marcador permanece enquanto houver dados que possam entrar na fila.
+        if (!dados.delete()) throw new IOException("nao apagou a gravacao");
+        for (String sufixo : Arrays.asList(".notas", ".calibracao", SUFIXO_ENVIADO, ".teste")) {
+            final File extra = new File(dados.getPath() + sufixo);
+            if (extra.exists() && !extra.delete()) throw new IOException("nao apagou os metadados");
+        }
+    }
+
     public String nome() {
         return nome;
     }

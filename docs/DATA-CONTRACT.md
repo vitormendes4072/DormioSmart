@@ -1,6 +1,13 @@
 # Contrato de dados — Smart Dormio
 
-**Versão:** 2.9.0 · **Itens:** API-03, DATA-01, DATA-02, SEC-02, SEC-03, DASH-05, DASH-06, DATA-04, APP-01, SEC-06, SEC-07, APP-08, DASH-08, DASH-12, DASH-13, DATA-07a, DATA-07b, DATA-07c, ML-INF, CAL-03
+**Versão:** 2.10.0 · **Itens:** API-03, DATA-01, DATA-02, SEC-02, SEC-03, DASH-05, DASH-06, DATA-04, APP-01, SEC-06, SEC-07, APP-08, DASH-08, DASH-12, DASH-13, DATA-07a, DATA-07b, DATA-07c, ML-INF, CAL-03, DATA-14
+
+> **2.10.0 (MINOR — nada quebra em campo):** `t` é a temperatura **do aparelho que mediu**: a
+> do chip do MPU6050 no travesseiro e a da **bateria** no celular — a mesma coisa que a
+> política de privacidade já dizia. Quando o aparelho não a informa, o `t` **não vem**, em vez
+> de um número que ninguém mediu. A faixa aceita não muda. A origem de cada leitura sai do
+> tipo do dispositivo (`devices.tipo`): as duas temperaturas **não são comparáveis** entre si.
+> Seção 2.3.
 
 > **2.9.0 (MINOR — nada quebra em campo):** dois campos opcionais junto do vetor da
 > época, `gn` (a norma da gravidade média, em g) e `cal` (0 ou 1: se as amostras
@@ -102,7 +109,7 @@ Três caminhos, credenciais distintas e propositalmente diferentes:
 | `gx` | float | rad/s | `g.gyro.x` | não (v2.0.0) |
 | `gy` | float | rad/s | `g.gyro.y` | não (v2.0.0) |
 | `gz` | float | rad/s | `g.gyro.z` | não (v2.0.0) |
-| `t` | float | °C | `temp.temperature` | não (v2.0.0) |
+| `t` | float | °C | travesseiro: `temp.temperature` (chip do MPU6050) · celular: bateria (v2.10.0) | não (v2.0.0) |
 | `ts` | string | ISO 8601 | relógio do dispositivo | não (v2.0.0) |
 | `epoca_s` | int | s | janela agregada | não (v2.0.0) |
 | `metodo` | string | — | como a janela foi resumida | se `epoca_s` |
@@ -118,6 +125,11 @@ celular como segunda fonte (APP-01), três deixaram de fazer sentido universal:
 
 - **`t`** é a temperatura do **chip do MPU6050**. Celular não tem equivalente.
   Enviar número inventado seria mentir no dado.
+  ✏️ *13/11, `DATA-14` (v2.10.0): o app passou a mandar a temperatura da **bateria** em `t`
+  desde o `APP-02`, e este parágrafo não acompanhou — o contrato dizia uma coisa e o
+  código fazia outra. O `t` agora é declarado por tipo de aparelho (seção 2.3). E o
+  "número inventado" acontecia de fato: sem a temperatura da bateria, o núcleo mandava
+  25,0 °C; desde a 2.10.0 ele omite o `t`.*
 - **`gx/gy/gz`** dependem de giroscópio, que nem todo aparelho tem — e a web
   devolve `rotationRate` nulo nesse caso. O giroscópio **não entra em nenhum
   critério**: o movimento é decidido só pela magnitude da aceleração.
@@ -522,11 +534,21 @@ mantêm `"Dormindo"` / `"Movimento Detectado!"`, e o dashboard os reconhece. Nã
 reescrevemos medição já coletada para casar com nomenclatura nova: o dado
 registrado é o que o dispositivo de fato reportou naquele momento.
 
-### 2.3 `t` — temperatura do chip, não do ambiente
+### 2.3 `t` — temperatura do aparelho que mediu, não do ambiente
+
+✏️ *v2.10.0 (13/11, `DATA-14`): o título era "temperatura do chip", e só valia para o travesseiro.*
+
+| Aparelho (`devices.tipo`) | O que o `t` é | Ausente quando |
+|---|---|---|
+| travesseiro | temperatura do **chip do MPU6050** | nunca: o sensor a lê junto da aceleração |
+| celular | temperatura da **bateria** do aparelho (`BatteryManager`) | o Android não a informou |
+
+As duas **não são comparáveis**: a bateria aquece com o uso e com a carga, o chip do sensor
+acompanha o travesseiro. Qualquer análise de temperatura separa por tipo de aparelho.
 
 O MPU6050 reporta a temperatura **do próprio circuito integrado**. Não é
 temperatura ambiente, não é temperatura corporal e não deve ser apresentada
-como qualquer uma das duas (ver Escopo no `ROADMAP.md`).
+como qualquer uma das duas (ver Escopo no `ROADMAP.md`). O mesmo vale para a da bateria.
 
 O `fake_sensor.py` simula esse campo em torno de **32 °C**, coerente com um CI
 em operação. Até a v1.0.0 ele simulava 24 °C descrito como "temperatura base do
@@ -925,6 +947,7 @@ unidade alterada, novo header obrigatório). **MINOR** = campo opcional novo.
 
 | Versão | Data | Mudança |
 |---|---|---|
+| 2.10.0 | 2026-11-13 | **MINOR.** `t` declarado por tipo de aparelho (`DATA-14`): chip do MPU6050 no travesseiro, bateria no celular, ausente quando não lida. O núcleo do celular deixa de mandar os 25,0 °C que inventava sem a temperatura da bateria, e não grava ponto de calibração sem ela. Sem campo novo, sem migração, faixa igual. |
 | 2.9.0 | 2026-11-11 | **MINOR.** `gn` e `cal`, opcionais e só com `f` (`CAL-03`): a norma da gravidade média da época e a marca de calibração. Validados na ingestão (`validacao._validar_calibracao`) e no banco (`sleep_data_calibracao_valida`), gravados em `g_norma` e `calibrada` (migração 018). Payload sem eles continua correto. |
 | 2.8.0 | 2026-11-08 | **MINOR.** `GET /api/inferencia` (`ML-INF`): sono ou vigília por época sobre a janela pedida, com o modelo `ml-inf-cabeca-v2`, calculado a cada pedido e não gravado; `422` abaixo de 23 épocas válidas. O `/health` passa a informar `modelo`. A ingestão não muda |
 | 2.7.0 | 2026-10-30 | **MINOR.** A seção 2.6 implementada (`DATA-07b` (d) e (e)): `f`/`g`/`fs` emitidos pelo firmware (só época de 30 s com vetor dentro das faixas), validados na ingestão, gravados em dez colunas nomeadas (migração 010) e servidos por `GET /api/features`, que deriva `inclinacao_rel` e `d_angulo` sobre a janela pedida, com `d_angulo` nulo depois de buraco. Payload sem `f` não muda |

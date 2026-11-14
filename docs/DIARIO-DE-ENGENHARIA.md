@@ -10070,6 +10070,164 @@ Na revisão de bed5c9e, o autor mediu 554 aprovados em Python 3.12 com CI=true e
 
 **Procedência.** Branch `feature/CI-09-app-android` sobre `develop` `d1c1cdb`, depois `a916940`; GitHub Actions, execuções acima; 13/11.
 
+---
+
+# 2026-11-13 (xiii) — o release R4: a validação local do JWT em produção
+
+**O problema, como foi entendido no início.** O `AUTH-09` (o JWT do usuário validado pelo JWKS, sem chamar o Auth a cada pedido) estava em `develop`, junto com o `CI-09`. Ele muda a autenticação de toda requisição: um erro nele desloga todo mundo, ou deixa entrar quem não devia. A latência, que era o motivo do item, ainda não tinha sido medida fora de simulação.
+
+**Hipótese de trabalho.** A sessão real do autor é ES256 com `kid` no JWKS (medido no `AUTH-09`), então a validação nova a aceita; a função na Vercel alcança o JWKS do Supabase; e o tempo de uma rota autenticada cai pelo menos o que custava a chamada ao Auth.
+
+**O que foi testado, e como.**
+- **Antes do merge:** 20 pedidos a `/api/sleep-history?limite=1` com a sessão do autor, depois de 3 de aquecimento, do navegador dele (o trecho só imprime tempos; o token não sai do navegador).
+- **PR #178** (`develop` → `main`), CI e Vercel; depois do deploy, `/health`, cabeçalhos, as rotas sem token, `Bearer` inválido, um **HS256 forjado** e um **ES256 com `kid` inexistente**.
+- **Depois do deploy:** os mesmos 20 pedidos, do mesmo navegador, com a mesma sessão.
+
+**Resultado medido.**
+- CI 14 de 14; merge `6b8e52a`; deploy em `gru1`. `/health` `200`, banco ok. Sem token, `Bearer` inválido, HS256 forjado, `kid` inexistente e token de dispositivo falso: `401`. O `401` do `kid` inexistente (e não `503`) mostra que a função buscou o JWKS do Supabase e conferiu que a chave não está lá.
+- **Latência, antes → depois:** mediana **130 → 113 ms**, p90 148 → 142 ms, mínimo 102 → 91 ms, máximo 221 → 161 ms. Os 40 pedidos com a sessão real deram `200`: a validação nova aceita o token do autor.
+
+**Adaptação.** Nenhuma.
+
+**O que deu errado no caminho.** A primeira tentativa de medir foi no navegador do app, onde o autor não estava logado (ele entrou no navegador dele). A medida passou a ser um trecho colado no console do navegador do autor, que só imprime os tempos.
+
+**Risco em aberto.**
+- **O ganho é modesto (~17 ms na mediana, ~13 %)**: o Auth do Supabase fica em São Paulo, perto da função; o grosso do tempo é a ida e volta até a Vercel e a consulta. O ganho que importa é que o pedido deixou de depender do Auth estar no ar.
+- **Janela de revogação:** o token segue aceito até expirar (3 600 s), inclusive depois de sair da conta ou de apagá-la (diário do `AUTH-09`, 13/11 (xi)).
+- **Medida pequena**, de um navegador e de uma conexão; não é de carga.
+
+**Procedência.** GitHub (PR #178, CI e deployment); `curl` na produção, Windows 11; o navegador do autor; 13/11.
+
+---
+
+# 2026-11-13 (xiv) — CI-11: os harnesses de mutação dizem a causa
+
+**O problema, como foi entendido no início.** Dois harnesses de controle quebravam por causa do ambiente e diziam outra coisa (AUD-09): (1) a suíte de RLS, com outro banco no mesmo servidor dependendo dos papéis do Supabase, dava erro de preparação em todos os testes, e a mutação dizia só "a suíte não passa nem sem sabotagem" — foi o que custou uma rodada no `SEC-13`, hoje; (2) o verificador do vetor dourado morria com `TypeError` no Windows com `PYTHONIOENCODING=utf-8`.
+
+**Hipótese de trabalho.** Papel é do servidor; o `drop owned by` só alcança o banco da conexão, e o comentário dizia o contrário. Uma checagem prévia no `pg_shdepend` diz qual banco prende os papéis, sem mexer nele. No dourado, o `subprocess` com `text=True` sem `encoding` decodifica na página de código do sistema.
+
+**O que foi testado, e como.** Postgres 16 e 17 em Docker (`python:3.12-slim`): a suíte num `outro_banco` e depois em outro banco do mesmo servidor; a mutação no mesmo cenário; a checagem desligada (controle do controle); a suíte e a mutação sem o outro banco. No Windows (Python 3.11.9, o `.venv` do `ml/`): o verificador do dourado com e sem `PYTHONIOENCODING=utf-8`. E o verificador novo da árvore sintática contra a árvore, contra as pastas do Codex e com um `text=True` sem `encoding` acrescentado.
+
+**Resultado medido.**
+- **Antes:** a suíte, `DependentObjectsStillExist: role "dormio_ingestao" cannot be dropped ... 4 objects in database outro_banco`; a mutação, "a suíte não passa nem sem sabotagem" e o fim de uma lista de `ERROR` sem a causa. O dourado com a variável: `TypeError: unsupported operand type(s) for +: 'NoneType' and 'str'`.
+- **Depois:** a suíte para com "Os papéis do Supabase não podem ser recriados: o servidor tem outro banco que depende deles (outro_banco)..."; a mutação mostra essa linha em "Primeiras linhas do erro". Com a checagem desligada, volta o `DependentObjectsStillExist`. Sem o outro banco: **270** e **54/54**. O dourado com a variável: **12/12** (e 12/12 sem ela).
+- **Verificador da árvore sintática:** limpo nas pastas da trilha; acusa as 5 do Codex e o `text=True` sabotado. Com a PR #180 do Codex mesclada (as 5 corrigidas), passou a cobrir o `ml/` inteiro, limpo.
+
+**Adaptação.** A primeira versão da mensagem da mutação pegava a linha resumida do pytest, cortada na largura do terminal; a causa vem na linha abaixo de cada "ERROR at setup of", e é essa que ela mostra agora.
+
+**O que deu errado no caminho.**
+- **A primeira "mutação limpa" caiu na checagem nova** — com razão: o passo anterior deixara o banco da suíte com os papéis, e a mutação rodou noutro banco do mesmo servidor. É exatamente o defeito, e a mensagem disse isso.
+- **O primeiro controle do controle não aplicou** (o `sed` com `$` num arquivo CRLF); refeito por número de linha.
+- **O passo de controle no CI reprovou na primeira execução sem dizer nada:** o Actions roda o passo com `bash -e`, e a falha esperada do pytest encerrava o shell antes da conferência da mensagem (a saída ia para um arquivo). `set +e` no início do passo.
+
+**Risco em aberto.**
+- **A suíte e a mutação no mesmo servidor, em bancos diferentes, continuam incompatíveis** — agora com a mensagem certa. Rodar as duas no mesmo banco.
+
+**Procedência.** Branch `bugfix/CI-11-harnesses-de-mutacao` sobre `develop` `e95a654`; Docker no Windows 11 (`postgres:16`, `postgres:17`, `python:3.12-slim`); o `ml/.venv` (Python 3.11.9); 13/11.
+
+---
+
+# 2026-11-13 (xv) — DATA-14: a origem do `t`, e o 25,0 °C que o celular inventava
+
+**O problema, como foi entendido no início.** O backlog (AUD-11) dizia que o `t` do celular é a temperatura da bateria e o contrato diz que é a do chip do MPU6050. Lendo o código, o quadro era pior: o contrato (desde a v2.0.0) dizia que o celular **não manda** `t`, porque "enviar número inventado seria mentir no dado" — e o núcleo do celular mandava em todo payload, desde o `APP-02`. A política de privacidade já dizia certo ("a da bateria, no celular"); o painel rotula tudo "Temp. chip".
+
+**Hipótese de trabalho.** Declarar a origem por tipo de aparelho resolve sem campo novo nem migração: a origem de cada leitura já sai de `devices.tipo`.
+
+**O que foi testado, e como.** Lendo o caminho: o serviço Android lê a temperatura da bateria ao criar o núcleo e a cada intervalo, mas retorna sem defini-la se o Android não a entregar — e o coletor começava em **25,0 °C**, que então ia ao servidor como medida e entrava nos pontos de calibração. O payload sempre escrevia `"t":%.1f`; um `NaN` sairia `"t":nan`, que nem é JSON. Corrigido, em contêiner `gcc:13`: o núcleo inteiro, a mutação do coletor com três sabotagens novas e um controle manual no `payload.cpp`. Backend em `python:3.12` com `CI=true`, e o `test_health` com a constante desalinhada do contrato.
+
+**Resultado medido.**
+- **Núcleo:** `make celular` **327 verificações, 0 falhas** (+7 do teste da temperatura desconhecida: sem `t`, sem `nan`, sem ponto; informada depois, ela entra e o ponto volta). `make`, `dourado` (157), `c2` (170), `cadeia` (456), `fila` (115), `calibracao` (185), `laco` 8/8, `sintaxe`: iguais a antes — o payload da placa não mudou.
+- **Mutação do coletor: 20/20**, com as três novas (desconhecida volta a 25 °C; desconhecida vai como 0 °C em vez de omitida; ponto de calibração sem temperatura). As demais mutações: 15, 34/34, 17/17, 11/11.
+- **Controle manual:** sem o `isfinite` no `payload.cpp`, o payload sai com `"t":nan` e dois testes caem.
+- **Backend:** 555 passam; com a constante em 2.9.0 e o contrato em 2.10.0, cai `test_informa_a_versao_do_contrato_de_dados`.
+
+**Adaptação.**
+- **Temperatura desconhecida na correção de calibração:** o plano dizia "a temperatura que já usa hoje" (os 25,0 inventados); usei a `temp_ref_c` da própria calibração, que zera o termo de temperatura — corrigir para um valor que ninguém mediu seria o mesmo erro por outro caminho.
+- **O teste do `CAL-03` fixava o contrato em "2.9.0"** exato; passou a exigir "pelo menos 2.9.0" (a igualdade com o documento é do `test_health`).
+- **A versão no backend** (`web-app/routes.py`, trilha do Codex) subiu nesta PR, numa linha, porque o `test_health` exige que contrato e constante andem juntos.
+
+**O que deu errado no caminho.**
+- **Três sabotagens antigas do coletor quebraram** ("casou 0 vezes") porque mudei as linhas que elas usam; atualizadas.
+- **A sabotagem "época em movimento também vira ponto" deixou de ser acusada** depois da trava nova: o teste dela não definia a temperatura, então a trava do `DATA-14` impedia o ponto por outro motivo e mascarava a regra do movimento. O teste passou a definir a temperatura.
+- **O teste novo começou com a origem em 1 s**, e o alimentador começa antes da origem: tempo negativo, zero payloads. Ajustado para o arranjo do teste da calibração.
+
+**Risco em aberto.**
+- **O painel e o CSV ainda dizem "chip"** para as duas temperaturas: `UI-31`, do Codex.
+- **Os celulares só recebem a correção com um APK novo** (`APP-12`, `versionCode` maior); o site, com a versão 2.10.0, no próximo release.
+- **Medido pelo autor na produção (13/11, consulta só de leitura):** celular, **2 de 5 397** leituras com `temp = 25.0` exatos; travesseiro, 14 de 818. As duas do celular são indistinguíveis de uma bateria a 25,0 °C de verdade — o efeito, se houve, é de 0,04 %. As 14 do travesseiro são do chip, que sempre lê: medidas reais.
+
+**Procedência.** Branch `bugfix/DATA-14-origem-do-t` sobre `develop` `ad68bff`; Docker no Windows 11 (`gcc:13`, `python:3.12-slim`); 13/11.
+
+---
+
+# 2026-11-13 (xvi) — APP-11: gravação de teste no Android
+
+**O problema, como foi entendido no início.** Gravações de bancada do celular sincronizavam como noites reais e entravam no Histórico, no painel e na inferência da conta.
+
+**Hipótese de trabalho.** Uma marca local gravada antes da primeira época, verificada na fila e na leitura nativa para envio, mantém o teste no aparelho mesmo após a reabertura. O compartilhamento do JSONL pelo Android permite analisar a bancada, e a exclusão confirmada na lista remove a cópia do aplicativo.
+
+**O que foi testado, e como.** No Windows, Vitest, TypeScript e build web; JUnit 4.13.2 com javac para a suíte JVM, incluindo nova instância de `ArquivoDaNoite` e a mesma operação de reabertura usada pelo serviço. Rodaram controles isolados no portão, na contagem, no lote e no código nativo. A ligação do serviço e do plugin foi conferida no código.
+
+**Resultado medido.** Frontend **612/612 em 45 arquivos**, TypeScript e build concluídos; JVM **34/34**. Com o módulo de envio da `develop`, os dois novos testes de envio falharam. Controles:
+- Com o portão consultando qualquer caixa marcada, “marcar Gravação de teste não libera o início sem consentimento” caiu porque “Concordo” foi habilitado.
+- “Inicia com a marca de teste e deixa a próxima gravação desmarcada” caiu em dois controles isolados: mandar só `{ posicao }` retirou `teste: true` da primeira chamada; retirar `setTeste(false)` deixou a próxima caixa marcada. Com o código restaurado, a próxima chamada recebe só `{ posicao }`.
+- Sem excluir a gravação de teste da contagem, “gravação de teste não oferece envio manual nem dispara envio automático” caiu porque apareceu “Enviar agora”. Sem excluir do lote, “sincroniza a gravação normal e a legada, mas nunca lê a de teste” caiu porque o lote incluiu o teste.
+- Em `marcaAntesDaPrimeiraEpocaESobreviveAReabertura`, remover a criação da marca derrubou a asserção antes da primeira época, apagar a marca na reabertura derrubou a asserção após a reabertura, e retirar a trava usada por `NoitePlugin.lerEpocas` deixou o caminho nativo ler as épocas e derrubou o teste com “teste entrou no caminho do plugin”.
+- Fazer a leitura para envio devolver lote vazio derrubou `gravacaoNormalEAntigaContinuamDisponiveisParaEnvio`.
+
+**Adaptação.** O consentimento e o modo teste têm rótulos próprios; os testes do aceite consultam o diálogo pelo nome da caixa. A marca fica ao lado do JSONL, e a ausência da marca mantém a sincronização de arquivos antigos. O compartilhamento é iniciado pelo usuário no seletor do Android e abre só o arquivo de medições. A política descreve armazenamento, exclusão e compartilhamento local.
+
+**O que deu errado no caminho.** Dois testes de consentimento usavam uma busca genérica por checkbox, e faltava importar `vi` no teste de envio. O sandbox bloqueou o loopback do teste do Vite e o acesso inicial ao Git compartilhado; a suíte completa rodou com acesso ao loopback. A primeira compilação avulsa da JVM omitiu `CorteDeTemperatura`. O primeiro controle de reabertura alterou indevidamente a abertura do arquivo; a repetição removeu apenas a marca. O primeiro CI do Android reprovou na compilação de `NoitePlugin`: `Intent.setClipData` retorna `void`. A chamada foi separada do encadeamento.
+
+**Risco em aberto.** O APK de release e a integração Android passam pelo `app-android.yml`; compartilhamento e reinício real do serviço serão validados no próximo APK, em aparelho físico com o autor. A placa do travesseiro envia direto ao servidor. Para a bancada da placa, o item é `API-07`, pausa do recebimento por aparelho. A política no site será atualizada no próximo release.
+
+**Procedência.** `feature/app-11-gravacao-de-teste`, sincronizada com `develop` `ad68bff`; Windows, Node/Vitest e Java/JUnit; gravações sintéticas.
+
+
+---
+
+# 2026-11-13 (xvii) — DOC-17: os resultados do classificador no texto do TCC
+
+**O problema, como foi entendido no início.** O texto do TCC não tinha nenhum resultado de aprendizado de máquina (medido em 05/11), e a 6.6 dizia que a validação não tratava de inferência de sono e vigília — com o classificador validado em quatro bases e servido em produção (`GET /api/inferencia`).
+
+**Hipótese de trabalho.** O capítulo em prosa existia (`docs/RESULTADOS-TCC.md`, do `DOC-08`), mas seus números são de antes da correção `ML-17`; uma inserção nova, com cada número tirado dos JSONs versionados, põe o texto em dia sem herdar valor desatualizado.
+
+**O que foi testado, e como.** Lendo pelo conector do Drive: o documento vigente é o **"Copy of Produto 5"**, de 30/09, e não o "Produto 5" que a memória apontava (parado em 10/09). Nele, as bases Wearanize, Newcastle e DREAMT e o κ aparecem **zero** vezes; a 7.5 está na contagem de 09/09; a 7.6 lista como pendentes a solda e as noites; e as inserções de 05/11 (`CALC-03`, `DOC-16`, `REQ-01`) ainda não foram coladas. Os números saíram de um script sobre `ml/experimentos/saida/` (o modelo servido, `ml-inf/agregados-v2.json`; a DREAMT, `ml13/agregados.json`; a `ML-17` depois da correção, `ml17/comparacao.json`; o teto, `ml05_...json`), e um segundo script conferiu que cada número com três ou quatro casas do corpo da seção nova está na tabela de procedência.
+
+**Resultado medido.** A inserção `../documento/INSERCAO-DOC-17-RESULTADOS-DO-CLASSIFICADOR.md` com cinco blocos (6.6; 7.5 nova; 7.6 e 7.7 renumeradas e atualizadas; Quadro 2) e a tabela de procedência de 55 grandezas. **58 de 58** números do corpo da 7.5 conferidos contra ela. Dois achados entram no texto com destaque: na Wearanize (cabeça) e na Walch, **a acurácia do modelo é menor que a do trivial** (0,872 contra 0,895 e contra 0,904) com especificidade de 0,819 e 0,644 contra zero; e P1–P3 confirmadas na DREAMT, a coorte reservada.
+
+**Adaptação.** A seção de resultados ficou condensada (dois quadros e quatro subseções), e não o capítulo Y inteiro: o texto do TCC é de resultados parciais, e o capítulo completo segue no repositório. A contagem de testes da 7.6 é a de hoje, por camada, com a mutação como parágrafo próprio.
+
+**O que deu errado no caminho.** A nota da memória apontava o "Produto 5" de 10/09 como o vigente; o metadado do Drive mostrou o "Copy of Produto 5" de 30/09. Nota corrigida.
+
+**Risco em aberto.**
+- **Colar é do autor**, e há quatro inserções pendentes; a ordem está no topo do arquivo, e aplicar fora dela quebra a numeração de seções e quadros.
+- **Os itens b), c) e d) da 7.7** (limiar provisório, régua por instrumento, base temporal) não foram revistos aqui; parte já mudou (o `DATA-07`, o `UI-30`), e a revisão inteira da 7.7 cabe na próxima rodada do texto.
+- **Nenhum resultado do travesseiro**: depende da `VAL-01`.
+
+**Procedência.** O "Copy of Produto 5" lido pelo conector do Drive em 13/11; `develop` `7a6a0a0`; os scripts de extração e conferência no scratchpad da sessão; 13/11.
+
+---
+
+# 2026-11-13 (xviii) — UI-31: a origem da temperatura no painel e no CSV
+
+**O problema, como foi entendido no início.** O painel e a exportação chamavam de chip tanto a temperatura do MPU6050 no travesseiro quanto a da bateria no celular.
+
+**Hipótese de trabalho.** Associar cada leitura ao tipo cadastrado pelo `device_id` permite identificar a origem conforme o contrato 2.10.0. A ausência de medição aparece como `--` no painel e célula vazia no CSV.
+
+**O que foi testado, e como.** Testes de montagem do painel com os dois tipos e com `t` ausente, teste de CSV com ambos os tipos, origem desconhecida e medição ausente, três mutações isoladas, execução contra a `develop`, suíte e build no Windows.
+
+**Resultado medido.** Frontend **615 testes em 45 arquivos**, TypeScript e build concluídos. Os três testes novos falharam contra a base. Fixar “Chip MPU6050” para ambos derrubou “mostra a origem da temperatura na linha de cada tipo de aparelho”; inventar `0.0°C` derrubou “mostra -- na coluna Temperatura quando a leitura não tem t”; trocar o nome da coluna derrubou “exporta origem_temperatura por aparelho e deixa a origem vazia sem medição ou tipo”.
+
+**Adaptação.** A coluna de valor passa de `temp_chip` a `temperatura`, com `origem_temperatura` ao fim. O painel informa origem desconhecida para temperatura com tipo indisponível. A exportação mantém a medição e deixa a origem vazia se faltar o tipo ou se a consulta de dispositivos falhar.
+
+**O que deu errado no caminho.** O primeiro `npm ci` foi executado na raiz do repositório e refeito em `frontend/`. O primeiro relatório do teste contra a base esbarrou na codificação do console e foi refeito em UTF-8.
+
+**Risco em aberto.** Planilhas externas que consultavam a coluna `temp_chip` pelo nome precisam passar a usar `temperatura`. A origem das linhas antigas depende da disponibilidade do cadastro do aparelho.
+
+**Procedência.** `bugfix/ui-31-origem-temperatura`, base `develop` `7a6a0a0`; Windows, Vitest e Vite; leituras e dispositivos simulados.
+
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

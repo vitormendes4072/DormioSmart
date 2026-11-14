@@ -32,7 +32,10 @@ def _client():
 
 
 def test_o_contrato_e_o_2_9_0():
-    assert CONTRATO_DE_DADOS == "2.9.0"
+    # Pelo menos a 2.9.0, que trouxe `gn` e `cal`. A igualdade exata com o
+    # documento e do `test_health.py`; aqui fixar "2.9.0" quebraria a cada
+    # versao nova sem dizer nada sobre a calibracao (DATA-14, 13/11).
+    assert tuple(int(x) for x in CONTRATO_DE_DADOS.split(".")) >= (2, 9, 0)
 
 
 def test_gn_e_cal_vao_para_as_colunas():

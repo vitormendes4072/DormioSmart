@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { MemoryRouter } from "react-router";
@@ -75,7 +75,7 @@ describe("TelaDeConsentimento (LGPD-12)", () => {
     expect(concordo.disabled).toBe(true);
     fireEvent.click(concordo);
     expect(aoConcordar).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole("checkbox"));
+    fireEvent.click(within(screen.getByRole("dialog")).getByRole("checkbox", { name: /li e concordo/i }));
     expect(concordo.disabled).toBe(false);
     await act(async () => fireEvent.click(concordo));
     expect(aoConcordar).toHaveBeenCalledTimes(1);
@@ -123,6 +123,8 @@ function plugin(): PluginNoite & { atual: EstadoDaNoite } {
       p.atual = { ...p.atual, ativa: true, rodando: true, inicioUtcMs: INICIO };
       return { notificacoes: true };
     }),
+    apagarTeste: vi.fn(async () => {}),
+    compartilharTeste: vi.fn(async () => {}),
     encerrar: vi.fn(async () => {}),
     estado: vi.fn(async () => p.atual),
     pedirIsencaoDeBateria: vi.fn(async () => ({ isentoDeBateria: true })),
@@ -131,7 +133,7 @@ function plugin(): PluginNoite & { atual: EstadoDaNoite } {
   return p;
 }
 
-async function tocarIniciar(p: PluginNoite, consentimento: { vigente: boolean; registrar: () => Promise<void> }) {
+async function tocarIniciar(p: PluginNoite, consentimento: { vigente: boolean; registrar: () => Promise<void> }, teste = false) {
   render(
     <MemoryRouter>
       <CartaoDaNoite plugin={p} agora={() => INICIO} consentimento={consentimento} />
@@ -140,6 +142,7 @@ async function tocarIniciar(p: PluginNoite, consentimento: { vigente: boolean; r
   const iniciar = await screen.findByRole("button", { name: /iniciar a noite/i });
   fireEvent.click(screen.getByLabelText(/sobre o colchão/i));
   await waitFor(() => expect((iniciar as HTMLButtonElement).disabled).toBe(false));
+  if (teste) fireEvent.click(screen.getByRole("checkbox", { name: /gravação de teste/i }));
   await act(async () => fireEvent.click(iniciar));
 }
 
@@ -148,6 +151,20 @@ describe("o portão do consentimento na noite (LGPD-12)", () => {
     const p = plugin();
     await tocarIniciar(p, { vigente: false, registrar: vi.fn(async () => {}) });
     expect(screen.getByRole("dialog")).toBeTruthy();
+    expect(p.iniciar).not.toHaveBeenCalled();
+  });
+
+  it("marcar Gravação de teste não libera o início sem consentimento", async () => {
+    const p = plugin();
+    const registrar = vi.fn(async () => {});
+    await tocarIniciar(p, { vigente: false, registrar }, true);
+    const dialogo = within(screen.getByRole("dialog"));
+    expect((screen.getByRole("checkbox", { name: /gravação de teste/i }) as HTMLInputElement).checked).toBe(true);
+    expect((dialogo.getByRole("checkbox", { name: /li e concordo/i }) as HTMLInputElement).checked).toBe(false);
+    const concordo = dialogo.getByRole("button", { name: /concordo/i }) as HTMLButtonElement;
+    expect(concordo.disabled).toBe(true);
+    await act(async () => fireEvent.click(concordo));
+    expect(registrar).not.toHaveBeenCalled();
     expect(p.iniciar).not.toHaveBeenCalled();
   });
 
@@ -172,7 +189,7 @@ describe("o portão do consentimento na noite (LGPD-12)", () => {
       return { notificacoes: true };
     });
     await tocarIniciar(p, { vigente: false, registrar });
-    fireEvent.click(screen.getByRole("checkbox"));
+    fireEvent.click(within(screen.getByRole("dialog")).getByRole("checkbox", { name: /li e concordo/i }));
     await act(async () => fireEvent.click(screen.getByRole("button", { name: /concordo/i })));
     expect(ordem).toEqual(["registrar", "iniciar"]);
     expect(p.iniciar).toHaveBeenCalledWith({ posicao: "colchao" });
@@ -182,7 +199,7 @@ describe("o portão do consentimento na noite (LGPD-12)", () => {
   it("se o registro falha, a noite não começa e a tela diz por quê", async () => {
     const p = plugin();
     await tocarIniciar(p, { vigente: false, registrar: vi.fn(async () => { throw new Error("rede"); }) });
-    fireEvent.click(screen.getByRole("checkbox"));
+    fireEvent.click(within(screen.getByRole("dialog")).getByRole("checkbox", { name: /li e concordo/i }));
     await act(async () => fireEvent.click(screen.getByRole("button", { name: /concordo/i })));
     expect(p.iniciar).not.toHaveBeenCalled();
     expect(screen.getByRole("alert").textContent).toMatch(/não foi possível registrar/i);

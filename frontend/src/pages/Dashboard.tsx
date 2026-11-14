@@ -25,7 +25,7 @@ import { usePerfil } from "../contexts/PerfilContext";
 import { nomeDoPerfil } from "../lib/perfil";
 import { useHistorico } from "../hooks/useHistorico";
 import { LIMITE_DO_PAINEL } from "../lib/api";
-import { classificarUltimoEnvio, descreverRecorte, descreverUltimoContato, serieMisturaInstrumentos, type Dispositivo } from "../lib/dispositivos";
+import { origemDaTemperatura, classificarUltimoEnvio, descreverRecorte, descreverUltimoContato, serieMisturaInstrumentos, type Dispositivo } from "../lib/dispositivos";
 import { agruparEmSessoes, calcularCobertura } from "../lib/cobertura";
 import {
   calcularMetricas,
@@ -229,10 +229,6 @@ export function Dashboard() {
   const periodoExibido = cob.trechos.length > 0
     ? descreverPeriodo(cob.trechos[0].inicio, cob.trechos[cob.trechos.length - 1].fim)
     : undefined;
-  // Coluna inteira de "--" é ruído. O celular não reporta temperatura de chip
-  // (contrato v2.0.0 tornou o campo opcional), então numa captação só de
-  // celular a coluna nunca tem nada.
-  const temMedidaDeTemperatura = leiturasVisiveis.some((l) => l.temp != null);
   // A tabela promete "da mais recente para a mais antiga". A API devolve
   // assim, mas `agruparEmSessoes` reordena crescente para poder recortar — no
   // modo padrão a tabela mostrava as MAIS ANTIGAS sob o rótulo contrário, e a
@@ -592,9 +588,7 @@ export function Dashboard() {
                 <tr className="text-xs text-muted-foreground uppercase tracking-wider">
                   <th className="text-left font-medium pb-2">Hora</th>
                   <th className="text-right font-medium pb-2">Intensidade</th>
-                  {temMedidaDeTemperatura && (
-                    <th className="text-right font-medium pb-2">Temp. chip</th>
-                  )}
+                  <th className="text-right font-medium pb-2">Temperatura</th>
                   <th className="text-right font-medium pb-2">Estado</th>
                 </tr>
               </thead>
@@ -603,6 +597,7 @@ export function Dashboard() {
                   const valor = intensidade(leitura);
                   const movimento = ehMovimento(leitura.status);
                   const instante = new Date(instanteDaLeitura(leitura));
+                  const origem = origemDaTemperatura(dispositivos.find((item) => item.id === leitura.device_id)?.tipo);
                   return (
                     <tr key={i} className="border-t border-border">
                       <td className="py-2.5 text-foreground">
@@ -611,11 +606,14 @@ export function Dashboard() {
                       <td className="py-2.5 text-right font-mono text-muted-foreground">
                         {valor == null ? "--" : valor.toFixed(2)}
                       </td>
-                      {temMedidaDeTemperatura && (
-                        <td className="py-2.5 text-right text-muted-foreground">
-                          {leitura.temp == null ? "--" : `${leitura.temp.toFixed(1)}°C`}
-                        </td>
-                      )}
+                      <td className="py-2.5 text-right text-muted-foreground">
+                        {leitura.temp == null ? "--" : (
+                          <>
+                            {`${leitura.temp.toFixed(1)}°C`}
+                            <span className="block text-xs">{origem ?? "Origem desconhecida"}</span>
+                          </>
+                        )}
+                      </td>
                       <td
                         className="py-2.5 text-right text-xs font-medium"
                         style={{ color: movimento ? COR_MOVIMENTO : COR_REPOUSO }}

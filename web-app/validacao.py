@@ -13,8 +13,8 @@ Até a v1.2.0 o único emissor era o ESP32, e todo campo era obrigatório. Com o
 celular como segunda fonte (APP-01), três campos deixaram de fazer sentido
 universal:
 
-- `t` é a temperatura do **chip do MPU6050**. Um celular não expõe nada
-  equivalente. Enviar número inventado seria mentir no dado.
+- Desde a v2.10.0, `t` é a temperatura do **chip do MPU6050** no travesseiro
+  e da **bateria** no celular. Quando não foi medida, o campo vem ausente.
 - `gx/gy/gz` dependem de giroscópio, que nem todo aparelho tem — e a web pode
   devolver `rotationRate` nulo. O giroscópio **não entra em nenhum critério**:
   o movimento é decidido só pela magnitude da aceleração.

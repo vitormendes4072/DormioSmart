@@ -25,7 +25,8 @@ ColetorCelular::ColetorCelular()
       t_ultima_us_(0),
       t_ultima_drenagem_us_(0),
       tem_amostra_(false),
-      temperatura_c_(25.0f),
+      temperatura_c_(0.0f),
+      temperatura_conhecida_(false),
       recebidas_(0),
       fora_de_ordem_(0),
       com_payload_(0),
@@ -95,7 +96,11 @@ void ColetorCelular::amostrar(uint64_t t_us, float ax_ms2, float ay_ms2, float a
                            static_cast<double>(ay_ms2 / G_PADRAO_MS2),
                            static_cast<double>(az_ms2 / G_PADRAO_MS2)};
   double g[3];
-  aplicar_calibracao(calibracao_, static_cast<double>(temperatura_c_), bruta, g);
+  // Temperatura desconhecida: a da referencia, que zera o termo de
+  // temperatura, e nao um valor inventado (DATA-14).
+  const double temp_da_correcao = temperatura_conhecida_
+      ? static_cast<double>(temperatura_c_) : calibracao_.temp_ref_c;
+  aplicar_calibracao(calibracao_, temp_da_correcao, bruta, g);
   AmostraBruta &a = pendentes_[n_pendentes_];
   a.x = g_para_lsb(static_cast<float>(g[0]));
   a.y = g_para_lsb(static_cast<float>(g[1]));
@@ -148,7 +153,9 @@ ResultadoDoColetor ColetorCelular::proximo(char *destino, uint32_t tamanho, uint
     f_enviada.gn = f.gn;
     f_enviada.calibrada = calibracao_.aceita ? 1 : 0;
     // CAL-03, etapa 2: a epoca parada vira ponto de calibracao, no bruto.
-    if (f.mag_din_media < LIMIAR_PARADO_G && f.gn > 0.0) {
+    // Sem a temperatura, o ponto nao entra: a calibracao das noites seguintes
+    // aprenderia com um numero que ninguem mediu (DATA-14).
+    if (f.mag_din_media < LIMIAR_PARADO_G && f.gn > 0.0 && temperatura_conhecida_) {
       const double temp = static_cast<double>(temperatura_c_);
       const double calibrado[3] = {f.gx * f.gn, f.gy * f.gn, f.gz * f.gn};
       double bruto[3];
@@ -159,8 +166,9 @@ ResultadoDoColetor ColetorCelular::proximo(char *destino, uint32_t tamanho, uint
     }
   }
 
+  // Desconhecida, a temperatura vai como NaN, e o payload omite o `t`.
   const Epoca e = epoca_da_grade(info.indice, grade_x_, grade_y_, grade_z_, AMOSTRAS_NA_GRADE,
-                                 temperatura_c_);
+                                 temperatura_conhecida_ ? temperatura_c_ : NAN);
   bool incluidas = false;
   const ResultadoDeMontagem m = montar_payload(
       e, parede_, inicio_da_epoca_c2_ms(origem_us_, info.indice), destino, tamanho, escritos,
