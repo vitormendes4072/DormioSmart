@@ -72,7 +72,11 @@ def _resposta_de_falha(e, rota):
 # 2.9.0 (11/11, CAL-03) e MINOR: `gn` e `cal`, opcionais, junto do vetor -- a
 # norma da gravidade media e a marca de calibracao. Payload sem eles continua
 # sendo o payload correto (app antigo, travesseiro).
-CONTRATO_DE_DADOS = "2.9.0"
+#
+# 2.10.0 (13/11, DATA-14) e MINOR: `t` declarado por tipo de aparelho (chip no
+# travesseiro, bateria no celular) e ausente quando nao lido. Nada da ingestao
+# mudou: o `t` ja era opcional e a faixa e a mesma.
+CONTRATO_DE_DADOS = "2.10.0"
 
 # Frase exigida no corpo de `DELETE /api/me` (SEC-07). Em portugues e em
 # maiusculas de proposito: tem de ser digitada, e nao pode ser o resultado de

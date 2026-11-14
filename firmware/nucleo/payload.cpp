@@ -106,22 +106,28 @@ ResultadoDeMontagem montar_payload(const Epoca &e, const ResolucaoDeParede &pare
   // chegamos aqui com a epoca nao-vazia, e.
   uint32_t amostras = e.amostras < 1 ? 1 : e.amostras;
 
+  // DATA-14 (13/11): sem temperatura (NaN), o `t` sai do payload -- o
+  // contrato o aceita ausente desde a v2.0.0, e `"t":nan` nem e JSON valido.
+  // Com temperatura, o texto e byte a byte o de antes (o dourado confere).
+  char campo_t[24] = "";
+  if (isfinite(e.temp_pico)) snprintf(campo_t, sizeof(campo_t), ",\"t\":%.1f", e.temp_pico);
+
   int n;
   if (tem_ts) {
     n = snprintf(destino, tamanho,
-                 "{\"ax\":%.2f,\"ay\":%.2f,\"az\":%.2f,\"t\":%.1f,\"total\":%.2f,"
+                 "{\"ax\":%.2f,\"ay\":%.2f,\"az\":%.2f%s,\"total\":%.2f,"
                  "\"status\":\"%s\",\"ts\":\"%s\",\"epoca_s\":%u,\"metodo\":\"%s\","
                  "\"amostras\":%u",
-                 e.pico_ax, e.pico_ay, e.pico_az, e.temp_pico, e.pico_total,
+                 e.pico_ax, e.pico_ay, e.pico_az, campo_t, e.pico_total,
                  classificar(e.pico_total), ts,
                  static_cast<unsigned>(e.duracao_s), METODO_AGREGACAO,
                  static_cast<unsigned>(amostras));
   } else {
     n = snprintf(destino, tamanho,
-                 "{\"ax\":%.2f,\"ay\":%.2f,\"az\":%.2f,\"t\":%.1f,\"total\":%.2f,"
+                 "{\"ax\":%.2f,\"ay\":%.2f,\"az\":%.2f%s,\"total\":%.2f,"
                  "\"status\":\"%s\",\"epoca_s\":%u,\"metodo\":\"%s\","
                  "\"amostras\":%u",
-                 e.pico_ax, e.pico_ay, e.pico_az, e.temp_pico, e.pico_total,
+                 e.pico_ax, e.pico_ay, e.pico_az, campo_t, e.pico_total,
                  classificar(e.pico_total),
                  static_cast<unsigned>(e.duracao_s), METODO_AGREGACAO,
                  static_cast<unsigned>(amostras));

@@ -99,7 +99,11 @@ caso "drenagem depois de a amostra nova entrar (carimba o antes do buraco com o 
                            static_cast<double>(ay_ms2 / G_PADRAO_MS2),
                            static_cast<double>(az_ms2 / G_PADRAO_MS2)};
   double g[3];
-  aplicar_calibracao(calibracao_, static_cast<double>(temperatura_c_), bruta, g);
+  // Temperatura desconhecida: a da referencia, que zera o termo de
+  // temperatura, e nao um valor inventado (DATA-14).
+  const double temp_da_correcao = temperatura_conhecida_
+      ? static_cast<double>(temperatura_c_) : calibracao_.temp_ref_c;
+  aplicar_calibracao(calibracao_, temp_da_correcao, bruta, g);
   AmostraBruta &a = pendentes_[n_pendentes_];
   a.x = g_para_lsb(static_cast<float>(g[0]));
   a.y = g_para_lsb(static_cast<float>(g[1]));
@@ -116,7 +120,11 @@ caso "drenagem depois de a amostra nova entrar (carimba o antes do buraco com o 
                            static_cast<double>(ay_ms2 / G_PADRAO_MS2),
                            static_cast<double>(az_ms2 / G_PADRAO_MS2)};
   double g[3];
-  aplicar_calibracao(calibracao_, static_cast<double>(temperatura_c_), bruta, g);
+  // Temperatura desconhecida: a da referencia, que zera o termo de
+  // temperatura, e nao um valor inventado (DATA-14).
+  const double temp_da_correcao = temperatura_conhecida_
+      ? static_cast<double>(temperatura_c_) : calibracao_.temp_ref_c;
+  aplicar_calibracao(calibracao_, temp_da_correcao, bruta, g);
   AmostraBruta &a = pendentes_[n_pendentes_];
   a.x = g_para_lsb(static_cast<float>(g[0]));
   a.y = g_para_lsb(static_cast<float>(g[1]));
@@ -136,7 +144,7 @@ caso "eixo trocado na conversao" acusa \
 
 # CAL-03: a calibracao entra na amostra e a marca sai no payload.
 caso "calibracao definida e nao aplicada" acusa \
-  "  aplicar_calibracao(calibracao_, static_cast<double>(temperatura_c_), bruta, g);" \
+  "  aplicar_calibracao(calibracao_, temp_da_correcao, bruta, g);" \
   "  g[0] = bruta[0]; g[1] = bruta[1]; g[2] = bruta[2];"
 
 caso "payload sempre diz cal 0" acusa \
@@ -153,8 +161,8 @@ caso "ponto parado calibrado em vez de bruto" acusa \
   "      for (int k = 0; k < 3; k++) bruto[k] = calibrado[k];"
 
 caso "epoca em movimento tambem vira ponto" acusa \
-  "    if (f.mag_din_media < LIMIAR_PARADO_G && f.gn > 0.0) {" \
-  "    if (f.gn > 0.0) {"
+  "    if (f.mag_din_media < LIMIAR_PARADO_G && f.gn > 0.0 && temperatura_conhecida_) {" \
+  "    if (f.gn > 0.0 && temperatura_conhecida_) {"
 
 caso "quantizacao trunca em vez de arredondar" acusa \
   "  return static_cast<int16_t>(lroundf(lsb));" \
@@ -169,10 +177,23 @@ caso "ts no inicio da epoca seguinte" acusa \
   "      e, parede_, inicio_da_epoca_c2_ms(origem_us_, info.indice + 1), destino, tamanho, escritos,"
 
 caso "temperatura do aparelho ignorada" acusa \
-  "  const Epoca e = epoca_da_grade(info.indice, grade_x_, grade_y_, grade_z_, AMOSTRAS_NA_GRADE,
-                                 temperatura_c_);" \
-  "  const Epoca e = epoca_da_grade(info.indice, grade_x_, grade_y_, grade_z_, AMOSTRAS_NA_GRADE,
-                                 25.0f);"
+  "                                 temperatura_conhecida_ ? temperatura_c_ : NAN);" \
+  "                                 temperatura_conhecida_ ? 25.0f : NAN);"
+
+# DATA-14 (13/11): sem a temperatura informada, nada de numero inventado.
+caso "temperatura desconhecida volta a ser 25 C (DATA-14)" acusa \
+  "      temperatura_c_(0.0f),
+      temperatura_conhecida_(false)," \
+  "      temperatura_c_(25.0f),
+      temperatura_conhecida_(true),"
+
+caso "desconhecida vai como 0 C, e nao omitida (DATA-14)" acusa \
+  "                                 temperatura_conhecida_ ? temperatura_c_ : NAN);" \
+  "                                 temperatura_c_);"
+
+caso "ponto de calibracao sem temperatura (DATA-14)" acusa \
+  " && f.gn > 0.0 && temperatura_conhecida_) {" \
+  " && f.gn > 0.0) {"
 
 caso "toda recusa contada como de taxa" acusa \
   "    if (r == EPOCA_RECUSADA_TAXA) recusadas_taxa_++;" \
