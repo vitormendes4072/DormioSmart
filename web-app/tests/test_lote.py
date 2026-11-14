@@ -328,3 +328,50 @@ def test_o_cliente_de_uma_requisicao_nao_passa_para_a_seguinte():
         _post({"device_id": "dev-ana", "leituras": [_LEITURA] * 3}, headers=_SESSAO)
         _post({"device_id": "dev-ana", "leituras": [_LEITURA] * 3}, headers=_SESSAO)
     assert create_client.call_count == 2
+
+@pytest.mark.parametrize("prefixo", [0, 1], ids=["pausado", "pausa-no-meio"])
+def test_pausa_rejeita_o_sufixo_e_retomada_grava_so_as_proximas(prefixo):
+    gravadas = []
+    tentativas = []
+    epocas = [dict(_LEITURA, t=t) for t in (30, 31, 32, 33)]
+    pausado = True
+
+    def gravar(_token, leitura):
+        tentativas.append(leitura["temp"])
+        if pausado and len(gravadas) == prefixo:
+            return "aparelho_pausado"
+        gravadas.append(leitura["temp"])
+        return "id"
+
+    with _com_device(), patch.object(database.db, "registrar_leitura", side_effect=gravar):
+        resp = _post({"leituras": epocas[:3]})
+        assert resp.status_code == 200
+        assert resp.get_json() == {
+            "aceitas": list(range(prefixo)),
+            "rejeitadas": [
+                {"indice": i, "erro": "aparelho_pausado"} for i in range(prefixo, 3)
+            ],
+            "pendentes": [],
+        }
+        assert tentativas == [30, 31, 32][:prefixo + 1]
+        pausado = False
+        retomada = _post({"leituras": epocas[3:]})
+        assert retomada.status_code == 200
+        assert retomada.get_json() == {"aceitas": [0], "rejeitadas": [], "pendentes": []}
+
+    assert gravadas == [30, 31, 32][:prefixo] + [33]
+
+
+def test_avulso_pausado_responde_409_com_codigo():
+    with _com_device(), patch.object(database.db, "registrar_leitura", return_value="aparelho_pausado"):
+        resp = _client().post("/api/data", json=_LEITURA, headers=_AUTH)
+    assert resp.status_code == 409
+    assert resp.get_json() == {"error": "aparelho_pausado"}
+
+
+def test_revogado_continua_401_sem_chegar_ao_descarte():
+    with patch.object(database.db, "get_device_by_token_hash", return_value=None), \
+         patch.object(database.db, "registrar_leitura", return_value="aparelho_pausado") as registrar:
+        resp = _post({"leituras": [_LEITURA]})
+    assert resp.status_code == 401
+    registrar.assert_not_called()

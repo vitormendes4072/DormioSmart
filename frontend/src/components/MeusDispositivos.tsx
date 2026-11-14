@@ -11,6 +11,7 @@ import {
   rotuloDoTipo,
   type TipoDeDispositivo,
   parearDispositivo,
+  alterarRecebimento,
   renomearDispositivo,
   revogarDispositivo,
   type Dispositivo,
@@ -106,6 +107,9 @@ export function MeusDispositivos({ mostrarPareamento = true }: { mostrarPareamen
               dispositivo={dispositivo}
               aoAtualizar={carregar}
               aoRevogar={() => revogar(dispositivo)}
+              aoAlterarRecebimento={(atualizado) =>
+                setLista((atuais) => atuais.map((item) => item.id === atualizado.id ? atualizado : item))
+              }
               aoFalhar={setErro}
             />
           ))}
@@ -235,17 +239,35 @@ function LinhaDoDispositivo({
   dispositivo,
   aoAtualizar,
   aoRevogar,
+  aoAlterarRecebimento,
   aoFalhar,
 }: {
   dispositivo: Dispositivo;
   aoAtualizar: () => Promise<void>;
   aoRevogar: () => void;
+  aoAlterarRecebimento: (dispositivo: Dispositivo) => void;
   aoFalhar: (mensagem: string) => void;
 }) {
   const [editando, setEditando] = useState(false);
   const [nome, setNome] = useState(dispositivo.nome);
   const [salvando, setSalvando] = useState(false);
   const ativo = estaAtivo(dispositivo);
+  const pausado = dispositivo.receber_leituras === false;
+  const [alterandoRecebimento, setAlterandoRecebimento] = useState(false);
+
+  async function alternarRecebimento() {
+    if (!pausado && !window.confirm(
+      "Enquanto pausado, as leituras deste aparelho são descartadas e não podem ser recuperadas.",
+    )) return;
+    setAlterandoRecebimento(true);
+    try {
+      aoAlterarRecebimento(await alterarRecebimento(dispositivo.id, pausado));
+    } catch (e) {
+      aoFalhar(e instanceof ErroApi ? e.message : "Não foi possível alterar o recebimento.");
+    } finally {
+      setAlterandoRecebimento(false);
+    }
+  }
 
   async function salvar() {
     if (!nome.trim() || nome === dispositivo.nome) {
@@ -315,12 +337,24 @@ function LinhaDoDispositivo({
               {dispositivo.last_seen_at ? `Último envio ${descreverUltimoContato(dispositivo)}` : "Ainda sem envios"}
             </p>
             <EstadoDoDispositivo ativo={ativo}>{ativo ? "Credencial ativa" : "Revogado"}</EstadoDoDispositivo>
+            {ativo && pausado && <p className="text-sm font-semibold text-destructive">Pausado</p>}
           </>
         )}
       </div>
 
       {ativo && !editando ? (
-        <div className="flex items-center gap-1 flex-shrink-0">
+        <div className="flex flex-wrap items-center justify-end gap-1">
+          {dispositivo.tipo === "travesseiro" && (
+            <button
+              type="button"
+              onClick={alternarRecebimento}
+              disabled={alterandoRecebimento}
+              className="rounded-lg px-2 py-1 text-xs font-semibold text-primary hover:bg-secondary disabled:opacity-50"
+              aria-label={`${pausado ? "Retomar" : "Pausar"} recebimento de ${dispositivo.nome}`}
+            >
+              {pausado ? "Retomar" : "Pausar"}
+            </button>
+          )}
           <button
             onClick={() => setEditando(true)}
             aria-label={`Renomear ${dispositivo.nome}`}

@@ -33,6 +33,7 @@ export type Dispositivo = {
   created_at: string;
   last_seen_at: string | null;
   revoked_at: string | null;
+  receber_leituras?: boolean;
 };
 
 /** Resposta do pareamento. `token` só existe aqui, nesta única resposta. */
@@ -220,4 +221,11 @@ export function origemDaTemperatura(tipo: TipoDeDispositivo | undefined): string
   if (tipo === "travesseiro") return "Chip MPU6050";
   if (tipo === "celular") return "Bateria";
   return null;
+}
+
+export function alterarRecebimento(id: string, receber: boolean): Promise<Dispositivo> {
+  return requisitarJson<Dispositivo>(`/api/devices/${encodeURIComponent(id)}/recebimento`, {
+    method: "PUT",
+    body: JSON.stringify({ receber_leituras: receber }),
+  });
 }

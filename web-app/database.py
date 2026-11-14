@@ -1,3 +1,5 @@
+from postgrest.exceptions import APIError
+
 import logging
 import os
 
@@ -343,6 +345,11 @@ class Database:
                 {"p_token_hash": token_hash, "p_leitura": leitura},
             ).execute()
             return getattr(resposta, "data", None)
+        except APIError as exc:
+            if exc.code == "PT409" and exc.message == "aparelho_pausado":
+                return "aparelho_pausado"
+            logger.exception("Falha ao registrar leitura.")
+            return None
         except Exception:
             logger.exception("Falha ao registrar leitura.")
             return None
@@ -374,6 +381,11 @@ class Database:
                 {"p_device_id": device_id, "p_leitura": leitura},
             ).execute()
             return getattr(resposta, "data", None)
+        except APIError as exc:
+            if exc.code == "PT409" and exc.message == "aparelho_pausado":
+                return "aparelho_pausado"
+            logger.exception("Falha ao registrar leitura.")
+            return None
         except Exception:
             logger.exception("Falha ao registrar leitura por sessao.")
             return None
