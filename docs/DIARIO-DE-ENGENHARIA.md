@@ -10281,11 +10281,11 @@ Na revisão de bed5c9e, o autor mediu 554 aprovados em Python 3.12 com CI=true e
 
 **O que foi testado, e como.** No Windows, montagem das rotas reais com respostas simuladas e relógio controlado, suíte Vitest, build com TypeScript e conferência da CSP sobre a saída do Vite.
 
-**Resultado medido.** Frontend **623 testes em 45 arquivos**. Os seis casos novos falharam contra a `develop`. Desligar a consulta periódica derrubou o teste da transição ao primeiro envio. Remover o limite de dez minutos derrubou o teste do encerramento das consultas. Copiar o valor errado ou manter o guia montado ao ocultar derrubou os dois casos de cópia. Remover o aviso de seleção manual derrubou o caso de falha do clipboard. Trocar o percurso do celular por pareamento manual derrubou o teste que exige chegar a Coletar.
+**Resultado medido.** Frontend **625 testes em 45 arquivos após a revisão**. Os seis casos novos falharam contra a `develop`. Desligar a consulta periódica derrubou o teste da transição ao primeiro envio. Remover o limite de dez minutos derrubou o teste do encerramento das consultas. Copiar o valor errado ou manter o guia montado ao ocultar derrubou os dois casos de cópia. Remover o aviso de seleção manual derrubou o caso de falha do clipboard. Trocar o percurso do celular por pareamento manual derrubou o teste que exige chegar a Coletar. Na revisão da PR #191, deixar o botão “Já copiei, pode ocultar” sem ação derrubou “remove a credencial do DOM ao confirmar que já copiou”, pois o token ficou no DOM. Trocar a mensagem do ErroApi por texto genérico derrubou “mostra a mensagem do ErroApi 403 no alerta de pareamento”.
 
 **Adaptação.** O guia guarda a credencial em estado volátil do componente, oferece seleção manual quando a cópia falha e aponta para o README do firmware. A atualização automática roda a cada 15 s, por até 10 min e com a aba visível. O cartão oferece verificação manual.
 
-**O que deu errado no caminho.** A primeira compilação TypeScript acusou a opção `exact` na consulta por papel. A busca já usa correspondência exata pelo nome e a opção foi removida.
+**O que deu errado no caminho.** A primeira compilação TypeScript acusou a opção `exact` na consulta por papel. A busca já usa correspondência exata pelo nome e a opção foi removida. Na revisão, o primeiro comando de controle procurou a asserção somente no stdout. A repetição conferiu também o stderr.
 
 **Risco em aberto.** A verificação em placa física fica para o percurso de bancada. Foi simulada a resposta que registra o primeiro contato.
 

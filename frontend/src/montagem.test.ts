@@ -624,6 +624,25 @@ describe("montagem real das telas (UI-17)", PRAZO, () => {
     }
   });
 
+  it("remove a credencial do DOM ao confirmar que já copiou", async () => {
+    const { token } = simularPareamento();
+    fireEvent.click(await abrirPareamento());
+    expect(await screen.findByText(token)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Já copiei, pode ocultar" }));
+    expect(screen.queryByText(token)).toBeNull();
+    expect(screen.getByRole("button", { name: "Parear" })).toBeTruthy();
+  });
+
+  it("mostra a mensagem do ErroApi 403 no alerta de pareamento", async () => {
+    const { criar } = simularPareamento();
+    const mensagem = "Consentimento para dados de saúde pendente.";
+    criar.mockReturnValueOnce(new Response(JSON.stringify({ error: mensagem }), { status: 403 }));
+    fireEvent.click(await abrirPareamento());
+    const alerta = await screen.findByRole("alert");
+    expect(alerta.textContent).toBe(mensagem);
+    expect(alerta.classList.contains("text-destructive")).toBe(true);
+  });
+
   it("consulta periodicamente e mostra o primeiro envio sem recarregar a página", async () => {
     const { aparelho, listar } = simularPareamento();
     const parear = await abrirPareamento();

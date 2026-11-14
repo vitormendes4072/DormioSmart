@@ -144,17 +144,17 @@ function GuiaPareamento({ aoParear }: { aoParear: (aparelho: Dispositivo) => voi
   const [tipo, setTipo] = useState<TipoDeDispositivo>("travesseiro");
   const [pareando, setPareando] = useState(false);
   const [novoToken, setNovoToken] = useState<Pareamento | null>(null);
-  const [falha, setFalha] = useState(false);
+  const [falha, setFalha] = useState<string | null>(null);
 
   async function parear() {
     setPareando(true);
-    setFalha(false);
+    setFalha(null);
     try {
       const resultado = await parearDispositivo("", "travesseiro");
       aoParear(resultado.device);
       setNovoToken(resultado);
-    } catch {
-      setFalha(true);
+    } catch (e) {
+      setFalha(e instanceof ErroApi ? e.message : "Não foi possível parear o travesseiro.");
     } finally {
       setPareando(false);
     }
@@ -165,7 +165,7 @@ function GuiaPareamento({ aoParear }: { aoParear: (aparelho: Dispositivo) => voi
       <div className="space-y-3 rounded-xl border border-border bg-card p-4">
         <p className="text-sm font-semibold text-foreground">Parear novo dispositivo</p>
 
-        {falha && <p role="alert">Não foi possível parear o travesseiro.</p>}
+        {falha && <p role="alert" className="text-sm text-destructive">{falha}</p>}
         <fieldset className="space-y-2" disabled={pareando}>
           <legend className="text-xs uppercase tracking-wider text-muted-foreground mb-2">
             O novo dispositivo será um
