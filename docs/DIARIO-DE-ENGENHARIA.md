@@ -10098,6 +10098,33 @@ Na revisão de bed5c9e, o autor mediu 554 aprovados em Python 3.12 com CI=true e
 
 **Procedência.** GitHub (PR #178, CI e deployment); `curl` na produção, Windows 11; o navegador do autor; 13/11.
 
+---
+
+# 2026-11-13 (xiv) — CI-11: os harnesses de mutação dizem a causa
+
+**O problema, como foi entendido no início.** Dois harnesses de controle quebravam por causa do ambiente e diziam outra coisa (AUD-09): (1) a suíte de RLS, com outro banco no mesmo servidor dependendo dos papéis do Supabase, dava erro de preparação em todos os testes, e a mutação dizia só "a suíte não passa nem sem sabotagem" — foi o que custou uma rodada no `SEC-13`, hoje; (2) o verificador do vetor dourado morria com `TypeError` no Windows com `PYTHONIOENCODING=utf-8`.
+
+**Hipótese de trabalho.** Papel é do servidor; o `drop owned by` só alcança o banco da conexão, e o comentário dizia o contrário. Uma checagem prévia no `pg_shdepend` diz qual banco prende os papéis, sem mexer nele. No dourado, o `subprocess` com `text=True` sem `encoding` decodifica na página de código do sistema.
+
+**O que foi testado, e como.** Postgres 16 e 17 em Docker (`python:3.12-slim`): a suíte num `outro_banco` e depois em outro banco do mesmo servidor; a mutação no mesmo cenário; a checagem desligada (controle do controle); a suíte e a mutação sem o outro banco. No Windows (Python 3.11.9, o `.venv` do `ml/`): o verificador do dourado com e sem `PYTHONIOENCODING=utf-8`. E o verificador novo da árvore sintática contra a árvore, contra as pastas do Codex e com um `text=True` sem `encoding` acrescentado.
+
+**Resultado medido.**
+- **Antes:** a suíte, `DependentObjectsStillExist: role "dormio_ingestao" cannot be dropped ... 4 objects in database outro_banco`; a mutação, "a suíte não passa nem sem sabotagem" e o fim de uma lista de `ERROR` sem a causa. O dourado com a variável: `TypeError: unsupported operand type(s) for +: 'NoneType' and 'str'`.
+- **Depois:** a suíte para com "Os papéis do Supabase não podem ser recriados: o servidor tem outro banco que depende deles (outro_banco)..."; a mutação mostra essa linha em "Primeiras linhas do erro". Com a checagem desligada, volta o `DependentObjectsStillExist`. Sem o outro banco: **270** e **54/54**. O dourado com a variável: **12/12** (e 12/12 sem ela).
+- **Verificador da árvore sintática:** limpo nas pastas da trilha; acusa as 5 do Codex e o `text=True` sabotado.
+
+**Adaptação.** A primeira versão da mensagem da mutação pegava a linha resumida do pytest, cortada na largura do terminal; a causa vem na linha abaixo de cada "ERROR at setup of", e é essa que ela mostra agora.
+
+**O que deu errado no caminho.**
+- **A primeira "mutação limpa" caiu na checagem nova** — com razão: o passo anterior deixara o banco da suíte com os papéis, e a mutação rodou noutro banco do mesmo servidor. É exatamente o defeito, e a mensagem disse isso.
+- **O primeiro controle do controle não aplicou** (o `sed` com `$` num arquivo CRLF); refeito por número de linha.
+
+**Risco em aberto.**
+- **As 5 chamadas em `ml/experimentos` e `ml/ferramentas`** ficam com o Codex; depois disso, o verificador passa a cobrir o `ml/` inteiro.
+- **A suíte e a mutação no mesmo servidor, em bancos diferentes, continuam incompatíveis** — agora com a mensagem certa. Rodar as duas no mesmo banco.
+
+**Procedência.** Branch `bugfix/CI-11-harnesses-de-mutacao` sobre `develop` `e95a654`; Docker no Windows 11 (`postgres:16`, `postgres:17`, `python:3.12-slim`); o `ml/.venv` (Python 3.11.9); 13/11.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

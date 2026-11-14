@@ -166,6 +166,42 @@ jobs:
           cd web-app
           python tests/migracoes/verificar_migracoes.py
 
+      # CI-11 (13/11): papel e do servidor inteiro. Com outro banco no mesmo
+      # servidor que dependa dos papeis do Supabase, a preparacao nao consegue
+      # recria-los -- ate 13/11 isso dava 270 erros e a mutacao dizia so "a
+      # suite nao passa nem sem sabotagem". Controle positivo: cria esse banco
+      # e exige que a suite pare COM a mensagem que nomeia o banco. Fica por
+      # ultimo porque deixa o servidor nesse estado ate apagar o banco.
+      - name: Controle — outro banco no servidor dá mensagem clara
+        if: matrix.postgres == '16'
+        run: |
+          set -uo pipefail
+          cd web-app
+          python - <<'PY'
+          import os, psycopg2
+          base = os.environ["DORMIO_RLS_DATABASE_URL"].rsplit("/", 1)[0]
+          c = psycopg2.connect(base + "/postgres"); c.autocommit = True
+          c.cursor().execute("drop database if exists outro_banco_ci11")
+          c.cursor().execute("create database outro_banco_ci11")
+          o = psycopg2.connect(base + "/outro_banco_ci11"); o.autocommit = True
+          o.cursor().execute("create table t (x int); grant select on t to dormio_ingestao")
+          o.close()
+          PY
+          python -m pytest tests/rls -x -q -p no:cacheprovider > /tmp/outro_banco.txt 2>&1
+          status=$?
+          python -c "import os,psycopg2; c=psycopg2.connect(os.environ['DORMIO_RLS_DATABASE_URL'].rsplit('/',1)[0]+'/postgres'); c.autocommit=True; c.cursor().execute('drop database outro_banco_ci11')"
+          if [ "$status" = "0" ]; then
+            echo "::error::A suite passou com outro banco dependendo dos papeis -- o controle nao exercitou nada."
+            exit 1
+          fi
+          if ! grep -q "outro_banco_ci11" /tmp/outro_banco.txt; then
+            echo "::error::A suite parou, mas sem nomear o banco que prende os papeis (CI-11)."
+            tail -20 /tmp/outro_banco.txt
+            exit 1
+          fi
+          grep -m1 "outro_banco_ci11" /tmp/outro_banco.txt | cut -c1-300
+          echo "ok: a suite parou e nomeou o banco, como devia."
+
   frontend:
     name: Frontend (vitest + tsc + vite)
     runs-on: ubuntu-24.04
@@ -444,3 +480,9 @@ jobs:
       # itens fechados duas vezes sem que nada acusasse.
       - name: Resumo do backlog (DOC-13)
         run: python scripts/conferir_backlog.py --conferir
+
+      # CI-11 (13/11): subprocess lendo texto sem `encoding` quebra no Windows
+      # com PYTHONIOENCODING=utf-8 (o stdout volta None). O Linux do CI nao
+      # reproduz, entao a checagem e no texto do codigo.
+      - name: Subprocess com encoding (CI-11)
+        run: python scripts/conferir_subprocess_utf8.py

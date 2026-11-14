@@ -759,7 +759,21 @@ def principal():
             "\nA suite nao passa nem sem sabotagem. Conserte isso primeiro — "
             "senao os sabotadores nao dizem nada.\n"
         )
-        print(processo.stdout[-3000:])
+        # A causa aparece nas primeiras linhas de erro, não no fim: com 270
+        # erros de preparação iguais, o fim da saída é só a lista deles (CI-11).
+        saida = processo.stdout + processo.stderr
+        linhas = saida.splitlines()
+        # As linhas `E ` (assercao e excecao) e a primeira linha abaixo de cada
+        # cabecalho "ERROR at setup of" -- e onde vem o `pytest.fail` da preparacao.
+        causas = [l for l in linhas if l.startswith("E ")] + [
+            linhas[i + 1] for i, l in enumerate(linhas[:-1])
+            if "ERROR at setup of" in l and not linhas[i + 1].startswith("_")
+        ]
+        if causas:
+            print("Primeiras linhas do erro:")
+            print("\n".join(list(dict.fromkeys(causas))[:10]))
+            print()
+        print(saida[-1500:])
         return 1
     print("passa\n")
 
