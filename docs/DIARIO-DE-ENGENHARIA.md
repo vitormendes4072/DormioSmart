@@ -10111,7 +10111,7 @@ Na revisão de bed5c9e, o autor mediu 554 aprovados em Python 3.12 com CI=true e
 **Resultado medido.**
 - **Antes:** a suíte, `DependentObjectsStillExist: role "dormio_ingestao" cannot be dropped ... 4 objects in database outro_banco`; a mutação, "a suíte não passa nem sem sabotagem" e o fim de uma lista de `ERROR` sem a causa. O dourado com a variável: `TypeError: unsupported operand type(s) for +: 'NoneType' and 'str'`.
 - **Depois:** a suíte para com "Os papéis do Supabase não podem ser recriados: o servidor tem outro banco que depende deles (outro_banco)..."; a mutação mostra essa linha em "Primeiras linhas do erro". Com a checagem desligada, volta o `DependentObjectsStillExist`. Sem o outro banco: **270** e **54/54**. O dourado com a variável: **12/12** (e 12/12 sem ela).
-- **Verificador da árvore sintática:** limpo nas pastas da trilha; acusa as 5 do Codex e o `text=True` sabotado.
+- **Verificador da árvore sintática:** limpo nas pastas da trilha; acusa as 5 do Codex e o `text=True` sabotado. Com a PR #180 do Codex mesclada (as 5 corrigidas), passou a cobrir o `ml/` inteiro, limpo.
 
 **Adaptação.** A primeira versão da mensagem da mutação pegava a linha resumida do pytest, cortada na largura do terminal; a causa vem na linha abaixo de cada "ERROR at setup of", e é essa que ela mostra agora.
 
@@ -10121,7 +10121,6 @@ Na revisão de bed5c9e, o autor mediu 554 aprovados em Python 3.12 com CI=true e
 - **O passo de controle no CI reprovou na primeira execução sem dizer nada:** o Actions roda o passo com `bash -e`, e a falha esperada do pytest encerrava o shell antes da conferência da mensagem (a saída ia para um arquivo). `set +e` no início do passo.
 
 **Risco em aberto.**
-- **As 5 chamadas em `ml/experimentos` e `ml/ferramentas`** ficam com o Codex; depois disso, o verificador passa a cobrir o `ml/` inteiro.
 - **A suíte e a mutação no mesmo servidor, em bancos diferentes, continuam incompatíveis** — agora com a mensagem certa. Rodar as duas no mesmo banco.
 
 **Procedência.** Branch `bugfix/CI-11-harnesses-de-mutacao` sobre `develop` `e95a654`; Docker no Windows 11 (`postgres:16`, `postgres:17`, `python:3.12-slim`); o `ml/.venv` (Python 3.11.9); 13/11.

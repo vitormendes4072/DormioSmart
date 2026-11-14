@@ -8,8 +8,9 @@ medido de novo em 13/11). O Linux do CI não reproduz, porque lá tudo é UTF-8 
 por isso a checagem é no texto do código, e não na execução.
 
 Reprova `text=True` ou `universal_newlines=True` sem `encoding=` em
-`subprocess.run`, `check_output` e `Popen`, nas pastas abaixo. As do `ml/`
-fora de `ml/testes/` são da trilha do Codex e entram quando ele as corrigir.
+`subprocess.run`, `check_output` e `Popen`, nas pastas abaixo — o `ml/` inteiro
+desde 13/11, quando o Codex corrigiu as cinco de `ml/experimentos` e
+`ml/ferramentas` (PR #180).
 
 Uso:  python scripts/conferir_subprocess_utf8.py [arquivo_ou_pasta ...]
 """
@@ -18,7 +19,7 @@ import sys
 from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parents[1]
-PASTAS = ("scripts", "web-app", "ml/testes")
+PASTAS = ("scripts", "web-app", "ml")
 CHAMADAS = {"run", "check_output", "Popen", "call", "check_call"}
 
 
