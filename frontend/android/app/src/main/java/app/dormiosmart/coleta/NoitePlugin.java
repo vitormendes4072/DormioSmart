@@ -198,8 +198,8 @@ public class NoitePlugin extends Plugin {
             final Intent compartilhar = new Intent(Intent.ACTION_SEND)
                     .setType("application/x-ndjson")
                     .putExtra(Intent.EXTRA_STREAM, uri)
-                    .setClipData(android.content.ClipData.newRawUri("Gravacao de teste", uri))
                     .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            compartilhar.setClipData(android.content.ClipData.newRawUri("Gravacao de teste", uri));
             getActivity().startActivity(Intent.createChooser(compartilhar, "Compartilhar gravacao de teste"));
             call.resolve();
         } catch (IOException | IllegalArgumentException | android.content.ActivityNotFoundException ex) {
