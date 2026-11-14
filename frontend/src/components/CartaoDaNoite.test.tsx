@@ -28,12 +28,13 @@ function estado(parcial: Partial<EstadoDaNoite> = {}): EstadoDaNoite {
 function plugin(
   inicial: EstadoDaNoite,
   gravadas = 0,
+  teste = false,
 ): PluginNoite & { atual: EstadoDaNoite; enviadas: number } {
   const p = {
     atual: inicial,
     enviadas: 0,
     noites: vi.fn(async () => ({
-      noites: gravadas > 0 ? [{ arquivo: "noite-1.jsonl", epocas: gravadas, enviadas: p.enviadas }] : [],
+      noites: gravadas > 0 ? [{ arquivo: "noite-1.jsonl", epocas: gravadas, enviadas: p.enviadas, ...(teste ? { teste } : {}) }] : [],
     })),
     lerEpocas: vi.fn(async ({ de }: { arquivo: string; de: number }) => ({
       epocas: Array.from({ length: Math.max(0, Math.min(gravadas, de + 60) - de) }, (_, k) =>
@@ -48,6 +49,8 @@ function plugin(
       p.atual = { ...p.atual, ativa: true, rodando: true, inicioUtcMs: INICIO };
       return { notificacoes: true };
     }),
+    apagarTeste: vi.fn(async () => {}),
+    compartilharTeste: vi.fn(async () => {}),
     encerrar: vi.fn(async () => {
       p.atual = { ...p.atual, ativa: false, rodando: false };
     }),
@@ -74,6 +77,28 @@ describe("CartaoDaNoite (APP-02)", () => {
     await act(async () => fireEvent.click(encerrar));
     expect(p.encerrar).toHaveBeenCalledTimes(1);
     expect(await screen.findByRole("button", { name: /iniciar a noite/i })).toBeTruthy();
+  });
+
+  it("inicia com a marca de teste e deixa a próxima gravação desmarcada", async () => {
+    const p = plugin(estado());
+    const registrar = vi.fn(async () => {});
+    render(<CartaoDaNoite plugin={p} agora={() => INICIO} consentimento={{ vigente: true, registrar }} />);
+
+    const iniciar = await screen.findByRole("button", { name: /iniciar a noite/i });
+    const caixa = () => screen.getByRole("checkbox", { name: /gravação de teste/i }) as HTMLInputElement;
+    expect(caixa().checked).toBe(false);
+    fireEvent.click(screen.getByLabelText(/dentro da fronha/i));
+    fireEvent.click(caixa());
+    await act(async () => fireEvent.click(iniciar));
+    expect(p.iniciar).toHaveBeenNthCalledWith(1, { posicao: "fronha", teste: true });
+
+    const encerrar = await screen.findByRole("button", { name: /encerrar a noite/i });
+    await act(async () => fireEvent.click(encerrar));
+    const iniciarDeNovo = await screen.findByRole("button", { name: /iniciar a noite/i });
+    expect(caixa().checked).toBe(false);
+    fireEvent.click(screen.getByLabelText(/dentro da fronha/i));
+    await act(async () => fireEvent.click(iniciarDeNovo));
+    expect(p.iniciar).toHaveBeenNthCalledWith(2, { posicao: "fronha" });
   });
 
   it("mostra a cobertura, a taxa e as retomadas da noite em curso", async () => {
@@ -153,6 +178,18 @@ describe("CartaoDaNoite (APP-02)", () => {
     expect((await screen.findByRole("status")).textContent).toMatch(/70 épocas enviadas/);
     expect(enviar).toHaveBeenCalledTimes(2);
     expect(p.enviadas).toBe(70);
+  });
+
+  it("gravação de teste não oferece envio manual nem dispara envio automático", async () => {
+    const p = plugin(estado(), 3, true);
+    const enviar = vi.fn();
+    render(<CartaoDaNoite plugin={p} agora={() => INICIO} enviar={enviar} />);
+    await screen.findByRole("button", { name: /iniciar a noite/i });
+    await waitFor(() => expect(p.noites).toHaveBeenCalled());
+    await act(async () => {});
+    expect(screen.queryByRole("button", { name: /enviar agora/i })).toBeNull();
+    expect(enviar).not.toHaveBeenCalled();
+    expect(p.lerEpocas).not.toHaveBeenCalled();
   });
 
   it("durante a noite nao envia nada", async () => {

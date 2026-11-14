@@ -60,6 +60,7 @@ public class NoitePlugin extends Plugin {
         // Etapa 4: a posicao do celular nesta noite, anotada com ela.
         final String posicao = call.getString("posicao");
         if (posicao != null) i.putExtra(ServicoDaNoite.EXTRA_POSICAO, posicao);
+        i.putExtra(ServicoDaNoite.EXTRA_TESTE, Boolean.TRUE.equals(call.getBoolean("teste")));
         ContextCompat.startForegroundService(c, i);
         final JSObject r = new JSObject();
         r.put("notificacoes", Build.VERSION.SDK_INT < 33
@@ -125,6 +126,7 @@ public class NoitePlugin extends Plugin {
                 final JSObject n = new JSObject();
                 final java.util.List<String> linhas = a.linhas(nome);
                 n.put("arquivo", nome);
+                n.put("teste", a.deTeste(nome));
                 n.put("epocas", linhas.size());
                 n.put("enviadas", a.enviadas(nome));
                 n.put("ativa", atual.ativa && nome.equals(atual.arquivo));
@@ -160,11 +162,11 @@ public class NoitePlugin extends Plugin {
         }
         try {
             final JSArray linhas = new JSArray();
-            for (String l : arquivo().faixa(nome, de, ArquivoDaNoite.MAXIMO_POR_LOTE)) linhas.put(l);
+            for (String l : arquivo().faixaParaEnvio(nome, de, ArquivoDaNoite.MAXIMO_POR_LOTE)) linhas.put(l);
             final JSObject r = new JSObject();
             r.put("epocas", linhas);
             call.resolve(r);
-        } catch (IOException ex) {
+        } catch (IOException | IllegalArgumentException ex) {
             call.reject("nao leu as epocas", ex);
         }
     }
@@ -184,6 +186,34 @@ public class NoitePlugin extends Plugin {
             call.resolve(r);
         } catch (IOException ex) {
             call.reject("nao gravou o progresso do envio", ex);
+        }
+    }
+
+    @PluginMethod
+    public void compartilharTeste(PluginCall call) {
+        try {
+            final java.io.File dados = arquivo().testeEncerrado(call.getString("arquivo"));
+            final Uri uri = androidx.core.content.FileProvider.getUriForFile(
+                    getContext(), getContext().getPackageName() + ".fileprovider", dados);
+            final Intent compartilhar = new Intent(Intent.ACTION_SEND)
+                    .setType("application/x-ndjson")
+                    .putExtra(Intent.EXTRA_STREAM, uri)
+                    .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            compartilhar.setClipData(android.content.ClipData.newRawUri("Gravacao de teste", uri));
+            getActivity().startActivity(Intent.createChooser(compartilhar, "Compartilhar gravacao de teste"));
+            call.resolve();
+        } catch (IOException | IllegalArgumentException | android.content.ActivityNotFoundException ex) {
+            call.reject("nao compartilhou a gravacao", ex);
+        }
+    }
+
+    @PluginMethod
+    public void apagarTeste(PluginCall call) {
+        try {
+            arquivo().apagarTeste(call.getString("arquivo"));
+            call.resolve();
+        } catch (IOException | IllegalArgumentException ex) {
+            call.reject("nao apagou a gravacao", ex);
         }
     }
 

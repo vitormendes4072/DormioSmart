@@ -60,7 +60,7 @@ export function prefixoResolvido(r: RespostaDoLote, tamanho: number): number {
 
 export async function contarRestantes(fonte: FonteDaNoite): Promise<number> {
   const { noites } = await fonte.noites();
-  return noites.reduce((s, n) => s + Math.max(0, n.epocas - n.enviadas), 0);
+  return noites.filter((noite) => !noite.teste).reduce((s, n) => s + Math.max(0, n.epocas - n.enviadas), 0);
 }
 
 export async function enviarNoites(
@@ -70,9 +70,10 @@ export async function enviarNoites(
 ): Promise<ResultadoDoEnvio> {
   const r: ResultadoDoEnvio = { confirmadas: 0, rejeitadas: 0, primeiraRejeicao: null, restantes: 0, erro: null };
   const { noites } = await fonte.noites();
-  const total = noites.reduce((s, n) => s + Math.max(0, n.epocas - n.enviadas), 0);
+  const enviaveis = noites.filter((noite) => !noite.teste);
+  const total = enviaveis.reduce((s, n) => s + Math.max(0, n.epocas - n.enviadas), 0);
 
-  envio: for (const noite of noites) {
+  envio: for (const noite of enviaveis) {
     let ponto = noite.enviadas;
     while (ponto < noite.epocas) {
       const { epocas } = await fonte.lerEpocas({ arquivo: noite.arquivo, de: ponto });

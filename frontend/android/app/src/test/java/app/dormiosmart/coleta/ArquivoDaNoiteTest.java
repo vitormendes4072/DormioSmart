@@ -21,6 +21,48 @@ public class ArquivoDaNoiteTest {
     @Rule public TemporaryFolder tmp = new TemporaryFolder();
 
     @Test
+    public void marcaAntesDaPrimeiraEpocaESobreviveAReabertura() throws IOException {
+        final File pasta = tmp.getRoot();
+        final String nome = ArquivoDaNoite.nomeDaNoite(1);
+        try (ArquivoDaNoite a = new ArquivoDaNoite(pasta)) {
+            a.abrirNovaGravacao(nome, true);
+            assertTrue(a.deTeste(nome));
+            assertTrue(a.linhas(nome).isEmpty());
+            a.anexar("{}");
+        }
+        try (ArquivoDaNoite reaberto = new ArquivoDaNoite(pasta)) {
+            reaberto.abrir(nome);
+            assertTrue(reaberto.deTeste(nome));
+            reaberto.anexar("{}");
+            assertEquals(2, reaberto.linhas(nome).size());
+            try {
+                reaberto.faixaParaEnvio(nome, 0, 60);
+                fail("teste entrou no caminho do plugin");
+            } catch (IOException esperado) {
+                assertEquals("gravacao de teste fica no aparelho", esperado.getMessage());
+            }
+        }
+        final ArquivoDaNoite a = new ArquivoDaNoite(pasta);
+        a.apagarTeste(nome);
+        assertFalse(a.noites().contains(nome));
+        assertFalse(a.deTeste(nome));
+    }
+
+    @Test
+    public void gravacaoNormalEAntigaContinuamDisponiveisParaEnvio() throws IOException {
+        try (ArquivoDaNoite a = new ArquivoDaNoite(tmp.getRoot())) {
+            final String normal = ArquivoDaNoite.nomeDaNoite(1);
+            final String antiga = ArquivoDaNoite.nomeDaNoite(2);
+            a.abrirNovaGravacao(normal, false);
+            a.anexar("{}");
+            a.abrir(antiga);
+            a.anexar("{}");
+            assertEquals(1, a.faixaParaEnvio(normal, 0, 60).size());
+            assertEquals(1, a.faixaParaEnvio(antiga, 0, 60).size());
+        }
+    }
+
+    @Test
     public void linhasGravadasSobrevivemAoFechamentoEAReabertura() throws IOException {
         final File pasta = new File(tmp.getRoot(), "noites");
         final String nome = ArquivoDaNoite.nomeDaNoite(1_794_096_000_000L);

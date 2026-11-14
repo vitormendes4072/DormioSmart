@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import type { RespostaDoLote } from "./coleta";
 import { ErroDeIngestao } from "./coleta";
@@ -202,4 +202,25 @@ describe("enviarNoites (APP-02, etapa 3)", () => {
     expect(s.lotes).toEqual([]);
     expect(f.leituras).toBe(0);
   });
+});
+
+it("sincroniza a gravação normal e a legada, mas nunca lê a de teste", async () => {
+  const noites = [
+    { arquivo: "teste", epocas: 1, enviadas: 0, teste: true },
+    { arquivo: "normal", epocas: 1, enviadas: 0, teste: false },
+    { arquivo: "legada", epocas: 1, enviadas: 0 },
+  ];
+  const fonte: FonteDaNoite = {
+    noites: async () => ({ noites }),
+    lerEpocas: vi.fn(async ({ arquivo }) => ({ epocas: [JSON.stringify({ arquivo })] })),
+    marcarEnviadas: vi.fn(async ({ arquivo, ate }) => {
+      noites.find((n) => n.arquivo === arquivo)!.enviadas = ate;
+      return { enviadas: ate };
+    }),
+  };
+  expect(await contarRestantes(fonte)).toBe(2);
+  const enviar = vi.fn(async () => ({ aceitas: [0], rejeitadas: [], pendentes: [] }));
+  expect((await enviarNoites(fonte, enviar)).restantes).toBe(0);
+  expect(enviar.mock.calls).toEqual([[ [{ arquivo: "normal" }] ], [ [{ arquivo: "legada" }] ]]);
+  expect(fonte.lerEpocas).not.toHaveBeenCalledWith({ arquivo: "teste", de: 0 });
 });

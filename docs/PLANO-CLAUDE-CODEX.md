@@ -52,7 +52,7 @@ novo, o autor reserva aqui antes.
 | `019` | `API-07` (pausar o recebimento) | Codex |
 | `020` | `API-06` (lote numa chamada) | Codex |
 | `021` | `DATA-06` (o limiar viaja com a leitura) | Codex |
-| `022` | `APP-11` (marcar gravação de teste), se precisar de coluna | Codex |
+| `022` | ~~`APP-11`~~ *(13/11: não precisou — a marca é só local)*; livre | — |
 
 IDs novos de backlog seguem a regra 5 do `AGENTS.md`: conferir em `origin/develop` e avisar o autor.
 
@@ -104,7 +104,7 @@ estiverem mesclados, e não quando todos os da onda anterior estiverem.
 |---|---|---|---|---|
 | 2.1 | `SEC-19` | Tirar o recuo para a `service_role` | `web-app/database.py` | R1 (a 1.1 mexe no mesmo arquivo) |
 | 2.2 | `AUTH-09` | Validar o JWT localmente pelo JWKS | `web-app/auth.py` | 2.1 |
-| 2.3 | `APP-11` | Marcar uma gravação como teste, para que não vire noite | app (tela da noite) e backend; migração `022` só se precisar | o desenho combinado com o Claude, porque toca `frontend/android/` |
+| 2.3 | `APP-11` ✅ *(13/11, #182; só no aparelho, sem backend — a `022` ficou livre)* | Marcar uma gravação como teste, para que não vire noite | app (tela da noite) e backend; migração `022` só se precisar | o desenho combinado com o Claude, porque toca `frontend/android/` |
 
 **Trilha Claude** (`.github/`, `scripts/`, `web-app/tests/rls/`, `firmware/`, `vercel.json`):
 
