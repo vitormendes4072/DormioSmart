@@ -10246,7 +10246,7 @@ Na revisão de bed5c9e, o autor mediu 554 aprovados em Python 3.12 com CI=true e
 
 **Risco em aberto.**
 - **O CSV mudou a coluna** `temp_chip` para `temperatura`: planilhas que a liam pelo nome precisam acompanhar.
-- **A captura mostra o travesseiro enviando de 15:42 a 21:37 de 13/11**, parado na mesa (intensidade 0,00–0,07): são épocas de bancada na conta do autor, como as de 12/11. Apagá-las é decisão do autor; o `API-07` (pausar descartando) evita isso daqui em diante.
+- **A captura mostra o travesseiro enviando de 15:42 a 21:37 de 13/11**, parado na mesa (intensidade 0,00–0,07): são épocas de bancada na conta do autor, como as de 12/11. ✏️ *14/11: o autor contou (consulta só de leitura: **818** leituras do travesseiro em 13/11, de 14:53 a 21:37 no horário de Brasília — todas as do travesseiro na conta, porque ainda não houve noite com ele) e apagou com o mesmo filtro.* O `API-07` (pausar descartando) evita isso daqui em diante.
 - **O celular** só recebe o `APP-11` e o `DATA-14` com um APK novo (`APP-12`).
 
 **Procedência.** GitHub (PR #186, CI e deployment); `curl` na produção e o conferidor da CSP, Windows 11; a captura de tela do autor; 13/11.
