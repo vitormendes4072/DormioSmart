@@ -575,6 +575,106 @@ describe("montagem real das telas (UI-17)", PRAZO, () => {
     expect((await screen.findByText("Pausado:")).parentElement?.textContent).toContain("Travesseiro");
   });
 
+  function simularPareamento() {
+    const original = vi.mocked(fetch).getMockImplementation()!;
+    const aparelho = { id: "novo", nome: "Travesseiro novo", tipo: "travesseiro", revoked_at: null, last_seen_at: null as string | null };
+    const token = "credencial-sintetica";
+    const criar = vi.fn(() => respostaJson({ device: aparelho, token }));
+    const listar = vi.fn(() => respostaJson([aparelho]));
+    vi.mocked(fetch).mockImplementation(async (entrada, opcoes) => {
+      if (String(entrada) === "/api/devices") return opcoes?.method === "POST" ? criar() : listar();
+      return original(entrada, opcoes);
+    });
+    return { aparelho, token, criar, listar };
+  }
+
+  async function abrirPareamento() {
+    await montar("/dispositivos");
+    fireEvent.click(await screen.findByRole("button", { name: "Parear dispositivo" }));
+    return await screen.findByRole("button", { name: "Parear" });
+  }
+
+  it("leva o celular a Coletar sem gerar token manual", async () => {
+    const { criar } = simularPareamento();
+    await abrirPareamento();
+    fireEvent.click(screen.getByRole("radio", { name: /celular/i }));
+    fireEvent.click(screen.getByRole("link", { name: "Ir para Coletar" }));
+    expect(await screen.findByRole("heading", { name: /nova coleta/i })).toBeTruthy();
+    expect(criar).not.toHaveBeenCalled();
+  });
+
+  it.each([false, true])("copia a credencial ou oferece seleção manual e a remove ao fechar (%s)", async (falhar) => {
+    const { token } = simularPareamento();
+    const anterior = Object.getOwnPropertyDescriptor(navigator, "clipboard");
+    const escrever = vi.fn(async () => { if (falhar) throw new Error("sem permissão"); });
+    Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText: escrever } });
+    try {
+      fireEvent.click(await abrirPareamento());
+      expect((await screen.findByText(token)).classList.contains("select-all")).toBe(true);
+      fireEvent.click(screen.getByRole("button", { name: "Copiar token" }));
+      expect(await screen.findByText(falhar ? /copie manualmente/i : "Token copiado.")).toBeTruthy();
+      expect(escrever).toHaveBeenCalledWith(token);
+      fireEvent.click(screen.getByRole("button", { name: "Ocultar pareamento" }));
+      expect(screen.queryByText(token)).toBeNull();
+      fireEvent.click(screen.getByRole("button", { name: "Parear dispositivo" }));
+      expect(screen.queryByText(token)).toBeNull();
+    } finally {
+      if (anterior) Object.defineProperty(navigator, "clipboard", anterior);
+      else Reflect.deleteProperty(navigator, "clipboard");
+    }
+  });
+
+  it("consulta periodicamente e mostra o primeiro envio sem recarregar a página", async () => {
+    const { aparelho, listar } = simularPareamento();
+    const parear = await abrirPareamento();
+    const visibilidade = vi.spyOn(document, "visibilityState", "get").mockReturnValue("hidden");
+    vi.useFakeTimers();
+    try {
+      await act(async () => fireEvent.click(parear));
+      expect(screen.getByText("Travesseiro · Aguardando primeiro envio")).toBeTruthy();
+      const antes = listar.mock.calls.length;
+      await act(async () => vi.advanceTimersByTimeAsync(15_000));
+      expect(listar).toHaveBeenCalledTimes(antes);
+      aparelho.last_seen_at = new Date().toISOString();
+      visibilidade.mockReturnValue("visible");
+      await act(async () => vi.advanceTimersByTimeAsync(15_000));
+      expect(listar).toHaveBeenCalledTimes(antes + 1);
+      expect(screen.queryByText(/aguardando primeiro envio/i)).toBeNull();
+      expect(screen.getByText(/travesseiro · último envio/i)).toBeTruthy();
+      await act(async () => vi.advanceTimersByTimeAsync(15_000));
+      expect(listar).toHaveBeenCalledTimes(antes + 1);
+    } finally {
+      vi.useRealTimers();
+      visibilidade.mockRestore();
+    }
+  });
+
+  it("encerra a consulta periódica após dez minutos sem primeiro envio", async () => {
+    const { listar } = simularPareamento();
+    const parear = await abrirPareamento();
+    const visibilidade = vi.spyOn(document, "visibilityState", "get").mockReturnValue("visible");
+    vi.useFakeTimers();
+    try {
+      await act(async () => fireEvent.click(parear));
+      await act(async () => vi.advanceTimersByTimeAsync(600_000));
+      const chamadas = listar.mock.calls.length;
+      await act(async () => vi.advanceTimersByTimeAsync(15_000));
+      expect(listar).toHaveBeenCalledTimes(chamadas);
+      expect(screen.getByRole("button", { name: "Verificar agora" })).toBeTruthy();
+    } finally {
+      vi.useRealTimers();
+      visibilidade.mockRestore();
+    }
+  });
+
+  it("verifica primeiro envio manualmente pelo cartão", async () => {
+    const { aparelho } = simularPareamento();
+    await montar("/dispositivos");
+    aparelho.last_seen_at = new Date().toISOString();
+    fireEvent.click(await screen.findByRole("button", { name: "Verificar agora" }));
+    expect(await screen.findByText(/travesseiro · último envio/i)).toBeTruthy();
+  });
+
   it("a rota /dispositivos monta o gerenciamento para a sessão autenticada", async () => {
     await montar("/dispositivos");
     expect(await screen.findByRole("heading", { name: "Dispositivos", level: 1 })).toBeTruthy();
