@@ -10271,6 +10271,26 @@ Na revisão de bed5c9e, o autor mediu 554 aprovados em Python 3.12 com CI=true e
 
 **Procedência.** Branch `feature/api-07-pausar-recebimento` sobre `develop` `1d39279`, sincronizada na revisão com `5de4a7e`. O teste do núcleo veio do autor no commit `609ed86`. Windows, Python 3.13, PostgreSQL 17 e Node/Vitest. Dados sintéticos.
 
+---
+
+# 2026-11-14 — UI-25: guia de pareamento e primeiro envio
+
+**O problema, como foi entendido no início.** O formulário manual também emitia credencial para celular. O travesseiro recém-pareado não tinha acompanhamento do primeiro envio.
+
+**Hipótese de trabalho.** Encaminhar o celular à coleta existente e manter o token do travesseiro no guia enquanto ele está aberto. A consulta à lista de dispositivos confirma o contato pelo `last_seen_at`.
+
+**O que foi testado, e como.** No Windows, montagem das rotas reais com respostas simuladas e relógio controlado, suíte Vitest, build com TypeScript e conferência da CSP sobre a saída do Vite.
+
+**Resultado medido.** Frontend **623 testes em 45 arquivos**. Os seis casos novos falharam contra a `develop`. Desligar a consulta periódica derrubou o teste da transição ao primeiro envio. Remover o limite de dez minutos derrubou o teste do encerramento das consultas. Copiar o valor errado ou manter o guia montado ao ocultar derrubou os dois casos de cópia. Remover o aviso de seleção manual derrubou o caso de falha do clipboard. Trocar o percurso do celular por pareamento manual derrubou o teste que exige chegar a Coletar.
+
+**Adaptação.** O guia guarda a credencial em estado volátil do componente, oferece seleção manual quando a cópia falha e aponta para o README do firmware. A atualização automática roda a cada 15 s, por até 10 min e com a aba visível. O cartão oferece verificação manual.
+
+**O que deu errado no caminho.** A primeira compilação TypeScript acusou a opção `exact` na consulta por papel. A busca já usa correspondência exata pelo nome e a opção foi removida.
+
+**Risco em aberto.** A verificação em placa física fica para o percurso de bancada. Foi simulada a resposta que registra o primeiro contato.
+
+**Procedência.** Branch `feature/ui-25-guia-pareamento`, criada de `a21a0d1` e sincronizada com `develop` `05d3ff8`. Windows, Node/Vitest/Vite. Credenciais sintéticas.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

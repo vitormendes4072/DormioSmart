@@ -1,5 +1,7 @@
 import { AlertTriangle, Check, Copy, Cpu, Loader2, Pencil, Plus, Radio, Smartphone, X } from "lucide-react";
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+
+import { Link } from "react-router";
 
 import { ErroApi } from "../lib/api";
 import {
@@ -23,11 +25,8 @@ export function MeusDispositivos({ mostrarPareamento = true }: { mostrarPareamen
   const [lista, setLista] = useState<Dispositivo[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
-  const [pareando, setPareando] = useState(false);
-  // O tipo escolhido no pareamento (DATA-05). Padrao travesseiro: e o
-  // dispositivo do projeto, e o celular e instrumento de referencia.
-  const [tipo, setTipo] = useState<TipoDeDispositivo>("travesseiro");
-  const [novoToken, setNovoToken] = useState<Pareamento | null>(null);
+  const [aguardando, setAguardando] = useState<string | null>(null);
+  const [verificando, setVerificando] = useState(false);
 
   const carregar = useCallback(async () => {
     setCarregando(true);
@@ -45,19 +44,36 @@ export function MeusDispositivos({ mostrarPareamento = true }: { mostrarPareamen
     void carregar();
   }, [carregar]);
 
-  async function parear() {
-    setPareando(true);
-    setErro(null);
+  const consultaEmAndamento = useRef(false);
+  const verificar = useCallback(async (id: string) => {
+    if (consultaEmAndamento.current) return;
+    consultaEmAndamento.current = true;
+    setVerificando(true);
     try {
-      const resultado = await parearDispositivo("", tipo);
-      setNovoToken(resultado);
-      await carregar();
+      const atual = (await listarDispositivos()).find((item) => item.id === id);
+      if (atual) setLista((lista) => lista.map((item) => item.id === id ? { ...item, last_seen_at: atual.last_seen_at } : item));
+      if (!atual || atual.last_seen_at || atual.revoked_at) {
+        setAguardando((esperado) => esperado === id ? null : esperado);
+      }
     } catch (e) {
-      setErro(e instanceof ErroApi ? e.message : "Não foi possível parear.");
+      setErro(e instanceof ErroApi ? e.message : "Não foi possível verificar o primeiro envio.");
     } finally {
-      setPareando(false);
+      consultaEmAndamento.current = false;
+      setVerificando(false);
     }
-  }
+  }, []);
+
+  useEffect(() => {
+    if (!aguardando) return;
+    const intervalo = window.setInterval(() => {
+      if (document.visibilityState === "visible") void verificar(aguardando);
+    }, 15_000);
+    const limite = window.setTimeout(() => window.clearInterval(intervalo), 600_000);
+    return () => {
+      window.clearInterval(intervalo);
+      window.clearTimeout(limite);
+    };
+  }, [aguardando, verificar]);
 
   async function revogar(dispositivo: Dispositivo) {
     const confirmado = window.confirm(
@@ -85,10 +101,6 @@ export function MeusDispositivos({ mostrarPareamento = true }: { mostrarPareamen
 
   return (
     <div className="space-y-4">
-      {novoToken ? (
-        <TokenRecemCriado pareamento={novoToken} aoFechar={() => setNovoToken(null)} />
-      ) : null}
-
       {erro ? (
         <p role="alert" className="text-sm text-destructive">
           {erro}
@@ -106,6 +118,8 @@ export function MeusDispositivos({ mostrarPareamento = true }: { mostrarPareamen
               key={dispositivo.id}
               dispositivo={dispositivo}
               aoAtualizar={carregar}
+              verificarEnvio={() => void verificar(dispositivo.id)}
+              verificando={verificando}
               aoRevogar={() => revogar(dispositivo)}
               aoAlterarRecebimento={(atualizado) =>
                 setLista((atuais) => atuais.map((item) => item.id === atualizado.id ? atualizado : item))
@@ -116,13 +130,42 @@ export function MeusDispositivos({ mostrarPareamento = true }: { mostrarPareamen
         </ul>
       )}
 
-      {/* O tipo e o botao formam UMA unidade visual, dentro de uma moldura
-          propria. Soltos entre a lista e o botao, os radios pareciam
-          propriedade dos dispositivos ja listados — "qual deles e o
-          travesseiro?" — quando na verdade descrevem o PROXIMO a ser criado. */}
-      <div id="pareamento-dispositivo" hidden={!mostrarPareamento} className="space-y-3 rounded-xl border border-border bg-card p-4">
+      <div id="pareamento-dispositivo" hidden={!mostrarPareamento}>
+        {mostrarPareamento && <GuiaPareamento aoParear={(aparelho) => {
+          setLista((lista) => [aparelho, ...lista.filter((item) => item.id !== aparelho.id)]);
+          setAguardando(aparelho.id);
+        }} />}
+      </div>
+    </div>
+  );
+}
+
+function GuiaPareamento({ aoParear }: { aoParear: (aparelho: Dispositivo) => void }) {
+  const [tipo, setTipo] = useState<TipoDeDispositivo>("travesseiro");
+  const [pareando, setPareando] = useState(false);
+  const [novoToken, setNovoToken] = useState<Pareamento | null>(null);
+  const [falha, setFalha] = useState(false);
+
+  async function parear() {
+    setPareando(true);
+    setFalha(false);
+    try {
+      const resultado = await parearDispositivo("", "travesseiro");
+      aoParear(resultado.device);
+      setNovoToken(resultado);
+    } catch {
+      setFalha(true);
+    } finally {
+      setPareando(false);
+    }
+  }
+
+  if (novoToken) return <TokenRecemCriado pareamento={novoToken} aoFechar={() => setNovoToken(null)} />;
+  return (
+      <div className="space-y-3 rounded-xl border border-border bg-card p-4">
         <p className="text-sm font-semibold text-foreground">Parear novo dispositivo</p>
 
+        {falha && <p role="alert">Não foi possível parear o travesseiro.</p>}
         <fieldset className="space-y-2" disabled={pareando}>
           <legend className="text-xs uppercase tracking-wider text-muted-foreground mb-2">
             O novo dispositivo será um
@@ -148,6 +191,11 @@ export function MeusDispositivos({ mostrarPareamento = true }: { mostrarPareamen
           ))}
         </fieldset>
 
+        {tipo === "celular" ? (
+          <Link to="/coletar" className="inline-block rounded-xl bg-secondary px-4 py-3 text-sm font-semibold">
+            Ir para Coletar
+          </Link>
+        ) : (
         <button
           onClick={parear}
           disabled={pareando}
@@ -156,8 +204,8 @@ export function MeusDispositivos({ mostrarPareamento = true }: { mostrarPareamen
           {pareando ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
           {pareando ? "Preparando..." : "Parear"}
         </button>
+        )}
       </div>
-    </div>
   );
 }
 
@@ -175,16 +223,16 @@ function TokenRecemCriado({
   pareamento: Pareamento;
   aoFechar: () => void;
 }) {
-  const [copiado, setCopiado] = useState(false);
+  const [copia, setCopia] = useState<"copiado" | "manual" | null>(null);
 
   async function copiar() {
     try {
       await navigator.clipboard.writeText(pareamento.token);
-      setCopiado(true);
+      setCopia("copiado");
     } catch {
       // Sem permissão de área de transferência: o valor segue visível para
       // seleção manual, então não é um caminho sem saída.
-      setCopiado(false);
+      setCopia("manual");
     }
   }
 
@@ -204,7 +252,7 @@ function TokenRecemCriado({
       </div>
 
       <div className="flex items-center gap-2">
-        <code className="flex-1 min-w-0 px-3 py-2 rounded-lg bg-card border border-border text-xs font-mono text-foreground break-all">
+        <code className="flex-1 min-w-0 px-3 py-2 rounded-lg bg-card border border-border text-xs font-mono text-foreground break-all select-all">
           {pareamento.token}
         </code>
         <button
@@ -212,7 +260,7 @@ function TokenRecemCriado({
           aria-label="Copiar token"
           className="flex-shrink-0 p-2 rounded-lg bg-secondary hover:bg-secondary/70 transition"
         >
-          {copiado ? (
+          {copia === "copiado" ? (
             <Check className="w-4 h-4 text-primary" />
           ) : (
             <Copy className="w-4 h-4 text-muted-foreground" />
@@ -220,9 +268,15 @@ function TokenRecemCriado({
         </button>
       </div>
 
+      {copia === "manual" && <p role="status">Selecione o token acima e copie manualmente.</p>}
+      {copia === "copiado" && <p role="status">Token copiado.</p>}
       <p className="text-xs text-muted-foreground">
         Cole em <code className="font-mono">firmware/secrets.h</code>, no campo{" "}
-        <code className="font-mono">DEVICE_TOKEN</code>.
+        <code className="font-mono">DEVICE_TOKEN</code>. O <code>secrets.h</code> é ignorado pelo Git e nunca deve
+        ser commitado. Depois, grave o firmware na placa seguindo o{" "}
+        <a className="underline" href="https://github.com/vitormendes4072/DormioSmart/blob/main/firmware/README.md">
+          firmware/README.md
+        </a>.
       </p>
 
       <button
@@ -238,12 +292,16 @@ function TokenRecemCriado({
 function LinhaDoDispositivo({
   dispositivo,
   aoAtualizar,
+  verificarEnvio,
+  verificando,
   aoRevogar,
   aoAlterarRecebimento,
   aoFalhar,
 }: {
   dispositivo: Dispositivo;
   aoAtualizar: () => Promise<void>;
+  verificarEnvio: () => void;
+  verificando: boolean;
   aoRevogar: () => void;
   aoAlterarRecebimento: (dispositivo: Dispositivo) => void;
   aoFalhar: (mensagem: string) => void;
@@ -334,9 +392,14 @@ function LinhaDoDispositivo({
                   livre do usuario e nao classifica nada. */}
               {rotuloDoTipo(dispositivo.tipo)}
               {" · "}
-              {dispositivo.last_seen_at ? `Último envio ${descreverUltimoContato(dispositivo)}` : "Ainda sem envios"}
+              {dispositivo.last_seen_at ? `Último envio ${descreverUltimoContato(dispositivo)}` : "Aguardando primeiro envio"}
             </p>
             <EstadoDoDispositivo ativo={ativo}>{ativo ? "Credencial ativa" : "Revogado"}</EstadoDoDispositivo>
+            {ativo && !dispositivo.last_seen_at && (
+              <button type="button" onClick={verificarEnvio} disabled={verificando} className="text-xs font-semibold text-primary">
+                Verificar agora
+              </button>
+            )}
             {ativo && pausado && <p className="text-sm font-semibold text-destructive">Pausado</p>}
           </>
         )}

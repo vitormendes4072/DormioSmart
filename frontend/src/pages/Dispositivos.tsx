@@ -41,7 +41,7 @@ export function Dispositivos() {
       <section className="rounded-[14px] border border-border bg-card p-4 shadow-sm">
         <h2 className="text-sm font-bold text-foreground">Sobre o pareamento</h2>
         <p className="mt-2 text-xs text-muted-foreground">
-          Cada dispositivo pareado recebe uma credencial própria. Guarde-a ao concluir o pareamento.
+          O travesseiro usa um token próprio. O celular é vinculado pela sua sessão ao usar Coletar.
         </p>
       </section>
     </div>
