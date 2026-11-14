@@ -10230,7 +10230,30 @@ Na revisão de bed5c9e, o autor mediu 554 aprovados em Python 3.12 com CI=true e
 
 ---
 
-# 2026-11-13 (xix) — API-07: pausar o recebimento por aparelho
+# 2026-11-13 (xix) — o release R5: o contrato 2.10.0 e a origem da temperatura
+
+**O problema, como foi entendido no início.** O `DATA-14` (contrato 2.10.0), o `UI-31` (a origem da temperatura no painel e no CSV) e o `APP-11` (a política descrevendo a gravação de teste) estavam em `develop`; o autor pediu o release.
+
+**Hipótese de trabalho.** Nada exige migração: o backend só muda a versão informada; o site muda o rótulo, o CSV e a política; o app só recebe o `APP-11` e o `DATA-14` com um APK novo.
+
+**O que foi testado, e como.** PR #186 (`develop` → `main`), CI e Vercel; depois do deploy, `/health`, as rotas sem token e com `Bearer` inválido, os cabeçalhos, `scripts/conferir_csp.py` contra as páginas servidas, os textos novos no JavaScript publicado (painel e política). Depois, o login do autor.
+
+**Resultado medido.** CI 13 de 13; merge `ea71a05`; deploy em `gru1`. `/health` `200` com **`contrato_de_dados` 2.10.0**; `401` sem token e com `Bearer` inválido; a CSP contra as páginas servidas, 10 de 10 hashes. No pacote: "Chip MPU6050", "Origem desconhecida" e `origem_temperatura`; a política com o trecho das gravações de teste. **Login do autor (13/11, captura de tela):** a tabela de leituras recentes com a coluna "Temperatura" e a origem "Chip MPU6050" sob cada valor do travesseiro.
+
+**Adaptação.** Nenhuma.
+
+**O que deu errado no caminho.** Nada nesta etapa.
+
+**Risco em aberto.**
+- **O CSV mudou a coluna** `temp_chip` para `temperatura`: planilhas que a liam pelo nome precisam acompanhar.
+- **A captura mostra o travesseiro enviando de 15:42 a 21:37 de 13/11**, parado na mesa (intensidade 0,00–0,07): são épocas de bancada na conta do autor, como as de 12/11. ✏️ *14/11: o autor contou (consulta só de leitura: **818** leituras do travesseiro em 13/11, de 14:53 a 21:37 no horário de Brasília — todas as do travesseiro na conta, porque ainda não houve noite com ele) e apagou com o mesmo filtro.* O `API-07` (pausar descartando) evita isso daqui em diante.
+- **O celular** só recebe o `APP-11` e o `DATA-14` com um APK novo (`APP-12`).
+
+**Procedência.** GitHub (PR #186, CI e deployment); `curl` na produção e o conferidor da CSP, Windows 11; a captura de tela do autor; 13/11.
+
+---
+
+# 2026-11-13 (xx) — API-07: pausar o recebimento por aparelho
 
 **O problema, como foi entendido no início.** A placa do travesseiro envia direto para a conta. Épocas de bancada viravam noites.
 
@@ -10238,7 +10261,7 @@ Na revisão de bed5c9e, o autor mediu 554 aprovados em Python 3.12 com CI=true e
 
 **O que foi testado, e como.** Windows, pytest com PostgreSQL 17 em Docker para a RLS, rotas Flask com banco simulado e Vitest/Vite para a montagem e o build do frontend.
 
-**Resultado medido.** Frontend **617 em 45 arquivos**, TypeScript e build. Backend e RLS **833 passaram e 1 pulou**. Alterar o padrão para falso derrubou o teste de aparelho habilitado. Retirar a guarda de pausa derrubou o teste de cada RPC por falta de PT409. Retirar o filtro de revogação fez ambas gravarem; manter a pausa sempre ativa fez ambas recusarem a retomada. Mover a rejeição para pendentes derrubou os dois testes do lote. Trocar 409 por 503 derrubou o teste do avulso, e mascarar a credencial revogada derrubou o teste que exige 401. Na tela, ignorar a confirmação derrubou o teste de pausar e retomar; retirar o aviso derrubou o teste do painel vazio.
+**Resultado medido.** Frontend **617 em 45 arquivos**, TypeScript e build. Backend e RLS **833 passaram e 1 pulou**. Alterar o padrão para falso derrubou o teste de aparelho habilitado. Retirar a guarda de pausa derrubou o teste de cada RPC por falta de PT409. Retirar o filtro de revogação fez ambas gravarem; manter a pausa sempre ativa fez ambas recusarem a retomada. Mover a rejeição para pendentes derrubou os dois testes do lote. Trocar 409 por 503 derrubou o teste do avulso, e mascarar a credencial revogada derrubou o teste que exige 401. Na tela, ignorar a confirmação derrubou o teste de pausar e retomar; retirar o aviso derrubou o teste do painel vazio. ✏️ *14/11, revisão da PR #187:* o teste da rota PUT exige 404 e preservação do estado do revogado. Sem o filtro `.is_("revoked_at", "null")`, a consulta simulada atualizou o aparelho e a rota devolveu 200. O filtro foi restaurado. Backend e RLS na revisão: **834 passaram e 1 pulou**, no Python 3.13 local sem `CI=true`.
 
 **Adaptação.** A decisão do autor substituiu a pendência pelo descarte. A interface confirma a perda antes de pausar. O avulso retorna `409` com `aparelho_pausado`, e o lote retorna `200` com rejeições definitivas. A validação de conteúdo conserva a recusa própria para épocas inválidas verificadas antes da decisão do banco.
 
@@ -10246,7 +10269,7 @@ Na revisão de bed5c9e, o autor mediu 554 aprovados em Python 3.12 com CI=true e
 
 **Risco em aberto.** Medição na placa fica com o autor no `VIA-01`. A placa deve entregar as épocas da bancada enquanto a pausa está ativa e a fila deve drenar antes de retomar. Leituras que ficarem offline até depois da retomada ainda podem chegar à conta.
 
-**Procedência.** Branch `feature/api-07-pausar-recebimento` sobre `develop` `1d39279`. Windows, Python 3.13, PostgreSQL 17 e Node/Vitest. Dados sintéticos.
+**Procedência.** Branch `feature/api-07-pausar-recebimento` sobre `develop` `1d39279`, sincronizada na revisão com `5de4a7e`. O teste do núcleo veio do autor no commit `609ed86`. Windows, Python 3.13, PostgreSQL 17 e Node/Vitest. Dados sintéticos.
 
 # O que este diário não cobre
 
