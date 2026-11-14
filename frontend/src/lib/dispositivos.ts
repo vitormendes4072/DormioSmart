@@ -213,3 +213,11 @@ export function serieMisturaTipos(
 ): boolean {
   return !selecionado && tiposPresentes(dispositivos).length > 1;
 }
+
+
+/** Origem declarada no contrato 2.10.0. Aparelhos sem tipo ficam sem atribuição. */
+export function origemDaTemperatura(tipo: TipoDeDispositivo | undefined): string | null {
+  if (tipo === "travesseiro") return "Chip MPU6050";
+  if (tipo === "celular") return "Bateria";
+  return null;
+}

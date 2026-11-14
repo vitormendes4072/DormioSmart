@@ -6,6 +6,7 @@
  * Python — que e o caminho natural para o trabalho de validacao do TCC.
  */
 import { ehMovimento, intensidade, type LeituraSono } from "../types/sleep";
+import { origemDaTemperatura, type Dispositivo } from "./dispositivos";
 
 /**
  * `captured_at` vem antes de `created_at` de proposito (DASH-12).
@@ -25,9 +26,10 @@ export const COLUNAS = [
   "created_at",
   "movimento_total",
   "intensidade",
-  "temp_chip",
+  "temperatura",
   "status",
   "movimento",
+  "origem_temperatura",
 ] as const;
 
 /**
@@ -46,7 +48,8 @@ function escapar(valor: string | number | null): string {
   return texto;
 }
 
-export function gerarCsv(leituras: LeituraSono[]): string {
+export function gerarCsv(leituras: LeituraSono[], dispositivos: Dispositivo[] = []): string {
+  const tipos = new Map(dispositivos.map(({ id, tipo }) => [id, tipo]));
   const linhas = [COLUNAS.join(",")];
 
   for (const leitura of leituras) {
@@ -62,6 +65,7 @@ export function gerarCsv(leituras: LeituraSono[]): string {
         escapar(leitura.temp),
         escapar(leitura.status),
         escapar(ehMovimento(leitura.status) ? "1" : "0"),
+        escapar(leitura.temp == null ? null : origemDaTemperatura(tipos.get(leitura.device_id ?? ""))),
       ].join(","),
     );
   }
@@ -78,9 +82,9 @@ export function nomeDoArquivo(agora: Date = new Date()): string {
 }
 
 /** Dispara o download no navegador. */
-export function baixarCsv(leituras: LeituraSono[]) {
+export function baixarCsv(leituras: LeituraSono[], dispositivos: Dispositivo[]) {
   // BOM UTF-8: sem ele o Excel no Windows abre "Terça" como "TerÃ§a".
-  const conteudo = "﻿" + gerarCsv(leituras);
+  const conteudo = "﻿" + gerarCsv(leituras, dispositivos);
   const blob = new Blob([conteudo], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
 
