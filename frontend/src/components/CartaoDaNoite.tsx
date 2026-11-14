@@ -207,7 +207,10 @@ export function CartaoDaNoite({
           <button
             type="button"
             disabled={ocupado || estado === null || (!interrompida && posicao === null)}
-            onClick={() => portao.pedir(() => agir(() => plugin.iniciar(posicao ? { posicao, ...(teste ? { teste: true } : {}) } : undefined)))}
+            onClick={() => portao.pedir(() => agir(async () => {
+              await plugin.iniciar(posicao ? { posicao, ...(teste ? { teste: true } : {}) } : undefined);
+              setTeste(false);
+            }))}
             className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {ocupado ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden /> : <Moon className="w-4 h-4" aria-hidden />}

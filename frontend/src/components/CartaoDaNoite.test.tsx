@@ -79,6 +79,28 @@ describe("CartaoDaNoite (APP-02)", () => {
     expect(await screen.findByRole("button", { name: /iniciar a noite/i })).toBeTruthy();
   });
 
+  it("inicia com a marca de teste e deixa a próxima gravação desmarcada", async () => {
+    const p = plugin(estado());
+    const registrar = vi.fn(async () => {});
+    render(<CartaoDaNoite plugin={p} agora={() => INICIO} consentimento={{ vigente: true, registrar }} />);
+
+    const iniciar = await screen.findByRole("button", { name: /iniciar a noite/i });
+    const caixa = () => screen.getByRole("checkbox", { name: /gravação de teste/i }) as HTMLInputElement;
+    expect(caixa().checked).toBe(false);
+    fireEvent.click(screen.getByLabelText(/dentro da fronha/i));
+    fireEvent.click(caixa());
+    await act(async () => fireEvent.click(iniciar));
+    expect(p.iniciar).toHaveBeenNthCalledWith(1, { posicao: "fronha", teste: true });
+
+    const encerrar = await screen.findByRole("button", { name: /encerrar a noite/i });
+    await act(async () => fireEvent.click(encerrar));
+    const iniciarDeNovo = await screen.findByRole("button", { name: /iniciar a noite/i });
+    expect(caixa().checked).toBe(false);
+    fireEvent.click(screen.getByLabelText(/dentro da fronha/i));
+    await act(async () => fireEvent.click(iniciarDeNovo));
+    expect(p.iniciar).toHaveBeenNthCalledWith(2, { posicao: "fronha" });
+  });
+
   it("mostra a cobertura, a taxa e as retomadas da noite em curso", async () => {
     // 10 epocas que ja deviam ter fechado, 9 gravadas.
     const agora = INICIO + 3000 + 4200 + 10 * 30_000;
