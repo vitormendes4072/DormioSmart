@@ -10125,6 +10125,39 @@ Na revisão de bed5c9e, o autor mediu 554 aprovados em Python 3.12 com CI=true e
 
 **Procedência.** Branch `bugfix/CI-11-harnesses-de-mutacao` sobre `develop` `e95a654`; Docker no Windows 11 (`postgres:16`, `postgres:17`, `python:3.12-slim`); o `ml/.venv` (Python 3.11.9); 13/11.
 
+---
+
+# 2026-11-13 (xv) — DATA-14: a origem do `t`, e o 25,0 °C que o celular inventava
+
+**O problema, como foi entendido no início.** O backlog (AUD-11) dizia que o `t` do celular é a temperatura da bateria e o contrato diz que é a do chip do MPU6050. Lendo o código, o quadro era pior: o contrato (desde a v2.0.0) dizia que o celular **não manda** `t`, porque "enviar número inventado seria mentir no dado" — e o núcleo do celular mandava em todo payload, desde o `APP-02`. A política de privacidade já dizia certo ("a da bateria, no celular"); o painel rotula tudo "Temp. chip".
+
+**Hipótese de trabalho.** Declarar a origem por tipo de aparelho resolve sem campo novo nem migração: a origem de cada leitura já sai de `devices.tipo`.
+
+**O que foi testado, e como.** Lendo o caminho: o serviço Android lê a temperatura da bateria ao criar o núcleo e a cada intervalo, mas retorna sem defini-la se o Android não a entregar — e o coletor começava em **25,0 °C**, que então ia ao servidor como medida e entrava nos pontos de calibração. O payload sempre escrevia `"t":%.1f`; um `NaN` sairia `"t":nan`, que nem é JSON. Corrigido, em contêiner `gcc:13`: o núcleo inteiro, a mutação do coletor com três sabotagens novas e um controle manual no `payload.cpp`. Backend em `python:3.12` com `CI=true`, e o `test_health` com a constante desalinhada do contrato.
+
+**Resultado medido.**
+- **Núcleo:** `make celular` **327 verificações, 0 falhas** (+7 do teste da temperatura desconhecida: sem `t`, sem `nan`, sem ponto; informada depois, ela entra e o ponto volta). `make`, `dourado` (157), `c2` (170), `cadeia` (456), `fila` (115), `calibracao` (185), `laco` 8/8, `sintaxe`: iguais a antes — o payload da placa não mudou.
+- **Mutação do coletor: 20/20**, com as três novas (desconhecida volta a 25 °C; desconhecida vai como 0 °C em vez de omitida; ponto de calibração sem temperatura). As demais mutações: 15, 34/34, 17/17, 11/11.
+- **Controle manual:** sem o `isfinite` no `payload.cpp`, o payload sai com `"t":nan` e dois testes caem.
+- **Backend:** 555 passam; com a constante em 2.9.0 e o contrato em 2.10.0, cai `test_informa_a_versao_do_contrato_de_dados`.
+
+**Adaptação.**
+- **Temperatura desconhecida na correção de calibração:** o plano dizia "a temperatura que já usa hoje" (os 25,0 inventados); usei a `temp_ref_c` da própria calibração, que zera o termo de temperatura — corrigir para um valor que ninguém mediu seria o mesmo erro por outro caminho.
+- **O teste do `CAL-03` fixava o contrato em "2.9.0"** exato; passou a exigir "pelo menos 2.9.0" (a igualdade com o documento é do `test_health`).
+- **A versão no backend** (`web-app/routes.py`, trilha do Codex) subiu nesta PR, numa linha, porque o `test_health` exige que contrato e constante andem juntos.
+
+**O que deu errado no caminho.**
+- **Três sabotagens antigas do coletor quebraram** ("casou 0 vezes") porque mudei as linhas que elas usam; atualizadas.
+- **A sabotagem "época em movimento também vira ponto" deixou de ser acusada** depois da trava nova: o teste dela não definia a temperatura, então a trava do `DATA-14` impedia o ponto por outro motivo e mascarava a regra do movimento. O teste passou a definir a temperatura.
+- **O teste novo começou com a origem em 1 s**, e o alimentador começa antes da origem: tempo negativo, zero payloads. Ajustado para o arranjo do teste da calibração.
+
+**Risco em aberto.**
+- **O painel e o CSV ainda dizem "chip"** para as duas temperaturas: `UI-31`, do Codex.
+- **Os celulares só recebem a correção com um APK novo** (`APP-12`, `versionCode` maior); o site, com a versão 2.10.0, no próximo release.
+- **Medido pelo autor na produção (13/11, consulta só de leitura):** celular, **2 de 5 397** leituras com `temp = 25.0` exatos; travesseiro, 14 de 818. As duas do celular são indistinguíveis de uma bateria a 25,0 °C de verdade — o efeito, se houve, é de 0,04 %. As 14 do travesseiro são do chip, que sempre lê: medidas reais.
+
+**Procedência.** Branch `bugfix/DATA-14-origem-do-t` sobre `develop` `ad68bff`; Docker no Windows 11 (`gcc:13`, `python:3.12-slim`); 13/11.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

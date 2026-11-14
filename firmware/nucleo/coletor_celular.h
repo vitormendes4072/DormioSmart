@@ -30,7 +30,12 @@
 //
 // 3. A temperatura. O celular nao tem a do chip do MPU; o app passa a da
 //    bateria, que e a "temperatura do aparelho" -- e e a que importa para o
-//    risco de aquecimento dentro da fronha. O contrato aceita `t` em [-40, 85].
+//    risco de aquecimento dentro da fronha. O contrato (v2.10.0, DATA-14) diz
+//    isso: `t` e a temperatura do aparelho que mediu. Enquanto o app nao a
+//    informar, ela e DESCONHECIDA: o payload sai sem `t` e nenhum ponto de
+//    calibracao e gravado. Ate 13/11 o coletor comecava em 25,0 C, e esse
+//    numero inventado ia ao servidor como medida se o Android nao entregasse
+//    a temperatura da bateria.
 //
 // ── A TAXA ──────────────────────────────────────────────────────────────
 //
@@ -97,8 +102,13 @@ class ColetorCelular {
   void amostrar(uint64_t t_us, float ax_ms2, float ay_ms2, float az_ms2);
 
   // A temperatura que vai no proximo payload (`t`), em graus C. E tambem a
-  // que a calibracao usa no termo de temperatura.
-  void definir_temperatura(float graus_c) { temperatura_c_ = graus_c; }
+  // que a calibracao usa no termo de temperatura. Sem chamar, ela e
+  // desconhecida (DATA-14): sem `t` no payload, sem ponto de calibracao, e a
+  // correcao usa a temperatura de referencia da propria calibracao.
+  void definir_temperatura(float graus_c) {
+    temperatura_c_ = graus_c;
+    temperatura_conhecida_ = true;
+  }
 
   // A calibracao das amostras (CAL-03). Sem chamar, ou com uma recusada, as
   // amostras passam como vieram e o payload diz `cal: 0`. Quem estima e o app,
@@ -157,6 +167,7 @@ class ColetorCelular {
   float grade_z_[AMOSTRAS_NA_GRADE];
 
   float temperatura_c_;
+  bool temperatura_conhecida_;
   Calibracao calibracao_;
   uint64_t recebidas_;
   uint32_t fora_de_ordem_;

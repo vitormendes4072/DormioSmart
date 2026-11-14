@@ -112,7 +112,7 @@ estiverem mesclados, e não quando todos os da onda anterior estiverem.
 |---|---|---|---|
 | 2.4 | `VIA-01` | Bancada: 2 min parado, 2 min mexendo a cabeça, 2 min virando o corpo | onda 1 da placa |
 | 2.5 | `VAL-01` | A primeira noite com o travesseiro (o autor dorme; o Claude analisa) | 2.4 |
-| 2.6 | `DATA-14` | O `t` do celular é a temperatura da bateria: contrato e núcleo | — |
+| 2.6 | `DATA-14` ✅ *(13/11; o painel é o `UI-31`, do Codex)* | O `t` do celular é a temperatura da bateria: contrato e núcleo | — |
 | 2.7 | `CI-10` ✅ *(13/11)* | O Python do CI igual ao da Vercel (`.python-version`) | — |
 | 2.8 | `CI-09` ✅ *(13/11)* | Um job para o app Android (`app-android.yml`) | — |
 | 2.9 | `CI-11` ✅ *(13/11)* | Os dois harnesses de mutação com mensagem certa | — |
