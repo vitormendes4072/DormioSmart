@@ -141,7 +141,24 @@ beforeEach(() => {
   );
 });
 
-afterEach(() => {
+const raizes: Array<{ unmount: () => void }> = [];
+vi.mock("react-dom/client", async (importOriginal) => {
+  const original = await importOriginal<typeof import("react-dom/client")>();
+  return {
+    ...original,
+    createRoot(...args: Parameters<typeof original.createRoot>) {
+      const raiz = original.createRoot(...args);
+      raizes.push(raiz);
+      return raiz;
+    },
+  };
+});
+
+afterEach(async () => {
+  await act(async () => {
+    for (const raiz of raizes.splice(0)) raiz.unmount();
+    await vi.dynamicImportSettled();
+  });
   vi.unstubAllEnvs();
   vi.unstubAllGlobals();
   vi.resetModules();
@@ -171,6 +188,7 @@ async function montar(rota: string): Promise<void> {
   await act(async () => {
     await import("./main.tsx");
   });
+  await act(async () => vi.dynamicImportSettled());
 }
 
 /**
@@ -297,7 +315,8 @@ describe("montagem real das telas (UI-17)", PRAZO, () => {
     expect(links.map((link) => link.getAttribute("href"))).toEqual([
       "/configuracoes?demo=1", "/configuracoes?demo=1",
     ]);
-    fireEvent.click(links[0]);
+    await act(async () => fireEvent.click(links[0]));
+    await act(async () => vi.dynamicImportSettled());
     expect(await screen.findByRole("heading", { name: "Aparência" })).toBeTruthy();
     expect(screen.getByText(/editar o perfil, gerenciar dispositivos/i)).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Exportar meus dados (CSV)" })).toBeNull();
