@@ -73,7 +73,7 @@ def test_landing_conta_iframe_e_imagens_imediatas_sem_contar_lazy(manifesto, tmp
     )
     assert _orcamento.arquivos_da_landing(manifesto, tmp_path) == {
         "index.html", "entrada.js", "landing.js", "compartilhado.js",
-        "transitivo.js", "global.css", "landing-prototipo.html",
+        "transitivo.js", "global.css", "landing-prototipo.html", "sw.js",
         "midia/landing/imediata.webp",
     }
 

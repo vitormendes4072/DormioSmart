@@ -7,7 +7,7 @@ from html.parser import HTMLParser
 from urllib.parse import urlsplit
 
 DIST = Path(__file__).resolve().parents[1] / "frontend" / "dist"
-LIMITES = {"Dashboard": 260_000, "Login": 155_000, "Landing": 289_000}
+LIMITES = {"Dashboard": 260_000, "Login": 155_000, "Landing": 289_800}
 PROTOTIPO = "landing-prototipo.html"
 IMAGEM_INLINE_GRANDE = re.compile(r"data:image/[^\s\"'<>]{4096,}", re.IGNORECASE)
 
@@ -69,7 +69,7 @@ def arquivos_da_landing(manifesto, dist):
     imagens = ImagensIniciais()
     imagens.feed(html)
     imagens.close()
-    return arquivos | {PROTOTIPO} | imagens.arquivos
+    return arquivos | {PROTOTIPO, "sw.js"} | imagens.arquivos
 
 
 def medir_rota(manifesto, pagina, dist):
