@@ -172,9 +172,9 @@ def test_banco_fora_desde_a_primeira_e_503_nao_200():
     assert resp.get_json()["aceitas"] == []
 
 
-def test_estouro_do_orcamento_de_tempo_devolve_o_resto_como_pendente():
+def test_estouro_do_orcamento_de_tempo_devolve_o_resto_como_pendente(capsys):
     # O relógio pula além do orçamento depois da segunda leitura.
-    instantes = iter([0.0, 0.0, 1.0, lote.ORCAMENTO_DE_TEMPO_S + 1.0])
+    instantes = iter([0.0, 0.0, 1.0, lote.ORCAMENTO_DE_TEMPO_S + 1.0, 8.0])
     with _com_device(), \
          patch.object(database.db, "registrar_leitura", return_value=1) as gravar, \
          patch("routes.time.monotonic", side_effect=lambda: next(instantes)):
@@ -184,6 +184,8 @@ def test_estouro_do_orcamento_de_tempo_devolve_o_resto_como_pendente():
     assert corpo["aceitas"] == [0, 1]
     assert corpo["pendentes"] == [2, 3, 4]
     assert gravar.call_count == 2
+
+    assert "entradas=5 aceitas=2 rejeitadas=0 pendentes=3 orcamento_atingido=1" in capsys.readouterr().out
 
 
 def test_excecao_numa_leitura_deixa_ela_e_as_seguintes_pendentes():
@@ -392,3 +394,27 @@ def test_rpc_traduz_apenas_o_erro_de_pausa(por_token):
     assert gravar() == "aparelho_pausado"
     chamada.side_effect = APIError({"code": "PT409", "message": "outro_erro"})
     assert gravar() is None
+
+@pytest.mark.parametrize("caminho", ["token", "sessao"])
+def test_log_do_lote_contem_somente_metricas_agregadas(caminho, capsys):
+    from contextlib import ExitStack
+
+    device = dict(_DEVICE, id="id-privado", user_id="dono-privado")
+    with ExitStack() as stack:
+        if caminho == "token":
+            stack.enter_context(patch.object(database.db, "get_device_by_token_hash", return_value=device))
+            metodo, headers = "registrar_leitura", _AUTH
+        else:
+            for contexto in _com_sessao(device):
+                stack.enter_context(contexto)
+            metodo, headers = "registrar_leitura_da_sessao", _SESSAO
+        stack.enter_context(patch.object(database.db, metodo, return_value=1))
+        stack.enter_context(patch("routes.time.monotonic", side_effect=[10, 10, 10.2, 10.3, 10.4]))
+        stack.enter_context(patch("routes.time.perf_counter", side_effect=[20, 20.1, 20.2, 20.4]))
+        resp = _post({"device_id": device["id"], "leituras": [_LEITURA, _INVALIDA, _LEITURA]}, headers)
+
+    assert resp.status_code == 200
+    assert capsys.readouterr().out.splitlines() == [
+        f"api06_lote caminho={caminho} duracao_ms=400.000 rpc_ms=300.000 chamadas_rpc=2 "
+        "entradas=3 aceitas=2 rejeitadas=1 pendentes=0 orcamento_atingido=0"
+    ]
