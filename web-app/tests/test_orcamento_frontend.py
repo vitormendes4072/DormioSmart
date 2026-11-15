@@ -68,13 +68,17 @@ def test_landing_conta_iframe_e_imagens_imediatas_sem_contar_lazy(manifesto, tmp
     (tmp_path / _orcamento.PROTOTIPO).write_text(
         '<img src="/midia/landing/imediata.webp" loading="eager">'
         '<img src="/midia/landing/tardia.webp" loading="lazy">'
-        '<svg><image data-href="/midia/landing/foto.webp"></image></svg>',
+        '<svg>'
+        '<image href="/midia/landing/svg.webp"></image>'
+        '<image xlink:href="/midia/landing/svg-xlink.webp"></image>'
+        '<image data-href="/midia/landing/foto.webp"></image>'
+        '</svg>',
         encoding="utf-8",
     )
     assert _orcamento.arquivos_da_landing(manifesto, tmp_path) == {
         "index.html", "entrada.js", "landing.js", "compartilhado.js",
         "transitivo.js", "global.css", "landing-prototipo.html", "sw.js",
-        "midia/landing/imediata.webp",
+        "midia/landing/imediata.webp", "midia/landing/svg.webp", "midia/landing/svg-xlink.webp",
     }
 
 
