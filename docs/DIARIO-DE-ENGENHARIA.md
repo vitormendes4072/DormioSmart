@@ -10291,6 +10291,26 @@ Na revisão de bed5c9e, o autor mediu 554 aprovados em Python 3.12 com CI=true e
 
 **Procedência.** Branch `feature/ui-25-guia-pareamento`, criada de `a21a0d1` e sincronizada com `develop` `05d3ff8`. Windows, Node/Vitest/Vite. Credenciais sintéticas.
 
+---
+
+# 2026-11-15 — API-06: instrumentação da ingestão em lote
+
+**O problema, como foi entendido no início.** As medições anteriores à mudança para `gru1` não decidem se a ingestão precisa da migração 020.
+
+**Hipótese de trabalho.** Uma linha agregada por lote autenticado e com envelope válido permite medir o custo de processamento e a parcela gasta no caminho das RPCs.
+
+**O que foi testado, e como.** No Windows, Python 3.13, Flask e banco simulado. Os testes com relógio controlado conferem a linha inteira nos dois caminhos e a sinalização do corte por tempo.
+
+**Resultado medido.** 564 testes passaram e 273 pularam (RLS sem Postgres e teste da versão de Python do CI). Os dois casos de `test_log_do_lote_contem_somente_metricas_agregadas` falharam contra a base sem log e falharam quando o log incluiu `device_id`. O código foi restaurado. Nenhum tempo de produção foi coletado nesta etapa.
+
+**Adaptação.** O evento `api06_lote` escreve em stdout. `duracao_ms` começa após autenticação e validação do envelope, no mesmo ponto do orçamento do lote. `rpc_ms / chamadas_rpc` mede o tempo médio das chamadas de persistência do ponto de vista do backend, incluindo ida e volta. O log tem só o caminho, tempos, contagens e o indicador de orçamento. Nenhuma alteração de contrato ou migração nesta etapa.
+
+**O que deu errado no caminho.** O Python local emitiu um erro de encerramento da extensão de console `pyreadline3` depois da conclusão bem-sucedida do pytest.
+
+**Risco em aberto.** O autor consulta os logs Vercel e registra o commit e a região do deployment medido. Tráfego real: sessão no envio de uma noite pelo APK do APP-12, token na bancada do VIA-01. Exigir pelo menos dez lotes de 60 entradas por caminho, confirmar 60 aceitas e zero pendentes em cada amostra válida e comparar mediana e pior caso, por caminho, com 4 500 ms. Se ambos couberem, fechar como “não necessário”. Se faltar amostra, avaliar dispositivos dedicados, revogados ao final, com consulta de exclusão preparada para o autor. Se a 020 for necessária, uma única transação trava o aparelho no início; pausa concorrente espera o commit, e o lote seguinte é rejeitado inteiro. Esse comportamento será exercitado com duas conexões e registrado no contrato.
+
+**Procedência.** Branch `feature/api-06-medir-lotes`, base `develop` `0708dd3`. Windows, Python 3.13 e pytest. O teste de log usa dados sintéticos.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
