@@ -1,10 +1,15 @@
 import json
+import re
 import sys
 import zlib
 from pathlib import Path
+from html.parser import HTMLParser
+from urllib.parse import urlsplit
 
 DIST = Path(__file__).resolve().parents[1] / "frontend" / "dist"
-LIMITES = {"Dashboard": 260_000, "Login": 155_000}
+LIMITES = {"Dashboard": 260_000, "Login": 155_000, "Landing": 289_000}
+PROTOTIPO = "landing-prototipo.html"
+IMAGEM_INLINE_GRANDE = re.compile(r"data:image/[^\s\"'<>]{4096,}", re.IGNORECASE)
 
 
 def arquivos_da_rota(manifesto, pagina):
@@ -34,11 +39,47 @@ def tamanho_gzip(caminho):
     return len(compressor.compress(caminho.read_bytes()) + compressor.flush())
 
 
+class ImagensIniciais(HTMLParser):
+    def __init__(self):
+        super().__init__()
+        self.arquivos = set()
+
+    def handle_starttag(self, tag, attrs):
+        atributos = dict(attrs)
+        if tag == "img" and atributos.get("loading") != "lazy":
+            url = atributos.get("src")
+        elif tag == "image":
+            url = atributos.get("href") or atributos.get("xlink:href")
+        else:
+            return
+        if url:
+            partes = urlsplit(url)
+            if not partes.scheme and not partes.netloc:
+                self.arquivos.add(partes.path.lstrip("/"))
+
+
+def arquivos_da_landing(manifesto, dist):
+    arquivos = arquivos_da_rota(manifesto, "Landing")
+    html = (dist / PROTOTIPO).read_text(encoding="utf-8")
+    if IMAGEM_INLINE_GRANDE.search(html):
+        raise ValueError(
+            f"{PROTOTIPO}: imagem data:image acima de 4 kB. "
+            "Execute scripts/extrair_midia_landing.py antes do build."
+        )
+    imagens = ImagensIniciais()
+    imagens.feed(html)
+    imagens.close()
+    return arquivos | {PROTOTIPO} | imagens.arquivos
+
+
 def medir_rota(manifesto, pagina, dist):
-    arquivos = arquivos_da_rota(manifesto, pagina)
+    arquivos = arquivos_da_landing(manifesto, dist) if pagina == "Landing" else arquivos_da_rota(manifesto, pagina)
     return (
         sum((dist / arquivo).stat().st_size for arquivo in arquivos),
-        sum(tamanho_gzip(dist / arquivo) for arquivo in arquivos),
+        sum(
+            (dist / arquivo).stat().st_size if Path(arquivo).suffix == ".webp" else tamanho_gzip(dist / arquivo)
+            for arquivo in arquivos
+        ),
     )
 
 
@@ -52,8 +93,9 @@ def main():
             print(erro, file=sys.stderr)
             falhou = True
             continue
+        unidade = "B transferidos estimados" if pagina == "Landing" else "B gzip"
         ok = gzip <= limite
-        print(f"{pagina}: {bruto} B, {gzip} B gzip, teto {limite} B ({'OK' if ok else 'EXCEDIDO'})")
+        print(f"{pagina}: {bruto} B, {gzip} {unidade}, teto {limite} B ({'OK' if ok else 'EXCEDIDO'})")
         falhou |= not ok
     return int(falhou)
 

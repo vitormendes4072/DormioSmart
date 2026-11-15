@@ -10331,6 +10331,26 @@ Na revisão de bed5c9e, o autor mediu 554 aprovados em Python 3.12 com CI=true e
 
 **Procedência.** `feature/ui-15-dividir-rotas`, base `develop` `e36ce77`. Windows, Vitest, Vite, Chrome e SDK Android locais. Sessão e respostas sintéticas.
 
+---
+
+# 2026-11-15 (iii) — UI-32: mídia sob demanda na landing
+
+**O problema, como foi entendido no início.** O HTML do protótipo original entrou no commit `b25e03e` (PR #132). O repositório guarda o HTML final e não identifica uma ferramenta de exportação que reproduza esse arquivo. O iframe empacotava onze imagens em base64, inclusive as usadas só na exploração e na geometria.
+
+**Hipótese de trabalho.** Extrair as imagens com hash de conteúdo e atrasar os pedidos permite manter os mesmos WebP, texto e interações. O cache imutável fica limitado ao caminho desses arquivos.
+
+**O que foi testado, e como.** Build local servido com os cabeçalhos de `vercel.json`, Chrome/Playwright com cache frio a 1440×900 e 390×844, sem rolar até completar a captura dos pedidos iniciais. Depois, vista montada e explodida, seleção pela transparência no canvas, inspetor, zoom, geometria e `?apresentacao=leve`. Pytest cobre extração repetida e orçamento.
+
+**Resultado medido.** HTML do iframe **1 256 283 → 266 091 B**. Os 11 arquivos extraídos são idênticos ao conteúdo decodificado da base. Orçamento normalizado com o mesmo zlib e WebP contado pelo tamanho do arquivo: primeiro carregamento **959 376 → 262 759 B**, teto **289 000 B** (10% de folga). Desktop e celular pediram a mesma lista, igual à soma do verificador: `/` (`index.html`), `assets/index-B1Pqmzeo.js`, `assets/index-DXqfEVGL.css`, `assets/Landing-BWZuk8f9.js`, `assets/Blueprint-DMaKlueG.js`, `assets/arrow-right-B1wHNHry.js`, `assets/ui-YUehs8Vy.js`, `assets/useTema-YAQ21gst.js`, `assets/x-BJFjmzoW.js`, `landing-prototipo.html` e `midia/landing/0565ce6407361b7b9a4bc312232c8380f7f4648631022a036a29d7e00383989b.webp`. Recolocar o ESP32 como imagem imediata deu **365 675 B** e excedeu o teto. Recolocar base64 no HTML gerado reprovou pelo limite de 4 kB. CSP passou com dez scripts cobertos. Frontend: 629 em 47 arquivos; Python sem RLS: 572 passaram, 1 pulou.
+
+**Adaptação.** Após substituir o HTML por uma nova exportação, rodar `python scripts/extrair_midia_landing.py` e revisar os atributos de carregamento e hashes. O script preserva os bytes dos WebP e pode ser repetido. O iframe continua isolado. Os renders que passam pelo canvas usam CORS anônimo restrito aos WebP com hash para permitir a leitura de transparência dentro do sandbox. A mesma regra de caminho aplica `Cache-Control: public, max-age=31536000, immutable`. O `index.html` fica com a política anterior. Dois hashes mudaram: `sdm-inline-assets` e explorador.
+
+**O que deu errado no caminho.** A primeira nota de contagem subtraiu um item do quadro Pós-banca. A conferência sinalizou a diferença e a nota foi corrigida.
+
+**Risco em aberto.** A verificação do cabeçalho na Vercel e do redirecionamento offline está em andamento nesta revisão.
+
+**Procedência.** Branch `feature/ui-32-midia-landing`, base `develop` `5084208`. Windows, Node, Python, Chrome e Playwright locais.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

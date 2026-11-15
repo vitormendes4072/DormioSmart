@@ -62,3 +62,25 @@ def test_pagina_ausente_reprova_com_diagnostico(monkeypatch, tmp_path, capsys):
     mensagem = capsys.readouterr().err
     assert "Dashboard: página ausente do manifesto" in mensagem
     assert "Login: página ausente do manifesto" in mensagem
+
+def test_landing_conta_iframe_e_imagens_imediatas_sem_contar_lazy(manifesto, tmp_path):
+    manifesto["src/pages/Landing.tsx"] = {"file": "landing.js"}
+    (tmp_path / _orcamento.PROTOTIPO).write_text(
+        '<img src="/midia/landing/imediata.webp" loading="eager">'
+        '<img src="/midia/landing/tardia.webp" loading="lazy">'
+        '<svg><image data-href="/midia/landing/foto.webp"></image></svg>',
+        encoding="utf-8",
+    )
+    assert _orcamento.arquivos_da_landing(manifesto, tmp_path) == {
+        "index.html", "entrada.js", "landing.js", "compartilhado.js",
+        "transitivo.js", "global.css", "landing-prototipo.html",
+        "midia/landing/imediata.webp",
+    }
+
+
+def test_landing_reprova_se_base64_grande_voltar(manifesto, tmp_path):
+    manifesto["src/pages/Landing.tsx"] = {"file": "landing.js"}
+    html = f'<img src="data:image/webp;base64,{"A" * 8192}" loading="lazy">'
+    (tmp_path / _orcamento.PROTOTIPO).write_text(html, encoding="utf-8")
+    with pytest.raises(ValueError, match="imagem data:image acima de 4 kB"):
+        _orcamento.arquivos_da_landing(manifesto, tmp_path)
