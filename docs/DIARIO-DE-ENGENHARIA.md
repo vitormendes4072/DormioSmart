@@ -10331,6 +10331,26 @@ Na revisão de bed5c9e, o autor mediu 554 aprovados em Python 3.12 com CI=true e
 
 **Procedência.** `feature/ui-15-dividir-rotas`, base `develop` `e36ce77`. Windows, Vitest, Vite, Chrome e SDK Android locais. Sessão e respostas sintéticas.
 
+---
+
+# 2026-11-15 (iii) — UI-32: mídia sob demanda na landing
+
+**O problema, como foi entendido no início.** O HTML do protótipo original entrou no commit `b25e03e` (PR #132). O repositório guarda o HTML final e não identifica uma ferramenta de exportação que reproduza esse arquivo. O iframe empacotava onze imagens em base64, inclusive as usadas só na exploração e na geometria.
+
+**Hipótese de trabalho.** Extrair as imagens com hash de conteúdo e atrasar os pedidos permite manter os mesmos WebP, texto e interações. O cache imutável fica limitado ao caminho desses arquivos.
+
+**O que foi testado, e como.** Build local servido com os cabeçalhos de `vercel.json`, Chrome/Playwright com cache frio a 1440×900 e 390×844, sem rolar até completar a captura dos pedidos iniciais. Depois, vista montada e explodida, seleção pela transparência no canvas, inspetor, zoom, geometria e `?apresentacao=leve`. Pytest cobre extração repetida e orçamento.
+
+**Resultado medido.** HTML do iframe **1 256 283 → 266 086 B**. Os 11 arquivos extraídos são idênticos ao conteúdo decodificado da base. Orçamento normalizado com o mesmo zlib e WebP contado pelo tamanho do arquivo: primeiro carregamento **960 087 → 263 472 B**, teto **289 800 B** (10% de folga). Desktop e celular pediram os mesmos arquivos de entrada, iguais à soma do verificador: `/` (`index.html`), `assets/index-B1Pqmzeo.js`, `assets/index-DXqfEVGL.css`, `assets/Landing-BWZuk8f9.js`, `assets/Blueprint-DMaKlueG.js`, `assets/arrow-right-B1wHNHry.js`, `assets/ui-YUehs8Vy.js`, `assets/useTema-YAQ21gst.js`, `assets/x-BJFjmzoW.js`, `landing-prototipo.html` e `midia/landing/0565ce6407361b7b9a4bc312232c8380f7f4648631022a036a29d7e00383989b.webp`, além de `sw.js` (711 B gzip na instalação em perfil novo, observado no log HTTP). O pedido de favicon devolveu 404 no servidor local e ficou fora da soma de arquivos. Recolocar o ESP32 como imagem imediata deu **366 389 B** e excedeu o teto. Recolocar base64 no HTML gerado reprovou pelo limite de 4 kB. CSP passou com dez scripts cobertos. Frontend: 629 em 47 arquivos; Python sem RLS: **572 passaram e 1 pulou**, contagem repetida após ampliar o teste do orçamento na revisão da PR #194. Trocar `elif tag == "image":` por `elif False:` derrubou `test_landing_conta_iframe_e_imagens_imediatas_sem_contar_lazy`: as duas referências SVG, `href` e `xlink:href`, sumiram da soma, enquanto o fixture manteve a imagem adiada via `data-href` como exclusão. No preview Vercel da PR #194 (`2c0d357`), o WebP respondeu 200, `image/webp`, `Cache-Control: public, max-age=31536000, immutable` e `Access-Control-Allow-Origin: *`. O `index.html` respondeu 200 com `Cache-Control: public, max-age=0, must-revalidate`. `build:app` e `assembleDebug` passaram. No Pixel 6 emulado, sem rede padrão e com sessão fictícia local, `https://localhost/` redirecionou para `https://localhost/noite`, carregou `Noite-CWcJD2kV.js` e não pediu o iframe nem os WebP.
+
+**Adaptação.** Após substituir o HTML por uma nova exportação, rodar `python scripts/extrair_midia_landing.py` e revisar os atributos de carregamento e hashes. O script preserva os bytes dos WebP e pode ser repetido. O iframe continua isolado. Os renders que passam pelo canvas usam CORS anônimo restrito aos WebP com hash para permitir a leitura de transparência dentro do sandbox. A mesma regra de caminho aplica `Cache-Control: public, max-age=31536000, immutable`. O `index.html` fica com a política anterior. Dois hashes mudaram: `sdm-inline-assets` e explorador.
+
+**O que deu errado no caminho.** A primeira nota de contagem subtraiu um item do quadro Pós-banca. A conferência sinalizou a diferença e a nota foi corrigida. O preview protegido devolveu 302 e a CLI local não tinha credenciais. Os cabeçalhos foram conferidos pela conexão autenticada da Vercel. A captura inicial de respostas de página não mostrava a instalação do worker; a comparação com o log do servidor incluiu o pedido no orçamento. No percurso final de inspeção, o teste precisou rolar até a imagem antes de aguardar sua decodificação.
+
+**Risco em aberto.** A composição medida corresponde aos viewports 1440×900 e 390×844, sem rolagem. O teste offline verifica o redirecionamento e a abertura local da tela.
+
+**Procedência.** Branch `feature/ui-32-midia-landing`, base `develop` `5084208`. Windows, Node, Python, Chrome e Playwright locais.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

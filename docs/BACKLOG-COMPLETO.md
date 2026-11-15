@@ -58,6 +58,8 @@ Até 29/10 esta linha mandava rodar o `DATA-03`, fechado em 28/10.)* **Se tem um
 `CALC-*` e `DIAG-*`, que são o que a banca lê.
 
 **Contagem:** 36 itens abertos · **L0: 8** · L1: 14 · L2: 6 · L3: 8. *(Recontado linha a linha em 03/11, e não por delta; desde o `DOC-13`, o CI reconta.)*
+*(15/11, sobre `develop` `5084208`: fecha `UI-32` no quadro Pós-banca. O quadro fica fora da contagem: 36 abertos, 8 em L3.)*
+
 *(15/11, sobre `develop` `e36ce77`: fecha `UI-15` e abre `UI-32`, ambos L3. 36−1+1 = 36 abertos, L3 8−1+1 = 8.)*
 
 *(14/11, sobre `develop` `05d3ff8`: fecha `UI-25`. 37−1 = 36 abertos, L0 9−1 = 8.)*
@@ -738,7 +740,7 @@ ficou em L2 como contingência do `VIA-01`.
 | **APP-09** | Continuidade quando o usuário troca celular por sensor. Instrumentos diferentes, limiares diferentes (`DATA-06`). | 🟡 |
 | **UI-14** | Lista de espera na landing. 🔒 Gatilho: protótipo funcionando **e** `VIA-01`. Não fazer antes. | ⚪ |
 | **UI-15** ✅ | **Fechado em 15/11** (diário, 15/11 (ii)). Rotas sob demanda e orçamento de carregamento do painel e do login no CI. <br>⬇️ *Texto de abertura:* ✏️ *10/11 (AUD-08 da auditoria): medido **925 kB** (264 kB gzip), mais 199 kB do pedaço da política; os 876 kB eram de antes.* Bundle de **876 kB** (249 kB gzip) num único chunk; o Vite avisa a cada build. Code splitting por rota resolve. | ✅ |
-| **UI-32** ⚪ *(novo — 15/11, saído do `UI-15`)* | **Reduzir o peso do protótipo embutido na landing.** Em `develop` `e36ce77`, `landing-prototipo.html` carregado em `/` pesa **1 256 283 B**, **808 770 B gzip**. O que dá para retirar ou externalizar, por exemplo a mídia em base64, preservando o texto da landing? Medir o primeiro carregamento antes e depois. | ⚪ |
+| **UI-32** ✅ | **Fechado em 15/11** (diário, 15/11 (iii)). Onze WebP externos com hash, dez fora do carregamento inicial. Teto de 289 800 B para a entrada da landing. <br>⬇️ *Texto de abertura (15/11):* **Reduzir o peso do protótipo embutido na landing.** Em `develop` `e36ce77`, `landing-prototipo.html` carregado em `/` pesa **1 256 283 B**, **808 770 B gzip**. O que dá para retirar ou externalizar, por exemplo a mídia em base64, preservando o texto da landing? Medir o primeiro carregamento antes e depois. | ✅ |
 | **UI-20** *(✏️ 28/10: ID dado — era `—`, e item sem ID não dá para citar nem fechar)* | Aplicar a linguagem de blueprint também no app autenticado (hoje vive só na landing). | ⚪ |
 | **PWA-01** | **Exercitar a instalação de verdade.** O service worker não registra em desenvolvimento, então "Adicionar à tela inicial" só aparece em produção — e ninguém testou. O comportamento do iOS com `display: standalone` também não foi verificado. ✏️ **28/10 (`GIT-06`)**: **reclassificado de L0 para L3**, e movido para esta tabela — exige um aparelho e o deploy de produção, isto é, você. | 🟡 |
 | **ARQ-02** ⚪ *(novo — 30/10)* | **Modos de registro: o que oferecer ao usuário, por instrumento.** Analisado em `docs/ARQUITETURA-DE-CAPTACAO.md` §5–6: travesseiro com bateria máxima (WoM), travesseiro com análise completa (sono leve + FIFO), celular para teste rápido (navegador, já em produção) e celular para a noite inteira (app nativo, `APP-02`/`APP-04`). O contrato já comporta (`devices.tipo`, `metodo`, `f`); faltam o limiar e o modelo por instrumento (`DATA-06`, `VIA-02`). **Decisão do autor, não tomada:** quais modos, e se o travesseiro terá um ou dois. A análise recomenda **um modo só no travesseiro antes da banca**. | ⚪ |
