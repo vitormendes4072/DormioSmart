@@ -17,7 +17,7 @@ def test_check_ignore_com_erro_fatal_reprova_e_preserva_diagnostico(monkeypatch,
 
     monkeypatch.setattr(_conferidor.subprocess, "run", rodar)
     with pytest.raises(RuntimeError, match=r"git check-ignore.*128.*fatal: indice ilegivel"):
-        _conferidor.ignorados(tmp_path, ["docs/local.md"])
+        _conferidor.ignorados(tmp_path, ["arquivo.txt"])
 
 
 def test_check_ignore_sem_correspondencia_retorna_vazio(monkeypatch, tmp_path):
@@ -25,4 +25,4 @@ def test_check_ignore_sem_correspondencia_retorna_vazio(monkeypatch, tmp_path):
         return CompletedProcess(args, 1, b"", b"")
 
     monkeypatch.setattr(_conferidor.subprocess, "run", rodar)
-    assert _conferidor.ignorados(tmp_path, ["docs/local.md"]) == set()
+    assert _conferidor.ignorados(tmp_path, ["arquivo.txt"]) == set()
