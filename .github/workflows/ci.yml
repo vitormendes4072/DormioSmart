@@ -236,7 +236,7 @@ jobs:
         working-directory: frontend
         run: time npm run lint
 
-      - name: Knip (símbolos exportados)
+      - name: Knip (arquivos e símbolos exportados)
         working-directory: frontend
         run: time npm run knip
 

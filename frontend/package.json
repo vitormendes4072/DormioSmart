@@ -9,7 +9,7 @@
     "build:app": "tsc --noEmit && vite build --mode app && cap sync android",
     "preview": "vite preview",
     "lint": "eslint \"src/**/*.{ts,tsx}\" \"*.ts\"",
-    "knip": "knip --include exports,nsExports",
+    "knip": "knip --include exports,nsExports,files",
     "knip:tipos": "knip --include types,nsTypes --no-exit-code",
     "test": "vitest run",
     "test:watch": "vitest"
@@ -47,5 +47,10 @@
     "typescript-eslint": "8.72.2",
     "vite": "6.4.5",
     "vitest": "4.1.12"
+  },
+  "overrides": {
+    "@typescript-eslint/typescript-estree": {
+      "minimatch": "11.0.5"
+    }
   }
 }
