@@ -35,9 +35,9 @@ export type FonteDaNoite = Pick<PluginNoite, "noites" | "lerEpocas" | "marcarEnv
 export type EnviarLote = (leituras: object[]) => Promise<RespostaDoLote>;
 
 /** Quanto do envio já foi: épocas confirmadas até aqui, do total que esperava. */
-export type ProgressoDoEnvio = { confirmadas: number; total: number };
+type ProgressoDoEnvio = { confirmadas: number; total: number };
 
-export type ResultadoDoEnvio = {
+type ResultadoDoEnvio = {
   /** Épocas confirmadas neste envio (aceitas + rejeitadas). */
   confirmadas: number;
   rejeitadas: number;

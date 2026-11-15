@@ -33,7 +33,7 @@ import { GRAVIDADE, LIMIAR_DE_MOVIMENTO } from "../types/sleep";
 import { geradorPseudoAleatorio } from "./pseudoAleatorio";
 
 export const PONTOS_PADRAO = 180;
-export const SEMENTE_PADRAO = 20260821;
+const SEMENTE_PADRAO = 20260821;
 
 /**
  * Faixas [inicio, fim], em fracao do eixo, onde ha evento de movimento.

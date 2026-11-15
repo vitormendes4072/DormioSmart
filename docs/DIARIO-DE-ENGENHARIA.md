@@ -10351,6 +10351,26 @@ Na revisão de bed5c9e, o autor mediu 554 aprovados em Python 3.12 com CI=true e
 
 **Procedência.** Branch `feature/ui-32-midia-landing`, base `develop` `5084208`. Windows, Node, Python, Chrome e Playwright locais.
 
+---
+
+# 2026-11-15 (iv) — CI-02: lint e alcance por símbolo
+
+**O problema, como foi entendido no início.** O CI exercitava tipos, testes e builds. Uso incorreto de hooks, nomes indefinidos em Python e exports sem consumidor podiam passar por essas verificações.
+
+**Hipótese de trabalho.** Três verificações pequenas nos jobs existentes conseguem apontar regressões específicas com exceções locais justificadas e sem reformatar o código.
+
+**O que foi testado, e como.** Na base `88bbfb4`, ESLint com os presets recomendados de JS, TS e React Hooks, Ruff em seu padrão e Knip no grafo da aplicação e dos testes. O controle do ESLint plantou um efeito que escrevia o título usando `titulo` com dependências vazias. O do Ruff plantou `import fractions` sem uso. O do Knip restaurou `LinhaDeCota` e `LIMIAR_DE_HISTORICO_PARCIAL` nos módulos originais. Os novos testes de documentos simulam saídas 128 e 1 do `git check-ignore`. O mesmo `src/main.tsx` é a entrada web e app do Vite, e a análise inclui `capacitor.config.ts`, as configurações do Vite e do Vitest e os testes.
+
+**Resultado medido.** Base: ESLint 19 ocorrências em 126 arquivos, Ruff 202 em 66 arquivos de `web-app/` e `scripts/`, Knip 6 exports e 23 tipos em 19 arquivos. Após a limpeza, ESLint tem 13 avisos e zero erros. Os 9 imports de `web-app/` e `scripts/` e 10 imports do ML foram removidos. O lint acusou `react-hooks/exhaustive-deps` e `F401` nas respectivas sabotagens. Knip acusou os dois símbolos restaurados pelo nome. Os três comandos voltaram a sair 0 após remover as sabotagens. A varredura adicional do Knip com arquivos e exports retornou zero achados. Restaram 20 avisos de tipos. Backend sem RLS: 575 passaram no contêiner Python 3.12 com `CI=true`. RLS: 273 passaram em Postgres 17. ML: 310 passaram em Python 3.10. Frontend: 629 passaram em 47 arquivos no Windows com Node 22. TypeScript, build web, os três orçamentos e CSP passaram. `build:app` passou e empacotou `Noite-CpjNFuqK.js` no Android. As conferências de documentos passaram. `npm audit --audit-level=high` passou com zero achados altos ou críticos e sete avisos moderados da cadeia do `minimatch`.
+
+**Adaptação.** Ruff com alvos Python 3.12 em `web-app/` e 3.10 em `scripts/`, `ml/` e `firmware/`. `F401`, `F821`–`F823`, `F841` e sintaxe reprovam. No frontend, ESLint e Knip reprovam por erro e export de valor sem consumidor. Tipos exportados sem consumidor são avisos. Os 13 avisos de hooks seguem no `UI-33`, com arquivo e linha e a ressalva do `AUTH-07`. O caminho Android passa de `main.tsx` a `App.tsx`, `Noite.tsx` e componentes que usam o plugin. Os três tipos de Android usados só no próprio módulo ficaram privados.
+
+**O que deu errado no caminho.** O primeiro lockfile foi gerado com `node_modules` presente. Foi refeito sobre o lockfile da base em pasta sem instalação para preservar metadados de plataformas. A primeira tentativa do ML em contêiner não enxergou o Git da worktree Windows. A segunda montou os metadados do Git separadamente em modo somente leitura. O RLS recusou o alias de rede na primeira execução, como previsto pela proteção da suíte. A repetição usou loopback num Postgres descartável. O Capacitor regenerou dois arquivos Gradle, restaurados após a validação.
+
+**Risco em aberto.** A triagem dos avisos pode encontrar correções de comportamento, inclusive de autenticação. O limiar da auditoria npm permite os achados moderados registrados.
+
+**Procedência.** Branch `chore/ci-02-lint`, base `develop` `88bbfb4`. Windows, Node 22 e contêineres locais. Ferramentas pinadas: ESLint 10.15.0, @eslint/js 10.0.1, typescript-eslint 8.72.2, eslint-plugin-react-hooks 7.1.1, Knip 5.88.1 e Ruff 0.17.5.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

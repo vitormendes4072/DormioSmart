@@ -1,5 +1,4 @@
 import json
-from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
@@ -117,7 +116,7 @@ def test_comparador_nao_esconde_extremos_na_media():
 
 def test_verificador_independente_falha_total_nao_vira_nan():
     import numpy as np
-    from ferramentas.conferir_predicoes_ml17 import recalcular, conferir
+    from ferramentas.conferir_predicoes_ml17 import recalcular
     r = recalcular([0, 0, 1, 1], [1, 1, 0, 0], ['a']*4)
     assert r == dict(acuracia=[0.], especificidade=[0.], kappa=[-1.],
                      f1_vigilia=[0.], f1_sono=[0.])

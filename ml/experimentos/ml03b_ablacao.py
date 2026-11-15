@@ -83,8 +83,6 @@ from sklearn.linear_model import LogisticRegression                         # no
 from sklearn.preprocessing import StandardScaler                            # noqa: E402
 
 from src.avaliar import MetricasAgregadas, avaliar_por_sujeito, split_por_sujeito  # noqa: E402
-from src.baseline import calibrar_escala, sadeh, sempre_dormindo            # noqa: E402
-from src.carregar.base import ConjuntoEpocas                                # noqa: E402
 from src.carregar.wearanize import carregar_wearanize, sujeitos_com_posicoes  # noqa: E402
 from src.configuracao import carregar_config, fixar_seed                    # noqa: E402
 from src.cache_temporal import VERSAO, segmentos_de

@@ -31,7 +31,7 @@ export const LIMIAR_DE_MOVIMENTO = 1.2;
  * proposito — reescrever medicao ja coletada para casar com nomenclatura nova
  * seria adulterar dado. Contrato, secao 2.2.
  */
-export const ROTULOS_MOVIMENTO = ["Movimento", "Movimento Detectado!"];
+const ROTULOS_MOVIMENTO = ["Movimento", "Movimento Detectado!"];
 
 /** Uma leitura como devolvida por `GET /api/sleep-history`. Os campos sao
  *  anulaveis porque o banco aceita nulo — a UI precisa lidar com isso. */

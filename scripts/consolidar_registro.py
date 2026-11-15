@@ -95,7 +95,7 @@ import re
 import subprocess
 import sys
 from collections import Counter
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parent.parent
@@ -2734,7 +2734,6 @@ def gerar_correcoes() -> str:
     exercitando = (por_instrumento[EXECUCAO] + por_instrumento[CONTROLE]
                    + por_instrumento[USO_REAL])
     fora_do_repo = por_instrumento[TERCEIRO] + por_instrumento[DADO_REAL]
-    conferindo = por_instrumento[INVENTARIO]
 
     L: list[str] = []
     A = L.append
@@ -2829,7 +2828,6 @@ def gerar_correcoes() -> str:
     A("> do projeto; são proporções do que foi achado.**")
     A("")
     instr = [d for d in contados if d.instrumento]
-    instr_lendo = [d for d in instr if d.achado_por in (LEITURA, CALCULO)]
     inst_instr = Counter(d.achado_por for d in instr)
 
     A("**(1) Exercitar achou perto do dobro do que ler.**")
@@ -2860,7 +2858,7 @@ def gerar_correcoes() -> str:
     A("(`INFRA-02`).")
     A("")
     rodando = inst_instr[EXECUCAO] + inst_instr[CONTROLE]
-    A(f"**(3) As próprias verificações do projeto estavam defeituosas")
+    A("**(3) As próprias verificações do projeto estavam defeituosas")
     A(f"{len(instr)} vezes — e {rodando} dessas {len(instr)} só apareceram")
     A("rodando ou sabotando.**")
     A(f"São **{len(instr)} de {total}** registros"

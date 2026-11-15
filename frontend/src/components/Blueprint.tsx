@@ -74,14 +74,3 @@ export function RotuloDeSecao({ numero, texto }: { numero: string; texto: string
     </div>
   );
 }
-
-/** Linha de cota, como em desenho técnico — usada como separador. */
-export function LinhaDeCota() {
-  return (
-    <div className="flex items-center gap-2 text-primary/30" aria-hidden>
-      <span className="w-px h-2 bg-current" />
-      <span className="h-px flex-1 bg-current" />
-      <span className="w-px h-2 bg-current" />
-    </div>
-  );
-}

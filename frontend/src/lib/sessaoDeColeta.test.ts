@@ -60,7 +60,7 @@ describe("contarFalhas", () => {
  * aconteceu na primeira versao deste teste.
  */
 function fonteSemComentarios(caminho: string, base: string): string {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  // eslint-disable-next-line @typescript-eslint/no-require-imports -- Leitura síncrona de fixtures pelo Node, restrita ao teste.
   const { readFileSync } = require("node:fs") as typeof import("node:fs");
   return readFileSync(new URL(caminho, base), "utf-8")
     .replace(/\/\*[\s\S]*?\*\//g, "")
@@ -122,7 +122,7 @@ describe("o contador não roda a 60 Hz", () => {
 
 describe("a interface nao explica a si mesma", () => {
   function telas(): string {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    // eslint-disable-next-line @typescript-eslint/no-require-imports -- Leitura síncrona de fixtures pelo Node, restrita ao teste.
     const { readFileSync } = require("node:fs") as typeof import("node:fs");
     return ["../pages/Dashboard.tsx", "../pages/Settings.tsx", "../pages/Coletar.tsx"]
       .map((c) => readFileSync(new URL(c, import.meta.url), "utf-8"))

@@ -20,7 +20,6 @@ qualquer apagaria qualquer conta. Ela não aceita — e
 porque acrescentar `p_user_id` "para o admin poder usar" é o tipo de mudança
 que parece inofensiva no diff.
 """
-import pytest
 
 
 # =====================================================================

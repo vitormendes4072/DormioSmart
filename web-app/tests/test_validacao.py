@@ -6,7 +6,6 @@ dado sujo em estudo de actigrafia invalida resultado, não só quebra tela.
 """
 from unittest.mock import patch
 
-import os
 import pytest
 from flask import Flask
 

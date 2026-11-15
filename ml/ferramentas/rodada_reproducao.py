@@ -1,7 +1,6 @@
 """Adaptador de entrada de cache, sem alterar algoritmos de treino dos scripts."""
 from pathlib import Path
 import importlib
-import json
 import pickle
 import sys
 import numpy as np

@@ -139,9 +139,6 @@ async function extrairMensagemDeErro(resposta: Response): Promise<string> {
  */
 export const LIMITE_DO_PAINEL = 2000;
 
-/** A janela do painel pode ultrapassar o limite de leituras da API. */
-export const LIMIAR_DE_HISTORICO_PARCIAL = LIMITE_DO_PAINEL;
-
 export type FiltroDeHistorico = {
   /** Recorta por instrumento. Ausente = todos os dispositivos do usuario. */
   dispositivo?: string | null;
