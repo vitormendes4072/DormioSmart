@@ -8,9 +8,15 @@ LIMITES = {"Dashboard": 260_000, "Login": 155_000}
 
 
 def arquivos_da_rota(manifesto, pagina):
+    chave_da_pagina = f"src/pages/{pagina}.tsx"
+    if chave_da_pagina not in manifesto:
+        raise ValueError(
+            f"{pagina}: página ausente do manifesto do Vite ({chave_da_pagina}). "
+            "Confira se a página tem um chunk próprio, carregado sob demanda."
+        )
     arquivos = {"index.html"}
     visitados = set()
-    fila = [f"src/pages/{pagina}.tsx", *(chave for chave, item in manifesto.items() if item.get("isEntry"))]
+    fila = [chave_da_pagina, *(chave for chave, item in manifesto.items() if item.get("isEntry"))]
     while fila:
         chave = fila.pop()
         if chave in visitados:
@@ -28,13 +34,24 @@ def tamanho_gzip(caminho):
     return len(compressor.compress(caminho.read_bytes()) + compressor.flush())
 
 
+def medir_rota(manifesto, pagina, dist):
+    arquivos = arquivos_da_rota(manifesto, pagina)
+    return (
+        sum((dist / arquivo).stat().st_size for arquivo in arquivos),
+        sum(tamanho_gzip(dist / arquivo) for arquivo in arquivos),
+    )
+
+
 def main():
     manifesto = json.loads((DIST / ".vite" / "manifest.json").read_text(encoding="utf-8"))
     falhou = False
     for pagina, limite in LIMITES.items():
-        arquivos = arquivos_da_rota(manifesto, pagina)
-        bruto = sum((DIST / arquivo).stat().st_size for arquivo in arquivos)
-        gzip = sum(tamanho_gzip(DIST / arquivo) for arquivo in arquivos)
+        try:
+            bruto, gzip = medir_rota(manifesto, pagina, DIST)
+        except ValueError as erro:
+            print(erro, file=sys.stderr)
+            falhou = True
+            continue
         ok = gzip <= limite
         print(f"{pagina}: {bruto} B, {gzip} B gzip, teto {limite} B ({'OK' if ok else 'EXCEDIDO'})")
         falhou |= not ok
