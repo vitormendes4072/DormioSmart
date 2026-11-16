@@ -118,14 +118,8 @@ export function CartaoDaNoite({
   useEffect(() => {
     if (tentouAoAbrir.current || !enviar || estado === null || restantes === null) return;
     if (estado.ativa || restantes === 0) return;
-    // A desmontagem pode cancelar o disparo antes de ele entrar na fila.
-    let cancelado = false;
-    queueMicrotask(() => {
-      if (cancelado) return;
-      tentouAoAbrir.current = true;
-      void enviarAgora();
-    });
-    return () => { cancelado = true; };
+    tentouAoAbrir.current = true;
+    void enviarAgora();
   }, [enviar, estado, restantes, enviarAgora]);
 
   const agir = async (acao: () => Promise<unknown>) => {
