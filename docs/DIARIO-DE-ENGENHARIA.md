@@ -10684,6 +10684,55 @@ Depois, o login do autor.
 
 **Procedência.** Branch `feature/via-01-bancada` sobre `develop` `7388d79`; Windows 11, Python 3.13, Node 24; dados sintéticos; 16/11.
 
+---
+
+# 2026-11-16 (ix) — VIA-01: o travesseiro separa o corpo virando do repouso
+
+**O problema, como foi entendido no início.** O protocolo e o critério do `VIA-01` estavam prontos desde o diário 16/11 (viii). Faltava a coleta: o autor na cama, com a placa dentro do travesseiro.
+
+**Hipótese de trabalho.** Pelo critério fixado antes dos dados, se o par parado (A) × corpo (C) separar, o projeto fica na v1 e o `HW-07` não é acionado.
+
+**O que foi testado, e como.**
+- **Firmware conferido antes:** a placa foi lida pela COM3, sem gravar nada. O programa gravado tem as mensagens do `FW-15` e do `FW-16`, a última mudança no código da placa. As mudanças posteriores não alteram o binário da placa: o `DATA-14` mexe no payload do celular, e o commit do `API-07` só acrescenta teste.
+- **Durante a coleta:** a placa ficou no USB do PC, com um log serial que anotava a hora do PC em cada linha (`dados-locais/`, fora do repositório).
+- **Os blocos:** dois ciclos de 5 min de A, B e C, das 17:16 às 18:24 (UTC−3). O segundo ciclo começou 33 min depois do fim do primeiro. Os horários de início foram marcados pelo Claude ao receber o aviso do autor.
+- **Bloco C:** o autor girou entre de lado, barriga para cima, de lado e barriga para baixo, tentando manter a cabeça no mesmo ponto do travesseiro.
+- **Depois da coleta:** o autor rodou o trecho de console do protocolo (`features 200`, 145 épocas; histórico e inferência 200), e o `scripts/analisar_via01.py` rodou sobre o arquivo.
+
+**Resultado medido.**
+
+| Par | Melhor feature | δ de Cliff | p (permutação) | Separa? |
+|---|---|---:|---:|---|
+| A × B (parado × cabeça) | `mag_din_media` | +0,99 | < 0,001 | sim |
+| **A × C (parado × corpo)** | `enmo_media` | **+1,00** | **< 0,001** | **sim** |
+| B × C (cabeça × corpo) | `inclinacao_rel` | +0,55 | 0,061 | não |
+
+- **Épocas fora das bordas:** A 16, B 15 e C 14.
+- **Em cada ciclo isolado,** A×B e A×C separam com δ = 1,00, e B×C não separa.
+- **No par A×C,** sete das oito features dão |δ| ≥ 0,88; só a `inclinacao_rel` fica em 0,31.
+- **Rótulo do painel** ("Movimento"): 0/16 épocas paradas, 12/15 de cabeça e 11/11 de corpo. Pico mediano: 9,84 no repouso, 12,45 com a cabeça e 12,98 com o corpo (m/s²).
+- **Modelo `ml-inf-cabeca-v2`,** só como informação: "sono" em 16/16 épocas paradas, "vigília" em 14/15 de cabeça e 14/14 de corpo.
+- **Envio:** os 14 lotes registrados no log serial, todos com `HTTP 200` e sem rejeição. O último chegou às 18:31:16.
+
+**Veredito pelo critério: fica a v1.** O `HW-07` foi fechado como não acionado.
+
+**Adaptação.**
+- O protocolo dizia para esperar 2 min antes de baixar os dados. A placa envia a cada 10 min, e o texto foi corrigido.
+- O log serial parou aos 75 min, antes do último envio, e foi reaberto para pegar o lote final.
+
+**O que deu errado no caminho.**
+- **Cinco épocas recusadas por transbordo da FIFO** (motivo 2): uma na partida, uma no primeiro A, uma no primeiro B e duas seguidas no segundo C. O resumo do envio contou 3 transbordos. No `FW-05`, com ~100 min parados, foram 0. Virou o `FW-17`.
+- **Lacunas no log serial:** algumas linhas não aparecem (épocas 27, 151 e 158), e a primeira leitura repetia a mesma linha milhares de vezes. É defeito da captura, não da placa: as épocas estão no arquivo do servidor.
+- **Os horários são os do Claude, não os do autor:** são a hora em que a mensagem chegou, com erro de alguns segundos. A margem de 30 s por borda os absorve.
+
+**Risco em aberto.**
+- **n = 1, uma sessão.** Mostra que o sinal existe nesta pessoa e neste travesseiro; não generaliza (`VAL-01`, `VAL-02`).
+- **O bloco C não isola o corpo sem cabeça:** ao virar de bruços, a cabeça gira no lugar. O caso "corpo rola e a cabeça não se mexe nada" continua sem medida. Se uma noite real mostrar viradas sem registro, o `HW-07` reabre.
+- **Cabeça e corpo não se distinguem entre si** (B×C). O projeto registra movimento, não qual parte se moveu, e o escopo não promete isso.
+- **As épocas perdidas por transbordo** concentram-se onde há movimento (`FW-17`).
+
+**Procedência.** Placa no travesseiro com o `sketch.ino` gravado em 13/11; log serial e arquivo do console em `dados-locais/`, fora do repositório; `scripts/analisar_via01.py` em `develop` `73b3790`; Windows 11, Python 3.13; 16/11.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

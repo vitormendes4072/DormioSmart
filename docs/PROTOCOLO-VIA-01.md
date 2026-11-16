@@ -41,7 +41,7 @@ ficam 9.
 
 ## Depois do último bloco
 
-1. Espere uns 2 minutos, para o último lote chegar ao servidor.
+1. Espere o último lote chegar ao servidor. ✏️ *16/11: a placa envia **a cada 10 minutos**, não logo depois de cada época. Com a placa no USB, o monitor serial mostra `[lote] HTTP 200` depois do último bloco; sem ele, espere 10 minutos depois do fim.*
 2. No computador, com o site da produção aberto e logado, abra o console do navegador (F12, aba
    Console). Cole o trecho abaixo **trocando os horários** pelos que você anotou e tecle Enter.
 3. O navegador baixa um arquivo `via01-AAAA-MM-DD.json`. Ele contém as épocas, as features e o
