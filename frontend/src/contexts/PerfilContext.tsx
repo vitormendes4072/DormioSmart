@@ -1,4 +1,3 @@
-import type { Session } from "@supabase/supabase-js";
 import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 
 import { useAuth } from "./AuthContext";
@@ -41,56 +40,57 @@ type ContextoDePerfil = {
 
 const Contexto = createContext<ContextoDePerfil | null>(null);
 
-type ResultadoDoPerfil = Omit<ContextoDePerfil, "recarregar"> & { sessao: Session };
+type ResultadoDoPerfil = Omit<ContextoDePerfil, "recarregar"> & { usuarioId: string };
 
 export function PerfilProvider({ children }: { children: ReactNode }) {
   const { sessao, carregando: carregandoSessao } = useAuth();
-  const sessaoVigente = carregandoSessao ? null : sessao;
+  const usuarioId = carregandoSessao ? null : (sessao?.user.id ?? null);
   const [resultado, setResultado] = useState<ResultadoDoPerfil | null>(null);
-  const ciclo = useRef<{ sessao: Session; ultimaBusca: number } | null>(null);
+  const ciclo = useRef<{ usuarioId: string; ultimaBusca: number } | null>(null);
 
-  // Invalida pedidos na troca confirmada de sessão, antes dos efeitos passivos.
+  // A troca de conta invalida pedidos antes dos efeitos passivos. Renovar o
+  // JWT do mesmo titular mantém o perfil e o ciclo de consulta.
   useLayoutEffect(() => {
-    ciclo.current = sessaoVigente ? { sessao: sessaoVigente, ultimaBusca: 0 } : null;
+    ciclo.current = usuarioId === null ? null : { usuarioId, ultimaBusca: 0 };
     return () => { ciclo.current = null; };
-  }, [sessaoVigente]);
+  }, [usuarioId]);
 
   const consultar = useCallback(async () => {
     const atual = ciclo.current;
-    if (!atual || atual.sessao !== sessaoVigente) return;
+    if (!atual || atual.usuarioId !== usuarioId) return;
     const pedido = ++atual.ultimaBusca;
     const vigente = () => ciclo.current === atual && atual.ultimaBusca === pedido;
     try {
       const perfil = await buscarPerfil();
-      if (vigente()) setResultado({ sessao: atual.sessao, perfil, erro: null, carregando: false });
+      if (vigente()) setResultado({ usuarioId: atual.usuarioId, perfil, erro: null, carregando: false });
     } catch (falha) {
       if (vigente()) {
         const erro = falha instanceof Error ? falha.message : "Não foi possível carregar o perfil.";
-        setResultado({ sessao: atual.sessao, perfil: null, erro, carregando: false });
+        setResultado({ usuarioId: atual.usuarioId, perfil: null, erro, carregando: false });
       }
     }
-  }, [sessaoVigente]);
+  }, [usuarioId]);
 
   useEffect(() => {
     void consultar();
   }, [consultar]);
 
   const recarregar = useCallback(async () => {
-    if (!sessaoVigente || ciclo.current?.sessao !== sessaoVigente) return;
+    if (usuarioId === null || ciclo.current?.usuarioId !== usuarioId) return;
     setResultado((anterior) => ({
-      sessao: sessaoVigente,
-      perfil: anterior?.sessao === sessaoVigente ? anterior.perfil : null,
+      usuarioId,
+      perfil: anterior?.usuarioId === usuarioId ? anterior.perfil : null,
       carregando: true,
       erro: null,
     }));
     await consultar();
-  }, [sessaoVigente, consultar]);
+  }, [usuarioId, consultar]);
 
-  const atual = resultado?.sessao === sessaoVigente ? resultado : null;
+  const atual = resultado?.usuarioId === usuarioId ? resultado : null;
   const valor = {
     perfil: atual?.perfil ?? null,
     erro: atual?.erro ?? null,
-    carregando: sessaoVigente !== null && (atual?.carregando ?? true),
+    carregando: usuarioId !== null && (atual?.carregando ?? true),
     recarregar,
   };
 

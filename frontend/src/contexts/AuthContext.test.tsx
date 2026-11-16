@@ -14,7 +14,7 @@
  * pegaria a regressão se alguém mudasse quando o perfil é buscado.
  */
 import { startTransition, Suspense } from "react";
-import { act, render } from "@testing-library/react";
+import { act, cleanup, render } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 type AoMudar = (evento: string, sessao: unknown) => void;
@@ -68,6 +68,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  cleanup();
   vi.unstubAllGlobals();
   aoMudar = null;
 });
@@ -241,4 +242,49 @@ it("desmontar AuthProvider encerra o provedor de credenciais", async () => {
   tela.unmount();
   await requisitarJson("/api/sleep-history");
   expect(chamadas.at(-1)?.authorization).toBeNull();
+});
+
+function PerfilVisivel() {
+  const { perfil, carregando } = usePerfil();
+  return <span>{perfil?.nome ?? "-"}|{String(carregando)}</span>;
+}
+
+async function montarComPerfil() {
+  const tela = render(<AuthProvider><PerfilProvider><PerfilVisivel /></PerfilProvider></AuthProvider>);
+  await act(async () => {});
+  await evento("SIGNED_IN", sessao("jwt-1"));
+  expect(tela.container.textContent).toBe("Ana|false");
+  return tela.container;
+}
+
+it.each(["TOKEN_REFRESHED", "SIGNED_IN"])("%s do mesmo usuário preserva o perfil sem consultar de novo", async (tipo) => {
+  const tela = await montarComPerfil();
+  const fetchMock = vi.mocked(fetch);
+  fetchMock.mockImplementationOnce(() => new Promise<Response>(() => {}));
+
+  await evento(tipo, sessao("jwt-2"));
+
+  expect({ texto: tela.textContent, pedidos: fetchMock.mock.calls.length })
+    .toEqual({ texto: "Ana|false", pedidos: 1 });
+});
+
+it("esconde o perfil de A enquanto a consulta de B está pendente", async () => {
+  const tela = await montarComPerfil();
+  const fetchMock = vi.mocked(fetch);
+  fetchMock.mockImplementationOnce(() => new Promise<Response>(() => {}));
+
+  await evento("SIGNED_IN", { access_token: "jwt-b", user: { id: "b" } });
+
+  expect(fetchMock).toHaveBeenCalledTimes(2);
+  expect(new Headers(fetchMock.mock.calls[1]?.[1]?.headers).get("Authorization")).toBe("Bearer jwt-b");
+  expect(tela.textContent).toBe("-|true");
+});
+
+it("esconde o perfil guardado depois de sair da conta", async () => {
+  const tela = await montarComPerfil();
+
+  await evento("SIGNED_OUT", null);
+
+  expect(tela.textContent).toBe("-|false");
+  expect(fetch).toHaveBeenCalledTimes(1);
 });
