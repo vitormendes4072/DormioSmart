@@ -10510,9 +10510,7 @@ Depois, as regras `refs` e `set-state-in-effect` passaram a erro e o `knip:tipos
 
 **O que deu errado no caminho.**
 - Copiar o `node_modules` da pasta principal para a worktree levou mais de 5 minutos e deixou uma cópia pela metade, presa por um processo `cp` ainda vivo. O `npm ci` direto levou 36 s.
-- O primeiro roteiro de sabotagem procurava trechos com quebra de linha `
-` em arquivos `
-`. Duas sabotagens não foram aplicadas, e a suíte "passou" sem sabotar nada. A saída mostrou o erro de busca, e elas foram refeitas normalizando a quebra de linha.
+- O primeiro roteiro de sabotagem procurava trechos com quebra de linha `\n` em arquivos `\r\n`. Duas sabotagens não foram aplicadas, e a suíte "passou" sem sabotar nada. A saída mostrou o erro de busca, e elas foram refeitas normalizando a quebra de linha.
 
 **Risco em aberto.**
 - **O teste do `useColeta` cobre a ordem das atualizações, não uma renderização descartada pelo React**, que não dá para provocar em teste. O código antigo também passaria nele: o que trava o defeito é a regra `refs`, agora erro.
