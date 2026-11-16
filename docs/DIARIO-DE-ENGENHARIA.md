@@ -10599,6 +10599,39 @@ A decisão de versionar foi do autor, com a condição de que fossem lidos intei
 
 **Procedência.** API REST da Europe PMC e `curl` nos endereços, Windows 11; metadado do Drive pelo conector; 16/11.
 
+---
+
+# 2026-11-16 (vii) — o release R8: hooks, fundamentação versionada e roteiro de leitura
+
+**O problema, como foi entendido no início.** Desde o R7, `develop` tinha o `UI-33`, o `GIT-05`, o `DOC-06b`, o registro do R7 e o conserto de uma linha do diário. O autor pediu o release.
+
+**Hipótese de trabalho.** Sem migração e sem mudança no `vercel.json`. Só o `UI-33` toca o código do site, e nenhuma das mudanças dele deve ser visível. Mas ele mexe no `AuthContext`, então o release exige um login real.
+
+**O que foi testado, e como.** PR #205 (`develop` → `main`), CI e Vercel. Depois do deploy:
+- `/health` e as rotas com `curl`;
+- `scripts/conferir_csp.py` sobre as duas páginas e os cabeçalhos servidos;
+- a `docs/METODOLOGIA.md` pelo endereço bruto do `main` no GitHub.
+
+Depois, o login do autor.
+
+**Resultado medido.**
+- CI 13 de 13; merge `e921844`; deploy de produção com sucesso.
+- `/health` `200`, banco ok, contrato 2.11.0.
+- `401` sem token e com `Bearer` inválido em `/api/devices`, `/api/sleep-history` e `/api/me/perfil`; `401` sem token no `POST` de `/api/data` e de `/api/data/lote`.
+- CSP: 10 scripts inline, todos com hash, sem sobra.
+- A `METODOLOGIA.md` responde `200` no `main`.
+- **Login do autor (16/11):** saiu e entrou, o nome apareceu no menu, Histórico e Dispositivos carregaram, e o F5 manteve a sessão.
+
+**Adaptação.** Nenhuma.
+
+**O que deu errado no caminho.** Nada nesta etapa.
+
+**Risco em aberto.**
+- **As correções do `UI-33` não têm efeito visível**, então o login confirma que nada quebrou, mas não que elas agem na produção. Quem as sustenta são os testes e as sabotagens do diário 16/11 (iv).
+- **O tempo por leitura do lote** continua sem medida (`INFRA-05`/`API-06`).
+
+**Procedência.** GitHub (PR #205, CI e deployment); `curl` e o conferidor da CSP na produção, Windows 11; o relato do autor sobre o login; 16/11.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
