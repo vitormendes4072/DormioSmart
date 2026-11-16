@@ -4,7 +4,7 @@
  * Tudo aqui e calculado a partir do que o dispositivo REALMENTE mede: instante
  * da leitura, magnitude da aceleracao e o rotulo repouso/movimento. Nao ha
  * estagio de sono, nao ha pontuacao, nao ha duracao de sono — o escopo do
- * projeto nao afirma nenhuma dessas coisas (ver ROADMAP.md).
+ * projeto nao afirma nenhuma dessas coisas (ver "Escopo" em docs/METODOLOGIA.md).
  */
 import {
   calcularCobertura,

@@ -23,7 +23,7 @@ que hoje é o bloco de maior valor acadêmico já executado do trabalho. E o `DI
 **esquemático elétrico**, que Mermaid não desenha (ver abaixo).
 
 Decisão tomada: **preservar a numeração do backlog** — renumerar quebraria as referências
-cruzadas no `ROADMAP.md` e no próprio backlog — entregar os três itens que cabem em
+cruzadas no roadmap local do autor e no próprio backlog — entregar os três itens que cabem em
 Mermaid, acrescentar um `DIAG-05` para o pipeline de ML, e deixar o `DIAG-02` aberto com
 uma proposta de ferramenta. O conjunto entregue cobre as quatro frentes exigidas:
 
