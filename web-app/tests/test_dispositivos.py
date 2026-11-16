@@ -6,7 +6,6 @@ e o hash nunca vaza para o cliente.
 """
 from unittest.mock import MagicMock, patch
 
-import os
 from flask import Flask
 
 import database

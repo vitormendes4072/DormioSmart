@@ -236,6 +236,9 @@ def ignorados(raiz: Path, caminhos: list[str]) -> set[str]:
         input=("\n".join(caminhos) + "\n").encode("utf-8"),
         capture_output=True,
     )
+    if r.returncode not in (0, 1):
+        detalhe = r.stderr.decode("utf-8", errors="replace").strip()
+        raise RuntimeError(f"git check-ignore saiu com código {r.returncode}: {detalhe}")
     return {l for l in r.stdout.decode("utf-8").splitlines() if l}
 
 

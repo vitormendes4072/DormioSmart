@@ -17,7 +17,6 @@ A 007 moveu o hash para `public.device_tokens`, sem GRANT para
 estava, que a tabela nova não é alcançável, e que o pareamento continua
 funcionando pelo caminho novo.
 """
-import pytest
 
 # SEC-18 (016): o pareamento so aceita o formato do SHA-256 em hexadecimal.
 HASH_NOVO = "a1" * 32
