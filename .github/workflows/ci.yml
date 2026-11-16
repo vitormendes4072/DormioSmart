@@ -240,7 +240,7 @@ jobs:
         working-directory: frontend
         run: time npm run knip
 
-      - name: Knip (avisos de tipos exportados)
+      - name: Knip (tipos exportados)
         working-directory: frontend
         run: time npm run knip:tipos
 

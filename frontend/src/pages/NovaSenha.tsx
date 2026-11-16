@@ -26,14 +26,12 @@ export function NovaSenha() {
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [pronto, setPronto] = useState(false);
-  const [linkValido, setLinkValido] = useState<boolean | null>(null);
+  // UI-33: sem configuracao o link ja e invalido na primeira renderizacao.
+  const [linkValido, setLinkValido] = useState<boolean | null>(() => (obterSupabase() ? null : false));
 
   useEffect(() => {
     const supabase = obterSupabase();
-    if (!supabase) {
-      setLinkValido(false);
-      return;
-    }
+    if (!supabase) return;
 
     const veioDeEmail = ehRetornoDeRecuperacao(window.location);
 

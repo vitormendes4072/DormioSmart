@@ -4,7 +4,7 @@ import { ErroApi, buscarHistorico, type FiltroDeHistorico } from "../lib/api";
 import { estaEmModoDemo, gerarNoiteDemo } from "../lib/demo";
 import type { LeituraSono } from "../types/sleep";
 
-export type EstadoHistorico = {
+type EstadoHistorico = {
   leituras: LeituraSono[];
   carregando: boolean;
   erro: string | null;
@@ -58,6 +58,7 @@ export function useHistorico(filtro: FiltroDeHistorico = {}): EstadoHistorico {
   useEffect(() => {
     // Reativar no setup e necessario no ciclo setup/cleanup/setup do Strict Mode.
     ativo.current = true;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- UI-33: Busca na API a cada troca de filtro; sem o carregamento síncrono, o filtro novo mostraria os dados antigos sem aviso.
     void carregar();
     return () => {
       ativo.current = false;

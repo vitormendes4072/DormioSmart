@@ -129,15 +129,20 @@ export function ListaDeNoites({
   const [falhou, setFalhou] = useState(false);
   const [tentativa, setTentativa] = useState(0);
 
+  // UI-33: o erro só sai quando a leitura dá certo ou quando a pessoa pede de
+  // novo. Apagá-lo no começo de toda releitura fazia a mensagem piscar e sumir
+  // antes de existir resultado.
   useEffect(() => {
     let atual = true;
-    setFalhou(false);
 
     async function ler() {
       try {
         // A mais recente primeiro: é a que acabou de terminar.
         const resultado = await plugin.noites();
-        if (atual) setNoites([...resultado.noites].reverse());
+        if (atual) {
+          setNoites([...resultado.noites].reverse());
+          setFalhou(false);
+        }
       } catch {
         if (atual) {
           setNoites(null);
@@ -158,7 +163,10 @@ export function ListaDeNoites({
         </p>
         <button
           type="button"
-          onClick={() => setTentativa((valor) => valor + 1)}
+          onClick={() => {
+            setFalhou(false);
+            setTentativa((valor) => valor + 1);
+          }}
           className="rounded-lg border border-border px-3 py-1.5 font-medium"
         >
           Tentar novamente

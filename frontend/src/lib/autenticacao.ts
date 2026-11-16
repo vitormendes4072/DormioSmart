@@ -14,7 +14,7 @@ import { obterSupabase } from "./supabase";
  *  tela de cadastro promete isso ao usuario. */
 export const MINIMO_DA_SENHA = 8;
 
-export type ResultadoDeAuth =
+type ResultadoDeAuth =
   | { ok: true; precisaConfirmarEmail?: boolean }
   | { ok: false; mensagem: string; naoConfirmado?: boolean };
 

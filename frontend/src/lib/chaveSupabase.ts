@@ -25,7 +25,7 @@
  * Formato novo: prefixo `sb_publishable_` (publica) ou `sb_secret_` (secreta).
  */
 
-export type ResultadoDaChave =
+type ResultadoDaChave =
   | { valida: true }
   | { valida: false; motivo: string; perigosa: boolean };
 

@@ -58,10 +58,10 @@ export const IDADE_DE_ADOLESCENTE = 12;
 export const IDADE_DE_MAIORIDADE = 18;
 export const IDADE_DE_PESSOA_IDOSA = 60;
 
-export type FaixaEtaria = "crianca" | "adolescente" | "adulto" | "pessoa-idosa";
+type FaixaEtaria = "crianca" | "adolescente" | "adulto" | "pessoa-idosa";
 
 /** Quanto do que o trabalho cita cobre a faixa do titular. */
-export type Cobertura =
+type Cobertura =
   /** Há coorte citada nessa faixa, e ela é a faixa principal. */
   | "coberta"
   /** Há coorte citada, com ressalva relevante dita junto. */
@@ -69,7 +69,7 @@ export type Cobertura =
   /** Nenhuma coorte citada cobre a faixa. Aplicar é extrapolar. */
   | "nao-coberta";
 
-export type Aplicabilidade = {
+type Aplicabilidade = {
   faixa: FaixaEtaria;
   cobertura: Cobertura;
   /** Frase para a tela. Uma só, e sem promessa de diagnóstico. */
