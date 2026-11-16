@@ -13,7 +13,8 @@
  * Um teste com um componente de mentira no lugar do `PerfilProvider` não
  * pegaria a regressão se alguém mudasse quando o perfil é buscado.
  */
-import { act, render } from "@testing-library/react";
+import { startTransition, Suspense } from "react";
+import { act, cleanup, render } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 type AoMudar = (evento: string, sessao: unknown) => void;
@@ -36,8 +37,8 @@ vi.mock("../lib/supabase", () => ({
 }));
 
 import { requisitarJson } from "../lib/api";
-import { AuthProvider } from "./AuthContext";
-import { PerfilProvider } from "./PerfilContext";
+import { AuthProvider, useAuth } from "./AuthContext";
+import { PerfilProvider, usePerfil } from "./PerfilContext";
 
 type Chamada = { url: string; authorization: string | null };
 let chamadas: Chamada[] = [];
@@ -67,6 +68,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  cleanup();
   vi.unstubAllGlobals();
   aoMudar = null;
 });
@@ -163,4 +165,126 @@ describe("AuthProvider liga o token antes dos efeitos dos filhos (AUTH-07)", () 
     });
     expect(chamadas[0]?.authorization).toBe("Bearer jwt-bom");
   });
+});
+
+
+it("envia o Bearer no primeiro pedido de perfil e preserva a sessão (AUTH-07)", async () => {
+  vi.stubGlobal("fetch", vi.fn(async (url: string, opcoes?: RequestInit) => {
+    const authorization = new Headers(opcoes?.headers).get("Authorization");
+    chamadas.push({ url, authorization });
+    return new Response(JSON.stringify(perfil()), { status: authorization ? 200 : 401 });
+  }));
+  await montar();
+  await evento("SIGNED_IN", sessao("jwt-do-login"));
+  expect({
+    authorization: chamadas.find((c) => c.url === "/api/me/perfil")?.authorization,
+    deslogou: signOut.mock.calls.length > 0,
+  }).toEqual({ authorization: "Bearer jwt-do-login", deslogou: false });
+});
+
+it.each([200, 401])("ignora a resposta %s de perfil de uma conta anterior", async (status) => {
+  let concluirA: ((r: Response) => void) | undefined;
+  const resposta = (nome: string) => new Response(JSON.stringify({ ...perfil(), nome }));
+  vi.stubGlobal("fetch", vi.fn(async (_url: string, opcoes?: RequestInit) => {
+    const token = new Headers(opcoes?.headers).get("Authorization");
+    return token === "Bearer jwt-a"
+      ? new Promise<Response>((resolve) => { concluirA = resolve; })
+      : resposta("Conta B");
+  }));
+
+  function Observador() {
+    return <span>{useAuth().usuario?.id}|{usePerfil().perfil?.nome}</span>;
+  }
+
+  const tela = render(<AuthProvider><PerfilProvider><Observador /></PerfilProvider></AuthProvider>);
+  await act(async () => {});
+  await evento("SIGNED_IN", { access_token: "jwt-a", user: { id: "a" } });
+  expect(concluirA).toBeTypeOf("function");
+  await evento("SIGNED_IN", { access_token: "jwt-b", user: { id: "b" } });
+  expect(tela.container.textContent).toBe("b|Conta B");
+
+  await act(async () => concluirA?.(status === 200 ? resposta("Conta A") : new Response(null, { status })));
+  expect({ texto: tela.container.textContent, deslogou: signOut.mock.calls.length > 0 })
+    .toEqual({ texto: "b|Conta B", deslogou: false });
+});
+
+it("mantém o token confirmado quando outro render é descartado", async () => {
+  const bloqueio = new Promise<never>(() => {});
+  const renders: string[] = [];
+
+  function Observador() {
+    const id = useAuth().usuario?.id ?? "";
+    renders.push(id);
+    if (id === "b") throw bloqueio;
+    return <span>{id}</span>;
+  }
+
+  const tela = render(
+    <Suspense fallback={<span>aguarde</span>}>
+      <AuthProvider><Observador /></AuthProvider>
+    </Suspense>,
+  );
+  await act(async () => {});
+  await evento("SIGNED_IN", { access_token: "jwt-a", user: { id: "a" } });
+  await act(async () => startTransition(() => aoMudar?.("SIGNED_IN", { access_token: "jwt-b", user: { id: "b" } })));
+  expect(renders).toContain("b");
+  expect(tela.container.textContent).toBe("a");
+  await requisitarJson("/api/sleep-history");
+  await evento("SIGNED_IN", { access_token: "jwt-c", user: { id: "c" } });
+  expect(tela.container.textContent).toBe("c");
+  expect(chamadas[0]?.authorization).toBe("Bearer jwt-a");
+});
+
+it("desmontar AuthProvider encerra o provedor de credenciais", async () => {
+  const tela = render(<AuthProvider><span /></AuthProvider>);
+  await act(async () => {});
+  await evento("SIGNED_IN", sessao("jwt-que-estava-montado"));
+  tela.unmount();
+  await requisitarJson("/api/sleep-history");
+  expect(chamadas.at(-1)?.authorization).toBeNull();
+});
+
+function PerfilVisivel() {
+  const { perfil, carregando } = usePerfil();
+  return <span>{perfil?.nome ?? "-"}|{String(carregando)}</span>;
+}
+
+async function montarComPerfil() {
+  const tela = render(<AuthProvider><PerfilProvider><PerfilVisivel /></PerfilProvider></AuthProvider>);
+  await act(async () => {});
+  await evento("SIGNED_IN", sessao("jwt-1"));
+  expect(tela.container.textContent).toBe("Ana|false");
+  return tela.container;
+}
+
+it.each(["TOKEN_REFRESHED", "SIGNED_IN"])("%s do mesmo usuário preserva o perfil sem consultar de novo", async (tipo) => {
+  const tela = await montarComPerfil();
+  const fetchMock = vi.mocked(fetch);
+  fetchMock.mockImplementationOnce(() => new Promise<Response>(() => {}));
+
+  await evento(tipo, sessao("jwt-2"));
+
+  expect({ texto: tela.textContent, pedidos: fetchMock.mock.calls.length })
+    .toEqual({ texto: "Ana|false", pedidos: 1 });
+});
+
+it("esconde o perfil de A enquanto a consulta de B está pendente", async () => {
+  const tela = await montarComPerfil();
+  const fetchMock = vi.mocked(fetch);
+  fetchMock.mockImplementationOnce(() => new Promise<Response>(() => {}));
+
+  await evento("SIGNED_IN", { access_token: "jwt-b", user: { id: "b" } });
+
+  expect(fetchMock).toHaveBeenCalledTimes(2);
+  expect(new Headers(fetchMock.mock.calls[1]?.[1]?.headers).get("Authorization")).toBe("Bearer jwt-b");
+  expect(tela.textContent).toBe("-|true");
+});
+
+it("esconde o perfil guardado depois de sair da conta", async () => {
+  const tela = await montarComPerfil();
+
+  await evento("SIGNED_OUT", null);
+
+  expect(tela.textContent).toBe("-|false");
+  expect(fetch).toHaveBeenCalledTimes(1);
 });

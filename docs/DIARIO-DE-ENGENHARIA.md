@@ -10371,6 +10371,26 @@ Na revisão de bed5c9e, o autor mediu 554 aprovados em Python 3.12 com CI=true e
 
 **Procedência.** Branch `chore/ci-02-lint`, base `develop` `88bbfb4`. Windows, Node 22 e contêineres locais. Ferramentas pinadas: ESLint 10.15.0, @eslint/js 10.0.1, typescript-eslint 8.72.2, eslint-plugin-react-hooks 7.1.1, Knip 5.88.1 e Ruff 0.17.5.
 
+---
+
+# 2026-11-15 (v) — AUTH-10: sessão e perfil vigentes
+
+**O problema, como foi entendido no início.** A conta B podia receber o perfil da conta A se a resposta antiga chegasse depois. O cliente guardava o provedor do JWT após desmontar. Em uma árvore de teste com Suspense acima do AuthProvider, um render descartado também podia publicar seu JWT.
+
+**Hipótese de trabalho.** Vincular o perfil à sessão confirmada e aceitar apenas o pedido mais recente dessa sessão impede a sobrescrita. Publicar o JWT em efeito de layout mantém a primeira consulta do perfil autenticada sem publicar um render descartado.
+
+**O que foi testado, e como.** Vitest com AuthProvider, PerfilProvider e cliente de API reais, sessões sintéticas e fetch simulado. A responde depois de B com 200 e 401. O teste de Suspense suspende B mantendo A visível, faz uma consulta e confirma C. O teste do AUTH-07 dá 401 ao primeiro pedido do perfil que chegar sem Bearer. A desmontagem é seguida de uma chamada no mesmo processo.
+
+**Resultado medido.** Na base `9ff2f15`, quatro casos falharam: 200 atrasado substituiu o perfil de B, 401 atrasado deslogou B, o render suspenso enviou o JWT de B e a desmontagem reteve o JWT. Após a correção os 11 testes de AuthContext passam. Trocar apenas `useLayoutEffect` por `useEffect` no AuthProvider derrubou o controle do AUTH-07 pelo Bearer ausente. A proteção contra 401 obsoleto conservou a sessão nesse controle. Retirar a comparação do token no 401 derrubou o teste do 401 atrasado por logout. Retirar a identidade do ciclo de busca derrubou o teste do 200 atrasado: o resultado de A ocultou o resultado de B. Retirar a limpeza do token derrubou o teste da desmontagem pelo Bearer residual. Frontend: 634 testes em 47 arquivos na primeira versão. Na revisão de 16/11, 638 em 47 arquivos, dos quais 15 em AuthContext. Os dois testes de renovação e `SIGNED_IN` repetido passam na `develop` e falham no `986e56a` com duas consultas e perfil vazio. Com a correção, permanecem uma consulta e o perfil visível. Remover a conferência do titular na renderização fez os dois novos testes exibirem o perfil antigo: com a consulta de B pendente e após logout. Os quatro controles anteriores também foram repetidos isoladamente. O `build:app` passou com TypeScript, Vite em modo app e sincronização do Capacitor. TypeScript, build, orçamentos e CSP passaram. Lint: 10 avisos e zero erros. Knip, Ruff e as três conferências de documentos passaram.
+
+**Adaptação.** O AuthProvider publica o JWT e o callback no commit e limpa ambos na desmontagem. A leitura do perfil começa em efeito passivo. O único consumidor com efeito de layout identificado fora dos provedores é o diálogo de consentimento e ele não busca o perfil. Um 401 segue como erro para a chamada que o recebeu. O callback global só roda quando o token dessa chamada ainda está vigente. O ciclo do perfil segue o `user.id` confirmado. Renovar o token ou receber outro `SIGNED_IN` do mesmo usuário preserva o perfil e a consulta em curso. Trocar de conta ou sair invalida o ciclo anterior. A renderização só expõe resultados cujo titular coincide com o usuário atual.
+
+**O que deu errado no caminho.** A primeira abertura no backlog não incluiu o item no quadro L0. A conferência acusou a ausência e o quadro foi acertado antes do commit de abertura. A reprodução ampliada encontrou o 401 atrasado no cliente de API, além da sobrescrita no contexto. Na revisão de 16/11 do commit `986e56a`, a consulta estava presa ao objeto `Session`. Renovar o JWT ou receber outro `SIGNED_IN` do mesmo usuário disparava uma segunda busca e deixava o perfil vazio enquanto ela estava pendente. Isso suspendia o consentimento usado no envio da noite, reabria a preparação da coleta e podia apagar dados em edição. A revisão também mostrou que remover a conferência do titular na renderização passava na suíte original, que só observava B depois da resposta.
+
+**Risco em aberto.** O Suspense acima do AuthProvider do teste não existe na árvore atual da aplicação. O comportamento importante nessa árvore é manter a consulta inicial do perfil depois da publicação do JWT. O APP-16 e o restante do UI-33 seguem na sequência própria.
+
+**Procedência.** Branch `bugfix/auth-10-sessao-perfil-vigentes`, base `develop` `9ff2f15`. Windows, Node 22 e Vitest 4.1.12. Dados sintéticos em testes locais.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

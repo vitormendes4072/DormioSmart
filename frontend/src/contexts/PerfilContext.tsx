@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 
 import { useAuth } from "./AuthContext";
 import { buscarPerfil, type PerfilDoServidor } from "../lib/perfil";
@@ -40,47 +40,61 @@ type ContextoDePerfil = {
 
 const Contexto = createContext<ContextoDePerfil | null>(null);
 
+type ResultadoDoPerfil = Omit<ContextoDePerfil, "recarregar"> & { usuarioId: string };
+
 export function PerfilProvider({ children }: { children: ReactNode }) {
   const { sessao, carregando: carregandoSessao } = useAuth();
-  const [perfil, setPerfil] = useState<PerfilDoServidor | null>(null);
-  const [carregando, setCarregando] = useState(false);
-  const [erro, setErro] = useState<string | null>(null);
+  const usuarioId = carregandoSessao ? null : (sessao?.user.id ?? null);
+  const [resultado, setResultado] = useState<ResultadoDoPerfil | null>(null);
+  const ciclo = useRef<{ usuarioId: string; ultimaBusca: number } | null>(null);
 
-  const carregar = useCallback(async () => {
-    setCarregando(true);
-    setErro(null);
+  // A troca de conta invalida pedidos antes dos efeitos passivos. Renovar o
+  // JWT do mesmo titular mantém o perfil e o ciclo de consulta.
+  useLayoutEffect(() => {
+    ciclo.current = usuarioId === null ? null : { usuarioId, ultimaBusca: 0 };
+    return () => { ciclo.current = null; };
+  }, [usuarioId]);
+
+  const consultar = useCallback(async () => {
+    const atual = ciclo.current;
+    if (!atual || atual.usuarioId !== usuarioId) return;
+    const pedido = ++atual.ultimaBusca;
+    const vigente = () => ciclo.current === atual && atual.ultimaBusca === pedido;
     try {
-      setPerfil(await buscarPerfil());
+      const perfil = await buscarPerfil();
+      if (vigente()) setResultado({ usuarioId: atual.usuarioId, perfil, erro: null, carregando: false });
     } catch (falha) {
-      // Não cai para o metadado do Auth: seria o segundo leitor de volta, sob
-      // condição — e invariante com cláusula de exceção é o que apodrece
-      // primeiro. Ver `docs/DECISAO-FONTE-DO-PERFIL.md`, seção 3.
-      setPerfil(null);
-      setErro(falha instanceof Error ? falha.message : "Não foi possível carregar o perfil.");
-    } finally {
-      setCarregando(false);
+      if (vigente()) {
+        const erro = falha instanceof Error ? falha.message : "Não foi possível carregar o perfil.";
+        setResultado({ usuarioId: atual.usuarioId, perfil: null, erro, carregando: false });
+      }
     }
-  }, []);
+  }, [usuarioId]);
 
-  // Dispara quando a sessão existe, e **de novo quando o usuário muda**: sem a
-  // dependência no id, entrar com outra conta na mesma aba mostraria o nome da
-  // anterior.
-  const usuarioId = sessao?.user?.id ?? null;
   useEffect(() => {
-    if (carregandoSessao) return;
-    if (!usuarioId) {
-      setPerfil(null);
-      setErro(null);
-      return;
-    }
-    void carregar();
-  }, [usuarioId, carregandoSessao, carregar]);
+    void consultar();
+  }, [consultar]);
 
-  return (
-    <Contexto.Provider value={{ perfil, carregando, erro, recarregar: carregar }}>
-      {children}
-    </Contexto.Provider>
-  );
+  const recarregar = useCallback(async () => {
+    if (usuarioId === null || ciclo.current?.usuarioId !== usuarioId) return;
+    setResultado((anterior) => ({
+      usuarioId,
+      perfil: anterior?.usuarioId === usuarioId ? anterior.perfil : null,
+      carregando: true,
+      erro: null,
+    }));
+    await consultar();
+  }, [usuarioId, consultar]);
+
+  const atual = resultado?.usuarioId === usuarioId ? resultado : null;
+  const valor = {
+    perfil: atual?.perfil ?? null,
+    erro: atual?.erro ?? null,
+    carregando: usuarioId !== null && (atual?.carregando ?? true),
+    recarregar,
+  };
+
+  return <Contexto.Provider value={valor}>{children}</Contexto.Provider>;
 }
 
 /**
