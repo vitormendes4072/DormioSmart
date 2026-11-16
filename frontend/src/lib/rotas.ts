@@ -10,13 +10,13 @@
  * Por isso "aguardar" e um estado de primeira classe aqui, e nao um detalhe.
  */
 
-export type Destino =
+type Destino =
   | "aguardar"
   | "liberar"
   | "ir-para-login"
   | "ir-para-dashboard";
 
-export type Situacao = {
+type Situacao = {
   /** A sessao ainda esta sendo restaurada. */
   carregando: boolean;
   temSessao: boolean;

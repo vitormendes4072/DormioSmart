@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import {
   type Agregado,
@@ -115,10 +115,17 @@ export function useColeta(epocaSegundos: number, dispositivoId: string | null) {
   const inicioRef = useRef<number | null>(null);
   const wakeLock = useRef<{ release: () => Promise<void> } | null>(null);
   // Refs para o que o listener e o temporizador consultam sem re-renderizar.
+  // UI-33: atualizados so depois que a renderizacao e aplicada. Escrever no
+  // corpo do componente deixaria a epoca ler o aparelho ou o JWT de uma
+  // renderizacao que o React descartou. O layout effect roda antes de qualquer
+  // temporizador da epoca disparar com os valores novos.
+  const jwt = useAuth().sessao?.access_token ?? null;
   const dispositivoRef = useRef(dispositivoId);
-  dispositivoRef.current = dispositivoId;
-  const jwtRef = useRef<string | null>(null);
-  jwtRef.current = useAuth().sessao?.access_token ?? null;
+  const jwtRef = useRef(jwt);
+  useLayoutEffect(() => {
+    dispositivoRef.current = dispositivoId;
+    jwtRef.current = jwt;
+  }, [dispositivoId, jwt]);
 
   const fecharEpoca = useCallback(async () => {
     setPrimeiraJanelaFechada(true);

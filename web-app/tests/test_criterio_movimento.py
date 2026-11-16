@@ -49,7 +49,7 @@ def test_regressao_do_limiar_assimetrico():
 
 
 def test_rotulos_nao_afirmam_sono():
-    """O dispositivo registra movimento, não sono (Escopo do ROADMAP.md)."""
+    """O dispositivo registra movimento, não sono ("Escopo" em docs/METODOLOGIA.md)."""
     for rotulo in (STATUS_REPOUSO, STATUS_MOVIMENTO):
         assert "dorm" not in rotulo.lower()
         assert "sono" not in rotulo.lower()

@@ -10433,6 +10433,172 @@ Na revisão de bed5c9e, o autor mediu 554 aprovados em Python 3.12 com CI=true e
 
 **Procedência.** `curl` na produção, Windows 11; o console do navegador do autor, colado na conversa; 16/11.
 
+---
+
+# 2026-11-16 (iii) — o release R7: rotas divididas, sessão vigente e fila da noite
+
+**O problema, como foi entendido no início.** `UI-25`, `API-06`, `UI-15`, `UI-32`, `CI-02`, `AUTH-10`, `APP-16` e o registro do R6 estavam em `develop`. Com o Codex fora por alguns dias, o release fazia parte do plano aprovado pelo autor.
+
+**Hipótese de trabalho.** Nada exige migração, e o contrato continua 2.11.0. O site muda em quatro pontos: o guia de pareamento, a divisão por rota, a mídia da landing e o login. O `vercel.json` muda dois hashes da CSP e ganha o cache da mídia. O risco maior é o `AUTH-10`, que mexe na sessão e só se confirma com um login real.
+
+**O que foi testado, e como.** PR #199 (`develop` → `main`), CI e Vercel. Depois do deploy:
+- `/health` e as rotas com `curl`;
+- `scripts/conferir_csp.py` sobre as duas páginas servidas e os cabeçalhos servidos (copiados para um `vercel.json` temporário);
+- os pedaços JS publicados, baixados a partir do `index.html` seguindo os imports, com busca pelos textos novos;
+- o cabeçalho de uma WebP da landing.
+
+Depois, o login do autor.
+
+**Resultado medido.**
+- CI 13 de 13; merge `5105e84`; deploy de produção com sucesso.
+- `/health` `200`, banco ok, contrato 2.11.0.
+- `401` sem token e com `Bearer` inválido em `/api/devices`, `/api/sleep-history` e `/api/me/perfil`; `401` sem token no `POST` de `/api/data` e de `/api/data/lote`.
+- CSP: 10 scripts inline, todos com hash, sem sobra, cabeçalhos completos.
+- 29 pedaços JS; o texto do prazo do lote (`APP-16`) e o do guia de pareamento (`UI-25`) presentes.
+- WebP com `Cache-Control: public, max-age=31536000, immutable`.
+- **Login do autor (16/11):** saiu e entrou, o nome apareceu no menu, Histórico e Dispositivos carregaram, e o F5 manteve a sessão.
+
+**Adaptação.** Nenhuma.
+
+**O que deu errado no caminho.** Nada nesta etapa.
+
+**Risco em aberto.**
+- **O prazo de 60 s do lote** não foi medido contra a produção, e o tempo por leitura do lote continua sem medida. Ficam no `INFRA-05`/`API-06`.
+- **O celular** só recebe o `APP-16` com um APK novo (`APP-12`).
+- **A renovação do token durante uma sessão longa** não foi observada no login; os testes do `AUTH-10` a cobrem simulada.
+
+**Procedência.** GitHub (PR #199, CI e deployment); `curl` e o conferidor da CSP na produção, Windows 11; o relato do autor sobre o login; 16/11.
+
+---
+
+# 2026-11-16 (iv) — UI-33: avisos de hooks e tipos exportados
+
+**O problema, como foi entendido no início.** O `CI-02` deixou 13 avisos de hooks e 20 tipos exportados sem consumidor, só como aviso. Depois do `AUTH-10` e do `APP-16`, restavam 10 avisos: em `useColeta`, `AuthContext`, `NovaSenha`, `ListaDeNoites`, `CartaoDaNoite` (3), `MeusDispositivos` e `useHistorico`. Com o Codex fora, o item ficou com o Claude, com plano aprovado pelo autor.
+
+**Hipótese de trabalho.** Quatro avisos são defeito ou custo real:
+- **`useColeta`:** os refs do aparelho e do JWT eram escritos durante a renderização.
+- **`AuthContext` e `NovaSenha`:** o estado inicial sem configuração só era corrigido num efeito, o que custava um quadro de carregamento.
+- **`ListaDeNoites`:** o erro era apagado no começo de toda releitura.
+
+Os outros seis são sincronização com sistema externo (plugin nativo, API) e ficam com o motivo escrito. Os 20 tipos podem deixar de ser exportados sem quebrar o `tsc`; o teste foi feito em `develop` e desfeito antes do plano.
+
+**O que foi testado, e como.** Windows, Node 22, Vitest. Para cada correção, um teste e uma sabotagem que desfaz o conserto:
+- **`useColeta.refs.test.ts`:** a época usa o aparelho e o JWT da renderização mais recente.
+- **`semConfiguracao.test.tsx`:** usa `renderToString`, que não roda efeitos e mostra o primeiro quadro. Sem configuração, o `AuthProvider` já começa sem carregar, e a `NovaSenha` já diz "Link inválido".
+- **`ListaDeNoites`:**
+  - o "Tentar novamente" tira o erro na hora;
+  - a releitura depois de uma falha mantém o erro até a lista chegar.
+
+Depois, as regras `refs` e `set-state-in-effect` passaram a erro e o `knip:tipos` perdeu o `--no-exit-code`, com três controles positivos.
+
+**Resultado medido.**
+- Frontend **651 passam, 49 arquivos** (+5); `tsc` e `vite build` ok; `conferir_csp.py` ok.
+- `npm run lint` com 0 problemas; `knip` e `knip:tipos` com saída 0.
+- Sabotagens, 7 de 7 acusadas, cada uma pelo teste certo:
+  - sem atualizar o ref do aparelho;
+  - sem atualizar o ref do JWT;
+  - o `carregando` inicial de volta a `true`;
+  - o `linkValido` inicial de volta a `null`;
+  - sem limpar o erro no sucesso;
+  - sem limpar o erro no clique;
+  - o reset de volta ao efeito.
+- Controles positivos, 3 de 3:
+  - um `setState` síncrono num efeito e um ref escrito na renderização viram **erro** do ESLint;
+  - um tipo exportado sem uso faz o `knip:tipos` sair com 1.
+
+**Adaptação.** Na `ListaDeNoites`, o erro passou a ser limpo em dois pontos: no sucesso da leitura e no clique de "Tentar novamente". Com isso, uma recarga pedida pelo pai depois de uma falha mantém a mensagem até haver lista, em vez de mostrar uma tela vazia.
+
+**O que deu errado no caminho.**
+- Copiar o `node_modules` da pasta principal para a worktree levou mais de 5 minutos e deixou uma cópia pela metade, presa por um processo `cp` ainda vivo. O `npm ci` direto levou 36 s.
+- O primeiro roteiro de sabotagem procurava trechos com quebra de linha `\n` em arquivos `\r\n`. Duas sabotagens não foram aplicadas, e a suíte "passou" sem sabotar nada. A saída mostrou o erro de busca, e elas foram refeitas normalizando a quebra de linha.
+
+**Risco em aberto.**
+- **O teste do `useColeta` cobre a ordem das atualizações, não uma renderização descartada pelo React**, que não dá para provocar em teste. O código antigo também passaria nele: o que trava o defeito é a regra `refs`, agora erro.
+- **Os seis `eslint-disable`** dependem do motivo escrito continuar verdadeiro. Mudar o que essas funções fazem exige reler a justificativa.
+
+**Procedência.** Branch `bugfix/ui-33-avisos-de-hooks` sobre `develop` `0958f46`; Windows 11, Node 22, Vitest 4.1.12, ESLint 10.15.0, Knip 5.88.1; 16/11.
+
+---
+
+# 2026-11-16 (v) — GIT-05: ponteiros pendurados, de oito para cinco
+
+**O problema, como foi entendido no início.** Arquivos versionados mandavam ler oito arquivos que o `.gitignore` exclui. Quem clona o repositório segue a indicação e não acha nada. A verificação (3) do `conferir_docs_versionados.py` impedia um nono caso, mas isentava os oito desde 17/10. Contagem de hoje, em arquivos rastreados fora do diário: `ROADMAP.md` 17, `docs/METODOLOGIA.md` 15, `docs/HARDWARE.md` 9, `HISTORICO.md` 8, `CLAUDE.local.md` 7, `docs/DATASET.md` 6, `ROTEIRO-APRESENTACAO.md` 5 e `DOCUMENTO-TCC.md` 4.
+
+**Hipótese de trabalho.** Os oito se dividem em três grupos:
+- **Quatro são ausência declarada:** a citação existe para dizer que o arquivo é local.
+- **O `ROADMAP.md` é caderno de trabalho do autor:** o texto versionado só busca nele três coisas (a RQ e o escopo, o critério do `CAL-01` e o conceito de noite), que podem ir para documentos versionados.
+- **Os três documentos de fundamentação são citados pelo código e pelo CI:** versioná-los é o que completa o clone.
+
+A decisão de versionar foi do autor, com a condição de que fossem lidos inteiros antes.
+
+**O que foi testado, e como.** Os três documentos foram lidos inteiros e varridos em busca de e-mail, caminho de máquina, nome de pessoa e chave: nada encontrado. O texto foi mantido, com uma nota de cabeçalho em cada. Depois:
+- `conferir_docs_versionados.py` com e sem as mudanças, e três controles positivos:
+  - a `METODOLOGIA.md` de volta ao `.gitignore`;
+  - uma citação nova a um arquivo ignorado que existe no disco;
+  - a isenção do `ROADMAP.md` removida.
+- `calculos_tcc.py --conferir`, `consolidar_registro.py --conferir`, `conferir_backlog.py --conferir`.
+- A suíte do backend.
+
+**Resultado medido.**
+- Isenções de 8 para **5**: `ROADMAP.md`, `HISTORICO.md`, `CLAUDE.local.md`, `DOCUMENTO-TCC.md` e `ROTEIRO-APRESENTACAO.md`, todas ausência declarada.
+- A verificação passou.
+- Controles positivos, 3 de 3: cada um reprovou com saída 1, nomeando o arquivo.
+- Conferências de documento passando; backend **574 passam, 1 pula** (Windows, Python 3.13, sem `CI=true`).
+
+**Adaptação.**
+- **Mais um ponteiro com conteúdo:** além dos três assuntos previstos, o `ESC-01` (o conceito de noite) mandava ler uma seção inteira do roadmap. A seção foi resumida na linha do item.
+- **A frase sobre o app nativo estava desatualizada:** a `ARQUITETURA-DE-CAPTACAO.md` dizia, pelo roadmap, que o app nativo não entrava antes da banca. Foi corrigida, porque o `APP-02` saiu do pós-banca em 08/11.
+- **Atualizados antes de publicar, a pedido do autor:** a primeira versão só punha uma nota no topo. Depois, o texto foi atualizado ao estado do projeto, com marcas ✏️ *16/11*:
+  - na `HARDWARE.md`, a Fase 1 sem Deep Sleep nem Wake-on-Motion, o estado da Fase 2 (soldas, 41 min na placa, envio com `HTTP 200`, o que falta), o botão fora do produto, a fila na flash e o contrato 2.11.0;
+  - na `METODOLOGIA.md`, o `ARQ-01` na RQ e o ML decidido e executado (`Wearanize+ OA`, `ml-inf-cabeca-v2`);
+  - na `DATASET.md`, o `DEC-01` fechado.
+
+  O texto de maio fica abaixo de cada marca, para a história não se perder.
+- **O plano previa reduzir a lista para quatro; ficou em cinco:** o `ROADMAP.md` continua citado por `CLAUDE.md`, `AGENTS.md`, backlog, lições e diário para dizer que é local. Virou ausência declarada como os outros.
+
+**O que deu errado no caminho.**
+- O primeiro roteiro de edição, escrito como heredoc no shell, quebrou nas aspas e não rodou; foi para arquivos `.py`.
+- O primeiro controle da citação nova citava um arquivo de teste na pasta do devlog, com nome começando por algarismo, e a verificação passou. Não era falha da verificação: o padrão de ponteiro só casa nome que começa com maiúscula. Com o mesmo arquivo em maiúsculas, reprovou. (Os nomes ficam fora deste texto: citados aqui, a própria (3) os acusaria.)
+
+**Risco em aberto.**
+- **A isenção é por arquivo, não por citação:** uma citação nova ao `ROADMAP.md` que dependa do conteúdo dele não reprova.
+- **Nome de arquivo com minúscula escapa da (3)**, pelo padrão de ponteiro.
+- **Os três documentos ficam públicos com o texto de maio preservado** sob as marcas de 16/11. Quem ler só o parágrafo antigo, sem a marca, lê o estado de maio.
+
+**Procedência.** Branch `chore/git-05-ponteiros-pendurados` sobre `develop` `0443a74`; Windows 11, Python 3.13; os três documentos copiados do disco do autor; 16/11.
+
+---
+
+# 2026-11-16 (vi) — DOC-06b: roteiro de leitura com checklist
+
+**O problema, como foi entendido no início.** O `DOC-06b` pede que os autores leiam as fontes que citam e que as citações sigam o padrão do TCC. A conferência de 05/11 (`docs/CONFERENCIA-DE-CITACOES.md`) foi feita pela ferramenta, não pelos autores. O item não tinha critério de fechamento: "ler" não deixa rastro.
+
+**Hipótese de trabalho.** A parte da ferramenta acabou em 05/11. O que resta é a leitura dos autores, e ela fica verificável se cada fonte tiver o trecho exato a ler, uma pergunta com a resposta esperada e um campo de quem leu e quando. O padrão de citação já é o autor-data da ABNT.
+
+**O que foi testado, e como.**
+- No Drive, o metadado do "Copy of Produto 5", para saber se as correções de 05/11 já tinham sido coladas.
+- Na API da Europe PMC, o DOI e o PMCID de Skarpsno (2017), Yuan (2024), Smith (2018) e van Hees (2013).
+- Por `curl`, cada link do roteiro.
+
+**Resultado medido.**
+- O documento não é editado desde 30/09: **as correções de citação não estão no texto.**
+- Os quatro artigos abrem no PMC com `200`. A folha de dados do ESP32 responde `200` em PDF.
+- O endereço conhecido da folha de dados do MPU-6050 redireciona para a busca do site da TDK; o roteiro diz para buscar pelo código do documento.
+- A busca por Smith (2018) devolveu **dois artigos com o mesmo título-base**: a revisão sistemática com meta-análise (`10.5664/jcsm.7228`, PMC6040804) e a diretriz clínica (`10.5664/jcsm.7230`, PMC6040807). O texto cita a revisão; o roteiro aponta a revisão e pede para conferir qual DOI está na lista de referências.
+
+**Adaptação.** O roteiro substituiu a lista "O que os autores precisam ler", na mesma ordem de risco. A linha do backlog ganhou o critério de fechamento.
+
+**O que deu errado no caminho.**
+- O primeiro link que montei para o Smith apontava para a diretriz (PMC6040807), e não para a revisão. Achei ao pedir os dois títulos completos.
+- O `docs/CALCULOS-TCC.md` cita a folha de dados do MPU-6050 na rev. 3.4 e, num trecho, na rev. 3.2. Ficou como pergunta no roteiro, sem conserto: decidir qual revisão vale depende do PDF que os autores tiverem.
+
+**Risco em aberto.**
+- **A leitura em si continua por fazer.** O item segue aberto, e o roteiro só a torna conferível.
+- **A divergência rev. 3.2 × 3.4** no `CALCULOS-TCC.md` fica para quando os autores tiverem o PDF.
+- **Links externos envelhecem**: foram abertos em 16/11.
+
+**Procedência.** API REST da Europe PMC e `curl` nos endereços, Windows 11; metadado do Drive pelo conector; 16/11.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

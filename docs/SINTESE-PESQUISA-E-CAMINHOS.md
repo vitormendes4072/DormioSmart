@@ -631,4 +631,4 @@ justifica o `HW-07` com evidência em vez de intuição.
 | **`docs/BACKLOG-COMPLETO.md`** | Os 64 itens abertos, com camada de dependência e peso |
 | **`docs/METODOLOGIA.md`** | A régua: RQ, reprodutibilidade, validação, rastreabilidade. *Sugestão de busca ≠ citação* |
 | **`docs/HARDWARE.md`** | BOM, fases, adequação do hardware, a arquitetura v1 → v2 |
-| **`ROADMAP.md`** · **`HISTORICO.md`** | Prioridade e o que já foi concluído |
+| **`docs/BACKLOG-COMPLETO.md`** · **`docs/DIARIO-DE-ENGENHARIA.md`** | O que está pendente, por dependência, e o que já foi feito |

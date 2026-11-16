@@ -49,7 +49,7 @@ export const EVENTOS_PADRAO: ReadonlyArray<readonly [number, number]> = [
   [0.78, 0.83],
 ];
 
-export type OpcoesDoSinal = {
+type OpcoesDoSinal = {
   pontos?: number;
   semente?: number;
   eventos?: ReadonlyArray<readonly [number, number]>;
@@ -98,7 +98,7 @@ export function gerarSinal(opcoes: OpcoesDoSinal = {}): number[] {
 }
 
 /** Sistema de coordenadas do desenho. `largura` cobre UM periodo do sinal. */
-export type Geometria = {
+type Geometria = {
   largura: number;
   altura: number;
   /** Quantos m/s2 vao do centro ate a borda vertical. */

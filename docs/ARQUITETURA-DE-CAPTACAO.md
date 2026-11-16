@@ -259,7 +259,7 @@ poupam mais.
   vigília, e não há estudo grande e recente com o celular deitado no colchão.
 
 **Consequência para o projeto:** o celular sobre o colchão é uma linha de base plausível, não um
-instrumento validado. Isso reforça o que o `ROADMAP.md` (P4) já dizia: o celular é o **grupo de
+instrumento validado. Isso reforça o que o plano do celular (P4) já dizia: o celular é o **grupo de
 controle** contra o qual o travesseiro prova valor, e o `VIA-02` (os dois gravando ao mesmo
 tempo) é o que mede a diferença.
 
@@ -345,7 +345,7 @@ completa"), mas aumenta o que é preciso validar.
 ## 8. O que este documento não decide
 
 - **Qual arquitetura o travesseiro usa.** É o `ARQ-01` (a), do autor com o orientador (`RQ-01`).
-- **Se o app nativo entra antes da banca.** O `ROADMAP.md` (P4) diz que não; nada aqui muda isso.
+- **Se o app nativo entra antes da banca.** O plano do celular (P4) dizia que não. ✏️ *16/11 (`GIT-05`): o autor decidiu o contrário em 08/11 — o app nativo é o `APP-02`, tirado do pós-banca.*
 - **O limiar e o modelo do celular.** Dependem do `VIA-02`, que depende da solda.
 
 ## 9. Fontes externas

@@ -502,7 +502,7 @@ mesma ordem. Em resolução, o E4 (15,6 mg/LSB) é **64× mais grosseiro** que o
 >    determinístico, não ruído. Na prática há sempre dither; ainda assim, é aproximação.
 >
 > **O que fazer com isso:** é argumento de fundamentação, não resultado. A confirmação é o
-> `CAL-01` — cujo critério de aceitação já registrado no `ROADMAP.md` (pose Z+ com ruído
+> `CAL-01` — cujo critério de aceitação já registrado (linha do `CAL-01` no backlog: pose Z+ com ruído
 > ~0,02 m/s² = 2 mg) coincide quase exatamente com o piso teórico do componente na banda do
 > filtro de 21 Hz (`400 µg/√Hz × √21 = 1,8 mg`). O critério que já estava escrito é, portanto,
 > bem escolhido.
@@ -1143,5 +1143,5 @@ MPU6050 não é o elo fraco — apoiam-se **exclusivamente** em células ✅ con
 - UK Biobank — <https://ukbiobank.ac.uk/enable-your-research/costs>
 - Sleep-EDF Expanded (PhysioNet) — <https://archive.physionet.org/physiobank/database/sleep-edfx/>
 
-**Documentação interna**
-- `docs/DATASET.md` (levantamento `DEC-01`, 2026-05-31) · `docs/METODOLOGIA.md` · `docs/HARDWARE.md` · `ROADMAP.md`
+**Documentação de fundamentação**
+- `docs/DATASET.md` (levantamento `DEC-01`, 2026-05-31) · `docs/METODOLOGIA.md` · `docs/HARDWARE.md`

@@ -3,7 +3,7 @@ import { Clock3, Home, Moon, Radio, Settings, Smartphone, type LucideIcon } from
 
 import { noiteNativaDisponivel } from "../lib/noiteNativa";
 
-export type ItemNav = {
+type ItemNav = {
   to: string;
   label: string;
   icon: LucideIcon;

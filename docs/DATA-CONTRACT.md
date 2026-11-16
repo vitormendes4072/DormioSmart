@@ -527,7 +527,7 @@ pico *mais alto* podia ser pintado como repouso ao lado de um pico *mais baixo*
 pintado como movimento.
 
 O rótulo `"Dormindo"` também **excedia o escopo do projeto** — o dispositivo não
-sabe se alguém dorme, apenas se houve movimento (ver Escopo no `ROADMAP.md`).
+sabe se alguém dorme, apenas se houve movimento (ver "Escopo" em `docs/METODOLOGIA.md`).
 
 **Rótulos legados permanecem no banco.** As linhas gravadas antes desta versão
 mantêm `"Dormindo"` / `"Movimento Detectado!"`, e o dashboard os reconhece. Não
@@ -548,7 +548,7 @@ acompanha o travesseiro. Qualquer análise de temperatura separa por tipo de apa
 
 O MPU6050 reporta a temperatura **do próprio circuito integrado**. Não é
 temperatura ambiente, não é temperatura corporal e não deve ser apresentada
-como qualquer uma das duas (ver Escopo no `ROADMAP.md`). O mesmo vale para a da bateria.
+como qualquer uma das duas (ver "Escopo" em `docs/METODOLOGIA.md`). O mesmo vale para a da bateria.
 
 O `fake_sensor.py` simula esse campo em torno de **32 °C**, coerente com um CI
 em operação. Até a v1.0.0 ele simulava 24 °C descrito como "temperatura base do

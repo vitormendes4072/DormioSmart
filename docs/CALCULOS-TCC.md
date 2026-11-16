@@ -45,7 +45,7 @@ O `docs/BACKLOG-COMPLETO.md` define os quatro itens assim:
 | `CALC-04` | Análise elétrica: pull-down de 10 kΩ, pull-ups do I2C, níveis 3,3 V, fonte de despertar |
 
 Decisão tomada: **preservar a numeração do backlog** — renumerar quebraria as referências
-cruzadas no `ROADMAP.md`, no `SINTESE-PESQUISA-E-CAMINHOS.md` e no próprio backlog — mas
+cruzadas no roadmap local do autor, no `SINTESE-PESQUISA-E-CAMINHOS.md` e no próprio backlog — mas
 **reordenar a exposição** e **recortar um dos itens**:
 
 | Seção do texto | Item | O que muda em relação ao backlog |

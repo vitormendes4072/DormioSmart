@@ -35,7 +35,7 @@ export function textoPublicavel(documento: string): string {
   return linhas.slice(ini + 1, fim).join("\n").trim();
 }
 
-export type DadosDoControlador = { controlador?: string; contato?: string };
+type DadosDoControlador = { controlador?: string; contato?: string };
 
 /** Troca `[CONTROLADOR]` e `[CONTATO]` pelos valores dados, ou pelo aviso. */
 export function preencher(texto: string, dados: DadosDoControlador): string {

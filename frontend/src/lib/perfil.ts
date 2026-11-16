@@ -125,10 +125,10 @@ export type PerfilDoServidor = {
 
 /** Estado do formulário. `idade` é texto porque campo de formulário é texto —
  *  guardá-la como número obrigaria a inventar um valor para "vazio". */
-export type DadosDoPerfil = { nome: string; idade: string; email: string };
+type DadosDoPerfil = { nome: string; idade: string; email: string };
 
 /** O que de fato mudou. `idade: null` é "apague", ausente é "não mexa". */
-export type AlteracaoDePerfil = { nome?: string; idade?: number | null; email?: string };
+type AlteracaoDePerfil = { nome?: string; idade?: number | null; email?: string };
 
 export type ResultadoDePerfil =
   /** O formulário não mudou nada. Não houve ida à rede. */

@@ -67,6 +67,14 @@ violações atuais inteira dentro da isenção **não pega nada hoje** — ela s
 pega o nono. Quem a ler precisa saber disso para não a confundir com cobertura.
 Reduzir a lista é trabalho de decisão, item `GIT-05`, não deste script.
 
+✏️ **16/11/2026, `GIT-05` fechado: oito → cinco.** `docs/METODOLOGIA.md`,
+`docs/DATASET.md` e `docs/HARDWARE.md` passaram a ser versionados (decisão do
+autor), e o que os arquivos rastreados buscavam no `ROADMAP.md` (a RQ, o
+escopo, o critério do `CAL-01`, o conceito de noite) foi trazido para
+documentos versionados. Os cinco que ficam são **ausência declarada**: a
+citação diz que o arquivo é local, e nenhum texto versionado depende do
+conteúdo dele.
+
 ── USO ──────────────────────────────────────────────────────────────────
 
     python scripts/conferir_docs_versionados.py
@@ -137,16 +145,19 @@ PADRAO_PONTEIRO = re.compile(
 #:
 #: ⚠️ Esta lista nasceu em 17/10 com TODOS os oito casos existentes dentro.
 #: Logo, no dia em que entrou, a (3) **não reprovava nada**. Ela é catraca
-#: contra o nono caso, não cobertura dos oito. Reduzi-la é o `GIT-05`.
+#: contra o nono caso, não cobertura dos oito. Reduzi-la era o `GIT-05`,
+#: fechado em 16/11 com cinco: todos ausência declarada (ver o cabeçalho).
 #:
 #: Todo item é IMPRESSO a cada execução, pela mesma razão da
 #: `EXEMPLOS_EM_PROSA`: isenção silenciosa é como uma verificação deixa de
 #: verificar sem ninguém notar.
 PONTEIROS_ACEITOS: dict[str, str] = {
     "ROADMAP.md":
-        "Arquivo de trabalho; 8 arquivos rastreados o citam, inclusive "
-        "frontend/src/lib/metricas.ts. É o pior caso do GIT-05 e o primeiro "
-        "a decidir: ou versiona, ou os 8 param de citar.",
+        "Prioridades do autor, local. Desde o GIT-05 (16/11) nenhum texto "
+        "versionado depende do conteúdo dele: a RQ, a hipótese e o escopo "
+        "estão em docs/METODOLOGIA.md, o critério do CAL-01 e o conceito de "
+        "noite no backlog. As citações que restam dizem que ele é local "
+        "(CLAUDE.md, AGENTS.md) ou registram a história do próprio GIT-05.",
     "HISTORICO.md":
         "Deliberado e já justificado no corpo do trabalho: o diário declara, "
         "na seção 'O que este diário não cobre', que o HISTORICO.md não é "
@@ -159,19 +170,10 @@ PONTEIROS_ACEITOS: dict[str, str] = {
         "clone não precisa dele para trabalhar.",
     "DOCUMENTO-TCC.md":
         "A monografia em redação. Fora do git por decisão de escopo do "
-        "repositório de engenharia. Citado só pelo backlog.",
+        "repositório de engenharia. Citado pelo backlog e pelo CLAUDE.md, "
+        "na lista do que nunca é versionado.",
     "ROTEIRO-APRESENTACAO.md":
         "Material de apresentação, idem DOCUMENTO-TCC.md.",
-    "docs/METODOLOGIA.md":
-        "Material interno (decisão de 30/09). ⚠️ Mas o README.md rastreado "
-        "lista METODOLOGIA, HARDWARE e DATASET na árvore de 'Estrutura' "
-        "como 'fundamentação do TCC' — pelo nome, sem caminho, então a (3) "
-        "não os pegaria por ali; quem clona lê o nome e não acha o arquivo.",
-    "docs/HARDWARE.md":
-        "Idem METODOLOGIA.md. Citado também por scripts/calculos_tcc.py, "
-        "que é rastreado e roda no CI.",
-    "docs/DATASET.md":
-        "Idem METODOLOGIA.md.",
 }
 
 #: Extensões de arquivo rastreado onde se procura referência. Binário não

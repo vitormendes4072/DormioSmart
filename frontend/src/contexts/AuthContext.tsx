@@ -29,7 +29,9 @@ const Contexto = createContext<ContextoDeAutenticacao | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [sessao, setSessao] = useState<Session | null>(null);
-  const [carregando, setCarregando] = useState(true);
+  // UI-33: sem configuracao nao ha sessao a carregar, e isso se sabe ja na
+  // primeira renderizacao. Decidir no efeito custava um quadro de carregamento.
+  const [carregando, setCarregando] = useState(() => obterSupabase() !== null);
   const erroDeConfiguracao = problemaDeConfiguracao();
 
   const token = sessao?.access_token ?? null;
@@ -51,12 +53,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const supabase = obterSupabase();
-    if (!supabase) {
-      // Sem configuracao nao ha sessao a carregar — nao deixar `carregando`
-      // preso, senao a UI fica num spinner eterno sem explicar o motivo.
-      setCarregando(false);
-      return;
-    }
+    // Sem configuracao, `carregando` ja comecou falso (ver o useState acima).
+    if (!supabase) return;
 
     let ativo = true;
 

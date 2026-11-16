@@ -378,7 +378,7 @@ export function fracaoEmMovimento(
  * 45 s perde 33% da janela em buracos de 15 s, pequenos demais para qualquer
  * filtro de tamanho, e a tela mostrava uma captacao limpa.
  */
-export type AvisoDeCobertura = {
+type AvisoDeCobertura = {
   /** Tempo da janela sem medicao nenhuma. */
   perdidoMs: number;
   /** Silencios em que o aparelho parou. Pode ser vazio. */
@@ -439,7 +439,7 @@ export function avaliarCobertura(cobertura: Cobertura): AvisoDeCobertura | null 
  * O corte e a INTERRUPCAO — o aparelho parar de mandar —, e nao qualquer
  * descontinuidade de cobertura. Ver o cabecalho deste arquivo.
  */
-export type Sessao = {
+type Sessao = {
   inicio: number;
   fim: number;
   leituras: LeituraSono[];

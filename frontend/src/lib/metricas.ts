@@ -4,7 +4,7 @@
  * Tudo aqui e calculado a partir do que o dispositivo REALMENTE mede: instante
  * da leitura, magnitude da aceleracao e o rotulo repouso/movimento. Nao ha
  * estagio de sono, nao ha pontuacao, nao ha duracao de sono — o escopo do
- * projeto nao afirma nenhuma dessas coisas (ver ROADMAP.md).
+ * projeto nao afirma nenhuma dessas coisas (ver "Escopo" em docs/METODOLOGIA.md).
  */
 import {
   calcularCobertura,
@@ -25,9 +25,9 @@ export function leituraNaBordaDoLimite(leituras: LeituraSono[], limite: number) 
   return leituras.length >= limite ? leituras.at(-1) : undefined;
 }
 
-export type Janela = { inicio: Date; fim: Date };
+type Janela = { inicio: Date; fim: Date };
 
-export type Metricas = {
+type Metricas = {
   /** Quantas leituras chegaram na janela. */
   totalLeituras: number;
   /** Quantas foram classificadas como movimento PELO DISPOSITIVO. */
