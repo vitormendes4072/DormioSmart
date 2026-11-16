@@ -63,7 +63,27 @@ export async function contarRestantes(fonte: FonteDaNoite): Promise<number> {
   return noites.filter((noite) => !noite.teste).reduce((s, n) => s + Math.max(0, n.epocas - n.enviadas), 0);
 }
 
-export async function enviarNoites(
+// A fonte nativa é compartilhada entre montagens do cartão. A próxima
+// tentativa espera a marcação da anterior antes de ler a fila novamente.
+const enviosPorFonte = new WeakMap<FonteDaNoite, Promise<ResultadoDoEnvio>>();
+
+export function enviarNoites(
+  fonte: FonteDaNoite,
+  enviar: EnviarLote,
+  aoAvancar?: (p: ProgressoDoEnvio) => void,
+): Promise<ResultadoDoEnvio> {
+  const anterior = enviosPorFonte.get(fonte);
+  const pronto = anterior?.catch(() => {}) ?? Promise.resolve();
+  const envio = pronto
+    .then(() => enviarNoitesPendentes(fonte, enviar, aoAvancar))
+    .finally(() => {
+      if (enviosPorFonte.get(fonte) === envio) enviosPorFonte.delete(fonte);
+    });
+  enviosPorFonte.set(fonte, envio);
+  return envio;
+}
+
+async function enviarNoitesPendentes(
   fonte: FonteDaNoite,
   enviar: EnviarLote,
   aoAvancar?: (p: ProgressoDoEnvio) => void,

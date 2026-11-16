@@ -10391,6 +10391,26 @@ Na revisão de bed5c9e, o autor mediu 554 aprovados em Python 3.12 com CI=true e
 
 **Procedência.** Branch `bugfix/auth-10-sessao-perfil-vigentes`, base `develop` `9ff2f15`. Windows, Node 22 e Vitest 4.1.12. Dados sintéticos em testes locais.
 
+---
+
+# 2026-11-16 — APP-16: envio de noites após remontagem
+
+**O problema, como foi entendido no início.** O cartão guardava a tentativa de envio automático numa ref da própria montagem. Reabrir a tela durante uma requisição repunha a ref e permitia que os caminhos automático e manual partissem do mesmo marcador.
+
+**Hipótese de trabalho.** A idempotência da 011 evita uma segunda linha para a mesma época com instante. Serializar tentativas no módulo, por fonte, permite ao próximo envio ler o marcador depois da gravação anterior.
+
+**O que foi testado, e como.** Em Postgres 17 descartável, com o esquema e os papéis da suíte de RLS, foram confirmadas duas transações com as mesmas 60 épocas sintéticas com `captured_at`. Cada época chamou `registrar_leitura_da_sessao`, como faz o caminho por sessão do lote. No frontend, a primeira resposta fica retida durante a remontagem. Os testes disparam separadamente o automático e o botão manual e contam lotes e chamadas a `marcarEnviadas`. Um terceiro caso acrescenta uma noite enquanto a tentativa seguinte espera.
+
+**Resultado medido.** O lote deixou 60 linhas na primeira transação e 60 na segunda, com os mesmos 60 IDs distintos e nenhum nulo. Sete testes de idempotência e medição passaram em Postgres 17. Na base `f8224b5`, os três testes novos do frontend falharam. Em ambos os modos, a segunda resposta chamou `marcarEnviadas(ate: 2)` antes da primeira resposta, que depois chamou o mesmo marcador. A implementação nativa aplica `min(max(atual, ate), total)` e retorna cedo quando o ponto já é igual. Isso foi lido no plugin, enquanto a ordem e as duas chamadas foram executadas com o plugin simulado. Após a correção houve zero lotes repetidos e uma marcação. A tentativa seguinte releu a fila e enviou apenas a noite nova. Remover a espera pelo envio anterior derrubou os três testes em cópia isolada. Restaurá-la trouxe os 36 testes do cartão e da fila de volta ao verde. A suíte de frontend passou com 641 testes em 47 arquivos. Lint terminou com zero erros e 9 avisos. Knip, Ruff, TypeScript, build web, orçamentos, CSP, `build:app` e as três conferências de documentos passaram.
+
+**Adaptação.** O módulo encadeia promessas por fonte nativa. Todos os disparos usam a mesma fila, inclusive o envio ao encerrar. Cada tentativa faz a própria leitura quando a anterior termina, o que permite enviar noites novas ou retomar depois de falha. O disparo automático pode ser cancelado na desmontagem antes de entrar na fila.
+
+**O que deu errado no caminho.** A versão original permitia que a segunda resposta marcasse a fila antes de a primeira terminar. O primeiro teste concorrente também mostrou que duas tentativas podiam entrar com uma lista antiga e deixar uma noite nova para trás.
+
+**Risco em aberto.** Reiniciar o processo do app descarta a fila em memória. Se o processo cair entre a confirmação no servidor e a atualização do arquivo local, a próxima abertura pode reenviar a época. A idempotência medida cobre esse reenvio quando o instante existe.
+
+**Procedência.** Branch `bugfix/app-16-evitar-envio-concorrente`, base `develop` `f8224b5`. Windows com Node 22 e Vitest. Docker com Python 3.12 e Postgres 17 para a medição. Dados sintéticos.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

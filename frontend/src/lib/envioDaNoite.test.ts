@@ -71,6 +71,33 @@ describe("enviarNoites (APP-02, etapa 3)", () => {
     expect(s.gravadas.size).toBe(130);
   });
 
+  it("relê a fila depois do envio em curso e inclui uma noite que acabou durante a espera", async () => {
+    const noites = { "noite-1.jsonl": 2 };
+    const f = fonte(noites);
+    let liberar!: () => void;
+    const resposta = new Promise<void>((resolve) => { liberar = resolve; });
+    let iniciou!: () => void;
+    const emCurso = new Promise<void>((resolve) => { iniciou = resolve; });
+    const primeiro = enviarNoites(f, async () => {
+      iniciou();
+      await resposta;
+      return { aceitas: [0, 1], rejeitadas: [], pendentes: [] };
+    });
+    await emCurso;
+
+    const segundoLote: object[][] = [];
+    const segundo = enviarNoites(f, async (leituras) => {
+      segundoLote.push(leituras);
+      return { aceitas: leituras.map((_, i) => i), rejeitadas: [], pendentes: [] };
+    });
+    Object.assign(noites, { "noite-2.jsonl": 1 });
+    liberar();
+    await Promise.all([primeiro, segundo]);
+
+    expect(segundoLote).toEqual([[{ arquivo: "noite-2.jsonl", epoca: 0 }]]);
+    expect(f.ponto).toEqual({ "noite-1.jsonl": 2, "noite-2.jsonl": 1 });
+  });
+
   it("continua de onde parou, sem reenviar o que ja foi confirmado", async () => {
     const f = fonte({ "noite-1.jsonl": 100 }, { "noite-1.jsonl": 70 });
     const s = servidor();
