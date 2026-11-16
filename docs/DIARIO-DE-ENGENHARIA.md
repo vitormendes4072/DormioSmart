@@ -10469,6 +10469,57 @@ Depois, o login do autor.
 
 **Procedência.** GitHub (PR #199, CI e deployment); `curl` e o conferidor da CSP na produção, Windows 11; o relato do autor sobre o login; 16/11.
 
+---
+
+# 2026-11-16 (iv) — UI-33: avisos de hooks e tipos exportados
+
+**O problema, como foi entendido no início.** O `CI-02` deixou 13 avisos de hooks e 20 tipos exportados sem consumidor, só como aviso. Depois do `AUTH-10` e do `APP-16`, restavam 10 avisos: em `useColeta`, `AuthContext`, `NovaSenha`, `ListaDeNoites`, `CartaoDaNoite` (3), `MeusDispositivos` e `useHistorico`. Com o Codex fora, o item ficou com o Claude, com plano aprovado pelo autor.
+
+**Hipótese de trabalho.** Quatro avisos são defeito ou custo real:
+- **`useColeta`:** os refs do aparelho e do JWT eram escritos durante a renderização.
+- **`AuthContext` e `NovaSenha`:** o estado inicial sem configuração só era corrigido num efeito, o que custava um quadro de carregamento.
+- **`ListaDeNoites`:** o erro era apagado no começo de toda releitura.
+
+Os outros seis são sincronização com sistema externo (plugin nativo, API) e ficam com o motivo escrito. Os 20 tipos podem deixar de ser exportados sem quebrar o `tsc`; o teste foi feito em `develop` e desfeito antes do plano.
+
+**O que foi testado, e como.** Windows, Node 22, Vitest. Para cada correção, um teste e uma sabotagem que desfaz o conserto:
+- **`useColeta.refs.test.ts`:** a época usa o aparelho e o JWT da renderização mais recente.
+- **`semConfiguracao.test.tsx`:** usa `renderToString`, que não roda efeitos e mostra o primeiro quadro. Sem configuração, o `AuthProvider` já começa sem carregar, e a `NovaSenha` já diz "Link inválido".
+- **`ListaDeNoites`:**
+  - o "Tentar novamente" tira o erro na hora;
+  - a releitura depois de uma falha mantém o erro até a lista chegar.
+
+Depois, as regras `refs` e `set-state-in-effect` passaram a erro e o `knip:tipos` perdeu o `--no-exit-code`, com três controles positivos.
+
+**Resultado medido.**
+- Frontend **651 passam, 49 arquivos** (+5); `tsc` e `vite build` ok; `conferir_csp.py` ok.
+- `npm run lint` com 0 problemas; `knip` e `knip:tipos` com saída 0.
+- Sabotagens, 7 de 7 acusadas, cada uma pelo teste certo:
+  - sem atualizar o ref do aparelho;
+  - sem atualizar o ref do JWT;
+  - o `carregando` inicial de volta a `true`;
+  - o `linkValido` inicial de volta a `null`;
+  - sem limpar o erro no sucesso;
+  - sem limpar o erro no clique;
+  - o reset de volta ao efeito.
+- Controles positivos, 3 de 3:
+  - um `setState` síncrono num efeito e um ref escrito na renderização viram **erro** do ESLint;
+  - um tipo exportado sem uso faz o `knip:tipos` sair com 1.
+
+**Adaptação.** Na `ListaDeNoites`, o erro passou a ser limpo em dois pontos: no sucesso da leitura e no clique de "Tentar novamente". Com isso, uma recarga pedida pelo pai depois de uma falha mantém a mensagem até haver lista, em vez de mostrar uma tela vazia.
+
+**O que deu errado no caminho.**
+- Copiar o `node_modules` da pasta principal para a worktree levou mais de 5 minutos e deixou uma cópia pela metade, presa por um processo `cp` ainda vivo. O `npm ci` direto levou 36 s.
+- O primeiro roteiro de sabotagem procurava trechos com quebra de linha `
+` em arquivos `
+`. Duas sabotagens não foram aplicadas, e a suíte "passou" sem sabotar nada. A saída mostrou o erro de busca, e elas foram refeitas normalizando a quebra de linha.
+
+**Risco em aberto.**
+- **O teste do `useColeta` cobre a ordem das atualizações, não uma renderização descartada pelo React**, que não dá para provocar em teste. O código antigo também passaria nele: o que trava o defeito é a regra `refs`, agora erro.
+- **Os seis `eslint-disable`** dependem do motivo escrito continuar verdadeiro. Mudar o que essas funções fazem exige reler a justificativa.
+
+**Procedência.** Branch `bugfix/ui-33-avisos-de-hooks` sobre `develop` `0958f46`; Windows 11, Node 22, Vitest 4.1.12, ESLint 10.15.0, Knip 5.88.1; 16/11.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

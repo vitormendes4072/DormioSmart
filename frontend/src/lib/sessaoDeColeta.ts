@@ -12,7 +12,7 @@ import type { Registro } from "../hooks/useColeta";
  * caminho principal.
  */
 
-export type ResumoDaSessao = {
+type ResumoDaSessao = {
   /** Quantos registros a sessao produziu, em qualquer estado. */
   total: number;
   /** Ja confirmados no banco. */

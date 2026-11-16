@@ -35,7 +35,7 @@ export const PARAMETRO_DEMO = "demo";
  */
 export const LEITURAS_POR_PADRAO = 20;
 
-export type OpcoesDaNoite = {
+type OpcoesDaNoite = {
   /** Instante da ultima leitura. Padrao: agora. */
   fim?: Date;
   /** Duracao da captacao em minutos. Padrao: 460 (7h40). */

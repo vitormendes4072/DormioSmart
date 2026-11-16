@@ -72,6 +72,7 @@ export function CartaoDaNoite({
   }, [plugin]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- UI-33: Sincroniza com o plugin nativo: leitura imediata e depois a cada intervalo; o estado só muda quando a promessa resolve.
     void ler();
     const id = setInterval(() => void ler(), INTERVALO_DE_LEITURA_MS);
     return () => clearInterval(id);
@@ -111,6 +112,7 @@ export function CartaoDaNoite({
   }, [plugin, enviar, aoMudar]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- UI-33: Lê do plugin nativo quantas épocas faltam; o estado só muda quando a promessa resolve.
     void lerRestantes();
   }, [lerRestantes]);
 
@@ -119,6 +121,7 @@ export function CartaoDaNoite({
     if (tentouAoAbrir.current || !enviar || estado === null || restantes === null) return;
     if (estado.ativa || restantes === 0) return;
     tentouAoAbrir.current = true;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- UI-33: Envio único ao abrir, protegido por tentouAoAbrir; o "enviando" síncrono é o retorno visual, e a fila do APP-16 impede envio duplicado.
     void enviarAgora();
   }, [enviar, estado, restantes, enviarAgora]);
 

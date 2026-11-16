@@ -41,6 +41,7 @@ export function MeusDispositivos({ mostrarPareamento = true }: { mostrarPareamen
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- UI-33: Busca na API; o carregamento síncrono é o mesmo dos botões de recarregar, que reusam esta função.
     void carregar();
   }, [carregar]);
 

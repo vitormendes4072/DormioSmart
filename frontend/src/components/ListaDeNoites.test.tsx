@@ -106,6 +106,41 @@ describe("ListaDeNoites (APP-02, etapa 4)", () => {
     expect(p.noites).toHaveBeenCalledTimes(2);
   });
 
+  it("ao tentar novamente, o erro sai na hora, antes do resultado (UI-33)", async () => {
+    const p = plugin([NOITE_ANTIGA]);
+    let liberar!: () => void;
+    vi.mocked(p.noites)
+      .mockRejectedValueOnce(new Error("falha de leitura"))
+      .mockImplementationOnce(() => new Promise((ok) => { liberar = () => ok({ noites: [NOITE_ANTIGA] }); }));
+    montar(p);
+    await screen.findByRole("alert");
+
+    fireEvent.click(screen.getByRole("button", { name: "Tentar novamente" }));
+    expect(screen.queryByRole("alert")).toBeNull();
+    await act(async () => liberar());
+    expect(screen.getByTestId("noite-noite-1.jsonl")).toBeTruthy();
+  });
+
+  it("a releitura depois de uma falha mantém o erro até a lista chegar (UI-33)", async () => {
+    const p = plugin([NOITE_ANTIGA]);
+    let liberar!: () => void;
+    vi.mocked(p.noites)
+      .mockRejectedValueOnce(new Error("falha de leitura"))
+      .mockImplementationOnce(() => new Promise((ok) => { liberar = () => ok({ noites: [NOITE_ANTIGA] }); }));
+    const { rerender } = montar(p);
+    await screen.findByRole("alert");
+
+    rerender(
+      <MemoryRouter>
+        <ListaDeNoites plugin={p} recarregar={1} />
+      </MemoryRouter>,
+    );
+    expect(screen.getByRole("alert").textContent).toMatch(/não foi possível carregar as noites gravadas/i);
+    await act(async () => liberar());
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(screen.getByTestId("noite-noite-1.jsonl")).toBeTruthy();
+  });
+
   it("sem noites, diz isso", async () => {
     montar(plugin([]));
     expect(await screen.findByText(/nenhuma noite gravada/i)).toBeTruthy();

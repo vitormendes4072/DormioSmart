@@ -14,8 +14,8 @@ export default defineConfig([
     rules: {
       "react-hooks/rules-of-hooks": "error",
       "react-hooks/exhaustive-deps": "error",
-      "react-hooks/refs": "warn",
-      "react-hooks/set-state-in-effect": "warn",
+      "react-hooks/refs": "error",
+      "react-hooks/set-state-in-effect": "error",
     },
     linterOptions: { reportUnusedDisableDirectives: "error" },
   },

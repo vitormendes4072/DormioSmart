@@ -10,7 +10,7 @@
     "preview": "vite preview",
     "lint": "eslint \"src/**/*.{ts,tsx}\" \"*.ts\"",
     "knip": "knip --include exports,nsExports,files",
-    "knip:tipos": "knip --include types,nsTypes --no-exit-code",
+    "knip:tipos": "knip --include types,nsTypes",
     "test": "vitest run",
     "test:watch": "vitest"
   },

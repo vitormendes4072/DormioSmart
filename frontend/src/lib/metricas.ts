@@ -25,9 +25,9 @@ export function leituraNaBordaDoLimite(leituras: LeituraSono[], limite: number) 
   return leituras.length >= limite ? leituras.at(-1) : undefined;
 }
 
-export type Janela = { inicio: Date; fim: Date };
+type Janela = { inicio: Date; fim: Date };
 
-export type Metricas = {
+type Metricas = {
   /** Quantas leituras chegaram na janela. */
   totalLeituras: number;
   /** Quantas foram classificadas como movimento PELO DISPOSITIVO. */
