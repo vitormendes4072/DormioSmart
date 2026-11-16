@@ -10567,6 +10567,38 @@ A decisão de versionar foi do autor, com a condição de que fossem lidos intei
 
 **Procedência.** Branch `chore/git-05-ponteiros-pendurados` sobre `develop` `0443a74`; Windows 11, Python 3.13; os três documentos copiados do disco do autor; 16/11.
 
+---
+
+# 2026-11-16 (vi) — DOC-06b: roteiro de leitura com checklist
+
+**O problema, como foi entendido no início.** O `DOC-06b` pede que os autores leiam as fontes que citam e que as citações sigam o padrão do TCC. A conferência de 05/11 (`docs/CONFERENCIA-DE-CITACOES.md`) foi feita pela ferramenta, não pelos autores. O item não tinha critério de fechamento: "ler" não deixa rastro.
+
+**Hipótese de trabalho.** A parte da ferramenta acabou em 05/11. O que resta é a leitura dos autores, e ela fica verificável se cada fonte tiver o trecho exato a ler, uma pergunta com a resposta esperada e um campo de quem leu e quando. O padrão de citação já é o autor-data da ABNT.
+
+**O que foi testado, e como.**
+- No Drive, o metadado do "Copy of Produto 5", para saber se as correções de 05/11 já tinham sido coladas.
+- Na API da Europe PMC, o DOI e o PMCID de Skarpsno (2017), Yuan (2024), Smith (2018) e van Hees (2013).
+- Por `curl`, cada link do roteiro.
+
+**Resultado medido.**
+- O documento não é editado desde 30/09: **as correções de citação não estão no texto.**
+- Os quatro artigos abrem no PMC com `200`. A folha de dados do ESP32 responde `200` em PDF.
+- O endereço conhecido da folha de dados do MPU-6050 redireciona para a busca do site da TDK; o roteiro diz para buscar pelo código do documento.
+- A busca por Smith (2018) devolveu **dois artigos com o mesmo título-base**: a revisão sistemática com meta-análise (`10.5664/jcsm.7228`, PMC6040804) e a diretriz clínica (`10.5664/jcsm.7230`, PMC6040807). O texto cita a revisão; o roteiro aponta a revisão e pede para conferir qual DOI está na lista de referências.
+
+**Adaptação.** O roteiro substituiu a lista "O que os autores precisam ler", na mesma ordem de risco. A linha do backlog ganhou o critério de fechamento.
+
+**O que deu errado no caminho.**
+- O primeiro link que montei para o Smith apontava para a diretriz (PMC6040807), e não para a revisão. Achei ao pedir os dois títulos completos.
+- O `docs/CALCULOS-TCC.md` cita a folha de dados do MPU-6050 na rev. 3.4 e, num trecho, na rev. 3.2. Ficou como pergunta no roteiro, sem conserto: decidir qual revisão vale depende do PDF que os autores tiverem.
+
+**Risco em aberto.**
+- **A leitura em si continua por fazer.** O item segue aberto, e o roteiro só a torna conferível.
+- **A divergência rev. 3.2 × 3.4** no `CALCULOS-TCC.md` fica para quando os autores tiverem o PDF.
+- **Links externos envelhecem**: foram abertos em 16/11.
+
+**Procedência.** API REST da Europe PMC e `curl` nos endereços, Windows 11; metadado do Drive pelo conector; 16/11.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
