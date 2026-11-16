@@ -126,6 +126,7 @@ desbalanceado) · versionamento de dados e ambiente pinado.
 
 ## Status
 
-- [ ] **DEC-01** pendente de validação final com o orientador (direção já endossada: dataset
+- [x] **DEC-01** ✏️ *16/11: fechado no backlog (`SCI-01 / DEC-01`). Foi resolvido sem depender
+      do orientador, com a coleção aberta `Wearanize+ OA` — ver `docs/ML-DATASETS-E-PLANO.md`.*
+      Até então: pendente de validação final com o orientador (direção já endossada: dataset
       público como **validação/calibração**, não replicação nem estadiamento).
-- Decisão registrada aqui é a recomendação técnica; a palavra final é do orientador.

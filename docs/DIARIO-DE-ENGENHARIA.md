@@ -10550,7 +10550,12 @@ A decisão de versionar foi do autor, com a condição de que fossem lidos intei
 **Adaptação.**
 - **Mais um ponteiro com conteúdo:** além dos três assuntos previstos, o `ESC-01` (o conceito de noite) mandava ler uma seção inteira do roadmap. A seção foi resumida na linha do item.
 - **A frase sobre o app nativo estava desatualizada:** a `ARQUITETURA-DE-CAPTACAO.md` dizia, pelo roadmap, que o app nativo não entrava antes da banca. Foi corrigida, porque o `APP-02` saiu do pós-banca em 08/11.
-- **Notas de cabeçalho em vez de reescrita:** a `HARDWARE.md` descreve o desenho de maio (Deep Sleep, Wake-on-Motion, botão de simulação), e a `METODOLOGIA.md` dava o ML por decisão em aberto. Os dois ganharam nota apontando o documento vigente.
+- **Atualizados antes de publicar, a pedido do autor:** a primeira versão só punha uma nota no topo. Depois, o texto foi atualizado ao estado do projeto, com marcas ✏️ *16/11*:
+  - na `HARDWARE.md`, a Fase 1 sem Deep Sleep nem Wake-on-Motion, o estado da Fase 2 (soldas, 41 min na placa, envio com `HTTP 200`, o que falta), o botão fora do produto, a fila na flash e o contrato 2.11.0;
+  - na `METODOLOGIA.md`, o `ARQ-01` na RQ e o ML decidido e executado (`Wearanize+ OA`, `ml-inf-cabeca-v2`);
+  - na `DATASET.md`, o `DEC-01` fechado.
+
+  O texto de maio fica abaixo de cada marca, para a história não se perder.
 - **O plano previa reduzir a lista para quatro; ficou em cinco:** o `ROADMAP.md` continua citado por `CLAUDE.md`, `AGENTS.md`, backlog, lições e diário para dizer que é local. Virou ausência declarada como os outros.
 
 **O que deu errado no caminho.**
@@ -10560,7 +10565,7 @@ A decisão de versionar foi do autor, com a condição de que fossem lidos intei
 **Risco em aberto.**
 - **A isenção é por arquivo, não por citação:** uma citação nova ao `ROADMAP.md` que dependa do conteúdo dele não reprova.
 - **Nome de arquivo com minúscula escapa da (3)**, pelo padrão de ponteiro.
-- **A `HARDWARE.md` e a `METODOLOGIA.md` agora são públicas com trechos datados de maio**, marcados por nota e não reescritos.
+- **Os três documentos ficam públicos com o texto de maio preservado** sob as marcas de 16/11. Quem ler só o parágrafo antigo, sem a marca, lê o estado de maio.
 
 **Procedência.** Branch `chore/git-05-ponteiros-pendurados` sobre `develop` `0443a74`; Windows 11, Python 3.13; os três documentos copiados do disco do autor; 16/11.
 

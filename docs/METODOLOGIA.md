@@ -2,7 +2,7 @@
 
 Referência para tudo que envolve validade científica do TCC. Ler antes de qualquer tarefa de ML, validação ou definição de escopo de pesquisa. Complementa o `CLAUDE.md` (operacional) e o `docs/HARDWARE.md`.
 
-> ✏️ **Versionado desde 16/11/2026 (`GIT-05`).** Até então era interno, e o código (`ml/`, `scripts/`) e outros documentos o citavam sem que um clone o trouxesse. A RQ, a hipótese e o escopo, que viviam só no roadmap local do autor, foram trazidos para a seção abaixo. O resto do texto é o de antes, com as datas em que foi escrito: onde ele diverge do diário, o diário vence.
+> ✏️ **Versionado desde 16/11/2026 (`GIT-05`).** Até então era interno, e o código (`ml/`, `scripts/`) e outros documentos o citavam sem que um clone o trouxesse. A RQ, a hipótese e o escopo, que viviam só no roadmap local do autor, foram trazidos para a seção abaixo. O resto foi atualizado no mesmo dia para o estado do projeto, com as marcas ✏️ *16/11*. Onde este texto divergir do diário, o diário vence.
 
 ---
 
@@ -12,7 +12,7 @@ Referência para tudo que envolve validade científica do TCC. Ler antes de qual
 
 **Hipótese (a confirmar com o orientador).** É viável detectar e registrar eventos de movimento associados ao repouso com um dispositivo de baixo consumo baseado em ESP32 + MPU6050 embarcado em um travesseiro, mantendo autonomia e segurança térmica compatíveis com uso noturno, e transmitindo os dados para uma aplicação web de visualização — com a abordagem de detecção sustentada por validação contra acelerometria real (dataset público), e não apenas por hipótese.
 
-A RQ e a hipótese são a régua: todo item do backlog deve poder ser justificado como serviço à RQ. Se um item não serve à pergunta, ou é cortado, ou a RQ é revista (com o orientador). Uma RQ boa é específica e verificável — fugir de formulações vagas ("monitorar o sono"). Refinar a redação é o `RQ-01`.
+A RQ e a hipótese são a régua: todo item do backlog deve poder ser justificado como serviço à RQ. Se um item não serve à pergunta, ou é cortado, ou a RQ é revista (com o orientador). Uma RQ boa é específica e verificável — fugir de formulações vagas ("monitorar o sono"). Refinar a redação é o `RQ-01`. ✏️ *16/11: o `ARQ-01` (30/10) muda o que sustenta o "baixo consumo" da RQ — sono leve com a FIFO do sensor, e não Deep Sleep com Wake-on-Motion. Levar isso ao orientador junto com a RQ faz parte do `RQ-01`.*
 
 ### Escopo
 
@@ -22,9 +22,9 @@ A RQ e a hipótese são a régua: todo item do backlog deve poder ser justificad
 
 ---
 
-## Dataset público + ML — DECISÃO EM ABERTO
+## Dataset público + ML
 
-> ✏️ *16/11 (`GIT-05`): título e texto de 31/05. A decisão foi tomada depois e o bloco de ML está fechado — o plano vigente é `docs/ML-DATASETS-E-PLANO.md`.*
+> ✏️ *16/11, estado: **decidido e executado.** O `DEC-01` fechou sem depender do orientador: a base principal é a coleção aberta `Wearanize+ OA` (CC-BY-4.0, acelerômetro na cabeça com PSG pontuada). O bloco de ML está fechado, e o modelo `ml-inf-cabeca-v2` roda no backend sob demanda (`ML-INF`, 08/11). A transferência do sensor preso à cabeça para o travesseiro continua sendo a limitação central. Plano e números: `docs/ML-DATASETS-E-PLANO.md` e `docs/RELATORIO-ML-INF-V2.md`; texto de limitações: `docs/LIMITACOES-TCC.md`. Até 16/11 esta seção se chamava "decisão em aberto"; o texto abaixo é o de 31/05.*
 
 A ideia de usar uma base pública de sono e/ou ML **foi endossada pelo orientador** como forma de demonstrar viabilidade científica real (dado real, não só hipótese) — mas o COMO ainda precisa de validação metodológica final. Direção definida: dataset público para **validação/calibração** da detecção de movimento, **não** para replicar dados nem classificar estágios. O levantamento completo (candidatos, acesso, recomendação) está em **`docs/DATASET.md`**. Conclusão-chave: **não existe dataset exato** para o cenário travesseiro — o caminho é validar a *abordagem* em acelerometria de pulso (Walch 2019) + fundamentar o não-contato na literatura + gerar dado próprio na Fase 2.
 
@@ -86,6 +86,6 @@ Pergunta de engenharia (não se responde com dataset): um acelerômetro no trave
 
 **NÃO comprovado (o caso exato do projeto):**
 - "Um acelerômetro **dentro do travesseiro** capta de forma confiável os eventos de movimento do sono" — não há estudo rigoroso. O único trabalho na configuração exata (SAI SURAJ et al., 2023, smart pillow + MPU6050) é de venue de baixa credibilidade e com poucos resultados quantitativos → **não é prova**.
-- **Nuance física:** a evidência mais forte (sob colchão) tem acoplamento mecânico melhor — o corpo inteiro pesa sobre o colchão. O travesseiro tem só a cabeça → capta bem movimento da cabeça / mudança de posição que a envolve; **corpo rolando sem mexer a cabeça é a incógnita real**, a ser testada em bancada (item `VIA-01` do backlog).
+- **Nuance física:** a evidência mais forte (sob colchão) tem acoplamento mecânico melhor — o corpo inteiro pesa sobre o colchão. O travesseiro tem só a cabeça → capta bem movimento da cabeça / mudança de posição que a envolve; **corpo rolando sem mexer a cabeça é a incógnita real**, a ser testada em bancada (item `VIA-01` do backlog). ✏️ *16/11: ainda não testada; a placa já funciona soldada (`HW-09`), e o `VIA-01` é o próximo passo de bancada.*
 
 **Como escrever no TCC:** *"abordagem fundamentada na literatura, a ser validada empiricamente pelo protótipo"* — **nunca "comprovado"** para o caso travesseiro. Subprometer e validar com dado próprio (Fase 2) é mais defensável na banca, e a ausência de dataset/estudo exato vira justificativa de contribuição original.
