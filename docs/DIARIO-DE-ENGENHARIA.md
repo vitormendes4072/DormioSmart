@@ -10520,6 +10520,50 @@ Depois, as regras `refs` e `set-state-in-effect` passaram a erro e o `knip:tipos
 
 **Procedência.** Branch `bugfix/ui-33-avisos-de-hooks` sobre `develop` `0958f46`; Windows 11, Node 22, Vitest 4.1.12, ESLint 10.15.0, Knip 5.88.1; 16/11.
 
+---
+
+# 2026-11-16 (v) — GIT-05: ponteiros pendurados, de oito para cinco
+
+**O problema, como foi entendido no início.** Arquivos versionados mandavam ler oito arquivos que o `.gitignore` exclui. Quem clona o repositório segue a indicação e não acha nada. A verificação (3) do `conferir_docs_versionados.py` impedia um nono caso, mas isentava os oito desde 17/10. Contagem de hoje, em arquivos rastreados fora do diário: `ROADMAP.md` 17, `docs/METODOLOGIA.md` 15, `docs/HARDWARE.md` 9, `HISTORICO.md` 8, `CLAUDE.local.md` 7, `docs/DATASET.md` 6, `ROTEIRO-APRESENTACAO.md` 5 e `DOCUMENTO-TCC.md` 4.
+
+**Hipótese de trabalho.** Os oito se dividem em três grupos:
+- **Quatro são ausência declarada:** a citação existe para dizer que o arquivo é local.
+- **O `ROADMAP.md` é caderno de trabalho do autor:** o texto versionado só busca nele três coisas (a RQ e o escopo, o critério do `CAL-01` e o conceito de noite), que podem ir para documentos versionados.
+- **Os três documentos de fundamentação são citados pelo código e pelo CI:** versioná-los é o que completa o clone.
+
+A decisão de versionar foi do autor, com a condição de que fossem lidos inteiros antes.
+
+**O que foi testado, e como.** Os três documentos foram lidos inteiros e varridos em busca de e-mail, caminho de máquina, nome de pessoa e chave: nada encontrado. O texto foi mantido, com uma nota de cabeçalho em cada. Depois:
+- `conferir_docs_versionados.py` com e sem as mudanças, e três controles positivos:
+  - a `METODOLOGIA.md` de volta ao `.gitignore`;
+  - uma citação nova a um arquivo ignorado que existe no disco;
+  - a isenção do `ROADMAP.md` removida.
+- `calculos_tcc.py --conferir`, `consolidar_registro.py --conferir`, `conferir_backlog.py --conferir`.
+- A suíte do backend.
+
+**Resultado medido.**
+- Isenções de 8 para **5**: `ROADMAP.md`, `HISTORICO.md`, `CLAUDE.local.md`, `DOCUMENTO-TCC.md` e `ROTEIRO-APRESENTACAO.md`, todas ausência declarada.
+- A verificação passou.
+- Controles positivos, 3 de 3: cada um reprovou com saída 1, nomeando o arquivo.
+- Conferências de documento passando; backend **574 passam, 1 pula** (Windows, Python 3.13, sem `CI=true`).
+
+**Adaptação.**
+- **Mais um ponteiro com conteúdo:** além dos três assuntos previstos, o `ESC-01` (o conceito de noite) mandava ler uma seção inteira do roadmap. A seção foi resumida na linha do item.
+- **A frase sobre o app nativo estava desatualizada:** a `ARQUITETURA-DE-CAPTACAO.md` dizia, pelo roadmap, que o app nativo não entrava antes da banca. Foi corrigida, porque o `APP-02` saiu do pós-banca em 08/11.
+- **Notas de cabeçalho em vez de reescrita:** a `HARDWARE.md` descreve o desenho de maio (Deep Sleep, Wake-on-Motion, botão de simulação), e a `METODOLOGIA.md` dava o ML por decisão em aberto. Os dois ganharam nota apontando o documento vigente.
+- **O plano previa reduzir a lista para quatro; ficou em cinco:** o `ROADMAP.md` continua citado por `CLAUDE.md`, `AGENTS.md`, backlog, lições e diário para dizer que é local. Virou ausência declarada como os outros.
+
+**O que deu errado no caminho.**
+- O primeiro roteiro de edição, escrito como heredoc no shell, quebrou nas aspas e não rodou; foi para arquivos `.py`.
+- O primeiro controle da citação nova citava um arquivo de teste na pasta do devlog, com nome começando por algarismo, e a verificação passou. Não era falha da verificação: o padrão de ponteiro só casa nome que começa com maiúscula. Com o mesmo arquivo em maiúsculas, reprovou. (Os nomes ficam fora deste texto: citados aqui, a própria (3) os acusaria.)
+
+**Risco em aberto.**
+- **A isenção é por arquivo, não por citação:** uma citação nova ao `ROADMAP.md` que dependa do conteúdo dele não reprova.
+- **Nome de arquivo com minúscula escapa da (3)**, pelo padrão de ponteiro.
+- **A `HARDWARE.md` e a `METODOLOGIA.md` agora são públicas com trechos datados de maio**, marcados por nota e não reescritos.
+
+**Procedência.** Branch `chore/git-05-ponteiros-pendurados` sobre `develop` `0443a74`; Windows 11, Python 3.13; os três documentos copiados do disco do autor; 16/11.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

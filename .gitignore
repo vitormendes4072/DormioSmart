@@ -43,11 +43,9 @@ firmware/nucleo/bin/
 .DS_Store
 Thumbs.db
 
-# Material interno — planejamento, texto academico e figuras do TCC.
-# Nao serve a quem le o repositorio; serve aos autores. Nunca versionado.
-docs/METODOLOGIA.md
-docs/DATASET.md
-docs/HARDWARE.md
+# Material interno — texto academico e figuras do TCC. Nunca versionado.
+# 16/11 (GIT-05): docs/METODOLOGIA.md, docs/DATASET.md e docs/HARDWARE.md
+# sairam daqui e passaram a ser versionados — o codigo e o CI os citam.
 img/MPU6050 Sleep Data Pipeline*
 # Imagens geradas do esquemático (DIAG-02): a fonte é o .py, a figura é material do TCC.
 docs/diagramas/saida/

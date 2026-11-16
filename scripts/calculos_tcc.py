@@ -417,7 +417,7 @@ def relatorio() -> None:
           f"{piso_enmo_uniforme_mg(Q_EMPATICA_MG):5.3f} mg")
     print(f"\n  razão E4 / MPU6050 = "
           f"{piso_enmo_uniforme_mg(Q_EMPATICA_MG) / piso_enmo_gaussiano_mg(s16):.2f}×")
-    print(f"  critério do CAL-01 no ROADMAP: 0,02 m/s² = "
+    print(f"  critério do CAL-01 (backlog): 0,02 m/s² = "
           f"{0.02 / GRAVIDADE_PADRAO_MS2 * 1000:.2f} mg  vs  σ(21 Hz) = "
           f"{s21:.2f} mg")
 

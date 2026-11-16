@@ -31,9 +31,9 @@ Como é um TCC, decisões precisam de validade científica. A pergunta de pesqui
 4. **`AGENTS.md`** — ✏️ *(05/11)* as regras para **dois agentes em paralelo** (o Codex e o Claude Code): divisão por área, IDs, sincronia com `develop` antes da revisão, os arquivos de conflito garantido e as junctions para dados brutos. Valem também para o Claude.
 5. **`docs/CORRECOES-APLICADAS.md`** e **`docs/PENDENCIAS-ABERTAS.md`** — **gerados** por `scripts/consolidar_registro.py`; não editar à mão (o `--conferir` reprova).
 
-Ler quando o assunto aparecer (os três primeiros são **gitignorados** — existem só no disco do autor):
-- **`ROADMAP.md`** — prioridades e a seção "▶ Agora". Abre com a pergunta de pesquisa e a hipótese, que são a régua de prioridade.
-- **`docs/METODOLOGIA.md`** — RQ, validação científica, dataset + ML, reprodutibilidade. Antes de qualquer tarefa de ML ou de validação.
+Ler quando o assunto aparecer (o primeiro é **gitignorado** — existe só no disco do autor; ✏️ *16/11, `GIT-05`: a `METODOLOGIA.md` e a `HARDWARE.md` também eram, e passaram a ser versionadas, com a `DATASET.md`*):
+- **`ROADMAP.md`** — prioridades e a seção "▶ Agora". Nenhum arquivo versionado depende do conteúdo dele: a RQ, a hipótese e o escopo estão na `METODOLOGIA.md`.
+- **`docs/METODOLOGIA.md`** — RQ, hipótese, escopo, validação científica, dataset + ML, reprodutibilidade. Antes de qualquer tarefa de ML ou de validação.
 - **`docs/HARDWARE.md`** — fases, BOM, contrato de dados, validação de hardware. Antes de firmware/hardware/integração.
 - **`docs/LIMITACOES-TCC.md`** — limites medidos, que são material de defesa. Limite quantificado vai para lá, não só para o diário.
 
