@@ -10632,6 +10632,58 @@ Depois, o login do autor.
 
 **Procedência.** GitHub (PR #205, CI e deployment); `curl` e o conferidor da CSP na produção, Windows 11; o relato do autor sobre o login; 16/11.
 
+---
+
+# 2026-11-16 (viii) — VIA-01: protocolo e análise de bancada, antes da coleta
+
+**O problema, como foi entendido no início.** O `VIA-01` pergunta se o sensor dentro do travesseiro distingue a pessoa parada, mexendo a cabeça e virando o corpo. O último caso decide entre a v1 (só o travesseiro) e a contingência `HW-07` (um segundo sensor sob o colchão). A placa está soldada e envia à produção desde 12/11, mas o teste nunca foi feito, e não havia nem protocolo executável nem critério escrito.
+
+**Hipótese de trabalho.**
+- O firmware de produto já serve: ele entrega uma época de 30 s com as features, e não precisa de firmware novo.
+- Blocos de 2 min, como na linha original, dariam 4 épocas cada; com 5 min, sobram 9 depois das bordas.
+- O critério precisa ser fixado antes dos dados e conferido com dados sintéticos, para não "achar" separação no acaso.
+
+**O que foi testado, e como.**
+- `scripts/analisar_via01.py`, em Python puro, para rodar no CI sem dependência nova. Para cada par de blocos e cada uma das 8 features, ele calcula o delta de Cliff e um teste de permutação sobre o maior |δ|.
+- `web-app/tests/test_analisar_via01.py`, com dados sintéticos: blocos iguais em 30 sementes, blocos diferentes, só a cabeça diferente, bordas contaminadas, separação completa com 3 épocas, diferença pequena mas real, rótulo do painel, entradas inválidas e a linha de comando.
+- Sabotagens no script.
+- O trecho de console do protocolo passou pelo `node --check`.
+- A suíte do backend.
+
+**Resultado medido.**
+- 16 testes passam.
+- Taxa de falso positivo do critério em blocos iguais: **3 de 90 pares (3,3 %)**.
+- Sabotagens, **9 de 9** acusadas, cada uma pelo teste certo:
+  - sem margem nas bordas;
+  - delta sem sinal;
+  - sem a permutação;
+  - sem o limiar de δ;
+  - rótulo desconhecido aceito;
+  - instante sem fuso aceito;
+  - bloco invertido aceito;
+  - bloco vazio aceito;
+  - veredito pelo par errado.
+- Backend **590 passam, 1 pula** (Windows, Python 3.13). Ruff limpo nos dois arquivos.
+
+**Adaptação.**
+- Os blocos foram de 2 para 5 min.
+- O critério ganhou o teste de permutação, e o `delta_que_separa` sozinho deixou de bastar.
+- O resultado inclui o rótulo do painel por bloco, como o `CALC-03` pedia.
+
+**O que deu errado no caminho.**
+- **Li errado o primeiro controle.** Na semente 7, blocos sintéticos idênticos deram |δ| = 0,88, e concluí que o critério falhava. O teste de permutação mostrou que era um sorteio raro (p ≈ 0,006), não um defeito. Escrevi a conclusão errada no cabeçalho do script e a corrigi antes do commit. O teste passou a medir a taxa em 30 sementes, e as fixas usam uma semente documentada.
+- **Os testes de borda esperavam 8 épocas por bloco e são 9.** A época que começa no limite da margem conta, e o teste estava errado, não o script.
+- **Três sabotagens passaram na primeira rodada** (o limiar de δ, o rótulo desconhecido e o bloco invertido), e a do fuso nem foi aplicada, por erro de recuo no meu comando. Ganharam testes, e a rodada seguinte acusou todas.
+- **O `node --check` falhou** com o arquivo num caminho do `/tmp` que o Node do Windows não enxerga; refeito na pasta de rascunho.
+
+**Risco em aberto.**
+- **A coleta é do autor.** O item segue aberto até ela.
+- **n = 1, uma sessão:** mostra se o sinal existe, não valida o dispositivo (`VAL-01`, `VAL-02`).
+- **Virar o corpo sem mexer a cabeça** depende de quem executa. Se o bloco C misturar os dois, isso entra como limite no resultado.
+- **Os horários anotados à mão** têm erro de segundos; a margem de 30 s por borda o absorve, mas não um erro de minutos.
+
+**Procedência.** Branch `feature/via-01-bancada` sobre `develop` `7388d79`; Windows 11, Python 3.13, Node 24; dados sintéticos; 16/11.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
