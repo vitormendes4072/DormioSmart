@@ -21,6 +21,7 @@ export default defineConfig(({ mode }) => ({
           ),
         }
       : {},
+  build: { manifest: mode !== 'app', minify: mode === 'app' ? 'esbuild' : 'terser' },
   plugins: [react(), tailwindcss()],
   resolve: {
     alias: { '@': path.resolve(__dirname, './src') },

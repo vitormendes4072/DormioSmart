@@ -1,24 +1,24 @@
-import { Suspense, lazy } from "react";
+import { Suspense } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router";
 
 import { RotaDeVisitante, RotaProtegida } from "./components/Guardas";
 
 import { Layout } from "./components/Layout";
-import { Coletar } from "./pages/Coletar";
-import { Dispositivos } from "./pages/Dispositivos";
-import { Dashboard } from "./pages/Dashboard";
-import { Historico } from "./pages/Historico";
-import { Landing } from "./pages/Landing";
-import { Login } from "./pages/Login";
-import { NovaSenha } from "./pages/NovaSenha";
-import { Noite } from "./pages/Noite";
-import { Register } from "./pages/Register";
-import { Settings } from "./pages/Settings";
 import { noiteNativaDisponivel } from "./lib/noiteNativa";
 
-// Sob demanda (LGPD-01 (b)): a política traz o `react-markdown` e o texto
-// inteiro, e não deve pesar no pacote de quem nunca a abre (UI-15).
-const Privacidade = lazy(() => import("./pages/Privacidade"));
+import { rotaSobDemanda } from "./components/RotaSobDemanda";
+
+const Coletar = rotaSobDemanda("Coletar", () => import("./pages/Coletar").then((m) => ({ default: m.Coletar })));
+const Dispositivos = rotaSobDemanda("Dispositivos", () => import("./pages/Dispositivos").then((m) => ({ default: m.Dispositivos })));
+const Dashboard = rotaSobDemanda("Dashboard", () => import("./pages/Dashboard").then((m) => ({ default: m.Dashboard })));
+const Historico = rotaSobDemanda("Historico", () => import("./pages/Historico").then((m) => ({ default: m.Historico })));
+const Landing = rotaSobDemanda("Landing", () => import("./pages/Landing").then((m) => ({ default: m.Landing })));
+const Login = rotaSobDemanda("Login", () => import("./pages/Login").then((m) => ({ default: m.Login })));
+const NovaSenha = rotaSobDemanda("NovaSenha", () => import("./pages/NovaSenha").then((m) => ({ default: m.NovaSenha })));
+const Noite = rotaSobDemanda("Noite", () => import("./pages/Noite").then((m) => ({ default: m.Noite })));
+const Register = rotaSobDemanda("Register", () => import("./pages/Register").then((m) => ({ default: m.Register })));
+const Settings = rotaSobDemanda("Settings", () => import("./pages/Settings").then((m) => ({ default: m.Settings })));
+const Privacidade = rotaSobDemanda("Privacidade", () => import("./pages/Privacidade"));
 
 /**
  * Rotas do app. Substitui o `useState<Screen>` do prototipo: com URL de
@@ -41,14 +41,14 @@ export default function App() {
             usuario logado veem a mesma pagina, com o botao mudando de destino. */}
         {/* APP-02, etapa 4: no app Android, o comeco e a noite (ou o login, pelo
             guarda). A pagina de apresentacao e para quem chega pelo site. */}
-        <Route path="/" element={noiteNativaDisponivel() ? <Navigate to="/noite" replace /> : <Landing />} />
+        <Route path="/" element={noiteNativaDisponivel() ? <Navigate to="/noite" replace /> : <Suspense fallback={null}><Landing /></Suspense>} />
 
         <Route element={<RotaDeVisitante />}>
-          <Route path="/login" element={<Login />} />
-          <Route path="/cadastro" element={<Register />} />
+          <Route path="/login" element={<Suspense fallback={null}><Login /></Suspense>} />
+          <Route path="/cadastro" element={<Suspense fallback={null}><Register /></Suspense>} />
         </Route>
 
-        <Route path="/nova-senha" element={<NovaSenha />} />
+        <Route path="/nova-senha" element={<Suspense fallback={null}><NovaSenha /></Suspense>} />
 
         {/* Pública, fora dos guardas: precisa ser lida ANTES do cadastro
             (LGPD-01 (b), LGPD art. 9º). */}
@@ -63,12 +63,12 @@ export default function App() {
 
         <Route element={<RotaProtegida />}>
           <Route element={<Layout />}>
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/coletar" element={<Coletar />} />
-            <Route path="/historico" element={<Historico />} />
-            <Route path="/dispositivos" element={<Dispositivos />} />
-            <Route path="/noite" element={<Noite />} />
-            <Route path="/configuracoes" element={<Settings />} />
+            <Route path="/dashboard" element={<Suspense fallback={null}><Dashboard /></Suspense>} />
+            <Route path="/coletar" element={<Suspense fallback={null}><Coletar /></Suspense>} />
+            <Route path="/historico" element={<Suspense fallback={null}><Historico /></Suspense>} />
+            <Route path="/dispositivos" element={<Suspense fallback={null}><Dispositivos /></Suspense>} />
+            <Route path="/noite" element={<Suspense fallback={null}><Noite /></Suspense>} />
+            <Route path="/configuracoes" element={<Suspense fallback={null}><Settings /></Suspense>} />
           </Route>
         </Route>
 

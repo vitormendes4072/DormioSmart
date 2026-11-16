@@ -115,7 +115,7 @@ export function noiteNativaDisponivel(plataforma: Plataforma = Capacitor): boole
 
 /** A época 0 começa 3 s depois da primeira amostra (`ANTECEDENCIA_DA_ORIGEM_US`). */
 export const ANTECEDENCIA_DA_ORIGEM_MS = 3000;
-export const DURACAO_DA_EPOCA_MS = 30_000;
+const DURACAO_DA_EPOCA_MS = 30_000;
 /**
  * A cadeia só fecha uma época quando já tem 2,5 s de sinal depois dela
  * (`MARGEM_S` + `FOLGA_DO_AJUSTE_S`) e a drenagem seguinte chegou (até 1,7 s).
@@ -138,7 +138,7 @@ export function coberturaDaNoite(e: EstadoDaNoite, agoraMs: number): number | nu
   return Math.min(1, e.epocasGravadas / esperadas);
 }
 
-export type ResumoDaNoiteGravada = {
+type ResumoDaNoiteGravada = {
   inicio: Date | null;
   duracaoMs: number;
   /** Épocas gravadas sobre as que cabem entre a primeira e a última, de 0 a 1. */

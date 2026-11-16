@@ -115,6 +115,21 @@ export type RespostaDoLote = {
  * usuário para o login. 200 e 503 trazem as três listas; 503 é "nada
  * gravado, tudo pendente", e as listas dizem o mesmo.
  */
+/**
+ * Prazo de uma requisição de lote, da saída à leitura do corpo (APP-16).
+ *
+ * Os envios da noite são serializados por aparelho: um pedido que nunca
+ * responde prenderia todas as tentativas seguintes, inclusive o "Enviar agora"
+ * depois de sair da tela e voltar. Não há medição do tempo de um lote em
+ * `gru1`; o servidor para de gravar aos 6 s (`ORCAMENTO_DE_TEMPO_S` em
+ * `web-app/lote.py`), e o prazo dá dez vezes isso para partida a frio e rede
+ * móvel lenta. Expirar é uma falha de envio comum: as épocas ficam no
+ * aparelho, e o servidor deduplica um lote que tenha gravado (migração 011).
+ */
+export const PRAZO_DO_LOTE_MS = 60_000;
+
+const MENSAGEM_DE_PRAZO = "O servidor nao respondeu a tempo. As epocas continuam no aparelho.";
+
 export async function enviarLote(
   leituras: object[],
   dispositivoId: string,
@@ -122,12 +137,33 @@ export async function enviarLote(
 ): Promise<RespostaDoLote> {
   if (!jwt) throw new ErroDeIngestao(mensagemDeFalha(401), 401);
 
+  // AbortController com setTimeout, e não AbortSignal.timeout: funciona em
+  // WebView antiga e obedece ao relógio falso dos testes.
+  const controle = new AbortController();
+  const prazo = setTimeout(() => controle.abort(), PRAZO_DO_LOTE_MS);
+  try {
+    return await enviarLoteComSinal(leituras, dispositivoId, jwt, controle.signal);
+  } catch (e) {
+    if (controle.signal.aborted) throw new ErroDeIngestao(MENSAGEM_DE_PRAZO, 0);
+    throw e;
+  } finally {
+    clearTimeout(prazo);
+  }
+}
+
+async function enviarLoteComSinal(
+  leituras: object[],
+  dispositivoId: string,
+  jwt: string,
+  signal: AbortSignal,
+): Promise<RespostaDoLote> {
   let resposta: Response;
   try {
     resposta = await fetch(urlDaApi("/api/data/lote"), {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${jwt}` },
       body: JSON.stringify({ device_id: dispositivoId, leituras }),
+      signal,
     });
   } catch {
     throw new ErroDeIngestao(mensagemDeFalha(0), 0);

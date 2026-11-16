@@ -141,7 +141,24 @@ beforeEach(() => {
   );
 });
 
-afterEach(() => {
+const raizes: Array<{ unmount: () => void }> = [];
+vi.mock("react-dom/client", async (importOriginal) => {
+  const original = await importOriginal<typeof import("react-dom/client")>();
+  return {
+    ...original,
+    createRoot(...args: Parameters<typeof original.createRoot>) {
+      const raiz = original.createRoot(...args);
+      raizes.push(raiz);
+      return raiz;
+    },
+  };
+});
+
+afterEach(async () => {
+  await act(async () => {
+    for (const raiz of raizes.splice(0)) raiz.unmount();
+    await vi.dynamicImportSettled();
+  });
   vi.unstubAllEnvs();
   vi.unstubAllGlobals();
   vi.resetModules();
@@ -171,6 +188,7 @@ async function montar(rota: string): Promise<void> {
   await act(async () => {
     await import("./main.tsx");
   });
+  await act(async () => vi.dynamicImportSettled());
 }
 
 /**
@@ -297,7 +315,8 @@ describe("montagem real das telas (UI-17)", PRAZO, () => {
     expect(links.map((link) => link.getAttribute("href"))).toEqual([
       "/configuracoes?demo=1", "/configuracoes?demo=1",
     ]);
-    fireEvent.click(links[0]);
+    await act(async () => fireEvent.click(links[0]));
+    await act(async () => vi.dynamicImportSettled());
     expect(await screen.findByRole("heading", { name: "Aparência" })).toBeTruthy();
     expect(screen.getByText(/editar o perfil, gerenciar dispositivos/i)).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Exportar meus dados (CSV)" })).toBeNull();
@@ -573,6 +592,125 @@ describe("montagem real das telas (UI-17)", PRAZO, () => {
     );
     await montar("/dashboard");
     expect((await screen.findByText("Pausado:")).parentElement?.textContent).toContain("Travesseiro");
+  });
+
+  function simularPareamento() {
+    const original = vi.mocked(fetch).getMockImplementation()!;
+    const aparelho = { id: "novo", nome: "Travesseiro novo", tipo: "travesseiro", revoked_at: null, last_seen_at: null as string | null };
+    const token = "credencial-sintetica";
+    const criar = vi.fn(() => respostaJson({ device: aparelho, token }));
+    const listar = vi.fn(() => respostaJson([aparelho]));
+    vi.mocked(fetch).mockImplementation(async (entrada, opcoes) => {
+      if (String(entrada) === "/api/devices") return opcoes?.method === "POST" ? criar() : listar();
+      return original(entrada, opcoes);
+    });
+    return { aparelho, token, criar, listar };
+  }
+
+  async function abrirPareamento() {
+    await montar("/dispositivos");
+    fireEvent.click(await screen.findByRole("button", { name: "Parear dispositivo" }));
+    return await screen.findByRole("button", { name: "Parear" });
+  }
+
+  it("leva o celular a Coletar sem gerar token manual", async () => {
+    const { criar } = simularPareamento();
+    await abrirPareamento();
+    fireEvent.click(screen.getByRole("radio", { name: /celular/i }));
+    fireEvent.click(screen.getByRole("link", { name: "Ir para Coletar" }));
+    expect(await screen.findByRole("heading", { name: /nova coleta/i })).toBeTruthy();
+    expect(criar).not.toHaveBeenCalled();
+  });
+
+  it.each([false, true])("copia a credencial ou oferece seleção manual e a remove ao fechar (%s)", async (falhar) => {
+    const { token } = simularPareamento();
+    const anterior = Object.getOwnPropertyDescriptor(navigator, "clipboard");
+    const escrever = vi.fn(async () => { if (falhar) throw new Error("sem permissão"); });
+    Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText: escrever } });
+    try {
+      fireEvent.click(await abrirPareamento());
+      expect((await screen.findByText(token)).classList.contains("select-all")).toBe(true);
+      fireEvent.click(screen.getByRole("button", { name: "Copiar token" }));
+      expect(await screen.findByText(falhar ? /copie manualmente/i : "Token copiado.")).toBeTruthy();
+      expect(escrever).toHaveBeenCalledWith(token);
+      fireEvent.click(screen.getByRole("button", { name: "Ocultar pareamento" }));
+      expect(screen.queryByText(token)).toBeNull();
+      fireEvent.click(screen.getByRole("button", { name: "Parear dispositivo" }));
+      expect(screen.queryByText(token)).toBeNull();
+    } finally {
+      if (anterior) Object.defineProperty(navigator, "clipboard", anterior);
+      else Reflect.deleteProperty(navigator, "clipboard");
+    }
+  });
+
+  it("remove a credencial do DOM ao confirmar que já copiou", async () => {
+    const { token } = simularPareamento();
+    fireEvent.click(await abrirPareamento());
+    expect(await screen.findByText(token)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Já copiei, pode ocultar" }));
+    expect(screen.queryByText(token)).toBeNull();
+    expect(screen.getByRole("button", { name: "Parear" })).toBeTruthy();
+  });
+
+  it("mostra a mensagem do ErroApi 403 no alerta de pareamento", async () => {
+    const { criar } = simularPareamento();
+    const mensagem = "Consentimento para dados de saúde pendente.";
+    criar.mockReturnValueOnce(new Response(JSON.stringify({ error: mensagem }), { status: 403 }));
+    fireEvent.click(await abrirPareamento());
+    const alerta = await screen.findByRole("alert");
+    expect(alerta.textContent).toBe(mensagem);
+    expect(alerta.classList.contains("text-destructive")).toBe(true);
+  });
+
+  it("consulta periodicamente e mostra o primeiro envio sem recarregar a página", async () => {
+    const { aparelho, listar } = simularPareamento();
+    const parear = await abrirPareamento();
+    const visibilidade = vi.spyOn(document, "visibilityState", "get").mockReturnValue("hidden");
+    vi.useFakeTimers();
+    try {
+      await act(async () => fireEvent.click(parear));
+      expect(screen.getByText("Travesseiro · Aguardando primeiro envio")).toBeTruthy();
+      const antes = listar.mock.calls.length;
+      await act(async () => vi.advanceTimersByTimeAsync(15_000));
+      expect(listar).toHaveBeenCalledTimes(antes);
+      aparelho.last_seen_at = new Date().toISOString();
+      visibilidade.mockReturnValue("visible");
+      await act(async () => vi.advanceTimersByTimeAsync(15_000));
+      expect(listar).toHaveBeenCalledTimes(antes + 1);
+      expect(screen.queryByText(/aguardando primeiro envio/i)).toBeNull();
+      expect(screen.getByText(/travesseiro · último envio/i)).toBeTruthy();
+      await act(async () => vi.advanceTimersByTimeAsync(15_000));
+      expect(listar).toHaveBeenCalledTimes(antes + 1);
+    } finally {
+      vi.useRealTimers();
+      visibilidade.mockRestore();
+    }
+  });
+
+  it("encerra a consulta periódica após dez minutos sem primeiro envio", async () => {
+    const { listar } = simularPareamento();
+    const parear = await abrirPareamento();
+    const visibilidade = vi.spyOn(document, "visibilityState", "get").mockReturnValue("visible");
+    vi.useFakeTimers();
+    try {
+      await act(async () => fireEvent.click(parear));
+      await act(async () => vi.advanceTimersByTimeAsync(600_000));
+      const chamadas = listar.mock.calls.length;
+      await act(async () => vi.advanceTimersByTimeAsync(15_000));
+      expect(listar).toHaveBeenCalledTimes(chamadas);
+      expect(screen.getByRole("button", { name: "Verificar agora" })).toBeTruthy();
+    } finally {
+      vi.useRealTimers();
+      visibilidade.mockRestore();
+    }
+  });
+
+  it("verifica primeiro envio manualmente pelo cartão", async () => {
+    const { aparelho } = simularPareamento();
+    await montar("/dispositivos");
+    aparelho.last_seen_at = new Date().toISOString();
+    fireEvent.click(await screen.findByRole("button", { name: "Verificar agora" }));
+    expect(await screen.findByText(/travesseiro · último envio/i)).toBeTruthy();
   });
 
   it("a rota /dispositivos monta o gerenciamento para a sessão autenticada", async () => {

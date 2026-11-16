@@ -3,6 +3,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-libra
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { CartaoDaNoite } from "./CartaoDaNoite";
+import type { RespostaDoLote } from "../lib/coleta";
 import type { EstadoDaNoite, PluginNoite } from "../lib/noiteNativa";
 
 const INICIO = 1_794_096_000_000;
@@ -178,6 +179,39 @@ describe("CartaoDaNoite (APP-02)", () => {
     expect((await screen.findByRole("status")).textContent).toMatch(/70 épocas enviadas/);
     expect(enviar).toHaveBeenCalledTimes(2);
     expect(p.enviadas).toBe(70);
+  });
+
+  it.each(["automático", "manual"])("serializa o envio %s depois de remontar o cartão", async (modo) => {
+    const p = plugin(estado(), 2);
+    const resposta = { aceitas: [0, 1], rejeitadas: [], pendentes: [] };
+    let responder!: (r: RespostaDoLote) => void;
+    const primeiroEnvio = vi.fn(() => new Promise<RespostaDoLote>((resolve) => { responder = resolve; }));
+    const envioAposRemontar = vi.fn(async () => resposta);
+
+    const primeiraTela = render(<CartaoDaNoite plugin={p} enviar={primeiroEnvio} />);
+    await waitFor(() => expect(primeiroEnvio).toHaveBeenCalledTimes(1));
+    primeiraTela.unmount();
+
+    // O estado interrompido bloqueia o automático e ainda oferece envio manual.
+    if (modo === "manual") p.atual = estado({ ativa: true, rodando: false, inicioUtcMs: INICIO });
+    render(<CartaoDaNoite plugin={p} enviar={envioAposRemontar} />);
+    if (modo === "manual") {
+      const botao = await screen.findByRole("button", { name: /enviar agora/i });
+      await act(async () => fireEvent.click(botao));
+    }
+    await act(async () => {});
+    const marcasAntesDaPrimeiraResposta = vi.mocked(p.marcarEnviadas).mock.calls.length;
+    await act(async () => responder(resposta));
+    await screen.findByRole("status");
+    expect({
+      marcasAntesDaPrimeiraResposta,
+      novosLotes: envioAposRemontar.mock.calls.length,
+      marcas: vi.mocked(p.marcarEnviadas).mock.calls,
+    }).toEqual({
+      marcasAntesDaPrimeiraResposta: 0,
+      novosLotes: 0,
+      marcas: [[{ arquivo: "noite-1.jsonl", ate: 2 }]],
+    });
   });
 
   it("gravação de teste não oferece envio manual nem dispara envio automático", async () => {

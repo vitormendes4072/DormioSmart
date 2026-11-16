@@ -1,5 +1,4 @@
 """Controles das reconstruções históricas; nenhuma variante vira produção."""
-import json
 from pathlib import Path
 import subprocess
 import sys

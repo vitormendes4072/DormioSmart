@@ -7,7 +7,6 @@ escolhe de quem é o dado que envia.
 """
 from unittest.mock import patch
 
-import os
 from flask import Flask
 
 import database

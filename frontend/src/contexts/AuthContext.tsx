@@ -1,5 +1,5 @@
 import type { Session, User } from "@supabase/supabase-js";
-import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useLayoutEffect, useMemo, useState, type ReactNode } from "react";
 
 import { definirCallbackDeSessaoExpirada, definirProvedorDeToken } from "../lib/api";
 import { obterSupabase, problemaDeConfiguracao } from "../lib/supabase";
@@ -32,35 +32,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [carregando, setCarregando] = useState(true);
   const erroDeConfiguracao = problemaDeConfiguracao();
 
-  // Liga a sessao ao cliente de API DURANTE A RENDERIZACAO, e nao num efeito
-  // (AUTH-07). No React os efeitos dos filhos rodam ANTES dos do pai: com o
-  // provedor registrado num `useEffect` daqui, o `PerfilProvider` -- filho, que
-  // busca o perfil no instante em que a sessao aparece -- mandava a primeira
-  // chamada sem `Authorization`, recebia 401, e o callback abaixo derrubava a
-  // sessao recem-criada. Era o login que voltava para /login (31/10).
-  //
-  // A ref e atualizada a cada renderizacao, antes de qualquer efeito de filho,
-  // e o provedor e registrado uma vez e le dela: toda chamada leva o token
-  // atual, inclusive depois da renovacao de uma hora.
-  const sessaoAtual = useRef<Session | null>(sessao);
-  sessaoAtual.current = sessao;
-  useState(() => {
-    definirProvedorDeToken(() => sessaoAtual.current?.access_token ?? null);
-    // 401 vindo da API significa sessao morta no servidor -- mesmo que o
-    // cliente ainda ache que tem uma. Limpar aqui evita o estado em que a
-    // tela parece logada e nada carrega. O guarda de rota faz o resto
-    // (AUTH-04). Registrado aqui pelo mesmo motivo do provedor.
-    //
-    // E limpa tambem a sessao GUARDADA pelo Supabase no navegador (AUTH-08):
-    // sem isso, recarregar a pagina ressuscitava a sessao que o servidor ja
-    // recusou, e o 401 se repetia. `scope: "local"` nao chama o servidor --
-    // a sessao ja e invalida la. So o 401 chega aqui: 503 (servico fora do
-    // ar) nao desloga ninguem.
+  const token = sessao?.access_token ?? null;
+  // Publica só no commit e antes dos efeitos passivos dos filhos. Se o
+  // PerfilProvider buscar antes de o JWT estar disponível, o login volta ao
+  // 401 do AUTH-07.
+  useLayoutEffect(() => {
+    definirProvedorDeToken(() => token);
     definirCallbackDeSessaoExpirada(() => {
+      // AUTH-08: remove também a sessão guardada pelo Supabase no navegador.
       void obterSupabase()?.auth.signOut({ scope: "local" });
       setSessao(null);
     });
-  });
+    return () => {
+      definirProvedorDeToken(null);
+      definirCallbackDeSessaoExpirada(null);
+    };
+  }, [token]);
 
   useEffect(() => {
     const supabase = obterSupabase();

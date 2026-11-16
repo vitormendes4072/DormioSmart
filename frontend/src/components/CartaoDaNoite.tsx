@@ -16,7 +16,7 @@ import {
 } from "../lib/noiteNativa";
 
 /** De quanto em quanto tempo a tela relê o estado do serviço. */
-export const INTERVALO_DE_LEITURA_MS = 5000;
+const INTERVALO_DE_LEITURA_MS = 5000;
 
 /**
  * O registro da noite inteira, só no app Android (APP-02, etapas 2 e 3).

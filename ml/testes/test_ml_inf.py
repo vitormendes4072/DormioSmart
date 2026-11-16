@@ -3,7 +3,6 @@ from datetime import datetime
 import json
 from math import exp, fsum, isfinite
 from pathlib import Path
-import sys
 
 import numpy as np
 import pytest

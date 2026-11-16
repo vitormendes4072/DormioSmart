@@ -18,7 +18,7 @@
     {
       "src": "/(.*)",
       "headers": {
-        "Content-Security-Policy": "default-src 'self'; script-src 'self' 'sha256-d7ElPmBksqa3XjT9REfK1EpEQ1kuOmNu3oTUOL3aJzM=' 'sha256-UYDE30ukj+iqNFuFJ/ZPlWmrDAE8kOdylKQjFRJsROg=' 'sha256-LfkKun5BFvKLiBUKgXhd3xVTyni3RysNjVsVbvcxKzI=' 'sha256-jCI/euwEDpi5WN5uXQCcXGP7xZ40JvpwQfviCMuA/3U=' 'sha256-bTvnAmDVdWnuOhmprgtrGPQtzrWOCL+8o36R3udUXFM=' 'sha256-0pSzdhs2Wd1yMKtsFZXED/hziSQY0phWdAca3wM3Ywk=' 'sha256-+roGsdWdJ7cFflOh3MhMANooAUTGGhbDaL1IAg113iE=' 'sha256-eYjJawLXBL+AlJgQfJG74chm/7Ka+8feAwU8FncrGUI=' 'sha256-6DL1irgBdSZPkECXIMXlPZG6auFZENeC4NHZ6AC2XJE=' 'sha256-D3QSy3WfcmNgENpnxaQUssCWJawb4juMh2ceQpf0SQ0='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://*.supabase.co; worker-src 'self'; manifest-src 'self'; frame-src 'self'; frame-ancestors 'self'; base-uri 'self'; form-action 'self'; object-src 'none'",
+        "Content-Security-Policy": "default-src 'self'; script-src 'self' 'sha256-d7ElPmBksqa3XjT9REfK1EpEQ1kuOmNu3oTUOL3aJzM=' 'sha256-qBzsHGq1aaRQEizypc+evmikBlMeSdt+S1Q5pv1wPQA=' 'sha256-LfkKun5BFvKLiBUKgXhd3xVTyni3RysNjVsVbvcxKzI=' 'sha256-ALlY1mDCWZFYUsq1IeFK/+vl0bZ8kNRZ3itin1LTzPw=' 'sha256-bTvnAmDVdWnuOhmprgtrGPQtzrWOCL+8o36R3udUXFM=' 'sha256-0pSzdhs2Wd1yMKtsFZXED/hziSQY0phWdAca3wM3Ywk=' 'sha256-+roGsdWdJ7cFflOh3MhMANooAUTGGhbDaL1IAg113iE=' 'sha256-eYjJawLXBL+AlJgQfJG74chm/7Ka+8feAwU8FncrGUI=' 'sha256-6DL1irgBdSZPkECXIMXlPZG6auFZENeC4NHZ6AC2XJE=' 'sha256-D3QSy3WfcmNgENpnxaQUssCWJawb4juMh2ceQpf0SQ0='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://*.supabase.co; worker-src 'self'; manifest-src 'self'; frame-src 'self'; frame-ancestors 'self'; base-uri 'self'; form-action 'self'; object-src 'none'",
         "X-Frame-Options": "SAMEORIGIN",
         "X-Content-Type-Options": "nosniff",
         "Referrer-Policy": "strict-origin-when-cross-origin",
@@ -33,6 +33,14 @@
     {
       "src": "/health",
       "dest": "web-app/app.py"
+    },
+    {
+      "src": "/midia/landing/[0-9a-f]{64}\\.webp",
+      "headers": {
+        "Cache-Control": "public, max-age=31536000, immutable",
+        "Access-Control-Allow-Origin": "*"
+      },
+      "continue": true
     },
     {
       "handle": "filesystem"

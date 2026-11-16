@@ -92,6 +92,7 @@ export function destinoSeguro(candidato: unknown): string {
   if (segundo === "/" || segundo === "\\") return DESTINO_PADRAO_APOS_LOGIN;
   // Caractere de controle no meio (tab, quebra de linha) pode ser descartado
   // pelo navegador ao resolver a URL e transformar "/\t/host" em "//host".
+  // eslint-disable-next-line no-control-regex -- Rejeita caracteres de controle antes que o navegador normalize o destino.
   if (/[\u0000-\u001f\u007f]/.test(candidato)) return DESTINO_PADRAO_APOS_LOGIN;
   return candidato;
 }

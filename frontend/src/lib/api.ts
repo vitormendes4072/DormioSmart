@@ -43,16 +43,16 @@ export class ErroApi extends Error {
  */
 type ProvedorDeToken = () => string | null;
 
-let obterToken: ProvedorDeToken = () => null;
+let obterToken: ProvedorDeToken | null = null;
 
-export function definirProvedorDeToken(provedor: ProvedorDeToken) {
+export function definirProvedorDeToken(provedor: ProvedorDeToken | null) {
   obterToken = provedor;
 }
 
 /** Callback disparado em 401, registrado pelo AUTH-04 para levar ao login. */
 let aoPerderSessao: (() => void) | null = null;
 
-export function definirCallbackDeSessaoExpirada(callback: () => void) {
+export function definirCallbackDeSessaoExpirada(callback: (() => void) | null) {
   aoPerderSessao = callback;
 }
 
@@ -71,7 +71,7 @@ export async function requisitarJson<T>(caminho: string, opcoes: RequestInit = {
     cabecalhos.set("Content-Type", "application/json");
   }
 
-  const token = obterToken();
+  const token = obterToken?.() ?? null;
   if (token) cabecalhos.set("Authorization", `Bearer ${token}`);
 
   let resposta: Response;
@@ -84,7 +84,8 @@ export async function requisitarJson<T>(caminho: string, opcoes: RequestInit = {
   }
 
   if (resposta.status === 401) {
-    aoPerderSessao?.();
+    // A resposta pode pertencer a uma sessão que já foi trocada ou renovada.
+    if (token === (obterToken?.() ?? null)) aoPerderSessao?.();
     throw new ErroApi(401, "Sessao expirada. Entre novamente.");
   }
 
@@ -138,9 +139,6 @@ async function extrairMensagemDeErro(resposta: Response): Promise<string> {
  * gravada seria resolver um problema que ainda nao aconteceu.
  */
 export const LIMITE_DO_PAINEL = 2000;
-
-/** A janela do painel pode ultrapassar o limite de leituras da API. */
-export const LIMIAR_DE_HISTORICO_PARCIAL = LIMITE_DO_PAINEL;
 
 export type FiltroDeHistorico = {
   /** Recorta por instrumento. Ausente = todos os dispositivos do usuario. */

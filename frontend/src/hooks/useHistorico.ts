@@ -61,6 +61,7 @@ export function useHistorico(filtro: FiltroDeHistorico = {}): EstadoHistorico {
     void carregar();
     return () => {
       ativo.current = false;
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- Invalida a geração do pedido mais recente, inclusive recargas manuais.
       geracao.current++;
     };
   }, [carregar]);

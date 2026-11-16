@@ -678,7 +678,7 @@ def init_routes(app):
             device["jwt"], device["id"], payload, cliente=device.get("cliente")
         )
 
-    def _gravar_leitura(caminho, device, content):
+    def _gravar_leitura(caminho, device, content, persistir=_persistir_leitura):
         """Valida, traduz e grava UMA leitura (FIX-02, SEC-03, SEC-06).
 
         Devolve `(True, None, 201)` quando a gravação foi confirmada, e
@@ -745,7 +745,7 @@ def init_routes(app):
         #
         # O `last_seen_at` do dispositivo é atualizado dentro da própria
         # função, na mesma chamada — ver migrations/005.
-        gravado = _persistir_leitura(caminho, device, payload)
+        gravado = persistir(caminho, device, payload)
 
         if gravado == "aparelho_pausado":
             return False, "aparelho_pausado", 409
@@ -806,15 +806,29 @@ def init_routes(app):
 
             resposta = lote.nova_resposta()
             inicio = time.monotonic()
+            tempo_rpc = 0.0
+            chamadas_rpc = 0
+            interrompido_por_orcamento = False
+
+            def persistir_medido(caminho, device, payload):
+                nonlocal tempo_rpc, chamadas_rpc
+                chamadas_rpc += 1
+                inicio_rpc = time.perf_counter()
+                try:
+                    return _persistir_leitura(caminho, device, payload)
+                finally:
+                    tempo_rpc += time.perf_counter() - inicio_rpc
+
             for indice, content in enumerate(leituras):
                 # Passou do orçamento: o resto volta como pendente, inteiro,
                 # em vez de a função serverless morrer no meio do lote.
                 if time.monotonic() - inicio > lote.ORCAMENTO_DE_TEMPO_S:
+                    interrompido_por_orcamento = True
                     resposta["pendentes"].extend(range(indice, len(leituras)))
                     break
 
                 try:
-                    gravado, erro, status = _gravar_leitura(caminho, device, content)
+                    gravado, erro, status = _gravar_leitura(caminho, device, content, persistir=persistir_medido)
                 except Exception:
                     # Leitura inválida não levanta: `_gravar_leitura` devolve 400.
                     # Exceção aqui é bug do servidor (API-04), e a leitura pode ser
@@ -840,6 +854,16 @@ def init_routes(app):
                 else:
                     resposta["rejeitadas"].append({"indice": indice, "erro": erro})
 
+            duracao = time.monotonic() - inicio
+            # stdout chega aos logs da função. Só contagens, tempos e caminho fixo.
+            print(
+                f"api06_lote caminho={caminho} duracao_ms={duracao * 1000:.3f} "
+                f"rpc_ms={tempo_rpc * 1000:.3f} chamadas_rpc={chamadas_rpc} "
+                f"entradas={len(leituras)} aceitas={len(resposta['aceitas'])} "
+                f"rejeitadas={len(resposta['rejeitadas'])} pendentes={len(resposta['pendentes'])} "
+                f"orcamento_atingido={int(interrompido_por_orcamento or duracao >= lote.ORCAMENTO_DE_TEMPO_S)}",
+                flush=True,
+            )
             return jsonify(resposta), lote.status_da_resposta(resposta)
         except Exception as e:
             return _resposta_de_falha(e, "/api/data/lote")

@@ -44,6 +44,12 @@ jobs:
           pip install -r web-app/requirements.txt
           pip install pytest
 
+      - name: Instalar Ruff
+        run: python -m pip install ruff==0.17.5
+
+      - name: Ruff (backend, scripts, ML e firmware)
+        run: time ruff check web-app scripts ml firmware
+
       # Sem Postgres, entao `tests/rls/` e pulada aqui de proposito -- ela nao
       # cai para mock, porque mock nao exercita policy nenhuma. Quem roda RLS e
       # o job `rls` abaixo. `--ignore` em vez de deixar pular: pulo aparece como
@@ -226,6 +232,18 @@ jobs:
         working-directory: frontend
         run: npm ci
 
+      - name: ESLint (TypeScript e hooks)
+        working-directory: frontend
+        run: time npm run lint
+
+      - name: Knip (arquivos e símbolos exportados)
+        working-directory: frontend
+        run: time npm run knip
+
+      - name: Knip (avisos de tipos exportados)
+        working-directory: frontend
+        run: time npm run knip:tipos
+
       # O script `build` roda `tsc --noEmit && vite build`, então esta etapa
       # cobre erro de tipo E erro de bundle. Sem ela, um frontend quebrado
       # passava despercebido — o pipeline só olhava para o Python.
@@ -236,6 +254,9 @@ jobs:
       - name: Type-check e build
         working-directory: frontend
         run: npm run build
+
+      - name: Orcamento gzip do painel e do login
+        run: python3 scripts/conferir_pacote_frontend.py
 
       # SEC-20 (13/11): a CSP do vercel.json libera script inline so por hash.
       # Mudar um caractere no script do tema ou na landing faz o navegador

@@ -10271,6 +10271,168 @@ Na revisão de bed5c9e, o autor mediu 554 aprovados em Python 3.12 com CI=true e
 
 **Procedência.** Branch `feature/api-07-pausar-recebimento` sobre `develop` `1d39279`, sincronizada na revisão com `5de4a7e`. O teste do núcleo veio do autor no commit `609ed86`. Windows, Python 3.13, PostgreSQL 17 e Node/Vitest. Dados sintéticos.
 
+---
+
+# 2026-11-14 — UI-25: guia de pareamento e primeiro envio
+
+**O problema, como foi entendido no início.** O formulário manual também emitia credencial para celular. O travesseiro recém-pareado não tinha acompanhamento do primeiro envio.
+
+**Hipótese de trabalho.** Encaminhar o celular à coleta existente e manter o token do travesseiro no guia enquanto ele está aberto. A consulta à lista de dispositivos confirma o contato pelo `last_seen_at`.
+
+**O que foi testado, e como.** No Windows, montagem das rotas reais com respostas simuladas e relógio controlado, suíte Vitest, build com TypeScript e conferência da CSP sobre a saída do Vite.
+
+**Resultado medido.** Frontend **625 testes em 45 arquivos após a revisão**. Os seis casos novos falharam contra a `develop`. Desligar a consulta periódica derrubou o teste da transição ao primeiro envio. Remover o limite de dez minutos derrubou o teste do encerramento das consultas. Copiar o valor errado ou manter o guia montado ao ocultar derrubou os dois casos de cópia. Remover o aviso de seleção manual derrubou o caso de falha do clipboard. Trocar o percurso do celular por pareamento manual derrubou o teste que exige chegar a Coletar. Na revisão da PR #191, deixar o botão “Já copiei, pode ocultar” sem ação derrubou “remove a credencial do DOM ao confirmar que já copiou”, pois o token ficou no DOM. Trocar a mensagem do ErroApi por texto genérico derrubou “mostra a mensagem do ErroApi 403 no alerta de pareamento”.
+
+**Adaptação.** O guia guarda a credencial em estado volátil do componente, oferece seleção manual quando a cópia falha e aponta para o README do firmware. A atualização automática roda a cada 15 s, por até 10 min e com a aba visível. O cartão oferece verificação manual.
+
+**O que deu errado no caminho.** A primeira compilação TypeScript acusou a opção `exact` na consulta por papel. A busca já usa correspondência exata pelo nome e a opção foi removida. Na revisão, o primeiro comando de controle procurou a asserção somente no stdout. A repetição conferiu também o stderr.
+
+**Risco em aberto.** A verificação em placa física fica para o percurso de bancada. Foi simulada a resposta que registra o primeiro contato.
+
+**Procedência.** Branch `feature/ui-25-guia-pareamento`, criada de `a21a0d1` e sincronizada com `develop` `05d3ff8`. Windows, Node/Vitest/Vite. Credenciais sintéticas.
+
+---
+
+# 2026-11-15 — API-06: instrumentação da ingestão em lote
+
+**O problema, como foi entendido no início.** As medições anteriores à mudança para `gru1` não decidem se a ingestão precisa da migração 020.
+
+**Hipótese de trabalho.** Uma linha agregada por lote autenticado e com envelope válido permite medir o custo de processamento e a parcela gasta no caminho das RPCs.
+
+**O que foi testado, e como.** No Windows, Python 3.13, Flask e banco simulado. Os testes com relógio controlado conferem a linha inteira nos dois caminhos e a sinalização do corte por tempo.
+
+**Resultado medido.** 564 testes passaram e 273 pularam (RLS sem Postgres e teste da versão de Python do CI). Os dois casos de `test_log_do_lote_contem_somente_metricas_agregadas` falharam contra a base sem log e falharam quando o log incluiu `device_id`. O código foi restaurado. Nenhum tempo de produção foi coletado nesta etapa.
+
+**Adaptação.** O evento `api06_lote` escreve em stdout. `duracao_ms` começa após autenticação e validação do envelope, no mesmo ponto do orçamento do lote. `rpc_ms / chamadas_rpc` mede o tempo médio das chamadas de persistência do ponto de vista do backend, incluindo ida e volta. O log tem só o caminho, tempos, contagens e o indicador de orçamento. Nenhuma alteração de contrato ou migração nesta etapa.
+
+**O que deu errado no caminho.** O Python local emitiu um erro de encerramento da extensão de console `pyreadline3` depois da conclusão bem-sucedida do pytest.
+
+**Risco em aberto.** O autor consulta os logs Vercel e registra o commit e a região do deployment medido. Tráfego real: sessão no envio de uma noite pelo APK do APP-12, token na bancada do VIA-01. Exigir pelo menos dez lotes de 60 entradas por caminho, confirmar 60 aceitas e zero pendentes em cada amostra válida e comparar mediana e pior caso, por caminho, com 4 500 ms. Se ambos couberem, fechar como “não necessário”. Se faltar amostra, avaliar dispositivos dedicados, revogados ao final, com consulta de exclusão preparada para o autor. Se a 020 for necessária, uma única transação trava o aparelho no início; pausa concorrente espera o commit, e o lote seguinte é rejeitado inteiro. Esse comportamento será exercitado com duas conexões e registrado no contrato.
+
+**Procedência.** Branch `feature/api-06-medir-lotes`, base `develop` `0708dd3`. Windows, Python 3.13 e pytest. O teste de log usa dados sintéticos.
+
+---
+
+# 2026-11-15 (ii) — UI-15: dividir o frontend por rota
+
+**O problema, como foi entendido no início.** A entrada carregava antecipadamente as telas, os gráficos e o código que só outras rotas usam. O começo do painel e do login custava 292 490 B gzip em HTML, JS e CSS na base medida.
+
+**Hipótese de trabalho.** Imports sob demanda mantêm as dependências nos percursos que as usam. Um manifesto de build permite somar os arquivos realmente necessários por rota e travar o orçamento no CI.
+
+**O que foi testado, e como.** Windows, Node 24 e Vite. Vitest cobre primeira falha com recarga, segunda com mensagem e sucesso sem recarga. Chrome/Playwright no preview com autenticação e API simuladas conferiu que as sete rotas pedem seus chunks exclusivos. No preview o service worker registrado controlou o login e o chunk continuou carregando após recarregar. O worker repassa à rede, conforme a política já existente.
+
+**Resultado medido.** Vitest: **629 testes em 47 arquivos** após a revisão. Pytest sem RLS: **569 passaram e 1 pulou**, no Python 3.13 local. Painel **255 510 B gzip**, teto 260 000. Login **140 511 B gzip**, teto 155 000. Controles de orçamento: importar Privacidade no painel levou o painel a **319 705 B gzip**, com o login verde. Importar o painel no login levou o login a **258 003 B gzip**, com o painel verde. Os dois foram executados com build novo e restaurados. Na revisão da PR #193, retirar imports estáticos do verificador derrubou os casos de JS transitivo e CSS compartilhado; retirar a soma de CSS derrubou os casos de CSS direto e compartilhado. Seguir imports dinâmicos ou excluir o HTML derrubou o caso correspondente. Página ausente reprova com diagnóstico em vez de `KeyError`. No teste de código-fonte de `App.tsx`, trocar o painel para `lazy` direto ou para import estático derrubou o teste com o caminho do módulo. Pacote da aplicação (HTML, JS e CSS): **1 263 614 / 358 862 B gzip** na base → **1 248 119 / 360 597 B gzip** após a divisão. A CSP passou, com os 10 hashes existentes. `build:app` e `assembleDebug` passaram. Pixel 6 emulado sem rede padrão, modo avião e Wi-Fi/dados desligados: o WebView abriu `https://localhost/login` com `Login-BaaGbtxs.js` e, com sessão fictícia local, `https://localhost/noite` com `Noite-BUsCNy3i.js`.
+
+**Adaptação.** A divisão com esbuild ainda deixava o painel em aproximadamente 266 kB gzip. O build web usa Terser como dependência de desenvolvimento para cumprir a meta. O build do app mantém esbuild e empacota os chunks no Capacitor. A CSP e o service worker ficam com a configuração existente. O protótipo estático fica no `UI-32`.
+
+**O que deu errado no caminho.** TypeScript exigiu explicitar o tipo do componente lazy. Os testes de montagem com imports dinâmicos precisaram aguardar o grafo e desmontar a raiz antes de limpar o registro de módulos. A primeira execução paralela com o emulador excedeu o prazo de um teste de Privacidade. A navegação de demonstração também precisou aguardar a importação de Configurações. No Android, a primeira inspeção consultou o processo cedo demais; a repetição verificou a ausência de rede padrão pelo Android, pois a WebView ainda dizia estar online. O build web e o do app escrevem em `dist`; a primeira conferência em paralelo encontrou a saída sendo substituída e foi refeita após o empacotamento. Na revisão, o primeiro controle de imports estáticos esperava uma falha, mas também caiu o CSS do chunk compartilhado. A repetição confirmou as duas falhas esperadas.
+
+**Risco em aberto.** O tempo percebido e o cache HTTP em produção dependem do deploy. A otimização da mídia embutida da landing está no `UI-32`. O teste Android confirmou a abertura da rota e dos assets locais; não exercitou uma noite inteira de coleta.
+
+**Procedência.** `feature/ui-15-dividir-rotas`, base `develop` `e36ce77`. Windows, Vitest, Vite, Chrome e SDK Android locais. Sessão e respostas sintéticas.
+
+---
+
+# 2026-11-15 (iii) — UI-32: mídia sob demanda na landing
+
+**O problema, como foi entendido no início.** O HTML do protótipo original entrou no commit `b25e03e` (PR #132). O repositório guarda o HTML final e não identifica uma ferramenta de exportação que reproduza esse arquivo. O iframe empacotava onze imagens em base64, inclusive as usadas só na exploração e na geometria.
+
+**Hipótese de trabalho.** Extrair as imagens com hash de conteúdo e atrasar os pedidos permite manter os mesmos WebP, texto e interações. O cache imutável fica limitado ao caminho desses arquivos.
+
+**O que foi testado, e como.** Build local servido com os cabeçalhos de `vercel.json`, Chrome/Playwright com cache frio a 1440×900 e 390×844, sem rolar até completar a captura dos pedidos iniciais. Depois, vista montada e explodida, seleção pela transparência no canvas, inspetor, zoom, geometria e `?apresentacao=leve`. Pytest cobre extração repetida e orçamento.
+
+**Resultado medido.** HTML do iframe **1 256 283 → 266 086 B**. Os 11 arquivos extraídos são idênticos ao conteúdo decodificado da base. Orçamento normalizado com o mesmo zlib e WebP contado pelo tamanho do arquivo: primeiro carregamento **960 087 → 263 472 B**, teto **289 800 B** (10% de folga). Desktop e celular pediram os mesmos arquivos de entrada, iguais à soma do verificador: `/` (`index.html`), `assets/index-B1Pqmzeo.js`, `assets/index-DXqfEVGL.css`, `assets/Landing-BWZuk8f9.js`, `assets/Blueprint-DMaKlueG.js`, `assets/arrow-right-B1wHNHry.js`, `assets/ui-YUehs8Vy.js`, `assets/useTema-YAQ21gst.js`, `assets/x-BJFjmzoW.js`, `landing-prototipo.html` e `midia/landing/0565ce6407361b7b9a4bc312232c8380f7f4648631022a036a29d7e00383989b.webp`, além de `sw.js` (711 B gzip na instalação em perfil novo, observado no log HTTP). O pedido de favicon devolveu 404 no servidor local e ficou fora da soma de arquivos. Recolocar o ESP32 como imagem imediata deu **366 389 B** e excedeu o teto. Recolocar base64 no HTML gerado reprovou pelo limite de 4 kB. CSP passou com dez scripts cobertos. Frontend: 629 em 47 arquivos; Python sem RLS: **572 passaram e 1 pulou**, contagem repetida após ampliar o teste do orçamento na revisão da PR #194. Trocar `elif tag == "image":` por `elif False:` derrubou `test_landing_conta_iframe_e_imagens_imediatas_sem_contar_lazy`: as duas referências SVG, `href` e `xlink:href`, sumiram da soma, enquanto o fixture manteve a imagem adiada via `data-href` como exclusão. No preview Vercel da PR #194 (`2c0d357`), o WebP respondeu 200, `image/webp`, `Cache-Control: public, max-age=31536000, immutable` e `Access-Control-Allow-Origin: *`. O `index.html` respondeu 200 com `Cache-Control: public, max-age=0, must-revalidate`. `build:app` e `assembleDebug` passaram. No Pixel 6 emulado, sem rede padrão e com sessão fictícia local, `https://localhost/` redirecionou para `https://localhost/noite`, carregou `Noite-CWcJD2kV.js` e não pediu o iframe nem os WebP.
+
+**Adaptação.** Após substituir o HTML por uma nova exportação, rodar `python scripts/extrair_midia_landing.py` e revisar os atributos de carregamento e hashes. O script preserva os bytes dos WebP e pode ser repetido. O iframe continua isolado. Os renders que passam pelo canvas usam CORS anônimo restrito aos WebP com hash para permitir a leitura de transparência dentro do sandbox. A mesma regra de caminho aplica `Cache-Control: public, max-age=31536000, immutable`. O `index.html` fica com a política anterior. Dois hashes mudaram: `sdm-inline-assets` e explorador.
+
+**O que deu errado no caminho.** A primeira nota de contagem subtraiu um item do quadro Pós-banca. A conferência sinalizou a diferença e a nota foi corrigida. O preview protegido devolveu 302 e a CLI local não tinha credenciais. Os cabeçalhos foram conferidos pela conexão autenticada da Vercel. A captura inicial de respostas de página não mostrava a instalação do worker; a comparação com o log do servidor incluiu o pedido no orçamento. No percurso final de inspeção, o teste precisou rolar até a imagem antes de aguardar sua decodificação.
+
+**Risco em aberto.** A composição medida corresponde aos viewports 1440×900 e 390×844, sem rolagem. O teste offline verifica o redirecionamento e a abertura local da tela.
+
+**Procedência.** Branch `feature/ui-32-midia-landing`, base `develop` `5084208`. Windows, Node, Python, Chrome e Playwright locais.
+
+---
+
+# 2026-11-15 (iv) — CI-02: lint e alcance por símbolo
+
+**O problema, como foi entendido no início.** O CI exercitava tipos, testes e builds. Uso incorreto de hooks, nomes indefinidos em Python e exports sem consumidor podiam passar por essas verificações.
+
+**Hipótese de trabalho.** Três verificações pequenas nos jobs existentes conseguem apontar regressões específicas com exceções locais justificadas e sem reformatar o código.
+
+**O que foi testado, e como.** Na base `88bbfb4`, ESLint com os presets recomendados de JS, TS e React Hooks, Ruff em seu padrão e Knip no grafo da aplicação e dos testes. O controle do ESLint plantou um efeito que escrevia o título usando `titulo` com dependências vazias. O do Ruff plantou `import fractions` sem uso. O do Knip restaurou `LinhaDeCota` e `LIMIAR_DE_HISTORICO_PARCIAL` nos módulos originais. Os novos testes de documentos simulam saídas 128 e 1 do `git check-ignore`. O mesmo `src/main.tsx` é a entrada web e app do Vite, e a análise inclui `capacitor.config.ts`, as configurações do Vite e do Vitest e os testes.
+
+**Resultado medido.** Base: ESLint 19 ocorrências em 126 arquivos, Ruff 202 em 66 arquivos de `web-app/` e `scripts/`, Knip 6 exports e 23 tipos em 19 arquivos. Após a limpeza, ESLint tem 13 avisos e zero erros. Os 9 imports de `web-app/` e `scripts/` e 10 imports do ML foram removidos. O lint acusou `react-hooks/exhaustive-deps` e `F401` nas respectivas sabotagens. Knip acusou os dois símbolos restaurados pelo nome. Os três comandos voltaram a sair 0 após remover as sabotagens. Em Python 3.12, os testes do `git check-ignore` deram 1 falha e 1 sucesso contra `develop`, e 2 sucessos com a correção. O teste do código 128 falhou na base porque a exceção esperada não ocorreu. Na revisão, o Knip passou com `files` na checagem bloqueante. Plantar `src/lib/arquivoMorto.ts` fez o comando sair 1 e nomear o arquivo. Retirá-lo voltou a zero achados. Restaram 20 avisos de tipos. Backend sem RLS: 575 passaram no contêiner Python 3.12 com `CI=true`. RLS: 273 passaram em Postgres 17. ML: 310 passaram em Python 3.10. Frontend: 629 passaram em 47 arquivos no Windows com Node 22. TypeScript, build web, os três orçamentos e CSP passaram. `build:app` passou e empacotou `Noite-CpjNFuqK.js` no Android. As conferências de documentos passaram. Antes da revisão, a auditoria registrou sete achados moderados pela cadeia do `minimatch` 10.2.6. Após a instalação limpa em Linux com npm 10.9.9, `npm ls minimatch` mostrou 11.0.5 para o `typescript-estree`, e `npm audit --audit-level=high --json` retornou zero vulnerabilidades de todas as severidades. O parser com `projectService.allowDefaultProject` e o lint passaram. O efeito sem a dependência `titulo` reprovou especificamente em `react-hooks/exhaustive-deps`. Após retirar o controle, voltaram os 13 avisos e zero erros.
+
+**Adaptação.** Ruff com alvos Python 3.12 em `web-app/` e 3.10 em `scripts/`, `ml/` e `firmware/`. O caminho `firmware/` fica preparado para futuros scripts. A árvore versionada contém zero arquivos Python ali, portanto o Ruff não executa checagens nessa pasta hoje. `F401`, `F821`–`F823`, `F841` e sintaxe reprovam. No frontend, ESLint reprova pelos erros, e Knip reprova por arquivos fora do grafo e exports de valor sem consumidor. A categoria de dependências fica fora porque Knip acusa `tailwindcss`, usado pelo plugin `@tailwindcss/vite` e pelo CSS. Os 20 avisos de tipos e os 13 avisos de hooks seguem em triagem no `UI-33`. Os avisos de hooks estão registrados por arquivo e linha, com a ressalva do `AUTH-07`. O caminho Android passa de `main.tsx` a `App.tsx`, `Noite.tsx` e componentes que usam o plugin. Os três tipos de Android usados só no próprio módulo ficaram privados. O override de `minimatch` 11.0.5 se aplica apenas sob `@typescript-eslint/typescript-estree`.
+
+**O que deu errado no caminho.** O primeiro lockfile foi gerado com `node_modules` presente. O lock gerado em pasta limpa no Windows preservou as entradas das plataformas, mas o npm 10.9.9 no runner Linux rejeitou dependências opcionais `@emnapi`. A regeneração partiu do lock de `develop` com npm 10.9.9 no Linux, em pasta limpa. A primeira execução de documentos no runner considerou o caminho fictício do teste uma referência real. O fixture passou a usar um arquivo de texto fora de `docs/` e os testes foram repetidos. A primeira tentativa do ML em contêiner não enxergou o Git da worktree Windows. A segunda montou os metadados do Git separadamente em modo somente leitura. O RLS recusou o alias de rede na primeira execução, como previsto pela proteção da suíte. A repetição usou loopback num Postgres descartável. O Capacitor regenerou dois arquivos Gradle, restaurados após a validação. Na revisão, gerar o lock integralmente sem referência ao anterior falhou no resolvedor do npm 10.9.9 (`edgesOut`). Usar o lock anterior intacto manteve `minimatch` 10.2.6 como inválido. Em pasta vazia no Linux, retirou-se a resolução antiga do subgrafo do `typescript-estree` e regenerou-se o lock com o npm 10.9.9. A única diferença no grafo foi a remoção do `minimatch` 10.2.6 aninhado.
+
+**Risco em aberto.** A triagem dos avisos pode encontrar correções de comportamento, inclusive de autenticação. A próxima atualização do `typescript-estree` deve verificar se ele já declara uma versão corrigida de `minimatch`. Quando declarar, retirar o override e repetir instalação, auditoria e controle do ESLint.
+
+**Procedência.** Branch `chore/ci-02-lint`, base `develop` `88bbfb4`. Windows, Node 22 e contêineres locais. Ferramentas pinadas: ESLint 10.15.0, @eslint/js 10.0.1, typescript-eslint 8.72.2, eslint-plugin-react-hooks 7.1.1, Knip 5.88.1 e Ruff 0.17.5.
+
+---
+
+# 2026-11-15 (v) — AUTH-10: sessão e perfil vigentes
+
+**O problema, como foi entendido no início.** A conta B podia receber o perfil da conta A se a resposta antiga chegasse depois. O cliente guardava o provedor do JWT após desmontar. Em uma árvore de teste com Suspense acima do AuthProvider, um render descartado também podia publicar seu JWT.
+
+**Hipótese de trabalho.** Vincular o perfil à sessão confirmada e aceitar apenas o pedido mais recente dessa sessão impede a sobrescrita. Publicar o JWT em efeito de layout mantém a primeira consulta do perfil autenticada sem publicar um render descartado.
+
+**O que foi testado, e como.** Vitest com AuthProvider, PerfilProvider e cliente de API reais, sessões sintéticas e fetch simulado. A responde depois de B com 200 e 401. O teste de Suspense suspende B mantendo A visível, faz uma consulta e confirma C. O teste do AUTH-07 dá 401 ao primeiro pedido do perfil que chegar sem Bearer. A desmontagem é seguida de uma chamada no mesmo processo.
+
+**Resultado medido.** Na base `9ff2f15`, quatro casos falharam: 200 atrasado substituiu o perfil de B, 401 atrasado deslogou B, o render suspenso enviou o JWT de B e a desmontagem reteve o JWT. Após a correção os 11 testes de AuthContext passam. Trocar apenas `useLayoutEffect` por `useEffect` no AuthProvider derrubou o controle do AUTH-07 pelo Bearer ausente. A proteção contra 401 obsoleto conservou a sessão nesse controle. Retirar a comparação do token no 401 derrubou o teste do 401 atrasado por logout. Retirar a identidade do ciclo de busca derrubou o teste do 200 atrasado: o resultado de A ocultou o resultado de B. Retirar a limpeza do token derrubou o teste da desmontagem pelo Bearer residual. Frontend: 634 testes em 47 arquivos na primeira versão. Na revisão de 16/11, 638 em 47 arquivos, dos quais 15 em AuthContext. Os dois testes de renovação e `SIGNED_IN` repetido passam na `develop` e falham no `986e56a` com duas consultas e perfil vazio. Com a correção, permanecem uma consulta e o perfil visível. Remover a conferência do titular na renderização fez os dois novos testes exibirem o perfil antigo: com a consulta de B pendente e após logout. Os quatro controles anteriores também foram repetidos isoladamente. O `build:app` passou com TypeScript, Vite em modo app e sincronização do Capacitor. TypeScript, build, orçamentos e CSP passaram. Lint: 10 avisos e zero erros. Knip, Ruff e as três conferências de documentos passaram.
+
+**Adaptação.** O AuthProvider publica o JWT e o callback no commit e limpa ambos na desmontagem. A leitura do perfil começa em efeito passivo. O único consumidor com efeito de layout identificado fora dos provedores é o diálogo de consentimento e ele não busca o perfil. Um 401 segue como erro para a chamada que o recebeu. O callback global só roda quando o token dessa chamada ainda está vigente. O ciclo do perfil segue o `user.id` confirmado. Renovar o token ou receber outro `SIGNED_IN` do mesmo usuário preserva o perfil e a consulta em curso. Trocar de conta ou sair invalida o ciclo anterior. A renderização só expõe resultados cujo titular coincide com o usuário atual.
+
+**O que deu errado no caminho.** A primeira abertura no backlog não incluiu o item no quadro L0. A conferência acusou a ausência e o quadro foi acertado antes do commit de abertura. A reprodução ampliada encontrou o 401 atrasado no cliente de API, além da sobrescrita no contexto. Na revisão de 16/11 do commit `986e56a`, a consulta estava presa ao objeto `Session`. Renovar o JWT ou receber outro `SIGNED_IN` do mesmo usuário disparava uma segunda busca e deixava o perfil vazio enquanto ela estava pendente. Isso suspendia o consentimento usado no envio da noite, reabria a preparação da coleta e podia apagar dados em edição. A revisão também mostrou que remover a conferência do titular na renderização passava na suíte original, que só observava B depois da resposta.
+
+**Risco em aberto.** O Suspense acima do AuthProvider do teste não existe na árvore atual da aplicação. O comportamento importante nessa árvore é manter a consulta inicial do perfil depois da publicação do JWT. O APP-16 e o restante do UI-33 seguem na sequência própria.
+
+**Procedência.** Branch `bugfix/auth-10-sessao-perfil-vigentes`, base `develop` `9ff2f15`. Windows, Node 22 e Vitest 4.1.12. Dados sintéticos em testes locais.
+
+---
+
+# 2026-11-16 — APP-16: envio de noites após remontagem
+
+**O problema, como foi entendido no início.** O cartão guardava a tentativa de envio automático numa ref da própria montagem. Reabrir a tela durante uma requisição repunha a ref e permitia que os caminhos automático e manual partissem do mesmo marcador.
+
+**Hipótese de trabalho.** A idempotência da 011 evita uma segunda linha para a mesma época com instante. Serializar tentativas no módulo, por fonte, permite ao próximo envio ler o marcador depois da gravação anterior.
+
+**O que foi testado, e como.** Em Postgres 17 descartável, com o esquema e os papéis da suíte de RLS, foram confirmadas duas transações com as mesmas 60 épocas sintéticas com `captured_at`. Cada época chamou `registrar_leitura_da_sessao`, como faz o caminho por sessão do lote. No frontend, a primeira resposta fica retida durante a remontagem. Os testes disparam separadamente o automático e o botão manual e contam lotes e chamadas a `marcarEnviadas`. Um terceiro caso acrescenta uma noite enquanto a tentativa seguinte espera.
+
+**Resultado medido.** O lote deixou 60 linhas na primeira transação e 60 na segunda, com os mesmos 60 IDs distintos e nenhum nulo. Sete testes de idempotência e medição passaram em Postgres 17. Na base `f8224b5`, os três testes novos do frontend falharam. Em ambos os modos, a segunda resposta chamou `marcarEnviadas(ate: 2)` antes da primeira resposta, que depois chamou o mesmo marcador. A implementação nativa aplica `min(max(atual, ate), total)` e retorna cedo quando o ponto já é igual. Isso foi lido no plugin, enquanto a ordem e as duas chamadas foram executadas com o plugin simulado. Após a correção houve zero lotes repetidos e uma marcação. A tentativa seguinte releu a fila e enviou apenas a noite nova. Remover a espera pelo envio anterior derrubou os três testes em cópia isolada. Restaurá-la trouxe os 36 testes do cartão e da fila de volta ao verde. A suíte de frontend passou com 641 testes em 47 arquivos. Lint terminou com zero erros e 9 avisos. Knip, Ruff, TypeScript, build web, orçamentos, CSP, `build:app` e as três conferências de documentos passaram.
+
+**Adaptação.** O módulo encadeia promessas por fonte nativa. Todos os disparos usam a mesma fila, inclusive o envio ao encerrar. Cada tentativa faz a própria leitura quando a anterior termina, o que permite enviar noites novas ou retomar depois de falha. ✏️ *16/11, revisão da PR #197, feita pelo Claude com o Codex fora:* o efeito do cartão voltou ao código da `develop`. O `queueMicrotask` com cancelamento na desmontagem não era exigido por nenhum teste, e com a fila no módulo era redundante. Como a fila agora prende as tentativas seguintes, o `enviarLote` ganhou um prazo de 60 s (`PRAZO_DO_LOTE_MS`), com `AbortController` e `setTimeout`: o servidor para de gravar aos 6 s (`ORCAMENTO_DE_TEMPO_S`), e o prazo dá dez vezes isso para partida a frio e rede móvel. Não há medição do tempo de um lote em `gru1`. Expirar é uma falha de envio comum, e as épocas ficam no aparelho. Testes novos: o prazo (pedido sem resposta, corpo sem resposta, temporizador limpo na resposta), a fila que não fica presa além do prazo e a tentativa feita durante um envio que falhou no plugin. Frontend: **646 passam, 47 arquivos**; lint com 0 erros e 10 avisos, porque o aviso de `CartaoDaNoite.tsx:122` volta com o efeito da `develop` e fica no `UI-33`. Knip, `tsc`, build web, os três orçamentos, a CSP e `vite build --mode app` passaram.
+
+**O que deu errado no caminho.** A versão original permitia que a segunda resposta marcasse a fila antes de a primeira terminar. O primeiro teste concorrente também mostrou que duas tentativas podiam entrar com uma lista antiga e deixar uma noite nova para trás. ✏️ *16/11, na revisão:* três sabotagens passaram sem nenhum teste cair: `anterior ?? Promise.resolve()` sem o `.catch`, o disparo síncrono no cartão e o cartão sem o cancelamento. A revisão também achou um risco trazido pela própria trava: o `fetch` do lote não tinha prazo, e um pedido que nunca respondesse prenderia o "Enviar agora" até reiniciar o app; antes, a remontagem começava outro envio. Depois dos ajustes, seis sabotagens novas foram acusadas: sem o `.catch` (1 teste), sem o temporizador (3), sem o sinal no `fetch` (3), sem o `clearTimeout` (1) e o prazo trocado por 6 s (2). Uma sétima passou: tirar a conferência do sinal dentro do `json()`. Era redundante, porque o `catch` de fora já converte qualquer falha com o sinal abortado, e saiu do código.
+
+**Risco em aberto.** Reiniciar o processo do app descarta a fila em memória. Se o processo cair entre a confirmação no servidor e a atualização do arquivo local, a próxima abertura pode reenviar a época. A idempotência medida cobre esse reenvio quando o instante existe. O prazo de 60 s não foi medido contra a rede real; um lote que demore mais que isso numa conexão ruim é dado como falho e reenviado depois, o que a 011 também cobre. A medição do lote em `gru1` é a do `INFRA-05`.
+
+**Procedência.** Branch `bugfix/app-16-evitar-envio-concorrente`, base `develop` `f8224b5`. Windows com Node 22 e Vitest. Docker com Python 3.12 e Postgres 17 para a medição. Dados sintéticos.
+
+---
+
+# 2026-11-16 (ii) — o release R6: a pausa conferida na produção
+
+**O problema, como foi entendido no início.** O `API-07` (pausar o recebimento por aparelho, contrato 2.11.0, migração 019) foi para `main` em 14/11 (`78ec7d5`), mas a recusa durante a pausa ainda não tinha sido vista na produção.
+
+**Hipótese de trabalho.** Com o travesseiro pausado, uma leitura válida enviada pela sessão do titular volta `409` `aparelho_pausado` e não grava. Como esse `409` só sai da função de gravação da 019 (`PT409`), ele também prova que a migração está aplicada.
+
+**O que foi testado, e como.** `/health` por `curl`. No navegador do autor, logado na produção: pausar o travesseiro em Dispositivos (a interface avisa que as leituras serão descartadas), ler `/api/devices`, enviar uma leitura por `POST /api/data` com a sessão e, em seguida, retomar o aparelho.
+
+**Resultado medido.** `/health` `200` com `contrato_de_dados` 2.11.0 e banco ok. `/api/devices`: travesseiro com `receber_leituras = false`. Leitura válida (`az` 1, `total` 1) → **`409` `{"error":"aparelho_pausado"}`**.
+
+**Adaptação.** Nenhuma no código.
+
+**O que deu errado no caminho.** O primeiro envio levava `total` 0 com `az` 1 e voltou `400` ("campo total incoerente"). A validação de conteúdo vem antes da decisão do banco, como o `API-07` registrou; o erro foi do roteiro de teste, não do sistema. O segundo envio corrigiu o campo.
+
+**Risco em aberto.**
+- **O lote pausado vindo da placa** (`200` com rejeições definitivas e a fila drenando) não foi visto na produção; fica no `VIA-01`.
+- **Leituras offline** que chegarem depois da retomada ainda gravam, como o `API-07` previu.
+
+**Procedência.** `curl` na produção, Windows 11; o console do navegador do autor, colado na conversa; 16/11.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

@@ -8,7 +8,6 @@ que o cliente mandou.
 """
 from unittest.mock import patch
 
-import os
 from flask import Flask
 
 import database
