@@ -176,6 +176,18 @@ mudanças de posição que a envolvam. Movimentos corporais que não desloquem a
 ser subcaptados. A magnitude dessa subcaptação constitui questão empírica em aberto,
 endereçada pelo protocolo de bancada descrito na seção (REFERÊNCIA INTERNA — item VIA-01).
 
+✏️ *16/11 (`VIA-01`), rascunho para o texto, a conferir antes de colar:* Em sessão de bancada com um
+único participante, o próprio autor, conduzida em dois ciclos de cinco minutos para cada condição
+(repouso, movimento de cabeça e giro de corpo com a cabeça apoiada no mesmo ponto), as épocas de giro
+de corpo distinguiram-se integralmente das de repouso (delta de Cliff igual a 1,00 na média do ENMO;
+p < 0,001 em teste de permutação), com o mesmo resultado em cada ciclo considerado isoladamente. As
+épocas de movimento de cabeça também se distinguiram das de repouso, mas não das de giro de corpo
+(delta igual a 0,55; p = 0,061). Duas ressalvas limitam o alcance desse resultado: trata-se de um único
+participante e de uma única sessão, o que demonstra a existência do sinal, e não a sua
+generalidade; e o giro até a posição de bruços implica rotação da cabeça no próprio lugar, de modo que
+a condição avaliada foi o giro de corpo com a cabeça apoiada, e não o movimento de corpo sem nenhum
+movimento de cabeça. O critério de separação foi fixado antes da coleta (`docs/PROTOCOLO-VIA-01.md`).
+
 **Comparação com a posição de pulso.** A literatura de posicionamento de acelerômetros
 indica que o punho apresenta acurácia superior a posições próximas ao centro de massa para a
 tarefa de discriminação sono/vigília, tendo sido relatada acurácia majoritariamente superior
