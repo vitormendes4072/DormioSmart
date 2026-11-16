@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import type { RespostaDoLote } from "./coleta";
-import { ErroDeIngestao } from "./coleta";
+import { ErroDeIngestao, PRAZO_DO_LOTE_MS, enviarLote } from "./coleta";
 import { type FonteDaNoite, contarRestantes, enviarNoites, prefixoResolvido } from "./envioDaNoite";
 
 /** O arquivo da noite em memoria, com a regra do nativo: o ponto so avanca. */
@@ -69,6 +69,33 @@ describe("enviarNoites (APP-02, etapa 3)", () => {
     expect(f.ponto["noite-1.jsonl"]).toBe(130);
     expect(r).toEqual({ confirmadas: 130, rejeitadas: 0, primeiraRejeicao: null, restantes: 0, erro: null });
     expect(s.gravadas.size).toBe(130);
+  });
+
+  it("relê a fila depois do envio em curso e inclui uma noite que acabou durante a espera", async () => {
+    const noites = { "noite-1.jsonl": 2 };
+    const f = fonte(noites);
+    let liberar!: () => void;
+    const resposta = new Promise<void>((resolve) => { liberar = resolve; });
+    let iniciou!: () => void;
+    const emCurso = new Promise<void>((resolve) => { iniciou = resolve; });
+    const primeiro = enviarNoites(f, async () => {
+      iniciou();
+      await resposta;
+      return { aceitas: [0, 1], rejeitadas: [], pendentes: [] };
+    });
+    await emCurso;
+
+    const segundoLote: object[][] = [];
+    const segundo = enviarNoites(f, async (leituras) => {
+      segundoLote.push(leituras);
+      return { aceitas: leituras.map((_, i) => i), rejeitadas: [], pendentes: [] };
+    });
+    Object.assign(noites, { "noite-2.jsonl": 1 });
+    liberar();
+    await Promise.all([primeiro, segundo]);
+
+    expect(segundoLote).toEqual([[{ arquivo: "noite-2.jsonl", epoca: 0 }]]);
+    expect(f.ponto).toEqual({ "noite-1.jsonl": 2, "noite-2.jsonl": 1 });
   });
 
   it("continua de onde parou, sem reenviar o que ja foi confirmado", async () => {
@@ -223,4 +250,64 @@ it("sincroniza a gravação normal e a legada, mas nunca lê a de teste", async 
   expect((await enviarNoites(fonte, enviar)).restantes).toBe(0);
   expect(enviar.mock.calls).toEqual([[ [{ arquivo: "normal" }] ], [ [{ arquivo: "legada" }] ]]);
   expect(fonte.lerEpocas).not.toHaveBeenCalledWith({ arquivo: "teste", de: 0 });
+});
+
+describe("a fila de envios por aparelho (APP-16)", () => {
+  it("uma tentativa feita durante um envio que falhou no aparelho ainda envia e marca", async () => {
+    const f = fonte({ "noite-1.jsonl": 2 });
+    const marcar = f.marcarEnviadas;
+    let liberar!: () => void;
+    const segura = new Promise<void>((resolve) => { liberar = resolve; });
+    let primeira = true;
+    f.marcarEnviadas = async (args) => {
+      if (primeira) {
+        primeira = false;
+        await segura;
+        throw new Error("o plugin falhou ao gravar o ponto");
+      }
+      return marcar(args);
+    };
+    const s = servidor();
+    const primeiro = enviarNoites(f, s.enviar);
+    await vi.waitFor(() => expect(s.lotes).toEqual([2]));
+    const segundo = enviarNoites(f, s.enviar);
+    liberar();
+    await expect(primeiro).rejects.toThrow(/plugin falhou/);
+    const r = await segundo;
+    expect({ lotes: s.lotes, ponto: f.ponto, restantes: r.restantes })
+      .toEqual({ lotes: [2, 2], ponto: { "noite-1.jsonl": 2 }, restantes: 0 });
+  });
+
+  it("um lote que não responde não prende a tentativa seguinte além do prazo", async () => {
+    vi.useFakeTimers();
+    try {
+      const f = fonte({ "noite-1.jsonl": 1 });
+      const pedidos: number[] = [];
+      vi.stubGlobal("fetch", (_u: string, init: RequestInit) => {
+        pedidos.push(Date.now());
+        if (pedidos.length === 1) {
+          return new Promise<never>((_, rejeitar) => {
+            init.signal?.addEventListener("abort", () => rejeitar(new DOMException("abortado", "AbortError")));
+          });
+        }
+        return Promise.resolve({
+          status: 200, json: async () => ({ aceitas: [0], rejeitadas: [], pendentes: [] }),
+        } as unknown as Response);
+      });
+      const enviar = (leituras: object[]) => enviarLote(leituras, "aparelho", "jwt");
+      const primeiro = enviarNoites(f, enviar);
+      await vi.advanceTimersByTimeAsync(0);
+      const segundo = enviarNoites(f, enviar);
+      await vi.advanceTimersByTimeAsync(PRAZO_DO_LOTE_MS - 1);
+      expect(pedidos, "a segunda espera a primeira").toHaveLength(1);
+      await vi.advanceTimersByTimeAsync(1);
+      expect((await primeiro).erro).toMatch(/a tempo/);
+      expect((await segundo).restantes).toBe(0);
+      expect(pedidos).toHaveLength(2);
+      expect(f.ponto).toEqual({ "noite-1.jsonl": 1 });
+    } finally {
+      vi.useRealTimers();
+      vi.unstubAllGlobals();
+    }
+  });
 });

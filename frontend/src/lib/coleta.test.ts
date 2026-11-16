@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { ErroDeIngestao, enviarLeitura, enviarLote, mensagemDeFalha } from "./coleta";
+import { ErroDeIngestao, PRAZO_DO_LOTE_MS, enviarLeitura, enviarLote, mensagemDeFalha } from "./coleta";
 import { agregar, montarPayload } from "./acelerometro";
 import { GRAVIDADE } from "../types/sleep";
 
@@ -168,5 +168,52 @@ describe("enviarLote (APP-02, etapa 3)", () => {
       throw new Error("nao devia chamar");
     });
     await expect(enviarLote([{}], DISPOSITIVO, null)).rejects.toMatchObject({ status: 401 });
+  });
+});
+
+/** Um fetch que só termina quando o pedido é abortado, como uma rede que não responde. */
+function abortadoSo(sinal: AbortSignal | null | undefined): Promise<never> {
+  return new Promise((_, rejeitar) => {
+    sinal?.addEventListener("abort", () => rejeitar(new DOMException("abortado", "AbortError")));
+  });
+}
+
+describe("prazo do lote (APP-16)", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("um pedido sem resposta expira no prazo como falha de envio", async () => {
+    vi.useFakeTimers();
+    vi.stubGlobal("fetch", (_u: string, init: RequestInit) => abortadoSo(init.signal));
+    const envio = enviarLote([{}], DISPOSITIVO, JWT);
+    const resultado = expect(envio).rejects.toMatchObject({ status: 0, message: expect.stringMatching(/a tempo/) });
+    await vi.advanceTimersByTimeAsync(PRAZO_DO_LOTE_MS - 1);
+    let terminou = false;
+    void envio.catch(() => {}).finally(() => { terminou = true; });
+    await vi.advanceTimersByTimeAsync(0);
+    expect(terminou, "não pode expirar antes do prazo").toBe(false);
+    await vi.advanceTimersByTimeAsync(1);
+    await resultado;
+    await expect(envio).rejects.toBeInstanceOf(ErroDeIngestao);
+  });
+
+  it("o prazo vale também para a leitura do corpo", async () => {
+    vi.useFakeTimers();
+    vi.stubGlobal("fetch", (_u: string, init: RequestInit) =>
+      Promise.resolve({ status: 200, json: () => abortadoSo(init.signal) } as unknown as Response));
+    const envio = enviarLote([{}], DISPOSITIVO, JWT);
+    const resultado = expect(envio).rejects.toMatchObject({ status: 0, message: expect.stringMatching(/a tempo/) });
+    await vi.advanceTimersByTimeAsync(PRAZO_DO_LOTE_MS);
+    await resultado;
+  });
+
+  it("a resposta dentro do prazo não deixa temporizador pendente", async () => {
+    vi.useFakeTimers();
+    vi.stubGlobal("fetch", () => Promise.resolve({
+      status: 200, json: async () => ({ aceitas: [0], rejeitadas: [], pendentes: [] }),
+    } as unknown as Response));
+    await expect(enviarLote([{}], DISPOSITIVO, JWT)).resolves.toMatchObject({ aceitas: [0] });
+    expect(vi.getTimerCount()).toBe(0);
   });
 });
