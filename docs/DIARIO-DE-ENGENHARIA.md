@@ -10433,6 +10433,42 @@ Na revisão de bed5c9e, o autor mediu 554 aprovados em Python 3.12 com CI=true e
 
 **Procedência.** `curl` na produção, Windows 11; o console do navegador do autor, colado na conversa; 16/11.
 
+---
+
+# 2026-11-16 (iii) — o release R7: rotas divididas, sessão vigente e fila da noite
+
+**O problema, como foi entendido no início.** `UI-25`, `API-06`, `UI-15`, `UI-32`, `CI-02`, `AUTH-10`, `APP-16` e o registro do R6 estavam em `develop`. Com o Codex fora por alguns dias, o release fazia parte do plano aprovado pelo autor.
+
+**Hipótese de trabalho.** Nada exige migração, e o contrato continua 2.11.0. O site muda em quatro pontos: o guia de pareamento, a divisão por rota, a mídia da landing e o login. O `vercel.json` muda dois hashes da CSP e ganha o cache da mídia. O risco maior é o `AUTH-10`, que mexe na sessão e só se confirma com um login real.
+
+**O que foi testado, e como.** PR #199 (`develop` → `main`), CI e Vercel. Depois do deploy:
+- `/health` e as rotas com `curl`;
+- `scripts/conferir_csp.py` sobre as duas páginas servidas e os cabeçalhos servidos (copiados para um `vercel.json` temporário);
+- os pedaços JS publicados, baixados a partir do `index.html` seguindo os imports, com busca pelos textos novos;
+- o cabeçalho de uma WebP da landing.
+
+Depois, o login do autor.
+
+**Resultado medido.**
+- CI 13 de 13; merge `5105e84`; deploy de produção com sucesso.
+- `/health` `200`, banco ok, contrato 2.11.0.
+- `401` sem token e com `Bearer` inválido em `/api/devices`, `/api/sleep-history` e `/api/me/perfil`; `401` sem token no `POST` de `/api/data` e de `/api/data/lote`.
+- CSP: 10 scripts inline, todos com hash, sem sobra, cabeçalhos completos.
+- 29 pedaços JS; o texto do prazo do lote (`APP-16`) e o do guia de pareamento (`UI-25`) presentes.
+- WebP com `Cache-Control: public, max-age=31536000, immutable`.
+- **Login do autor (16/11):** saiu e entrou, o nome apareceu no menu, Histórico e Dispositivos carregaram, e o F5 manteve a sessão.
+
+**Adaptação.** Nenhuma.
+
+**O que deu errado no caminho.** Nada nesta etapa.
+
+**Risco em aberto.**
+- **O prazo de 60 s do lote** não foi medido contra a produção, e o tempo por leitura do lote continua sem medida. Ficam no `INFRA-05`/`API-06`.
+- **O celular** só recebe o `APP-16` com um APK novo (`APP-12`).
+- **A renovação do token durante uma sessão longa** não foi observada no login; os testes do `AUTH-10` a cobrem simulada.
+
+**Procedência.** GitHub (PR #199, CI e deployment); `curl` e o conferidor da CSP na produção, Windows 11; o relato do autor sobre o login; 16/11.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
