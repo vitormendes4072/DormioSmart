@@ -10411,6 +10411,28 @@ Na revisão de bed5c9e, o autor mediu 554 aprovados em Python 3.12 com CI=true e
 
 **Procedência.** Branch `bugfix/app-16-evitar-envio-concorrente`, base `develop` `f8224b5`. Windows com Node 22 e Vitest. Docker com Python 3.12 e Postgres 17 para a medição. Dados sintéticos.
 
+---
+
+# 2026-11-16 (ii) — o release R6: a pausa conferida na produção
+
+**O problema, como foi entendido no início.** O `API-07` (pausar o recebimento por aparelho, contrato 2.11.0, migração 019) foi para `main` em 14/11 (`78ec7d5`), mas a recusa durante a pausa ainda não tinha sido vista na produção.
+
+**Hipótese de trabalho.** Com o travesseiro pausado, uma leitura válida enviada pela sessão do titular volta `409` `aparelho_pausado` e não grava. Como esse `409` só sai da função de gravação da 019 (`PT409`), ele também prova que a migração está aplicada.
+
+**O que foi testado, e como.** `/health` por `curl`. No navegador do autor, logado na produção: pausar o travesseiro em Dispositivos (a interface avisa que as leituras serão descartadas), ler `/api/devices`, enviar uma leitura por `POST /api/data` com a sessão e, em seguida, retomar o aparelho.
+
+**Resultado medido.** `/health` `200` com `contrato_de_dados` 2.11.0 e banco ok. `/api/devices`: travesseiro com `receber_leituras = false`. Leitura válida (`az` 1, `total` 1) → **`409` `{"error":"aparelho_pausado"}`**.
+
+**Adaptação.** Nenhuma no código.
+
+**O que deu errado no caminho.** O primeiro envio levava `total` 0 com `az` 1 e voltou `400` ("campo total incoerente"). A validação de conteúdo vem antes da decisão do banco, como o `API-07` registrou; o erro foi do roteiro de teste, não do sistema. O segundo envio corrigiu o campo.
+
+**Risco em aberto.**
+- **O lote pausado vindo da placa** (`200` com rejeições definitivas e a fila drenando) não foi visto na produção; fica no `VIA-01`.
+- **Leituras offline** que chegarem depois da retomada ainda gravam, como o `API-07` previu.
+
+**Procedência.** `curl` na produção, Windows 11; o console do navegador do autor, colado na conversa; 16/11.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
