@@ -10733,6 +10733,8 @@ Depois, o login do autor.
 
 **Procedência.** Placa no travesseiro com o `sketch.ino` gravado em 13/11; log serial e arquivo do console em `dados-locais/`, fora do repositório; `scripts/analisar_via01.py` em `develop` `73b3790`; Windows 11, Python 3.13; 16/11.
 
+✏️ *16/11, mais tarde: o autor apagou da produção, pelo SQL Editor, **203 leituras** do travesseiro: tudo o que chegou ao banco a partir das 17:10 de 16/11. São as épocas desta sessão (chegadas de 17:21 a 18:41) e **26 épocas de 13/11**, a mais antiga medida às 21:37:30, que tinham ficado na fila da flash da placa e só foram enviadas no primeiro lote de hoje. Ficaram de fora da remoção das 818 leituras de bancada de 13/11 porque ainda não estavam no banco. Contagem antes: 203; depois: 0. A análise deste item não depende do banco: o arquivo do console e o log serial seguem em `dados-locais/`.*
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
