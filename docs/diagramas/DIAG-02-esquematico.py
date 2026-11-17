@@ -29,7 +29,10 @@ O QUE O ESQUEMÁTICO AFIRMA, E DE ONDE CADA LIGAÇÃO VEM:
   fonte). Não há resistor externo.
 - Sem botão e sem o resistor de 10 kΩ no GPIO 27: eram andaime do Wokwi (`HW-01`), e o
   `sketch.ino` da C2 não os usa.
-- Alimentação pela USB do DevKit: a bateria é decisão aberta (`HW-02`).
+- Alimentação pela USB do DevKit na v1 e na v2. ✏️ *17/11 (`HW-02`): a alimentação por
+  célula proposta pelo `docs/ESTUDO-ENERGIA.md` sai numa terceira folha (`v3`), rotulada
+  PROJETO — não montada: LiFePO4 18650 direto no 3V3, com proteção contra inversão, fusível,
+  chave, capacitor de reserva e o divisor da leitura da bateria (`HW-10`) no GPIO35.*
 
 A v2 (dois sensores, 0x68 e 0x69 pelo AD0 do segundo) é CONTINGÊNCIA PROJETADA: quem decide
 é o `VIA-01`, que depende da solda. Ela sai numa folha própria, com o segundo módulo em caixa
@@ -42,7 +45,7 @@ depois de o pino mudar no código é o defeito que este arquivo existe para não
 
 Uso:
     python DIAG-02-esquematico.py [pasta_de_saida]
-Gera DIAG-02-v1.svg/.png e DIAG-02-v2.svg/.png. Requer `schemdraw==0.19` e
+Gera DIAG-02-v1, -v2 e -v3 (.svg e .png). Requer `schemdraw==0.19` e
 `matplotlib==3.9.2` (fora do `ml/.venv`: esta figura não é do pipeline de ML).
 """
 import json
@@ -157,6 +160,61 @@ def desenhar(versao, pasta):
             d.save(str(pasta / f"DIAG-02-{versao}.{ext}"), dpi=150)
 
 
+def desenhar_alimentacao(pasta):
+    """v3: a alimentação por célula LiFePO4 do `docs/ESTUDO-ENERGIA.md` (PROJETO)."""
+    with schemdraw.Drawing(show=False) as d:
+        d.config(fontsize=10, unit=2, margin=1.5)
+        # A célula, de baixo (−) para cima (+).
+        bat = elm.Battery().up()
+        d += bat
+        d += elm.Label().at(em(bat.center, -0.5, 0)).label(
+            "B1 · LiFePO4 18650\n3,0–3,6 V\n~1 500 mAh", fontsize=9, halign="right")
+        d += elm.Line().right().length(1.0)
+        d += elm.RBox(w=2.2, h=1.0).right().label("Q1 · P-MOSFET\ncontra inversão", fontsize=8)
+        d += elm.Fuse().right().label("F1 · 1 A\n(sem PTC)", fontsize=9)
+        d += elm.Switch().right().label("S1 · liga/desliga", fontsize=9)
+        d += elm.Dot()
+        no_3v3 = d.here
+        d += elm.Line().right().length(3.0)
+        d += elm.Dot()
+        no_div = d.here
+        d += elm.Line().right().length(3.5)
+        esp = elm.Ic(pins=[
+            elm.IcPin(name="3V3", side="left", slot="3/3", anchorname="p3v3"),
+            elm.IcPin(name="GPIO35 (ADC1)", side="left", slot="2/3", anchorname="adc"),
+            elm.IcPin(name="GND", side="left", slot="1/3", anchorname="gnd"),
+        ], size=(4.6, 3.6)).anchor("p3v3")
+        d += esp
+        d += elm.Label().at(em(esp.p3v3, 1.0, 1.0)).label("U1 · ESP32 DevKit V1", fontsize=11)
+        # Capacitor de reserva para o pico do rádio.
+        d += elm.Capacitor(polar=True).at(no_3v3).down().label("C1 · 1 000 µF", loc="top", fontsize=9)
+        d += elm.Ground()
+        # Divisor da leitura da bateria (HW-10): 1 MΩ + 1 MΩ, 100 nF no meio.
+        d += elm.Resistor().at(no_div).down().label("R1 · 1 MΩ", loc="bottom")
+        d += elm.Dot()
+        meio = d.here
+        d += elm.Resistor().down().label("R2 · 1 MΩ", loc="bottom")
+        d += elm.Ground()
+        d += elm.Wire("-|").at(meio).to(esp.adc)
+        d += elm.Line().at(meio).left().length(0.5)
+        d += elm.Capacitor().down().label("C2 · 100 nF", loc="top", fontsize=9)
+        d += elm.Ground()
+        d += elm.Ground().at(bat.start)
+        d += elm.Line().at(esp.gnd).left().length(0.6)
+        d += elm.Ground()
+        nota = ("PROJETO — não montado (HW-02, docs/ESTUDO-ENERGIA.md). Sem regulador: o patamar de "
+                "3,2–3,3 V da LiFePO4 cabe nos 3,0–3,6 V do ESP32.\n"
+                "O GY-521 e o I2C seguem como na v1, com o VCC do módulo no 3V3. "
+                "Carregar a célula FORA do travesseiro, num carregador de LiFePO4.\n"
+                "⚠ Nunca ligar o USB com S1 fechada: o regulador da DevKit põe 3,3 V no mesmo nó e "
+                "carregaria a célula sem controle.")
+        d += elm.Label().at(em(bat.start, -1.0, -3.2)).label(nota, fontsize=8, halign="left")
+        d += elm.Label().at(em(bat.end, 3.0, 2.2)).label(
+            "DIAG-02 — v3: alimentação por célula LiFePO4 (PROJETO)", fontsize=13)
+        for ext in ("svg", "png"):
+            d.save(str(pasta / f"DIAG-02-v3.{ext}"), dpi=150)
+
+
 # O que a figura afirma, e onde no código isso tem de estar.
 SDA, SCL, ENDERECO = 21, 22, 0x68
 RAIZ = Path(__file__).resolve().parents[2]
@@ -196,6 +254,7 @@ def main():
     pasta.mkdir(parents=True, exist_ok=True)
     for v in ("v1", "v2"):
         desenhar(v, pasta)
+    desenhar_alimentacao(pasta)
     print(f"gerado em {pasta}")
 
 

@@ -11001,6 +11001,54 @@ Depois, o login do autor.
 
 **Procedência.** Branch `docs/HW-02-estudo-de-energia` sobre `develop` `590de33`; `docs/ESTUDO-ENERGIA.md`, com as fontes; contas feitas em Python na sessão, com as premissas na seção 6 do estudo; Windows 11; 17/11, das 14:50 às 15:40.
 
+# 2026-11-17 (v) — HW-02: a revisão do estudo de energia
+
+**O problema, como foi entendido no início.** Com a escolha da célula confirmada pelo autor (LiFePO4 18650), ele pediu uma revisão completa do estudo de 17/11 (iv): contas, circuito e diagramas. O autor também mostrou a proposta de alimentação que os dois autores tinham feito antes, fora do repositório: uma página com modelo 3D de **LiPo 1S → PowerBoost 500C (5,2 V) → VIN do ESP32**, numa caixa de 80 × 100 × 20 mm.
+
+**Hipótese de trabalho.** As premissas do estudo vinham do modelo do `CALCULOS-TCC.md` §Z.4 e de relatos de terceiros. Conferi-las contra o firmware que roda na placa e contra as folhas de dados pode mudar números, e o circuito proposto ainda não tinha sido desenhado.
+
+**O que foi testado, e como.**
+- **O firmware contra o modelo:** o `sketch.ino` põe o giroscópio em espera (`PWR_MGMT_2`), lê o I2C a 400 kHz e **não chama `setCpuFrequencyMhz`**. O core do Arduino roda a 240 MHz, e o §Z.4.4c supõe 80 MHz.
+- **As contas** refeitas em Python, com a faixa de cada fonte de consumo fixo declarada e somada extremo com extremo.
+- **O circuito** contra as folhas de dados: a Espressif pede uma fonte de 500 mA ou mais; o fusível, a chave, a inversão da célula removível, o pico do rádio no fim da descarga, o pino do divisor.
+- **O esquemático:** a folha v3 do `DIAG-02`, gerada com `schemdraw` 0.19 e `matplotlib` 3.9.2 num ambiente à parte, olhada e corrigida duas vezes (legendas sobrepostas, retorno de terra cruzando um resistor).
+- **A proposta anterior**, com as mesmas contas.
+
+**Resultado medido.** Nenhuma medição na placa. O que a revisão mudou (*cálculo* sobre *especificação* e *estimativa*):
+
+| | Antes | Depois |
+|---|---:|---:|
+| Circuitos integrados (referência) | 2,28 mA | **2,55 mA** (240 MHz) |
+| S1, placa intacta | 8,8 mA | **9,4 mA** (7,4 a 13,6) |
+| S1', sem os LEDs | 6,5 mA | **6,8 mA** |
+| S2, sem os LEDs e o regulador | 2,5 mA | **2,8 mA** |
+| LFP 18650 em S1 | 138 h | **129 h** (89 a 164 h) |
+| LFP 18650 em S1' | 187 h | **179 h** |
+| Fusível | 500 mA | **1 A, rápido, não PTC** |
+
+- **A proposta anterior** tiraria ~22 mA da célula e dissiparia ~82 mW no travesseiro, contra ~9,4 mA e ~31 mW da recomendação; com uma LiPo de 2 000 mAh, ~69 h.
+- **Acrescentados ao circuito:** proteção contra inversão (P-MOSFET), o capacitor de 1 000 µF como parte do circuito, fios soldados, o divisor no GPIO35 (ADC1), e o cabo USB só de dados para ler o log com a placa na bateria.
+
+**Veredito.** A recomendação se mantém, com números um pouco piores e um circuito mais completo. A LFP 18650 cumpre o mínimo proposto de 72 h em toda a faixa de S1, e o alvo de 168 h na referência de S1'. A proposta anterior fica abaixo do mínimo, com o dobro e meio do calor e a LiPo em bolsa. A caixa dela pode ser aproveitada com um suporte de 18650. Abre-se o `FW-20`: rodar o processador a 80 MHz devolve 0,16 a 0,48 mA.
+
+**Adaptação.**
+- A revisão não estava no plano do estudo: foi pedida pelo autor depois da escolha.
+- O VCC do GY-521, dúvida antiga do `HW-02` (3,3 V ou 5 V), se resolve pela decisão: com a célula não há 5 V, e o módulo fica no 3V3.
+
+**O que deu errado no caminho.**
+- **A primeira versão do estudo usou a premissa de 80 MHz do §Z.4 sem conferir o firmware**, o mesmo padrão do §6 das lições (um documento afirmando o que o artefato não faz).
+- **A tabela do consumo fixo somava 6,9 mA, e o cenário dizia ~6,5 mA.** Nenhuma conferência pegou: o estudo não tem script que refaça as contas.
+- **O fusível de 500 mA** da primeira versão ficava no limite do que a Espressif pede da fonte.
+- **O script que inseriu a folha v3 no `DIAG-02`** converteu o fim de linha duas vezes e deixou o bloco novo com fim de linha misturado. O arquivo foi restaurado, o script corrigido, e o arquivo saiu com CRLF em todas as linhas.
+- **A vigia do log da placa** expirou sem avisar de nenhum envio em 30 min, embora os envios tenham saído (14:38, 14:48 e 14:58). Foi trocada por uma mais simples, que segue o arquivo direto.
+
+**Risco em aberto.**
+- **Nada do estudo foi medido** (`HW-02`, `RD-10`).
+- **As contas do estudo não têm conferência automática**, como o §Z.4 tem no `calculos_tcc.py`.
+- **A ponte CP2102 alimentada pelo 3V3**, premissa do cabo só de dados, não foi conferida nesta placa.
+
+**Procedência.** Branch `docs/HW-02-revisao-do-estudo` sobre `develop` `6afa856`; `docs/ESTUDO-ENERGIA.md` §11; `docs/diagramas/DIAG-02-esquematico.py` (folha v3, gerada fora do repositório, como as outras); a página da proposta anterior, na máquina do autor, fora do repositório; Windows 11; 17/11, das 15:00 às 15:30.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
