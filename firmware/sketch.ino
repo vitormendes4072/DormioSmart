@@ -443,9 +443,13 @@ static void fechar_epocas() {
     } else {
       contadores.falhas_na_fila++;
     }
-    Serial.printf("[epoca %u] total %.2f m/s2, taxa %.2f Hz, %s, fila: %d\n",
+    // FW-18: a epoca fora da faixa plausivel e gravada, mas o envio a descarta;
+    // ate 16/11 isso so aparecia como `descartadas N` no resumo do envio.
+    Serial.printf("[epoca %u] total %.2f m/s2, taxa %.2f Hz, %s, fila: %d%s\n",
                   static_cast<unsigned>(info.indice), static_cast<double>(e.pico_total),
-                  1.0 / info.linha.b_s, tem_features ? "com f" : "SEM f", static_cast<int>(g));
+                  1.0 / info.linha.b_s, tem_features ? "com f" : "SEM f", static_cast<int>(g),
+                  magnitude_plausivel(e.pico_total) ? ""
+                                                    : "; FORA DA FAIXA PLAUSIVEL, nao vai ser enviada");
   }
 }
 

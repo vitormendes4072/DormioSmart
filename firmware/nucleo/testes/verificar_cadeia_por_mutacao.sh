@@ -301,8 +301,22 @@ esperar "36. a resposta nao zera o recuo" unidade fifo_mpu.cpp \
     return false;"
 
 echo
+echo "Sabotadores do FW-18 (o teto da magnitude) -- a suite de unidade tem de acusar:"
+esperar "37. o teto volta a 20 m/s2" unidade payload.h \
+  "const float MAGNITUDE_MAXIMA_PLAUSIVEL = FUNDO_DE_ESCALA_G * GRAVIDADE_MS2 * 1.7320508f;" \
+  "const float MAGNITUDE_MAXIMA_PLAUSIVEL = 20.0f;"
+
+esperar "38. sem teto nenhum" unidade payload.h \
+  "  return total >= MAGNITUDE_MINIMA_PLAUSIVEL && total <= MAGNITUDE_MAXIMA_PLAUSIVEL;" \
+  "  return total >= MAGNITUDE_MINIMA_PLAUSIVEL;"
+
+esperar "39. sem piso (o sensor mudo passa)" unidade payload.h \
+  "  return total >= MAGNITUDE_MINIMA_PLAUSIVEL && total <= MAGNITUDE_MAXIMA_PLAUSIVEL;" \
+  "  return total <= MAGNITUDE_MAXIMA_PLAUSIVEL;"
+
+echo
 echo "Sabotadores do FW-14 (a linha da folga) -- a suite de unidade tem de acusar:"
-esperar "37. as pilhas trocadas na linha" unidade envio_da_fila.cpp \
+esperar "40. as pilhas trocadas na linha" unidade envio_da_fila.cpp \
   "                         static_cast<unsigned>(f.pilha_envio_livre),
                          static_cast<unsigned>(f.pilha_envio_total),
                          static_cast<unsigned>(f.pilha_medicao_livre),
@@ -312,7 +326,7 @@ esperar "37. as pilhas trocadas na linha" unidade envio_da_fila.cpp \
                          static_cast<unsigned>(f.pilha_envio_livre),
                          static_cast<unsigned>(f.pilha_envio_total),"
 
-esperar "38. linha cortada vai pela metade" unidade envio_da_fila.cpp \
+esperar "41. linha cortada vai pela metade" unidade envio_da_fila.cpp \
   "    destino[0] = '\0';
     return 0;" \
   "    return 0;"

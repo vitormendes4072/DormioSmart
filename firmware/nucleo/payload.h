@@ -24,10 +24,22 @@ namespace dormio {
 const float GRAVIDADE_MS2 = 9.81f;
 const float LIMIAR_MOVIMENTO_MS2 = 1.2f;  // PROVISORIO -- recalibrar em VIA-01
 
-// Faixa fisicamente plausivel de |a|. Fora dela nao e medida: e sensor mudo.
-// Ver a nota longa no topo de `envio-continuo.ino`.
+// Faixa fisicamente plausivel do pico de |a| na epoca. Fora dela nao e medida.
+//
+//   - O PISO pega o sensor mudo: registrador zerado ou fio solto le ~0, e
+//     parado a gravidade sozinha ja da ~9,8. Ver a nota longa no topo de
+//     `envio-continuo.ino`.
+//   - O TETO e o que o sensor consegue dizer: na C2 cada eixo vai a +-8 g, e a
+//     calibracao satura em +-8 g, entao |a| nao passa de 8 g * raiz(3), os tres
+//     eixos no fundo de escala (~135,9 m/s2). Acima disso, o valor e defeito.
+//
+// FW-18 (16/11): o teto era 20 m/s2, e jogava fora no envio, sem aviso, epocas
+// de movimento forte de verdade -- na bancada, o travesseiro sacudido deu
+// picos de 20 a 64 m/s2, e as 8 epocas sumiram. O servidor aceita `total` ate
+// 175 (`web-app/validacao.py`).
+const float FUNDO_DE_ESCALA_G = 8.0f;
 const float MAGNITUDE_MINIMA_PLAUSIVEL = 3.0f;
-const float MAGNITUDE_MAXIMA_PLAUSIVEL = 20.0f;
+const float MAGNITUDE_MAXIMA_PLAUSIVEL = FUNDO_DE_ESCALA_G * GRAVIDADE_MS2 * 1.7320508f;
 
 const char *const METODO_AGREGACAO = "pico-da-magnitude";
 const char *const STATUS_REPOUSO = "Repouso";

@@ -688,6 +688,40 @@ static void testar_linha_de_folga() {
             "sem espaco, nada pela metade");
 }
 
+// FW-18: a faixa plausivel do pico. O teto e o fundo de escala da C2, nao 20.
+static void testar_teto_da_magnitude() {
+  secao("FW-18: o pico de |a| plausivel vai ate o fundo de escala");
+  char buf[512];
+  uint32_t n = 0;
+  ResolucaoDeParede parede;
+  Epoca forte = fabricar(0);
+  forte.pico_total = 63.9f;  // o travesseiro sacudido, bancada de 16/11
+  forte.pico_az = 63.9f;
+  VERIFICAR(montar_payload(forte, parede, 0, buf, sizeof(buf), &n) == PAYLOAD_OK,
+            "pico de 63,9 m/s2 (movimento forte de verdade) vai no payload");
+  Epoca acima = fabricar(1);
+  acima.pico_total = 20.5f;
+  acima.pico_az = 20.5f;
+  VERIFICAR(montar_payload(acima, parede, 0, buf, sizeof(buf), &n) == PAYLOAD_OK,
+            "20,5 m/s2, logo acima do teto antigo, vai");
+  Epoca impossivel = fabricar(2);
+  impossivel.pico_total = MAGNITUDE_MAXIMA_PLAUSIVEL + 0.5f;
+  VERIFICAR(montar_payload(impossivel, parede, 0, buf, sizeof(buf), &n) ==
+                PAYLOAD_MAGNITUDE_IMPLAUSIVEL,
+            "acima de 8 g * raiz(3) o sensor nao chega: recusada");
+  Epoca muda = fabricar(3);
+  muda.pico_total = 2.9f;
+  VERIFICAR(montar_payload(muda, parede, 0, buf, sizeof(buf), &n) == PAYLOAD_MAGNITUDE_IMPLAUSIVEL,
+            "abaixo de 3 m/s2 e sensor mudo: recusada");
+  // O teto e o que a C2 consegue medir: os tres eixos saturados na escala dela.
+  const double saturado = 32767.0 / LSB_POR_G * GRAVIDADE_MS2 * sqrt(3.0);
+  VERIFICAR(fabs(MAGNITUDE_MAXIMA_PLAUSIVEL - saturado) < 0.05,
+            "o teto e o fundo de escala da C2 (8 g em cada eixo)");
+  // `web-app/validacao.py`: _TOTAL_MAX = 175. Um teto acima dele mandaria
+  // epocas que o servidor recusa o lote inteiro por causa delas.
+  VERIFICAR(MAGNITUDE_MAXIMA_PLAUSIVEL < 175.0f, "o teto cabe no que o servidor aceita");
+}
+
 static void testar_payload_com_features() {
   secao("payload -- f, g e fs viajam com a epoca (contrato 2.6)");
   char buf[512];
@@ -854,6 +888,7 @@ int main() {
   testar_buffer_confirma_o_prefixo();
   testar_payload_com_features();
   testar_linha_de_folga();
+  testar_teto_da_magnitude();
   testar_epoca_da_grade();
   testar_coordenacao_do_radio();
   testar_calibrar_amostras();
