@@ -8,6 +8,7 @@ class HTTPClient {
   void begin(WiFiClientSecure &, const String &) {}
   void addHeader(const char *, const char *) {}
   void setTimeout(uint16_t) {}
+  void setReuse(bool) {}
   int POST(const char *) { return 201; }
   int POST(const String &) { return 201; }
   int POST(uint8_t *, size_t) { return 200; }

@@ -14,6 +14,7 @@
 #include "../cadeia_c2.h"
 #include "../calibracao.h"
 #include "../epoca.h"
+#include "../envio_da_fila.h"
 #include "../epoca_c2.h"
 #include "../fifo_mpu.h"
 #include "../filtro.h"
@@ -657,6 +658,36 @@ static bool numeros_depois(const char *texto, const char *chave, double *v, int 
   return true;
 }
 
+// FW-14: a linha da folga de memoria no log.
+static void testar_linha_de_folga() {
+  secao("FW-14: a linha [memoria] do envio");
+  FolgaDeMemoria f;
+  f.heap_livre = 115784;
+  f.heap_minimo = 12868;
+  f.maior_bloco_antes = 65524;
+  f.maior_bloco_depois = 45044;
+  f.pilha_envio_livre = 9100;
+  f.pilha_envio_total = 16384;
+  f.pilha_medicao_livre = 5200;
+  f.pilha_medicao_total = 8192;
+  f.maior_lote = 8730;
+  f.buffer_do_lote = 10400;
+  f.conexoes_tls = 2;
+  f.lotes = 7;
+  char buf[320];
+  const uint32_t n = formatar_folga(f, buf, sizeof(buf));
+  VERIFICAR(n == strlen(buf) && n > 0, "a linha cabe e o tamanho devolvido e o escrito");
+  VERIFICAR(strstr(buf, "heap 115784 (minimo 12868)") != 0, "heap livre e o minimo");
+  VERIFICAR(strstr(buf, "maior bloco 65524 antes, 45044 depois") != 0, "o maior bloco, antes e depois");
+  VERIFICAR(strstr(buf, "envio 9100 de 16384 B, medicao 5200 de 8192 B") != 0,
+            "cada pilha com o livre e o total, sem trocar uma pela outra");
+  VERIFICAR(strstr(buf, "maior lote 8730 de 10400 B") != 0, "o maior lote contra o buffer");
+  VERIFICAR(strstr(buf, "2 conexoes TLS para 7 lotes") != 0, "conexoes contra lotes");
+  char curto[40];
+  VERIFICAR(formatar_folga(f, curto, sizeof(curto)) == 0 && curto[0] == '\0',
+            "sem espaco, nada pela metade");
+}
+
 static void testar_payload_com_features() {
   secao("payload -- f, g e fs viajam com a epoca (contrato 2.6)");
   char buf[512];
@@ -822,6 +853,7 @@ int main() {
   testar_resposta_incoerente_nao_apaga_nada();
   testar_buffer_confirma_o_prefixo();
   testar_payload_com_features();
+  testar_linha_de_folga();
   testar_epoca_da_grade();
   testar_coordenacao_do_radio();
   testar_calibrar_amostras();

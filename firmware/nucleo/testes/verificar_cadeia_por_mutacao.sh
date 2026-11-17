@@ -301,6 +301,23 @@ esperar "36. a resposta nao zera o recuo" unidade fifo_mpu.cpp \
     return false;"
 
 echo
+echo "Sabotadores do FW-14 (a linha da folga) -- a suite de unidade tem de acusar:"
+esperar "37. as pilhas trocadas na linha" unidade envio_da_fila.cpp \
+  "                         static_cast<unsigned>(f.pilha_envio_livre),
+                         static_cast<unsigned>(f.pilha_envio_total),
+                         static_cast<unsigned>(f.pilha_medicao_livre),
+                         static_cast<unsigned>(f.pilha_medicao_total)," \
+  "                         static_cast<unsigned>(f.pilha_medicao_livre),
+                         static_cast<unsigned>(f.pilha_medicao_total),
+                         static_cast<unsigned>(f.pilha_envio_livre),
+                         static_cast<unsigned>(f.pilha_envio_total),"
+
+esperar "38. linha cortada vai pela metade" unidade envio_da_fila.cpp \
+  "    destino[0] = '\0';
+    return 0;" \
+  "    return 0;"
+
+echo
 echo "-----------------------------------------"
 echo "$((total - falhas))/$total como esperado"
 [ $falhas -eq 0 ]
