@@ -738,6 +738,8 @@ o sono profundo — de dezenas de miliampères para 10 µA — não se materiali
 consumo de repouso é de miliampères, porque o piso deixa de ser o do circuito integrado e
 passa a ser o da placa.
 
+✏️ *17/11 (`HW-02`): o estudo de energia (`docs/ESTUDO-ENERGIA.md` §3) estima o consumo fixo da placa em três cenários: ~6,5 mA com a placa intacta (o regulador alimentado pelo pino 3V3 e os dois LEDs de energia), ~4,2 mA sem os LEDs e ~0,2 mA isolando o regulador. São estimativas a partir de folhas de dados e de relatos de bancada de terceiros, não medição; a medição segue pendente, como abaixo.*
+
 Segue-se a recomendação de projeto que este modelo fundamenta: **o consumo fixo da placa de
 desenvolvimento é o parâmetro que decide a autonomia do dispositivo, e é ele que a etapa de
 definição de alimentação precisa medir**, antes de qualquer decisão sobre bateria ou sobre
