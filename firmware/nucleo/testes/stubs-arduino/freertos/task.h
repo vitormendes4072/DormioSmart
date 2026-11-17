@@ -7,6 +7,7 @@ inline BaseType_t xTaskCreatePinnedToCore(TaskFunction_t, const char *, const ui
   return pdPASS;
 }
 inline void vTaskDelay(const TickType_t) {}
+inline void vTaskDelete(TaskHandle_t) {}
 inline BaseType_t xTaskNotifyGive(TaskHandle_t) { return pdPASS; }
 inline uint32_t ulTaskNotifyTake(BaseType_t, TickType_t) { return 0; }
 // No ESP-IDF a marca d'agua da pilha vem em BYTES (no FreeRTOS puro, em

@@ -32,6 +32,13 @@ int64_t esp_timer_get_time() { return 0; }
 int esp_sleep_enable_timer_wakeup(uint64_t) { return 0; }
 int esp_light_sleep_start() { return 0; }
 void vTaskDelay(const TickType_t) {}
+// FW-14, etapa 2: o `loop()` tem de apagar a propria tarefa.
+static int tarefas_apagadas = 0;
+static bool apagou_a_propria = false;
+void vTaskDelete(TaskHandle_t t) {
+  tarefas_apagadas++;
+  apagou_a_propria = (t == 0);
+}
 
 // ── A particao `dormio`, em RAM ─────────────────────────────────────────
 static const uint32_t TAMANHO_DA_PARTICAO = 0x200000;
@@ -180,6 +187,13 @@ int main() {
   ok = enviar_pendentes();
   conferir(ok && fila.pendentes() == 0 && handshakes == 1,
            "a volta seguinte abre uma conexao nova e manda o resto");
+
+  printf("FW-14, etapa 2: memoria que o sketch nao segura a toa\n");
+  loop();
+  conferir(tarefas_apagadas == 1 && apagou_a_propria,
+           "o loop() apaga a propria tarefa (a pilha de 8 KB volta ao heap)");
+  conferir(TAMANHO_JSON_DO_LOTE == tamanho_do_lote(LEITURAS_POR_LOTE_NO_ESP32),
+           "o buffer do lote e o do pior caso de 20 leituras, nao uma estimativa");
 
   printf("%d falhas\n", falhas);
   return falhas == 0 ? 0 : 1;

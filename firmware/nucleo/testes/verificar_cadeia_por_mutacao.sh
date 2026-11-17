@@ -332,6 +332,20 @@ esperar "41. linha cortada vai pela metade" unidade envio_da_fila.cpp \
   "    return 0;"
 
 echo
+echo "Sabotadores do FW-14, etapa 2 (o pior caso do lote e o aviso de pilha) -- a suite de unidade tem de acusar:"
+esperar "42. o pior caso abaixo do medido" unidade envio_da_fila.h \
+  "const uint32_t PIOR_LEITURA_BYTES = 360;" \
+  "const uint32_t PIOR_LEITURA_BYTES = 330;"
+
+esperar "43. o lote sem as virgulas" unidade envio_da_fila.h \
+  "  return 13u + leituras * PIOR_LEITURA_BYTES + (leituras > 0 ? leituras - 1u : 0u) + 2u + 1u;" \
+  "  return 13u + leituras * PIOR_LEITURA_BYTES + 2u + 1u;"
+
+esperar "44. o aviso de pilha baixa nunca sai" unidade envio_da_fila.cpp \
+  "  if (f.pilha_envio_livre < LIMIAR_DE_PILHA_BAIXA_BYTES ||" \
+  "  if (false && f.pilha_envio_livre < LIMIAR_DE_PILHA_BAIXA_BYTES ||"
+
+echo
 echo "-----------------------------------------"
 echo "$((total - falhas))/$total como esperado"
 [ $falhas -eq 0 ]

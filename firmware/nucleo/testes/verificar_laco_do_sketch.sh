@@ -306,6 +306,8 @@ troca "$W/stubs-envio/esp_sleep.h" "inline int esp_light_sleep_start() { return 
   "int esp_light_sleep_start();"
 troca "$W/stubs-envio/freertos/task.h" "inline void vTaskDelay(const TickType_t) {}" \
   "void vTaskDelay(const TickType_t);"
+troca "$W/stubs-envio/freertos/task.h" "inline void vTaskDelete(TaskHandle_t) {}" \
+  "void vTaskDelete(TaskHandle_t);"
 cp "$W/stubs/secrets.h" "$W/stubs-envio/secrets.h"
 $CXX -std=c++11 -w -c -I"$W/stubs-envio" "$FIRMWARE/nucleo_amalgama.cpp" -o "$W/amalgama-envio.o" || exit 2
 $CXX -std=c++11 -w -c -I"$W/stubs-envio" "$W/stubs-envio/stubs.cpp" -o "$W/stubs-envio.o" || exit 2
@@ -360,6 +362,12 @@ sabotar_envio "19. a conexao nova nao e contada" \
 sabotar_envio "20. o maior lote nao e medido" \
   "    if (preparo.tamanho > contadores.maior_lote.load()) contadores.maior_lote.store(preparo.tamanho);" \
   ""
+sabotar_envio "21. o loop() volta a so esperar" \
+  "void loop() { vTaskDelete(NULL); }" \
+  "void loop() { vTaskDelay(portMAX_DELAY); }"
+sabotar_envio "22. o buffer volta a 520 B por leitura" \
+  "static const size_t TAMANHO_JSON_DO_LOTE = tamanho_do_lote(LEITURAS_POR_LOTE_NO_ESP32);" \
+  "static const size_t TAMANHO_JSON_DO_LOTE = LEITURAS_POR_LOTE_NO_ESP32 * 520;"
 
 echo "$((total - falhas))/$total como esperado"
 [ $falhas -eq 0 ]
