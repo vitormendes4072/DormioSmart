@@ -11049,6 +11049,38 @@ Depois, o login do autor.
 
 **Procedência.** Branch `docs/HW-02-revisao-do-estudo` sobre `develop` `6afa856`; `docs/ESTUDO-ENERGIA.md` §11; `docs/diagramas/DIAG-02-esquematico.py` (folha v3, gerada fora do repositório, como as outras); a página da proposta anterior, na máquina do autor, fora do repositório; Windows 11; 17/11, das 15:00 às 15:30.
 
+# 2026-11-17 (vi) — FW-19: a serial esvazia antes do sono leve
+
+**O problema, como foi entendido no início.** O começo de algumas linhas do log serial chegava corrompido: 11 linhas em ~3 h com a placa parada (diário 17/11 (iii)), 1 em 16/11 e nenhuma na noite de 17/11. A primeira hipótese era a serial cortada pelo sono leve. Mas 2 das linhas eram de lote, impressas durante o envio, com a medição sem dormir, e isso apontava também para o USB.
+
+**Hipótese de trabalho.** Medir antes de mexer: um registrador que grava os bytes crus da serial, escrevendo em hexadecimal os trechos fora do ASCII e a posição deles na linha. Lixo sem relação com o texto, caindo em qualquer ponto, seria o USB. Lixo sempre no começo de uma linha impressa logo antes de a placa dormir seria o sono.
+
+**O que foi testado, e como.**
+- **O registrador cru** (fora do repositório), na mesma porta e na mesma velocidade, das 14:35 às 18:17 de 17/11, com a placa no firmware do `develop` (`FW-14` etapa 2).
+- **A correção:** `Serial.flush()` logo antes de `esp_light_sleep_start()` na tarefa da medição.
+- **No host:** o stub da serial (`stubs-arduino/Arduino.h`) passou a marcar texto pendente, com qualquer escrita marcando e só o `flush()` limpando. O sono falso do `make laco` conta os sonos com texto pendente. O teste deixa texto na serial, como as linhas do envio deixariam, roda o laço e exige zero. Sabotagem 23: o sketch sem o `flush()`.
+
+**Resultado medido.**
+- **Registrador cru:** 10 linhas corrompidas em 3 h 42 min, **todas iguais** — 64 bytes `0xFF` no começo da linha (`CRU [0+64 de 119 B]` e parecidas), seguidos do texto sem os 3 primeiros caracteres (`oca 432] total ...`). Nenhum caso no meio de uma linha.
+- **No host, contêiner `gcc:13`:** `make laco` **23/23** — o teste novo dá `10 sonos leves, 0 com texto na serial`, e a sabotagem 23 é acusada. Os demais alvos intactos (`c2` 209, `mutacao` 15/15, `mutacao-cadeia` 45/45, `mutacao-fila` 17/17, `mutacao-coletor` 20/20).
+- **Para o ESP32:** programa 1 089 288 B; RAM fixa 108 984 B, sem mudança.
+
+**Veredito.** O lixo é o mesmo nos 10 casos e cai sempre no começo de uma linha impressa logo antes do sono: o sono leve corta a serial no meio da transmissão. As 2 linhas de lote se explicam do mesmo jeito: o envio termina, o rádio é liberado, e a medição volta a dormir com as linhas do envio ainda saindo. A correção está feita e testada no host. O `FW-19` segue aberto até a placa: 3 h com o registrador cru e nenhuma linha corrompida.
+
+**Adaptação.**
+- A correção não foi gravada na placa no mesmo dia, para não trocar o firmware no meio da noite que fecha o `FW-14`.
+- O teste não depende de o laço falso imprimir alguma coisa: ele mesmo deixa uma linha na serial antes de rodar. Sem isso, um laço que nunca imprime passaria o teste sem provar nada.
+
+**O que deu errado no caminho.**
+- **A hipótese registrada no backlog** ao abrir o item (o sono leve) ficou em dúvida por causa das 2 linhas de lote. A dúvida só se resolveu com os bytes crus.
+- **A compilação para o ESP32 passou do limite de 10 min** da ferramenta e terminou em segundo plano.
+
+**Risco em aberto.**
+- **A causa não está provada na placa**: o host só prova que o sketch esvazia a serial antes de dormir.
+- **O `flush()` acrescenta ~8 ms acordado por linha** de época (a 115 200 baud). Não foi medido na placa: o `trabalho max` do log dirá.
+
+**Procedência.** Branch `bugfix/fw-19-serial-antes-do-sono` sobre `develop` `2fe7b6a`; log cru `fw14e2-2026-11-17-parte3-cru.log` em `dados-locais/`, fora do repositório; testes em contêiner `gcc:13`; `arduino-cli` com `esp32:esp32` 3.3.12; Windows 11; 17/11, das 18:20 às 18:50.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

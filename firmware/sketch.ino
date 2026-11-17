@@ -482,6 +482,11 @@ static void tarefa_de_medicao(void *) {
       vTaskDelay(pdMS_TO_TICKS(espera_us / 1000u));
     } else {
       esp_sleep_enable_timer_wakeup(espera_us);
+      // FW-19 (17/11): o sono leve para o relogio da serial. Dormir com texto
+      // ainda saindo cortava o comeco da linha e punha 64 bytes 0xFF no lugar
+      // (11 linhas em ~3 h na bancada, todas no inicio de uma linha impressa
+      // logo antes do sono). Esvaziar a serial custa ~8 ms por linha de epoca.
+      Serial.flush();
       esp_light_sleep_start();
     }
 
