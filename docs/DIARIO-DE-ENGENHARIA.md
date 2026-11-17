@@ -10911,6 +10911,55 @@ Depois, o login do autor.
 
 **Procedência.** Branch `bugfix/fw-14-folga-do-envio` (`a9f4734`) sobre `develop` `094f4da`; na placa, a branch local `teste/fw18-fw14`; placa ESP32 + MPU6050 pela COM3; `arduino-cli` com `esp32:esp32` 3.3.12; testes em contêiner `gcc:13`; logs `noite-fw18-fw14-2026-11-17.log` e `noite-fw18-fw14-2026-11-17-parte2.log` em `dados-locais/`, fora do repositório; Windows 11; 17/11, das 02:39 às 10:05.
 
+# 2026-11-17 (iii) — FW-14, etapa 2: as pilhas pela medida, a tarefa do `loop()` apagada e o lote pelo pior caso
+
+**O problema, como foi entendido no início.** Na noite de 17/11 (diário 17/11 (ii)), o mínimo de heap no envio foi 13 096 B: a conexão por envio não mudou o patamar, porque ele vem de um handshake TLS só (~67 KB de uma vez). A linha `[memoria]` mostrou memória reservada sem uso: a pilha do envio usou ~4,1 de 16 KB, a da medição ~2,3 de 8 KB, e o maior lote 6,1 de 10,4 KB.
+
+**Hipótese de trabalho.** Devolver ao heap o que está reservado e não é usado sobe o mínimo sem tocar no núcleo da medição. Lendo o código apareceu um quarto lugar: a tarefa do Arduino que roda o `setup()` e o `loop()` nasce com 8 KB de pilha (`CONFIG_ARDUINO_LOOP_STACK_SIZE` = 8192 no `sdkconfig` do core 3.3.12) e ficava parada em `vTaskDelay(portMAX_DELAY)` a noite inteira.
+
+**O que foi testado, e como.**
+- **No sketch:** `PILHA_DO_ENVIO` 16 384 → **8 192**; `PILHA_DA_MEDICAO` 8 192 → **4 096** (cerca de 2× o medido); `loop()` passa a `vTaskDelete(NULL)`; `TAMANHO_JSON_DO_LOTE` = `tamanho_do_lote(20)` = **7 235 B** (era 20 × 520 = 10 400).
+- **No núcleo (`envio_da_fila.h/.cpp`):** `PIOR_LEITURA_BYTES` = 360 e `tamanho_do_lote()`, a conta do envelope (abertura, vírgulas, fechamento e NUL); a linha `[memoria]` termina em `; PILHA BAIXA` abaixo de 1 024 B livres numa das pilhas.
+- **O pior caso, no `c2`:** o texto mais longo de cada feature, percorrendo os 65 536 valores que o registro da flash guarda; os escalares no extremo (eixos e pico em ±135,87, temperatura no fim da faixa do registrador, `ts` de quatro dígitos no ano, `amostras` 65 535); soma **341 B**. 20 000 leituras sorteadas, com a gravidade unitária, não passam disso. 20 leituras de 360 B cabem em `tamanho_do_lote(20)`, e com um byte a menos só 19. +11 verificações (o aviso de pilha baixa inclusive).
+- **No `make laco`:** o envio do sketch confere que o `loop()` apaga a própria tarefa e que o buffer é o do pior caso. Duas sabotagens novas: o `loop()` volta a só esperar; o buffer volta a 520 B por leitura.
+- **No `mutacao-cadeia`:** três mutações novas: o pior caso abaixo do medido (330), o lote sem as vírgulas, o aviso que nunca sai.
+- **Na placa:** gravada pela COM3 e deixada no travesseiro, parada, das 11:19 às 14:08, com o log serial.
+
+**Resultado medido.**
+- **No host, contêiner `gcc:13`:** `make` 341 + 157 + **209** + 456 + 115 + 327 + 185, 0 falhas; `laco` **22/22**; `mutacao-cadeia` **45/45**; `mutacao` 15/15; `mutacao-fila` 17/17; `mutacao-coletor` 20/20; `sintaxe` liga.
+- **Para o ESP32:** programa 1 089 280 B; RAM fixa 108 984 B (sem mudança: pilhas e buffer saem do heap).
+- **Na placa (2 h 49 min, 17 envios, 22 lotes, 337 épocas gravadas):**
+
+| | Noite de 17/11 (etapa 1) | Etapa 2 | |
+|---|---|---|---|
+| Heap livre no envio | ~115 500 B | **~142 250 B** | +26,7 KB |
+| Heap mínimo | 13 096 B | **41 100 B** | estável depois da 1ª hora |
+| Maior bloco livre depois do 1º envio | 40 948 B | **59 380 B** | +18 KB |
+| Pilha do envio | usou 4 084 de 16 384 B | usou 4 072 de 8 192 B (4 120 livres) | |
+| Pilha da medição | usou 2 320 de 8 192 B | usou 2 320 de 4 096 B (1 776 livres) | |
+| Maior lote | 6 127 de 10 400 B | 6 023 de 7 235 B | |
+
+- Todos os lotes com `HTTP 200`; `descartadas 0` e `falhas na fila 0` em todos os envios; nenhum reinício; nenhum `PILHA BAIXA`.
+- Três épocas recusadas: a do boot (motivo 5, como sempre); uma depois de uma drenagem com a contagem desalinhada (13:14); uma depois de uma falha de I2C e um transbordo às 14:08, com o sensor voltando sozinho (o corte de contato do `HW-11`).
+
+**Veredito.** O mínimo de heap no envio triplicou: 41 100 B, contra 13 096 B na noite anterior. O ganho medido (~26,7 KB) passa da soma exata do que foi devolvido — 8 192 + 4 096 + 8 192 B de pilha e 3 165 B de buffer, 23 645 B; o plano dizia ~21 KB, arredondado. A tarefa apagada devolve também o bloco de controle dela (algumas centenas de bytes); os ~2,7 KB restantes não foram explicados. As pilhas usaram exatamente o que a noite tinha medido — a da medição, 2 320 B, com 21 reconfigurações do sensor e 19 liberações do barramento na noite e nenhuma hoje, o que diz que esses caminhos não vão mais fundo. O `FW-14` segue aberto até uma noite inteira contra o aceite (mínimo ≥ 25 KB, pilha livre ≥ 2 KB no envio e ≥ 1 KB na medição, nenhum reinício).
+
+**Adaptação.**
+- A tarefa do `loop()` não estava no diagnóstico da etapa 1: apareceu lendo o `sdkconfig` do core, ao procurar por que a soma das pilhas medidas não fechava com o heap.
+- O pior caso foi medido antes de virar número: a primeira conta, com um programa avulso no contêiner, deu 341 B; o teste refaz a mesma conta.
+
+**O que deu errado no caminho.**
+- **A gravação não trouxe o sensor de volta.** Ele estava mudo desde as 09:37 (`HW-11`), e gravar reinicia a ESP32 sem cortar a energia do MPU6050: o primeiro log só tinha drenagens descartadas. Voltou com o autor tirando e recolocando o USB — e o registro serial caiu junto e foi recomeçado.
+- **O script de edição detectou fim de linha errado** no `verificar_laco_do_sketch.sh` (o arquivo tem `"\r\n"` escrito dentro de um trecho em Python) e não aplicou; as duas trocas foram feitas à mão. Na inserção das mutações, as continuações de linha da shell se perderam de novo e foram restauradas.
+- **O começo de 11 linhas do log saiu corrompido** em ~3 h (64 caracteres ilegíveis no lugar dos primeiros). Não é desta mudança: aconteceu 1 vez em 16/11 com o firmware do `FW-17`. Virou o `FW-19`.
+
+**Risco em aberto.**
+- **Caminhos que nem a noite nem a tarde exercitaram** podem usar mais pilha: o Wi-Fi que não conecta, o certificado recusado, a divisão do lote (`413`), um envio com dezenas de lotes acumulados. A margem de ~2× e o `PILHA BAIXA` cobrem o previsível; o estouro, a proteção do FreeRTOS reinicia a placa sem perder a fila.
+- **A pilha da medição tem a menor margem** (1 776 B livres, acima do aviso de 1 024).
+- **A tarde foi parada** (nenhuma reconfiguração do sensor): a noite é que fecha o item.
+
+**Procedência.** Branch `bugfix/fw-14-etapa-2-pilhas` (`7584ede`) sobre `develop` `3bc60c9`; placa ESP32 + MPU6050 pela COM3; `arduino-cli` com `esp32:esp32` 3.3.12; testes em contêiner `gcc:13`; log `fw14e2-2026-11-17-parte2.log` em `dados-locais/`, fora do repositório; Windows 11; 17/11, das 11:17 às 14:09.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
