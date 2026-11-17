@@ -149,6 +149,38 @@ class VigiaDaFifo {
   uint8_t vazias_;
 };
 
+// ── O barramento sem resposta (FW-17, etapa 2) ─────────────────────────
+//
+// Na bancada de 16/11, um mau contato de um instante no meio de uma leitura
+// deixou o MPU6050 sem responder no I2C por 4,7 min, com os fios firmes; so
+// voltou com o VCC tirado e recolocado. O caminho da falha de I2C no sketch
+// nao passa pela vigia acima: a drenagem descartava e tentava de novo, para
+// sempre.
+//
+// A regra: N drenagens seguidas sem resposta do sensor mandam LIBERAR o
+// barramento (pulsos no SCL, condicao de parada, `Wire` de novo). Se o sensor
+// continuar mudo, a proxima liberacao espera o dobro de falhas, ate o teto --
+// um sensor que so volta com energia nao enche o log a noite inteira. Uma
+// drenagem que o sensor respondeu zera tudo.
+const uint8_t FALHAS_DE_I2C_PARA_LIBERAR = 3;     // ~5 s
+const uint8_t FALHAS_DE_I2C_TETO_DO_RECUO = 96;   // ~2,7 min entre tentativas
+const uint8_t PULSOS_PARA_LIBERAR_O_SDA = 9;      // um byte e o ACK
+
+class GuardaDoBarramento {
+ public:
+  GuardaDoBarramento() : seguidas_(0), limite_(FALHAS_DE_I2C_PARA_LIBERAR) {}
+  // Uma drenagem: `respondeu` = o sensor respondeu no barramento. Devolve true
+  // quando as falhas seguidas chegam ao limite -- e recomeca a contagem, com o
+  // limite dobrado.
+  bool observar(bool respondeu);
+  uint8_t seguidas() const { return seguidas_; }
+  uint8_t limite() const { return limite_; }
+
+ private:
+  uint8_t seguidas_;
+  uint8_t limite_;
+};
+
 // Com os registradores lidos do sensor: true se ele precisa ser configurado
 // de novo -- dormindo, FIFO desligada no USER_CTRL, ou o acelerometro fora do
 // FIFO_EN. Qualquer um dos tres e o estado de quem reiniciou.

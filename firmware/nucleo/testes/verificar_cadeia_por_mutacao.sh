@@ -284,6 +284,23 @@ esperar "33. calibrar sem saturar em +-8 g" unidade calibracao.cpp \
   "  (void)0;"
 
 echo
+echo "Sabotadores do FW-17, etapa 2 (a guarda do barramento) -- a suite de unidade tem de acusar:"
+esperar "34. a guarda nao recua" unidade fifo_mpu.cpp \
+  "  const unsigned dobro = 2u * limite_;" \
+  "  const unsigned dobro = limite_;"
+
+esperar "35. o recuo nao tem teto" unidade fifo_mpu.cpp \
+  "  limite_ = static_cast<uint8_t>(dobro > FALHAS_DE_I2C_TETO_DO_RECUO ? FALHAS_DE_I2C_TETO_DO_RECUO : dobro);" \
+  "  limite_ = static_cast<uint8_t>(dobro > 255 ? 255 : dobro);"
+
+esperar "36. a resposta nao zera o recuo" unidade fifo_mpu.cpp \
+  "    seguidas_ = 0;
+    limite_ = FALHAS_DE_I2C_PARA_LIBERAR;
+    return false;" \
+  "    seguidas_ = 0;
+    return false;"
+
+echo
 echo "-----------------------------------------"
 echo "$((total - falhas))/$total como esperado"
 [ $falhas -eq 0 ]

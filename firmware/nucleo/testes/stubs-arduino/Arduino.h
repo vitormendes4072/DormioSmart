@@ -73,8 +73,14 @@ inline void delayMicroseconds(uint32_t) {}
 inline uint32_t micros() { return 0; }
 inline void pinMode(int, int) {}
 inline int digitalRead(int) { return 0; }
+inline void digitalWrite(int, int) {}
 
-#define INPUT 0
+// Os valores do core do ESP32: OUTPUT_OPEN_DRAIN e o modo que a liberacao do
+// barramento usa no SCL e no SDA (FW-17).
+#define INPUT 0x01
+#define OUTPUT 0x03
+#define INPUT_PULLUP 0x05
+#define OUTPUT_OPEN_DRAIN 0x13
 #define HIGH 1
 #define LOW 0
 
@@ -126,6 +132,7 @@ extern SerialStub Serial;
 class WireStub {
  public:
   void begin(int, int) {}
+  bool end() { return true; }
   void setClock(uint32_t) {}
   void beginTransmission(uint8_t) {}
   uint8_t endTransmission() { return 0; }
