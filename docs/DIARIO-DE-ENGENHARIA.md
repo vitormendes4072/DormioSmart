@@ -10960,6 +10960,47 @@ Depois, o login do autor.
 
 **Procedência.** Branch `bugfix/fw-14-etapa-2-pilhas` (`7584ede`) sobre `develop` `3bc60c9`; placa ESP32 + MPU6050 pela COM3; `arduino-cli` com `esp32:esp32` 3.3.12; testes em contêiner `gcc:13`; log `fw14e2-2026-11-17-parte2.log` em `dados-locais/`, fora do repositório; Windows 11; 17/11, das 11:17 às 14:09.
 
+# 2026-11-17 (iv) — HW-02: o estudo de energia e a escolha da bateria
+
+**O problema, como foi entendido no início.** A placa só funciona ligada ao USB de um computador. O autor pediu um estudo completo da alimentação por bateria, com a escolha do componente: a bateria não pode ser grande, precisa durar o bastante para justificar o projeto e não pode esquentar. O modelo de consumo (`CALCULOS-TCC.md` §Z.4) já dizia que o consumo fixo da placa decide a autonomia, e que ninguém o mediu.
+
+**Hipótese de trabalho.** Com a corrente dos chips em 2,28 mA (§Z.4.4c) e o consumo fixo da DevKit V1 e do GY-521 estimado por folha de dados e relatos de bancada, dá para escolher uma célula que cumpra um mínimo de autonomia mesmo no pior caso da faixa, e deixar a capacidade definitiva para depois da medição (`RD-10`). A segurança térmica pesa mais na química e no invólucro do que na potência média.
+
+**O que foi testado, e como.** Nada foi medido na placa: não havia instrumento de corrente. Foi um estudo de documentos:
+- folhas de dados da Espressif (faixa de alimentação de 3,0 a 3,6 V no módulo; rádio a 240 mA na transmissão), dos reguladores (AMS1117, RT9080, ME6211) e das células LiFePO4 (14500, 18650, 26650);
+- relatos de bancada de terceiros sobre o consumo fixo: o regulador da DevKit alimentado por trás (~4 mA) e os LEDs de energia da DevKit e do GY-521 (~1,3 mA cada);
+- um estudo de calorimetria (ARC) que compara as químicas em células 18650 a 100 % de carga;
+- a conta de autonomia para seis células em três cenários de placa (intacta, sem os LEDs, sem os LEDs e com o regulador isolado).
+
+**Resultado medido.** Nenhum número desta entrada é medição deste projeto. O que o estudo sustenta (*cálculo* sobre *especificação* e *estimativa*):
+
+| Cenário | Corrente total | LiFePO4 18650 (1 500 mAh, 1 215 mAh úteis) |
+|---|---:|---:|
+| S1: a placa intacta, bateria no pino 3V3 | ~8,8 mA (7,3 a 13,6) | 138 h (89 a 166 h) |
+| S1': sem os dois LEDs | ~6,5 mA | 187 h |
+| S2: sem os LEDs e com o regulador isolado | ~2,5 mA | 486 h |
+
+- **No ensaio de calorimetria**, o LFP não disparou o *runaway* e chegou a 239 °C. O LCO, a química das LiPo, disparou a 180 °C e chegou a 545 °C.
+- **A potência média** da placa e do sensor fica entre 8 e 45 mW, e a da resistência interna da célula no pico do rádio, em ~4,5 mW.
+
+**Veredito.** A recomendação é **uma célula LiFePO4 18650 de ~1 500 mAh, removível num suporte, ligada direto no pino 3V3 da DevKit V1, com fusível e chave, carregada fora do travesseiro num carregador de LiFePO4**. Ela cumpre o mínimo proposto de 72 h mesmo no pior caso da faixa, sem mexer na placa, e o alvo de 168 h do `RD-09` tirando os dois LEDs. Ela dispensa o regulador, porque o patamar de 3,2 a 3,3 V do LFP cabe na faixa do ESP32. E é a química mais estável, numa lata de aço que aguenta a pressão da cabeça. A alternativa é uma Li-ion 18650 protegida com LDO (RT9080). A LiPo em bolsa foi descartada para dentro do travesseiro. O `HW-02` segue aberto: falta comprar a célula, medir a corrente real e montar.
+
+**Adaptação.**
+- O pedido mencionava uma simulação com bateria de lítio já salva no projeto. Ela não existe no repositório: o que há com "bateria simulada" é o app do celular no emulador (09/11). O estudo partiu do modelo do §Z.4 e da tabela do `RD-09`.
+- O autor não respondeu às três perguntas do plano (o instrumento, o orçamento, trocar a placa). O estudo manteve a DevKit V1, que é o que dispensa compra de placa, e deixou a troca como alternativa avaliada.
+
+**O que deu errado no caminho.**
+- **A busca por relatos de consumo** da DevKit V1 em sono leve não achou nenhuma medição limpa: os números do consumo fixo são de sono profundo, em outras placas ou calculados pelo resistor do LED. A faixa de S1 é larga por isso.
+- **Uma placa avaliada para bateria** (FireBeetle 2 ESP32-E) tem carregador só para 4,2 V, o que carregaria uma LiFePO4 acima do limite. Ela saiu da recomendação, e o motivo ficou no estudo.
+
+**Risco em aberto.**
+- **O consumo fixo real da placa não foi medido** (`HW-02`, `RD-10`). A autonomia de S1 pode ficar entre 89 e 166 h.
+- **Logo depois da carga, a LFP marca 3,6 a 3,65 V**, no limite do ESP32. A regra de esperar 2 h antes de recolocar a célula ainda não foi verificada na bancada.
+- **USB e célula ligados juntos** fazem o regulador da DevKit carregar a célula sem controle. A regra é gravar o firmware com a chave da célula desligada.
+- **O aquecimento** só fica provado com o ensaio do `CALC-05` contra o `RD-12`.
+
+**Procedência.** Branch `docs/HW-02-estudo-de-energia` sobre `develop` `590de33`; `docs/ESTUDO-ENERGIA.md`, com as fontes; contas feitas em Python na sessão, com as premissas na seção 6 do estudo; Windows 11; 17/11, das 14:50 às 15:40.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
