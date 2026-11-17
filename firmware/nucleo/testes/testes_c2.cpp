@@ -69,6 +69,16 @@ static void testar_avaliar_fifo() {
   VERIFICAR(avaliar_fifo(1024, 0) == LEITURA_TRANSBORDOU,
             "contagem no teto e transbordo mesmo sem o bit");
   VERIFICAR(avaliar_fifo(511, 0) == LEITURA_DESALINHADA, "nao multiplo de 6");
+  // FW-17: a causa de cada leitura recusada, para o diagnostico.
+  VERIFICAR(causa_da_leitura_recusada(510, MPU_INT_STATUS_FIFO_OFLOW) == PERDA_TRANSBORDO_BIT,
+            "causa: o bit");
+  VERIFICAR(causa_da_leitura_recusada(1024, 0) == PERDA_TRANSBORDO_TETO, "causa: o teto, sem o bit");
+  VERIFICAR(causa_da_leitura_recusada(1024, MPU_INT_STATUS_FIFO_OFLOW) == PERDA_TRANSBORDO_BIT,
+            "causa: bit e teto juntos, vale o bit (a ordem de avaliar_fifo)");
+  VERIFICAR(causa_da_leitura_recusada(511, 0) == PERDA_DESALINHADA, "causa: desalinhada");
+  VERIFICAR(strcmp(nome_da_causa(PERDA_I2C_NA_LEITURA), "i2c na leitura") == 0 &&
+                strcmp(nome_da_causa(PERDA_I2C_NO_ESTADO), "i2c no estado") == 0,
+            "cada causa tem nome proprio no log");
   VERIFICAR(bytes_para_ler(515, 1024) == 510, "arredonda para baixo em amostras");
   VERIFICAR(bytes_para_ler(600, 256) == 252, "respeita o buffer de quem chama");
 }

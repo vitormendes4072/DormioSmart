@@ -10735,6 +10735,57 @@ Depois, o login do autor.
 
 ✏️ *16/11, mais tarde: o autor apagou da produção, pelo SQL Editor, **203 leituras** do travesseiro: tudo o que chegou ao banco a partir das 17:10 de 16/11. São as épocas desta sessão (chegadas de 17:21 a 18:41) e **26 épocas de 13/11**, a mais antiga medida às 21:37:30, que tinham ficado na fila da flash da placa e só foram enviadas no primeiro lote de hoje. Ficaram de fora da remoção das 818 leituras de bancada de 13/11 porque ainda não estavam no banco. Contagem antes: 203; depois: 0. A análise deste item não depende do banco: o arquivo do console e o log serial seguem em `dados-locais/`.*
 
+# 2026-11-16 (x) — FW-17: as épocas perdidas eram o I2C travado, não transbordo
+
+**O problema, como foi entendido no início.** No `VIA-01` (diário 16/11 (ix)), a placa recusou 5 épocas com motivo 2 e o resumo do envio contou 3 "transbordos" em ~80 min. O mesmo log dizia 0 prazos estourados e trabalho máximo de 142 ms: a FIFO guarda 3,4 s e é drenada a cada ~1,7 s, então não tinha como ter enchido por atraso. Lendo o `drenar()` do `sketch.ino`, o contador `transbordos` somava cinco descartes diferentes: falha de I2C ao ler o estado ou a contagem, o bit de transbordo, a contagem no teto, a contagem desalinhada e falha de I2C no meio dos bytes.
+
+**Hipótese de trabalho.** Separar as cinco causas no contador e no log, sem mudar o que o sketch faz em cada uma, e provocar as perdas na bancada até uma causa aparecer.
+
+**O que foi testado, e como.**
+- **No núcleo:** `causa_da_leitura_recusada` e `nome_da_causa` em `fifo_mpu.h`; o bit vale antes do teto, na ordem do `avaliar_fifo`. +7 verificações no `c2`.
+- **No sketch:** um contador por causa (`perdas[]`; `transbordos` segue como o total, com o nome antigo) e uma linha `[drenagem] descartada: <causa> (fifo N B, INT_STATUS 0xNN, N ms desde a anterior)` por descarte, mais uma linha por envio com as cinco contagens.
+- **No `make laco`:** o MPU6050 falso ganhou falhas injetadas (registrador que volta vazio, bit de transbordo, contagem forçada), e 7 verificações conferem que cada falha soma 1 no total e 1 só na sua causa. Quatro sabotagens novas no sketch, todas acusadas.
+- **Na placa:** compilado para o ESP32 e gravado pela COM3, com o `secrets.h` real numa cópia temporária, apagada depois. Uma hora de log com a placa parada. Depois, um teste de bancada guiado em seis blocos de ~3 min, com o horário marcado pelo Claude ao receber o aviso do autor, e o log serial com a hora do PC em cada linha (`dados-locais/`, fora do repositório).
+
+**Resultado medido.**
+
+| Bloco (UTC−3) | Drenagens descartadas |
+|---|---|
+| 1. Travesseiro sozinho, parado (21:44:53–21:48:12) | 0 |
+| 2. Cabeça deitada, parada (21:48:53–21:53:04) | 0 |
+| 3. Corpo virando, cabeça no travesseiro (21:53:07–21:56:54) | 0 (picos até 14,6 m/s²) |
+| 4. Travesseiro sacudido e batido (21:56:59–22:00:04) | 0 (picos até 63,9 m/s²) |
+| 5. Fios entre a ESP32 e o MPU6050 mexidos, sem soltar (22:00:09–22:03:04) | **1 `i2c na leitura` + 163 `i2c no estado`** |
+| 6. Travesseiro sozinho, parado (22:08:33–22:11:29) | 0 |
+
+- **O travamento:** às 22:01:38 o barramento falhou no meio dos bytes da FIFO (516 B contados). A partir daí, toda leitura do `INT_STATUS` falhou, uma a cada 1,7 s, por **4,7 min**: épocas 292 a 301 recusadas (motivo 2). O autor conferiu os fios: nenhum estava solto, e apertá-los no pino não trouxe o sensor de volta.
+- **A volta:** só com o VCC do sensor tirado por ~2 s e recolocado. Às 22:06:23 a vigia do `FW-11` achou o sensor dormindo (`PWR1 0x40`, FIFO desligada) e o reconfigurou; a época 302 já saiu normal, a 50,3 Hz.
+- **Antes do teste:** uma `contagem desalinhada` entre 20:35 e 21:42, sem log aberto; foi o único descarte das 2 h anteriores.
+- **Uma hora parada (19:35–20:35):** 120 épocas, 0 descartes, 0 prazos estourados, trabalho máximo 141 ms.
+- **Firmware:** programa 1 087 432 B; RAM fixa 108 968 B (+64 B), 218 712 B para o heap. Heap mínimo no envio: **12 868 B** (13 524 B à tarde) — vai para o `FW-14`.
+- **No host, contêiner `gcc:13`:** `make` 341 + 157 + **177** + 456 + 115 + 327 + 185 verificações, 0 falhas; `make laco` 0 falhas e **12/12** sabotagens acusadas; `make mutacao` 15/15.
+
+**Veredito.** As perdas do `VIA-01` não eram transbordo. O que a bancada reproduziu é o contato elétrico entre a ESP32 e o sensor: uma interrupção curta no meio de uma transferência deixa o MPU6050 sem responder no barramento, e o firmware não sai disso sozinho, porque o caminho da falha de I2C retorna antes da vigia. A recuperação é a etapa 2 do `FW-17`.
+
+**Adaptação.**
+- O primeiro bloco foi recomeçado: o autor estava deitado no travesseiro, e o protocolo pedia o travesseiro sozinho. A ordem ganhou o bloco "cabeça deitada, parada", que é o uso real.
+- O teste dos fios virou também um teste de recuperação: tirar e recolocar o VCC separou o barramento travado do fio solto.
+- O log de 30 min acabou antes do envio seguinte e foi reaberto por 6 min para ver o envio de 22:15.
+
+**O que deu errado no caminho.**
+- **A primeira hora de log foi com a placa parada:** o autor não tinha começado o teste, e a hora mostrou só que a instrumentação funciona.
+- **O dublê do sensor quebrou os testes do `FW-11`:** a contagem forçada começava em 0, e não em "desligada"; passou a começar em −1 no `main`.
+- **Um envio falhou** às 22:05 com `HTTP -11` (tempo esgotado), no meio do travamento. O de 22:15 levou as 22 épocas com `HTTP 200`.
+- **8 épocas foram descartadas no envio de 22:15**, sem linha no log: as 7 do bloco 4 e uma de quando o travesseiro foi fechado. Todas com pico acima de 20 m/s², o teto de "magnitude plausível" do payload. Virou o `FW-18`.
+
+**Risco em aberto.**
+- **O sensor pode travar no meio de uma noite** e só voltar quando a pessoa mexer de novo nos fios, ou nunca. É o `FW-17`, etapa 2.
+- **Os 9 pulsos no SCL não foram testados:** se o barramento travado não soltar com eles, sobra cortar o VCC do sensor por um pino da ESP32, o que pede mudança de hardware.
+- **A causa exata do descarte no `VIA-01` não foi medida:** aquela sessão rodou o firmware antigo, sem a causa no log. A bancada mostra o mecanismo que reproduz o sintoma, e não que foi ele.
+- **Movimento forte é jogado fora no envio** (`FW-18`).
+
+**Procedência.** Branch `bugfix/fw-17-causa-das-epocas-perdidas` sobre `develop` `9f2386b`; placa ESP32 + MPU6050 pela COM3; `arduino-cli` com `esp32:esp32` 3.3.12; testes em contêiner `gcc:13`; logs `fw17-serial-2026-11-16.log` e `fw17-bancada-2026-11-16.log` em `dados-locais/`, fora do repositório; Windows 11; 16/11.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

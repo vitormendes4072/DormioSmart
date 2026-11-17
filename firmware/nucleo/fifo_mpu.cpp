@@ -12,6 +12,23 @@ EstadoDaLeitura avaliar_fifo(uint16_t fifo_count, uint8_t int_status) {
   return LEITURA_OK;
 }
 
+CausaDaPerda causa_da_leitura_recusada(uint16_t fifo_count, uint8_t int_status) {
+  if ((int_status & MPU_INT_STATUS_FIFO_OFLOW) != 0) return PERDA_TRANSBORDO_BIT;
+  if (fifo_count >= FIFO_CAPACIDADE_BYTES) return PERDA_TRANSBORDO_TETO;
+  return PERDA_DESALINHADA;
+}
+
+const char *nome_da_causa(CausaDaPerda causa) {
+  switch (causa) {
+    case PERDA_I2C_NO_ESTADO: return "i2c no estado";
+    case PERDA_TRANSBORDO_BIT: return "transbordo (bit)";
+    case PERDA_TRANSBORDO_TETO: return "transbordo (teto)";
+    case PERDA_DESALINHADA: return "contagem desalinhada";
+    case PERDA_I2C_NA_LEITURA: return "i2c na leitura";
+    default: return "?";
+  }
+}
+
 bool VigiaDaFifo::observar(uint16_t amostras) {
   if (amostras > 0) {
     vazias_ = 0;
