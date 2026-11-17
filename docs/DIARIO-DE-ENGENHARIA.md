@@ -10831,6 +10831,40 @@ Depois, o login do autor.
 
 **Procedência.** Branch `bugfix/fw-17-recuperar-o-i2c` sobre `develop` `6be63d0`; placa ESP32 + MPU6050 pela COM3; `arduino-cli` com `esp32:esp32` 3.3.12; testes em contêiner `gcc:13`; logs `fw17e2-bancada-2026-11-16.log` e `fw17e2-bancada-3-2026-11-16.log` em `dados-locais/`, fora do repositório; Windows 11; 16/11, das 23:20 às 23:58.
 
+# 2026-11-17 (i) — FW-18: o teto da magnitude é o fundo de escala da C2, não 20 m/s²
+
+**O problema, como foi entendido no início.** Na bancada do diário 16/11 (x), as 7 épocas do travesseiro sacudido (picos de 20,1 a 63,9 m/s²) e uma de quando ele foi fechado (23,1 m/s²) saíram no log como normais e foram **descartadas no envio** (`descartadas 8`), sem linha própria. A regra era `MAGNITUDE_MAXIMA_PLAUSIVEL` = 20 m/s² (`firmware/nucleo/payload.h`), feita para pegar o sensor mudo. Na C2, o sensor mede até ±8 g por eixo.
+
+**Hipótese de trabalho.** O piso de 3 m/s² já pega o sensor mudo (registrador zerado lê ~0; parado, a gravidade sozinha dá ~9,8). O teto só precisa recusar o que o sensor não consegue medir: os três eixos no fundo de escala, 8 g · √3 ≈ 135,9 m/s². O servidor aceita `total` até 175 (`web-app/validacao.py`, `_TOTAL_MAX`). O coletor do celular usa o mesmo núcleo, e recebe a correção com o próximo APK.
+
+**O que foi testado, e como.**
+- **No núcleo:** `MAGNITUDE_MAXIMA_PLAUSIVEL = FUNDO_DE_ESCALA_G * GRAVIDADE_MS2 * 1,7320508`, com `FUNDO_DE_ESCALA_G` = 8. Piso intacto.
+- **No `c2`:** `testar_teto_da_magnitude()`. Um pico de 63,9 m/s² vai no payload; 20,5 vai; o teto + 0,5 é recusado; 2,9 é recusado; o teto bate com 32767/`LSB_POR_G` · g · √3 e fica abaixo dos 175 do servidor.
+- **Mutações novas no `mutacao-cadeia`:** o teto volta a 20; sem teto; sem piso.
+- **No sketch:** a linha da época ganha `; FORA DA FAIXA PLAUSIVEL, nao vai ser enviada` quando o pico sai da faixa. Até ali, a época descartada só aparecia como `descartadas N` no resumo do envio.
+- **Na placa:** gravado junto com o `FW-14`, numa branch local de teste (`teste/fw18-fw14`, que não vira PR), e usado numa noite com o autor no travesseiro, das 02:51 às 09:37 de 17/11.
+
+**Resultado medido.**
+- **No host, contêiner `gcc:13`:** `c2` **191** verificações, 0 falhas; `mutacao-cadeia` **40/40**; os demais alvos intactos.
+- **Para o ESP32:** programa 1 088 644 B; RAM fixa 108 976 B (sem mudança).
+- **Na noite:** 4 épocas passaram de 20 m/s² — **27,23** às 05:22, 20,30 às 06:12, 21,65 às 08:37 e 21,08 às 08:47. Nenhuma saiu marcada `FORA DA FAIXA`. Os 43 resumos de envio da noite dizem `descartadas 0`, e os 48 lotes voltaram sem rejeitada (812 leituras aceitas). Com o teto antigo, essas 4 teriam sumido.
+
+**Veredito.** O `FW-18` fecha. O aceite pedia que uma época de ~60 m/s² chegasse ao servidor ou fosse recusada com motivo no log. A época de 63,9 m/s² está coberta no host. Na placa, quatro épocas acima do teto antigo chegaram numa noite real. A sacudida forte não foi repetida na placa: o autor adiou, e a noite tornou a repetição desnecessária para o aceite.
+
+**Adaptação.**
+- O teste da sacudida, combinado para o mesmo dia, virou a noite: o autor foi dormir e gravou a noite com este firmware.
+- O `FW-18` foi para a placa junto com o `FW-14`, numa branch local que mescla as duas. Os dois mexem no `testes_c2.cpp` e no `verificar_cadeia_por_mutacao.sh`, e o conflito foi resolvido mantendo os dois lados.
+
+**O que deu errado no caminho.**
+- **Na bancada de 17/11, o registro serial parou por volta das 02:50** quando o autor desconectou o USB sem querer, e o processo deixou a porta presa. O registro passou a recomeçar sozinho num arquivo novo.
+- **A vigia em tempo real do log expirou por volta das 04:55 e não foi religada**; o registro seguiu gravando, e o resultado acima é do arquivo, lido de manhã.
+
+**Risco em aberto.**
+- **O celular segue com o teto de 20 até o próximo APK** (`APP-12`): uma noite gravada pelo celular perde as épocas fortes do mesmo jeito.
+- **Picos acima de ~28 m/s² não foram vistos na placa** fora da bancada de 16/11, quando o teto ainda era 20.
+
+**Procedência.** Branch `bugfix/fw-18-teto-da-magnitude` (`b1d7c85`) sobre `develop` `094f4da`; na placa, a branch local `teste/fw18-fw14`; placa ESP32 + MPU6050 pela COM3; `arduino-cli` com `esp32:esp32` 3.3.12; testes em contêiner `gcc:13`; logs `noite-fw18-fw14-2026-11-17.log` e `noite-fw18-fw14-2026-11-17-parte2.log` em `dados-locais/`, fora do repositório; Windows 11; 17/11, das 02:39 às 10:05.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
