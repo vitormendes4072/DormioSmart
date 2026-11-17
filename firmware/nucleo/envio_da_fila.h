@@ -48,6 +48,32 @@ PreparoDoLote preparar_lote(FilaNaFlash *fila, const ResolucaoDeParede &parede,
 DecisaoDoLote aplicar_resposta(FilaNaFlash *fila, int status_http, const char *corpo,
                                uint32_t tamanho, uint32_t enviadas);
 
+// ── A folga de memoria do envio (FW-14) ───────────────────────────────
+//
+// O handshake TLS pede ~67 KB de uma vez, e o minimo de heap no envio vinha
+// caindo (14 772 B em 12/11, 12 868 B em 16/11). Antes de cortar qualquer
+// coisa, medir de onde vem a falta: as pilhas das duas tarefas (dimensionadas
+// sem medida), o maior bloco contiguo (o TLS precisa dele, nao do total) e o
+// maior lote montado (o buffer foi dimensionado a 520 B por leitura).
+struct FolgaDeMemoria {
+  uint32_t heap_livre;
+  uint32_t heap_minimo;           // o pior desde o boot
+  uint32_t maior_bloco_antes;     // antes de ligar o radio
+  uint32_t maior_bloco_depois;    // depois do envio
+  uint32_t pilha_envio_livre;     // o que nunca foi usado da pilha, em bytes
+  uint32_t pilha_envio_total;
+  uint32_t pilha_medicao_livre;
+  uint32_t pilha_medicao_total;
+  uint32_t maior_lote;            // bytes do maior JSON montado
+  uint32_t buffer_do_lote;
+  uint32_t conexoes_tls;          // conexoes abertas (handshakes) nesta sessao
+  uint32_t lotes;                 // lotes enviados nesta sessao
+};
+
+// Escreve a linha `[memoria] ...` do log em `destino`. Devolve os caracteres
+// escritos, ou 0 se nao coube.
+uint32_t formatar_folga(const FolgaDeMemoria &f, char *destino, uint32_t tamanho);
+
 }  // namespace dormio
 
 #endif  // DORMIO_NUCLEO_ENVIO_DA_FILA_H

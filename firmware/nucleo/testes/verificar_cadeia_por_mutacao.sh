@@ -315,6 +315,23 @@ esperar "39. sem piso (o sensor mudo passa)" unidade payload.h \
   "  return total <= MAGNITUDE_MAXIMA_PLAUSIVEL;"
 
 echo
+echo "Sabotadores do FW-14 (a linha da folga) -- a suite de unidade tem de acusar:"
+esperar "40. as pilhas trocadas na linha" unidade envio_da_fila.cpp \
+  "                         static_cast<unsigned>(f.pilha_envio_livre),
+                         static_cast<unsigned>(f.pilha_envio_total),
+                         static_cast<unsigned>(f.pilha_medicao_livre),
+                         static_cast<unsigned>(f.pilha_medicao_total)," \
+  "                         static_cast<unsigned>(f.pilha_medicao_livre),
+                         static_cast<unsigned>(f.pilha_medicao_total),
+                         static_cast<unsigned>(f.pilha_envio_livre),
+                         static_cast<unsigned>(f.pilha_envio_total),"
+
+esperar "41. linha cortada vai pela metade" unidade envio_da_fila.cpp \
+  "    destino[0] = '\0';
+    return 0;" \
+  "    return 0;"
+
+echo
 echo "-----------------------------------------"
 echo "$((total - falhas))/$total como esperado"
 [ $falhas -eq 0 ]

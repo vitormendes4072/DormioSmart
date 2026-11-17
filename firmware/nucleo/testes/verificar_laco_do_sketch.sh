@@ -237,5 +237,129 @@ sabotar_sensor "16. a resposta nao zera a guarda" \
 " \
   ""
 
+# ── FW-14: o envio do sketch contra um servidor falso (`envio_do_sketch.cpp`) ─
+# Terceira copia dos stubs: a particao `dormio` vira RAM (o teste a define), e
+# o `HTTPClient`/`WiFiClientSecure` imitam o core do ESP32 no que importa --
+# com `setReuse(true)`, `end()` deixa a conexao aberta.
+echo
+echo "O envio do sketch contra um servidor falso (FW-14):"
+cp -r "$AQUI/stubs-arduino" "$W/stubs-envio"
+python3 - "$W/stubs-envio" <<'PYSTUB' || exit 2
+import sys, re
+d = sys.argv[1]
+p = d + "/esp_partition.h"
+s = open(p).read().replace("\r\n", "\n")
+n = 0
+for nome in ("esp_partition_find_first", "esp_partition_read", "esp_partition_write",
+             "esp_partition_erase_range"):
+    m = re.search(r"inline ([^\n]*?\b" + nome + r"\((?:[^()]|\n)*?\))\s*\{[^}]*\}", s)
+    if not m:
+        sys.exit("TROCA QUEBRADA: " + nome + " mudou no stub")
+    s = s[:m.start()] + m.group(1) + ";" + s[m.end():]
+    n += 1
+open(p, "w").write(s)
+open(d + "/WiFiClientSecure.h", "w").write("""#ifndef STUB_WCS_H
+#define STUB_WCS_H
+#include "Arduino.h"
+void wcs_stop(bool *conectado);
+class WiFiClientSecure {
+ public:
+  void setInsecure() {}
+  void setCACert(const char *) {}
+  void setTimeout(uint32_t) {}
+  void stop() { wcs_stop(&conectado_); }
+  uint8_t connected() { return conectado_ ? 1 : 0; }
+  bool conectado_ = false;
+};
+#endif
+""")
+open(d + "/HTTPClient.h", "w").write("""#ifndef STUB_HTTP_H
+#define STUB_HTTP_H
+#include "Arduino.h"
+#include "WiFiClientSecure.h"
+int http_post(bool *conectado, const uint8_t *corpo, size_t n);
+const char *http_corpo();
+class HTTPClient {
+ public:
+  bool begin(WiFiClientSecure &c, const char *) { c_ = &c; return true; }
+  bool begin(WiFiClientSecure &c, const String &) { c_ = &c; return true; }
+  void addHeader(const char *, const char *) {}
+  void setTimeout(uint16_t) {}
+  void setReuse(bool r) { reuse_ = r; }
+  int POST(const char *) { return 201; }
+  int POST(const String &) { return 201; }
+  int POST(uint8_t *b, size_t n) { return http_post(&c_->conectado_, b, n); }
+  String getString() { return String(http_corpo()); }
+  void end() { if (c_ && !reuse_) wcs_stop(&c_->conectado_); }
+ private:
+  WiFiClientSecure *c_ = 0;
+  bool reuse_ = false;
+};
+#endif
+""")
+PYSTUB
+troca "$W/stubs-envio/esp_timer.h" "inline int64_t esp_timer_get_time() { return 0; }" \
+  "int64_t esp_timer_get_time();"
+troca "$W/stubs-envio/esp_sleep.h" "inline int esp_sleep_enable_timer_wakeup(uint64_t) { return 0; }" \
+  "int esp_sleep_enable_timer_wakeup(uint64_t);"
+troca "$W/stubs-envio/esp_sleep.h" "inline int esp_light_sleep_start() { return 0; }" \
+  "int esp_light_sleep_start();"
+troca "$W/stubs-envio/freertos/task.h" "inline void vTaskDelay(const TickType_t) {}" \
+  "void vTaskDelay(const TickType_t);"
+cp "$W/stubs/secrets.h" "$W/stubs-envio/secrets.h"
+$CXX -std=c++11 -w -c -I"$W/stubs-envio" "$FIRMWARE/nucleo_amalgama.cpp" -o "$W/amalgama-envio.o" || exit 2
+$CXX -std=c++11 -w -c -I"$W/stubs-envio" "$W/stubs-envio/stubs.cpp" -o "$W/stubs-envio.o" || exit 2
+
+rodar_envio() { # rodar_envio SKETCH -> 0 passou, 1 acusou, 2 nao compilou
+  $CXX -std=c++11 -w -x c++ -I"$W/stubs-envio" -I"$FIRMWARE" -include Arduino.h \
+    -DSKETCH="\"$1\"" "$AQUI/envio_do_sketch.cpp" -x none "$W/amalgama-envio.o" \
+    "$W/stubs-envio.o" -o "$W/envio" 2>"$W/erro" || { cat "$W/erro"; return 2; }
+  "$W/envio" >"$W/saida" 2>&1
+}
+
+rodar_envio "$FIRMWARE/sketch.ino"
+r=$?
+grep -v '^\[' "$W/saida"
+if [ $r -ne 0 ]; then
+  echo "FALHOU -- o envio do sketch.ino nao se comporta como o FW-14 promete."
+  exit 1
+fi
+
+echo
+echo "Sabotadores do ENVIO NO SKETCH -- o teste tem de acusar:"
+sabotar_envio() { # sabotar_envio ROTULO DE PARA
+  total=$((total + 1))
+  cp "$FIRMWARE/sketch.ino" "$W/sabotado.ino"
+  troca "$W/sabotado.ino" "$2" "$3"
+  rodar_envio "$W/sabotado.ino"
+  r=$?
+  n=$(grep -c "FALHA" "$W/saida")
+  if [ $r -eq 1 ]; then
+    printf '  %-48s acusou (%s falhas)\n' "$1" "$n"
+  else
+    printf '  %-48s NAO ACUSOU (saida %s)\n' "$1" "$r"
+    falhas=$((falhas + 1))
+  fi
+}
+
+sabotar_envio "17. uma conexao por lote (o de ate 17/11)" \
+  "  http.setReuse(true);
+" \
+  ""
+sabotar_envio "18. a falha nao encerra a volta" \
+  "    if (d.acao == LOTE_RECUAR || d.recuar_depois) {
+      ok = false;
+      break;
+    }" \
+  "    if (d.acao == LOTE_RECUAR || d.recuar_depois) {
+      ok = false;
+    }"
+sabotar_envio "19. a conexao nova nao e contada" \
+  "  if (!cliente.connected()) contadores.conexoes_tls++;" \
+  ""
+sabotar_envio "20. o maior lote nao e medido" \
+  "    if (preparo.tamanho > contadores.maior_lote.load()) contadores.maior_lote.store(preparo.tamanho);" \
+  ""
+
 echo "$((total - falhas))/$total como esperado"
 [ $falhas -eq 0 ]

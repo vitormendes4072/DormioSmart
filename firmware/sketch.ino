@@ -45,6 +45,7 @@
 #include <WiFi.h>
 #include <WiFiClientSecure.h>
 #include <Wire.h>
+#include <esp_heap_caps.h>
 #include <esp_sleep.h>
 #include <esp_system.h>
 #include <esp_timer.h>
@@ -138,6 +139,9 @@ static SemaphoreHandle_t mutex_parede;
 // envio, e o envio o devolve. Ver `nucleo/radio.h`.
 static CoordenacaoDoRadio radio;
 static TaskHandle_t tarefa_envio = 0;
+static TaskHandle_t tarefa_medicao = 0;  // FW-14: para medir a pilha dela
+static const uint32_t PILHA_DO_ENVIO = 16384;
+static const uint32_t PILHA_DA_MEDICAO = 8192;
 
 static CadeiaC2 cadeia;
 // A calibracao da unidade (FW-11, `calibracao_da_unidade.h`) e a vigia que
@@ -191,6 +195,10 @@ struct Contadores {
   // responder logo depois.
   std::atomic<uint32_t> liberacoes;
   std::atomic<uint32_t> liberacoes_com_resposta;
+  // FW-14: lotes enviados, conexoes TLS abertas para eles e o maior JSON.
+  std::atomic<uint32_t> lotes;
+  std::atomic<uint32_t> conexoes_tls;
+  std::atomic<uint32_t> maior_lote;
 };
 // Sem inicializador de proposito: armazenamento estatico ja comeca em zero, e
 // `= {0, ...}` copiaria `atomic`, o que o C++11 do `make sintaxe` recusa.
@@ -578,6 +586,21 @@ static bool enviar_pendentes() {
   // epocas seguem na fila da flash. Falha conta como volta ruim (recuo).
   if (json_do_lote == 0) return false;
   uint32_t max_no_lote = LEITURAS_POR_LOTE_NO_ESP32;
+  // FW-14: UMA conexao para a volta inteira, nao uma por lote. Cada handshake
+  // TLS pede ~67 KB de uma vez; abrir e fechar dezenas por volta fragmenta o
+  // heap. Com `setReuse`, o HTTPClient mantem a conexao entre os lotes se o
+  // servidor deixar; se ela cair (o servidor fechou, ou o POST falhou), o
+  // lote seguinte abre outra sozinho. O que o lote faz com a resposta nao muda.
+  //
+  // Confere o certificado do servidor contra as raizes de `ca_raiz.h`
+  // (SEC-15). Sem isso, quem controlasse a rede leria o token. Se a Vercel
+  // trocar de CA, o POST falha (-1) e o lote volta para a fila.
+  WiFiClientSecure cliente;
+  cliente.setCACert(CA_RAIZ);
+  HTTPClient http;
+  http.setReuse(true);
+  http.setTimeout(TIMEOUT_POST_MS);
+  bool ok = true;
   for (uint32_t volta = 0; volta < LOTES_POR_VOLTA; volta++) {
     const ResolucaoDeParede p = copia_da_parede();
     xSemaphoreTake(mutex_fila, portMAX_DELAY);
@@ -587,16 +610,12 @@ static bool enviar_pendentes() {
     contadores.descartadas_no_envio += preparo.descartados;
     if (preparo.no_lote == 0) {
       if (preparo.descartados > 0) continue;  // a frente saiu; o resto pode ir
-      return true;                            // fila vazia
+      break;                                  // fila vazia
     }
+    if (preparo.tamanho > contadores.maior_lote.load()) contadores.maior_lote.store(preparo.tamanho);
+    contadores.lotes++;
+    if (!cliente.connected()) contadores.conexoes_tls++;  // este lote paga um handshake
 
-    WiFiClientSecure cliente;
-    // Confere o certificado do servidor contra as raizes de `ca_raiz.h`
-    // (SEC-15). Sem isso, quem controlasse a rede leria o token. Se a Vercel
-    // trocar de CA, o POST falha (-1) e o lote volta para a fila.
-    cliente.setCACert(CA_RAIZ);
-    HTTPClient http;
-    http.setTimeout(TIMEOUT_POST_MS);
     http.begin(cliente, URL_LOTE);
     http.addHeader("Content-Type", "application/json");
     http.addHeader("X-Device-Token", DEVICE_TOKEN);
@@ -617,9 +636,15 @@ static bool enviar_pendentes() {
       max_no_lote = max_no_lote > 1 ? max_no_lote / 2 : 1;
       continue;
     }
-    if (d.acao == LOTE_RECUAR || d.recuar_depois) return false;
+    if (d.acao == LOTE_RECUAR || d.recuar_depois) {
+      ok = false;
+      break;
+    }
   }
-  return true;
+  // Fecha a conexao antes de o Wi-Fi desligar: aberta, ela segura a memoria
+  // do TLS ate a proxima volta.
+  cliente.stop();
+  return ok;
 }
 
 static void tarefa_de_envio(void *) {
@@ -634,6 +659,8 @@ static void tarefa_de_envio(void *) {
       continue;
     }
 
+    const uint32_t maior_bloco_antes =
+        static_cast<uint32_t>(heap_caps_get_largest_free_block(MALLOC_CAP_8BIT));
     bool ok = conectar_wifi();
     if (ok) {
       sincronizar_relogio();
@@ -677,6 +704,23 @@ static void tarefa_de_envio(void *) {
                   static_cast<unsigned>(contadores.perdas[PERDA_I2C_NA_LEITURA].load()),
                   static_cast<unsigned>(contadores.liberacoes.load()),
                   static_cast<unsigned>(contadores.liberacoes_com_resposta.load()));
+    // FW-14: de onde vem a folga (ou a falta dela) no envio.
+    FolgaDeMemoria folga;
+    folga.heap_livre = static_cast<uint32_t>(esp_get_free_heap_size());
+    folga.heap_minimo = static_cast<uint32_t>(esp_get_minimum_free_heap_size());
+    folga.maior_bloco_antes = maior_bloco_antes;
+    folga.maior_bloco_depois = static_cast<uint32_t>(heap_caps_get_largest_free_block(MALLOC_CAP_8BIT));
+    folga.pilha_envio_livre = static_cast<uint32_t>(uxTaskGetStackHighWaterMark(0));
+    folga.pilha_envio_total = PILHA_DO_ENVIO;
+    folga.pilha_medicao_livre =
+        tarefa_medicao ? static_cast<uint32_t>(uxTaskGetStackHighWaterMark(tarefa_medicao)) : 0;
+    folga.pilha_medicao_total = PILHA_DA_MEDICAO;
+    folga.maior_lote = contadores.maior_lote.load();
+    folga.buffer_do_lote = static_cast<uint32_t>(TAMANHO_JSON_DO_LOTE);
+    folga.conexoes_tls = contadores.conexoes_tls.load();
+    folga.lotes = contadores.lotes.load();
+    char linha[320];
+    if (formatar_folga(folga, linha, sizeof(linha)) > 0) Serial.println(linha);
   }
 }
 
@@ -728,8 +772,8 @@ void setup() {
   origem_us = static_cast<uint64_t>(esp_timer_get_time());
   cadeia.iniciar(origem_us);
 
-  xTaskCreatePinnedToCore(tarefa_de_envio, "envio", 16384, 0, 1, &tarefa_envio, 0);
-  xTaskCreatePinnedToCore(tarefa_de_medicao, "medicao", 8192, 0, 5, 0, 1);
+  xTaskCreatePinnedToCore(tarefa_de_envio, "envio", PILHA_DO_ENVIO, 0, 1, &tarefa_envio, 0);
+  xTaskCreatePinnedToCore(tarefa_de_medicao, "medicao", PILHA_DA_MEDICAO, 0, 5, &tarefa_medicao, 1);
 }
 
 // Todo o trabalho esta nas duas tarefas.

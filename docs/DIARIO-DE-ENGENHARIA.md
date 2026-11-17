@@ -10865,6 +10865,52 @@ Depois, o login do autor.
 
 **Procedência.** Branch `bugfix/fw-18-teto-da-magnitude` (`b1d7c85`) sobre `develop` `094f4da`; na placa, a branch local `teste/fw18-fw14`; placa ESP32 + MPU6050 pela COM3; `arduino-cli` com `esp32:esp32` 3.3.12; testes em contêiner `gcc:13`; logs `noite-fw18-fw14-2026-11-17.log` e `noite-fw18-fw14-2026-11-17-parte2.log` em `dados-locais/`, fora do repositório; Windows 11; 17/11, das 02:39 às 10:05.
 
+# 2026-11-17 (ii) — FW-14, etapa 1: uma conexão por envio, a linha de memória e uma noite medida
+
+**O problema, como foi entendido no início.** Desde o `FW-13` (12/11), o envio da placa passa no handshake TLS com ~15 KB de folga: o mínimo de heap medido foi 14 772 B em 12/11, 13 524 B e 12 868 B em 16/11. Cada lote de 20 leituras abria uma conexão TLS nova, de ~67 KB. O log só mostrava o heap livre e o mínimo, e nada dizia de onde dava para tirar memória.
+
+**Hipótese de trabalho.** Duas apostas. (1) Uma conexão por envio, reaproveitada entre os lotes (`setReuse(true)`: no core do ESP32, `end()` mantém o socket aberto), economiza handshakes e afasta o mínimo do chão. (2) Medir as pilhas, o maior bloco livre e o maior lote mostra quanto dá para cortar dos estáticos e das reservas.
+
+**O que foi testado, e como.**
+- **No núcleo:** `FolgaDeMemoria` e `formatar_folga()` em `envio_da_fila.h/.cpp`, que montam a linha `[memoria] heap … (minimo …); maior bloco … antes, … depois; pilha livre: envio … de … B, medicao … de … B; maior lote … de … B; N conexoes TLS para M lotes`; linha que não cabe sai vazia, nunca pela metade. +7 verificações no `c2`.
+- **No sketch:** `enviar_pendentes()` cria o cliente TLS e o `HTTPClient` uma vez por envio; conta conexão nova quando o cliente não está conectado; a fila vazia e a falha encerram o envio, e o cliente é fechado no fim. O maior bloco é medido antes de ligar o Wi-Fi e depois do envio; as pilhas, por `uxTaskGetStackHighWaterMark`.
+- **O envio da placa ganhou o primeiro teste no host** (`testes/envio_do_sketch.cpp`): a partição em RAM com a fila de verdade e um servidor falso que conta POSTs e handshakes. Três casos: 50 épocas em 3 lotes com 1 handshake; o servidor fechando a conexão a cada lote (3 handshakes, nada perdido); o 2º POST falhando (o envio para, 30 pendentes, e o seguinte manda o resto). Quatro sabotagens novas no `make laco` e duas mutações no `mutacao-cadeia`.
+- **Na placa:** gravado junto com o `FW-18`, numa branch local de teste (`teste/fw18-fw14`), e usado na noite de 17/11 com o autor no travesseiro e a placa no USB do computador.
+
+**Resultado medido.**
+- **No host, contêiner `gcc:13`:** `c2` **192**, 0 falhas; `make laco` **20/20**; `mutacao-cadeia` **39/39**; `mutacao` 15/15; `mutacao-fila` 17/17; `mutacao-coletor` 20/20; `sintaxe` liga.
+- **Para o ESP32:** programa 1 089 128 B; RAM fixa **108 984 B** (+8 B).
+- **Na noite (02:51–10:01, 43 envios):**
+
+| Medida | Valor |
+|---|---|
+| Lotes | 48 com `HTTP 200`, 812 leituras aceitas, 0 rejeitadas; 1 `HTTP -1` às 07:21, mandado no envio seguinte; `descartadas 0` e `falhas na fila 0` em todos |
+| Conexões TLS | **41 para 47 lotes** desde o boot das 02:51 |
+| Heap mínimo | 16 872 B no 1º envio; 16 168 B às 03:51; 15 284 B às 05:31; **13 096 B às 08:01**, e ficou |
+| Heap livre no envio | 115 988 → 115 476 B em 7 h, estável depois das 05:00 |
+| Maior bloco livre | 110 580 B antes do 1º envio; depois, **40 948 B**, às vezes 32 756 B logo após o envio |
+| Pilha do envio | usou ~4,1 KB de 16 384 B (12 300 livres) |
+| Pilha da medição | usou ~2,3 KB de 8 192 B (5 872 livres) |
+| Maior lote | 6 127 B de 10 400 B |
+
+**Veredito.** A conexão por envio funciona na Vercel, mas economiza pouco: quase todo envio tem um lote só (20 épocas em 10 min), e a conexão não sobrevive aos 10 min entre envios. O mínimo da noite, 13 096 B, ficou no patamar de antes (12 868 B em 16/11): ele é ditado por um handshake só, que a mudança não evita. O piso de ~10 KB do aceite não foi furado numa noite de ~7 h. A linha `[memoria]` é o ganho desta etapa: mostra **~12 KB de pilha sem uso no envio, ~5,8 KB na medição e ~4,2 KB no buffer do lote**, e o maior bloco livre (~41 KB) abaixo dos ~67 KB do handshake, que portanto pede memória em pedaços. O `FW-14` segue aberto para a etapa 2: cortar as pilhas e o buffer pela medida, com margem, e medir de novo.
+
+**Adaptação.**
+- A medida na placa estava combinada para uma sessão de bancada com a sacudida do `FW-18`; virou uma noite inteira, o que mede melhor (43 envios, em vez de 2 ou 3).
+- A observação do maior bloco foi corrigida durante a noite: depois do 2º envio, eu disse que ele voltava a 110 KB, e o 3º envio mostrou que não volta — o 110 KB era só do primeiro envio depois do boot.
+
+**O que deu errado no caminho.**
+- **A vigia em tempo real do log expirou por volta das 04:55 e não foi religada.** O autor tinha pedido acompanhamento por medo de superaquecimento. O registro seguiu gravando, mas das 05h às 10h ninguém olhou o log ao vivo. A vigia expira a cada 30 min e precisa ser religada a cada vez.
+- **O registro serial parou por volta das 02:50** com o USB desconectado sem querer; a placa reiniciou. O registro passou a recomeçar sozinho em arquivo novo.
+- **A primeira versão da vigia, ao ser religada, relia o arquivo do começo** e repetia os envios já vistos. Passou a começar do fim.
+
+**Risco em aberto.**
+- **O sensor ficou mudo às 09:37** e não voltou: 19 liberações do barramento, uma resposta passageira às 09:39 (`HW-11`). Antes, às 08:53, ficou mudo ~1,5 min e voltou sozinho. Foi achado dormindo e reconfigurado 21 vezes, todas a partir das 05:00.
+- **Com o sensor mudo, as épocas saem como `recusada (motivo 2)`**, o motivo do transbordo: 80 das 87 recusas da noite. O resumo diz `transbordos 819`. Quem ler o log sem saber vai procurar transbordo, não sensor mudo.
+- **O mínimo de 13 096 B pode cair numa noite mais longa** ou com mais fragmentação, até a etapa 2.
+
+**Procedência.** Branch `bugfix/fw-14-folga-do-envio` (`a9f4734`) sobre `develop` `094f4da`; na placa, a branch local `teste/fw18-fw14`; placa ESP32 + MPU6050 pela COM3; `arduino-cli` com `esp32:esp32` 3.3.12; testes em contêiner `gcc:13`; logs `noite-fw18-fw14-2026-11-17.log` e `noite-fw18-fw14-2026-11-17-parte2.log` em `dados-locais/`, fora do repositório; Windows 11; 17/11, das 02:39 às 10:05.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
