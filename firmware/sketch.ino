@@ -144,6 +144,8 @@ static CadeiaC2 cadeia;
 // percebe o sensor reiniciado. Os dois so sao tocados pela medicao.
 static Calibracao calibracao;
 static VigiaDaFifo vigia;
+// FW-17: conta as drenagens seguidas sem resposta do sensor no I2C.
+static GuardaDoBarramento guarda;
 static AcumuladorDeFeatures acumulador;
 static float grade_x[AMOSTRAS_NA_GRADE], grade_y[AMOSTRAS_NA_GRADE], grade_z[AMOSTRAS_NA_GRADE];
 static uint64_t origem_us = 0;
@@ -185,6 +187,10 @@ struct Contadores {
   // sendo o total, com o nome antigo, para os logs de antes continuarem
   // comparaveis; e este vetor que diz o que foi.
   std::atomic<uint32_t> perdas[N_CAUSAS_DE_PERDA];
+  // FW-17, etapa 2: liberacoes do barramento, e em quantas o sensor voltou a
+  // responder logo depois.
+  std::atomic<uint32_t> liberacoes;
+  std::atomic<uint32_t> liberacoes_com_resposta;
 };
 // Sem inicializador de proposito: armazenamento estatico ja comeca em zero, e
 // `= {0, ...}` copiaria `atomic`, o que o C++11 do `make sintaxe` recusa.
@@ -262,6 +268,65 @@ static void conferir_sensor() {
                 static_cast<unsigned>(contadores.reacordados.load()));
 }
 
+// FW-17, etapa 2: o sensor parou de responder no I2C. Um mau contato no meio
+// de uma transferencia pode deixa-lo segurando o SDA em nivel baixo,
+// esperando clocks que nao vem; o controlador da ESP32 ve o barramento ocupado
+// e toda leitura falha. A saida padrao (I2C-bus specification, NXP UM10204,
+// sec. 3.1.16) e dar ate 9 pulsos no SCL ate o SDA subir, e uma condicao de
+// parada. O log leva o nivel das duas linhas ANTES dos pulsos: e o que diz,
+// na bancada, se o problema era o SDA preso.
+static void liberar_barramento() {
+  Wire.end();
+  pinMode(PINO_SDA, INPUT_PULLUP);
+  pinMode(PINO_SCL, INPUT_PULLUP);
+  delayMicroseconds(10);
+  const int sda_antes = digitalRead(PINO_SDA);
+  const int scl_antes = digitalRead(PINO_SCL);
+  pinMode(PINO_SCL, OUTPUT_OPEN_DRAIN);
+  digitalWrite(PINO_SCL, HIGH);
+  unsigned pulsos = 0;
+  while (pulsos < PULSOS_PARA_LIBERAR_O_SDA && digitalRead(PINO_SDA) == LOW) {
+    digitalWrite(PINO_SCL, LOW);
+    delayMicroseconds(5);
+    digitalWrite(PINO_SCL, HIGH);
+    delayMicroseconds(5);
+    pulsos++;
+  }
+  // Condicao de parada: o SDA sobe com o SCL alto.
+  pinMode(PINO_SDA, OUTPUT_OPEN_DRAIN);
+  digitalWrite(PINO_SCL, LOW);
+  delayMicroseconds(5);
+  digitalWrite(PINO_SDA, LOW);
+  delayMicroseconds(5);
+  digitalWrite(PINO_SCL, HIGH);
+  delayMicroseconds(5);
+  digitalWrite(PINO_SDA, HIGH);
+  delayMicroseconds(5);
+  const int sda_depois = digitalRead(PINO_SDA);
+  Wire.begin(PINO_SDA, PINO_SCL);
+  Wire.setClock(400000);
+
+  uint8_t pwr1 = 0;
+  const bool responde = ler_registradores(MPU_REG_PWR_MGMT_1, &pwr1, 1);
+  contadores.liberacoes++;
+  if (responde) contadores.liberacoes_com_resposta++;
+  Serial.printf("[i2c] sensor sem resposta: SDA %d, SCL %d antes; %u pulsos; SDA %d depois; "
+                "sensor %s; liberacoes nesta sessao: %u\n",
+                sda_antes, scl_antes, pulsos, sda_depois, responde ? "responde" : "MUDO",
+                static_cast<unsigned>(contadores.liberacoes.load()));
+  if (!responde) return;
+  // De volta ao barramento: se o sensor reiniciou junto (o VCC caiu), ele esta
+  // dormindo e a conferencia o reconfigura; se nao, a FIFO perdeu o alinhamento
+  // no meio da leitura, e recomeca do zero.
+  conferir_sensor();
+  resetar_fifo();
+}
+
+// Uma drenagem em que o sensor nao respondeu no barramento.
+static void sem_resposta_do_sensor() {
+  if (guarda.observar(false)) liberar_barramento();
+}
+
 // Uma drenagem. O instante e o da leitura de FIFO_COUNT: e com ele que a
 // contagem acumulada entra na regressao da linha do tempo (`cadeia_c2.h`).
 // So os bytes contados sao lidos -- uma amostra que chegue durante a leitura
@@ -290,8 +355,10 @@ static void drenar() {
     cadeia.registrar_drenagem(t_us, 0, 0, true);
     registrar_perda(PERDA_I2C_NO_ESTADO, t_us, 0, estado);
     ultima_drenagem_us = t_us;
+    sem_resposta_do_sensor();
     return;
   }
+  guarda.observar(true);
   const uint16_t n_fifo = static_cast<uint16_t>((contagem[0] << 8) | contagem[1]);
   if (avaliar_fifo(n_fifo, estado) != LEITURA_OK) {
     resetar_fifo();
@@ -312,6 +379,7 @@ static void drenar() {
       cadeia.registrar_drenagem(t_us, 0, 0, true);
       registrar_perda(PERDA_I2C_NA_LEITURA, t_us, n_fifo, estado);
       ultima_drenagem_us = t_us;
+      sem_resposta_do_sensor();
       return;
     }
     lidos = static_cast<uint16_t>(lidos + bloco);
@@ -596,12 +664,15 @@ static void tarefa_de_envio(void *) {
                   static_cast<unsigned>(esp_get_minimum_free_heap_size()));
     // FW-17: o total de "transbordos" acima, separado por causa.
     Serial.printf("[envio] drenagens descartadas: i2c no estado %u, transbordo (bit) %u, "
-                  "transbordo (teto) %u, desalinhada %u, i2c na leitura %u\n",
+                  "transbordo (teto) %u, desalinhada %u, i2c na leitura %u; "
+                  "barramento liberado %u (sensor respondeu em %u)\n",
                   static_cast<unsigned>(contadores.perdas[PERDA_I2C_NO_ESTADO].load()),
                   static_cast<unsigned>(contadores.perdas[PERDA_TRANSBORDO_BIT].load()),
                   static_cast<unsigned>(contadores.perdas[PERDA_TRANSBORDO_TETO].load()),
                   static_cast<unsigned>(contadores.perdas[PERDA_DESALINHADA].load()),
-                  static_cast<unsigned>(contadores.perdas[PERDA_I2C_NA_LEITURA].load()));
+                  static_cast<unsigned>(contadores.perdas[PERDA_I2C_NA_LEITURA].load()),
+                  static_cast<unsigned>(contadores.liberacoes.load()),
+                  static_cast<unsigned>(contadores.liberacoes_com_resposta.load()));
   }
 }
 

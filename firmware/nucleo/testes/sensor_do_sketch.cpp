@@ -15,7 +15,11 @@
 //     com o erro de Z medido na bancada de 11/11 (o eixo le -1,1541 g parado
 //     de chip para baixo);
 //   - `cair()` simula a queda de alimentacao: o sensor reinicia e para de
-//     encher a FIFO.
+//     encher a FIFO;
+//   - (FW-17, etapa 2) `travado` simula o sensor que segura o SDA: toda
+//     transacao falha, e ele so solta depois de `pulsos_para_soltar` descidas
+//     do SCL -- ou nunca (0), ate a energia voltar. Os pinos do sketch
+//     (`pinMode`, `digitalWrite`, `digitalRead`) chegam aqui.
 //
 // O stub do `Wire` desta variante chama as funcoes `wire_*` abaixo; quem o
 // monta e `verificar_laco_do_sketch.sh`, que tambem sabota o sketch.
@@ -50,6 +54,13 @@ struct MpuFalso {
   int falhas_pendentes;
   bool oflow;
   int32_t contagem_forcada;
+  // FW-17, etapa 2: o barramento travado.
+  bool travado;
+  int pulsos_para_soltar;   // 0 = so volta com energia
+  bool reinicia_ao_soltar;  // o VCC tinha caido junto: solta dormindo
+  int descidas_de_scl;
+  bool scl_alto;
+  bool sda_puxado;          // o sketch segura o SDA baixo
 
   void reiniciar() {
     memset(regs, 0, sizeof(regs));
@@ -98,11 +109,17 @@ void wire_write(uint8_t v) {
   if (mpu.n_tx < 4) mpu.tx[mpu.n_tx++] = v;
 }
 uint8_t wire_end_tx() {
+  if (mpu.travado) return 2;  // ninguem confirma o endereco
   if (mpu.n_tx == 1) mpu.ponteiro = mpu.tx[0];
   if (mpu.n_tx == 2) mpu.escrever(mpu.tx[0], mpu.tx[1]);
   return 0;
 }
 uint8_t wire_request(size_t n) {
+  if (mpu.travado) {
+    mpu.n_leitura = 0;
+    mpu.pos = 0;
+    return 0;
+  }
   if (mpu.falhas_pendentes > 0 && mpu.ponteiro == mpu.falhar_registrador) {
     mpu.falhas_pendentes--;
     mpu.n_leitura = 0;
@@ -113,6 +130,28 @@ uint8_t wire_request(size_t n) {
   return static_cast<uint8_t>(mpu.n_leitura);
 }
 int wire_read() { return mpu.pos < mpu.n_leitura ? mpu.leitura[mpu.pos++] : -1; }
+
+// Os pinos: 21 = SDA, 22 = SCL (conferido contra o sketch no `main`).
+void pinMode(int pino, int modo) {
+  if (modo == INPUT_PULLUP && pino == 21) mpu.sda_puxado = false;
+  if (modo == INPUT_PULLUP && pino == 22) mpu.scl_alto = true;
+}
+void digitalWrite(int pino, int v) {
+  if (pino == 21) mpu.sda_puxado = v == LOW;
+  if (pino != 22) return;
+  const bool desceu = mpu.scl_alto && v == LOW;
+  mpu.scl_alto = v != LOW;
+  if (!desceu || !mpu.travado || mpu.pulsos_para_soltar == 0) return;
+  if (++mpu.descidas_de_scl >= mpu.pulsos_para_soltar) {
+    mpu.travado = false;
+    if (mpu.reinicia_ao_soltar) mpu.reiniciar();
+  }
+}
+int digitalRead(int pino) {
+  if (pino == 21) return mpu.travado || mpu.sda_puxado ? LOW : HIGH;
+  if (pino == 22) return mpu.scl_alto ? HIGH : LOW;
+  return LOW;
+}
 
 #include SKETCH
 
@@ -218,6 +257,73 @@ int main() {
     const uint32_t total = contadores.transbordos.load();
     volta(true);
     conferir(contadores.transbordos.load() == total, "depois das falhas, a drenagem volta ao normal");
+  }
+
+  printf("FW-17, etapa 2: o sensor que trava o barramento\n");
+  conferir(PINO_SDA == 21 && PINO_SCL == 22, "o MPU6050 falso esta nos pinos do sketch");
+  conferir(contadores.liberacoes.load() == 0, "as falhas isoladas acima nao liberaram o barramento");
+  // A: solta com 4 pulsos, e tinha reiniciado junto (o VCC caiu por um instante).
+  mpu.travado = true;
+  mpu.pulsos_para_soltar = 4;
+  mpu.reinicia_ao_soltar = true;
+  mpu.descidas_de_scl = 0;
+  volta(true);
+  volta(true);
+  conferir(contadores.liberacoes.load() == 0, "duas drenagens sem resposta ainda nao liberam");
+  volta(true);
+  conferir(contadores.liberacoes.load() == 1 && contadores.liberacoes_com_resposta.load() == 1 &&
+               !mpu.travado,
+           "a terceira libera: os pulsos no SCL soltam o sensor, e ele responde");
+  conferir(mpu.enchendo(), "o sensor que reiniciou junto sai da liberacao reconfigurado");
+  {
+    const uint32_t total = contadores.transbordos.load();
+    volta(true);
+    conferir(contadores.transbordos.load() == total && mpu.amostras_na_fifo == 0,
+             "a drenagem seguinte ja traz amostras");
+  }
+  // B: so volta com energia. As tentativas recuam: 3, +6, +12, +24 = 4 em 60.
+  mpu.travado = true;
+  mpu.pulsos_para_soltar = 0;
+  mpu.reinicia_ao_soltar = false;
+  {
+    const uint32_t lib = contadores.liberacoes.load();
+    const uint32_t resp = contadores.liberacoes_com_resposta.load();
+    for (int i = 0; i < 60; i++) volta(true);
+    snprintf(msg, sizeof(msg), "sensor mudo: %u tentativas em 60 drenagens (4, com recuo), nenhuma resposta",
+             static_cast<unsigned>(contadores.liberacoes.load() - lib));
+    conferir(contadores.liberacoes.load() - lib == 4 && contadores.liberacoes_com_resposta.load() == resp,
+             msg);
+  }
+  {
+    const uint32_t reac = contadores.reacordados.load();
+    mpu.travado = false;
+    mpu.reiniciar();  // a energia volta: o sensor acorda dormindo
+    for (int i = 0; i < 4; i++) volta(true);
+    conferir(mpu.enchendo() && contadores.reacordados.load() == reac + 1,
+             "com a energia de volta, a vigia do FW-11 reacorda o sensor");
+  }
+  // C: depois de uma resposta, o recuo zerou -- um travamento novo libera em 3.
+  mpu.travado = true;
+  mpu.pulsos_para_soltar = 1;
+  mpu.descidas_de_scl = 0;
+  {
+    const uint32_t lib = contadores.liberacoes.load();
+    for (int i = 0; i < 3; i++) volta(true);
+    conferir(contadores.liberacoes.load() == lib + 1 && !mpu.travado,
+             "um travamento novo libera em 3 drenagens, sem o recuo do anterior");
+    volta(true);
+  }
+  // D: falhas separadas por respostas nao somam.
+  {
+    const uint32_t lib = contadores.liberacoes.load();
+    for (int k = 0; k < 4; k++) {
+      mpu.falhar_registrador = 0x3A;
+      mpu.falhas_pendentes = 2;
+      volta(true);
+      volta(true);
+      volta(true);
+    }
+    conferir(contadores.liberacoes.load() == lib, "pares de falhas com uma resposta no meio nao liberam");
   }
 
   printf("%d falhas\n", falhas);

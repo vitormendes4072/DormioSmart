@@ -42,6 +42,20 @@ bool VigiaDaFifo::observar(uint16_t amostras) {
   return false;
 }
 
+bool GuardaDoBarramento::observar(bool respondeu) {
+  if (respondeu) {
+    seguidas_ = 0;
+    limite_ = FALHAS_DE_I2C_PARA_LIBERAR;
+    return false;
+  }
+  if (seguidas_ < 255) seguidas_++;
+  if (seguidas_ < limite_) return false;
+  seguidas_ = 0;
+  const unsigned dobro = 2u * limite_;
+  limite_ = static_cast<uint8_t>(dobro > FALHAS_DE_I2C_TETO_DO_RECUO ? FALHAS_DE_I2C_TETO_DO_RECUO : dobro);
+  return true;
+}
+
 bool sensor_precisa_reconfigurar(uint8_t pwr_mgmt_1, uint8_t user_ctrl, uint8_t fifo_en) {
   if ((pwr_mgmt_1 & MPU_PWR1_SLEEP) != 0) return true;
   if ((user_ctrl & MPU_USER_CTRL_FIFO_EN) == 0) return true;

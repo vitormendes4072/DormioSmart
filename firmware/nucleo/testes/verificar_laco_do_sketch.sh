@@ -40,8 +40,14 @@ troca "$W/stubs/freertos/task.h" "inline void vTaskDelay(const TickType_t) {}" \
   "void vTaskDelay(const TickType_t);"
 troca "$W/stubs/Arduino.h" "class WireStub {" "void gancho_i2c();
 class WireStub {"
+# O gancho marca uma drenagem na leitura do INT_STATUS (0x3A), a primeira de
+# cada uma: desde o FW-17 (etapa 2), o sketch tambem le o sensor quando libera
+# o barramento, e essa leitura nao e uma volta do laco.
+troca "$W/stubs/Arduino.h" "  size_t write(uint8_t) { return 1; }" \
+  "  uint8_t reg_ = 0;
+  size_t write(uint8_t v) { reg_ = v; return 1; }"
 troca "$W/stubs/Arduino.h" "  uint8_t requestFrom(uint8_t, size_t) { return 0; }" \
-  "  uint8_t requestFrom(uint8_t, size_t) { gancho_i2c(); return 0; }"
+  "  uint8_t requestFrom(uint8_t, size_t) { if (reg_ == 0x3A) gancho_i2c(); return 0; }"
 printf '#define WIFI_SSID "x"\n#define WIFI_PASSWORD "y"\n#define DEVICE_TOKEN "z"\n' > "$W/stubs/secrets.h"
 
 $CXX -std=c++11 -w -c -I"$W/stubs" "$FIRMWARE/nucleo_amalgama.cpp" -o "$W/amalgama.o" || exit 2
@@ -130,6 +136,7 @@ int wire_read();
 class WireStub {
  public:
   void begin(int, int) {}
+  bool end() { return true; }
   void setClock(uint32_t) {}
   void beginTransmission(uint8_t a) { wire_begin_tx(a); }
   uint8_t endTransmission() { return wire_end_tx(); }
@@ -143,6 +150,13 @@ class WireStub {
 """
 open(p, "w").write(s[:i] + novo + s[j:])
 PYSTUB
+# FW-17, etapa 2: os pinos tambem vao para o sensor falso (a liberacao do
+# barramento mexe no SDA e no SCL na mao).
+troca "$W/stubs-sensor/Arduino.h" "inline void pinMode(int, int) {}
+inline int digitalRead(int) { return 0; }
+inline void digitalWrite(int, int) {}" "void pinMode(int, int);
+int digitalRead(int);
+void digitalWrite(int, int);"
 cp "$W/stubs/secrets.h" "$W/stubs-sensor/secrets.h"
 $CXX -std=c++11 -w -c -I"$W/stubs-sensor" "$FIRMWARE/nucleo_amalgama.cpp" -o "$W/amalgama-sensor.o" || exit 2
 $CXX -std=c++11 -w -c -I"$W/stubs-sensor" "$W/stubs-sensor/stubs.cpp" -o "$W/stubs-sensor.o" || exit 2
@@ -205,6 +219,23 @@ sabotar_sensor "12. o total deixa de contar" \
   "  contadores.transbordos++;
   contadores.perdas[causa]++;" \
   "  contadores.perdas[causa]++;"
+
+sabotar_sensor "13. ninguem libera o barramento" \
+  "  if (guarda.observar(false)) liberar_barramento();" \
+  "  guarda.observar(false);"
+sabotar_sensor "14. liberar sem os pulsos no SCL" \
+  "  while (pulsos < PULSOS_PARA_LIBERAR_O_SDA && digitalRead(PINO_SDA) == LOW) {" \
+  "  while (false) {"
+sabotar_sensor "15. liberar sem conferir o sensor" \
+  "  conferir_sensor();
+  resetar_fifo();
+}" \
+  "  resetar_fifo();
+}"
+sabotar_sensor "16. a resposta nao zera a guarda" \
+  "  guarda.observar(true);
+" \
+  ""
 
 echo "$((total - falhas))/$total como esperado"
 [ $falhas -eq 0 ]

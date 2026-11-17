@@ -10786,6 +10786,51 @@ Depois, o login do autor.
 
 **Procedência.** Branch `bugfix/fw-17-causa-das-epocas-perdidas` sobre `develop` `9f2386b`; placa ESP32 + MPU6050 pela COM3; `arduino-cli` com `esp32:esp32` 3.3.12; testes em contêiner `gcc:13`; logs `fw17-serial-2026-11-16.log` e `fw17-bancada-2026-11-16.log` em `dados-locais/`, fora do repositório; Windows 11; 16/11.
 
+# 2026-11-16 (xi) — FW-17, etapa 2: o barramento estava livre, e a culpa é a alimentação
+
+**O problema, como foi entendido no início.** Na bancada do diário 16/11 (x), mexer nos fios do sensor deixou o MPU6050 sem responder no I2C por 4,7 min, com os fios firmes, até o VCC ser tirado e recolocado. O caminho da falha de I2C no `drenar()` retorna antes da vigia do `FW-11`: o firmware descartava e tentava de novo a cada 1,7 s, para sempre.
+
+**Hipótese de trabalho.** Uma interrupção no meio de uma transferência deixa o sensor segurando o SDA em nível baixo, à espera de clocks. A saída padrão é dar até 9 pulsos no SCL e uma condição de parada (NXP UM10204, §3.1.16). Se for isso, o firmware recupera o sensor sozinho.
+
+**O que foi testado, e como.**
+- **No núcleo:** `GuardaDoBarramento` em `fifo_mpu.h`. Na 3ª drenagem seguida sem resposta, manda liberar; sem resposta, a próxima espera o dobro de falhas, até 96 (~2,7 min); uma resposta zera tudo. +8 verificações no `c2`; 3 mutações novas no `mutacao-cadeia` (não recua, recuo sem teto, a resposta não zera o recuo).
+- **No sketch:** `liberar_barramento()` encerra o `Wire`, lê o SDA e o SCL, dá até 9 pulsos no SCL enquanto o SDA estiver baixo, faz a condição de parada, inicia o `Wire` de novo e, se o sensor responder, chama `conferir_sensor()` e zera a FIFO. Cada tentativa vira uma linha `[i2c] sensor sem resposta: SDA x, SCL y antes; N pulsos; SDA z depois; sensor responde|MUDO`, e o resumo do envio ganhou `barramento liberado N (sensor respondeu em M)`.
+- **No `make laco`:** o MPU6050 falso ganhou o modo travado, que só solta depois de N descidas do SCL (ou nunca, até a energia voltar), e os pinos do sketch chegam a ele. Quatro casos: solta com os pulsos e sai reconfigurado; mudo, com 4 tentativas em 60 drenagens; um travamento novo depois de uma resposta libera em 3; falhas separadas por respostas não somam. Quatro sabotagens novas no sketch.
+- **Na placa:** gravada pela COM3 (as duas primeiras tentativas falharam no meio, a 921 600 baud; a terceira, a 115 200, gravou as quatro regiões com o hash conferido). Três testes de fios, com o log serial e a hora do PC: (1) todos os fios, como no diário (x); (2) só o SDA e o SCL; (3) só o VCC e o GND.
+
+**Resultado medido.**
+
+| Teste (UTC−3) | O que o log mostrou |
+|---|---|
+| Todos os fios (23:23:40–23:26:10) | 1 `i2c na leitura`, depois mudo. **`SDA 1, SCL 1` antes, 0 pulsos**, sensor MUDO em todas as tentativas |
+| VCC recolocado (23:29 e 23:32) | `achado dormindo … reconfigurado` e, ~7 s depois, mudo de novo, duas vezes |
+| USB tirado e recolocado (23:50) | a placa reinicia; épocas normais |
+| Só SDA e SCL (23:52:35–23:55:09) | **0 falhas**; épocas normais com o balanço (até 17 m/s²) |
+| Só VCC e GND (23:55:52–23:58:20) | 1 `i2c na leitura` (516 B), **`achado dormindo`** às 23:57:32, reconfigurado, épocas de volta às 23:58:03 |
+
+- **A guarda na placa:** 16 tentativas de liberação entre 23:23:51 e 23:35:03, com o recuo (a 1ª ~5 s depois da primeira falha; as seguintes a 10 s, 20 s e 41 s), e nenhuma recuperação. O SDA nunca estava baixo: os pulsos nunca foram dados.
+- **No host, contêiner `gcc:13`:** `make` 341 + 157 + **185** + 456 + 115 + 327 + 185 verificações, 0 falhas; `make laco` 0 falhas e **16/16** sabotagens acusadas; `make mutacao-cadeia` **37/37**; `mutacao` 15/15; `mutacao-fila` 17/17; `mutacao-coletor` 20/20; `sintaxe` liga.
+- **Para o ESP32:** programa 1 088 532 B; RAM fixa 108 976 B (+8 B), 218 704 B para o heap.
+
+**Veredito.** A hipótese do SDA preso caiu. A causa do `FW-17` é o contato da alimentação do sensor: um corte de um instante interrompe a leitura e reinicia o MPU6050. Corte limpo, o `FW-11` já recupera. Corte irregular, o sensor fica mudo com o barramento livre, e só volta desligado e religado — o que o firmware não consegue fazer. O `FW-17` fecha com a causa medida; o que falta é o `HW-11`. A guarda fica: ela detecta em ~5 s, diz no log o estado das linhas e não enche o log a noite inteira.
+
+**Adaptação.**
+- A pergunta do autor ("não pode ser o SDA ou o SCL?") mudou o teste: o log com todos os fios não separa um SDA aberto (o pull-up interno da ESP32 lê 1) de um sensor sem energia. Mexer em cada par separado, e ler se o sensor volta dormindo, separou.
+- A gravação foi a 115 200 baud depois de duas falhas a 921 600.
+
+**O que deu errado no caminho.**
+- **O teste de tempo do laço quebrou:** ele marcava uma volta em toda leitura do I2C, e a liberação faz uma leitura a mais. O gancho passou a contar só a leitura do `INT_STATUS`.
+- **O script de gravação falhou antes de apagar a cópia do `secrets.h`** na pasta temporária da sessão (fora do repositório). Foi apagada na hora, e o script passou a apagá-la num `finally`.
+- **O log serial parou às 23:36** com o USB mexido, e a porta ficou presa; perdeu o momento em que o autor recolocou o SDA e o SCL. Voltou com o USB tirado e recolocado.
+- **O autor recolocou o VCC duas vezes** e o sensor caiu de novo em ~7 s nas duas, já acordado: o contato tinha piorado com o manuseio da noite.
+
+**Risco em aberto.**
+- **O contato pode falhar numa noite real** e deixar o sensor mudo até alguém mexer (`HW-11`).
+- **A recuperação por energia não foi testada:** depende do `HW-11` (2).
+- **Os pulsos no SCL seguem sem prova na placa:** o caso que eles tratam (SDA preso) não apareceu.
+
+**Procedência.** Branch `bugfix/fw-17-recuperar-o-i2c` sobre `develop` `6be63d0`; placa ESP32 + MPU6050 pela COM3; `arduino-cli` com `esp32:esp32` 3.3.12; testes em contêiner `gcc:13`; logs `fw17e2-bancada-2026-11-16.log` e `fw17e2-bancada-3-2026-11-16.log` em `dados-locais/`, fora do repositório; Windows 11; 16/11, das 23:20 às 23:58.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

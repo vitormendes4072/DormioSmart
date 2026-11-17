@@ -770,6 +770,28 @@ static void testar_vigia_da_fifo() {
   VERIFICAR(DRENAGENS_VAZIAS_PARA_CONFERIR == 3, "N = 3 (~5 s de FIFO vazia)");
 }
 
+static void testar_guarda_do_barramento() {
+  secao("FW-17: a guarda do barramento sem resposta");
+  GuardaDoBarramento g;
+  VERIFICAR(!g.observar(false) && !g.observar(false), "duas falhas ainda nao liberam");
+  VERIFICAR(g.observar(false), "a terceira falha seguida manda liberar");
+  VERIFICAR(g.seguidas() == 0 && g.limite() == 6, "depois, a contagem recomeca com o limite dobrado");
+  int n = 0;
+  while (!g.observar(false)) n++;
+  VERIFICAR(n == 5, "sem resposta, a segunda liberacao vem 6 falhas depois");
+  for (int i = 0; i < 2000; i++) g.observar(false);
+  VERIFICAR(g.limite() == FALHAS_DE_I2C_TETO_DO_RECUO, "o recuo para no teto");
+  VERIFICAR(!g.observar(true) && g.limite() == FALHAS_DE_I2C_PARA_LIBERAR && g.seguidas() == 0,
+            "uma resposta zera a contagem e o recuo");
+  GuardaDoBarramento h;
+  h.observar(false);
+  h.observar(false);
+  h.observar(true);
+  VERIFICAR(!h.observar(false) && !h.observar(false), "falhas separadas por uma resposta nao somam");
+  VERIFICAR(FALHAS_DE_I2C_PARA_LIBERAR == 3 && PULSOS_PARA_LIBERAR_O_SDA == 9,
+            "N = 3 (~5 s) e 9 pulsos no SCL");
+}
+
 static void testar_sensor_precisa_reconfigurar() {
   secao("FW-11: o sensor que reiniciou");
   const uint8_t user_ok = MPU_USER_CTRL_FIFO_EN;
@@ -804,6 +826,7 @@ int main() {
   testar_coordenacao_do_radio();
   testar_calibrar_amostras();
   testar_vigia_da_fifo();
+  testar_guarda_do_barramento();
   testar_sensor_precisa_reconfigurar();
 
   printf("\n-----------------------------------------\n");
