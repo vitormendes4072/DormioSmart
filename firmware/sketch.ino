@@ -140,8 +140,13 @@ static SemaphoreHandle_t mutex_parede;
 static CoordenacaoDoRadio radio;
 static TaskHandle_t tarefa_envio = 0;
 static TaskHandle_t tarefa_medicao = 0;  // FW-14: para medir a pilha dela
-static const uint32_t PILHA_DO_ENVIO = 16384;
-static const uint32_t PILHA_DA_MEDICAO = 8192;
+// FW-14, etapa 2 (17/11): pela medida de uma noite inteira (43 envios, 41
+// handshakes TLS, 1 POST que falhou; 21 reconfiguracoes do sensor e 19
+// liberacoes do barramento), o envio usou ~4,1 KB de 16 KB e a medicao ~2,3
+// KB de 8 KB. Cortadas com margem de ~2x; a linha `[memoria]` avisa `PILHA
+// BAIXA` abaixo de 1 KB livre, e o estouro a protecao do FreeRTOS pega.
+static const uint32_t PILHA_DO_ENVIO = 8192;
+static const uint32_t PILHA_DA_MEDICAO = 4096;
 
 static CadeiaC2 cadeia;
 // A calibracao da unidade (FW-11, `calibracao_da_unidade.h`) e a vigia que
@@ -155,12 +160,13 @@ static float grade_x[AMOSTRAS_NA_GRADE], grade_y[AMOSTRAS_NA_GRADE], grade_z[AMO
 static uint64_t origem_us = 0;
 
 static RegistroDeEpoca rascunho[LEITURAS_POR_LOTE_NO_ESP32];
-// O texto do lote (31 200 B) fica no heap, reservado uma vez no `setup`
-// (FW-12, 12/11). Como vetor estatico ele estourava a RAM estatica do ESP32
+// O texto do lote fica no heap, reservado uma vez no `setup` (FW-12, 12/11).
+// O tamanho e o do pior caso de 20 leituras (`tamanho_do_lote`, FW-14 etapa
+// 2: 7 235 B); ate 17/11 eram 520 B por leitura, sem conta (10 400 B). Como vetor estatico ele estourava a RAM estatica do ESP32
 // (`dram0_0_seg`) em 18 088 B com o Wi-Fi e o TLS do arduino-esp32 3.3.12 --
 // o que nenhum teste no host via, porque o host nao tem esse limite.
 // `scripts/compilar_sketch_esp32.py` compila para o chip e mede a folga.
-static const size_t TAMANHO_JSON_DO_LOTE = LEITURAS_POR_LOTE_NO_ESP32 * 520;
+static const size_t TAMANHO_JSON_DO_LOTE = tamanho_do_lote(LEITURAS_POR_LOTE_NO_ESP32);
 static char *json_do_lote = 0;
 
 // Diagnostico para o log -- e para a bancada, onde "0 transbordos em 8 h" vai
@@ -776,5 +782,8 @@ void setup() {
   xTaskCreatePinnedToCore(tarefa_de_medicao, "medicao", PILHA_DA_MEDICAO, 0, 5, &tarefa_medicao, 1);
 }
 
-// Todo o trabalho esta nas duas tarefas.
-void loop() { vTaskDelay(portMAX_DELAY); }
+// Todo o trabalho esta nas duas tarefas. A tarefa que roda o `setup` e o
+// `loop` nasce com 8 KB de pilha (`CONFIG_ARDUINO_LOOP_STACK_SIZE`) e, ate
+// 17/11, ficava parada aqui a noite inteira. Apagada, o FreeRTOS devolve a
+// pilha ao heap -- que e o que o handshake TLS do envio precisa (FW-14).
+void loop() { vTaskDelete(NULL); }

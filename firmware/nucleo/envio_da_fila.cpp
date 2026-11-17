@@ -8,8 +8,10 @@
 
 namespace dormio {
 
-// Uma leitura com `f` passa de 400 B (`payload.h`); 512 da folga.
+// O rascunho de uma leitura, na pilha de quem chama. O pior caso e
+// `PIOR_LEITURA_BYTES` (341 B medidos no teste); 512 da folga.
 static const uint32_t TAMANHO_DA_LEITURA = 512;
+static_assert(PIOR_LEITURA_BYTES < TAMANHO_DA_LEITURA, "o rascunho nao cabe o pior caso");
 
 PreparoDoLote preparar_lote(FilaNaFlash *fila, const ResolucaoDeParede &parede,
                             RegistroDeEpoca *rascunho, uint32_t max, char *destino,
@@ -69,7 +71,17 @@ uint32_t formatar_folga(const FolgaDeMemoria &f, char *destino, uint32_t tamanho
     destino[0] = '\0';
     return 0;
   }
-  return static_cast<uint32_t>(n);
+  uint32_t usado = static_cast<uint32_t>(n);
+  if (f.pilha_envio_livre < LIMIAR_DE_PILHA_BAIXA_BYTES ||
+      f.pilha_medicao_livre < LIMIAR_DE_PILHA_BAIXA_BYTES) {
+    const int m = snprintf(destino + usado, tamanho - usado, "; PILHA BAIXA");
+    if (m < 0 || usado + static_cast<uint32_t>(m) >= tamanho) {
+      destino[0] = '\0';
+      return 0;
+    }
+    usado += static_cast<uint32_t>(m);
+  }
+  return usado;
 }
 
 }  // namespace dormio

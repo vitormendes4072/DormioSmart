@@ -688,6 +688,163 @@ static void testar_linha_de_folga() {
             "sem espaco, nada pela metade");
 }
 
+// FW-14, etapa 2: o pior caso de uma leitura da fila, e o lote de 20.
+static int texto_9g(double v) {
+  char b[64];
+  return snprintf(b, sizeof(b), "%.9g", v);
+}
+
+static void testar_pior_caso_da_leitura() {
+  secao("FW-14, etapa 2: o pior caso de uma leitura da fila, e o buffer do lote");
+  // (1) O texto mais longo de cada feature, sobre TODOS os valores que o
+  // registro da flash consegue guardar (16 bits cada).
+  int maior[9] = {0};
+  for (uint32_t q = 0; q < 65536; q++) {
+    VetorDeFeatures v;
+    v.enmo_media = v.enmo_desvio = v.enmo_max = v.mag_din_media = static_cast<uint16_t>(q);
+    const uint32_t c = q < AMOSTRAS_NA_GRADE ? q : AMOSTRAS_NA_GRADE;
+    v.cruzamentos = v.amostras_acima = static_cast<uint16_t>(c);
+    v.gx = v.gy = v.gz = static_cast<int16_t>(static_cast<int32_t>(q) - 32768);
+    const FeaturesDeEpoca f = desquantizar(v, static_cast<uint16_t>(AMOSTRAS_NA_GRADE));
+    const double x[9] = {f.enmo_media, f.enmo_desvio, f.enmo_max, f.mag_din_media, f.zcr,
+                         f.p_frac, f.gx, f.gy, f.gz};
+    for (int i = 0; i < 9; i++) {
+      const int l = texto_9g(x[i]);
+      if (l > maior[i]) maior[i] = l;
+    }
+  }
+  // (2) O resto no pior caso: eixos e pico no teto plausivel, com sinal; a
+  // temperatura no fim da faixa do registrador; o `ts` de quatro digitos no
+  // ano; `amostras` no maximo do campo; a marca de calibracao. As features em
+  // zero ("0"; o `gz` em 1) para somar o texto mais longo de cada uma depois.
+  // O `gn` fica de fora: o registro da flash nao o guarda.
+  Epoca e = fabricar(0);
+  e.pico_total = MAGNITUDE_MAXIMA_PLAUSIVEL;
+  e.pico_ax = e.pico_ay = e.pico_az = -MAGNITUDE_MAXIMA_PLAUSIVEL;
+  e.temp_pico = temperatura_mpu_c(-32768);
+  e.amostras = 65535;
+  ResolucaoDeParede parede;
+  parede.sincronizar(0, 253402300799000LL);  // 9999-12-31T23:59:59Z
+  FeaturesDeEpoca zero;
+  zero.gz = 1;
+  zero.calibrada = 1;
+  char buf[512];
+  uint32_t n = 0;
+  bool incluidas = false;
+  VERIFICAR(montar_payload(e, parede, 0, buf, sizeof(buf), &n, &zero, TAXA_DA_GRADE_HZ, &incluidas) ==
+                    PAYLOAD_OK &&
+                incluidas && strstr(buf, "\"ts\":\"9999-12-31T") != 0,
+            "o esqueleto do pior caso monta, com ts e features");
+  uint32_t pior = n;
+  for (int i = 0; i < 9; i++) pior += static_cast<uint32_t>(maior[i] - 1);
+  char msg[160];
+  snprintf(msg, sizeof(msg), "o pior caso (%u B) cabe em PIOR_LEITURA_BYTES (%u B)",
+           static_cast<unsigned>(pior), static_cast<unsigned>(PIOR_LEITURA_BYTES));
+  VERIFICAR(pior <= PIOR_LEITURA_BYTES, msg);
+  VERIFICAR(PIOR_LEITURA_BYTES - pior < 40, "e a folga e pequena: o buffer nao volta a ser chute");
+
+  // (3) Leituras sorteadas, com a gravidade unitaria (senao as features nem
+  // entram), nunca passam do pior caso calculado.
+  uint32_t semente = 12345u, maior_sorteada = 0;
+  bool alguma_com_f = false;
+  for (int k = 0; k < 20000; k++) {
+    VetorDeFeatures v;
+    semente = semente * 1103515245u + 12345u;
+    v.enmo_media = static_cast<uint16_t>(semente >> 16);
+    semente = semente * 1103515245u + 12345u;
+    v.enmo_desvio = static_cast<uint16_t>(semente >> 16);
+    semente = semente * 1103515245u + 12345u;
+    v.enmo_max = static_cast<uint16_t>(semente >> 16);
+    semente = semente * 1103515245u + 12345u;
+    v.mag_din_media = static_cast<uint16_t>(semente >> 16);
+    v.cruzamentos = static_cast<uint16_t>((semente >> 8) % AMOSTRAS_NA_GRADE);
+    v.amostras_acima = static_cast<uint16_t>((semente >> 4) % AMOSTRAS_NA_GRADE);
+    semente = semente * 1103515245u + 12345u;
+    const double a = (semente >> 8) / 16777216.0 * 6.283185307179586;
+    semente = semente * 1103515245u + 12345u;
+    const double z = (semente >> 8) / 16777216.0 * 2.0 - 1.0;
+    const double r = sqrt(1.0 - z * z);
+    v.gx = static_cast<int16_t>(lround(r * cos(a) * 32767.0));
+    v.gy = static_cast<int16_t>(lround(r * sin(a) * 32767.0));
+    v.gz = static_cast<int16_t>(lround(z * 32767.0));
+    FeaturesDeEpoca f = desquantizar(v, static_cast<uint16_t>(AMOSTRAS_NA_GRADE));
+    f.calibrada = 1;
+    Epoca s = fabricar(static_cast<uint32_t>(k));
+    s.pico_total = 3.0f + static_cast<float>((semente >> 12) % 13200) / 100.0f;
+    s.pico_ax = -s.pico_total;
+    s.pico_ay = -s.pico_total / 2;
+    s.pico_az = -s.pico_total / 3;
+    s.temp_pico = temperatura_mpu_c(static_cast<int16_t>(semente >> 16));
+    s.amostras = static_cast<uint16_t>(semente >> 8);
+    uint32_t m = 0;
+    bool inc = false;
+    if (montar_payload(s, parede, 0, buf, sizeof(buf), &m, &f, TAXA_DA_GRADE_HZ, &inc) ==
+        PAYLOAD_OK) {
+      if (m > maior_sorteada) maior_sorteada = m;
+      if (inc) alguma_com_f = true;
+    }
+  }
+  snprintf(msg, sizeof(msg), "20 000 leituras sorteadas: a maior (%u B) nao passa do pior caso",
+           static_cast<unsigned>(maior_sorteada));
+  VERIFICAR(alguma_com_f && maior_sorteada <= pior, msg);
+
+  // (4) O lote: 20 leituras do pior caso cabem em `tamanho_do_lote(20)`, e
+  // com um byte a menos so cabem 19 -- a conta e justa, sem chute.
+  static char lote[tamanho_do_lote(20)];
+  static char leitura[PIOR_LEITURA_BYTES];
+  memset(leitura, 'x', sizeof(leitura));
+  MontadorDeLote cheio(lote, tamanho_do_lote(20));
+  uint32_t cabem = 0;
+  while (cabem < 25 && cheio.adicionar(leitura, PIOR_LEITURA_BYTES)) cabem++;
+  VERIFICAR(cabem == 20 && cheio.fechar() == tamanho_do_lote(20) - 1,
+            "20 leituras do pior caso cabem no buffer de 20, e o lote fecha nele");
+  MontadorDeLote curto(lote, tamanho_do_lote(20) - 1);
+  cabem = 0;
+  while (cabem < 25 && curto.adicionar(leitura, PIOR_LEITURA_BYTES)) cabem++;
+  VERIFICAR(cabem == 19, "com um byte a menos, so 19 (o lote fecha antes, sem estourar)");
+}
+
+// FW-14, etapa 2: a linha avisa quando uma pilha fica baixa.
+static void testar_aviso_de_pilha_baixa() {
+  secao("FW-14, etapa 2: a linha [memoria] avisa PILHA BAIXA");
+  FolgaDeMemoria f;
+  f.heap_livre = 130000;
+  f.heap_minimo = 30000;
+  f.maior_bloco_antes = 110000;
+  f.maior_bloco_depois = 60000;
+  f.pilha_envio_livre = 4100;
+  f.pilha_envio_total = 8192;
+  f.pilha_medicao_livre = 1800;
+  f.pilha_medicao_total = 4096;
+  f.maior_lote = 6127;
+  f.buffer_do_lote = tamanho_do_lote(20);
+  f.conexoes_tls = 1;
+  f.lotes = 1;
+  char buf[320];
+  VERIFICAR(formatar_folga(f, buf, sizeof(buf)) > 0 && strstr(buf, "PILHA BAIXA") == 0,
+            "com folga nas duas pilhas, sem aviso");
+  f.pilha_medicao_livre = LIMIAR_DE_PILHA_BAIXA_BYTES - 1;
+  uint32_t n = formatar_folga(f, buf, sizeof(buf));
+  VERIFICAR(n == strlen(buf) && strstr(buf, "; PILHA BAIXA") != 0,
+            "a medicao abaixo do limiar: a linha termina em PILHA BAIXA");
+  f.pilha_medicao_livre = 1800;
+  f.pilha_envio_livre = 200;
+  VERIFICAR(formatar_folga(f, buf, sizeof(buf)) > 0 && strstr(buf, "; PILHA BAIXA") != 0,
+            "o envio abaixo do limiar, tambem");
+  f.pilha_envio_livre = LIMIAR_DE_PILHA_BAIXA_BYTES;
+  VERIFICAR(formatar_folga(f, buf, sizeof(buf)) > 0 && strstr(buf, "PILHA BAIXA") == 0,
+            "no limiar exato, ainda sem aviso");
+  f.pilha_envio_livre = 200;
+  char curto[200];
+  const uint32_t sem_aviso = static_cast<uint32_t>(strlen(
+      "[memoria] heap 130000 (minimo 30000); maior bloco 110000 antes, 60000 depois; "
+      "pilha livre: envio 200 de 8192 B, medicao 1800 de 4096 B; "
+      "maior lote 6127 de 7235 B; 1 conexoes TLS para 1 lotes"));
+  VERIFICAR(sem_aviso < sizeof(curto) &&
+                formatar_folga(f, curto, sem_aviso + 5) == 0 && curto[0] == '\0',
+            "o aviso que nao cabe nao sai pela metade");
+}
+
 // FW-18: a faixa plausivel do pico. O teto e o fundo de escala da C2, nao 20.
 static void testar_teto_da_magnitude() {
   secao("FW-18: o pico de |a| plausivel vai ate o fundo de escala");
@@ -888,6 +1045,8 @@ int main() {
   testar_buffer_confirma_o_prefixo();
   testar_payload_com_features();
   testar_linha_de_folga();
+  testar_pior_caso_da_leitura();
+  testar_aviso_de_pilha_baixa();
   testar_teto_da_magnitude();
   testar_epoca_da_grade();
   testar_coordenacao_do_radio();
