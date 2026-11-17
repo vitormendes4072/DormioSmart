@@ -43,6 +43,13 @@ struct MpuFalso {
   uint32_t n_leitura, pos;
   uint16_t amostras_na_fifo;
   int16_t bruto_z;
+  // FW-17: falhas injetadas. `falhas_pendentes` leituras do registrador
+  // `falhar_registrador` voltam vazias (barramento falhou); `oflow` liga o bit
+  // de transbordo; `contagem_forcada` >= 0 substitui FIFO_COUNT.
+  uint8_t falhar_registrador;
+  int falhas_pendentes;
+  bool oflow;
+  int32_t contagem_forcada;
 
   void reiniciar() {
     memset(regs, 0, sizeof(regs));
@@ -67,7 +74,8 @@ struct MpuFalso {
     for (uint32_t i = 0; i < n && i < sizeof(leitura); i++) {
       uint8_t b = regs[static_cast<uint8_t>(ponteiro + i)];
       if (ponteiro == 0x72) {  // FIFO_COUNTH/L
-        const uint16_t bytes = enchendo() ? static_cast<uint16_t>(amostras_na_fifo * 6) : 0;
+        uint16_t bytes = enchendo() ? static_cast<uint16_t>(amostras_na_fifo * 6) : 0;
+        if (contagem_forcada >= 0) bytes = static_cast<uint16_t>(contagem_forcada);
         b = i == 0 ? static_cast<uint8_t>(bytes >> 8) : static_cast<uint8_t>(bytes & 0xFF);
       } else if (ponteiro == 0x74) {  // FIFO_R_W: x = 0, y = 0, z = bruto_z
         const uint32_t k = i % 6;
@@ -76,7 +84,7 @@ struct MpuFalso {
         const int16_t t = static_cast<int16_t>((30.0 - 36.53) * 340.0);
         b = i == 0 ? static_cast<uint8_t>(t >> 8) : static_cast<uint8_t>(t & 0xFF);
       } else if (ponteiro == 0x3A) {
-        b = 0;  // INT_STATUS: sem transbordo
+        b = oflow ? 0x10 : 0;  // INT_STATUS: FIFO_OFLOW so quando injetado
       }
       leitura[n_leitura++] = b;
     }
@@ -95,6 +103,12 @@ uint8_t wire_end_tx() {
   return 0;
 }
 uint8_t wire_request(size_t n) {
+  if (mpu.falhas_pendentes > 0 && mpu.ponteiro == mpu.falhar_registrador) {
+    mpu.falhas_pendentes--;
+    mpu.n_leitura = 0;
+    mpu.pos = 0;
+    return 0;  // o barramento falhou: nenhum byte veio
+  }
   mpu.preparar(static_cast<uint32_t>(n));
   return static_cast<uint8_t>(mpu.n_leitura);
 }
@@ -118,6 +132,20 @@ static void volta(bool sensor_enche) {
   fechar_epocas();
 }
 
+// FW-17: uma volta com a falha injetada tem de somar 1 no total e 1 so na
+// causa esperada.
+static void conferir_perda(int esperada, const char *rotulo) {
+  uint32_t antes[N_CAUSAS_DE_PERDA];
+  for (int i = 0; i < N_CAUSAS_DE_PERDA; i++) antes[i] = contadores.perdas[i].load();
+  const uint32_t total = contadores.transbordos.load();
+  volta(true);
+  bool ok = contadores.transbordos.load() == total + 1;
+  for (int i = 0; i < N_CAUSAS_DE_PERDA; i++) {
+    ok = ok && contadores.perdas[i].load() == antes[i] + (i == esperada ? 1u : 0u);
+  }
+  conferir(ok, rotulo);
+}
+
 static double media_de_z_da_grade() {
   double s = 0;
   for (uint32_t i = 0; i < AMOSTRAS_NA_GRADE; i++) s += grade_z[i];
@@ -128,6 +156,7 @@ int main() {
   mutex_fila = xSemaphoreCreateMutex();
   mutex_parede = xSemaphoreCreateMutex();
   mpu.reiniciar();
+  mpu.contagem_forcada = -1;  // FW-17: sem falha injetada ate a secao dela
   mpu.bruto_z = static_cast<int16_t>(lround(-1.1541 * LSB_POR_G));  // chip para baixo, com o erro de Z
 
   printf("o sketch contra um MPU6050 falso -- FW-11\n");
@@ -164,6 +193,32 @@ int main() {
   const uint32_t depois = contadores.reacordados.load();
   for (int i = 0; i < 6; i++) volta(false);
   conferir(contadores.reacordados.load() == depois, "6 drenagens vazias, sensor acordado: nada");
+
+  printf("FW-17: cada drenagem descartada conta na sua causa\n");
+  {
+    const uint32_t total = contadores.transbordos.load();
+    volta(true);
+    conferir(contadores.transbordos.load() == total, "sem falha injetada, nenhuma perda");
+  }
+  mpu.falhar_registrador = 0x3A;  // INT_STATUS
+  mpu.falhas_pendentes = 1;
+  conferir_perda(PERDA_I2C_NO_ESTADO, "o barramento falha no INT_STATUS: i2c no estado");
+  mpu.oflow = true;
+  conferir_perda(PERDA_TRANSBORDO_BIT, "FIFO_OFLOW ligado: transbordo (bit)");
+  mpu.oflow = false;
+  mpu.contagem_forcada = 1024;
+  conferir_perda(PERDA_TRANSBORDO_TETO, "contagem 1024 sem o bit: transbordo (teto)");
+  mpu.contagem_forcada = 511;
+  conferir_perda(PERDA_DESALINHADA, "contagem 511: desalinhada");
+  mpu.contagem_forcada = -1;
+  mpu.falhar_registrador = 0x74;  // FIFO_R_W
+  mpu.falhas_pendentes = 1;
+  conferir_perda(PERDA_I2C_NA_LEITURA, "o barramento falha nos bytes da FIFO: i2c na leitura");
+  {
+    const uint32_t total = contadores.transbordos.load();
+    volta(true);
+    conferir(contadores.transbordos.load() == total, "depois das falhas, a drenagem volta ao normal");
+  }
 
   printf("%d falhas\n", falhas);
   return falhas == 0 ? 0 : 1;

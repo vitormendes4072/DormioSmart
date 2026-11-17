@@ -192,5 +192,19 @@ sabotar_sensor "8. reacordar sem configurar o sensor" \
   "  const bool ok = configurar_mpu();" \
   "  const bool ok = true;"
 
+sabotar_sensor "9. toda perda vira i2c no estado" \
+  "    registrar_perda(causa_da_leitura_recusada(n_fifo, estado), t_us, n_fifo, estado);" \
+  "    registrar_perda(PERDA_I2C_NO_ESTADO, t_us, n_fifo, estado);"
+sabotar_sensor "10. falha nos bytes contada como no estado" \
+  "      registrar_perda(PERDA_I2C_NA_LEITURA, t_us, n_fifo, estado);" \
+  "      registrar_perda(PERDA_I2C_NO_ESTADO, t_us, n_fifo, estado);"
+sabotar_sensor "11. a causa nao e contada" \
+  "  contadores.perdas[causa]++;" \
+  "  (void)causa;"
+sabotar_sensor "12. o total deixa de contar" \
+  "  contadores.transbordos++;
+  contadores.perdas[causa]++;" \
+  "  contadores.perdas[causa]++;"
+
 echo "$((total - falhas))/$total como esperado"
 [ $falhas -eq 0 ]

@@ -181,6 +181,10 @@ struct Contadores {
   // e uma queda de alimentacao no MPU6050 -- na bancada, o contato que falha
   // ao virar a placa (`HW-09`). Zero numa noite e o esperado.
   std::atomic<uint32_t> reacordados;
+  // FW-17: as drenagens descartadas, por causa. `transbordos` (acima) segue
+  // sendo o total, com o nome antigo, para os logs de antes continuarem
+  // comparaveis; e este vetor que diz o que foi.
+  std::atomic<uint32_t> perdas[N_CAUSAS_DE_PERDA];
 };
 // Sem inicializador de proposito: armazenamento estatico ja comeca em zero, e
 // `= {0, ...}` copiaria `atomic`, o que o C++11 do `make sintaxe` recusa.
@@ -262,6 +266,18 @@ static void conferir_sensor() {
 // contagem acumulada entra na regressao da linha do tempo (`cadeia_c2.h`).
 // So os bytes contados sao lidos -- uma amostra que chegue durante a leitura
 // fica para a proxima drenagem, e a contagem continua dizendo a verdade.
+// FW-17: conta e registra uma drenagem descartada. A linha no log leva o que
+// separa as causas na bancada: a contagem e o estado lidos, e quanto tempo
+// passou desde a drenagem anterior (perto de 1,7 s, nao foi atraso).
+static uint64_t ultima_drenagem_us = 0;
+static void registrar_perda(CausaDaPerda causa, uint64_t t_us, uint16_t n_fifo, uint8_t estado) {
+  contadores.transbordos++;
+  contadores.perdas[causa]++;
+  Serial.printf("[drenagem] descartada: %s (fifo %u B, INT_STATUS 0x%02X, %u ms desde a anterior)\n",
+                nome_da_causa(causa), static_cast<unsigned>(n_fifo), estado,
+                static_cast<unsigned>((t_us - ultima_drenagem_us) / 1000u));
+}
+
 static void drenar() {
   static uint8_t bytes[FIFO_CAPACIDADE_AMOSTRAS * BYTES_POR_AMOSTRA];
   static AmostraBruta amostras[FIFO_CAPACIDADE_AMOSTRAS];
@@ -272,14 +288,16 @@ static void drenar() {
   if (!ler_registradores(MPU_REG_INT_STATUS, &estado, 1) ||
       !ler_registradores(MPU_REG_FIFO_COUNTH, contagem, 2)) {
     cadeia.registrar_drenagem(t_us, 0, 0, true);
-    contadores.transbordos++;
+    registrar_perda(PERDA_I2C_NO_ESTADO, t_us, 0, estado);
+    ultima_drenagem_us = t_us;
     return;
   }
   const uint16_t n_fifo = static_cast<uint16_t>((contagem[0] << 8) | contagem[1]);
   if (avaliar_fifo(n_fifo, estado) != LEITURA_OK) {
     resetar_fifo();
     cadeia.registrar_drenagem(t_us, 0, 0, true);
-    contadores.transbordos++;
+    registrar_perda(causa_da_leitura_recusada(n_fifo, estado), t_us, n_fifo, estado);
+    ultima_drenagem_us = t_us;
     return;
   }
 
@@ -292,7 +310,8 @@ static void drenar() {
       // Leitura pela metade: o fluxo perdeu o alinhamento com a contagem.
       resetar_fifo();
       cadeia.registrar_drenagem(t_us, 0, 0, true);
-      contadores.transbordos++;
+      registrar_perda(PERDA_I2C_NA_LEITURA, t_us, n_fifo, estado);
+      ultima_drenagem_us = t_us;
       return;
     }
     lidos = static_cast<uint16_t>(lidos + bloco);
@@ -302,6 +321,7 @@ static void drenar() {
   // mesmo ponto do celular. A temperatura e a do chip, lida agora.
   if (n > 0) calibrar_amostras(calibracao, ler_temperatura_c(), amostras, n);
   cadeia.registrar_drenagem(t_us, amostras, n, false);
+  ultima_drenagem_us = t_us;
   if (vigia.observar(n)) conferir_sensor();
 }
 
@@ -574,6 +594,14 @@ static void tarefa_de_envio(void *) {
                   static_cast<unsigned>(contadores.reacordados.load()),
                   static_cast<unsigned>(esp_get_free_heap_size()),
                   static_cast<unsigned>(esp_get_minimum_free_heap_size()));
+    // FW-17: o total de "transbordos" acima, separado por causa.
+    Serial.printf("[envio] drenagens descartadas: i2c no estado %u, transbordo (bit) %u, "
+                  "transbordo (teto) %u, desalinhada %u, i2c na leitura %u\n",
+                  static_cast<unsigned>(contadores.perdas[PERDA_I2C_NO_ESTADO].load()),
+                  static_cast<unsigned>(contadores.perdas[PERDA_TRANSBORDO_BIT].load()),
+                  static_cast<unsigned>(contadores.perdas[PERDA_TRANSBORDO_TETO].load()),
+                  static_cast<unsigned>(contadores.perdas[PERDA_DESALINHADA].load()),
+                  static_cast<unsigned>(contadores.perdas[PERDA_I2C_NA_LEITURA].load()));
   }
 }
 
