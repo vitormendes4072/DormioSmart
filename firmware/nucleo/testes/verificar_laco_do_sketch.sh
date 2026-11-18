@@ -310,6 +310,8 @@ troca "$W/stubs-envio/esp_sleep.h" "inline int esp_light_sleep_start() { return 
   "int esp_light_sleep_start();"
 troca "$W/stubs-envio/freertos/task.h" "inline void vTaskDelay(const TickType_t) {}" \
   "void vTaskDelay(const TickType_t);"
+troca "$W/stubs-envio/Arduino.h" "inline uint32_t analogReadMilliVolts(uint8_t) { return 0; }" \
+  "uint32_t analogReadMilliVolts(uint8_t);"
 troca "$W/stubs-envio/freertos/task.h" "inline void vTaskDelete(TaskHandle_t) {}" \
   "void vTaskDelete(TaskHandle_t);"
 cp "$W/stubs/secrets.h" "$W/stubs-envio/secrets.h"
@@ -372,6 +374,10 @@ sabotar_envio "21. o loop() volta a so esperar" \
 sabotar_envio "22. o buffer volta a 520 B por leitura" \
   "static const size_t TAMANHO_JSON_DO_LOTE = tamanho_do_lote(LEITURAS_POR_LOTE_NO_ESP32);" \
   "static const size_t TAMANHO_JSON_DO_LOTE = LEITURAS_POR_LOTE_NO_ESP32 * 520;"
+sabotar_envio "24. a bateria nao e lida no envio" \
+  "    if (bateria_no_envio_mv == 0) bateria_no_envio_mv = medir_bateria_mv();
+" \
+  ""
 
 echo "$((total - falhas))/$total como esperado"
 [ $falhas -eq 0 ]

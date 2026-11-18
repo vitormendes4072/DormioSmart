@@ -6,6 +6,7 @@
 // Se um .cpp novo entrar no nucleo e o sketch passar a usa-lo, ele tem de
 // entrar aqui -- senao o link falha na IDE (o `make sintaxe` nao linka).
 
+#include "nucleo/bateria.cpp"
 #include "nucleo/cadeia_c2.cpp"
 #include "nucleo/calibracao.cpp"
 #include "nucleo/caracteristicas.cpp"

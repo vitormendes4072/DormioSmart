@@ -30,11 +30,11 @@ CXXFLAGS := -std=c++11 -Wall -Wextra -Wpedantic -Wshadow -O2 -g \
 FONTES := epoca.cpp payload.cpp filtro.cpp caracteristicas.cpp \
           fifo_mpu.cpp reamostragem.cpp cadeia_c2.cpp lote.cpp \
           registro_flash.cpp fila_flash.cpp epoca_c2.cpp envio_da_fila.cpp \
-          coletor_celular.cpp calibracao.cpp
+          coletor_celular.cpp calibracao.cpp bateria.cpp
 CABECALHOS := epoca.h buffer.h cadencia.h reconexao.h relogio.h payload.h \
               filtro.h caracteristicas.h fifo_mpu.h reamostragem.h cadeia_c2.h lote.h \
               registro_flash.h fila_flash.h epoca_c2.h envio_da_fila.h radio.h \
-              coletor_celular.h calibracao.h
+              coletor_celular.h calibracao.h bateria.h
 
 # O leitor de JSON NAO esta em FONTES de proposito: ele e instrumento de
 # teste, mora em `testes/` e nao deve embarcar. Se um dia aparecer em FONTES,

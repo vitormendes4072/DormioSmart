@@ -12,6 +12,7 @@
 
 #include "../buffer.h"
 #include "../cadeia_c2.h"
+#include "../bateria.h"
 #include "../calibracao.h"
 #include "../epoca.h"
 #include "../envio_da_fila.h"
@@ -804,6 +805,44 @@ static void testar_pior_caso_da_leitura() {
   VERIFICAR(cabem == 19, "com um byte a menos, so 19 (o lote fecha antes, sem estourar)");
 }
 
+// HW-10, etapa 1: a tensao da celula pelo divisor, e o estado da LiFePO4.
+static void testar_bateria() {
+  secao("HW-10: a tensao da celula e o estado da bateria");
+  const uint32_t amostras[] = {1640, 1660, 1650, 1650};
+  VERIFICAR(tensao_da_bateria_mv(amostras, 4) == 3300,
+            "media de 1 650 mV no pino, vezes o divisor 2: 3 300 mV");
+  VERIFICAR(tensao_da_bateria_mv(amostras, 0) == 0 && tensao_da_bateria_mv(0, 4) == 0,
+            "sem amostras, 0");
+
+  VERIFICAR(classificar_bateria(3300, BATERIA_OK) == BATERIA_OK, "3,30 V: ok");
+  VERIFICAR(classificar_bateria(3050, BATERIA_OK) == BATERIA_BAIXA, "3,05 V: baixa");
+  VERIFICAR(classificar_bateria(2950, BATERIA_OK) == BATERIA_CRITICA, "2,95 V: critica");
+  VERIFICAR(classificar_bateria(1500, BATERIA_OK) == BATERIA_INDISPONIVEL &&
+                classificar_bateria(0, BATERIA_CRITICA) == BATERIA_INDISPONIVEL,
+            "abaixo de 2 V nao e celula (pino solto): indisponivel");
+
+  VERIFICAR(classificar_bateria(3120, BATERIA_BAIXA) == BATERIA_BAIXA,
+            "histerese: baixa a 3,12 V continua baixa (sai so acima de 3,15 V)");
+  VERIFICAR(classificar_bateria(3160, BATERIA_BAIXA) == BATERIA_OK, "baixa a 3,16 V volta a ok");
+  VERIFICAR(classificar_bateria(3020, BATERIA_CRITICA) == BATERIA_CRITICA,
+            "histerese: critica a 3,02 V continua critica");
+  VERIFICAR(classificar_bateria(3060, BATERIA_CRITICA) == BATERIA_BAIXA,
+            "critica a 3,06 V sobe para baixa, nao para ok");
+  VERIFICAR(classificar_bateria(3120, BATERIA_INDISPONIVEL) == BATERIA_OK,
+            "a primeira leitura valida nao herda histerese");
+
+  char buf[128];
+  VERIFICAR(formatar_bateria(3300, 3240, BATERIA_OK, buf, sizeof(buf)) == strlen(buf) &&
+                strstr(buf, "[bateria] 3300 mV em repouso, 3240 mV no envio (ok)") != 0,
+            "a linha do log com as duas leituras e o estado");
+  VERIFICAR(formatar_bateria(120, 0, BATERIA_INDISPONIVEL, buf, sizeof(buf)) > 0 &&
+                strstr(buf, "indisponivel") != 0 && strstr(buf, "120 mV") != 0,
+            "sem divisor, a linha diz indisponivel e mostra o que leu");
+  char curto[20];
+  VERIFICAR(formatar_bateria(3300, 3240, BATERIA_OK, curto, sizeof(curto)) == 0 && curto[0] == '\0',
+            "sem espaco, nada pela metade");
+}
+
 // FW-14, etapa 2: a linha avisa quando uma pilha fica baixa.
 static void testar_aviso_de_pilha_baixa() {
   secao("FW-14, etapa 2: a linha [memoria] avisa PILHA BAIXA");
@@ -1047,6 +1086,7 @@ int main() {
   testar_linha_de_folga();
   testar_pior_caso_da_leitura();
   testar_aviso_de_pilha_baixa();
+  testar_bateria();
   testar_teto_da_magnitude();
   testar_epoca_da_grade();
   testar_coordenacao_do_radio();

@@ -61,6 +61,7 @@
 #include "ca_raiz.h"
 #include "calibracao_da_unidade.h"
 #include "midia_flash_esp32.h"
+#include "nucleo/bateria.h"
 #include "nucleo/cadeia_c2.h"
 #include "nucleo/calibracao.h"
 #include "nucleo/caracteristicas.h"
@@ -86,6 +87,10 @@ static const char *URL_LOTE = "https://dormio-smart.vercel.app/api/data/lote";
 
 static const int PINO_SDA = 21;
 static const int PINO_SCL = 22;
+// HW-10: o divisor 1 MOhm + 1 MOhm da celula (`docs/ESTUDO-ENERGIA.md` §8.1).
+// GPIO35 e do ADC1, que funciona com o Wi-Fi ligado; o ADC2 nao.
+static const uint8_t PINO_BATERIA = 35;
+static const uint32_t AMOSTRAS_DA_BATERIA = 16;
 static const uint8_t ENDERECO_MPU = 0x68;
 
 // Registradores de energia do MPU6050. Fora de `fifo_mpu.h` porque so o
@@ -168,6 +173,20 @@ static RegistroDeEpoca rascunho[LEITURAS_POR_LOTE_NO_ESP32];
 // `scripts/compilar_sketch_esp32.py` compila para o chip e mede a folga.
 static const size_t TAMANHO_JSON_DO_LOTE = tamanho_do_lote(LEITURAS_POR_LOTE_NO_ESP32);
 static char *json_do_lote = 0;
+
+// HW-10: a tensao da celula. Em repouso (antes do Wi-Fi) decide o estado; no
+// envio (logo depois do primeiro POST, radio ligado) mostra quanto ela cai
+// no pico. So vai para o log nesta etapa.
+static uint32_t bateria_no_envio_mv = 0;
+static EstadoDaBateria estado_da_bateria = BATERIA_INDISPONIVEL;
+
+static uint32_t medir_bateria_mv() {
+  uint32_t amostras[AMOSTRAS_DA_BATERIA];
+  for (uint32_t i = 0; i < AMOSTRAS_DA_BATERIA; i++) {
+    amostras[i] = static_cast<uint32_t>(analogReadMilliVolts(PINO_BATERIA));
+  }
+  return tensao_da_bateria_mv(amostras, AMOSTRAS_DA_BATERIA);
+}
 
 // Diagnostico para o log -- e para a bancada, onde "0 transbordos em 8 h" vai
 // sair daqui. Cada campo tem um so escritor (a medicao, no nucleo 1, ou o
@@ -593,6 +612,7 @@ static void sincronizar_relogio() {
 // Envia ate `LOTES_POR_VOLTA` lotes. Devolve false se a volta terminou em
 // falha (para a politica de reconexao recuar).
 static bool enviar_pendentes() {
+  bateria_no_envio_mv = 0;
   // Sem o buffer (o heap negou no `setup`), nada sai -- e nada se perde: as
   // epocas seguem na fila da flash. Falha conta como volta ruim (recuo).
   if (json_do_lote == 0) return false;
@@ -631,6 +651,7 @@ static bool enviar_pendentes() {
     http.addHeader("Content-Type", "application/json");
     http.addHeader("X-Device-Token", DEVICE_TOKEN);
     const int status = http.POST(reinterpret_cast<uint8_t *>(json_do_lote), preparo.tamanho);
+    if (bateria_no_envio_mv == 0) bateria_no_envio_mv = medir_bateria_mv();
     const String corpo = http.getString();
     http.end();
 
@@ -670,6 +691,7 @@ static void tarefa_de_envio(void *) {
       continue;
     }
 
+    const uint32_t bateria_repouso_mv = medir_bateria_mv();
     const uint32_t maior_bloco_antes =
         static_cast<uint32_t>(heap_caps_get_largest_free_block(MALLOC_CAP_8BIT));
     bool ok = conectar_wifi();
@@ -732,6 +754,12 @@ static void tarefa_de_envio(void *) {
     folga.lotes = contadores.lotes.load();
     char linha[320];
     if (formatar_folga(folga, linha, sizeof(linha)) > 0) Serial.println(linha);
+    // HW-10, etapa 1: a tensao da celula, so no log.
+    estado_da_bateria = classificar_bateria(bateria_repouso_mv, estado_da_bateria);
+    if (formatar_bateria(bateria_repouso_mv, bateria_no_envio_mv, estado_da_bateria, linha,
+                         sizeof(linha)) > 0) {
+      Serial.println(linha);
+    }
   }
 }
 

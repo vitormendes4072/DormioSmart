@@ -118,6 +118,10 @@ class SerialStub {
 };
 extern SerialStub Serial;
 
+// HW-10: o ADC calibrado do core do ESP32 (mV no pino). O stub le 0, como
+// o pino solto; o teste do envio troca por um ADC falso.
+inline uint32_t analogReadMilliVolts(uint8_t) { return 0; }
+
 // O core do ESP32 puxa estes pelo proprio Arduino.h; o stub faz o mesmo para
 // o sketch.ino nao precisar de include que ele nao tem na placa.
 #include "esp_sleep.h"
