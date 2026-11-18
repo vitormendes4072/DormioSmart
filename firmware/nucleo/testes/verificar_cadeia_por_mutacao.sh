@@ -23,7 +23,7 @@ NUCLEO=$(cd "$AQUI/.." && pwd)
 DOURADO="$NUCLEO/../../ml/testes/vetor_dourado_cadeia_c2.json"
 CXX=${CXX:-g++}
 BANDEIRAS="-std=c++11 -w -O2 -fno-exceptions -fno-rtti"
-FONTES="epoca.cpp payload.cpp filtro.cpp caracteristicas.cpp fifo_mpu.cpp reamostragem.cpp cadeia_c2.cpp lote.cpp registro_flash.cpp fila_flash.cpp epoca_c2.cpp envio_da_fila.cpp calibracao.cpp"
+FONTES="epoca.cpp payload.cpp filtro.cpp caracteristicas.cpp fifo_mpu.cpp reamostragem.cpp cadeia_c2.cpp lote.cpp registro_flash.cpp fila_flash.cpp epoca_c2.cpp envio_da_fila.cpp calibracao.cpp bateria.cpp"
 
 falhas=0
 total=0
@@ -282,6 +282,86 @@ esperar "32. calibrar trunca em vez de arredondar" unidade calibracao.cpp \
 esperar "33. calibrar sem saturar em +-8 g" unidade calibracao.cpp \
   "  if (lsb >= 32767.0) return 32767;" \
   "  (void)0;"
+
+echo
+echo "Sabotadores do FW-17, etapa 2 (a guarda do barramento) -- a suite de unidade tem de acusar:"
+esperar "34. a guarda nao recua" unidade fifo_mpu.cpp \
+  "  const unsigned dobro = 2u * limite_;" \
+  "  const unsigned dobro = limite_;"
+
+esperar "35. o recuo nao tem teto" unidade fifo_mpu.cpp \
+  "  limite_ = static_cast<uint8_t>(dobro > FALHAS_DE_I2C_TETO_DO_RECUO ? FALHAS_DE_I2C_TETO_DO_RECUO : dobro);" \
+  "  limite_ = static_cast<uint8_t>(dobro > 255 ? 255 : dobro);"
+
+esperar "36. a resposta nao zera o recuo" unidade fifo_mpu.cpp \
+  "    seguidas_ = 0;
+    limite_ = FALHAS_DE_I2C_PARA_LIBERAR;
+    return false;" \
+  "    seguidas_ = 0;
+    return false;"
+
+echo
+echo "Sabotadores do FW-18 (o teto da magnitude) -- a suite de unidade tem de acusar:"
+esperar "37. o teto volta a 20 m/s2" unidade payload.h \
+  "const float MAGNITUDE_MAXIMA_PLAUSIVEL = FUNDO_DE_ESCALA_G * GRAVIDADE_MS2 * 1.7320508f;" \
+  "const float MAGNITUDE_MAXIMA_PLAUSIVEL = 20.0f;"
+
+esperar "38. sem teto nenhum" unidade payload.h \
+  "  return total >= MAGNITUDE_MINIMA_PLAUSIVEL && total <= MAGNITUDE_MAXIMA_PLAUSIVEL;" \
+  "  return total >= MAGNITUDE_MINIMA_PLAUSIVEL;"
+
+esperar "39. sem piso (o sensor mudo passa)" unidade payload.h \
+  "  return total >= MAGNITUDE_MINIMA_PLAUSIVEL && total <= MAGNITUDE_MAXIMA_PLAUSIVEL;" \
+  "  return total <= MAGNITUDE_MAXIMA_PLAUSIVEL;"
+
+echo
+echo "Sabotadores do FW-14 (a linha da folga) -- a suite de unidade tem de acusar:"
+esperar "40. as pilhas trocadas na linha" unidade envio_da_fila.cpp \
+  "                         static_cast<unsigned>(f.pilha_envio_livre),
+                         static_cast<unsigned>(f.pilha_envio_total),
+                         static_cast<unsigned>(f.pilha_medicao_livre),
+                         static_cast<unsigned>(f.pilha_medicao_total)," \
+  "                         static_cast<unsigned>(f.pilha_medicao_livre),
+                         static_cast<unsigned>(f.pilha_medicao_total),
+                         static_cast<unsigned>(f.pilha_envio_livre),
+                         static_cast<unsigned>(f.pilha_envio_total),"
+
+esperar "41. linha cortada vai pela metade" unidade envio_da_fila.cpp \
+  "    destino[0] = '\0';
+    return 0;" \
+  "    return 0;"
+
+echo
+echo "Sabotadores do FW-14, etapa 2 (o pior caso do lote e o aviso de pilha) -- a suite de unidade tem de acusar:"
+esperar "42. o pior caso abaixo do medido" unidade envio_da_fila.h \
+  "const uint32_t PIOR_LEITURA_BYTES = 360;" \
+  "const uint32_t PIOR_LEITURA_BYTES = 330;"
+
+esperar "43. o lote sem as virgulas" unidade envio_da_fila.h \
+  "  return 13u + leituras * PIOR_LEITURA_BYTES + (leituras > 0 ? leituras - 1u : 0u) + 2u + 1u;" \
+  "  return 13u + leituras * PIOR_LEITURA_BYTES + 2u + 1u;"
+
+esperar "44. o aviso de pilha baixa nunca sai" unidade envio_da_fila.cpp \
+  "  if (f.pilha_envio_livre < LIMIAR_DE_PILHA_BAIXA_BYTES ||" \
+  "  if (false && f.pilha_envio_livre < LIMIAR_DE_PILHA_BAIXA_BYTES ||"
+
+echo
+echo "Sabotadores do HW-10 (a tensao da bateria) -- a suite de unidade tem de acusar:"
+esperar "45. o divisor ignorado" unidade bateria.h \
+  "const uint32_t DIVISOR_DA_BATERIA = 2;" \
+  "const uint32_t DIVISOR_DA_BATERIA = 1;"
+
+esperar "46. o limite da baixa no da critica" unidade bateria.h \
+  "const uint32_t BATERIA_BAIXA_MV = 3100;" \
+  "const uint32_t BATERIA_BAIXA_MV = 3000;"
+
+esperar "47. sem histerese" unidade bateria.cpp \
+  "  if (anterior == BATERIA_CRITICA || anterior == BATERIA_BAIXA) {" \
+  "  if (false) {"
+
+esperar "48. o pino solto vira tensao" unidade bateria.cpp \
+  "  if (tensao_mv < BATERIA_MINIMA_PLAUSIVEL_MV) return BATERIA_INDISPONIVEL;" \
+  ""
 
 echo
 echo "-----------------------------------------"

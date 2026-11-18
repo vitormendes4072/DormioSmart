@@ -45,6 +45,7 @@
 #include <WiFi.h>
 #include <WiFiClientSecure.h>
 #include <Wire.h>
+#include <esp_heap_caps.h>
 #include <esp_sleep.h>
 #include <esp_system.h>
 #include <esp_timer.h>
@@ -60,6 +61,7 @@
 #include "ca_raiz.h"
 #include "calibracao_da_unidade.h"
 #include "midia_flash_esp32.h"
+#include "nucleo/bateria.h"
 #include "nucleo/cadeia_c2.h"
 #include "nucleo/calibracao.h"
 #include "nucleo/caracteristicas.h"
@@ -85,6 +87,10 @@ static const char *URL_LOTE = "https://dormio-smart.vercel.app/api/data/lote";
 
 static const int PINO_SDA = 21;
 static const int PINO_SCL = 22;
+// HW-10: o divisor 1 MOhm + 1 MOhm da celula (`docs/ESTUDO-ENERGIA.md` §8.1).
+// GPIO35 e do ADC1, que funciona com o Wi-Fi ligado; o ADC2 nao.
+static const uint8_t PINO_BATERIA = 35;
+static const uint32_t AMOSTRAS_DA_BATERIA = 16;
 static const uint8_t ENDERECO_MPU = 0x68;
 
 // Registradores de energia do MPU6050. Fora de `fifo_mpu.h` porque so o
@@ -138,24 +144,49 @@ static SemaphoreHandle_t mutex_parede;
 // envio, e o envio o devolve. Ver `nucleo/radio.h`.
 static CoordenacaoDoRadio radio;
 static TaskHandle_t tarefa_envio = 0;
+static TaskHandle_t tarefa_medicao = 0;  // FW-14: para medir a pilha dela
+// FW-14, etapa 2 (17/11): pela medida de uma noite inteira (43 envios, 41
+// handshakes TLS, 1 POST que falhou; 21 reconfiguracoes do sensor e 19
+// liberacoes do barramento), o envio usou ~4,1 KB de 16 KB e a medicao ~2,3
+// KB de 8 KB. Cortadas com margem de ~2x; a linha `[memoria]` avisa `PILHA
+// BAIXA` abaixo de 1 KB livre, e o estouro a protecao do FreeRTOS pega.
+static const uint32_t PILHA_DO_ENVIO = 8192;
+static const uint32_t PILHA_DA_MEDICAO = 4096;
 
 static CadeiaC2 cadeia;
 // A calibracao da unidade (FW-11, `calibracao_da_unidade.h`) e a vigia que
 // percebe o sensor reiniciado. Os dois so sao tocados pela medicao.
 static Calibracao calibracao;
 static VigiaDaFifo vigia;
+// FW-17: conta as drenagens seguidas sem resposta do sensor no I2C.
+static GuardaDoBarramento guarda;
 static AcumuladorDeFeatures acumulador;
 static float grade_x[AMOSTRAS_NA_GRADE], grade_y[AMOSTRAS_NA_GRADE], grade_z[AMOSTRAS_NA_GRADE];
 static uint64_t origem_us = 0;
 
 static RegistroDeEpoca rascunho[LEITURAS_POR_LOTE_NO_ESP32];
-// O texto do lote (31 200 B) fica no heap, reservado uma vez no `setup`
-// (FW-12, 12/11). Como vetor estatico ele estourava a RAM estatica do ESP32
+// O texto do lote fica no heap, reservado uma vez no `setup` (FW-12, 12/11).
+// O tamanho e o do pior caso de 20 leituras (`tamanho_do_lote`, FW-14 etapa
+// 2: 7 235 B); ate 17/11 eram 520 B por leitura, sem conta (10 400 B). Como vetor estatico ele estourava a RAM estatica do ESP32
 // (`dram0_0_seg`) em 18 088 B com o Wi-Fi e o TLS do arduino-esp32 3.3.12 --
 // o que nenhum teste no host via, porque o host nao tem esse limite.
 // `scripts/compilar_sketch_esp32.py` compila para o chip e mede a folga.
-static const size_t TAMANHO_JSON_DO_LOTE = LEITURAS_POR_LOTE_NO_ESP32 * 520;
+static const size_t TAMANHO_JSON_DO_LOTE = tamanho_do_lote(LEITURAS_POR_LOTE_NO_ESP32);
 static char *json_do_lote = 0;
+
+// HW-10: a tensao da celula. Em repouso (antes do Wi-Fi) decide o estado; no
+// envio (logo depois do primeiro POST, radio ligado) mostra quanto ela cai
+// no pico. So vai para o log nesta etapa.
+static uint32_t bateria_no_envio_mv = 0;
+static EstadoDaBateria estado_da_bateria = BATERIA_INDISPONIVEL;
+
+static uint32_t medir_bateria_mv() {
+  uint32_t amostras[AMOSTRAS_DA_BATERIA];
+  for (uint32_t i = 0; i < AMOSTRAS_DA_BATERIA; i++) {
+    amostras[i] = static_cast<uint32_t>(analogReadMilliVolts(PINO_BATERIA));
+  }
+  return tensao_da_bateria_mv(amostras, AMOSTRAS_DA_BATERIA);
+}
 
 // Diagnostico para o log -- e para a bancada, onde "0 transbordos em 8 h" vai
 // sair daqui. Cada campo tem um so escritor (a medicao, no nucleo 1, ou o
@@ -181,6 +212,18 @@ struct Contadores {
   // e uma queda de alimentacao no MPU6050 -- na bancada, o contato que falha
   // ao virar a placa (`HW-09`). Zero numa noite e o esperado.
   std::atomic<uint32_t> reacordados;
+  // FW-17: as drenagens descartadas, por causa. `transbordos` (acima) segue
+  // sendo o total, com o nome antigo, para os logs de antes continuarem
+  // comparaveis; e este vetor que diz o que foi.
+  std::atomic<uint32_t> perdas[N_CAUSAS_DE_PERDA];
+  // FW-17, etapa 2: liberacoes do barramento, e em quantas o sensor voltou a
+  // responder logo depois.
+  std::atomic<uint32_t> liberacoes;
+  std::atomic<uint32_t> liberacoes_com_resposta;
+  // FW-14: lotes enviados, conexoes TLS abertas para eles e o maior JSON.
+  std::atomic<uint32_t> lotes;
+  std::atomic<uint32_t> conexoes_tls;
+  std::atomic<uint32_t> maior_lote;
 };
 // Sem inicializador de proposito: armazenamento estatico ja comeca em zero, e
 // `= {0, ...}` copiaria `atomic`, o que o C++11 do `make sintaxe` recusa.
@@ -258,10 +301,81 @@ static void conferir_sensor() {
                 static_cast<unsigned>(contadores.reacordados.load()));
 }
 
+// FW-17, etapa 2: o sensor parou de responder no I2C. Um mau contato no meio
+// de uma transferencia pode deixa-lo segurando o SDA em nivel baixo,
+// esperando clocks que nao vem; o controlador da ESP32 ve o barramento ocupado
+// e toda leitura falha. A saida padrao (I2C-bus specification, NXP UM10204,
+// sec. 3.1.16) e dar ate 9 pulsos no SCL ate o SDA subir, e uma condicao de
+// parada. O log leva o nivel das duas linhas ANTES dos pulsos: e o que diz,
+// na bancada, se o problema era o SDA preso.
+static void liberar_barramento() {
+  Wire.end();
+  pinMode(PINO_SDA, INPUT_PULLUP);
+  pinMode(PINO_SCL, INPUT_PULLUP);
+  delayMicroseconds(10);
+  const int sda_antes = digitalRead(PINO_SDA);
+  const int scl_antes = digitalRead(PINO_SCL);
+  pinMode(PINO_SCL, OUTPUT_OPEN_DRAIN);
+  digitalWrite(PINO_SCL, HIGH);
+  unsigned pulsos = 0;
+  while (pulsos < PULSOS_PARA_LIBERAR_O_SDA && digitalRead(PINO_SDA) == LOW) {
+    digitalWrite(PINO_SCL, LOW);
+    delayMicroseconds(5);
+    digitalWrite(PINO_SCL, HIGH);
+    delayMicroseconds(5);
+    pulsos++;
+  }
+  // Condicao de parada: o SDA sobe com o SCL alto.
+  pinMode(PINO_SDA, OUTPUT_OPEN_DRAIN);
+  digitalWrite(PINO_SCL, LOW);
+  delayMicroseconds(5);
+  digitalWrite(PINO_SDA, LOW);
+  delayMicroseconds(5);
+  digitalWrite(PINO_SCL, HIGH);
+  delayMicroseconds(5);
+  digitalWrite(PINO_SDA, HIGH);
+  delayMicroseconds(5);
+  const int sda_depois = digitalRead(PINO_SDA);
+  Wire.begin(PINO_SDA, PINO_SCL);
+  Wire.setClock(400000);
+
+  uint8_t pwr1 = 0;
+  const bool responde = ler_registradores(MPU_REG_PWR_MGMT_1, &pwr1, 1);
+  contadores.liberacoes++;
+  if (responde) contadores.liberacoes_com_resposta++;
+  Serial.printf("[i2c] sensor sem resposta: SDA %d, SCL %d antes; %u pulsos; SDA %d depois; "
+                "sensor %s; liberacoes nesta sessao: %u\n",
+                sda_antes, scl_antes, pulsos, sda_depois, responde ? "responde" : "MUDO",
+                static_cast<unsigned>(contadores.liberacoes.load()));
+  if (!responde) return;
+  // De volta ao barramento: se o sensor reiniciou junto (o VCC caiu), ele esta
+  // dormindo e a conferencia o reconfigura; se nao, a FIFO perdeu o alinhamento
+  // no meio da leitura, e recomeca do zero.
+  conferir_sensor();
+  resetar_fifo();
+}
+
+// Uma drenagem em que o sensor nao respondeu no barramento.
+static void sem_resposta_do_sensor() {
+  if (guarda.observar(false)) liberar_barramento();
+}
+
 // Uma drenagem. O instante e o da leitura de FIFO_COUNT: e com ele que a
 // contagem acumulada entra na regressao da linha do tempo (`cadeia_c2.h`).
 // So os bytes contados sao lidos -- uma amostra que chegue durante a leitura
 // fica para a proxima drenagem, e a contagem continua dizendo a verdade.
+// FW-17: conta e registra uma drenagem descartada. A linha no log leva o que
+// separa as causas na bancada: a contagem e o estado lidos, e quanto tempo
+// passou desde a drenagem anterior (perto de 1,7 s, nao foi atraso).
+static uint64_t ultima_drenagem_us = 0;
+static void registrar_perda(CausaDaPerda causa, uint64_t t_us, uint16_t n_fifo, uint8_t estado) {
+  contadores.transbordos++;
+  contadores.perdas[causa]++;
+  Serial.printf("[drenagem] descartada: %s (fifo %u B, INT_STATUS 0x%02X, %u ms desde a anterior)\n",
+                nome_da_causa(causa), static_cast<unsigned>(n_fifo), estado,
+                static_cast<unsigned>((t_us - ultima_drenagem_us) / 1000u));
+}
+
 static void drenar() {
   static uint8_t bytes[FIFO_CAPACIDADE_AMOSTRAS * BYTES_POR_AMOSTRA];
   static AmostraBruta amostras[FIFO_CAPACIDADE_AMOSTRAS];
@@ -272,14 +386,18 @@ static void drenar() {
   if (!ler_registradores(MPU_REG_INT_STATUS, &estado, 1) ||
       !ler_registradores(MPU_REG_FIFO_COUNTH, contagem, 2)) {
     cadeia.registrar_drenagem(t_us, 0, 0, true);
-    contadores.transbordos++;
+    registrar_perda(PERDA_I2C_NO_ESTADO, t_us, 0, estado);
+    ultima_drenagem_us = t_us;
+    sem_resposta_do_sensor();
     return;
   }
+  guarda.observar(true);
   const uint16_t n_fifo = static_cast<uint16_t>((contagem[0] << 8) | contagem[1]);
   if (avaliar_fifo(n_fifo, estado) != LEITURA_OK) {
     resetar_fifo();
     cadeia.registrar_drenagem(t_us, 0, 0, true);
-    contadores.transbordos++;
+    registrar_perda(causa_da_leitura_recusada(n_fifo, estado), t_us, n_fifo, estado);
+    ultima_drenagem_us = t_us;
     return;
   }
 
@@ -292,7 +410,9 @@ static void drenar() {
       // Leitura pela metade: o fluxo perdeu o alinhamento com a contagem.
       resetar_fifo();
       cadeia.registrar_drenagem(t_us, 0, 0, true);
-      contadores.transbordos++;
+      registrar_perda(PERDA_I2C_NA_LEITURA, t_us, n_fifo, estado);
+      ultima_drenagem_us = t_us;
+      sem_resposta_do_sensor();
       return;
     }
     lidos = static_cast<uint16_t>(lidos + bloco);
@@ -302,6 +422,7 @@ static void drenar() {
   // mesmo ponto do celular. A temperatura e a do chip, lida agora.
   if (n > 0) calibrar_amostras(calibracao, ler_temperatura_c(), amostras, n);
   cadeia.registrar_drenagem(t_us, amostras, n, false);
+  ultima_drenagem_us = t_us;
   if (vigia.observar(n)) conferir_sensor();
 }
 
@@ -347,9 +468,13 @@ static void fechar_epocas() {
     } else {
       contadores.falhas_na_fila++;
     }
-    Serial.printf("[epoca %u] total %.2f m/s2, taxa %.2f Hz, %s, fila: %d\n",
+    // FW-18: a epoca fora da faixa plausivel e gravada, mas o envio a descarta;
+    // ate 16/11 isso so aparecia como `descartadas N` no resumo do envio.
+    Serial.printf("[epoca %u] total %.2f m/s2, taxa %.2f Hz, %s, fila: %d%s\n",
                   static_cast<unsigned>(info.indice), static_cast<double>(e.pico_total),
-                  1.0 / info.linha.b_s, tem_features ? "com f" : "SEM f", static_cast<int>(g));
+                  1.0 / info.linha.b_s, tem_features ? "com f" : "SEM f", static_cast<int>(g),
+                  magnitude_plausivel(e.pico_total) ? ""
+                                                    : "; FORA DA FAIXA PLAUSIVEL, nao vai ser enviada");
   }
 }
 
@@ -376,6 +501,11 @@ static void tarefa_de_medicao(void *) {
       vTaskDelay(pdMS_TO_TICKS(espera_us / 1000u));
     } else {
       esp_sleep_enable_timer_wakeup(espera_us);
+      // FW-19 (17/11): o sono leve para o relogio da serial. Dormir com texto
+      // ainda saindo cortava o comeco da linha e punha 64 bytes 0xFF no lugar
+      // (11 linhas em ~3 h na bancada, todas no inicio de uma linha impressa
+      // logo antes do sono). Esvaziar a serial custa ~8 ms por linha de epoca.
+      Serial.flush();
       esp_light_sleep_start();
     }
 
@@ -482,10 +612,26 @@ static void sincronizar_relogio() {
 // Envia ate `LOTES_POR_VOLTA` lotes. Devolve false se a volta terminou em
 // falha (para a politica de reconexao recuar).
 static bool enviar_pendentes() {
+  bateria_no_envio_mv = 0;
   // Sem o buffer (o heap negou no `setup`), nada sai -- e nada se perde: as
   // epocas seguem na fila da flash. Falha conta como volta ruim (recuo).
   if (json_do_lote == 0) return false;
   uint32_t max_no_lote = LEITURAS_POR_LOTE_NO_ESP32;
+  // FW-14: UMA conexao para a volta inteira, nao uma por lote. Cada handshake
+  // TLS pede ~67 KB de uma vez; abrir e fechar dezenas por volta fragmenta o
+  // heap. Com `setReuse`, o HTTPClient mantem a conexao entre os lotes se o
+  // servidor deixar; se ela cair (o servidor fechou, ou o POST falhou), o
+  // lote seguinte abre outra sozinho. O que o lote faz com a resposta nao muda.
+  //
+  // Confere o certificado do servidor contra as raizes de `ca_raiz.h`
+  // (SEC-15). Sem isso, quem controlasse a rede leria o token. Se a Vercel
+  // trocar de CA, o POST falha (-1) e o lote volta para a fila.
+  WiFiClientSecure cliente;
+  cliente.setCACert(CA_RAIZ);
+  HTTPClient http;
+  http.setReuse(true);
+  http.setTimeout(TIMEOUT_POST_MS);
+  bool ok = true;
   for (uint32_t volta = 0; volta < LOTES_POR_VOLTA; volta++) {
     const ResolucaoDeParede p = copia_da_parede();
     xSemaphoreTake(mutex_fila, portMAX_DELAY);
@@ -495,20 +641,17 @@ static bool enviar_pendentes() {
     contadores.descartadas_no_envio += preparo.descartados;
     if (preparo.no_lote == 0) {
       if (preparo.descartados > 0) continue;  // a frente saiu; o resto pode ir
-      return true;                            // fila vazia
+      break;                                  // fila vazia
     }
+    if (preparo.tamanho > contadores.maior_lote.load()) contadores.maior_lote.store(preparo.tamanho);
+    contadores.lotes++;
+    if (!cliente.connected()) contadores.conexoes_tls++;  // este lote paga um handshake
 
-    WiFiClientSecure cliente;
-    // Confere o certificado do servidor contra as raizes de `ca_raiz.h`
-    // (SEC-15). Sem isso, quem controlasse a rede leria o token. Se a Vercel
-    // trocar de CA, o POST falha (-1) e o lote volta para a fila.
-    cliente.setCACert(CA_RAIZ);
-    HTTPClient http;
-    http.setTimeout(TIMEOUT_POST_MS);
     http.begin(cliente, URL_LOTE);
     http.addHeader("Content-Type", "application/json");
     http.addHeader("X-Device-Token", DEVICE_TOKEN);
     const int status = http.POST(reinterpret_cast<uint8_t *>(json_do_lote), preparo.tamanho);
+    if (bateria_no_envio_mv == 0) bateria_no_envio_mv = medir_bateria_mv();
     const String corpo = http.getString();
     http.end();
 
@@ -525,9 +668,15 @@ static bool enviar_pendentes() {
       max_no_lote = max_no_lote > 1 ? max_no_lote / 2 : 1;
       continue;
     }
-    if (d.acao == LOTE_RECUAR || d.recuar_depois) return false;
+    if (d.acao == LOTE_RECUAR || d.recuar_depois) {
+      ok = false;
+      break;
+    }
   }
-  return true;
+  // Fecha a conexao antes de o Wi-Fi desligar: aberta, ela segura a memoria
+  // do TLS ate a proxima volta.
+  cliente.stop();
+  return ok;
 }
 
 static void tarefa_de_envio(void *) {
@@ -542,6 +691,9 @@ static void tarefa_de_envio(void *) {
       continue;
     }
 
+    const uint32_t bateria_repouso_mv = medir_bateria_mv();
+    const uint32_t maior_bloco_antes =
+        static_cast<uint32_t>(heap_caps_get_largest_free_block(MALLOC_CAP_8BIT));
     bool ok = conectar_wifi();
     if (ok) {
       sincronizar_relogio();
@@ -574,6 +726,40 @@ static void tarefa_de_envio(void *) {
                   static_cast<unsigned>(contadores.reacordados.load()),
                   static_cast<unsigned>(esp_get_free_heap_size()),
                   static_cast<unsigned>(esp_get_minimum_free_heap_size()));
+    // FW-17: o total de "transbordos" acima, separado por causa.
+    Serial.printf("[envio] drenagens descartadas: i2c no estado %u, transbordo (bit) %u, "
+                  "transbordo (teto) %u, desalinhada %u, i2c na leitura %u; "
+                  "barramento liberado %u (sensor respondeu em %u)\n",
+                  static_cast<unsigned>(contadores.perdas[PERDA_I2C_NO_ESTADO].load()),
+                  static_cast<unsigned>(contadores.perdas[PERDA_TRANSBORDO_BIT].load()),
+                  static_cast<unsigned>(contadores.perdas[PERDA_TRANSBORDO_TETO].load()),
+                  static_cast<unsigned>(contadores.perdas[PERDA_DESALINHADA].load()),
+                  static_cast<unsigned>(contadores.perdas[PERDA_I2C_NA_LEITURA].load()),
+                  static_cast<unsigned>(contadores.liberacoes.load()),
+                  static_cast<unsigned>(contadores.liberacoes_com_resposta.load()));
+    // FW-14: de onde vem a folga (ou a falta dela) no envio.
+    FolgaDeMemoria folga;
+    folga.heap_livre = static_cast<uint32_t>(esp_get_free_heap_size());
+    folga.heap_minimo = static_cast<uint32_t>(esp_get_minimum_free_heap_size());
+    folga.maior_bloco_antes = maior_bloco_antes;
+    folga.maior_bloco_depois = static_cast<uint32_t>(heap_caps_get_largest_free_block(MALLOC_CAP_8BIT));
+    folga.pilha_envio_livre = static_cast<uint32_t>(uxTaskGetStackHighWaterMark(0));
+    folga.pilha_envio_total = PILHA_DO_ENVIO;
+    folga.pilha_medicao_livre =
+        tarefa_medicao ? static_cast<uint32_t>(uxTaskGetStackHighWaterMark(tarefa_medicao)) : 0;
+    folga.pilha_medicao_total = PILHA_DA_MEDICAO;
+    folga.maior_lote = contadores.maior_lote.load();
+    folga.buffer_do_lote = static_cast<uint32_t>(TAMANHO_JSON_DO_LOTE);
+    folga.conexoes_tls = contadores.conexoes_tls.load();
+    folga.lotes = contadores.lotes.load();
+    char linha[320];
+    if (formatar_folga(folga, linha, sizeof(linha)) > 0) Serial.println(linha);
+    // HW-10, etapa 1: a tensao da celula, so no log.
+    estado_da_bateria = classificar_bateria(bateria_repouso_mv, estado_da_bateria);
+    if (formatar_bateria(bateria_repouso_mv, bateria_no_envio_mv, estado_da_bateria, linha,
+                         sizeof(linha)) > 0) {
+      Serial.println(linha);
+    }
   }
 }
 
@@ -625,9 +811,12 @@ void setup() {
   origem_us = static_cast<uint64_t>(esp_timer_get_time());
   cadeia.iniciar(origem_us);
 
-  xTaskCreatePinnedToCore(tarefa_de_envio, "envio", 16384, 0, 1, &tarefa_envio, 0);
-  xTaskCreatePinnedToCore(tarefa_de_medicao, "medicao", 8192, 0, 5, 0, 1);
+  xTaskCreatePinnedToCore(tarefa_de_envio, "envio", PILHA_DO_ENVIO, 0, 1, &tarefa_envio, 0);
+  xTaskCreatePinnedToCore(tarefa_de_medicao, "medicao", PILHA_DA_MEDICAO, 0, 5, &tarefa_medicao, 1);
 }
 
-// Todo o trabalho esta nas duas tarefas.
-void loop() { vTaskDelay(portMAX_DELAY); }
+// Todo o trabalho esta nas duas tarefas. A tarefa que roda o `setup` e o
+// `loop` nasce com 8 KB de pilha (`CONFIG_ARDUINO_LOOP_STACK_SIZE`) e, ate
+// 17/11, ficava parada aqui a noite inteira. Apagada, o FreeRTOS devolve a
+// pilha ao heap -- que e o que o handshake TLS do envio precisa (FW-14).
+void loop() { vTaskDelete(NULL); }

@@ -12,8 +12,10 @@
 
 #include "../buffer.h"
 #include "../cadeia_c2.h"
+#include "../bateria.h"
 #include "../calibracao.h"
 #include "../epoca.h"
+#include "../envio_da_fila.h"
 #include "../epoca_c2.h"
 #include "../fifo_mpu.h"
 #include "../filtro.h"
@@ -69,6 +71,16 @@ static void testar_avaliar_fifo() {
   VERIFICAR(avaliar_fifo(1024, 0) == LEITURA_TRANSBORDOU,
             "contagem no teto e transbordo mesmo sem o bit");
   VERIFICAR(avaliar_fifo(511, 0) == LEITURA_DESALINHADA, "nao multiplo de 6");
+  // FW-17: a causa de cada leitura recusada, para o diagnostico.
+  VERIFICAR(causa_da_leitura_recusada(510, MPU_INT_STATUS_FIFO_OFLOW) == PERDA_TRANSBORDO_BIT,
+            "causa: o bit");
+  VERIFICAR(causa_da_leitura_recusada(1024, 0) == PERDA_TRANSBORDO_TETO, "causa: o teto, sem o bit");
+  VERIFICAR(causa_da_leitura_recusada(1024, MPU_INT_STATUS_FIFO_OFLOW) == PERDA_TRANSBORDO_BIT,
+            "causa: bit e teto juntos, vale o bit (a ordem de avaliar_fifo)");
+  VERIFICAR(causa_da_leitura_recusada(511, 0) == PERDA_DESALINHADA, "causa: desalinhada");
+  VERIFICAR(strcmp(nome_da_causa(PERDA_I2C_NA_LEITURA), "i2c na leitura") == 0 &&
+                strcmp(nome_da_causa(PERDA_I2C_NO_ESTADO), "i2c no estado") == 0,
+            "cada causa tem nome proprio no log");
   VERIFICAR(bytes_para_ler(515, 1024) == 510, "arredonda para baixo em amostras");
   VERIFICAR(bytes_para_ler(600, 256) == 252, "respeita o buffer de quem chama");
 }
@@ -647,6 +659,265 @@ static bool numeros_depois(const char *texto, const char *chave, double *v, int 
   return true;
 }
 
+// FW-14: a linha da folga de memoria no log.
+static void testar_linha_de_folga() {
+  secao("FW-14: a linha [memoria] do envio");
+  FolgaDeMemoria f;
+  f.heap_livre = 115784;
+  f.heap_minimo = 12868;
+  f.maior_bloco_antes = 65524;
+  f.maior_bloco_depois = 45044;
+  f.pilha_envio_livre = 9100;
+  f.pilha_envio_total = 16384;
+  f.pilha_medicao_livre = 5200;
+  f.pilha_medicao_total = 8192;
+  f.maior_lote = 8730;
+  f.buffer_do_lote = 10400;
+  f.conexoes_tls = 2;
+  f.lotes = 7;
+  char buf[320];
+  const uint32_t n = formatar_folga(f, buf, sizeof(buf));
+  VERIFICAR(n == strlen(buf) && n > 0, "a linha cabe e o tamanho devolvido e o escrito");
+  VERIFICAR(strstr(buf, "heap 115784 (minimo 12868)") != 0, "heap livre e o minimo");
+  VERIFICAR(strstr(buf, "maior bloco 65524 antes, 45044 depois") != 0, "o maior bloco, antes e depois");
+  VERIFICAR(strstr(buf, "envio 9100 de 16384 B, medicao 5200 de 8192 B") != 0,
+            "cada pilha com o livre e o total, sem trocar uma pela outra");
+  VERIFICAR(strstr(buf, "maior lote 8730 de 10400 B") != 0, "o maior lote contra o buffer");
+  VERIFICAR(strstr(buf, "2 conexoes TLS para 7 lotes") != 0, "conexoes contra lotes");
+  char curto[40];
+  VERIFICAR(formatar_folga(f, curto, sizeof(curto)) == 0 && curto[0] == '\0',
+            "sem espaco, nada pela metade");
+}
+
+// FW-14, etapa 2: o pior caso de uma leitura da fila, e o lote de 20.
+static int texto_9g(double v) {
+  char b[64];
+  return snprintf(b, sizeof(b), "%.9g", v);
+}
+
+static void testar_pior_caso_da_leitura() {
+  secao("FW-14, etapa 2: o pior caso de uma leitura da fila, e o buffer do lote");
+  // (1) O texto mais longo de cada feature, sobre TODOS os valores que o
+  // registro da flash consegue guardar (16 bits cada).
+  int maior[9] = {0};
+  for (uint32_t q = 0; q < 65536; q++) {
+    VetorDeFeatures v;
+    v.enmo_media = v.enmo_desvio = v.enmo_max = v.mag_din_media = static_cast<uint16_t>(q);
+    const uint32_t c = q < AMOSTRAS_NA_GRADE ? q : AMOSTRAS_NA_GRADE;
+    v.cruzamentos = v.amostras_acima = static_cast<uint16_t>(c);
+    v.gx = v.gy = v.gz = static_cast<int16_t>(static_cast<int32_t>(q) - 32768);
+    const FeaturesDeEpoca f = desquantizar(v, static_cast<uint16_t>(AMOSTRAS_NA_GRADE));
+    const double x[9] = {f.enmo_media, f.enmo_desvio, f.enmo_max, f.mag_din_media, f.zcr,
+                         f.p_frac, f.gx, f.gy, f.gz};
+    for (int i = 0; i < 9; i++) {
+      const int l = texto_9g(x[i]);
+      if (l > maior[i]) maior[i] = l;
+    }
+  }
+  // (2) O resto no pior caso: eixos e pico no teto plausivel, com sinal; a
+  // temperatura no fim da faixa do registrador; o `ts` de quatro digitos no
+  // ano; `amostras` no maximo do campo; a marca de calibracao. As features em
+  // zero ("0"; o `gz` em 1) para somar o texto mais longo de cada uma depois.
+  // O `gn` fica de fora: o registro da flash nao o guarda.
+  Epoca e = fabricar(0);
+  e.pico_total = MAGNITUDE_MAXIMA_PLAUSIVEL;
+  e.pico_ax = e.pico_ay = e.pico_az = -MAGNITUDE_MAXIMA_PLAUSIVEL;
+  e.temp_pico = temperatura_mpu_c(-32768);
+  e.amostras = 65535;
+  ResolucaoDeParede parede;
+  parede.sincronizar(0, 253402300799000LL);  // 9999-12-31T23:59:59Z
+  FeaturesDeEpoca zero;
+  zero.gz = 1;
+  zero.calibrada = 1;
+  char buf[512];
+  uint32_t n = 0;
+  bool incluidas = false;
+  VERIFICAR(montar_payload(e, parede, 0, buf, sizeof(buf), &n, &zero, TAXA_DA_GRADE_HZ, &incluidas) ==
+                    PAYLOAD_OK &&
+                incluidas && strstr(buf, "\"ts\":\"9999-12-31T") != 0,
+            "o esqueleto do pior caso monta, com ts e features");
+  uint32_t pior = n;
+  for (int i = 0; i < 9; i++) pior += static_cast<uint32_t>(maior[i] - 1);
+  char msg[160];
+  snprintf(msg, sizeof(msg), "o pior caso (%u B) cabe em PIOR_LEITURA_BYTES (%u B)",
+           static_cast<unsigned>(pior), static_cast<unsigned>(PIOR_LEITURA_BYTES));
+  VERIFICAR(pior <= PIOR_LEITURA_BYTES, msg);
+  VERIFICAR(PIOR_LEITURA_BYTES - pior < 40, "e a folga e pequena: o buffer nao volta a ser chute");
+
+  // (3) Leituras sorteadas, com a gravidade unitaria (senao as features nem
+  // entram), nunca passam do pior caso calculado.
+  uint32_t semente = 12345u, maior_sorteada = 0;
+  bool alguma_com_f = false;
+  for (int k = 0; k < 20000; k++) {
+    VetorDeFeatures v;
+    semente = semente * 1103515245u + 12345u;
+    v.enmo_media = static_cast<uint16_t>(semente >> 16);
+    semente = semente * 1103515245u + 12345u;
+    v.enmo_desvio = static_cast<uint16_t>(semente >> 16);
+    semente = semente * 1103515245u + 12345u;
+    v.enmo_max = static_cast<uint16_t>(semente >> 16);
+    semente = semente * 1103515245u + 12345u;
+    v.mag_din_media = static_cast<uint16_t>(semente >> 16);
+    v.cruzamentos = static_cast<uint16_t>((semente >> 8) % AMOSTRAS_NA_GRADE);
+    v.amostras_acima = static_cast<uint16_t>((semente >> 4) % AMOSTRAS_NA_GRADE);
+    semente = semente * 1103515245u + 12345u;
+    const double a = (semente >> 8) / 16777216.0 * 6.283185307179586;
+    semente = semente * 1103515245u + 12345u;
+    const double z = (semente >> 8) / 16777216.0 * 2.0 - 1.0;
+    const double r = sqrt(1.0 - z * z);
+    v.gx = static_cast<int16_t>(lround(r * cos(a) * 32767.0));
+    v.gy = static_cast<int16_t>(lround(r * sin(a) * 32767.0));
+    v.gz = static_cast<int16_t>(lround(z * 32767.0));
+    FeaturesDeEpoca f = desquantizar(v, static_cast<uint16_t>(AMOSTRAS_NA_GRADE));
+    f.calibrada = 1;
+    Epoca s = fabricar(static_cast<uint32_t>(k));
+    s.pico_total = 3.0f + static_cast<float>((semente >> 12) % 13200) / 100.0f;
+    s.pico_ax = -s.pico_total;
+    s.pico_ay = -s.pico_total / 2;
+    s.pico_az = -s.pico_total / 3;
+    s.temp_pico = temperatura_mpu_c(static_cast<int16_t>(semente >> 16));
+    s.amostras = static_cast<uint16_t>(semente >> 8);
+    uint32_t m = 0;
+    bool inc = false;
+    if (montar_payload(s, parede, 0, buf, sizeof(buf), &m, &f, TAXA_DA_GRADE_HZ, &inc) ==
+        PAYLOAD_OK) {
+      if (m > maior_sorteada) maior_sorteada = m;
+      if (inc) alguma_com_f = true;
+    }
+  }
+  snprintf(msg, sizeof(msg), "20 000 leituras sorteadas: a maior (%u B) nao passa do pior caso",
+           static_cast<unsigned>(maior_sorteada));
+  VERIFICAR(alguma_com_f && maior_sorteada <= pior, msg);
+
+  // (4) O lote: 20 leituras do pior caso cabem em `tamanho_do_lote(20)`, e
+  // com um byte a menos so cabem 19 -- a conta e justa, sem chute.
+  static char lote[tamanho_do_lote(20)];
+  static char leitura[PIOR_LEITURA_BYTES];
+  memset(leitura, 'x', sizeof(leitura));
+  MontadorDeLote cheio(lote, tamanho_do_lote(20));
+  uint32_t cabem = 0;
+  while (cabem < 25 && cheio.adicionar(leitura, PIOR_LEITURA_BYTES)) cabem++;
+  VERIFICAR(cabem == 20 && cheio.fechar() == tamanho_do_lote(20) - 1,
+            "20 leituras do pior caso cabem no buffer de 20, e o lote fecha nele");
+  MontadorDeLote curto(lote, tamanho_do_lote(20) - 1);
+  cabem = 0;
+  while (cabem < 25 && curto.adicionar(leitura, PIOR_LEITURA_BYTES)) cabem++;
+  VERIFICAR(cabem == 19, "com um byte a menos, so 19 (o lote fecha antes, sem estourar)");
+}
+
+// HW-10, etapa 1: a tensao da celula pelo divisor, e o estado da LiFePO4.
+static void testar_bateria() {
+  secao("HW-10: a tensao da celula e o estado da bateria");
+  const uint32_t amostras[] = {1640, 1660, 1650, 1650};
+  VERIFICAR(tensao_da_bateria_mv(amostras, 4) == 3300,
+            "media de 1 650 mV no pino, vezes o divisor 2: 3 300 mV");
+  VERIFICAR(tensao_da_bateria_mv(amostras, 0) == 0 && tensao_da_bateria_mv(0, 4) == 0,
+            "sem amostras, 0");
+
+  VERIFICAR(classificar_bateria(3300, BATERIA_OK) == BATERIA_OK, "3,30 V: ok");
+  VERIFICAR(classificar_bateria(3050, BATERIA_OK) == BATERIA_BAIXA, "3,05 V: baixa");
+  VERIFICAR(classificar_bateria(2950, BATERIA_OK) == BATERIA_CRITICA, "2,95 V: critica");
+  VERIFICAR(classificar_bateria(1500, BATERIA_OK) == BATERIA_INDISPONIVEL &&
+                classificar_bateria(0, BATERIA_CRITICA) == BATERIA_INDISPONIVEL,
+            "abaixo de 2 V nao e celula (pino solto): indisponivel");
+
+  VERIFICAR(classificar_bateria(3120, BATERIA_BAIXA) == BATERIA_BAIXA,
+            "histerese: baixa a 3,12 V continua baixa (sai so acima de 3,15 V)");
+  VERIFICAR(classificar_bateria(3160, BATERIA_BAIXA) == BATERIA_OK, "baixa a 3,16 V volta a ok");
+  VERIFICAR(classificar_bateria(3020, BATERIA_CRITICA) == BATERIA_CRITICA,
+            "histerese: critica a 3,02 V continua critica");
+  VERIFICAR(classificar_bateria(3060, BATERIA_CRITICA) == BATERIA_BAIXA,
+            "critica a 3,06 V sobe para baixa, nao para ok");
+  VERIFICAR(classificar_bateria(3120, BATERIA_INDISPONIVEL) == BATERIA_OK,
+            "a primeira leitura valida nao herda histerese");
+
+  char buf[128];
+  VERIFICAR(formatar_bateria(3300, 3240, BATERIA_OK, buf, sizeof(buf)) == strlen(buf) &&
+                strstr(buf, "[bateria] 3300 mV em repouso, 3240 mV no envio (ok)") != 0,
+            "a linha do log com as duas leituras e o estado");
+  VERIFICAR(formatar_bateria(120, 0, BATERIA_INDISPONIVEL, buf, sizeof(buf)) > 0 &&
+                strstr(buf, "indisponivel") != 0 && strstr(buf, "120 mV") != 0,
+            "sem divisor, a linha diz indisponivel e mostra o que leu");
+  char curto[20];
+  VERIFICAR(formatar_bateria(3300, 3240, BATERIA_OK, curto, sizeof(curto)) == 0 && curto[0] == '\0',
+            "sem espaco, nada pela metade");
+}
+
+// FW-14, etapa 2: a linha avisa quando uma pilha fica baixa.
+static void testar_aviso_de_pilha_baixa() {
+  secao("FW-14, etapa 2: a linha [memoria] avisa PILHA BAIXA");
+  FolgaDeMemoria f;
+  f.heap_livre = 130000;
+  f.heap_minimo = 30000;
+  f.maior_bloco_antes = 110000;
+  f.maior_bloco_depois = 60000;
+  f.pilha_envio_livre = 4100;
+  f.pilha_envio_total = 8192;
+  f.pilha_medicao_livre = 1800;
+  f.pilha_medicao_total = 4096;
+  f.maior_lote = 6127;
+  f.buffer_do_lote = tamanho_do_lote(20);
+  f.conexoes_tls = 1;
+  f.lotes = 1;
+  char buf[320];
+  VERIFICAR(formatar_folga(f, buf, sizeof(buf)) > 0 && strstr(buf, "PILHA BAIXA") == 0,
+            "com folga nas duas pilhas, sem aviso");
+  f.pilha_medicao_livre = LIMIAR_DE_PILHA_BAIXA_BYTES - 1;
+  uint32_t n = formatar_folga(f, buf, sizeof(buf));
+  VERIFICAR(n == strlen(buf) && strstr(buf, "; PILHA BAIXA") != 0,
+            "a medicao abaixo do limiar: a linha termina em PILHA BAIXA");
+  f.pilha_medicao_livre = 1800;
+  f.pilha_envio_livre = 200;
+  VERIFICAR(formatar_folga(f, buf, sizeof(buf)) > 0 && strstr(buf, "; PILHA BAIXA") != 0,
+            "o envio abaixo do limiar, tambem");
+  f.pilha_envio_livre = LIMIAR_DE_PILHA_BAIXA_BYTES;
+  VERIFICAR(formatar_folga(f, buf, sizeof(buf)) > 0 && strstr(buf, "PILHA BAIXA") == 0,
+            "no limiar exato, ainda sem aviso");
+  f.pilha_envio_livre = 200;
+  char curto[200];
+  const uint32_t sem_aviso = static_cast<uint32_t>(strlen(
+      "[memoria] heap 130000 (minimo 30000); maior bloco 110000 antes, 60000 depois; "
+      "pilha livre: envio 200 de 8192 B, medicao 1800 de 4096 B; "
+      "maior lote 6127 de 7235 B; 1 conexoes TLS para 1 lotes"));
+  VERIFICAR(sem_aviso < sizeof(curto) &&
+                formatar_folga(f, curto, sem_aviso + 5) == 0 && curto[0] == '\0',
+            "o aviso que nao cabe nao sai pela metade");
+}
+
+// FW-18: a faixa plausivel do pico. O teto e o fundo de escala da C2, nao 20.
+static void testar_teto_da_magnitude() {
+  secao("FW-18: o pico de |a| plausivel vai ate o fundo de escala");
+  char buf[512];
+  uint32_t n = 0;
+  ResolucaoDeParede parede;
+  Epoca forte = fabricar(0);
+  forte.pico_total = 63.9f;  // o travesseiro sacudido, bancada de 16/11
+  forte.pico_az = 63.9f;
+  VERIFICAR(montar_payload(forte, parede, 0, buf, sizeof(buf), &n) == PAYLOAD_OK,
+            "pico de 63,9 m/s2 (movimento forte de verdade) vai no payload");
+  Epoca acima = fabricar(1);
+  acima.pico_total = 20.5f;
+  acima.pico_az = 20.5f;
+  VERIFICAR(montar_payload(acima, parede, 0, buf, sizeof(buf), &n) == PAYLOAD_OK,
+            "20,5 m/s2, logo acima do teto antigo, vai");
+  Epoca impossivel = fabricar(2);
+  impossivel.pico_total = MAGNITUDE_MAXIMA_PLAUSIVEL + 0.5f;
+  VERIFICAR(montar_payload(impossivel, parede, 0, buf, sizeof(buf), &n) ==
+                PAYLOAD_MAGNITUDE_IMPLAUSIVEL,
+            "acima de 8 g * raiz(3) o sensor nao chega: recusada");
+  Epoca muda = fabricar(3);
+  muda.pico_total = 2.9f;
+  VERIFICAR(montar_payload(muda, parede, 0, buf, sizeof(buf), &n) == PAYLOAD_MAGNITUDE_IMPLAUSIVEL,
+            "abaixo de 3 m/s2 e sensor mudo: recusada");
+  // O teto e o que a C2 consegue medir: os tres eixos saturados na escala dela.
+  const double saturado = 32767.0 / LSB_POR_G * GRAVIDADE_MS2 * sqrt(3.0);
+  VERIFICAR(fabs(MAGNITUDE_MAXIMA_PLAUSIVEL - saturado) < 0.05,
+            "o teto e o fundo de escala da C2 (8 g em cada eixo)");
+  // `web-app/validacao.py`: _TOTAL_MAX = 175. Um teto acima dele mandaria
+  // epocas que o servidor recusa o lote inteiro por causa delas.
+  VERIFICAR(MAGNITUDE_MAXIMA_PLAUSIVEL < 175.0f, "o teto cabe no que o servidor aceita");
+}
+
 static void testar_payload_com_features() {
   secao("payload -- f, g e fs viajam com a epoca (contrato 2.6)");
   char buf[512];
@@ -760,6 +1031,28 @@ static void testar_vigia_da_fifo() {
   VERIFICAR(DRENAGENS_VAZIAS_PARA_CONFERIR == 3, "N = 3 (~5 s de FIFO vazia)");
 }
 
+static void testar_guarda_do_barramento() {
+  secao("FW-17: a guarda do barramento sem resposta");
+  GuardaDoBarramento g;
+  VERIFICAR(!g.observar(false) && !g.observar(false), "duas falhas ainda nao liberam");
+  VERIFICAR(g.observar(false), "a terceira falha seguida manda liberar");
+  VERIFICAR(g.seguidas() == 0 && g.limite() == 6, "depois, a contagem recomeca com o limite dobrado");
+  int n = 0;
+  while (!g.observar(false)) n++;
+  VERIFICAR(n == 5, "sem resposta, a segunda liberacao vem 6 falhas depois");
+  for (int i = 0; i < 2000; i++) g.observar(false);
+  VERIFICAR(g.limite() == FALHAS_DE_I2C_TETO_DO_RECUO, "o recuo para no teto");
+  VERIFICAR(!g.observar(true) && g.limite() == FALHAS_DE_I2C_PARA_LIBERAR && g.seguidas() == 0,
+            "uma resposta zera a contagem e o recuo");
+  GuardaDoBarramento h;
+  h.observar(false);
+  h.observar(false);
+  h.observar(true);
+  VERIFICAR(!h.observar(false) && !h.observar(false), "falhas separadas por uma resposta nao somam");
+  VERIFICAR(FALHAS_DE_I2C_PARA_LIBERAR == 3 && PULSOS_PARA_LIBERAR_O_SDA == 9,
+            "N = 3 (~5 s) e 9 pulsos no SCL");
+}
+
 static void testar_sensor_precisa_reconfigurar() {
   secao("FW-11: o sensor que reiniciou");
   const uint8_t user_ok = MPU_USER_CTRL_FIFO_EN;
@@ -790,10 +1083,16 @@ int main() {
   testar_resposta_incoerente_nao_apaga_nada();
   testar_buffer_confirma_o_prefixo();
   testar_payload_com_features();
+  testar_linha_de_folga();
+  testar_pior_caso_da_leitura();
+  testar_aviso_de_pilha_baixa();
+  testar_bateria();
+  testar_teto_da_magnitude();
   testar_epoca_da_grade();
   testar_coordenacao_do_radio();
   testar_calibrar_amostras();
   testar_vigia_da_fifo();
+  testar_guarda_do_barramento();
   testar_sensor_precisa_reconfigurar();
 
   printf("\n-----------------------------------------\n");

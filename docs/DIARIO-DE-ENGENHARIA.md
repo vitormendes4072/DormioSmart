@@ -10599,6 +10599,539 @@ A decisão de versionar foi do autor, com a condição de que fossem lidos intei
 
 **Procedência.** API REST da Europe PMC e `curl` nos endereços, Windows 11; metadado do Drive pelo conector; 16/11.
 
+---
+
+# 2026-11-16 (vii) — o release R8: hooks, fundamentação versionada e roteiro de leitura
+
+**O problema, como foi entendido no início.** Desde o R7, `develop` tinha o `UI-33`, o `GIT-05`, o `DOC-06b`, o registro do R7 e o conserto de uma linha do diário. O autor pediu o release.
+
+**Hipótese de trabalho.** Sem migração e sem mudança no `vercel.json`. Só o `UI-33` toca o código do site, e nenhuma das mudanças dele deve ser visível. Mas ele mexe no `AuthContext`, então o release exige um login real.
+
+**O que foi testado, e como.** PR #205 (`develop` → `main`), CI e Vercel. Depois do deploy:
+- `/health` e as rotas com `curl`;
+- `scripts/conferir_csp.py` sobre as duas páginas e os cabeçalhos servidos;
+- a `docs/METODOLOGIA.md` pelo endereço bruto do `main` no GitHub.
+
+Depois, o login do autor.
+
+**Resultado medido.**
+- CI 13 de 13; merge `e921844`; deploy de produção com sucesso.
+- `/health` `200`, banco ok, contrato 2.11.0.
+- `401` sem token e com `Bearer` inválido em `/api/devices`, `/api/sleep-history` e `/api/me/perfil`; `401` sem token no `POST` de `/api/data` e de `/api/data/lote`.
+- CSP: 10 scripts inline, todos com hash, sem sobra.
+- A `METODOLOGIA.md` responde `200` no `main`.
+- **Login do autor (16/11):** saiu e entrou, o nome apareceu no menu, Histórico e Dispositivos carregaram, e o F5 manteve a sessão.
+
+**Adaptação.** Nenhuma.
+
+**O que deu errado no caminho.** Nada nesta etapa.
+
+**Risco em aberto.**
+- **As correções do `UI-33` não têm efeito visível**, então o login confirma que nada quebrou, mas não que elas agem na produção. Quem as sustenta são os testes e as sabotagens do diário 16/11 (iv).
+- **O tempo por leitura do lote** continua sem medida (`INFRA-05`/`API-06`).
+
+**Procedência.** GitHub (PR #205, CI e deployment); `curl` e o conferidor da CSP na produção, Windows 11; o relato do autor sobre o login; 16/11.
+
+---
+
+# 2026-11-16 (viii) — VIA-01: protocolo e análise de bancada, antes da coleta
+
+**O problema, como foi entendido no início.** O `VIA-01` pergunta se o sensor dentro do travesseiro distingue a pessoa parada, mexendo a cabeça e virando o corpo. O último caso decide entre a v1 (só o travesseiro) e a contingência `HW-07` (um segundo sensor sob o colchão). A placa está soldada e envia à produção desde 12/11, mas o teste nunca foi feito, e não havia nem protocolo executável nem critério escrito.
+
+**Hipótese de trabalho.**
+- O firmware de produto já serve: ele entrega uma época de 30 s com as features, e não precisa de firmware novo.
+- Blocos de 2 min, como na linha original, dariam 4 épocas cada; com 5 min, sobram 9 depois das bordas.
+- O critério precisa ser fixado antes dos dados e conferido com dados sintéticos, para não "achar" separação no acaso.
+
+**O que foi testado, e como.**
+- `scripts/analisar_via01.py`, em Python puro, para rodar no CI sem dependência nova. Para cada par de blocos e cada uma das 8 features, ele calcula o delta de Cliff e um teste de permutação sobre o maior |δ|.
+- `web-app/tests/test_analisar_via01.py`, com dados sintéticos: blocos iguais em 30 sementes, blocos diferentes, só a cabeça diferente, bordas contaminadas, separação completa com 3 épocas, diferença pequena mas real, rótulo do painel, entradas inválidas e a linha de comando.
+- Sabotagens no script.
+- O trecho de console do protocolo passou pelo `node --check`.
+- A suíte do backend.
+
+**Resultado medido.**
+- 16 testes passam.
+- Taxa de falso positivo do critério em blocos iguais: **3 de 90 pares (3,3 %)**.
+- Sabotagens, **9 de 9** acusadas, cada uma pelo teste certo:
+  - sem margem nas bordas;
+  - delta sem sinal;
+  - sem a permutação;
+  - sem o limiar de δ;
+  - rótulo desconhecido aceito;
+  - instante sem fuso aceito;
+  - bloco invertido aceito;
+  - bloco vazio aceito;
+  - veredito pelo par errado.
+- Backend **590 passam, 1 pula** (Windows, Python 3.13). Ruff limpo nos dois arquivos.
+
+**Adaptação.**
+- Os blocos foram de 2 para 5 min.
+- O critério ganhou o teste de permutação, e o `delta_que_separa` sozinho deixou de bastar.
+- O resultado inclui o rótulo do painel por bloco, como o `CALC-03` pedia.
+
+**O que deu errado no caminho.**
+- **Li errado o primeiro controle.** Na semente 7, blocos sintéticos idênticos deram |δ| = 0,88, e concluí que o critério falhava. O teste de permutação mostrou que era um sorteio raro (p ≈ 0,006), não um defeito. Escrevi a conclusão errada no cabeçalho do script e a corrigi antes do commit. O teste passou a medir a taxa em 30 sementes, e as fixas usam uma semente documentada.
+- **Os testes de borda esperavam 8 épocas por bloco e são 9.** A época que começa no limite da margem conta, e o teste estava errado, não o script.
+- **Três sabotagens passaram na primeira rodada** (o limiar de δ, o rótulo desconhecido e o bloco invertido), e a do fuso nem foi aplicada, por erro de recuo no meu comando. Ganharam testes, e a rodada seguinte acusou todas.
+- **O `node --check` falhou** com o arquivo num caminho do `/tmp` que o Node do Windows não enxerga; refeito na pasta de rascunho.
+
+**Risco em aberto.**
+- **A coleta é do autor.** O item segue aberto até ela.
+- **n = 1, uma sessão:** mostra se o sinal existe, não valida o dispositivo (`VAL-01`, `VAL-02`).
+- **Virar o corpo sem mexer a cabeça** depende de quem executa. Se o bloco C misturar os dois, isso entra como limite no resultado.
+- **Os horários anotados à mão** têm erro de segundos; a margem de 30 s por borda o absorve, mas não um erro de minutos.
+
+**Procedência.** Branch `feature/via-01-bancada` sobre `develop` `7388d79`; Windows 11, Python 3.13, Node 24; dados sintéticos; 16/11.
+
+---
+
+# 2026-11-16 (ix) — VIA-01: o travesseiro separa o corpo virando do repouso
+
+**O problema, como foi entendido no início.** O protocolo e o critério do `VIA-01` estavam prontos desde o diário 16/11 (viii). Faltava a coleta: o autor na cama, com a placa dentro do travesseiro.
+
+**Hipótese de trabalho.** Pelo critério fixado antes dos dados, se o par parado (A) × corpo (C) separar, o projeto fica na v1 e o `HW-07` não é acionado.
+
+**O que foi testado, e como.**
+- **Firmware conferido antes:** a placa foi lida pela COM3, sem gravar nada. O programa gravado tem as mensagens do `FW-15` e do `FW-16`, a última mudança no código da placa. As mudanças posteriores não alteram o binário da placa: o `DATA-14` mexe no payload do celular, e o commit do `API-07` só acrescenta teste.
+- **Durante a coleta:** a placa ficou no USB do PC, com um log serial que anotava a hora do PC em cada linha (`dados-locais/`, fora do repositório).
+- **Os blocos:** dois ciclos de 5 min de A, B e C, das 17:16 às 18:24 (UTC−3). O segundo ciclo começou 33 min depois do fim do primeiro. Os horários de início foram marcados pelo Claude ao receber o aviso do autor.
+- **Bloco C:** o autor girou entre de lado, barriga para cima, de lado e barriga para baixo, tentando manter a cabeça no mesmo ponto do travesseiro.
+- **Depois da coleta:** o autor rodou o trecho de console do protocolo (`features 200`, 145 épocas; histórico e inferência 200), e o `scripts/analisar_via01.py` rodou sobre o arquivo.
+
+**Resultado medido.**
+
+| Par | Melhor feature | δ de Cliff | p (permutação) | Separa? |
+|---|---|---:|---:|---|
+| A × B (parado × cabeça) | `mag_din_media` | +0,99 | < 0,001 | sim |
+| **A × C (parado × corpo)** | `enmo_media` | **+1,00** | **< 0,001** | **sim** |
+| B × C (cabeça × corpo) | `inclinacao_rel` | +0,55 | 0,061 | não |
+
+- **Épocas fora das bordas:** A 16, B 15 e C 14.
+- **Em cada ciclo isolado,** A×B e A×C separam com δ = 1,00, e B×C não separa.
+- **No par A×C,** sete das oito features dão |δ| ≥ 0,88; só a `inclinacao_rel` fica em 0,31.
+- **Rótulo do painel** ("Movimento"): 0/16 épocas paradas, 12/15 de cabeça e 11/11 de corpo. Pico mediano: 9,84 no repouso, 12,45 com a cabeça e 12,98 com o corpo (m/s²).
+- **Modelo `ml-inf-cabeca-v2`,** só como informação: "sono" em 16/16 épocas paradas, "vigília" em 14/15 de cabeça e 14/14 de corpo.
+- **Envio:** os 14 lotes registrados no log serial, todos com `HTTP 200` e sem rejeição. O último chegou às 18:31:16.
+
+**Veredito pelo critério: fica a v1.** O `HW-07` foi fechado como não acionado.
+
+**Adaptação.**
+- O protocolo dizia para esperar 2 min antes de baixar os dados. A placa envia a cada 10 min, e o texto foi corrigido.
+- O log serial parou aos 75 min, antes do último envio, e foi reaberto para pegar o lote final.
+
+**O que deu errado no caminho.**
+- **Cinco épocas recusadas por transbordo da FIFO** (motivo 2): uma na partida, uma no primeiro A, uma no primeiro B e duas seguidas no segundo C. O resumo do envio contou 3 transbordos. No `FW-05`, com ~100 min parados, foram 0. Virou o `FW-17`.
+- **Lacunas no log serial:** algumas linhas não aparecem (épocas 27, 151 e 158), e a primeira leitura repetia a mesma linha milhares de vezes. É defeito da captura, não da placa: as épocas estão no arquivo do servidor.
+- **Os horários são os do Claude, não os do autor:** são a hora em que a mensagem chegou, com erro de alguns segundos. A margem de 30 s por borda os absorve.
+
+**Risco em aberto.**
+- **n = 1, uma sessão.** Mostra que o sinal existe nesta pessoa e neste travesseiro; não generaliza (`VAL-01`, `VAL-02`).
+- **O bloco C não isola o corpo sem cabeça:** ao virar de bruços, a cabeça gira no lugar. O caso "corpo rola e a cabeça não se mexe nada" continua sem medida. Se uma noite real mostrar viradas sem registro, o `HW-07` reabre.
+- **Cabeça e corpo não se distinguem entre si** (B×C). O projeto registra movimento, não qual parte se moveu, e o escopo não promete isso.
+- **As épocas perdidas por transbordo** concentram-se onde há movimento (`FW-17`).
+
+**Procedência.** Placa no travesseiro com o `sketch.ino` gravado em 13/11; log serial e arquivo do console em `dados-locais/`, fora do repositório; `scripts/analisar_via01.py` em `develop` `73b3790`; Windows 11, Python 3.13; 16/11.
+
+✏️ *16/11, mais tarde: o autor apagou da produção, pelo SQL Editor, **203 leituras** do travesseiro: tudo o que chegou ao banco a partir das 17:10 de 16/11. São as épocas desta sessão (chegadas de 17:21 a 18:41) e **26 épocas de 13/11**, a mais antiga medida às 21:37:30, que tinham ficado na fila da flash da placa e só foram enviadas no primeiro lote de hoje. Ficaram de fora da remoção das 818 leituras de bancada de 13/11 porque ainda não estavam no banco. Contagem antes: 203; depois: 0. A análise deste item não depende do banco: o arquivo do console e o log serial seguem em `dados-locais/`.*
+
+# 2026-11-16 (x) — FW-17: as épocas perdidas eram o I2C travado, não transbordo
+
+**O problema, como foi entendido no início.** No `VIA-01` (diário 16/11 (ix)), a placa recusou 5 épocas com motivo 2 e o resumo do envio contou 3 "transbordos" em ~80 min. O mesmo log dizia 0 prazos estourados e trabalho máximo de 142 ms: a FIFO guarda 3,4 s e é drenada a cada ~1,7 s, então não tinha como ter enchido por atraso. Lendo o `drenar()` do `sketch.ino`, o contador `transbordos` somava cinco descartes diferentes: falha de I2C ao ler o estado ou a contagem, o bit de transbordo, a contagem no teto, a contagem desalinhada e falha de I2C no meio dos bytes.
+
+**Hipótese de trabalho.** Separar as cinco causas no contador e no log, sem mudar o que o sketch faz em cada uma, e provocar as perdas na bancada até uma causa aparecer.
+
+**O que foi testado, e como.**
+- **No núcleo:** `causa_da_leitura_recusada` e `nome_da_causa` em `fifo_mpu.h`; o bit vale antes do teto, na ordem do `avaliar_fifo`. +7 verificações no `c2`.
+- **No sketch:** um contador por causa (`perdas[]`; `transbordos` segue como o total, com o nome antigo) e uma linha `[drenagem] descartada: <causa> (fifo N B, INT_STATUS 0xNN, N ms desde a anterior)` por descarte, mais uma linha por envio com as cinco contagens.
+- **No `make laco`:** o MPU6050 falso ganhou falhas injetadas (registrador que volta vazio, bit de transbordo, contagem forçada), e 7 verificações conferem que cada falha soma 1 no total e 1 só na sua causa. Quatro sabotagens novas no sketch, todas acusadas.
+- **Na placa:** compilado para o ESP32 e gravado pela COM3, com o `secrets.h` real numa cópia temporária, apagada depois. Uma hora de log com a placa parada. Depois, um teste de bancada guiado em seis blocos de ~3 min, com o horário marcado pelo Claude ao receber o aviso do autor, e o log serial com a hora do PC em cada linha (`dados-locais/`, fora do repositório).
+
+**Resultado medido.**
+
+| Bloco (UTC−3) | Drenagens descartadas |
+|---|---|
+| 1. Travesseiro sozinho, parado (21:44:53–21:48:12) | 0 |
+| 2. Cabeça deitada, parada (21:48:53–21:53:04) | 0 |
+| 3. Corpo virando, cabeça no travesseiro (21:53:07–21:56:54) | 0 (picos até 14,6 m/s²) |
+| 4. Travesseiro sacudido e batido (21:56:59–22:00:04) | 0 (picos até 63,9 m/s²) |
+| 5. Fios entre a ESP32 e o MPU6050 mexidos, sem soltar (22:00:09–22:03:04) | **1 `i2c na leitura` + 163 `i2c no estado`** |
+| 6. Travesseiro sozinho, parado (22:08:33–22:11:29) | 0 |
+
+- **O travamento:** às 22:01:38 o barramento falhou no meio dos bytes da FIFO (516 B contados). A partir daí, toda leitura do `INT_STATUS` falhou, uma a cada 1,7 s, por **4,7 min**: épocas 292 a 301 recusadas (motivo 2). O autor conferiu os fios: nenhum estava solto, e apertá-los no pino não trouxe o sensor de volta.
+- **A volta:** só com o VCC do sensor tirado por ~2 s e recolocado. Às 22:06:23 a vigia do `FW-11` achou o sensor dormindo (`PWR1 0x40`, FIFO desligada) e o reconfigurou; a época 302 já saiu normal, a 50,3 Hz.
+- **Antes do teste:** uma `contagem desalinhada` entre 20:35 e 21:42, sem log aberto; foi o único descarte das 2 h anteriores.
+- **Uma hora parada (19:35–20:35):** 120 épocas, 0 descartes, 0 prazos estourados, trabalho máximo 141 ms.
+- **Firmware:** programa 1 087 432 B; RAM fixa 108 968 B (+64 B), 218 712 B para o heap. Heap mínimo no envio: **12 868 B** (13 524 B à tarde) — vai para o `FW-14`.
+- **No host, contêiner `gcc:13`:** `make` 341 + 157 + **177** + 456 + 115 + 327 + 185 verificações, 0 falhas; `make laco` 0 falhas e **12/12** sabotagens acusadas; `make mutacao` 15/15.
+
+**Veredito.** As perdas do `VIA-01` não eram transbordo. O que a bancada reproduziu é o contato elétrico entre a ESP32 e o sensor: uma interrupção curta no meio de uma transferência deixa o MPU6050 sem responder no barramento, e o firmware não sai disso sozinho, porque o caminho da falha de I2C retorna antes da vigia. A recuperação é a etapa 2 do `FW-17`.
+
+**Adaptação.**
+- O primeiro bloco foi recomeçado: o autor estava deitado no travesseiro, e o protocolo pedia o travesseiro sozinho. A ordem ganhou o bloco "cabeça deitada, parada", que é o uso real.
+- O teste dos fios virou também um teste de recuperação: tirar e recolocar o VCC separou o barramento travado do fio solto.
+- O log de 30 min acabou antes do envio seguinte e foi reaberto por 6 min para ver o envio de 22:15.
+
+**O que deu errado no caminho.**
+- **A primeira hora de log foi com a placa parada:** o autor não tinha começado o teste, e a hora mostrou só que a instrumentação funciona.
+- **O dublê do sensor quebrou os testes do `FW-11`:** a contagem forçada começava em 0, e não em "desligada"; passou a começar em −1 no `main`.
+- **Um envio falhou** às 22:05 com `HTTP -11` (tempo esgotado), no meio do travamento. O de 22:15 levou as 22 épocas com `HTTP 200`.
+- **8 épocas foram descartadas no envio de 22:15**, sem linha no log: as 7 do bloco 4 e uma de quando o travesseiro foi fechado. Todas com pico acima de 20 m/s², o teto de "magnitude plausível" do payload. Virou o `FW-18`.
+
+**Risco em aberto.**
+- **O sensor pode travar no meio de uma noite** e só voltar quando a pessoa mexer de novo nos fios, ou nunca. É o `FW-17`, etapa 2.
+- **Os 9 pulsos no SCL não foram testados:** se o barramento travado não soltar com eles, sobra cortar o VCC do sensor por um pino da ESP32, o que pede mudança de hardware.
+- **A causa exata do descarte no `VIA-01` não foi medida:** aquela sessão rodou o firmware antigo, sem a causa no log. A bancada mostra o mecanismo que reproduz o sintoma, e não que foi ele.
+- **Movimento forte é jogado fora no envio** (`FW-18`).
+
+**Procedência.** Branch `bugfix/fw-17-causa-das-epocas-perdidas` sobre `develop` `9f2386b`; placa ESP32 + MPU6050 pela COM3; `arduino-cli` com `esp32:esp32` 3.3.12; testes em contêiner `gcc:13`; logs `fw17-serial-2026-11-16.log` e `fw17-bancada-2026-11-16.log` em `dados-locais/`, fora do repositório; Windows 11; 16/11.
+
+# 2026-11-16 (xi) — FW-17, etapa 2: o barramento estava livre, e a culpa é a alimentação
+
+**O problema, como foi entendido no início.** Na bancada do diário 16/11 (x), mexer nos fios do sensor deixou o MPU6050 sem responder no I2C por 4,7 min, com os fios firmes, até o VCC ser tirado e recolocado. O caminho da falha de I2C no `drenar()` retorna antes da vigia do `FW-11`: o firmware descartava e tentava de novo a cada 1,7 s, para sempre.
+
+**Hipótese de trabalho.** Uma interrupção no meio de uma transferência deixa o sensor segurando o SDA em nível baixo, à espera de clocks. A saída padrão é dar até 9 pulsos no SCL e uma condição de parada (NXP UM10204, §3.1.16). Se for isso, o firmware recupera o sensor sozinho.
+
+**O que foi testado, e como.**
+- **No núcleo:** `GuardaDoBarramento` em `fifo_mpu.h`. Na 3ª drenagem seguida sem resposta, manda liberar; sem resposta, a próxima espera o dobro de falhas, até 96 (~2,7 min); uma resposta zera tudo. +8 verificações no `c2`; 3 mutações novas no `mutacao-cadeia` (não recua, recuo sem teto, a resposta não zera o recuo).
+- **No sketch:** `liberar_barramento()` encerra o `Wire`, lê o SDA e o SCL, dá até 9 pulsos no SCL enquanto o SDA estiver baixo, faz a condição de parada, inicia o `Wire` de novo e, se o sensor responder, chama `conferir_sensor()` e zera a FIFO. Cada tentativa vira uma linha `[i2c] sensor sem resposta: SDA x, SCL y antes; N pulsos; SDA z depois; sensor responde|MUDO`, e o resumo do envio ganhou `barramento liberado N (sensor respondeu em M)`.
+- **No `make laco`:** o MPU6050 falso ganhou o modo travado, que só solta depois de N descidas do SCL (ou nunca, até a energia voltar), e os pinos do sketch chegam a ele. Quatro casos: solta com os pulsos e sai reconfigurado; mudo, com 4 tentativas em 60 drenagens; um travamento novo depois de uma resposta libera em 3; falhas separadas por respostas não somam. Quatro sabotagens novas no sketch.
+- **Na placa:** gravada pela COM3 (as duas primeiras tentativas falharam no meio, a 921 600 baud; a terceira, a 115 200, gravou as quatro regiões com o hash conferido). Três testes de fios, com o log serial e a hora do PC: (1) todos os fios, como no diário (x); (2) só o SDA e o SCL; (3) só o VCC e o GND.
+
+**Resultado medido.**
+
+| Teste (UTC−3) | O que o log mostrou |
+|---|---|
+| Todos os fios (23:23:40–23:26:10) | 1 `i2c na leitura`, depois mudo. **`SDA 1, SCL 1` antes, 0 pulsos**, sensor MUDO em todas as tentativas |
+| VCC recolocado (23:29 e 23:32) | `achado dormindo … reconfigurado` e, ~7 s depois, mudo de novo, duas vezes |
+| USB tirado e recolocado (23:50) | a placa reinicia; épocas normais |
+| Só SDA e SCL (23:52:35–23:55:09) | **0 falhas**; épocas normais com o balanço (até 17 m/s²) |
+| Só VCC e GND (23:55:52–23:58:20) | 1 `i2c na leitura` (516 B), **`achado dormindo`** às 23:57:32, reconfigurado, épocas de volta às 23:58:03 |
+
+- **A guarda na placa:** 16 tentativas de liberação entre 23:23:51 e 23:35:03, com o recuo (a 1ª ~5 s depois da primeira falha; as seguintes a 10 s, 20 s e 41 s), e nenhuma recuperação. O SDA nunca estava baixo: os pulsos nunca foram dados.
+- **No host, contêiner `gcc:13`:** `make` 341 + 157 + **185** + 456 + 115 + 327 + 185 verificações, 0 falhas; `make laco` 0 falhas e **16/16** sabotagens acusadas; `make mutacao-cadeia` **37/37**; `mutacao` 15/15; `mutacao-fila` 17/17; `mutacao-coletor` 20/20; `sintaxe` liga.
+- **Para o ESP32:** programa 1 088 532 B; RAM fixa 108 976 B (+8 B), 218 704 B para o heap.
+
+**Veredito.** A hipótese do SDA preso caiu. A causa do `FW-17` é o contato da alimentação do sensor: um corte de um instante interrompe a leitura e reinicia o MPU6050. Corte limpo, o `FW-11` já recupera. Corte irregular, o sensor fica mudo com o barramento livre, e só volta desligado e religado — o que o firmware não consegue fazer. O `FW-17` fecha com a causa medida; o que falta é o `HW-11`. A guarda fica: ela detecta em ~5 s, diz no log o estado das linhas e não enche o log a noite inteira.
+
+**Adaptação.**
+- A pergunta do autor ("não pode ser o SDA ou o SCL?") mudou o teste: o log com todos os fios não separa um SDA aberto (o pull-up interno da ESP32 lê 1) de um sensor sem energia. Mexer em cada par separado, e ler se o sensor volta dormindo, separou.
+- A gravação foi a 115 200 baud depois de duas falhas a 921 600.
+
+**O que deu errado no caminho.**
+- **O teste de tempo do laço quebrou:** ele marcava uma volta em toda leitura do I2C, e a liberação faz uma leitura a mais. O gancho passou a contar só a leitura do `INT_STATUS`.
+- **O script de gravação falhou antes de apagar a cópia do `secrets.h`** na pasta temporária da sessão (fora do repositório). Foi apagada na hora, e o script passou a apagá-la num `finally`.
+- **O log serial parou às 23:36** com o USB mexido, e a porta ficou presa; perdeu o momento em que o autor recolocou o SDA e o SCL. Voltou com o USB tirado e recolocado.
+- **O autor recolocou o VCC duas vezes** e o sensor caiu de novo em ~7 s nas duas, já acordado: o contato tinha piorado com o manuseio da noite.
+
+**Risco em aberto.**
+- **O contato pode falhar numa noite real** e deixar o sensor mudo até alguém mexer (`HW-11`).
+- **A recuperação por energia não foi testada:** depende do `HW-11` (2).
+- **Os pulsos no SCL seguem sem prova na placa:** o caso que eles tratam (SDA preso) não apareceu.
+
+**Procedência.** Branch `bugfix/fw-17-recuperar-o-i2c` sobre `develop` `6be63d0`; placa ESP32 + MPU6050 pela COM3; `arduino-cli` com `esp32:esp32` 3.3.12; testes em contêiner `gcc:13`; logs `fw17e2-bancada-2026-11-16.log` e `fw17e2-bancada-3-2026-11-16.log` em `dados-locais/`, fora do repositório; Windows 11; 16/11, das 23:20 às 23:58.
+
+# 2026-11-17 (i) — FW-18: o teto da magnitude é o fundo de escala da C2, não 20 m/s²
+
+**O problema, como foi entendido no início.** Na bancada do diário 16/11 (x), as 7 épocas do travesseiro sacudido (picos de 20,1 a 63,9 m/s²) e uma de quando ele foi fechado (23,1 m/s²) saíram no log como normais e foram **descartadas no envio** (`descartadas 8`), sem linha própria. A regra era `MAGNITUDE_MAXIMA_PLAUSIVEL` = 20 m/s² (`firmware/nucleo/payload.h`), feita para pegar o sensor mudo. Na C2, o sensor mede até ±8 g por eixo.
+
+**Hipótese de trabalho.** O piso de 3 m/s² já pega o sensor mudo (registrador zerado lê ~0; parado, a gravidade sozinha dá ~9,8). O teto só precisa recusar o que o sensor não consegue medir: os três eixos no fundo de escala, 8 g · √3 ≈ 135,9 m/s². O servidor aceita `total` até 175 (`web-app/validacao.py`, `_TOTAL_MAX`). O coletor do celular usa o mesmo núcleo, e recebe a correção com o próximo APK.
+
+**O que foi testado, e como.**
+- **No núcleo:** `MAGNITUDE_MAXIMA_PLAUSIVEL = FUNDO_DE_ESCALA_G * GRAVIDADE_MS2 * 1,7320508`, com `FUNDO_DE_ESCALA_G` = 8. Piso intacto.
+- **No `c2`:** `testar_teto_da_magnitude()`. Um pico de 63,9 m/s² vai no payload; 20,5 vai; o teto + 0,5 é recusado; 2,9 é recusado; o teto bate com 32767/`LSB_POR_G` · g · √3 e fica abaixo dos 175 do servidor.
+- **Mutações novas no `mutacao-cadeia`:** o teto volta a 20; sem teto; sem piso.
+- **No sketch:** a linha da época ganha `; FORA DA FAIXA PLAUSIVEL, nao vai ser enviada` quando o pico sai da faixa. Até ali, a época descartada só aparecia como `descartadas N` no resumo do envio.
+- **Na placa:** gravado junto com o `FW-14`, numa branch local de teste (`teste/fw18-fw14`, que não vira PR), e usado numa noite com o autor no travesseiro, das 02:51 às 09:37 de 17/11.
+
+**Resultado medido.**
+- **No host, contêiner `gcc:13`:** `c2` **191** verificações, 0 falhas; `mutacao-cadeia` **40/40**; os demais alvos intactos.
+- **Para o ESP32:** programa 1 088 644 B; RAM fixa 108 976 B (sem mudança).
+- **Na noite:** 4 épocas passaram de 20 m/s² — **27,23** às 05:22, 20,30 às 06:12, 21,65 às 08:37 e 21,08 às 08:47. Nenhuma saiu marcada `FORA DA FAIXA`. Os 43 resumos de envio da noite dizem `descartadas 0`, e os 48 lotes voltaram sem rejeitada (812 leituras aceitas). Com o teto antigo, essas 4 teriam sumido.
+
+**Veredito.** O `FW-18` fecha. O aceite pedia que uma época de ~60 m/s² chegasse ao servidor ou fosse recusada com motivo no log. A época de 63,9 m/s² está coberta no host. Na placa, quatro épocas acima do teto antigo chegaram numa noite real. A sacudida forte não foi repetida na placa: o autor adiou, e a noite tornou a repetição desnecessária para o aceite.
+
+**Adaptação.**
+- O teste da sacudida, combinado para o mesmo dia, virou a noite: o autor foi dormir e gravou a noite com este firmware.
+- O `FW-18` foi para a placa junto com o `FW-14`, numa branch local que mescla as duas. Os dois mexem no `testes_c2.cpp` e no `verificar_cadeia_por_mutacao.sh`, e o conflito foi resolvido mantendo os dois lados.
+
+**O que deu errado no caminho.**
+- **Na bancada de 17/11, o registro serial parou por volta das 02:50** quando o autor desconectou o USB sem querer, e o processo deixou a porta presa. O registro passou a recomeçar sozinho num arquivo novo.
+- **A vigia em tempo real do log expirou por volta das 04:55 e não foi religada**; o registro seguiu gravando, e o resultado acima é do arquivo, lido de manhã.
+
+**Risco em aberto.**
+- **O celular segue com o teto de 20 até o próximo APK** (`APP-12`): uma noite gravada pelo celular perde as épocas fortes do mesmo jeito.
+- **Picos acima de ~28 m/s² não foram vistos na placa** fora da bancada de 16/11, quando o teto ainda era 20.
+
+**Procedência.** Branch `bugfix/fw-18-teto-da-magnitude` (`b1d7c85`) sobre `develop` `094f4da`; na placa, a branch local `teste/fw18-fw14`; placa ESP32 + MPU6050 pela COM3; `arduino-cli` com `esp32:esp32` 3.3.12; testes em contêiner `gcc:13`; logs `noite-fw18-fw14-2026-11-17.log` e `noite-fw18-fw14-2026-11-17-parte2.log` em `dados-locais/`, fora do repositório; Windows 11; 17/11, das 02:39 às 10:05.
+
+# 2026-11-17 (ii) — FW-14, etapa 1: uma conexão por envio, a linha de memória e uma noite medida
+
+**O problema, como foi entendido no início.** Desde o `FW-13` (12/11), o envio da placa passa no handshake TLS com ~15 KB de folga: o mínimo de heap medido foi 14 772 B em 12/11, 13 524 B e 12 868 B em 16/11. Cada lote de 20 leituras abria uma conexão TLS nova, de ~67 KB. O log só mostrava o heap livre e o mínimo, e nada dizia de onde dava para tirar memória.
+
+**Hipótese de trabalho.** Duas apostas. (1) Uma conexão por envio, reaproveitada entre os lotes (`setReuse(true)`: no core do ESP32, `end()` mantém o socket aberto), economiza handshakes e afasta o mínimo do chão. (2) Medir as pilhas, o maior bloco livre e o maior lote mostra quanto dá para cortar dos estáticos e das reservas.
+
+**O que foi testado, e como.**
+- **No núcleo:** `FolgaDeMemoria` e `formatar_folga()` em `envio_da_fila.h/.cpp`, que montam a linha `[memoria] heap … (minimo …); maior bloco … antes, … depois; pilha livre: envio … de … B, medicao … de … B; maior lote … de … B; N conexoes TLS para M lotes`; linha que não cabe sai vazia, nunca pela metade. +7 verificações no `c2`.
+- **No sketch:** `enviar_pendentes()` cria o cliente TLS e o `HTTPClient` uma vez por envio; conta conexão nova quando o cliente não está conectado; a fila vazia e a falha encerram o envio, e o cliente é fechado no fim. O maior bloco é medido antes de ligar o Wi-Fi e depois do envio; as pilhas, por `uxTaskGetStackHighWaterMark`.
+- **O envio da placa ganhou o primeiro teste no host** (`testes/envio_do_sketch.cpp`): a partição em RAM com a fila de verdade e um servidor falso que conta POSTs e handshakes. Três casos: 50 épocas em 3 lotes com 1 handshake; o servidor fechando a conexão a cada lote (3 handshakes, nada perdido); o 2º POST falhando (o envio para, 30 pendentes, e o seguinte manda o resto). Quatro sabotagens novas no `make laco` e duas mutações no `mutacao-cadeia`.
+- **Na placa:** gravado junto com o `FW-18`, numa branch local de teste (`teste/fw18-fw14`), e usado na noite de 17/11 com o autor no travesseiro e a placa no USB do computador.
+
+**Resultado medido.**
+- **No host, contêiner `gcc:13`:** `c2` **192**, 0 falhas; `make laco` **20/20**; `mutacao-cadeia` **39/39**; `mutacao` 15/15; `mutacao-fila` 17/17; `mutacao-coletor` 20/20; `sintaxe` liga.
+- **Para o ESP32:** programa 1 089 128 B; RAM fixa **108 984 B** (+8 B).
+- **Na noite (02:51–10:01, 43 envios):**
+
+| Medida | Valor |
+|---|---|
+| Lotes | 48 com `HTTP 200`, 812 leituras aceitas, 0 rejeitadas; 1 `HTTP -1` às 07:21, mandado no envio seguinte; `descartadas 0` e `falhas na fila 0` em todos |
+| Conexões TLS | **41 para 47 lotes** desde o boot das 02:51 |
+| Heap mínimo | 16 872 B no 1º envio; 16 168 B às 03:51; 15 284 B às 05:31; **13 096 B às 08:01**, e ficou |
+| Heap livre no envio | 115 988 → 115 476 B em 7 h, estável depois das 05:00 |
+| Maior bloco livre | 110 580 B antes do 1º envio; depois, **40 948 B**, às vezes 32 756 B logo após o envio |
+| Pilha do envio | usou ~4,1 KB de 16 384 B (12 300 livres) |
+| Pilha da medição | usou ~2,3 KB de 8 192 B (5 872 livres) |
+| Maior lote | 6 127 B de 10 400 B |
+
+**Veredito.** A conexão por envio funciona na Vercel, mas economiza pouco: quase todo envio tem um lote só (20 épocas em 10 min), e a conexão não sobrevive aos 10 min entre envios. O mínimo da noite, 13 096 B, ficou no patamar de antes (12 868 B em 16/11): ele é ditado por um handshake só, que a mudança não evita. O piso de ~10 KB do aceite não foi furado numa noite de ~7 h. A linha `[memoria]` é o ganho desta etapa: mostra **~12 KB de pilha sem uso no envio, ~5,8 KB na medição e ~4,2 KB no buffer do lote**, e o maior bloco livre (~41 KB) abaixo dos ~67 KB do handshake, que portanto pede memória em pedaços. O `FW-14` segue aberto para a etapa 2: cortar as pilhas e o buffer pela medida, com margem, e medir de novo.
+
+**Adaptação.**
+- A medida na placa estava combinada para uma sessão de bancada com a sacudida do `FW-18`; virou uma noite inteira, o que mede melhor (43 envios, em vez de 2 ou 3).
+- A observação do maior bloco foi corrigida durante a noite: depois do 2º envio, eu disse que ele voltava a 110 KB, e o 3º envio mostrou que não volta — o 110 KB era só do primeiro envio depois do boot.
+
+**O que deu errado no caminho.**
+- **A vigia em tempo real do log expirou por volta das 04:55 e não foi religada.** O autor tinha pedido acompanhamento por medo de superaquecimento. O registro seguiu gravando, mas das 05h às 10h ninguém olhou o log ao vivo. A vigia expira a cada 30 min e precisa ser religada a cada vez.
+- **O registro serial parou por volta das 02:50** com o USB desconectado sem querer; a placa reiniciou. O registro passou a recomeçar sozinho em arquivo novo.
+- **A primeira versão da vigia, ao ser religada, relia o arquivo do começo** e repetia os envios já vistos. Passou a começar do fim.
+
+**Risco em aberto.**
+- **O sensor ficou mudo às 09:37** e não voltou: 19 liberações do barramento, uma resposta passageira às 09:39 (`HW-11`). Antes, às 08:53, ficou mudo ~1,5 min e voltou sozinho. Foi achado dormindo e reconfigurado 21 vezes, todas a partir das 05:00.
+- **Com o sensor mudo, as épocas saem como `recusada (motivo 2)`**, o motivo do transbordo: 80 das 87 recusas da noite. O resumo diz `transbordos 819`. Quem ler o log sem saber vai procurar transbordo, não sensor mudo.
+- **O mínimo de 13 096 B pode cair numa noite mais longa** ou com mais fragmentação, até a etapa 2.
+
+**Procedência.** Branch `bugfix/fw-14-folga-do-envio` (`a9f4734`) sobre `develop` `094f4da`; na placa, a branch local `teste/fw18-fw14`; placa ESP32 + MPU6050 pela COM3; `arduino-cli` com `esp32:esp32` 3.3.12; testes em contêiner `gcc:13`; logs `noite-fw18-fw14-2026-11-17.log` e `noite-fw18-fw14-2026-11-17-parte2.log` em `dados-locais/`, fora do repositório; Windows 11; 17/11, das 02:39 às 10:05.
+
+# 2026-11-17 (iii) — FW-14, etapa 2: as pilhas pela medida, a tarefa do `loop()` apagada e o lote pelo pior caso
+
+**O problema, como foi entendido no início.** Na noite de 17/11 (diário 17/11 (ii)), o mínimo de heap no envio foi 13 096 B: a conexão por envio não mudou o patamar, porque ele vem de um handshake TLS só (~67 KB de uma vez). A linha `[memoria]` mostrou memória reservada sem uso: a pilha do envio usou ~4,1 de 16 KB, a da medição ~2,3 de 8 KB, e o maior lote 6,1 de 10,4 KB.
+
+**Hipótese de trabalho.** Devolver ao heap o que está reservado e não é usado sobe o mínimo sem tocar no núcleo da medição. Lendo o código apareceu um quarto lugar: a tarefa do Arduino que roda o `setup()` e o `loop()` nasce com 8 KB de pilha (`CONFIG_ARDUINO_LOOP_STACK_SIZE` = 8192 no `sdkconfig` do core 3.3.12) e ficava parada em `vTaskDelay(portMAX_DELAY)` a noite inteira.
+
+**O que foi testado, e como.**
+- **No sketch:** `PILHA_DO_ENVIO` 16 384 → **8 192**; `PILHA_DA_MEDICAO` 8 192 → **4 096** (cerca de 2× o medido); `loop()` passa a `vTaskDelete(NULL)`; `TAMANHO_JSON_DO_LOTE` = `tamanho_do_lote(20)` = **7 235 B** (era 20 × 520 = 10 400).
+- **No núcleo (`envio_da_fila.h/.cpp`):** `PIOR_LEITURA_BYTES` = 360 e `tamanho_do_lote()`, a conta do envelope (abertura, vírgulas, fechamento e NUL); a linha `[memoria]` termina em `; PILHA BAIXA` abaixo de 1 024 B livres numa das pilhas.
+- **O pior caso, no `c2`:** o texto mais longo de cada feature, percorrendo os 65 536 valores que o registro da flash guarda; os escalares no extremo (eixos e pico em ±135,87, temperatura no fim da faixa do registrador, `ts` de quatro dígitos no ano, `amostras` 65 535); soma **341 B**. 20 000 leituras sorteadas, com a gravidade unitária, não passam disso. 20 leituras de 360 B cabem em `tamanho_do_lote(20)`, e com um byte a menos só 19. +11 verificações (o aviso de pilha baixa inclusive).
+- **No `make laco`:** o envio do sketch confere que o `loop()` apaga a própria tarefa e que o buffer é o do pior caso. Duas sabotagens novas: o `loop()` volta a só esperar; o buffer volta a 520 B por leitura.
+- **No `mutacao-cadeia`:** três mutações novas: o pior caso abaixo do medido (330), o lote sem as vírgulas, o aviso que nunca sai.
+- **Na placa:** gravada pela COM3 e deixada no travesseiro, parada, das 11:19 às 14:08, com o log serial.
+
+**Resultado medido.**
+- **No host, contêiner `gcc:13`:** `make` 341 + 157 + **209** + 456 + 115 + 327 + 185, 0 falhas; `laco` **22/22**; `mutacao-cadeia` **45/45**; `mutacao` 15/15; `mutacao-fila` 17/17; `mutacao-coletor` 20/20; `sintaxe` liga.
+- **Para o ESP32:** programa 1 089 280 B; RAM fixa 108 984 B (sem mudança: pilhas e buffer saem do heap).
+- **Na placa (2 h 49 min, 17 envios, 22 lotes, 337 épocas gravadas):**
+
+| | Noite de 17/11 (etapa 1) | Etapa 2 | |
+|---|---|---|---|
+| Heap livre no envio | ~115 500 B | **~142 250 B** | +26,7 KB |
+| Heap mínimo | 13 096 B | **41 100 B** | estável depois da 1ª hora |
+| Maior bloco livre depois do 1º envio | 40 948 B | **59 380 B** | +18 KB |
+| Pilha do envio | usou 4 084 de 16 384 B | usou 4 072 de 8 192 B (4 120 livres) | |
+| Pilha da medição | usou 2 320 de 8 192 B | usou 2 320 de 4 096 B (1 776 livres) | |
+| Maior lote | 6 127 de 10 400 B | 6 023 de 7 235 B | |
+
+- Todos os lotes com `HTTP 200`; `descartadas 0` e `falhas na fila 0` em todos os envios; nenhum reinício; nenhum `PILHA BAIXA`.
+- Três épocas recusadas: a do boot (motivo 5, como sempre); uma depois de uma drenagem com a contagem desalinhada (13:14); uma depois de uma falha de I2C e um transbordo às 14:08, com o sensor voltando sozinho (o corte de contato do `HW-11`).
+
+**Veredito.** O mínimo de heap no envio triplicou: 41 100 B, contra 13 096 B na noite anterior. O ganho medido (~26,7 KB) passa da soma exata do que foi devolvido — 8 192 + 4 096 + 8 192 B de pilha e 3 165 B de buffer, 23 645 B; o plano dizia ~21 KB, arredondado. A tarefa apagada devolve também o bloco de controle dela (algumas centenas de bytes); os ~2,7 KB restantes não foram explicados. As pilhas usaram exatamente o que a noite tinha medido — a da medição, 2 320 B, com 21 reconfigurações do sensor e 19 liberações do barramento na noite e nenhuma hoje, o que diz que esses caminhos não vão mais fundo. O `FW-14` segue aberto até uma noite inteira contra o aceite (mínimo ≥ 25 KB, pilha livre ≥ 2 KB no envio e ≥ 1 KB na medição, nenhum reinício).
+
+**Adaptação.**
+- A tarefa do `loop()` não estava no diagnóstico da etapa 1: apareceu lendo o `sdkconfig` do core, ao procurar por que a soma das pilhas medidas não fechava com o heap.
+- O pior caso foi medido antes de virar número: a primeira conta, com um programa avulso no contêiner, deu 341 B; o teste refaz a mesma conta.
+
+**O que deu errado no caminho.**
+- **A gravação não trouxe o sensor de volta.** Ele estava mudo desde as 09:37 (`HW-11`), e gravar reinicia a ESP32 sem cortar a energia do MPU6050: o primeiro log só tinha drenagens descartadas. Voltou com o autor tirando e recolocando o USB — e o registro serial caiu junto e foi recomeçado.
+- **O script de edição detectou fim de linha errado** no `verificar_laco_do_sketch.sh` (o arquivo tem `"\r\n"` escrito dentro de um trecho em Python) e não aplicou; as duas trocas foram feitas à mão. Na inserção das mutações, as continuações de linha da shell se perderam de novo e foram restauradas.
+- **O começo de 11 linhas do log saiu corrompido** em ~3 h (64 caracteres ilegíveis no lugar dos primeiros). Não é desta mudança: aconteceu 1 vez em 16/11 com o firmware do `FW-17`. Virou o `FW-19`.
+
+**Risco em aberto.**
+- **Caminhos que nem a noite nem a tarde exercitaram** podem usar mais pilha: o Wi-Fi que não conecta, o certificado recusado, a divisão do lote (`413`), um envio com dezenas de lotes acumulados. A margem de ~2× e o `PILHA BAIXA` cobrem o previsível; o estouro, a proteção do FreeRTOS reinicia a placa sem perder a fila.
+- **A pilha da medição tem a menor margem** (1 776 B livres, acima do aviso de 1 024).
+- **A tarde foi parada** (nenhuma reconfiguração do sensor): a noite é que fecha o item.
+
+**Procedência.** Branch `bugfix/fw-14-etapa-2-pilhas` (`7584ede`) sobre `develop` `3bc60c9`; placa ESP32 + MPU6050 pela COM3; `arduino-cli` com `esp32:esp32` 3.3.12; testes em contêiner `gcc:13`; log `fw14e2-2026-11-17-parte2.log` em `dados-locais/`, fora do repositório; Windows 11; 17/11, das 11:17 às 14:09.
+
+# 2026-11-17 (iv) — HW-02: o estudo de energia e a escolha da bateria
+
+**O problema, como foi entendido no início.** A placa só funciona ligada ao USB de um computador. O autor pediu um estudo completo da alimentação por bateria, com a escolha do componente: a bateria não pode ser grande, precisa durar o bastante para justificar o projeto e não pode esquentar. O modelo de consumo (`CALCULOS-TCC.md` §Z.4) já dizia que o consumo fixo da placa decide a autonomia, e que ninguém o mediu.
+
+**Hipótese de trabalho.** Com a corrente dos chips em 2,28 mA (§Z.4.4c) e o consumo fixo da DevKit V1 e do GY-521 estimado por folha de dados e relatos de bancada, dá para escolher uma célula que cumpra um mínimo de autonomia mesmo no pior caso da faixa, e deixar a capacidade definitiva para depois da medição (`RD-10`). A segurança térmica pesa mais na química e no invólucro do que na potência média.
+
+**O que foi testado, e como.** Nada foi medido na placa: não havia instrumento de corrente. Foi um estudo de documentos:
+- folhas de dados da Espressif (faixa de alimentação de 3,0 a 3,6 V no módulo; rádio a 240 mA na transmissão), dos reguladores (AMS1117, RT9080, ME6211) e das células LiFePO4 (14500, 18650, 26650);
+- relatos de bancada de terceiros sobre o consumo fixo: o regulador da DevKit alimentado por trás (~4 mA) e os LEDs de energia da DevKit e do GY-521 (~1,3 mA cada);
+- um estudo de calorimetria (ARC) que compara as químicas em células 18650 a 100 % de carga;
+- a conta de autonomia para seis células em três cenários de placa (intacta, sem os LEDs, sem os LEDs e com o regulador isolado).
+
+**Resultado medido.** Nenhum número desta entrada é medição deste projeto. O que o estudo sustenta (*cálculo* sobre *especificação* e *estimativa*):
+
+| Cenário | Corrente total | LiFePO4 18650 (1 500 mAh, 1 215 mAh úteis) |
+|---|---:|---:|
+| S1: a placa intacta, bateria no pino 3V3 | ~8,8 mA (7,3 a 13,6) | 138 h (89 a 166 h) |
+| S1': sem os dois LEDs | ~6,5 mA | 187 h |
+| S2: sem os LEDs e com o regulador isolado | ~2,5 mA | 486 h |
+
+- **No ensaio de calorimetria**, o LFP não disparou o *runaway* e chegou a 239 °C. O LCO, a química das LiPo, disparou a 180 °C e chegou a 545 °C.
+- **A potência média** da placa e do sensor fica entre 8 e 45 mW, e a da resistência interna da célula no pico do rádio, em ~4,5 mW.
+
+**Veredito.** A recomendação é **uma célula LiFePO4 18650 de ~1 500 mAh, removível num suporte, ligada direto no pino 3V3 da DevKit V1, com fusível e chave, carregada fora do travesseiro num carregador de LiFePO4**. Ela cumpre o mínimo proposto de 72 h mesmo no pior caso da faixa, sem mexer na placa, e o alvo de 168 h do `RD-09` tirando os dois LEDs. Ela dispensa o regulador, porque o patamar de 3,2 a 3,3 V do LFP cabe na faixa do ESP32. E é a química mais estável, numa lata de aço que aguenta a pressão da cabeça. A alternativa é uma Li-ion 18650 protegida com LDO (RT9080). A LiPo em bolsa foi descartada para dentro do travesseiro. O `HW-02` segue aberto: falta comprar a célula, medir a corrente real e montar.
+
+**Adaptação.**
+- O pedido mencionava uma simulação com bateria de lítio já salva no projeto. Ela não existe no repositório: o que há com "bateria simulada" é o app do celular no emulador (09/11). O estudo partiu do modelo do §Z.4 e da tabela do `RD-09`.
+- O autor não respondeu às três perguntas do plano (o instrumento, o orçamento, trocar a placa). O estudo manteve a DevKit V1, que é o que dispensa compra de placa, e deixou a troca como alternativa avaliada.
+
+**O que deu errado no caminho.**
+- **A busca por relatos de consumo** da DevKit V1 em sono leve não achou nenhuma medição limpa: os números do consumo fixo são de sono profundo, em outras placas ou calculados pelo resistor do LED. A faixa de S1 é larga por isso.
+- **Uma placa avaliada para bateria** (FireBeetle 2 ESP32-E) tem carregador só para 4,2 V, o que carregaria uma LiFePO4 acima do limite. Ela saiu da recomendação, e o motivo ficou no estudo.
+
+**Risco em aberto.**
+- **O consumo fixo real da placa não foi medido** (`HW-02`, `RD-10`). A autonomia de S1 pode ficar entre 89 e 166 h.
+- **Logo depois da carga, a LFP marca 3,6 a 3,65 V**, no limite do ESP32. A regra de esperar 2 h antes de recolocar a célula ainda não foi verificada na bancada.
+- **USB e célula ligados juntos** fazem o regulador da DevKit carregar a célula sem controle. A regra é gravar o firmware com a chave da célula desligada.
+- **O aquecimento** só fica provado com o ensaio do `CALC-05` contra o `RD-12`.
+
+**Procedência.** Branch `docs/HW-02-estudo-de-energia` sobre `develop` `590de33`; `docs/ESTUDO-ENERGIA.md`, com as fontes; contas feitas em Python na sessão, com as premissas na seção 6 do estudo; Windows 11; 17/11, das 14:50 às 15:40.
+
+# 2026-11-17 (v) — HW-02: a revisão do estudo de energia
+
+**O problema, como foi entendido no início.** Com a escolha da célula confirmada pelo autor (LiFePO4 18650), ele pediu uma revisão completa do estudo de 17/11 (iv): contas, circuito e diagramas. O autor também mostrou a proposta de alimentação que os dois autores tinham feito antes, fora do repositório: uma página com modelo 3D de **LiPo 1S → PowerBoost 500C (5,2 V) → VIN do ESP32**, numa caixa de 80 × 100 × 20 mm.
+
+**Hipótese de trabalho.** As premissas do estudo vinham do modelo do `CALCULOS-TCC.md` §Z.4 e de relatos de terceiros. Conferi-las contra o firmware que roda na placa e contra as folhas de dados pode mudar números, e o circuito proposto ainda não tinha sido desenhado.
+
+**O que foi testado, e como.**
+- **O firmware contra o modelo:** o `sketch.ino` põe o giroscópio em espera (`PWR_MGMT_2`), lê o I2C a 400 kHz e **não chama `setCpuFrequencyMhz`**. O core do Arduino roda a 240 MHz, e o §Z.4.4c supõe 80 MHz.
+- **As contas** refeitas em Python, com a faixa de cada fonte de consumo fixo declarada e somada extremo com extremo.
+- **O circuito** contra as folhas de dados: a Espressif pede uma fonte de 500 mA ou mais; o fusível, a chave, a inversão da célula removível, o pico do rádio no fim da descarga, o pino do divisor.
+- **O esquemático:** a folha v3 do `DIAG-02`, gerada com `schemdraw` 0.19 e `matplotlib` 3.9.2 num ambiente à parte, olhada e corrigida duas vezes (legendas sobrepostas, retorno de terra cruzando um resistor).
+- **A proposta anterior**, com as mesmas contas.
+
+**Resultado medido.** Nenhuma medição na placa. O que a revisão mudou (*cálculo* sobre *especificação* e *estimativa*):
+
+| | Antes | Depois |
+|---|---:|---:|
+| Circuitos integrados (referência) | 2,28 mA | **2,55 mA** (240 MHz) |
+| S1, placa intacta | 8,8 mA | **9,4 mA** (7,4 a 13,6) |
+| S1', sem os LEDs | 6,5 mA | **6,8 mA** |
+| S2, sem os LEDs e o regulador | 2,5 mA | **2,8 mA** |
+| LFP 18650 em S1 | 138 h | **129 h** (89 a 164 h) |
+| LFP 18650 em S1' | 187 h | **179 h** |
+| Fusível | 500 mA | **1 A, rápido, não PTC** |
+
+- **A proposta anterior** tiraria ~22 mA da célula e dissiparia ~82 mW no travesseiro, contra ~9,4 mA e ~31 mW da recomendação; com uma LiPo de 2 000 mAh, ~69 h.
+- **Acrescentados ao circuito:** proteção contra inversão (P-MOSFET), o capacitor de 1 000 µF como parte do circuito, fios soldados, o divisor no GPIO35 (ADC1), e o cabo USB só de dados para ler o log com a placa na bateria.
+
+**Veredito.** A recomendação se mantém, com números um pouco piores e um circuito mais completo. A LFP 18650 cumpre o mínimo proposto de 72 h em toda a faixa de S1, e o alvo de 168 h na referência de S1'. A proposta anterior fica abaixo do mínimo, com o dobro e meio do calor e a LiPo em bolsa. A caixa dela pode ser aproveitada com um suporte de 18650. Abre-se o `FW-20`: rodar o processador a 80 MHz devolve 0,16 a 0,48 mA.
+
+**Adaptação.**
+- A revisão não estava no plano do estudo: foi pedida pelo autor depois da escolha.
+- O VCC do GY-521, dúvida antiga do `HW-02` (3,3 V ou 5 V), se resolve pela decisão: com a célula não há 5 V, e o módulo fica no 3V3.
+
+**O que deu errado no caminho.**
+- **A primeira versão do estudo usou a premissa de 80 MHz do §Z.4 sem conferir o firmware**, o mesmo padrão do §6 das lições (um documento afirmando o que o artefato não faz).
+- **A tabela do consumo fixo somava 6,9 mA, e o cenário dizia ~6,5 mA.** Nenhuma conferência pegou: o estudo não tem script que refaça as contas.
+- **O fusível de 500 mA** da primeira versão ficava no limite do que a Espressif pede da fonte.
+- **O script que inseriu a folha v3 no `DIAG-02`** converteu o fim de linha duas vezes e deixou o bloco novo com fim de linha misturado. O arquivo foi restaurado, o script corrigido, e o arquivo saiu com CRLF em todas as linhas.
+- **A vigia do log da placa** expirou sem avisar de nenhum envio em 30 min, embora os envios tenham saído (14:38, 14:48 e 14:58). Foi trocada por uma mais simples, que segue o arquivo direto.
+
+**Risco em aberto.**
+- **Nada do estudo foi medido** (`HW-02`, `RD-10`).
+- **As contas do estudo não têm conferência automática**, como o §Z.4 tem no `calculos_tcc.py`.
+- **A ponte CP2102 alimentada pelo 3V3**, premissa do cabo só de dados, não foi conferida nesta placa.
+
+**Procedência.** Branch `docs/HW-02-revisao-do-estudo` sobre `develop` `6afa856`; `docs/ESTUDO-ENERGIA.md` §11; `docs/diagramas/DIAG-02-esquematico.py` (folha v3, gerada fora do repositório, como as outras); a página da proposta anterior, na máquina do autor, fora do repositório; Windows 11; 17/11, das 15:00 às 15:30.
+
+# 2026-11-17 (vi) — FW-19: a serial esvazia antes do sono leve
+
+**O problema, como foi entendido no início.** O começo de algumas linhas do log serial chegava corrompido: 11 linhas em ~3 h com a placa parada (diário 17/11 (iii)), 1 em 16/11 e nenhuma na noite de 17/11. A primeira hipótese era a serial cortada pelo sono leve. Mas 2 das linhas eram de lote, impressas durante o envio, com a medição sem dormir, e isso apontava também para o USB.
+
+**Hipótese de trabalho.** Medir antes de mexer: um registrador que grava os bytes crus da serial, escrevendo em hexadecimal os trechos fora do ASCII e a posição deles na linha. Lixo sem relação com o texto, caindo em qualquer ponto, seria o USB. Lixo sempre no começo de uma linha impressa logo antes de a placa dormir seria o sono.
+
+**O que foi testado, e como.**
+- **O registrador cru** (fora do repositório), na mesma porta e na mesma velocidade, das 14:35 às 18:17 de 17/11, com a placa no firmware do `develop` (`FW-14` etapa 2).
+- **A correção:** `Serial.flush()` logo antes de `esp_light_sleep_start()` na tarefa da medição.
+- **No host:** o stub da serial (`stubs-arduino/Arduino.h`) passou a marcar texto pendente, com qualquer escrita marcando e só o `flush()` limpando. O sono falso do `make laco` conta os sonos com texto pendente. O teste deixa texto na serial, como as linhas do envio deixariam, roda o laço e exige zero. Sabotagem 23: o sketch sem o `flush()`.
+
+**Resultado medido.**
+- **Registrador cru:** 10 linhas corrompidas em 3 h 42 min, **todas iguais** — 64 bytes `0xFF` no começo da linha (`CRU [0+64 de 119 B]` e parecidas), seguidos do texto sem os 3 primeiros caracteres (`oca 432] total ...`). Nenhum caso no meio de uma linha.
+- **No host, contêiner `gcc:13`:** `make laco` **23/23** — o teste novo dá `10 sonos leves, 0 com texto na serial`, e a sabotagem 23 é acusada. Os demais alvos intactos (`c2` 209, `mutacao` 15/15, `mutacao-cadeia` 45/45, `mutacao-fila` 17/17, `mutacao-coletor` 20/20).
+- **Para o ESP32:** programa 1 089 288 B; RAM fixa 108 984 B, sem mudança.
+
+**Veredito.** O lixo é o mesmo nos 10 casos e cai sempre no começo de uma linha impressa logo antes do sono: o sono leve corta a serial no meio da transmissão. As 2 linhas de lote se explicam do mesmo jeito: o envio termina, o rádio é liberado, e a medição volta a dormir com as linhas do envio ainda saindo. A correção está feita e testada no host. O `FW-19` segue aberto até a placa: 3 h com o registrador cru e nenhuma linha corrompida.
+
+**Adaptação.**
+- A correção não foi gravada na placa no mesmo dia, para não trocar o firmware no meio da noite que fecha o `FW-14`.
+- O teste não depende de o laço falso imprimir alguma coisa: ele mesmo deixa uma linha na serial antes de rodar. Sem isso, um laço que nunca imprime passaria o teste sem provar nada.
+
+**O que deu errado no caminho.**
+- **A hipótese registrada no backlog** ao abrir o item (o sono leve) ficou em dúvida por causa das 2 linhas de lote. A dúvida só se resolveu com os bytes crus.
+- **A compilação para o ESP32 passou do limite de 10 min** da ferramenta e terminou em segundo plano.
+
+**Risco em aberto.**
+- **A causa não está provada na placa**: o host só prova que o sketch esvazia a serial antes de dormir.
+- **O `flush()` acrescenta ~8 ms acordado por linha** de época (a 115 200 baud). Não foi medido na placa: o `trabalho max` do log dirá.
+
+**Procedência.** Branch `bugfix/fw-19-serial-antes-do-sono` sobre `develop` `2fe7b6a`; log cru `fw14e2-2026-11-17-parte3-cru.log` em `dados-locais/`, fora do repositório; testes em contêiner `gcc:13`; `arduino-cli` com `esp32:esp32` 3.3.12; Windows 11; 17/11, das 18:20 às 18:50.
+
+# 2026-11-17 (vii) — HW-10, etapa 1: a tensão da célula no firmware, só no log
+
+**O problema, como foi entendido no início.** O `HW-10` pede medir e mostrar a bateria. A decisão da bateria (`docs/ESTUDO-ENERGIA.md`) prevê um divisor de 1 MΩ + 1 MΩ no GPIO35, mas nada no firmware o lia. Mostrar a tensão no painel atravessa cinco camadas: firmware, contrato de dados, backend, banco (com a política de privacidade) e frontend. E não há divisor nem célula montados.
+
+**Hipótese de trabalho.** Dividir em duas etapas. A etapa 1 é só o firmware, com a tensão indo para o log. Ela se testa no host já e se confere na placa quando o divisor e a célula chegarem. A etapa 2 leva a tensão ao painel, e só depois de a leitura bater com o multímetro, para nunca mostrar um número que a medida não sustenta.
+
+**O que foi testado, e como.**
+- **No núcleo** (`firmware/nucleo/bateria.h/.cpp`, novos):
+  - a tensão da célula a partir das amostras do ADC (média vezes o divisor 2);
+  - o estado para a LiFePO4: ok (≥ 3,1 V), baixa, crítica (< 3,0 V), com 50 mV de histerese para sair de um estado pior;
+  - **indisponível** abaixo de 2 V, que é o pino solto, sem divisor;
+  - a linha do log.
+- **No sketch:** 16 amostras de `analogReadMilliVolts` no GPIO35 (ADC1, com a calibração de fábrica), em dois momentos:
+  - **em repouso**, antes de ligar o Wi-Fi: é a que decide o estado;
+  - **sob carga**, logo depois do primeiro POST da volta, com o rádio ligado.
+  A linha `[bateria] … mV em repouso, … mV no envio (estado)` sai depois da `[memoria]`.
+- **No `c2`:** a conversão, as três faixas, o indisponível, a histerese nos dois sentidos e a linha (+14 verificações).
+- **No envio do sketch** (`envio_do_sketch.cpp`), com um ADC falso:
+  - o pino lido é o 35;
+  - 1 640 mV no pino dão 3 280 mV;
+  - a leitura sob carga sai na volta e acontece depois do primeiro POST.
+- **Sabotagem 24:** o sketch sem a leitura no envio.
+- **Mutações 45 a 48:** o divisor ignorado, o limite da baixa no da crítica, sem histerese, o pino solto virando tensão.
+
+**Resultado medido.**
+- **No host, contêiner `gcc:13`:**
+  - `make` 341 + 157 + **223** + 456 + 115 + 327 + 185, 0 falhas;
+  - `make laco` **24/24**;
+  - `mutacao-cadeia` **49/49**;
+  - `mutacao` 15/15, `mutacao-fila` 17/17, `mutacao-coletor` 20/20;
+  - `sintaxe` liga.
+- **Para o ESP32:** programa 1 097 320 B (+8 032 B, a biblioteca do ADC calibrado), RAM fixa 109 072 B (+88 B), 218 608 B para o heap.
+- **Na placa:** nada ainda. O firmware desta etapa não foi gravado.
+
+**Veredito.** A leitura está pronta e testada no host. O `HW-10` segue aberto. Falta a placa: sem divisor, a linha tem de dizer "indisponível"; com o divisor e a célula, a tensão em repouso tem de bater com o multímetro (aceite a fixar, ±50 mV). Depois vem a etapa 2, o painel.
+
+**Adaptação.**
+- O teste da leitura sob carga confere **quando** ela acontece, pelo número de POSTs já feitos na primeira leitura do ADC, e não só **se** acontece.
+- A porcentagem ficou de fora de propósito: a curva da LiFePO4 é plana, e a tensão só diz com segurança quando a célula está no fim.
+
+**O que deu errado no caminho.**
+- **O script de mutação do `c2` lista as fontes do núcleo à mão.** Sem acrescentar o `bateria.cpp` ali, cada mutação deixaria de ligar e contaria como acusada sem a suíte ter rodado. Foi acrescentado na mesma mudança.
+- **A compilação para o ESP32 passa dos 10 min** e foi rodada em segundo plano.
+
+**Risco em aberto.**
+- **O ADC do ESP32 tem ruído e erro de ganho** mesmo com a calibração de fábrica, mais ainda com o Wi-Fi ligado. As 16 amostras reduzem o ruído, não o erro, e só o multímetro dirá quanto sobra.
+- **O divisor de 1 MΩ é de alta impedância.** O capacitor de 100 nF é o que segura a leitura, e sem ele ela pode ficar baixa e ruidosa.
+- **O GPIO35 tem de estar livre** na placa.
+
+**Procedência.** Branch `feature/HW-10-leitura-da-bateria` sobre `develop` `7296563`; testes em contêiner `gcc:13`; `arduino-cli` com `esp32:esp32` 3.3.12; Windows 11; 17/11, das 19:00 às 19:40.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

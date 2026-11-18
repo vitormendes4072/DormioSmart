@@ -46,6 +46,8 @@ Nada aqui foi medido na placa: o firmware de produto ainda não rodou nela.
 | RD-09 | Funcionar uma semana sem recarga, sempre ligado | **7 dias = 168 h** de operação contínua (o projeto não tem botão de liga e desliga) | Proposta deste documento | **Proposto** |
 | RD-10 | Bateria dimensionada pela corrente medida, e não pela estimada | A capacidade é escolhida depois de medir o consumo fixo da placa (ver a tabela abaixo) | `CALCULOS-TCC.md` Z.4.5; `HW-02` | Aberto (`HW-02`) |
 
+✏️ *17/11 (`HW-02`, `docs/ESTUDO-ENERGIA.md` §4): proposta de um **mínimo de 72 h** (três noites sem recarga) abaixo do alvo de 168 h do RD-09; a confirmar pelos autores e pelo orientador, como o RD-09. A célula recomendada (LiFePO4 18650, ~1 500 mAh) dá 89 a 164 h com a placa intacta e ~179 h sem os dois LEDs de energia — estimativa, a medir pelo RD-10; revisada no mesmo dia, com o processador a 240 MHz (`ESTUDO-ENERGIA.md` §3.1).*
+
 **Capacidade necessária para 168 h**, pela Equação 2 (A = C/I), conforme o consumo fixo da placa, que
 **não foi medido**:
 

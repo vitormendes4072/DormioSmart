@@ -94,6 +94,30 @@ enum EstadoDaLeitura {
 // Classifica a leitura de FIFO_COUNT e INT_STATUS antes de ler os bytes.
 EstadoDaLeitura avaliar_fifo(uint16_t fifo_count, uint8_t int_status);
 
+// ── Por que uma drenagem foi descartada (FW-17) ─────────────────────────
+//
+// O sketch descarta a drenagem (zera a FIFO e marca a descontinuidade) por
+// cinco motivos diferentes, e ate 16/11 contava todos como "transbordo". Na
+// bancada do VIA-01 foram 3 em ~80 min com 0 prazos estourados -- a FIFO nao
+// pode ter enchido por atraso --, e o contador nao dizia qual dos cinco foi.
+// So o diagnostico muda: o que o sketch faz em cada caso continua igual.
+enum CausaDaPerda {
+  PERDA_I2C_NO_ESTADO = 0,    // INT_STATUS ou FIFO_COUNT nao vieram pelo barramento
+  PERDA_TRANSBORDO_BIT = 1,   // o sensor ligou FIFO_OFLOW
+  PERDA_TRANSBORDO_TETO = 2,  // contagem no teto, sem o bit
+  PERDA_DESALINHADA = 3,      // contagem que nao e multipla de 6
+  PERDA_I2C_NA_LEITURA = 4,   // o barramento falhou no meio dos bytes da FIFO
+  N_CAUSAS_DE_PERDA = 5,
+};
+
+// A causa de uma leitura que `avaliar_fifo` recusou. Com o bit e o teto juntos,
+// vale o bit, na mesma ordem de `avaliar_fifo`. So faz sentido chamar quando a
+// leitura NAO foi `LEITURA_OK`.
+CausaDaPerda causa_da_leitura_recusada(uint16_t fifo_count, uint8_t int_status);
+
+// Nome curto da causa, para o log.
+const char *nome_da_causa(CausaDaPerda causa);
+
 // Quantos bytes ler: a contagem arredondada para baixo em amostras inteiras,
 // e no maximo `teto_bytes` (o buffer de quem chama).
 uint16_t bytes_para_ler(uint16_t fifo_count, uint16_t teto_bytes);
@@ -123,6 +147,38 @@ class VigiaDaFifo {
 
  private:
   uint8_t vazias_;
+};
+
+// ── O barramento sem resposta (FW-17, etapa 2) ─────────────────────────
+//
+// Na bancada de 16/11, um mau contato de um instante no meio de uma leitura
+// deixou o MPU6050 sem responder no I2C por 4,7 min, com os fios firmes; so
+// voltou com o VCC tirado e recolocado. O caminho da falha de I2C no sketch
+// nao passa pela vigia acima: a drenagem descartava e tentava de novo, para
+// sempre.
+//
+// A regra: N drenagens seguidas sem resposta do sensor mandam LIBERAR o
+// barramento (pulsos no SCL, condicao de parada, `Wire` de novo). Se o sensor
+// continuar mudo, a proxima liberacao espera o dobro de falhas, ate o teto --
+// um sensor que so volta com energia nao enche o log a noite inteira. Uma
+// drenagem que o sensor respondeu zera tudo.
+const uint8_t FALHAS_DE_I2C_PARA_LIBERAR = 3;     // ~5 s
+const uint8_t FALHAS_DE_I2C_TETO_DO_RECUO = 96;   // ~2,7 min entre tentativas
+const uint8_t PULSOS_PARA_LIBERAR_O_SDA = 9;      // um byte e o ACK
+
+class GuardaDoBarramento {
+ public:
+  GuardaDoBarramento() : seguidas_(0), limite_(FALHAS_DE_I2C_PARA_LIBERAR) {}
+  // Uma drenagem: `respondeu` = o sensor respondeu no barramento. Devolve true
+  // quando as falhas seguidas chegam ao limite -- e recomeca a contagem, com o
+  // limite dobrado.
+  bool observar(bool respondeu);
+  uint8_t seguidas() const { return seguidas_; }
+  uint8_t limite() const { return limite_; }
+
+ private:
+  uint8_t seguidas_;
+  uint8_t limite_;
 };
 
 // Com os registradores lidos do sensor: true se ele precisa ser configurado

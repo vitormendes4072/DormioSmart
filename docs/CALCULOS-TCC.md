@@ -649,6 +649,8 @@ parâmetros desta predição (Z.4.7).
 
 #### Z.4.4c A arquitetura adotada, com os parâmetros do firmware
 
+✏️ *17/11 (`HW-02`, revisão do estudo de energia): esta seção supõe o processador acordado a 80 MHz (20 a 31 mA), mas o `sketch.ino` não chama `setCpuFrequencyMhz`, e o core do Arduino para ESP32 roda a **240 MHz** (30 a 68 mA). Com a mesma fração da hora acordada, a parcela do processador acordado passa de 0,212 mA para 0,32 a 0,72 mA, e a referência dos circuitos integrados de 2,28 para **~2,55 mA** — dentro da faixa da varredura abaixo, mas acima da referência. Os números desta seção não foram trocados, porque o `calculos_tcc.py` os confere; a conta revisada está no `docs/ESTUDO-ENERGIA.md` §3.1, e baixar a frequência é o `FW-20`.*
+
 O firmware construído fixa três parâmetros que a comparação anterior deixava em aberto
 (*especificação de projeto*, lida do código-fonte). O processador esvazia a fila do transdutor
 a cada **1,7 s**, o que confere com as 85 amostras de meia fila a 50 Hz. As épocas são
@@ -737,6 +739,8 @@ ordens de grandeza que a folha de dados do circuito integrado promete entre o es
 o sono profundo — de dezenas de miliampères para 10 µA — não se materializa numa placa cujo
 consumo de repouso é de miliampères, porque o piso deixa de ser o do circuito integrado e
 passa a ser o da placa.
+
+✏️ *17/11 (`HW-02`): o estudo de energia (`docs/ESTUDO-ENERGIA.md` §3) estima o consumo fixo da placa em três cenários: ~6,9 mA com a placa intacta (o regulador alimentado pelo pino 3V3 e os dois LEDs de energia), ~4,2 mA sem os LEDs e ~0,24 mA isolando o regulador. São estimativas a partir de folhas de dados e de relatos de bancada de terceiros, não medição; a medição segue pendente, como abaixo.*
 
 Segue-se a recomendação de projeto que este modelo fundamenta: **o consumo fixo da placa de
 desenvolvimento é o parâmetro que decide a autonomia do dispositivo, e é ele que a etapa de

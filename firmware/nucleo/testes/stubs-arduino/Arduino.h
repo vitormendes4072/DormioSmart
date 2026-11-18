@@ -73,22 +73,31 @@ inline void delayMicroseconds(uint32_t) {}
 inline uint32_t micros() { return 0; }
 inline void pinMode(int, int) {}
 inline int digitalRead(int) { return 0; }
+inline void digitalWrite(int, int) {}
 
-#define INPUT 0
+// Os valores do core do ESP32: OUTPUT_OPEN_DRAIN e o modo que a liberacao do
+// barramento usa no SCL e no SDA (FW-17).
+#define INPUT 0x01
+#define OUTPUT 0x03
+#define INPUT_PULLUP 0x05
+#define OUTPUT_OPEN_DRAIN 0x13
 #define HIGH 1
 #define LOW 0
 
 class SerialStub {
  public:
+  // FW-19: o que foi escrito e ainda nao saiu. Qualquer escrita marca; so o
+  // `flush()` limpa. O laco falso confere que o sketch nunca dorme marcado.
+  bool pendente = false;
   void begin(unsigned long) {}
-  void println() {}
-  void println(const char *) {}
-  void println(const String &) {}
-  void println(int) {}
-  void print(const char *) {}
-  void print(const String &) {}
-  void print(int) {}
-  void flush() {}
+  void println() { pendente = true; }
+  void println(const char *) { pendente = true; }
+  void println(const String &) { pendente = true; }
+  void println(int) { pendente = true; }
+  void print(const char *) { pendente = true; }
+  void print(const String &) { pendente = true; }
+  void print(int) { pendente = true; }
+  void flush() { pendente = false; }
   operator bool() const { return true; }
 
   // Usados pelos sketches interativos (`caracterizacao.ino` espera o Enter
@@ -100,14 +109,18 @@ class SerialStub {
   // `__attribute__((format))` e o que faz o compilador conferir os %-
   // especificadores contra os argumentos. Num printf de diagnostico com
   // `unsigned long` e `%u` trocados o ESP32 imprime lixo silenciosamente.
-  __attribute__((format(printf, 2, 3))) void printf(const char *, ...) {}
+  __attribute__((format(printf, 2, 3))) void printf(const char *, ...) { pendente = true; }
 
   template <typename T>
-  void println(const T &) {}
+  void println(const T &) { pendente = true; }
   template <typename T>
-  void print(const T &) {}
+  void print(const T &) { pendente = true; }
 };
 extern SerialStub Serial;
+
+// HW-10: o ADC calibrado do core do ESP32 (mV no pino). O stub le 0, como
+// o pino solto; o teste do envio troca por um ADC falso.
+inline uint32_t analogReadMilliVolts(uint8_t) { return 0; }
 
 // O core do ESP32 puxa estes pelo proprio Arduino.h; o stub faz o mesmo para
 // o sketch.ino nao precisar de include que ele nao tem na placa.
@@ -126,6 +139,7 @@ extern SerialStub Serial;
 class WireStub {
  public:
   void begin(int, int) {}
+  bool end() { return true; }
   void setClock(uint32_t) {}
   void beginTransmission(uint8_t) {}
   uint8_t endTransmission() { return 0; }

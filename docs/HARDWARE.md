@@ -105,6 +105,8 @@ cama). A evidência não-contato mais forte é **sob o colchão**, onde o corpo 
 acoplamento melhor que o do travesseiro. **É uma limitação ANTECIPADA, não demonstrada:** quem
 decide é o VIA-01 (teste de bancada).
 
+> ✏️ *16/11: o `VIA-01` foi feito — em 16/11, uma sessão de bancada do autor (n = 1), com dois ciclos de 5 min de cada bloco e 45 épocas fora das bordas, separou o corpo virando do repouso (δ de Cliff = +1,00 em `enmo_media`, p < 0,001 na permutação) e a cabeça do repouso (δ = +0,99 em `mag_din_media`), com o mesmo resultado em cada ciclo isolado; cabeça e corpo **não** se separaram entre si (δ = +0,55, p = 0,061). Pelo critério fixado antes, **fica a v1**, e o `HW-07` não foi acionado. Limite: n = 1, e o giro até a posição de bruços mexe a cabeça no lugar. Diário, 16/11 (ix).*
+
 > Redação honesta para o TCC: *"limitação identificada por análise de viabilidade e literatura,
 > a ser validada empiricamente pelo protótipo"* — **nunca** "limitação medida/comprovada" sem o VIA-01.
 

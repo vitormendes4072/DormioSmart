@@ -176,6 +176,18 @@ mudanças de posição que a envolvam. Movimentos corporais que não desloquem a
 ser subcaptados. A magnitude dessa subcaptação constitui questão empírica em aberto,
 endereçada pelo protocolo de bancada descrito na seção (REFERÊNCIA INTERNA — item VIA-01).
 
+✏️ *16/11 (`VIA-01`), rascunho para o texto, a conferir antes de colar:* Em sessão de bancada com um
+único participante, o próprio autor, conduzida em dois ciclos de cinco minutos para cada condição
+(repouso, movimento de cabeça e giro de corpo com a cabeça apoiada no mesmo ponto), as épocas de giro
+de corpo distinguiram-se integralmente das de repouso (delta de Cliff igual a 1,00 na média do ENMO;
+p < 0,001 em teste de permutação), com o mesmo resultado em cada ciclo considerado isoladamente. As
+épocas de movimento de cabeça também se distinguiram das de repouso, mas não das de giro de corpo
+(delta igual a 0,55; p = 0,061). Duas ressalvas limitam o alcance desse resultado: trata-se de um único
+participante e de uma única sessão, o que demonstra a existência do sinal, e não a sua
+generalidade; e o giro até a posição de bruços implica rotação da cabeça no próprio lugar, de modo que
+a condição avaliada foi o giro de corpo com a cabeça apoiada, e não o movimento de corpo sem nenhum
+movimento de cabeça. O critério de separação foi fixado antes da coleta (`docs/PROTOCOLO-VIA-01.md`).
+
 **Comparação com a posição de pulso.** A literatura de posicionamento de acelerômetros
 indica que o punho apresenta acurácia superior a posições próximas ao centro de massa para a
 tarefa de discriminação sono/vigília, tendo sido relatada acurácia majoritariamente superior
@@ -475,7 +487,7 @@ acompanhamento clínico de distúrbios do sono. Não foi submetido a validação
 informações que apresenta ao usuário limitam-se ao registro de movimento e a métricas dele
 derivadas. O sistema não substitui polissonografia nem avaliação por profissional de saúde.
 
-Do lado do dispositivo, a memória do microcontrolador é um limite medido. O firmware de captação, com Wi-Fi e conexão segura, ocupa 111 464 B de RAM estática (34 % dos 320 KB) e deixa cerca de 13 KB de folga até o teto dessa região; a primeira versão completa não cabia, e foi preciso mover o texto do lote de envio para a memória dinâmica (medido em 12/11/2026, `arduino-esp32` 3.3.12). Funções novas no dispositivo — por exemplo, um segundo sensor ou a classificação embarcada — disputam essa margem e exigem nova medição. A memória dinâmica é o limite mais apertado: no envio, a conexão segura (TLS) consome cerca de 67 KB, e o menor valor livre medido durante o envio foi de 14,8 KB; para caber, o dispositivo envia lotes de 20 leituras, um terço do que o servidor aceita (medido em 12/11/2026).
+Do lado do dispositivo, a memória do microcontrolador é um limite medido. O firmware de captação, com Wi-Fi e conexão segura, ocupa 111 464 B de RAM estática (34 % dos 320 KB) e deixa cerca de 13 KB de folga até o teto dessa região; a primeira versão completa não cabia, e foi preciso mover o texto do lote de envio para a memória dinâmica (medido em 12/11/2026, `arduino-esp32` 3.3.12). Funções novas no dispositivo — por exemplo, um segundo sensor ou a classificação embarcada — disputam essa margem e exigem nova medição. A memória dinâmica é o limite mais apertado: no envio, a conexão segura (TLS) consome cerca de 67 KB, e o menor valor livre medido durante o envio foi de 14,8 KB; para caber, o dispositivo envia lotes de 20 leituras, um terço do que o servidor aceita (medido em 12/11/2026). ✏️ *Rascunho de 17/11 (`FW-14`); conferir antes de colar:* depois de dimensionar as pilhas das tarefas pela medida de uma noite, liberar a pilha de uma tarefa ociosa do ambiente Arduino e calcular o tamanho do lote pelo pior caso de uma leitura (341 B), o menor valor livre durante o envio passou a cerca de 41 KB (medido por 2 h 49 min em 17/11/2026); a margem das pilhas é de cerca de duas vezes o uso medido, e caminhos de falha não exercitados (rede indisponível, certificado recusado) podem consumir mais.
 
 ### X.7 Limitações de segurança da camada de autenticação
 
