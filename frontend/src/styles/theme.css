@@ -222,3 +222,29 @@
   button { font-size: var(--text-base); font-weight: var(--font-weight-medium); line-height: 1.5; }
   input  { font-size: var(--text-base); font-weight: var(--font-weight-normal); line-height: 1.5; }
 }
+
+/*
+ * UI-14 (18/11): a paleta da página da lista de espera, que segue a da landing
+ * (`public/landing-prototipo.html`, num iframe isolado, que não lê este arquivo).
+ * Só `src/pages/ListaDeEspera.css` usa estes tokens. Duas diferenças medidas em
+ * relação à landing: o cinza do texto (5:1 em vez de 3,7:1) e o verde e o azul
+ * dos rótulos pequenos, mais escuros no tema claro.
+ */
+:root {
+  --le-bg: #f3f6fb; --le-surface: #fff; --le-text: #142238; --le-muted: #56657c;
+  --le-border: #e2e9f2; --le-blue: #1479bd; --le-blue-forte: #0e66a3; --le-blue2: #e9f4fc;
+  --le-green: #0f7558; --le-greenbg: #e8f7f1; --le-amber: #b7791f; --le-amberbg: #fff6e5;
+  --le-red: #bd4c51; --le-redbg: #fdeeee; --le-soft: #eaf4fb;
+  --le-foco: #77baf0; --le-texto-no-azul: #fff;
+  --le-shadow: 0 8px 28px rgba(28, 52, 82, .055);
+  --le-ease: cubic-bezier(.22, 1, .36, 1);
+}
+
+:root[data-theme="dark"] {
+  --le-bg: #0b1220; --le-surface: #111c2d; --le-text: #e8f0fc; --le-muted: #93a4bd;
+  --le-border: #263851; --le-blue: #67bafa; --le-blue-forte: #67bafa; --le-blue2: #1a3047;
+  --le-green: #5bd2a8; --le-greenbg: #15382f; --le-amber: #f4c56a; --le-amberbg: #392e1c;
+  --le-red: #ff8989; --le-redbg: #3a1f24; --le-soft: #1a3047;
+  --le-texto-no-azul: #04101d;
+  --le-shadow: 0 8px 28px rgba(0, 0, 0, .14);
+}

@@ -14,7 +14,8 @@ it("mantém as seções interativas do protótipo na landing", () => {
   for (const id of ["sdp-app", "lp-simulador", "lp-telemetria", "sdx-explorer"]) {
     expect(pagina.querySelector(`#screen-landing #${id}`)).not.toBeNull();
   }
-  for (const caminho of ["/login", "/cadastro", "/privacidade"]) {
+  // UI-14: a lista de espera sai da landing pela navegação de topo.
+  for (const caminho of ["/login", "/cadastro", "/privacidade", "/lista-de-espera"]) {
     expect(pagina.querySelector(`a[href="${caminho}"][target="_top"]`)).not.toBeNull();
   }
 });

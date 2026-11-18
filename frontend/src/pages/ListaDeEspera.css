@@ -1,0 +1,207 @@
+/*
+ * Lista de espera (UI-14).
+ *
+ * As cores ficam no `theme.css` (tokens `--le-*`), como todas as do app; aqui só
+ * se usam.
+ *
+ * A estética é a da landing (`public/landing-prototipo.html`): a mesma paleta,
+ * o selo em pílula, o título em azul-marinho e azul, os botões, o halo e as
+ * órbitas. A landing vive num iframe isolado e não exporta estilo, então a
+ * linguagem é repetida aqui, presa à classe `.le` para não vazar para o app.
+ *
+ * Duas diferenças deliberadas em relação à landing, medidas na revisão de 18/11:
+ *   · o cinza do texto dá 5:1 sobre o fundo, e não os 3,7:1 do cinza da landing
+ *     (abaixo do mínimo de 4,5:1 para texto);
+ *   · nenhum texto abaixo de 11 px, e o consentimento com 13 px.
+ */
+.le {
+  color-scheme: light;
+  min-height: 100vh;
+  background: var(--le-bg);
+  color: var(--le-text);
+  font: 14px/1.5 Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  transition: background-color .4s var(--le-ease), color .4s var(--le-ease);
+}
+:root[data-theme="dark"] .le { color-scheme: dark; }
+.le *, .le *::before, .le *::after { box-sizing: border-box; }
+.le button, .le input { font: inherit; }
+.le button { cursor: pointer; }
+.le :is(button, input, a):focus-visible,
+.le .le-toggle:has(input:focus-visible) { outline: 3px solid var(--le-foco); outline-offset: 2px; }
+.le-wrap { max-width: 1160px; margin: 0 auto; padding: 0 28px; }
+@media (max-width: 650px) { .le-wrap { padding: 0 16px; } }
+
+/* ── Navegação ─────────────────────────────────────────── */
+.le-nav { height: 82px; display: flex; align-items: center; justify-content: space-between; gap: 22px; border-bottom: 1px solid var(--le-border); }
+.le-logo { display: flex; align-items: center; }
+.le-logo img { display: block; height: 29px; width: auto; }
+.le-acoes { display: flex; align-items: center; gap: 10px; }
+.le-iconbtn { width: 40px; height: 40px; border-radius: 10px; border: 1px solid var(--le-border); background: var(--le-surface); color: var(--le-text); display: inline-flex; align-items: center; justify-content: center; transition: transform .3s var(--le-ease), background .4s; }
+.le-iconbtn:active { transform: rotate(-25deg) scale(.94); }
+.le-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 1px solid transparent; border-radius: 10px; padding: 12px 17px; font-size: 12px; font-weight: 800; text-decoration: none; white-space: nowrap; transition: transform .2s var(--le-ease), box-shadow .2s, background .3s, opacity .3s, color .3s; }
+.le-btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 7px 18px rgba(20, 121, 189, .16); }
+.le-btn:active:not(:disabled) { transform: translateY(0) scale(.985); }
+.le-btn.primario { background: var(--le-blue); color: var(--le-texto-no-azul); }
+.le-btn.contorno { background: var(--le-surface); color: var(--le-text); border-color: var(--le-border); }
+.le-btn.grande { padding: 15px 20px; font-size: 13px; }
+.le-btn:disabled { opacity: .5; cursor: not-allowed; }
+@media (max-width: 480px) { .le-acoes .le-btn.contorno { display: none; } }
+
+/* ── Entrada: os blocos sobem em sequência ───────────────── */
+.le-sobe { opacity: 0; transform: translateY(14px); animation: le-sobe .8s var(--le-ease) forwards; animation-delay: calc(var(--i, 0) * 90ms + 80ms); }
+@keyframes le-sobe { to { opacity: 1; transform: none; } }
+
+/* ── Topo ──────────────────────────────────────────────── */
+/* Alinhado pelo topo, e não pelo centro: o cartão cresce quando o formulário
+   se abre, e o texto ao lado não pode descer junto (achado de 18/11). */
+.le-hero { position: relative; isolation: isolate; display: grid; grid-template-columns: minmax(0, 1.02fr) minmax(340px, .98fr); gap: clamp(30px, 5vw, 72px); align-items: start; padding: 64px 0 58px; min-height: 640px; }
+.le-hero > :first-child { padding-top: 36px; }
+.le-hero::before { content: ""; position: absolute; z-index: -1; left: -18%; top: 3%; width: 74%; height: 75%; background: radial-gradient(ellipse, var(--le-soft), transparent 69%); opacity: .9; pointer-events: none; }
+.le-kicker { display: inline-flex; align-items: center; gap: 9px; color: var(--le-blue); font-size: 11px; font-weight: 850; letter-spacing: .9px; text-transform: uppercase; padding: 8px 12px; border: 1px solid var(--le-border); border-radius: 999px; background: var(--le-surface); }
+.le-ponto { width: 7px; height: 7px; background: var(--le-green); border-radius: 50%; box-shadow: 0 0 0 4px var(--le-greenbg); animation: le-pulsa 2.4s ease-in-out infinite; }
+@keyframes le-pulsa { 50% { box-shadow: 0 0 0 7px transparent; } }
+.le-hero h1 { font-size: clamp(42px, 5.2vw, 64px); line-height: 1.01; letter-spacing: -3px; margin: 23px 0 20px; font-weight: 850; }
+.le-hero h1 em { font-style: normal; color: var(--le-blue); }
+.le-lead { max-width: 560px; color: var(--le-muted); font-size: 16px; line-height: 1.78; margin: 0; }
+.le-so-celular { display: none; margin-top: 22px; }
+.le-confianca { display: flex; align-items: flex-start; gap: 9px; color: var(--le-muted); font-size: 12.5px; line-height: 1.6; margin-top: 18px; max-width: 520px; }
+.le-check { color: var(--le-green); font-weight: 900; font-size: 14px; line-height: 1.2; }
+.le-spec { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; border-top: 1px solid var(--le-border); margin-top: 30px; padding-top: 18px; max-width: 550px; }
+.le-spec div { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.le-spec strong { font-size: 17px; letter-spacing: -.5px; }
+.le-spec span { font-size: 12px; color: var(--le-muted); }
+.le-spec-nota { font-size: 12px; line-height: 1.55; color: var(--le-muted); margin: 12px 0 0; max-width: 540px; }
+.le-visual { position: relative; min-height: 560px; display: grid; place-items: start center; isolation: isolate; }
+.le-orbita { position: absolute; border: 1px solid color-mix(in srgb, var(--le-blue) 20%, transparent); border-radius: 50%; pointer-events: none; z-index: -1; transition: transform 1.2s var(--le-ease); }
+.le-orbita.um { width: 520px; height: 520px; top: 20px; left: calc(50% - 260px); }
+.le-orbita.dois { width: 430px; height: 430px; top: 65px; left: calc(50% - 215px); border-style: dashed; opacity: .7; animation: le-gira 90s linear infinite; }
+@keyframes le-gira { to { rotate: 360deg; } }
+@media (max-width: 900px) {
+  .le-hero { grid-template-columns: 1fr; padding: 40px 0; min-height: 0; }
+  .le-hero > :first-child { padding-top: 0; }
+  .le-visual { min-height: 0; }
+  .le-orbita { display: none; }
+  .le-hero h1 { font-size: 44px; letter-spacing: -2px; }
+  .le-so-celular { display: inline-flex; }
+}
+@media (max-width: 480px) { .le-hero h1 { font-size: 36px; letter-spacing: -1.5px; } .le-spec { gap: 10px; } .le-spec strong { font-size: 15px; } }
+
+/* ── O cartão ──────────────────────────────────────────── */
+.le-cartao { position: relative; width: 100%; max-width: 440px; background: var(--le-surface); border: 1px solid var(--le-border); border-radius: 19px; padding: 20px 24px 22px; box-shadow: 0 24px 70px rgba(25, 59, 94, .13); transition: box-shadow .5s var(--le-ease), border-color .5s, background .4s; scroll-margin-top: 24px; }
+.le-cartao.atento { box-shadow: 0 28px 80px rgba(20, 121, 189, .2); border-color: color-mix(in srgb, var(--le-blue) 35%, var(--le-border)); }
+.le-cartao-topo { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.le-cartao-topo img { height: 18px; width: auto; }
+.le-pilula { font-size: 10px; color: var(--le-green); background: var(--le-greenbg); padding: 5px 9px; border-radius: 20px; font-weight: 800; letter-spacing: .4px; text-transform: uppercase; }
+
+/* O sinal: digitar também é movimento */
+.le-sinal { position: relative; border: 1px solid var(--le-border); background: var(--le-bg); border-radius: 12px; padding: 9px 11px 6px; margin-bottom: 14px; overflow: hidden; }
+.le-sinal-topo { display: flex; justify-content: space-between; align-items: center; font-size: 10px; font-weight: 800; letter-spacing: .6px; text-transform: uppercase; color: var(--le-muted); }
+.le-sinal-estado { display: inline-flex; align-items: center; gap: 6px; color: var(--le-blue-forte); transition: color .6s; }
+.le-sinal-estado i { width: 6px; height: 6px; border-radius: 50%; background: currentColor; animation: le-pulsa 1.6s ease-in-out infinite; }
+.le-sinal.repouso .le-sinal-estado { color: var(--le-green); }
+.le-sinal svg { display: block; width: 100%; height: 46px; margin-top: 4px; }
+.le-sinal path { fill: none; stroke: var(--le-blue); stroke-width: 1.6; stroke-linejoin: round; stroke-linecap: round; transition: stroke .6s; }
+.le-sinal.repouso path { stroke: var(--le-green); }
+.le-sinal line { stroke: var(--le-muted); stroke-dasharray: 3 4; opacity: .45; }
+.le-sinal-dica { font-size: 11px; color: var(--le-muted); margin-top: 2px; min-height: 15px; }
+
+/* Passos */
+.le-passos { display: flex; gap: 6px; margin: 0 0 16px; }
+.le-passo { flex: 1; display: flex; flex-direction: column; gap: 6px; font-size: 11px; font-weight: 750; color: var(--le-muted); transition: color .4s; }
+.le-passo b { display: block; height: 4px; border-radius: 4px; background: var(--le-border); overflow: hidden; position: relative; }
+.le-passo b::after { content: ""; position: absolute; inset: 0; background: var(--le-blue); transform: scaleX(var(--p, 0)); transform-origin: left; transition: transform .6s var(--le-ease); }
+.le-passo.ativo { color: var(--le-text); }
+.le-passo.ok { color: var(--le-blue-forte); }
+
+.le-cartao h2 { margin: 0; font-size: 22px; font-weight: 850; letter-spacing: -.6px; }
+.le-sub { margin: 2px 0 14px; color: var(--le-muted); font-size: 12px; }
+
+/* Campo com rótulo flutuante e confirmação */
+.le-campo { position: relative; margin-bottom: 12px; }
+.le-campo input { width: 100%; padding: 21px 40px 8px 13px; border-radius: 11px; border: 1px solid var(--le-border); background: var(--le-bg); color: var(--le-text); font-size: 15px; outline: none; transition: border-color .25s, box-shadow .25s, background .4s; }
+.le-campo label { position: absolute; left: 14px; top: 15px; font-size: 14px; color: var(--le-muted); pointer-events: none; transform-origin: left top; transition: transform .25s var(--le-ease), color .25s; }
+.le-campo input:focus + label, .le-campo input:not(:placeholder-shown) + label { transform: translateY(-9px) scale(.76); color: var(--le-blue-forte); font-weight: 700; }
+.le-campo input:focus { border-color: var(--le-blue); box-shadow: 0 0 0 4px var(--le-blue2); }
+.le-opcional { font-weight: 500; color: var(--le-muted); }
+.le-marca { position: absolute; right: 12px; top: 15px; width: 20px; height: 20px; border-radius: 50%; background: var(--le-greenbg); color: var(--le-green); display: grid; place-items: center; font-size: 12px; font-weight: 900; transform: scale(0); transition: transform .35s var(--le-ease); }
+.le-campo.valido .le-marca { transform: scale(1); }
+.le-campo.invalido input { border-color: var(--le-red); box-shadow: 0 0 0 4px var(--le-redbg); }
+.le-campo.invalido { animation: le-treme .38s; }
+@keyframes le-treme { 20%, 60% { transform: translateX(-4px); } 40%, 80% { transform: translateX(4px); } }
+.le-campo-msg { font-size: 11px; font-weight: 600; color: var(--le-red); margin: -4px 0 10px; }
+.le-sugestao { font-size: 12px; color: var(--le-text); margin: -4px 0 10px; }
+.le-sugestao button { border: 0; background: none; padding: 0; color: var(--le-blue-forte); font-weight: 800; text-decoration: underline; text-underline-offset: 2px; }
+.le-depois { font-size: 12px; color: var(--le-muted); margin: 0 0 4px; }
+
+/* O resto do formulário se abre quando o e-mail está certo */
+.le-abre { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .6s var(--le-ease); }
+.le-abre > div { overflow: hidden; min-height: 0; opacity: 0; transition: opacity .45s .1s; }
+.le-abre.aberto { grid-template-rows: 1fr; }
+.le-abre.aberto > div { opacity: 1; }
+/* Fechado, o resto fica fora da ordem do teclado e do leitor de tela. */
+.le-abre:not(.aberto) > div { visibility: hidden; }
+
+/* Confirmações como cartões que se marcam inteiros */
+.le-toggle { display: flex; gap: 11px; align-items: flex-start; font-size: 13px; color: var(--le-muted); line-height: 1.55; margin: 0 0 10px; padding: 12px 13px; border: 1px solid var(--le-border); border-radius: 12px; background: var(--le-bg); cursor: pointer; transition: border-color .3s, background .3s, transform .2s var(--le-ease); }
+.le-toggle:active { transform: scale(.99); }
+.le-toggle input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.le-caixa { flex: none; width: 20px; height: 20px; border-radius: 6px; border: 1.5px solid color-mix(in srgb, var(--le-muted) 70%, transparent); display: grid; place-items: center; margin-top: 1px; transition: background .25s, border-color .25s; }
+.le-caixa svg { width: 12px; height: 12px; stroke: var(--le-texto-no-azul); stroke-width: 3; fill: none; stroke-dasharray: 20; stroke-dashoffset: 20; transition: stroke-dashoffset .35s var(--le-ease) .05s; }
+.le-toggle:has(input:checked) { border-color: color-mix(in srgb, var(--le-blue) 55%, var(--le-border)); background: color-mix(in srgb, var(--le-blue2) 70%, var(--le-bg)); }
+.le-toggle:has(input:checked) .le-caixa { background: var(--le-blue); border-color: var(--le-blue); }
+.le-toggle:has(input:checked) .le-caixa svg { stroke-dashoffset: 0; }
+.le-toggle b { color: var(--le-text); font-weight: 750; }
+.le-isca { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
+
+.le-enviar { position: relative; width: 100%; margin-top: 8px; overflow: hidden; }
+.le-giro { width: 15px; height: 15px; border-radius: 50%; border: 2px solid currentColor; border-right-color: transparent; animation: le-gira .7s linear infinite; }
+.le-alerta { margin: 12px 0 0; padding: 10px 12px; border-radius: 10px; font-size: 12px; font-weight: 600; line-height: 1.5; }
+.le-alerta.ambar { background: var(--le-amberbg); color: var(--le-amber); }
+.le-alerta.vermelho { background: var(--le-redbg); color: var(--le-red); }
+.le-rodape-cartao { font-size: 11.5px; color: var(--le-muted); line-height: 1.6; margin: 14px 0 0; padding-top: 12px; border-top: 1px solid var(--le-border); }
+.le a.le-link, .le-rodape-cartao a { color: var(--le-blue-forte); font-weight: 700; text-decoration: none; }
+
+/* A troca de cena do cartão: a altura acompanha e o conteúdo se cruza */
+.le-palco { position: relative; transition: height .55s var(--le-ease); }
+.le-cena { transition: opacity .35s var(--le-ease), transform .45s var(--le-ease); }
+.le-cena.sai { opacity: 0; transform: translateY(-8px) scale(.985); }
+.le-cena.entra { animation: le-entra .5s var(--le-ease); }
+@keyframes le-entra { from { opacity: 0; transform: translateY(10px); } }
+.le-feito { text-align: center; padding: 4px 0; }
+.le-selo { width: 58px; height: 58px; border-radius: 18px; background: var(--le-greenbg); display: inline-grid; place-items: center; animation: le-pop .5s var(--le-ease); }
+.le-selo svg { width: 28px; height: 28px; stroke: var(--le-green); stroke-width: 3; fill: none; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 30; stroke-dashoffset: 30; animation: le-risca .6s var(--le-ease) .25s forwards; }
+@keyframes le-risca { to { stroke-dashoffset: 0; } }
+@keyframes le-pop { from { transform: scale(.6); opacity: 0; } }
+.le-feito h2 { margin-top: 14px; }
+.le-feito h2:focus { outline: none; }
+.le-feito p { color: var(--le-muted); font-size: 13px; line-height: 1.65; margin: 10px 0 0; }
+.le-compartilhar { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--le-border); display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.le-compartilhar p { margin: 0; font-size: 12px; }
+.le-compartilhar .le-btn { width: 100%; }
+.le-compartilhar .le-link { font-size: 12px; }
+.le-feito .le-btn.contorno { margin-top: 14px; }
+
+.le-flutua { position: absolute; right: -14px; top: calc(100% + 16px); background: var(--le-surface); border: 1px solid var(--le-border); border-radius: 12px; padding: 11px 14px; box-shadow: var(--le-shadow); font-size: 11px; color: var(--le-muted); transform: rotate(-2deg); max-width: 210px; animation: le-flutua 6s ease-in-out infinite; }
+@keyframes le-flutua { 50% { transform: rotate(-2deg) translateY(-5px); } }
+.le-flutua strong { display: block; font-size: 12px; color: var(--le-text); margin-bottom: 2px; }
+@media (max-width: 900px) { .le-flutua { display: none; } }
+
+/* ── Transparência e rodapé ─────────────────────────────── */
+.le-secao { padding: 56px 0; border-top: 1px solid var(--le-border); }
+.le-limite { display: flex; gap: 16px; align-items: flex-start; background: var(--le-surface); border: 1px solid var(--le-border); border-radius: 16px; padding: 20px 22px; max-width: 860px; margin: 0 auto; }
+.le-limite-marca { flex: none; width: 30px; height: 30px; border-radius: 50%; background: var(--le-blue2); color: var(--le-blue-forte); display: inline-flex; align-items: center; justify-content: center; font-weight: 900; font-family: Georgia, serif; }
+.le-sobrelinha { display: inline-flex; color: var(--le-blue-forte); font-size: 11px; font-weight: 850; letter-spacing: 1.35px; text-transform: uppercase; }
+.le-limite p { margin: 6px 0 0; color: var(--le-muted); font-size: 13px; line-height: 1.7; }
+.le-rodape { border-top: 1px solid var(--le-border); padding: 23px 0 30px; display: flex; justify-content: space-between; align-items: center; gap: 18px; flex-wrap: wrap; color: var(--le-muted); }
+.le-rodape-marca { display: flex; align-items: center; gap: 13px; font-size: 11.5px; }
+.le-rodape-marca img { height: 16px; width: auto; }
+.le-rodape-links { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; font-size: 11.5px; }
+.le-rodape-links a { color: var(--le-muted); text-decoration: none; }
+.le-rodape-links a:hover { color: var(--le-blue); }
+
+/* Quem pediu menos movimento recebe a página parada, funcionando igual */
+@media (prefers-reduced-motion: reduce) {
+  .le *, .le *::before, .le *::after { animation: none !important; transition: none !important; }
+  .le-sobe { opacity: 1; transform: none; }
+  .le-selo svg { stroke-dashoffset: 0; }
+}
