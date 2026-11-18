@@ -64,13 +64,24 @@ esp_err_t esp_partition_erase_range(const esp_partition_t *, size_t a, size_t n)
 }
 
 // ── O servidor falso ─────────────────────────────────────────────────────
-static int posts = 0;
 static int handshakes = 0;
 static int fechar_depois_de_cada = 0;  // 1 = o servidor nao mantem a conexao
 static int falhar_o_post = 0;          // n > 0: o n-esimo POST falha (-1)
 static char resposta[1024];
 
 void wcs_stop(bool *conectado) { *conectado = false; }
+
+// HW-10: um ADC falso. Guarda o pino lido e quantos POSTs ja tinham saido
+// quando o sketch leu a bateria pela primeira vez na volta.
+static uint32_t adc_falso_mv = 0;
+static int pino_lido = -1;
+static int posts_na_primeira_leitura = -1;
+static int posts = 0;
+uint32_t analogReadMilliVolts(uint8_t pino) {
+  pino_lido = pino;
+  if (posts_na_primeira_leitura < 0) posts_na_primeira_leitura = posts;
+  return adc_falso_mv;
+}
 
 int http_post(bool *conectado, const uint8_t *corpo, size_t n) {
   posts++;
@@ -192,6 +203,19 @@ int main() {
   loop();
   conferir(tarefas_apagadas == 1 && apagou_a_propria,
            "o loop() apaga a propria tarefa (a pilha de 8 KB volta ao heap)");
+  printf("HW-10: a bateria no envio\n");
+  adc_falso_mv = 1640;
+  conferir(medir_bateria_mv() == 3280 && pino_lido == 35,
+           "16 amostras do GPIO35, vezes o divisor: 3 280 mV");
+  guardar(30);
+  zerar();
+  posts_na_primeira_leitura = -1;
+  adc_falso_mv = 1610;
+  enviar_pendentes();
+  conferir(bateria_no_envio_mv == 3220, "a leitura sob carga sai na volta: 3 220 mV");
+  conferir(posts_na_primeira_leitura == 1,
+           "e e feita logo depois do primeiro POST, com o radio ligado");
+
   conferir(TAMANHO_JSON_DO_LOTE == tamanho_do_lote(LEITURAS_POR_LOTE_NO_ESP32),
            "o buffer do lote e o do pior caso de 20 leituras, nao uma estimativa");
 

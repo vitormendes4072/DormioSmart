@@ -11081,6 +11081,57 @@ Depois, o login do autor.
 
 **Procedência.** Branch `bugfix/fw-19-serial-antes-do-sono` sobre `develop` `2fe7b6a`; log cru `fw14e2-2026-11-17-parte3-cru.log` em `dados-locais/`, fora do repositório; testes em contêiner `gcc:13`; `arduino-cli` com `esp32:esp32` 3.3.12; Windows 11; 17/11, das 18:20 às 18:50.
 
+# 2026-11-17 (vii) — HW-10, etapa 1: a tensão da célula no firmware, só no log
+
+**O problema, como foi entendido no início.** O `HW-10` pede medir e mostrar a bateria. A decisão da bateria (`docs/ESTUDO-ENERGIA.md`) prevê um divisor de 1 MΩ + 1 MΩ no GPIO35, mas nada no firmware o lia. Mostrar a tensão no painel atravessa cinco camadas: firmware, contrato de dados, backend, banco (com a política de privacidade) e frontend. E não há divisor nem célula montados.
+
+**Hipótese de trabalho.** Dividir em duas etapas. A etapa 1 é só o firmware, com a tensão indo para o log. Ela se testa no host já e se confere na placa quando o divisor e a célula chegarem. A etapa 2 leva a tensão ao painel, e só depois de a leitura bater com o multímetro, para nunca mostrar um número que a medida não sustenta.
+
+**O que foi testado, e como.**
+- **No núcleo** (`firmware/nucleo/bateria.h/.cpp`, novos):
+  - a tensão da célula a partir das amostras do ADC (média vezes o divisor 2);
+  - o estado para a LiFePO4: ok (≥ 3,1 V), baixa, crítica (< 3,0 V), com 50 mV de histerese para sair de um estado pior;
+  - **indisponível** abaixo de 2 V, que é o pino solto, sem divisor;
+  - a linha do log.
+- **No sketch:** 16 amostras de `analogReadMilliVolts` no GPIO35 (ADC1, com a calibração de fábrica), em dois momentos:
+  - **em repouso**, antes de ligar o Wi-Fi: é a que decide o estado;
+  - **sob carga**, logo depois do primeiro POST da volta, com o rádio ligado.
+  A linha `[bateria] … mV em repouso, … mV no envio (estado)` sai depois da `[memoria]`.
+- **No `c2`:** a conversão, as três faixas, o indisponível, a histerese nos dois sentidos e a linha (+14 verificações).
+- **No envio do sketch** (`envio_do_sketch.cpp`), com um ADC falso:
+  - o pino lido é o 35;
+  - 1 640 mV no pino dão 3 280 mV;
+  - a leitura sob carga sai na volta e acontece depois do primeiro POST.
+- **Sabotagem 24:** o sketch sem a leitura no envio.
+- **Mutações 45 a 48:** o divisor ignorado, o limite da baixa no da crítica, sem histerese, o pino solto virando tensão.
+
+**Resultado medido.**
+- **No host, contêiner `gcc:13`:**
+  - `make` 341 + 157 + **223** + 456 + 115 + 327 + 185, 0 falhas;
+  - `make laco` **24/24**;
+  - `mutacao-cadeia` **49/49**;
+  - `mutacao` 15/15, `mutacao-fila` 17/17, `mutacao-coletor` 20/20;
+  - `sintaxe` liga.
+- **Para o ESP32:** programa 1 097 320 B (+8 032 B, a biblioteca do ADC calibrado), RAM fixa 109 072 B (+88 B), 218 608 B para o heap.
+- **Na placa:** nada ainda. O firmware desta etapa não foi gravado.
+
+**Veredito.** A leitura está pronta e testada no host. O `HW-10` segue aberto. Falta a placa: sem divisor, a linha tem de dizer "indisponível"; com o divisor e a célula, a tensão em repouso tem de bater com o multímetro (aceite a fixar, ±50 mV). Depois vem a etapa 2, o painel.
+
+**Adaptação.**
+- O teste da leitura sob carga confere **quando** ela acontece, pelo número de POSTs já feitos na primeira leitura do ADC, e não só **se** acontece.
+- A porcentagem ficou de fora de propósito: a curva da LiFePO4 é plana, e a tensão só diz com segurança quando a célula está no fim.
+
+**O que deu errado no caminho.**
+- **O script de mutação do `c2` lista as fontes do núcleo à mão.** Sem acrescentar o `bateria.cpp` ali, cada mutação deixaria de ligar e contaria como acusada sem a suíte ter rodado. Foi acrescentado na mesma mudança.
+- **A compilação para o ESP32 passa dos 10 min** e foi rodada em segundo plano.
+
+**Risco em aberto.**
+- **O ADC do ESP32 tem ruído e erro de ganho** mesmo com a calibração de fábrica, mais ainda com o Wi-Fi ligado. As 16 amostras reduzem o ruído, não o erro, e só o multímetro dirá quanto sobra.
+- **O divisor de 1 MΩ é de alta impedância.** O capacitor de 100 nF é o que segura a leitura, e sem ele ela pode ficar baixa e ruidosa.
+- **O GPIO35 tem de estar livre** na placa.
+
+**Procedência.** Branch `feature/HW-10-leitura-da-bateria` sobre `develop` `7296563`; testes em contêiner `gcc:13`; `arduino-cli` com `esp32:esp32` 3.3.12; Windows 11; 17/11, das 19:00 às 19:40.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

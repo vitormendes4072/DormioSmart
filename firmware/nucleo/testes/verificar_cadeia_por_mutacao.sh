@@ -23,7 +23,7 @@ NUCLEO=$(cd "$AQUI/.." && pwd)
 DOURADO="$NUCLEO/../../ml/testes/vetor_dourado_cadeia_c2.json"
 CXX=${CXX:-g++}
 BANDEIRAS="-std=c++11 -w -O2 -fno-exceptions -fno-rtti"
-FONTES="epoca.cpp payload.cpp filtro.cpp caracteristicas.cpp fifo_mpu.cpp reamostragem.cpp cadeia_c2.cpp lote.cpp registro_flash.cpp fila_flash.cpp epoca_c2.cpp envio_da_fila.cpp calibracao.cpp"
+FONTES="epoca.cpp payload.cpp filtro.cpp caracteristicas.cpp fifo_mpu.cpp reamostragem.cpp cadeia_c2.cpp lote.cpp registro_flash.cpp fila_flash.cpp epoca_c2.cpp envio_da_fila.cpp calibracao.cpp bateria.cpp"
 
 falhas=0
 total=0
@@ -344,6 +344,24 @@ esperar "43. o lote sem as virgulas" unidade envio_da_fila.h \
 esperar "44. o aviso de pilha baixa nunca sai" unidade envio_da_fila.cpp \
   "  if (f.pilha_envio_livre < LIMIAR_DE_PILHA_BAIXA_BYTES ||" \
   "  if (false && f.pilha_envio_livre < LIMIAR_DE_PILHA_BAIXA_BYTES ||"
+
+echo
+echo "Sabotadores do HW-10 (a tensao da bateria) -- a suite de unidade tem de acusar:"
+esperar "45. o divisor ignorado" unidade bateria.h \
+  "const uint32_t DIVISOR_DA_BATERIA = 2;" \
+  "const uint32_t DIVISOR_DA_BATERIA = 1;"
+
+esperar "46. o limite da baixa no da critica" unidade bateria.h \
+  "const uint32_t BATERIA_BAIXA_MV = 3100;" \
+  "const uint32_t BATERIA_BAIXA_MV = 3000;"
+
+esperar "47. sem histerese" unidade bateria.cpp \
+  "  if (anterior == BATERIA_CRITICA || anterior == BATERIA_BAIXA) {" \
+  "  if (false) {"
+
+esperar "48. o pino solto vira tensao" unidade bateria.cpp \
+  "  if (tensao_mv < BATERIA_MINIMA_PLAUSIVEL_MV) return BATERIA_INDISPONIVEL;" \
+  ""
 
 echo
 echo "-----------------------------------------"
