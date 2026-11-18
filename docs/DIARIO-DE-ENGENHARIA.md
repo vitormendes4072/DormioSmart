@@ -11132,6 +11132,35 @@ Depois, o login do autor.
 
 **Procedência.** Branch `feature/HW-10-leitura-da-bateria` sobre `develop` `7296563`; testes em contêiner `gcc:13`; `arduino-cli` com `esp32:esp32` 3.3.12; Windows 11; 17/11, das 19:00 às 19:40.
 
+# 2026-11-17 (viii) — o release R9: firmware, energia e a bancada da viabilidade
+
+**O problema, como foi entendido no início.** Desde o R8 (16/11), `develop` acumulou 14 PRs: o `FW-17` (as duas etapas), o `FW-18`, o `FW-14` (as duas etapas), o `FW-19`, a etapa 1 do `HW-10`, o estudo de energia e a revisão dele (`HW-02`), a bancada do `VIA-01` e o registro do R8. O autor pediu o release.
+
+**Hipótese de trabalho.** Nada disso muda o site: a diferença entre `main` e `develop` não toca o backend em execução, o frontend, o `vercel.json` nem migração — só firmware, documentação, `scripts/analisar_via01.py` e o teste dele. A conferência é a de sempre, sem precisar de login real.
+
+**O que foi testado, e como.**
+- `git diff --name-only origin/main origin/develop`, antes de abrir o PR.
+- PR #219 (`develop` → `main`), CI e Vercel.
+- Depois do deploy: `/health` e as rotas com `curl`, e os scripts inline de `/`, `/login`, `/landing-prototipo.html` e `/privacidade` contra a CSP servida.
+
+**Resultado medido.**
+- CI 14 de 14; merge `0e54644`; deploy de produção `7871172982` com sucesso.
+- `/health` `200`, banco ok, contrato 2.11.0, modelo `ml-inf-cabeca-v2`.
+- `401` sem token e com `Bearer` inválido em `/api/devices`, `/api/sleep-history` e `/api/me/perfil`; `401` sem token no `POST` de `/api/data` e de `/api/data/lote`.
+- CSP: 12 scripts inline nas quatro páginas, todos com hash no cabeçalho; `X-Frame-Options` e `X-Content-Type-Options` presentes.
+
+**Veredito.** O `main` está com tudo o que `develop` tinha em 17/11. O site não mudou. Dois itens do firmware que vão no release ainda não rodaram na placa: o `FW-19` e a etapa 1 do `HW-10`, que serão gravados em 18/11.
+
+**Adaptação.** A conferência da CSP foi feita por um script avulso, porque o `scripts/conferir_csp.py` confere o build local e não as páginas servidas.
+
+**O que deu errado no caminho.** Nada nesta etapa.
+
+**Risco em aberto.**
+- **O firmware do `main` não é o que roda na placa:** a placa segue com a etapa 2 do `FW-14` até 18/11.
+- **O `FW-14` e o `FW-19` seguem abertos**, à espera da noite e das 3 h de bancada.
+
+**Procedência.** PR #219, merge `0e54644`; deploy `7871172982`; conferências feitas desta máquina em 17/11, às 20:00.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
