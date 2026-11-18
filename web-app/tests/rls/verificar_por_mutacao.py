@@ -640,6 +640,69 @@ SABOTADORES = {
         minimo=1,
         exige="test_o_token_grava_gn_e_a_marca",
     ),
+    # --- UI-14 (18/11): a lista de espera (migracao 022) -------------------
+    "lista_legivel_pelo_anon": dict(
+        descricao="anon ganha select na lista de espera",
+        sql="grant select on public.lista_de_espera to anon;",
+        minimo=1,
+        exige="test_anon_nao_le_a_lista",
+    ),
+    "lista_sem_rls": dict(
+        descricao="RLS desligado na lista de espera",
+        sql="alter table public.lista_de_espera disable row level security;",
+        minimo=1,
+        exige="test_rls_ligado_e_nenhuma_policy",
+    ),
+    "lista_inscrita_pelo_anon": dict(
+        descricao="anon ganha execute na inscricao (a chave publica pula o backend)",
+        sql="grant execute on function public.inscrever_na_lista_de_espera(text, text, text) to anon;",
+        minimo=1,
+        exige="test_anon_nao_chama_a_inscricao",
+    ),
+    "lista_sem_teto": dict(
+        descricao="o teto de 100 inscricoes por hora vira 100 mil",
+        sql="""
+            do $SAB$ begin
+                execute replace(pg_get_functiondef('public.inscrever_na_lista_de_espera(text,text,text)'::regprocedure),
+                                '>= 100 then', '>= 100000 then');
+            end $SAB$;
+        """,
+        minimo=1,
+        exige="test_a_centesima_primeira_inscricao_da_hora_e_recusada",
+    ),
+    "lista_reescreve_o_repetido": dict(
+        descricao="e-mail repetido sobrescreve o nome de quem ja estava na lista",
+        sql="""
+            do $SAB$ begin
+                execute replace(pg_get_functiondef('public.inscrever_na_lista_de_espera(text,text,text)'::regprocedure),
+                                'on conflict (email) do nothing', 'on conflict (email) do update set nome = excluded.nome');
+            end $SAB$;
+        """,
+        minimo=1,
+        exige="test_email_repetido_nao_muda_nada_e_nao_e_revelado",
+    ),
+    "lista_aceita_qualquer_versao": dict(
+        descricao="a inscricao deixa de conferir a versao do texto",
+        sql="""
+            do $SAB$ begin
+                execute replace(pg_get_functiondef('public.inscrever_na_lista_de_espera(text,text,text)'::regprocedure),
+                                'if p_versao is distinct from', 'if false and p_versao is distinct from');
+            end $SAB$;
+        """,
+        minimo=1,
+        exige="test_versao_errada_do_texto_e_recusada",
+    ),
+    "lista_expurgo_adiantado": dict(
+        descricao="o expurgo apaga com 11 meses, antes do prazo da politica",
+        sql="""
+            do $SAB$ begin
+                execute replace(pg_get_functiondef('public.expurgar_lista_de_espera()'::regprocedure),
+                                '12 months', '11 months');
+            end $SAB$;
+        """,
+        minimo=1,
+        exige="test_o_expurgo_apaga_so_o_que_passou_de_12_meses",
+    ),
 }
 
 

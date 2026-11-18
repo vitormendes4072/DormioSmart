@@ -137,7 +137,7 @@ def test_o_papel_nao_le_o_token_hash_de_ninguem(como, cenario):
         ingestao.negado("select token_hash from public.device_tokens")
 
 
-def test_o_papel_executa_exatamente_tres_funcoes(catalogo):
+def test_o_papel_executa_exatamente_quatro_funcoes(catalogo):
     """Enumera o que ele PODE, para que ampliar apareça no diff."""
     permitidas = catalogo(
         """
@@ -154,6 +154,9 @@ def test_o_papel_executa_exatamente_tres_funcoes(catalogo):
         "sanidade()",
         "resolver_dispositivo(p_token_hash text)",
         "registrar_leitura(p_token_hash text, p_leitura jsonb)",
+        # UI-14 (18/11): a inscricao na lista de espera. O pior caso de um
+        # vazamento desta chave continua sendo "insere lixo"; ela nao le a lista.
+        "inscrever_na_lista_de_espera(p_email text, p_nome text, p_versao text)",
     }
     assert nomes == esperado, (
         f"o que {PAPEL} pode executar mudou.\nesperado: {sorted(esperado)}\n"
