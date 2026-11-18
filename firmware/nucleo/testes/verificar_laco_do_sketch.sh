@@ -104,6 +104,10 @@ sabotar "4. deriva medida depois de sincronizar" \
       parede.sincronizar(mono_ms, unix_ms);" \
   "      parede.sincronizar(mono_ms, unix_ms);
       deriva_no_intervalo = medir_deriva(parede, mono_ms, unix_ms);"
+sabotar "23. dorme sem esvaziar a serial" \
+  "      Serial.flush();
+      esp_light_sleep_start();" \
+  "      esp_light_sleep_start();"
 
 
 # ── FW-11: o sketch contra um MPU6050 falso (`sensor_do_sketch.cpp`) ─────

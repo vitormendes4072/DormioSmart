@@ -39,7 +39,11 @@ int esp_sleep_enable_timer_wakeup(uint64_t us) {
   despertar_pedido_us = us;
   return 0;
 }
+// FW-19: quantas vezes o sketch dormiu, e quantas com texto ainda na serial.
+static int sonos = 0, sonos_com_texto = 0;
 int esp_light_sleep_start() {
+  sonos++;
+  if (Serial.pendente) sonos_com_texto++;
   relogio_us += static_cast<int64_t>(despertar_pedido_us);
   return 0;
 }
@@ -145,6 +149,19 @@ int main() {
   conferir(deriva_no_intervalo.deriva_ms == 60, "segundo intervalo: +60 ms");
   conferir(deriva_acumulada.deriva_ms == 120 && deriva_acumulada.decorrido_ms == 1200000,
            "acumulada desde a primeira: +120 ms em 1200 s");
+
+  printf("FW-19: a serial esvazia antes do sono leve\n");
+  // Texto deixado na serial por outra tarefa (as linhas do envio, por
+  // exemplo) e pelo proprio laco: nenhum sono pode comecar com ele pendente.
+  Serial.printf("[lote] HTTP 200: 20 aceitas");
+  sonos = 0;
+  sonos_com_texto = 0;
+  uint64_t leve[10];
+  for (int i = 0; i < 10; i++) leve[i] = 50000;
+  rodar(leve, 10, false);
+  char msg19[120];
+  snprintf(msg19, sizeof(msg19), "%d sonos leves, %d com texto na serial", sonos, sonos_com_texto);
+  conferir(sonos > 0 && sonos_com_texto == 0, msg19);
 
   printf("%d falhas\n", falhas);
   return falhas == 0 ? 0 : 1;

@@ -86,15 +86,18 @@ inline void digitalWrite(int, int) {}
 
 class SerialStub {
  public:
+  // FW-19: o que foi escrito e ainda nao saiu. Qualquer escrita marca; so o
+  // `flush()` limpa. O laco falso confere que o sketch nunca dorme marcado.
+  bool pendente = false;
   void begin(unsigned long) {}
-  void println() {}
-  void println(const char *) {}
-  void println(const String &) {}
-  void println(int) {}
-  void print(const char *) {}
-  void print(const String &) {}
-  void print(int) {}
-  void flush() {}
+  void println() { pendente = true; }
+  void println(const char *) { pendente = true; }
+  void println(const String &) { pendente = true; }
+  void println(int) { pendente = true; }
+  void print(const char *) { pendente = true; }
+  void print(const String &) { pendente = true; }
+  void print(int) { pendente = true; }
+  void flush() { pendente = false; }
   operator bool() const { return true; }
 
   // Usados pelos sketches interativos (`caracterizacao.ino` espera o Enter
@@ -106,12 +109,12 @@ class SerialStub {
   // `__attribute__((format))` e o que faz o compilador conferir os %-
   // especificadores contra os argumentos. Num printf de diagnostico com
   // `unsigned long` e `%u` trocados o ESP32 imprime lixo silenciosamente.
-  __attribute__((format(printf, 2, 3))) void printf(const char *, ...) {}
+  __attribute__((format(printf, 2, 3))) void printf(const char *, ...) { pendente = true; }
 
   template <typename T>
-  void println(const T &) {}
+  void println(const T &) { pendente = true; }
   template <typename T>
-  void print(const T &) {}
+  void print(const T &) { pendente = true; }
 };
 extern SerialStub Serial;
 
