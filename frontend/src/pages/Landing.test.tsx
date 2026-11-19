@@ -38,12 +38,11 @@ describe("página inicial x arquitetura de captação (UI-23)", () => {
 
 
 describe("app Android e navegação da landing", () => {
-  it("apresenta o beta com distribuição indisponível e sem link de download", () => {
+  it("apresenta o beta com o download do APK (APP-17)", () => {
     const secao = pagina.querySelector("#app-android");
     expect(secao?.textContent).toMatch(/Android.*beta/i);
-    expect(secao?.textContent).toContain("Distribuição beta ainda não disponível.");
-    expect(secao?.querySelector("button.beta-download:disabled")).not.toBeNull();
-    expect(secao?.querySelector('a[download]')).toBeNull();
+    expect(secao?.querySelector("a.beta-download")?.textContent).toBe("Baixar para Android");
+    expect(secao?.textContent).not.toContain("Distribuição beta ainda não disponível.");
   });
 
   it("oferece o acesso ao app no topo e no menu móvel", () => {

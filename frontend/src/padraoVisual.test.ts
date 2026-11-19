@@ -127,3 +127,20 @@ describe("os ícones do app instalado (manifest)", () => {
     expect(recortaveis.filter((src) => comuns.includes(src))).toEqual([]);
   });
 });
+
+describe("a grafia do nome (BRAND-05)", () => {
+  // O nome é "Smart Dormio", em duas palavras (docs/marca/README.md). Os ids internos da landing
+  // (`smartdormio-landing-…`) e o nome do arquivo baixado pelo simulador não são texto para o usuário.
+  const visivel = (html: string) => html
+    .replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/g, "")
+    .replace(/\bid="[^"]*"/g, "");
+  const indice = readFileSync(new URL("../index.html", import.meta.url), "utf8");
+  const manifesto = readFileSync(new URL("../public/manifest.json", import.meta.url), "utf8");
+
+  it.each([["a landing", () => visivel(landing)], ["o index.html", () => visivel(indice)], ["o manifest", () => manifesto]])(
+    "%s não escreve o nome junto",
+    (_, texto) => {
+      expect(texto()).not.toMatch(/SmartDormio/i);
+    },
+  );
+});

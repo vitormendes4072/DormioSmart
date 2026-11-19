@@ -14,7 +14,7 @@ import type { CapacitorConfig } from "@capacitor/cli";
  */
 const config: CapacitorConfig = {
   appId: "app.dormiosmart.coleta",
-  appName: "Dormio",
+  appName: "Smart Dormio",
   webDir: "dist",
   plugins: {
     CapacitorHttp: { enabled: true },
