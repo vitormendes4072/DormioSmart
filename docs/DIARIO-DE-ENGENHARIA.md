@@ -11740,6 +11740,37 @@ Vitest e build no Windows; servidor local com autenticação fictícia; 19/11/20
 
 **Procedência.** PRs #230 (`d1d7880`), #231 (`a70f285`) e #232 (`94c4421`); deploy `7923952908`; prévia `dormio-smart-cceh4260g`; conferências desta máquina em 19/11.
 
+# 2026-11-19 (xiii) — BRAND-05: o nome é "Smart Dormio", separado
+
+**O problema, como foi entendido no início.** O autor começou a divulgar o projeto em 18/11, na conta pessoal dele, e os dois primeiros posts escreveram "SmartDormio", junto. O site, o logo e o manual da marca escrevem "Smart Dormio", separado. O `CLAUDE.md` abria com "DormioSmart (SmartDormio)". O autor decidiu: **Smart Dormio, separado**.
+
+**Hipótese de trabalho.** O site provavelmente já seguia a grafia separada (a landing e o manual foram revistos em 19/11). Então bastavam três coisas: registrar a regra no manual, corrigir o que a contradissesse e travar com teste o texto que o usuário vê.
+
+**O que foi testado, e como.**
+- `git grep -i smartdormio` em `origin/develop`, inclusive a forma partida por tag no HTML.
+- **Três testes novos no `padraoVisual.test.ts`:** o texto visível da landing, o do `index.html` e o manifest não escrevem "SmartDormio". Os scripts, estilos e ids internos (`smartdormio-landing-…`) ficam de fora, porque não são texto para o usuário.
+- **Duas sabotagens:** o rodapé da landing com o nome junto, e o `name` do manifest com o nome junto.
+- **Suíte completa do frontend**, lint e Knip.
+
+**Resultado medido.**
+- **O site já estava todo em "Smart Dormio":** a landing, o `index.html`, o manifest e o manual. O nome junto só aparecia:
+  - no `CLAUDE.md`;
+  - em ids internos da landing e no nome do arquivo que o simulador baixa;
+  - em duas menções históricas do diário (o `O=` de um certificado e o nome de um documento externo).
+- **Testes:** frontend **728 passam, 53 arquivos** (Windows, Node 22); as duas sabotagens derrubam o teste certo; lint e Knip passam.
+
+**Veredito.** A grafia está registrada no manual da marca e travada por teste no texto do site.
+
+**Adaptação.**
+- **A regra de devlog do `CLAUDE.local.md` e a memória da sessão passaram a "Smart Dormio".** Os dois arquivos são locais. O post 03 foi ajustado: o tweet único ficou com 272 caracteres, e o 1/ com 153.
+- **As menções históricas do diário não foram reescritas.** O diário registra o que foi.
+
+**O que deu errado no caminho.** Nada nesta etapa.
+
+**Risco em aberto.** Os dois posts já publicados no X seguem com "SmartDormio". Editar ou não é decisão do autor, e daqui em diante os posts seguem o padrão.
+
+**Procedência.** Branch `docs/BRAND-05-grafia-do-nome` sobre `develop` `67bc830`; Windows 11; 19/11.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
