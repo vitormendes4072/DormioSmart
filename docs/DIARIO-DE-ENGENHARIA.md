@@ -11457,6 +11457,63 @@ O desenho da página foi aprovado pelo autor numa prévia estática, em cinco ro
 
 **Procedência.** Branch `bugfix/UI-14-titulo-e-cartao`, commit do favicon; Windows 11; 19/11.
 
+# 2026-11-19 (vii) — os ícones: o travesseiro na aba, a marca empilhada no app
+
+**O problema, como foi entendido no início.** O autor achou genérico o favicon da entrada (vi), o traçado do app reduzido. Ele pediu uma marca no estilo da Dormio Labs, com "SMART" em cima e "Dormio" embaixo. Montei a marca e testei como favicon nos pixels reais. Depois de ver as opções, ele escolheu:
+- **na aba:** o travesseiro com o traçado, a opção C de três marcas desenhadas;
+- **no app:** a marca empilhada.
+
+**Hipótese de trabalho.** Cada marca vai onde se lê, e a marca empilhada não precisa de letra redesenhada:
+- **A marca empilhada** usa os dois desenhos originais do `smart-dormio.svg`, nas proporções do `dormio-labs.svg`. O "SMART" fica na altura do "LABS" (26,9 de 71,6), com 19,8 de espaço.
+- **O `maskable` do manifest** precisa de um arquivo próprio. O Android recorta num círculo de 80%, e a marca larga perderia as pontas.
+
+**O que foi testado, e como.**
+- **Prévias no navegador:** o logo empilhado ao lado do da Dormio Labs, e três marcas (o "D", o "D" com o traçado, o travesseiro). Tudo em 16, 32, 48 e 120 px, e em abas claras e escuras.
+- **Os pixels reais:** cada ícone desenhado em `canvas` a 16 e 32 px e ampliado sem suavizar.
+- **A geração dos PNGs:** com o Edge em modo headless, uma página que mostra o SVG no tamanho exato, depois recortada com o Pillow. O `.ico` junta 16, 32 e 48 px.
+- **Conferência dos arquivos:**
+  - cada quadro do `.ico` comparado pixel a pixel com o PNG desenhado;
+  - a diagonal da marca contra o círculo do `maskable`.
+- **Dois testes novos no `padraoVisual.test.ts`:** todo ícone do manifest existe, e o `maskable` não é o mesmo arquivo do `any`. Duas sabotagens.
+- **Suítes completas**, e o servidor da worktree pelo navegador.
+
+**Resultado medido.**
+- **A marca empilhada como favicon:** em 16 px, uma faixa azul sem letra legível; em 32 px, o "Dormio" se lê e o "SMART" vira pontos; de 48 px para cima, nítida.
+- **Os arquivos:**
+  - `favicon.ico` com 2 705 B, e os três quadros idênticos aos desenhados;
+  - `favicon-32.png` com 839 B;
+  - `icone-192.png` com 4 890 B, `icone-512.png` com 13 304 B, `icone-maskable-512.png` com 11 602 B.
+- **O `maskable`:** a diagonal da marca, 360,9, cabe no círculo de 80% do quadrado de 472 (377,6).
+- **Testes:**
+  - frontend **717 passam, 52 arquivos** (Windows, Node 22);
+  - as duas sabotagens derrubam o teste certo;
+  - lint, Knip e build passam (os ícones no `dist/`); CSP sem mudança; Landing com 265 341 B.
+- **No servidor:** os cinco arquivos com `200` e o tipo certo; o manifest com `any`, `any` e `maskable` próprio.
+
+**Veredito.** Pronto na PR #227. Vai ao ar no próximo release.
+
+**Adaptação.**
+- **As fontes dos ícones ficaram versionadas em `docs/marca/`**, e a seção 7 do `docs/PADRAO-VISUAL.md` diz onde vai cada uma e como gerar de novo.
+- **Os ícones do app são quadrados cheios**, porque o sistema arredonda e o iPhone pinta de preto o canto transparente. O favicon mantém os cantos arredondados.
+- **A prévia de link (`og:image`) aponta para o `icone-512.png`** e passa a mostrar a marca empilhada.
+
+**O que deu errado no caminho.**
+- **O Edge headless falhou de três jeitos antes de funcionar:**
+  - com o mesmo perfil em chamadas seguidas, as chamadas saíam sem capturar, porque o processo anterior ainda estava aberto;
+  - com perfis separados e a saída mandada para `/dev/null`, também não capturou (causa não investigada);
+  - com o SVG aberto direto, a janela tem largura mínima, e a captura saiu cortada, com só um "D" no canto.
+
+  Resolvido com uma página que mostra a imagem no tamanho exato numa janela grande, e o recorte depois.
+- **Uma sabotagem não se aplicou.** O trecho escolhido aparece duas vezes no manifest (nos ícones e nos atalhos), e a troca exige ocorrência única. O "15 passaram" dessa rodada não testou nada. Refeita trocando só a primeira ocorrência, ela derrubou o teste certo.
+- **O pedido do autor chegou em duas mensagens.** A primeira, sem a imagem, parecia escolher o "D" para a aba. A segunda, com a imagem, escolheu o travesseiro. Nada tinha sido gerado com a leitura errada.
+
+**Risco em aberto.**
+- **O APK Android segue com os ícones antigos:** é o `APP-17`.
+- **Em 16 px o travesseiro vira um retângulo branco** com uma linha, reconhecível mais pela cor e pela forma que pelo desenho. O autor escolheu vendo essa prévia.
+- **Navegadores e celulares guardam ícone em cache**, então a troca pode demorar para quem já visitou ou instalou.
+
+**Procedência.** Branch `bugfix/UI-14-titulo-e-cartao`; prévias e geração na pasta temporária da sessão; Edge headless e Pillow 12.1.0; Windows 11; 19/11.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
