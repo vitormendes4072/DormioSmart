@@ -11354,6 +11354,42 @@ O desenho da página foi aprovado pelo autor numa prévia estática, em cinco ro
 
 **Procedência.** Branch `feature/UI-34-padrao-visual` sobre `develop` `30c8495`, com a `docs/registro-release-r10` (`2ec2944`, PR #223) mesclada para não conflitar no backlog e no diário. Medições na produção e no servidor da worktree, no navegador desta máquina, em 19/11. Windows 11.
 
+# 2026-11-19 (iv) — o release R11: o padrão visual no ar
+
+**O problema, como foi entendido no início.** Depois do R10, `develop` recebeu o `UI-34` (#224) e o registro do R10 (#223). O `UI-34` só fecha quando a lista publicada estiver igual à home publicada.
+
+**Hipótese de trabalho.** O release só mexe no frontend: o CSS da lista, uma linha de estilo da landing e um teste. O resto é documentação. Não há migração, e a CSP não muda, porque nenhum script mudou.
+
+**O que foi testado, e como.**
+- `git diff --name-only origin/main origin/develop` antes da PR #225, e o CI dela.
+- **Depois do deploy, com `curl`:** `/health`, `/lista-de-espera`, a rota da lista sem consentimento, uma rota protegida sem token, e o mesmo script avulso do R10 (a CSP contra os scripts inline das cinco páginas).
+- **No navegador desta máquina, a 1280 px, a lista e a home publicadas:**
+  - a família de fontes calculada;
+  - a largura de um texto desenhado em `canvas` com ela, comparada com a Segoe UI;
+  - o título, o botão e, na lista, as caixas e a pílula;
+  - se a Inter foi baixada.
+
+**Resultado medido.**
+- CI 12 de 12; merge `205835e`; deploy de produção `7917378167` com sucesso.
+- `/health` `200` (contrato 2.11.0); `/lista-de-espera` `200`; `400` sem consentimento; `401` sem token.
+- CSP igual nas cinco páginas, 13 scripts inline, nenhum sem hash.
+- **Lista e home:**
+  - a mesma família, `ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif`, que nas duas resolve para a Segoe UI (363 px, igual à Segoe);
+  - título 66,56 px, 850, −3,1 px nas duas; botão 800 nas duas;
+  - na lista, caixas 400, pílula 11 px e a Inter não baixada.
+
+**Veredito.** A lista publicada agora é tipograficamente igual à home. O `UI-34` fecha.
+
+**Adaptação.** Nada nesta etapa.
+
+**O que deu errado no caminho.** Nada nesta etapa.
+
+**Risco em aberto.**
+- O `UI-35` (os textos da home abaixo de 11 px) e o `UI-36` (a fonte do app depois do login) seguem abertos.
+- **A igualdade foi medida no Windows, nesta máquina.** No Mac e no celular, as duas páginas resolvem para a mesma fonte do sistema por construção, porque a declaração é idêntica e nenhuma baixa fonte, mas isso não foi visto num aparelho.
+
+**Procedência.** PR #225, merge `205835e`; deploy `7917378167`; conferências desta máquina em 19/11.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
