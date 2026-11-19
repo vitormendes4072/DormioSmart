@@ -11833,3 +11833,50 @@ O GitHub Releases dá o endereço fixo (`releases/latest/download/smart-dormio.a
 - **Os dados de quem baixar não entram no TCC** sem o termo e o aval do orientador (`LGPD-03`).
 
 **Procedência.** Branch `feature/APP-17-icone-e-download` sobre `develop` `9c5242f`; Windows 11, Node 22, JDK do Android Studio, build-tools 37.0.0; emulador Pixel 6; 19/11.
+
+# 2026-11-19 (xv) — o release R14: o APK 1.1.0 publicado e o download no ar
+
+**O problema, como foi entendido no início.** O `APP-17` foi mesclado em `develop` (`ac24598`), mas o link do botão só funciona depois que a release `app-v1.1.0` existir no GitHub. Se a release fosse criada depois do deploy, a landing publicada mostraria por alguns minutos um botão que leva a um 404.
+
+**Hipótese de trabalho.** O GitHub permite preparar a release em rascunho, com o arquivo já enviado, e publicá-la num segundo; o `latest` ignora rascunhos, e a tag só nasce na publicação. Então a ordem é:
+- gerar o APK do `develop` (o mesmo conteúdo da PR de release);
+- criar o rascunho;
+- mesclar em `main`;
+- publicar a release apontando para o `main`, antes de o deploy da Vercel terminar.
+
+**O que foi testado, e como.**
+- **O APK:** gerado numa worktree destacada em `ac24598`, com `npm ci`, `npm run build:app` e `./gradlew assembleRelease` com a chave do autor. Conferido com `apksigner` e `aapt2`.
+- **A release:** o rascunho criado com `gh release create --draft`; depois do merge da #236, publicado pela API do GitHub com `tag_name` `app-v1.1.0`, `target_commitish` `main`, sem pré-lançamento.
+- **Depois do deploy:**
+  - `curl` nas rotas;
+  - o link `latest` baixado e comparado por SHA-256;
+  - a CSP servida contra os scripts inline das cinco páginas;
+  - no navegador, as duas landings publicadas.
+
+**Resultado medido.**
+- **O APK:** `versionCode` 2, `versionName` 1.1.0, rótulo "Smart Dormio", as três ABIs, não depurável; assinatura v2 com um signatário, o mesmo certificado do 1.0.0 (SHA-256 `06b2e4f93af786a09455851d9a6f1abd0f948ecf2b8d08ab6dd22d9b9613d14a`); 5 239 362 B; SHA-256 `7464a981523b5ef13f603ae102eeb1a070da107edd9807c5d3ba39f621ffb58b`.
+- **Release:**
+  - CI da #236 todo verde; merge `076c2f1`;
+  - a tag `app-v1.1.0` aponta para o `076c2f1`;
+  - deploy `7926247819` com sucesso.
+- **O download:** o link `releases/latest/download/smart-dormio.apk` responde `200`, com 5 239 362 B e o mesmo SHA-256.
+- **A produção:**
+  - `/health` `200` (contrato 2.11.0); `/` e a landing `200`; `/api/devices` sem token `401`;
+  - a CSP é igual nas cinco páginas, com 15 scripts inline, todos com hash;
+  - a landing servida tem o link e o texto da versão 1.1.0.
+- **No navegador, a 1280 px:** a landing completa mostra o botão com o link, em `rgb(20, 121, 189)` (`#1479BD`), cursor de link e sem sublinhado; a leve, o link e a versão.
+
+**Veredito.** O APK 1.1.0 está publicado, e a landing leva a ele. O `APP-17` está fechado.
+
+**Adaptação.** O APK publicado não é o da branch (SHA-256 `2b75aa59…`): foi refeito a partir do `develop` mesclado, para que o arquivo da release corresponda ao código do `main`. Os dois diferem só no carimbo de tempo do empacotamento.
+
+**O que deu errado no caminho.**
+- **A worktree do `APP-17` não saiu inteira no `git worktree remove`** ("Filename too long", por causa do `node_modules`). O registro saiu; a pasta ficou vazia e presa por um processo, para remover à mão.
+- **O Gradle precisou de novo do `jdk.net.unixdomain.tmpdir` num caminho longo**, como na entrada (xiv).
+
+**Risco em aberto.**
+- **Os dados de quem baixar não entram no TCC** sem o termo e o aval do orientador (`LGPD-03`, `APP-12`).
+- **O texto de dentro do app e a tela de abertura** seguem para o `APP-18`.
+- **O Play Protect pode avisar na instalação.**
+
+**Procedência.** PR #236 (`076c2f1`); release `app-v1.1.0`; APK de `develop` `ac24598`; deploy `7926247819`; conferências desta máquina em 19/11.
