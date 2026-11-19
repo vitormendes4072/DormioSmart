@@ -11601,6 +11601,93 @@ Faltava um lugar que juntasse tudo e servisse para quem vai fazer um post, um sl
 
 **Procedência.** PR #228, merge `b243796`; deploy `7919063890`; conferências desta máquina em 19/11.
 
+---
+
+# 2026-11-19 (x) — UI-37: landing com apresentação do app Android beta
+
+**O problema.** O autor aprovou uma prévia da landing com apresentação do app Android beta,
+menos repetição visual e navegação mais clara, e pediu a adaptação à aplicação antes de publicar.
+O app ainda não tem canal de distribuição definido (`APP-12`).
+
+**Hipótese.** Adaptar a página incorporada e oferecer o mesmo contexto na versão leve, sem
+prometer um download disponível. Preservar as imagens como arquivos cacheáveis e a política CSP
+restrita, atualizando somente os hashes dos scripts alterados.
+
+**O que foi testado.** Na máquina Windows, a suíte Vitest completa; build, lint, Knip e
+`conferir_csp.py`; Chrome em 390 × 844 e 1365 × 900 com a aplicação compilada, iframe isolado e
+cabeçalhos equivalentes aos de `vercel.json`. Foram exercitados menu móvel, horário, navegação,
+simulador, telemetria, clique direto na peça, celular ilustrado, lista de espera e versão leve.
+A troca do acesso final para painel foi exercitada com `sessao=1` simulado. Quatro testes novos
+foram executados contra a landing anterior antes de aplicar a mudança; um controle removeu hash
+da CSP e outro suprimiu o cabeçalho CORS das imagens no servidor de teste.
+
+**Resultado medido.** 721 testes em 52 arquivos passaram; build, lint, Knip e CSP passaram.
+Os quatro testes novos falharam na versão anterior e passaram depois. Sem o hash, a conferência
+reprovou; sem CORS, o clique na peça falhou nas duas larguras. Com a política e os cabeçalhos
+previstos, os percursos integrados testados passaram, sem erro JS ou bloqueio CSP observado.
+O HTML da landing passou de 265 341 para 278 925 bytes, mantendo imagens em arquivos separados.
+
+**Adaptação.** A landing completa ganhou acesso ao beta indisponível, navegação móvel, telemetria
+recolhível, simplificação dos painéis e correção de avanço e retorno do simulador. A versão leve
+também identifica o app. O padrão visual registra a preferência contra repetição decorativa.
+
+**O que deu errado no caminho.** A primeira tentativa de consultar o remoto no sandbox falhou por
+rede; a atualização da referência foi feita com acesso autorizado. O primeiro `git status` na
+worktree isolada não pôde ler a configuração do repositório no sandbox; a verificação autorizada
+funcionou. Na prévia local, a análise de pixels de imagens de arquivo causava erro de origem;
+na integração foram usados recursos com CORS e o controle positivo confirmou a dependência.
+
+**Risco em aberto.** Nenhum APK ou link foi disponibilizado; o envio a testadores segue `APP-12`.
+A sessão autenticada foi simulada, não houve login real nem publicação. Os textos pequenos da
+home não foram todos revistos: `UI-35` continua aberto. A equivalência dos cabeçalhos foi testada
+em servidor local, não em deploy real.
+
+**Procedência.** Branch `feature/landing-app-android` sobre `origin/develop` `d75a41e`; Chrome,
+Playwright e Node no Windows; prévia local e aplicação compilada; 19/11/2026.
+
+---
+
+# 2026-11-19 (xi) — UI-37: imagens na prévia protegida
+
+**O problema.** Na prévia Vercel do commit `41418f4`, o autor viu imagens quebradas no
+explorador. O arquivo WebP respondeu 200 em consulta autenticada, mas isso não exercita o
+pedido feito pelo iframe isolado no navegador.
+
+**Hipótese.** O iframe sem `allow-same-origin` faz pedidos de imagens sem o cookie SameSite;
+a proteção da prévia pode redirecioná-los à autenticação. Um servidor local com cookie fictício
+reproduziu a falha: a imagem de 1180 px ficou com largura natural zero quando o cookie era exigido.
+
+**O que foi testado.** No Windows, Chrome com a aplicação compilada em 390 × 900 e 1365 × 900;
+servidor local que respondeu 401 ou redirecionou à autenticação simulada quando faltou cookie.
+Foram verificadas a imagem principal, os ícones, a seleção direta do ESP32 e as imagens SVG da
+planta. Testes Vitest verificam origem da mensagem, caminhos permitidos, tipo e limite de tamanho;
+controles positivos removeram a restrição de caminho e, separadamente, a checagem do remetente.
+Também rodaram a suíte do frontend, build, lint, Knip, CSP e orçamento de transferência.
+
+**Resultado medido.** Antes, no servidor protegido simulado, a imagem principal tinha largura
+natural 0; depois, 1180 px. Nos dois tamanhos, imagem, ícones, planta e clique passaram sem erro
+JavaScript, tanto com 401 quanto com redirecionamento. Cada sabotagem de segurança reprovou o teste
+correspondente. A suíte completa passou com 725 testes em 53 arquivos; build, lint e Knip passaram.
+A landing compilada ficou em 274 253 bytes estimados de transferência, abaixo do teto de 289 800.
+
+**Adaptação.** O iframe continua isolado. Se o carregamento direto de uma imagem pública falhar,
+pede ao pai o conteúdo de uma lista restrita de caminhos, verifica o remetente e cria uma URL de
+objeto local. O pai valida caminho, tipo e tamanho e busca com a sessão do próprio site. As imagens
+continuam em arquivos cacheáveis, e a CSP recebeu o hash do novo script.
+
+**O que deu errado no caminho.** A primeira criação do teste usou um caminho relativo duplicado;
+a primeira execução do Vitest no sandbox falhou ao escrever no diretório de dependências ligado
+por junction. Depois, o build foi chamado uma vez na raiz, sem `package.json`, e uma atualização do diário
+foi tentada a partir de `frontend/`. Os comandos foram
+refeitos no diretório correto e, onde necessário, com a permissão já prevista para as dependências.
+
+**Risco em aberto.** O comportamento protegido foi reproduzido em servidor local, não comprova por
+si só a causa exata em todos os navegadores da Vercel. É necessário conferir a nova prévia com a
+proteção ativa. O `APP-12` permanece pendente; não houve mudança de credencial nem de proteção.
+
+**Procedência.** Branch `feature/landing-app-android`, correção sobre `41418f4`; Chrome, Node,
+Vitest e build no Windows; servidor local com autenticação fictícia; 19/11/2026.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
