@@ -1,4 +1,5 @@
 import { ArrowRight, BarChart3, BedDouble, Check, Github, Instagram, Moon, Radio, Sun, X } from "lucide-react";
+import { useEffect, useRef } from "react";
 import { Link, useSearchParams } from "react-router";
 
 import { Moldura, RotuloDeSecao } from "../components/Blueprint";
@@ -7,6 +8,7 @@ import { Revelar } from "../components/Revelar";
 import { TracadoDeMovimento } from "../components/TracadoDeMovimento";
 import { useAuth } from "../contexts/AuthContext";
 import { useTema } from "../hooks/useTema";
+import { iniciarPonteImagensLanding } from "../lib/ponteImagensLanding";
 import { NOME_PRODUTO } from "../lib/ui";
 
 /**
@@ -117,6 +119,7 @@ function LandingLeve() {
           <nav aria-label="Seções da página" className="hidden gap-6 text-sm text-muted-foreground md:flex">
             <a className="hover:text-foreground" href="#como-funciona">Como funciona</a>
             <a className="hover:text-foreground" href="#tecnologia">Tecnologia</a>
+            <a className="hover:text-foreground" href="#app-android">App Android</a>
           </nav>
           <div className="flex items-center gap-3 text-sm">
             <button
@@ -245,10 +248,26 @@ function LandingLeve() {
             </div>
           </section>
 
+          {/* O app usa o acelerômetro do celular, em fase beta. */}
+          <section id="app-android" aria-labelledby="titulo-app-android" className="scroll-mt-6 border-t border-border pt-10">
+            <RotuloDeSecao numero="03" texto="App Android · versão beta" />
+            <div className="grid items-center gap-6 sm:grid-cols-[1fr_auto]">
+              <div>
+                <h2 id="titulo-app-android" className="text-2xl font-semibold text-foreground">Acompanhe o repouso pelo celular.</h2>
+                <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">
+                  O aplicativo usa o acelerômetro do celular para registrar movimentos durante a noite, inclusive com a tela apagada.
+                  É um projeto acadêmico e não realiza diagnóstico clínico.
+                </p>
+                <p className="mt-4 text-sm text-muted-foreground">Distribuição beta ainda não disponível.</p>
+              </div>
+              <img src="/icone-192.png" alt="" className="size-20 rounded-2xl" />
+            </div>
+          </section>
+
           {/* ── Status ─────────────────────────────────────────────── */}
           <section id="tecnologia">
             <Revelar>
-              <RotuloDeSecao numero="03" texto="Estado do projeto" />
+              <RotuloDeSecao numero="04" texto="Estado do projeto" />
               <h2 className="text-2xl font-semibold text-foreground">Onde está hoje</h2>
             </Revelar>
 
@@ -379,11 +398,19 @@ function LandingLeve() {
 export function Landing() {
   const { sessao } = useAuth();
   const [parametros] = useSearchParams();
+  const apresentacaoLeve = parametros.get("apresentacao") === "leve";
+  const iframe = useRef<HTMLIFrameElement>(null);
 
-  if (parametros.get("apresentacao") === "leve") return <LandingLeve />;
+  useEffect(() => {
+    if (!iframe.current) return;
+    return iniciarPonteImagensLanding(iframe.current);
+  }, [apresentacaoLeve]);
+
+  if (apresentacaoLeve) return <LandingLeve />;
 
   return (
     <iframe
+      ref={iframe}
       title="Smart Dormio — página inicial"
       src={sessao ? "/landing-prototipo.html?sessao=1" : "/landing-prototipo.html"}
       sandbox="allow-scripts allow-top-navigation-by-user-activation allow-popups allow-popups-to-escape-sandbox allow-downloads"

@@ -35,3 +35,33 @@ describe("página inicial x arquitetura de captação (UI-23)", () => {
     expect(texto).toContain("A cada 10 minutos");
   });
 });
+
+
+describe("app Android e navegação da landing", () => {
+  it("apresenta o beta com distribuição indisponível e sem link de download", () => {
+    const secao = pagina.querySelector("#app-android");
+    expect(secao?.textContent).toMatch(/Android.*beta/i);
+    expect(secao?.textContent).toContain("Distribuição beta ainda não disponível.");
+    expect(secao?.querySelector("button.beta-download:disabled")).not.toBeNull();
+    expect(secao?.querySelector('a[download]')).toBeNull();
+  });
+
+  it("oferece o acesso ao app no topo e no menu móvel", () => {
+    expect(pagina.querySelector('.lp-hero a[href="#app-android"]')).not.toBeNull();
+    expect(pagina.querySelector('#sd-quicknav-panel a[href="#app-android"]')).not.toBeNull();
+  });
+
+  it("mantém a telemetria opcional dentro de tecnologia", () => {
+    const telemetria = pagina.querySelector("#lp-tecnologia details#lp-telemetria");
+    expect(telemetria).not.toBeNull();
+    expect(telemetria?.hasAttribute("open")).toBe(false);
+    expect(telemetria?.querySelector("summary")).not.toBeNull();
+  });
+
+  it("usa imagens locais e um relógio sem horário fixo na demonstração", () => {
+    const icon = pagina.querySelector<HTMLImageElement>("#sd-phone .sdp-brandmark img");
+    expect(icon?.getAttribute("src")).toBe("/icone-192.png");
+    expect(pagina.querySelector("#sdp-hora-atual")).not.toBeNull();
+    expect(html).not.toContain("repo-DormioSmart/");
+  });
+});

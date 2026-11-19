@@ -1,6 +1,7 @@
 # Padrão visual das páginas públicas — Smart Dormio
 
-> **Criado em 2026-11-19 (`UI-34`).** Antes de criar ou mudar uma página pública, ler este
+> **Criado em 2026-11-19 (`UI-34`).** Os logos, os ícones e a paleta, cada um em arquivo próprio,
+> estão no manual da marca, [`docs/marca/README.md`](marca/README.md). Antes de criar ou mudar uma página pública, ler este
 > arquivo. **O padrão é o da home** (`frontend/public/landing-prototipo.html`): quando este
 > documento e a home divergirem, a home vale, e este documento é corrigido.
 > Os números abaixo foram **medidos** na produção, no navegador, a 1280 px de largura, em
@@ -108,7 +109,7 @@ de aviso legal: no mínimo 11,5 px; a caixa de consentimento usa 13 px.
 Duas marcas, cada uma onde se lê. Escolha do autor em 19/11, depois de ver as duas nos
 tamanhos reais.
 
-| Onde | Marca | Arquivos em `frontend/public/` | Fonte em `docs/marca/` |
+| Onde | Marca | Arquivos em `frontend/public/` | Fonte em `docs/marca/icones/` |
 |---|---|---|---|
 | **Aba do navegador** (favicon) | O travesseiro com o traçado de movimento, branco sobre o azul da marca, cantos arredondados | `favicon.ico` (16, 32 e 48 px), `favicon-32.png` | `favicon-travesseiro.svg` |
 | **App instalado e tela inicial** (PWA, iPhone, prévia de link) | "SMART" sobre "Dormio", empilhados como a marca da Dormio Labs, azul sobre branco | `icone-192.png`, `icone-512.png` | `icone-app.svg` |
@@ -137,6 +138,16 @@ tamanhos reais.
   - o manifest apontar para ícone que não existe, ou usar o mesmo arquivo como `any` e `maskable`.
 - **No navegador:** `getComputedStyle` nos elementos da tabela da seção 3, nas duas páginas e na
   mesma largura.
+
+## 9. Preferência de composição (UI-37)
+
+O autor prefere uma interface sóbria e com identidade própria. Evitar a repetição de pontos
+com halo, selos em pílula e cartões arredondados para informações rotineiras. Preferir hierarquia
+por tipografia, espaço e divisórias; manter caixas e indicadores quando ajudarem a organizar,
+comunicar estado real ou identificar controles. Não apagar a identificação de dados fictícios.
+
+A revisão do `UI-37` reduziu o título do topo em desktop; os valores da seção 3 são as medidas
+anteriores de 19/11, preservadas como referência histórica, não medições da versão revisada.
 
 ## O que este documento não cobre
 

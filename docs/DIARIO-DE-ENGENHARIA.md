@@ -11514,6 +11514,180 @@ O desenho da página foi aprovado pelo autor numa prévia estática, em cinco ro
 
 **Procedência.** Branch `bugfix/UI-14-titulo-e-cartao`; prévias e geração na pasta temporária da sessão; Edge headless e Pillow 12.1.0; Windows 11; 19/11.
 
+# 2026-11-19 (viii) — BRAND-04: o manual da marca, com cada imagem num arquivo
+
+**O problema, como foi entendido no início.** O autor pediu um documento com toda a identidade visual, com cada imagem num arquivo separado, e tudo organizado. Até ali, a marca estava espalhada:
+- o logo horizontal e o da Dormio Labs em `frontend/public/`;
+- a marca empilhada e os ícones nascidos no mesmo dia, só como fonte em `docs/marca/`;
+- as cores em dois lugares (`theme.css` e a landing);
+- a tipografia no `docs/PADRAO-VISUAL.md`.
+
+Faltava um lugar que juntasse tudo e servisse para quem vai fazer um post, um slide ou um ícone.
+
+**Hipótese de trabalho.** Um manual em `docs/marca/README.md`, que o GitHub mostra com as imagens, e uma pasta por tipo (`logos/`, `icones/`, `cores/`, `previas/`). Cada peça em SVG, para qualquer tamanho, e em PNG, para uso direto. Nada redesenhado: os logos saem dos traços originais.
+
+**O que foi testado, e como.**
+- **Os SVGs gerados por script, a partir dos desenhos originais das letras:**
+  - os logos horizontal, empilhado e Dormio Labs, em azul e em branco;
+  - a paleta, com os tokens reais do `theme.css` e da landing;
+  - uma prévia dos logos brancos sobre o azul.
+- **Os três SVGs de ícone** que já existiam foram movidos para `icones/` com `git mv`.
+- **Os PNGs** (logos com 1200 px de largura, ícones com 1024, favicon com 512, paleta com 1200), gerados pelo Edge headless e recortados com o Pillow, como na entrada (vii).
+- **O conteúdo de cada PNG:** a caixa ocupada pelo desenho, para pegar corte nas bordas, e três deles conferidos a olho.
+- **Os contrastes citados no manual**, calculados pela fórmula da WCAG.
+- **As conferências:** `conferir_docs_versionados`, `conferir_backlog` e `consolidar_registro`.
+
+**Resultado medido.**
+- **21 arquivos** em `docs/marca/`, 453 kB: o manual, 10 SVGs e 10 PNGs.
+- **Nenhum PNG cortado:** o desenho termina dentro da imagem em todos (por exemplo, o horizontal de 3 a 1196 px em 1200).
+- **Contrastes:**
+  - azul da marca sobre branco: **2,78:1**;
+  - texto de apoio sobre o fundo: 5,46:1;
+  - azul de ação sobre branco: 4,67:1;
+  - azul de rótulo sobre o fundo: 5,62:1.
+- **As três conferências de documento** passam depois do `git add`.
+
+**Veredito.** O manual está pronto. Ele junta marca, logos, ícones, cores, um resumo da tipografia (o detalhe segue no `PADRAO-VISUAL.md`), as regras de uso e como refazer os arquivos.
+
+**Adaptação.**
+- **As versões brancas ganharam uma prévia sobre o azul**, porque têm fundo transparente e somem no fundo branco do GitHub.
+- **Os SVGs de ícone mudaram de pasta.** O `PADRAO-VISUAL.md` e o `APP-17` passaram a apontar para `docs/marca/icones/`.
+- **O manual entrou na lista de leitura do `CLAUDE.md`.**
+
+**O que deu errado no caminho.**
+- **Escrevi "2,7:1" para o contraste do azul da marca** antes de calcular. A conta deu 2,78:1, e o manual foi corrigido antes do commit.
+- **A primeira rodada do `conferir_docs_versionados` reprovou** por arquivos ainda fora do git. Passou depois do `git add`.
+
+**Risco em aberto.**
+- **Os tamanhos mínimos em milímetros, para impressão, são estimativa.** Não foram testados em papel; o manual declara isso.
+- **O APK (`APP-17`) e o app depois do login (`UI-36`) seguem fora do manual.** As duas lacunas estão declaradas no fim dele.
+
+**Procedência.** Branch `docs/BRAND-04-manual-de-marca` sobre `develop` `f377ac0`; Edge headless e Pillow 12.1.0; Windows 11; 19/11.
+
+# 2026-11-19 (ix) — o release R12: o título, o favicon e o ícone do app no ar
+
+**O problema, como foi entendido no início.** Depois do R11, `develop` recebeu a PR #226 (o registro do R11) e a #227 (o título "Seja um dos primeiros", a lista sem o cartão flutuante, o favicon do travesseiro e o ícone do app com a marca empilhada). O autor pediu para mesclar e publicar.
+
+**Hipótese de trabalho.** O release só mexe no frontend estático e na documentação: o componente e o CSS da lista, a cabeça do `index.html` e da landing, os ícones e o manifest. Sem migração e sem script novo, então a CSP não muda.
+
+**O que foi testado, e como.**
+- `git diff --name-only origin/main origin/develop` antes da PR #228, e o CI dela, 12 verificações. A #229, do manual da marca, entrou em `develop` só depois do merge do release.
+- **Depois do deploy, com `curl` desta máquina:**
+  - `/health`, `/lista-de-espera`, a rota da lista sem consentimento e uma rota protegida sem token;
+  - os cinco ícones e o manifest: código, tipo e tamanho;
+  - o SHA-256 de três ícones publicados contra os do repositório;
+  - os links de ícone no `/` e na landing;
+  - o script avulso da CSP;
+  - o pedaço publicado da página da lista.
+
+**Resultado medido.**
+- Merge `b243796`; deploy de produção `7919063890` com sucesso.
+- `/health` `200` (contrato 2.11.0); `/lista-de-espera` `200`; `400` sem consentimento; `401` sem token.
+- **Ícones:**
+  - `favicon.ico` `200 image/vnd.microsoft.icon`, 2 705 B; `favicon-32.png`, `icone-192.png`, `icone-512.png` e `icone-maskable-512.png` `200 image/png`;
+  - `favicon.ico`, `icone-512.png` e `icone-maskable-512.png` byte a byte iguais aos do repositório.
+- **Manifest:** `any`, `any` e `maskable` em arquivo próprio. **Links de ícone:** 2 no `/` e 2 na landing.
+- **CSP:** 13 scripts inline, todos com hash. **Pacote da lista:** "Seja um dos primeiros" presente; "Sem nada no pulso" e `le-flutua` ausentes.
+
+**Veredito.** O título novo, o favicon do travesseiro e o ícone do app com a marca empilhada estão no ar.
+
+**Adaptação.** O script avulso de conferência procurava a frase antiga, "Seja dos primeiros", e a deu como ausente. Ausente é o certo agora: a frase nova foi conferida à parte.
+
+**O que deu errado no caminho.** O release ficou mesclado e com o deploy pronto sem ser conferido até a sessão seguinte, porque a sessão parou no limite de uso. Nada mudou no site entre o deploy e a conferência.
+
+**Risco em aberto.**
+- **O favicon e o ícone novos só foram conferidos por download.** Ninguém viu ainda numa aba ou num celular com o cache renovado; a captura está na lista do autor.
+- **O APK Android segue com os ícones antigos:** é o `APP-17`.
+
+**Procedência.** PR #228, merge `b243796`; deploy `7919063890`; conferências desta máquina em 19/11.
+
+---
+
+# 2026-11-19 (x) — UI-37: landing com apresentação do app Android beta
+
+**O problema.** O autor aprovou uma prévia da landing com apresentação do app Android beta,
+menos repetição visual e navegação mais clara, e pediu a adaptação à aplicação antes de publicar.
+O app ainda não tem canal de distribuição definido (`APP-12`).
+
+**Hipótese.** Adaptar a página incorporada e oferecer o mesmo contexto na versão leve, sem
+prometer um download disponível. Preservar as imagens como arquivos cacheáveis e a política CSP
+restrita, atualizando somente os hashes dos scripts alterados.
+
+**O que foi testado.** Na máquina Windows, a suíte Vitest completa; build, lint, Knip e
+`conferir_csp.py`; Chrome em 390 × 844 e 1365 × 900 com a aplicação compilada, iframe isolado e
+cabeçalhos equivalentes aos de `vercel.json`. Foram exercitados menu móvel, horário, navegação,
+simulador, telemetria, clique direto na peça, celular ilustrado, lista de espera e versão leve.
+A troca do acesso final para painel foi exercitada com `sessao=1` simulado. Quatro testes novos
+foram executados contra a landing anterior antes de aplicar a mudança; um controle removeu hash
+da CSP e outro suprimiu o cabeçalho CORS das imagens no servidor de teste.
+
+**Resultado medido.** 721 testes em 52 arquivos passaram; build, lint, Knip e CSP passaram.
+Os quatro testes novos falharam na versão anterior e passaram depois. Sem o hash, a conferência
+reprovou; sem CORS, o clique na peça falhou nas duas larguras. Com a política e os cabeçalhos
+previstos, os percursos integrados testados passaram, sem erro JS ou bloqueio CSP observado.
+O HTML da landing passou de 265 341 para 278 925 bytes, mantendo imagens em arquivos separados.
+
+**Adaptação.** A landing completa ganhou acesso ao beta indisponível, navegação móvel, telemetria
+recolhível, simplificação dos painéis e correção de avanço e retorno do simulador. A versão leve
+também identifica o app. O padrão visual registra a preferência contra repetição decorativa.
+
+**O que deu errado no caminho.** A primeira tentativa de consultar o remoto no sandbox falhou por
+rede; a atualização da referência foi feita com acesso autorizado. O primeiro `git status` na
+worktree isolada não pôde ler a configuração do repositório no sandbox; a verificação autorizada
+funcionou. Na prévia local, a análise de pixels de imagens de arquivo causava erro de origem;
+na integração foram usados recursos com CORS e o controle positivo confirmou a dependência.
+
+**Risco em aberto.** Nenhum APK ou link foi disponibilizado; o envio a testadores segue `APP-12`.
+A sessão autenticada foi simulada, não houve login real nem publicação. Os textos pequenos da
+home não foram todos revistos: `UI-35` continua aberto. A equivalência dos cabeçalhos foi testada
+em servidor local, não em deploy real.
+
+**Procedência.** Branch `feature/landing-app-android` sobre `origin/develop` `d75a41e`; Chrome,
+Playwright e Node no Windows; prévia local e aplicação compilada; 19/11/2026.
+
+---
+
+# 2026-11-19 (xi) — UI-37: imagens na prévia protegida
+
+**O problema.** Na prévia Vercel do commit `41418f4`, o autor viu imagens quebradas no
+explorador. O arquivo WebP respondeu 200 em consulta autenticada, mas isso não exercita o
+pedido feito pelo iframe isolado no navegador.
+
+**Hipótese.** O iframe sem `allow-same-origin` faz pedidos de imagens sem o cookie SameSite;
+a proteção da prévia pode redirecioná-los à autenticação. Um servidor local com cookie fictício
+reproduziu a falha: a imagem de 1180 px ficou com largura natural zero quando o cookie era exigido.
+
+**O que foi testado.** No Windows, Chrome com a aplicação compilada em 390 × 900 e 1365 × 900;
+servidor local que respondeu 401 ou redirecionou à autenticação simulada quando faltou cookie.
+Foram verificadas a imagem principal, os ícones, a seleção direta do ESP32 e as imagens SVG da
+planta. Testes Vitest verificam origem da mensagem, caminhos permitidos, tipo e limite de tamanho;
+controles positivos removeram a restrição de caminho e, separadamente, a checagem do remetente.
+Também rodaram a suíte do frontend, build, lint, Knip, CSP e orçamento de transferência.
+
+**Resultado medido.** Antes, no servidor protegido simulado, a imagem principal tinha largura
+natural 0; depois, 1180 px. Nos dois tamanhos, imagem, ícones, planta e clique passaram sem erro
+JavaScript, tanto com 401 quanto com redirecionamento. Cada sabotagem de segurança reprovou o teste
+correspondente. A suíte completa passou com 725 testes em 53 arquivos; build, lint e Knip passaram.
+A landing compilada ficou em 274 253 bytes estimados de transferência, abaixo do teto de 289 800.
+
+**Adaptação.** O iframe continua isolado. Se o carregamento direto de uma imagem pública falhar,
+pede ao pai o conteúdo de uma lista restrita de caminhos, verifica o remetente e cria uma URL de
+objeto local. O pai valida caminho, tipo e tamanho e busca com a sessão do próprio site. As imagens
+continuam em arquivos cacheáveis, e a CSP recebeu o hash do novo script.
+
+**O que deu errado no caminho.** A primeira criação do teste usou um caminho relativo duplicado;
+a primeira execução do Vitest no sandbox falhou ao escrever no diretório de dependências ligado
+por junction. Depois, o build foi chamado uma vez na raiz, sem `package.json`, e uma atualização do diário
+foi tentada a partir de `frontend/`. Os comandos foram
+refeitos no diretório correto e, onde necessário, com a permissão já prevista para as dependências.
+
+**Risco em aberto.** O comportamento protegido foi reproduzido em servidor local, não comprova por
+si só a causa exata em todos os navegadores da Vercel. É necessário conferir a nova prévia com a
+proteção ativa. O `APP-12` permanece pendente; não houve mudança de credencial nem de proteção.
+
+**Procedência.** Branch `feature/landing-app-android`, correção sobre `41418f4`; Chrome, Node,
+Vitest e build no Windows; servidor local com autenticação fictícia; 19/11/2026.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
