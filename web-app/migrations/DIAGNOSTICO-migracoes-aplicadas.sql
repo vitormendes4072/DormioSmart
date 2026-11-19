@@ -183,7 +183,16 @@ marcas (migracao, item, marca, presente) as (values
         exists (select 1 from col where nome = 'devices.receber_leituras')),
     ('019', 'API-07', 'as duas funcoes de gravacao recusam o aparelho pausado',
         coalesce((select pg_get_functiondef(to_regprocedure('public.registrar_leitura(text,jsonb)')) like '%aparelho_pausado%'
-                     and pg_get_functiondef(to_regprocedure('public.registrar_leitura_da_sessao(uuid,jsonb)')) like '%aparelho_pausado%'), false))
+                     and pg_get_functiondef(to_regprocedure('public.registrar_leitura_da_sessao(uuid,jsonb)')) like '%aparelho_pausado%'), false)),
+    -- 022: a lista de espera (UI-14). A tabela com RLS, a inscricao que so a
+    -- ingestao executa, e o expurgo dos 12 meses.
+    ('022', 'UI-14', 'tabela lista_de_espera com RLS',
+        coalesce((select relrowsecurity from pg_class where oid = to_regclass('public.lista_de_espera')), false)),
+    ('022', 'UI-14', 'funcao inscrever_na_lista_de_espera, executavel so pela ingestao',
+        to_regprocedure('public.inscrever_na_lista_de_espera(text,text,text)') is not null
+        and coalesce((select not has_function_privilege('anon', 'public.inscrever_na_lista_de_espera(text,text,text)', 'execute')), false)),
+    ('022', 'UI-14', 'funcao expurgar_lista_de_espera',
+        to_regprocedure('public.expurgar_lista_de_espera()') is not null)
 ),
 esquema as (
     select migracao, min(item) as item,
@@ -222,6 +231,17 @@ select '013 agendamento'::text, 'LGPD-02'::text, null::boolean,
                       'select count(*) as c from cron.job where jobname = ''dormio-expurgo-por-inatividade''',
                       false, true, '')))[1]::text
                  || ' job(s) dormio-expurgo-por-inatividade — 1 é o esperado'
+       end,
+       null::text
+union all
+-- 022, o agendamento do expurgo da lista de espera (UI-14): informativo.
+select '022 agendamento'::text, 'UI-14'::text, null::boolean,
+       case when to_regclass('cron.job') is null
+            then 'pg_cron NÃO ligado: o expurgo da lista de espera não está agendado'
+            else (xpath('/row/c/text()', query_to_xml(
+                      'select count(*) as c from cron.job where jobname = ''dormio-expurgo-da-lista-de-espera''',
+                      false, true, '')))[1]::text
+                 || ' job(s) dormio-expurgo-da-lista-de-espera — 1 é o esperado'
        end,
        null::text
 order by migracao;

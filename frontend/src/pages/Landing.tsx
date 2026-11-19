@@ -295,7 +295,11 @@ function LandingLeve() {
               <p className="mt-2 text-sm text-muted-foreground">Explore um exemplo de medição ou acesse o painel com sua conta.</p>
             </div>
             <div className="flex flex-wrap gap-3">
-              <a href="#demonstracao" className={BOTAO_PRIMARIO}>Ver exemplo</a>
+              {/* UI-14: a lista de espera do lançamento. */}
+              <Link to="/lista-de-espera" className={BOTAO_PRIMARIO}>
+                Entrar na lista de espera <ArrowRight className="size-4" aria-hidden />
+              </Link>
+              <a href="#demonstracao" className={BOTAO_SECUNDARIO}>Ver exemplo</a>
               <Link to={sessao ? "/dashboard" : "/cadastro"} className={BOTAO_SECUNDARIO}>
                 {sessao ? "Abrir painel" : "Criar conta"}
               </Link>
