@@ -11688,6 +11688,58 @@ proteção ativa. O `APP-12` permanece pendente; não houve mudança de credenci
 **Procedência.** Branch `feature/landing-app-android`, correção sobre `41418f4`; Chrome, Node,
 Vitest e build no Windows; servidor local com autenticação fictícia; 19/11/2026.
 
+# 2026-11-19 (xii) — o release R13: o app Android beta na landing
+
+**O problema, como foi entendido no início.** O autor seguiu com o Codex no `UI-37` enquanto o limite do Claude não renovava, e pediu para o Claude continuar quando o do Codex acabou. O Codex tinha:
+- montado a seção do app Android beta na landing;
+- achado por que as imagens não carregavam na prévia protegida da Vercel (o iframe isolado pede os arquivos sem o cookie de acesso);
+- enviado a correção (`07252f4`), e parou esperando o CI.
+
+**Hipótese de trabalho.** A correção do Codex é uma ponte de mensagens entre o iframe isolado e a página-mãe, e uma ponte assim pode abrir uma brecha. O trabalho do Claude era:
+- revisar os dois lados dela;
+- ver a prévia protegida funcionando de verdade;
+- integrar com o registro do R12, que disputava o número da entrada no diário;
+- mesclar e publicar.
+
+**O que foi testado, e como.**
+- **Leitura de `ponteImagensLanding.ts` e do script novo da landing.** Conferido:
+  - a origem e a janela de cada mensagem;
+  - a lista fechada de caminhos;
+  - o tipo e o tamanho dos bytes;
+  - o iframe continuar sem `allow-same-origin`.
+- **A prévia protegida do commit da correção**, aberta no navegador pelo link de acesso da Vercel, a 1365 × 900: a imagem do hardware, a vista explodida e a rede.
+- **A integração:** a branch da #231 trazida para a do `UI-37` numa worktree do Claude, sem tocar na do Codex; o conflito no diário resolvido; as suítes do frontend, o build, a CSP e o orçamento.
+- **O release (PR #232) e, depois do deploy:** `curl` nas rotas, o script avulso da CSP e a landing publicada no navegador.
+
+**Resultado medido.**
+- **A ponte é segura:**
+  - a página-mãe só atende o próprio iframe;
+  - só busca `icone-192.png` e as mídias da landing com hash;
+  - só aceita PNG e WebP de até 256 KB;
+  - o iframe só aceita resposta da página-mãe, da mesma origem.
+- **Prévia protegida:** o hardware e as fotos das peças carregaram, e a página-mãe buscou 7 mídias, todas com `200`. O único erro no console é o script da barra de comentários da Vercel (`vercel.live`), bloqueado pela CSP: só existe em prévia.
+- **Integração:** 725 testes do frontend, 53 arquivos (Windows, Node 22); build ok; CSP com 12 scripts, sem sobra; Landing com 274 781 B (teto 289 800). CI da #230 19 de 19.
+- **Release:**
+  - CI 12 de 12; merge `94c4421`; deploy `7923952908` com sucesso;
+  - `/health` `200` (contrato 2.11.0); `/` `200`; `401` sem token;
+  - a landing servida tem a seção `app-android`, o aviso de download indisponível e o script da ponte;
+  - a CSP é igual nas cinco páginas, com 15 scripts inline, todos com hash.
+  - **No navegador:** "App Android" no menu e "Conheça o app Android beta →" no topo; a página-mãe não buscou nenhuma mídia (a ponte não foi acionada na produção, como esperado); console sem erros.
+
+**Veredito.** O `UI-37` está no ar, e a ponte só age onde precisa: na prévia protegida.
+
+**Adaptação.**
+- **As entradas do `UI-37` foram renumeradas.** O Codex as escreveu como (ix) e (x), e o registro do R12 também usava (ix). O R12 ficou como (ix), e as duas do `UI-37` passaram a (x) e (xi).
+- **A #230 estava em rascunho** e foi marcada como pronta antes do merge.
+
+**O que deu errado no caminho.** A primeira tentativa de merge da #230 foi recusada pelo GitHub, por ser rascunho. Nada mais nesta etapa.
+
+**Risco em aberto.**
+- **A branch `feature/landing-app-android` e a worktree do Codex ficaram como estavam:** limpá-las é decisão do autor.
+- **O download do app segue indisponível** até a distribuição (`APP-12`).
+
+**Procedência.** PRs #230 (`d1d7880`), #231 (`a70f285`) e #232 (`94c4421`); deploy `7923952908`; prévia `dormio-smart-cceh4260g`; conferências desta máquina em 19/11.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
