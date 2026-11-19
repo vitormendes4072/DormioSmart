@@ -184,10 +184,6 @@
 .le-compartilhar .le-link { font-size: 12px; }
 .le-feito .le-btn.contorno { margin-top: 14px; }
 
-.le-flutua { position: absolute; right: -14px; top: calc(100% + 16px); background: var(--le-surface); border: 1px solid var(--le-border); border-radius: 12px; padding: 11px 14px; box-shadow: var(--le-shadow); font-size: 11px; color: var(--le-muted); transform: rotate(-2deg); max-width: 210px; animation: le-flutua 6s ease-in-out infinite; }
-@keyframes le-flutua { 50% { transform: rotate(-2deg) translateY(-5px); } }
-.le-flutua strong { display: block; font-size: 12px; color: var(--le-text); margin-bottom: 2px; }
-@media (max-width: 900px) { .le-flutua { display: none; } }
 
 /* ── Transparência e rodapé ─────────────────────────────── */
 .le-secao { padding: 56px 0; border-top: 1px solid var(--le-border); }

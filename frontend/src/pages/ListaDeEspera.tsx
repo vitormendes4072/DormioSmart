@@ -306,7 +306,7 @@ export function ListaDeEspera() {
                 <span className="le-ponto" />Lista de espera · primeiros usuários
               </span>
               <h1 className="le-sobe" style={{ "--i": 1 } as React.CSSProperties}>
-                Seja dos primeiros<br /><em>a dormir com o Smart Dormio.</em>
+                Seja um dos primeiros<br /><em>a dormir com o Smart Dormio.</em>
               </h1>
               <p className="le-lead le-sobe" style={{ "--i": 2 } as React.CSSProperties}>
                 Um sensor dentro do travesseiro registra o movimento durante o repouso, sem nada no pulso
@@ -477,7 +477,6 @@ export function ListaDeEspera() {
                     </div>
                   )}
                 </div>
-                <div className="le-flutua"><strong>Sem nada no pulso</strong>O sensor fica dentro do travesseiro, sob a fronha.</div>
               </div>
             </div>
           </section>

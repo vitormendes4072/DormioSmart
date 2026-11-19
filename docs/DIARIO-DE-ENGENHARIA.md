@@ -11390,6 +11390,36 @@ O desenho da página foi aprovado pelo autor numa prévia estática, em cinco ro
 
 **Procedência.** PR #225, merge `205835e`; deploy `7917378167`; conferências desta máquina em 19/11.
 
+# 2026-11-19 (v) — UI-14, ajuste pedido pelo autor: o título e o cartão flutuante
+
+**O problema, como foi entendido no início.** O autor pediu duas mudanças na lista de espera publicada:
+- o título "Seja dos primeiros" passa a "Seja **um** dos primeiros";
+- sai o cartão flutuante "Sem nada no pulso", que ficava abaixo do formulário.
+
+**Hipótese de trabalho.** As duas mudanças são só da página: uma linha do componente e as quatro regras de CSS do cartão. A frase original está correta em português ("ser dos primeiros"), mas "um dos primeiros" é a forma mais comum e a que o autor quer.
+
+**O que foi testado, e como.**
+- Dois testes novos no `ListaDeEspera.test.tsx`: o título exato, e a ausência do cartão (nem o texto nem a classe).
+- **Controle positivo:** os dois testes rodados com os dois arquivos da página na versão de `develop`.
+- **Suítes:** o frontend completo, lint, Knip, build, `conferir_csp` e o orçamento da landing.
+- **No navegador**, servidor da worktree, a 1280 px.
+
+**Resultado medido.**
+- **Com a correção**, 23 testes da página passam. **Sem ela**, os 2 novos caem.
+- **Frontend:** **712 passam, 52 arquivos** (Windows, Node 22).
+- **Lint e Knip** sem erros; **build** ok; **CSP:** 10 scripts com hash, sem sobra.
+- **No navegador:** o título em quatro linhas ("Seja um dos / primeiros / a dormir com o / Smart Dormio."), e nada abaixo do cartão do formulário.
+
+**Veredito.** Pronto para revisão; vai ao ar no próximo release.
+
+**Adaptação.** Nada nesta etapa.
+
+**O que deu errado no caminho.** Nada nesta etapa.
+
+**Risco em aberto.** Nenhum novo. A frase antiga continua nas entradas do diário de 17/11 e 19/11: é histórico e não se reescreve.
+
+**Procedência.** Branch `bugfix/UI-14-titulo-e-cartao` sobre `develop` `cf3975e`; Windows 11; 19/11.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
