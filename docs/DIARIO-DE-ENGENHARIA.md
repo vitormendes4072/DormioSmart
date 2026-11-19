@@ -11514,6 +11514,56 @@ O desenho da página foi aprovado pelo autor numa prévia estática, em cinco ro
 
 **Procedência.** Branch `bugfix/UI-14-titulo-e-cartao`; prévias e geração na pasta temporária da sessão; Edge headless e Pillow 12.1.0; Windows 11; 19/11.
 
+# 2026-11-19 (viii) — BRAND-04: o manual da marca, com cada imagem num arquivo
+
+**O problema, como foi entendido no início.** O autor pediu um documento com toda a identidade visual, com cada imagem num arquivo separado, e tudo organizado. Até ali, a marca estava espalhada:
+- o logo horizontal e o da Dormio Labs em `frontend/public/`;
+- a marca empilhada e os ícones nascidos no mesmo dia, só como fonte em `docs/marca/`;
+- as cores em dois lugares (`theme.css` e a landing);
+- a tipografia no `docs/PADRAO-VISUAL.md`.
+
+Faltava um lugar que juntasse tudo e servisse para quem vai fazer um post, um slide ou um ícone.
+
+**Hipótese de trabalho.** Um manual em `docs/marca/README.md`, que o GitHub mostra com as imagens, e uma pasta por tipo (`logos/`, `icones/`, `cores/`, `previas/`). Cada peça em SVG, para qualquer tamanho, e em PNG, para uso direto. Nada redesenhado: os logos saem dos traços originais.
+
+**O que foi testado, e como.**
+- **Os SVGs gerados por script, a partir dos desenhos originais das letras:**
+  - os logos horizontal, empilhado e Dormio Labs, em azul e em branco;
+  - a paleta, com os tokens reais do `theme.css` e da landing;
+  - uma prévia dos logos brancos sobre o azul.
+- **Os três SVGs de ícone** que já existiam foram movidos para `icones/` com `git mv`.
+- **Os PNGs** (logos com 1200 px de largura, ícones com 1024, favicon com 512, paleta com 1200), gerados pelo Edge headless e recortados com o Pillow, como na entrada (vii).
+- **O conteúdo de cada PNG:** a caixa ocupada pelo desenho, para pegar corte nas bordas, e três deles conferidos a olho.
+- **Os contrastes citados no manual**, calculados pela fórmula da WCAG.
+- **As conferências:** `conferir_docs_versionados`, `conferir_backlog` e `consolidar_registro`.
+
+**Resultado medido.**
+- **21 arquivos** em `docs/marca/`, 453 kB: o manual, 10 SVGs e 10 PNGs.
+- **Nenhum PNG cortado:** o desenho termina dentro da imagem em todos (por exemplo, o horizontal de 3 a 1196 px em 1200).
+- **Contrastes:**
+  - azul da marca sobre branco: **2,78:1**;
+  - texto de apoio sobre o fundo: 5,46:1;
+  - azul de ação sobre branco: 4,67:1;
+  - azul de rótulo sobre o fundo: 5,62:1.
+- **As três conferências de documento** passam depois do `git add`.
+
+**Veredito.** O manual está pronto. Ele junta marca, logos, ícones, cores, um resumo da tipografia (o detalhe segue no `PADRAO-VISUAL.md`), as regras de uso e como refazer os arquivos.
+
+**Adaptação.**
+- **As versões brancas ganharam uma prévia sobre o azul**, porque têm fundo transparente e somem no fundo branco do GitHub.
+- **Os SVGs de ícone mudaram de pasta.** O `PADRAO-VISUAL.md` e o `APP-17` passaram a apontar para `docs/marca/icones/`.
+- **O manual entrou na lista de leitura do `CLAUDE.md`.**
+
+**O que deu errado no caminho.**
+- **Escrevi "2,7:1" para o contraste do azul da marca** antes de calcular. A conta deu 2,78:1, e o manual foi corrigido antes do commit.
+- **A primeira rodada do `conferir_docs_versionados` reprovou** por arquivos ainda fora do git. Passou depois do `git add`.
+
+**Risco em aberto.**
+- **Os tamanhos mínimos em milímetros, para impressão, são estimativa.** Não foram testados em papel; o manual declara isso.
+- **O APK (`APP-17`) e o app depois do login (`UI-36`) seguem fora do manual.** As duas lacunas estão declaradas no fim dele.
+
+**Procedência.** Branch `docs/BRAND-04-manual-de-marca` sobre `develop` `f377ac0`; Edge headless e Pillow 12.1.0; Windows 11; 19/11.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
