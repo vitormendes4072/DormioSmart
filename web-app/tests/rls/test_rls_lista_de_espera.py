@@ -58,6 +58,9 @@ def test_rls_ligado_e_nenhuma_policy(catalogo):
 
 @pytest.mark.parametrize("papel", ["anon", "authenticated", PAPEL_INGESTAO])
 def test_nenhum_papel_do_cliente_tem_privilegio_de_tabela(catalogo, papel):
+    # Sem a tabela, a consulta abaixo volta vazia e o teste passaria sem ver nada
+    # (medido em 18/11, contra o develop sem a 022: os três passavam).
+    assert catalogo("select to_regclass('public.lista_de_espera') is not null")[0][0], "a lista nao existe"
     privilegios = catalogo(
         "select privilege_type from information_schema.table_privileges "
         "where table_schema = 'public' and table_name = 'lista_de_espera' and grantee = %s",
