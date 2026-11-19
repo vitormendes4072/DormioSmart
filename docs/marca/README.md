@@ -16,6 +16,12 @@
 As duas usam **a mesma família de letras e o mesmo azul**. A Dormio Labs entra como assinatura,
 nunca no lugar do produto.
 
+**A grafia do nome** (decisão do autor, 19/11, `BRAND-05`): **Smart Dormio**, em duas palavras, com
+as iniciais maiúsculas, em todo texto (site, app, documentos, posts). Nunca "SmartDormio", "Smart
+dormio" ou "SMARTDORMIO". O logo mostra "SMART" em caixa alta por ser desenho; no texto, segue a
+grafia acima. **DormioSmart** é só o nome do repositório no GitHub, não do produto. O
+`frontend/src/padraoVisual.test.ts` reprova "SmartDormio" no que o usuário vê.
+
 ## 2. Logos
 
 Todos existem em **azul** (para fundo claro) e **branco** (para fundo azul ou escuro). Os SVGs são
