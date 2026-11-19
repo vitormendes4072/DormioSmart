@@ -11783,3 +11783,53 @@ Registrado para que a ausência não passe por completude.
 | ~~O frontend de 29/09~~ | ✏️ **Lacuna fechada em 17/10 — ver a entrada (iii) daquela data.** Os 15 arquivos foram lidos e commitados em quatro commits (`a586b0b`, `fea1c48`, `22a9268`, `f58f52c`). Eram a metade de cliente do `DASH-12`/`DASH-13`, trabalho não catalogado do `DASH-08`, a montagem do `UI-10` e uma correção de cabeçalho do `FW-06` — **14 de trabalho e 1 que não era mudança nenhuma**, só entrada de índice desatualizada. Os números do frontend passam a medir a árvore versionada: **376 testes**, `tsc` limpo. |
 | Execução em runner de verdade | Os jobs de CI validados em 16/10 rodaram **localmente**. Nenhum rodou num runner do GitHub, e o `chore/GIT-01-normalizar-fim-de-linha` não foi enviado. A diferença não é cosmética: o `actions/checkout` é o ponto central da análise do `CI-05`. |
 | Toda a camada L1 e L2 | Nada foi medido no dispositivo físico. Os 8 pinos do MPU6050 não estão soldados. Todo número de hardware neste arquivo é **calculado ou simulado**, com uma exceção — a leitura de 25/08, que é medição de um sensor mal conectado e serve só para dizer que não serve. |
+
+# 2026-11-19 (xiv) — APP-17: o APK 1.1.0 com a marca, e o download na landing
+
+**O problema, como foi entendido no início.** O autor pediu o APK novo e o link para baixar. O único APK de release era o 1.0.0, de 11/11 (`develop` `4811f57`). De lá para cá entraram cerca de 60 commits no app e no núcleo: o envio da noite sem repetição (`APP-16`), a sessão (`AUTH-10`), a temperatura por aparelho (`DATA-14`), entre outros. O APK ainda tinha o ícone padrão do Capacitor (`APP-17`) e se chamava "Dormio" na tela inicial. Na landing, o botão "Download para Android" estava desativado (`UI-37`).
+
+**Hipótese de trabalho.** Bastavam quatro coisas:
+- gerar o ícone a partir da marca empilhada, sem redesenhar nada;
+- subir a versão;
+- publicar o APK num endereço que não mude a cada versão;
+- ligar o botão a esse endereço, nas duas landings.
+
+O GitHub Releases dá o endereço fixo (`releases/latest/download/smart-dormio.apk`) e é grátis no repositório público. O autor aprovou o plano e o download público, ciente de que os dados de quem baixar não entram no TCC sem o termo e o aval do orientador (`LGPD-03`).
+
+**O que foi testado, e como.**
+- **Ícones:** a marca de `docs/marca/icones/icone-app-maskable.svg` renderizada sem o fundo, no Edge sem interface. Com ela, o Pillow montou o ícone adaptativo (108 dp, a marca com 58 dp, dentro do círculo seguro de 66 dp) e os legados (quadrado arredondado e redondo, 48 dp) nas cinco densidades. Antes de gravar, uma prévia com as máscaras círculo, squircle e quadrado.
+- **Testes novos:**
+  - `appAndroid.test.ts`, 11 casos: a versão igual no `build.gradle`, no módulo e na landing; o `versionCode` acima de 1; o link da landing completa (endereço, `target="_top"`, sem botão desativado, a versão escrita); o nome "Smart Dormio" no `strings.xml` e no Capacitor; os 15 PNGs diferentes dos padrão do Capacitor (SHA-256) e no tamanho da densidade, lido do cabeçalho do PNG.
+  - `LandingLeve.test.tsx`: renderiza a landing leve e confere o link.
+- **Seis sabotagens:** `versionName` 1.0.0, `versionCode` 1, o endereço errado na landing, um ícone antigo de volta, o nome "Dormio" e a landing leve sem o link.
+- **Conferências completas:** a suíte do frontend, o lint, o Knip, o build, a CSP e o orçamento.
+- **O APK:** `npm run build:app` e `./gradlew assembleRelease` com a chave do autor (`~/.dormio`); conferido com `apksigner` e `aapt2`; instalado no emulador Pixel 6.
+
+**Resultado medido.**
+- **Testes:** frontend **740 passam, 55 arquivos** (Windows, Node 22); as **6 de 6 sabotagens** derrubam o teste certo, cada uma um só; lint e Knip passam; build ok.
+- **CSP e orçamento:** a CSP com 12 scripts inline, todos com hash, sem sobra; a Landing com 274 978 B estimados (teto 289 800).
+- **O APK:**
+  - `versionCode` 2, `versionName` 1.1.0, rótulo "Smart Dormio";
+  - as três arquiteturas (`arm64-v8a`, `armeabi-v7a`, `x86_64`);
+  - assinatura v2 com um só signatário, o certificado do autor; não depurável;
+  - 5 239 362 B.
+- **No emulador:** o launcher mostra o ícone com a marca e o nome "Smart Dormio"; o app abre na tela de login.
+- **O botão da landing:** passou ao azul de ação da marca (`#1479BD`, 4,67:1 com o texto branco). O azul que estava (`#287eb7`) dava 4,41:1, abaixo do mínimo para texto de 13 px.
+
+**Veredito.** O APK 1.1.0 está pronto e conferido, e o download está ligado nas duas landings. O link só funciona depois que a release `app-v1.1.0` existir no GitHub, e por isso ela é criada junto com o release do site.
+
+**Adaptação.**
+- **O nome do app na tela inicial passou a "Smart Dormio"** (`app_name` e `appName`), pela regra do `BRAND-05`; não estava no plano.
+- **Os textos de dentro do app** ("o Dormio") **e a tela de abertura do Capacitor** ficaram para o `APP-18`.
+- **O guia `docs/DISTRIBUICAO-DO-APP.md`** ganhou o caminho do GitHub Releases e o passo a passo de uma versão nova.
+
+**O que deu errado no caminho.**
+- **O Gradle recusou começar** ("Unable to establish loopback connection") com o `jdk.net.unixdomain.tmpdir` na pasta temporária de nome curto (`VITOR-~1`). Com um caminho longo, sem o `~`, compilou.
+- **O primeiro gesto para abrir a gaveta de apps no emulador não abriu nada.** O ícone foi achado pelo despejo da interface (`uiautomator`): estava na fileira de baixo como "Predicted app: Smart Dormio", com o anel de app sugerido do launcher do Pixel.
+
+**Risco em aberto.**
+- **Entre o deploy da landing e a criação da release, o link dá 404.** A ordem do release é: criar a release logo depois do merge em `main` e conferir o download pela landing publicada.
+- **O Play Protect pode avisar na instalação**, porque o app não está na Play Store; o texto da landing e o guia avisam.
+- **Os dados de quem baixar não entram no TCC** sem o termo e o aval do orientador (`LGPD-03`).
+
+**Procedência.** Branch `feature/APP-17-icone-e-download` sobre `develop` `9c5242f`; Windows 11, Node 22, JDK do Android Studio, build-tools 37.0.0; emulador Pixel 6; 19/11.

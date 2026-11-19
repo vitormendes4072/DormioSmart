@@ -72,7 +72,7 @@ Medido em 10/11: o `aapt2 dump badging` mostra `application-debuggable` no de de
 release, e o `apksigner verify` aceita o de release (esquema v2), assinado com uma chave descartável
 de teste.
 
-**Versão:** `versionName` 1.0.0 e `versionCode` 1, em `app/build.gradle`. A cada APK novo enviado,
+**Versão:** `versionName` 1.1.0 e `versionCode` 2, em `app/build.gradle` ✏️ *(19/11, `APP-17`; o primeiro APK, de 11/11, era o 1.0.0 com `versionCode` 1)*. A versão também está em `frontend/src/lib/appAndroid.ts` e na landing, e o `appAndroid.test.ts` reprova se divergirem. A cada APK novo enviado,
 aumente o `versionCode`: o Android recusa instalar por cima uma versão de número igual ou menor.
 
 ### 1.3 Como mandar
@@ -81,6 +81,28 @@ aumente o `versionCode`: o Android recusa instalar por cima uma versão de núme
 |---|---|---|---|
 | **Link do Google Drive** (para começar) | Suba o `app-release.apk` e mande o link | Grátis e imediato | O testador libera "instalar apps desconhecidos"; o Play Protect pode avisar; cada atualização é um APK novo, mandado de novo |
 | **Google Play, teste interno** | Até 100 testadores por e-mail | Instala e atualiza pela Play Store, sem aviso | Conta de desenvolvedor (taxa única de US$ 25), revisão do Google, e o formulário de dados de saúde da Play |
+
+
+✏️ **19/11 (`APP-17`): o caminho escolhido é o GitHub Releases**, com o link na landing (botão "Baixar para Android"). Grátis no repositório público, cada versão com a sua página, notas e SHA-256, e um endereço fixo que aponta sempre para a mais nova:
+
+```
+https://github.com/vitormendes4072/DormioSmart/releases/latest/download/smart-dormio.apk
+```
+
+**Para publicar uma versão nova:**
+
+1. Subir o `versionCode` e o `versionName` no `app/build.gradle`, e a mesma versão em `frontend/src/lib/appAndroid.ts` e na landing (o teste acusa o que faltar).
+2. Gerar o APK assinado (1.2) e conferir: `apksigner verify --print-certs` com o certificado do autor, e o `aapt2 dump badging` sem `application-debuggable`.
+3. Criar a release com a tag `app-v<versão>` e o arquivo com o nome **`smart-dormio.apk`** (o endereço fixo depende do nome):
+
+   ```bash
+   gh release create app-v1.1.0 smart-dormio.apk --title "App Android 1.1.0 (beta)" --notes-file notas.md --target main
+   ```
+
+   A release **não** pode ser marcada como pré-lançamento: o `latest` ignora pré-lançamentos, e o link da landing quebraria.
+4. Baixar pelo link da landing e comparar o SHA-256 com o do arquivo gerado.
+
+⚠️ **Download público não é o mesmo que testador do TCC.** Qualquer pessoa pode baixar e usar o app, coberta pela política e pelo consentimento da tela. Os dados dessas pessoas **não** entram no TCC sem o termo de participação e o aval do orientador (`LGPD-03`).
 
 ## Parte 2 — para quem vai testar
 
@@ -98,7 +120,7 @@ aumente o `versionCode`: o Android recusa instalar por cima uma versão de núme
 
 ### Instalar
 
-1. Abra o link do arquivo no celular e baixe o `app-release.apk`.
+1. No celular, abra a página do projeto e toque em **Baixar para Android** (ou abra o link recebido). O arquivo é o `smart-dormio.apk`.
 2. Ao abrir o arquivo, o Android pede para **permitir instalar apps desta fonte**. Permita, só para
    o app que abriu o arquivo (o Drive ou o navegador).
 3. Se o **Play Protect** avisar que o app é desconhecido, toque em **Mais detalhes → Instalar mesmo
@@ -106,7 +128,7 @@ aumente o `versionCode`: o Android recusa instalar por cima uma versão de núme
 
 ### Criar a conta
 
-1. Abra o **Dormio** e, na tela de entrada, toque em **Cadastre-se**.
+1. Abra o **Smart Dormio** e, na tela de entrada, toque em **Cadastre-se**.
 2. Use um e-mail seu e uma senha que você **anote**. ⚠️ **Por enquanto, a recuperação de senha por
    e-mail não chega**; quem esquecer a senha perde o acesso à conta.
 3. É preciso ter **18 anos ou mais**.
@@ -118,9 +140,9 @@ Sem isso, o Android pode parar o registro no meio da noite.
 1. Na tela da noite, toque em **Permitir que o Dormio funcione com a economia de bateria** e
    confirme.
 2. Em alguns celulares é preciso mais um passo:
-   - **Xiaomi, Redmi e POCO:** Configurações → Apps → Dormio → Economia de bateria → **Sem
+   - **Xiaomi, Redmi e POCO:** Configurações → Apps → Smart Dormio → Economia de bateria → **Sem
      restrições**. Ative também o **Início automático**.
-   - **Samsung:** Configurações → Bateria → Limites de uso em segundo plano: tire o Dormio de **Apps
+   - **Samsung:** Configurações → Bateria → Limites de uso em segundo plano: tire o Smart Dormio de **Apps
      em suspensão** e **Apps em suspensão profunda**.
    - **Motorola e Android puro:** o passo 1 basta.
 3. Aceite a **notificação** quando o app pedir: ela fica fixa durante a noite e mostra que o registro
