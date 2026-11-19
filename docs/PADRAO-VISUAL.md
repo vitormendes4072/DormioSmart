@@ -103,13 +103,23 @@ de aviso legal: no mínimo 11,5 px; a caixa de consentimento usa 13 px.
 - **Halo e órbitas** no topo.
 - **Com `prefers-reduced-motion: reduce`**, nada se move, e a página funciona igual.
 
-## 7. Como conferir
+## 7. O ícone da aba (favicon)
+
+- **É o ícone do app instalado** (`icone-192.png` e `icone-512.png`, o traçado de movimento
+  sobre o azul), reduzido: `favicon.ico` (16, 32 e 48 px) e `favicon-32.png`, em
+  `frontend/public/`.
+- **Toda página pública declara os dois**: o `index.html` (o app e a lista de espera) e a
+  `landing-prototipo.html`.
+- **Mudar o ícone é gerar os dois de novo** a partir do `icone-512.png`.
+
+## 8. Como conferir
 
 - `cd frontend && npx vitest run src/padraoVisual.test.ts`. O teste reprova se:
   - a lista de fontes divergir ou citar a Inter;
   - o reset de botão vencer o peso do componente;
   - o peso do botão não for 800, ou o das caixas e rótulos não for 400;
-  - o título fugir da escala da home.
+  - o título fugir da escala da home;
+  - uma página pública ficar sem favicon, ou ele apontar para um arquivo que não existe.
 - **No navegador:** `getComputedStyle` nos elementos da tabela da seção 3, nas duas páginas e na
   mesma largura.
 
