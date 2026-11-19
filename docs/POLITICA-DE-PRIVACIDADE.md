@@ -76,7 +76,7 @@ varredura completa registrada nas notas do `LGPD-ELIMINACAO.md`.
 
 # Política de Privacidade — Smart Dormio
 
-**Última atualização:** 18 de novembro de 2026
+**Última atualização:** 19 de novembro de 2026
 
 > **O que mudou nesta revisão** (seção 10 pede que mudança material seja
 > anunciada):
@@ -646,7 +646,7 @@ Mudanças materiais — nova categoria de dado, nova finalidade, novo operador �
 serão anunciadas antes de entrarem em vigor. A data no topo indica a última
 revisão.
 
-- **18 de novembro de 2026:** a lista de espera do lançamento — e-mail e,
+- **19 de novembro de 2026:** a lista de espera do lançamento — e-mail e,
   opcionalmente, como a pessoa prefere ser chamada, com consentimento próprio,
   finalidade única e prazo de 12 meses (seções 2.6, 3, 4 e 7).
 - **11 de novembro de 2026:** a intensidade da gravidade medida e a marca de

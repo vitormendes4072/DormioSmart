@@ -97,7 +97,7 @@ returns text
 language sql
 immutable
 set search_path = ''
-as $$ select '2026-11-18'::text $$;
+as $$ select '2026-11-19'::text $$;
 
 -- ---------------------------------------------------------------------
 -- 3. Inscrever

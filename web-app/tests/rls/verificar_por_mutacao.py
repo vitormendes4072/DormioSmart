@@ -640,7 +640,7 @@ SABOTADORES = {
         minimo=1,
         exige="test_o_token_grava_gn_e_a_marca",
     ),
-    # --- UI-14 (18/11): a lista de espera (migracao 022) -------------------
+    # --- UI-14 (17/11): a lista de espera (migracao 022) -------------------
     "lista_legivel_pelo_anon": dict(
         descricao="anon ganha select na lista de espera",
         sql="grant select on public.lista_de_espera to anon;",

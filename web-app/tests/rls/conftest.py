@@ -102,7 +102,7 @@ MIGRACOES_APLICADAS = (
     "017_consentimento_destacado.sql",
     "018_calibracao_da_gravidade.sql",
     "019_pausa_do_recebimento.sql",
-    # UI-14 (18/11): a lista de espera. A 020 e a 021 estao reservadas e ainda
+    # UI-14 (17/11): a lista de espera. A 020 e a 021 estao reservadas e ainda
     # nao existem (docs/PLANO-CLAUDE-CODEX.md).
     "022_lista_de_espera.sql",
 )

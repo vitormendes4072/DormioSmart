@@ -13,7 +13,7 @@ import { ErroApi, requisitarJson } from "./api";
  * `web-app/lista_de_espera.py`; `web-app/tests/test_lista_de_espera.py` confere
  * as três. **Mudar o texto do consentimento é mudar a versão nos três lugares.**
  */
-export const VERSAO_DA_LISTA = "2026-11-18";
+export const VERSAO_DA_LISTA = "2026-11-19";
 
 /** O texto da confirmação, como a tela mostra e a pessoa aceita. */
 export const TEXTO_DO_CONSENTIMENTO_DA_LISTA =

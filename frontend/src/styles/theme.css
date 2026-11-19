@@ -224,7 +224,7 @@
 }
 
 /*
- * UI-14 (18/11): a paleta da página da lista de espera, que segue a da landing
+ * UI-14 (17/11): a paleta da página da lista de espera, que segue a da landing
  * (`public/landing-prototipo.html`, num iframe isolado, que não lê este arquivo).
  * Só `src/pages/ListaDeEspera.css` usa estes tokens. Duas diferenças medidas em
  * relação à landing: o cinza do texto (5:1 em vez de 3,7:1) e o verde e o azul

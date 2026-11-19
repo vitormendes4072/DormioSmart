@@ -15,7 +15,7 @@ frontend; `tests/test_lista_de_espera.py` confere as três.
 """
 import re
 
-VERSAO = "2026-11-18"
+VERSAO = "2026-11-19"
 
 # O mesmo formato que a restrição do banco aceita (022), para o Flask não deixar passar o que o
 # banco recusaria com um 503 sem explicação.

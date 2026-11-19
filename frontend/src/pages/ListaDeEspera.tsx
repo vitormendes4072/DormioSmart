@@ -16,7 +16,7 @@ import "./ListaDeEspera.css";
  *
  * Quem ainda não tem conta deixa o e-mail para ser avisado do lançamento e
  * convidado para os primeiros testes. O desenho foi aprovado pelo autor numa
- * prévia em 18/11 e segue a estética da landing.
+ * prévia em 17/11 e segue a estética da landing.
  *
  * A ideia que organiza a página: **o movimento vira repouso.** No alto do
  * cartão, um sinal ilustrativo oscila; cada tecla vira um pico, como um corpo

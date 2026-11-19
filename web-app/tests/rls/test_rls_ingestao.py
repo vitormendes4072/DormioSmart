@@ -154,7 +154,7 @@ def test_o_papel_executa_exatamente_quatro_funcoes(catalogo):
         "sanidade()",
         "resolver_dispositivo(p_token_hash text)",
         "registrar_leitura(p_token_hash text, p_leitura jsonb)",
-        # UI-14 (18/11): a inscricao na lista de espera. O pior caso de um
+        # UI-14 (17/11): a inscricao na lista de espera. O pior caso de um
         # vazamento desta chave continua sendo "insere lixo"; ela nao le a lista.
         "inscrever_na_lista_de_espera(p_email text, p_nome text, p_versao text)",
     }

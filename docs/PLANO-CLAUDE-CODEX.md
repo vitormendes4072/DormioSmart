@@ -52,7 +52,7 @@ novo, o autor reserva aqui antes.
 | `019` | `API-07` (pausar o recebimento) | Codex |
 | `020` | `API-06` (lote numa chamada) | Codex |
 | `021` | `DATA-06` (o limiar viaja com a leitura) | Codex |
-| `022` | ~~`APP-11`~~ *(13/11: não precisou — a marca é só local)*; livre | — |
+| `022` | `UI-14` (a lista de espera) *(17/11; até ali livre: o `APP-11` não precisou, a marca é só local)* | Claude |
 
 IDs novos de backlog seguem a regra 5 do `AGENTS.md`: conferir em `origin/develop` e avisar o autor.
 

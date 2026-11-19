@@ -186,7 +186,7 @@ def verificar_diagnostico(bancos) -> list[str]:
     # A 017 (LGPD-12, 10/11) entra depois de todas: o consentimento destacado.
     # A 018 (CAL-03, 11/11) entra depois de todas: a calibracao da gravidade.
     # A 019 (API-07, 14/11) entra depois de todas: a pausa do recebimento.
-    # A 022 (UI-14, 18/11) entra depois de todas: a lista de espera. A 020 e a
+    # A 022 (UI-14, 17/11) entra depois de todas: a lista de espera. A 020 e a
     # 021 estao reservadas e ainda nao existem.
     ordem_real = ["001", "003", "004", "005", "006", "008", "009", "007", "010", "011", "012", "014", "015", "016", "013", "017", "018", "019", "022"]
     c = montar(bancos, "diagreal", ordem_real)

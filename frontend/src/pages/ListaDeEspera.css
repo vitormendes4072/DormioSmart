@@ -9,7 +9,7 @@
  * órbitas. A landing vive num iframe isolado e não exporta estilo, então a
  * linguagem é repetida aqui, presa à classe `.le` para não vazar para o app.
  *
- * Duas diferenças deliberadas em relação à landing, medidas na revisão de 18/11:
+ * Duas diferenças deliberadas em relação à landing, medidas na revisão de 17/11:
  *   · o cinza do texto dá 5:1 sobre o fundo, e não os 3,7:1 do cinza da landing
  *     (abaixo do mínimo de 4,5:1 para texto);
  *   · nenhum texto abaixo de 11 px, e o consentimento com 13 px.
@@ -53,7 +53,7 @@
 
 /* ── Topo ──────────────────────────────────────────────── */
 /* Alinhado pelo topo, e não pelo centro: o cartão cresce quando o formulário
-   se abre, e o texto ao lado não pode descer junto (achado de 18/11). */
+   se abre, e o texto ao lado não pode descer junto (achado de 17/11). */
 .le-hero { position: relative; isolation: isolate; display: grid; grid-template-columns: minmax(0, 1.02fr) minmax(340px, .98fr); gap: clamp(30px, 5vw, 72px); align-items: start; padding: 64px 0 58px; min-height: 640px; }
 .le-hero > :first-child { padding-top: 36px; }
 .le-hero::before { content: ""; position: absolute; z-index: -1; left: -18%; top: 3%; width: 74%; height: 75%; background: radial-gradient(ellipse, var(--le-soft), transparent 69%); opacity: .9; pointer-events: none; }

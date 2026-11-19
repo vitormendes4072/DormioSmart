@@ -180,7 +180,7 @@ ROTAS_SEM_CLIENTE_DO_USUARIO = {
     # o caminho por sessao dela grava com o JWT, mas dentro do helper, que o
     # parser nao enxerga a partir do corpo da rota.
     "receive_lote": "ingestao em lote: o ESP32 nao tem JWT (caminho por token)",
-    # UI-14 (18/11): a lista de espera e PUBLICA. Quem se inscreve nao tem conta,
+    # UI-14 (17/11): a lista de espera e PUBLICA. Quem se inscreve nao tem conta,
     # entao nao ha JWT; a rota so chama `db.inscrever_na_lista_de_espera`, que
     # executa uma funcao que insere e nao le (tests/rls/test_rls_lista_de_espera.py).
     "inscrever_na_lista_de_espera": "publica: quem se inscreve na lista de espera nao tem conta",

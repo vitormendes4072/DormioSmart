@@ -301,7 +301,7 @@ def test_o_gatilho_de_updated_at_nao_e_executavel_por_ninguem(catalogo):
     Sem o `revoke` da `008`, criar esta função AMPLIARIA o que o papel
     `dormio_ingestao` pode executar — e foi
     `test_rls_ingestao.py::test_o_papel_executa_exatamente_tres_funcoes` (desde
-    18/11, `..._quatro_funcoes`, com a inscricao na lista de espera do UI-14) que
+    17/11, `..._quatro_funcoes`, com a inscricao na lista de espera do UI-14) que
     reprovou na primeira execução da migração, nomeando a função nova.
 
     Este teste é o par daquele, pelo outro lado: aquele enumera o que o papel

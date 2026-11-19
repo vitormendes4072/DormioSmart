@@ -59,7 +59,7 @@ def test_rls_ligado_e_nenhuma_policy(catalogo):
 @pytest.mark.parametrize("papel", ["anon", "authenticated", PAPEL_INGESTAO])
 def test_nenhum_papel_do_cliente_tem_privilegio_de_tabela(catalogo, papel):
     # Sem a tabela, a consulta abaixo volta vazia e o teste passaria sem ver nada
-    # (medido em 18/11, contra o develop sem a 022: os três passavam).
+    # (medido em 17/11, contra o develop sem a 022: os três passavam).
     assert catalogo("select to_regclass('public.lista_de_espera') is not null")[0][0], "a lista nao existe"
     privilegios = catalogo(
         "select privilege_type from information_schema.table_privileges "
@@ -96,13 +96,13 @@ def test_anon_nao_insere_direto(como_anon):
     with como_anon() as visitante:
         erro = visitante.negado(
             "insert into public.lista_de_espera (email, consentimento_versao) "
-            "values ('direto@exemplo.test', '2026-11-18')")
+            "values ('direto@exemplo.test', '2026-11-19')")
         assert erro.pgcode == SEM_PRIVILEGIO, erro
 
 
 def test_anon_nao_chama_a_inscricao(como_anon):
     with como_anon() as visitante:
-        erro = visitante.negado("select public.inscrever_na_lista_de_espera('x@exemplo.test', null, '2026-11-18')")
+        erro = visitante.negado("select public.inscrever_na_lista_de_espera('x@exemplo.test', null, '2026-11-19')")
         assert erro.pgcode == SEM_PRIVILEGIO, erro
 
 
@@ -111,7 +111,7 @@ def test_anon_nao_chama_a_inscricao(como_anon):
     "insert into public.lista_de_espera (email, consentimento_versao) values ('a@exemplo.test', 'x')",
     "update public.lista_de_espera set nome = 'x'",
     "delete from public.lista_de_espera",
-    "select public.inscrever_na_lista_de_espera('a@exemplo.test', null, '2026-11-18')",
+    "select public.inscrever_na_lista_de_espera('a@exemplo.test', null, '2026-11-19')",
     "select public.expurgar_lista_de_espera()",
 ])
 def test_uma_conta_qualquer_nao_alcanca_a_lista(como, cenario, comando):
