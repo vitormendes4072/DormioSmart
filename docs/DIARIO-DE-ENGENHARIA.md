@@ -11233,6 +11233,62 @@ O desenho da página foi aprovado pelo autor numa prévia estática, em cinco ro
 
 **Procedência.** Branch `feature/UI-14-lista-de-espera` sobre `develop` `47982e4`; commits de 17/11, às 23:33, e de 19/11. Postgres 17 em Docker local (`postgres:17`). Prévias na pasta temporária da sessão, fora do repositório. Windows 11.
 
+# 2026-11-19 (ii) — o release R10: a lista de espera no ar
+
+**O problema, como foi entendido no início.** Desde o R9, `develop` tinha recebido duas PRs: o `UI-14` (#221) e o registro do R9 (#220). O `UI-14` só fecha no ar. Ele precisava da migração 022 na produção antes do merge, de uma conferência de fora depois do deploy e de uma inscrição real do autor, gravada e removida.
+
+**Hipótese de trabalho.** A 022 entra primeiro e não muda nada do que está no ar: a tabela nasce fechada e só a rota nova a usa. O release muda o site em três pontos: a página nova, o link na landing e a política. O `vercel.json`, as dependências e o contrato de dados ficam intactos.
+
+**O que foi testado, e como.**
+- **A 022, aplicada pelo autor no SQL Editor:**
+  - o `DIAGNOSTICO-migracoes-aplicadas.sql`;
+  - uma consulta de segurança só de leitura: RLS, policies, privilégios de tabela dos papéis do cliente, quem executa a inscrição e o expurgo, e a versão do texto.
+- **`git diff --name-only origin/main origin/develop`**, antes da PR #222 (`develop` → `main`).
+- **O CI da #222:** 12 verificações, inclusive o job do App Android, que terminou por último.
+- **Depois do deploy, de fora, com `curl` e um script avulso desta máquina:**
+  - `/health`, `/lista-de-espera` e a rota nova em três pedidos que o servidor recusa antes do banco: sem consentimento, versão antiga e sem JSON;
+  - as rotas protegidas, sem token e com `Bearer` inválido;
+  - os scripts inline de `/`, `/login`, `/landing-prototipo.html`, `/privacidade` e `/lista-de-espera` contra a CSP servida;
+  - o pedaço publicado da página e o da política;
+  - os links da landing.
+- **O autor:** uma inscrição real pelo navegador, conferida no Table Editor e removida pelo bloco 4 do `CONSULTA-lista-de-espera.sql`.
+
+**Resultado medido.**
+- **A 022 na produção:**
+  - 3 de 3 marcas e 1 job do expurgo; 001 e 003 a 019 como antes; a 002 com 0 leituras sem dono;
+  - `rls_ligado = true`, `policies = 0`, `privilegios_do_cliente = 0`, `anon_inscreve = false`, `ingestao_inscreve = true`, `anon_expurga = false`, `versao = 2026-11-19`.
+- **O release:** CI 12 de 12; merge `83a3259`; deploy de produção `7916023492` com sucesso às 14:29 UTC.
+- **`/health`** `200`: banco ok, contrato 2.11.0, modelo `ml-inf-cabeca-v2`.
+- **`/lista-de-espera`** `200`. A rota responde:
+  - `400` sem consentimento, com `"campo": "consentimento"`;
+  - `409` com versão antiga, devolvendo a vigente `2026-11-19`;
+  - `415` sem JSON.
+- **`401`** sem token e com `Bearer` inválido em `/api/devices`, `/api/sleep-history` e `/api/me/perfil`; `401` sem token no `POST` de `/api/data` e de `/api/data/lote`.
+- **CSP:** igual nas cinco páginas, com `X-Frame-Options` e `X-Content-Type-Options`; 13 scripts inline, nenhum sem hash.
+- **Pacotes publicados:**
+  - o pedaço `ListaDeEspera-*.js` contém o título, a versão, a rota e o sinal;
+  - a landing tem 2 links para a lista;
+  - o `og:title` está no HTML;
+  - o pedaço da política tem a seção 2.6, a data de 19 de novembro e o prazo de 12 meses.
+- **O autor:** "Fiz, deu certo". A inscrição apareceu e foi removida.
+
+**Veredito.** A lista de espera está no ar e protegida como os testes diziam. O `UI-14` fecha. A produção fica com 001–019 e 022.
+
+**Adaptação.**
+- **A conferência só usou pedidos que o servidor recusa antes do banco.** Nenhuma inscrição de teste foi feita desta máquina: a única gravação real foi a do autor, removida por ele.
+- **A espera pelo deploy foi por um laço em segundo plano** sobre os deployments do GitHub, e não por consulta manual repetida.
+
+**O que deu errado no caminho.**
+- **O Auto-fix não ligou na PR #221.** O app não associou o repositório da PR às pastas da sessão, porque a branch estava numa worktree dentro de `.claude/`. O CI foi acompanhado à mão, e o autor avisou quando o job do App Android, o último, terminou.
+- **Na primeira consulta, o deployment do commit ainda não existia.** A espera em segundo plano resolveu.
+
+**Risco em aberto.**
+- **O teto de 100 inscrições por hora é global.** O limite por IP no firewall da Vercel segue como decisão do autor.
+- **Não há confirmação por e-mail:** é o `LGPD-14` (L3).
+- **A prévia do link no WhatsApp e no Instagram não foi vista numa conversa de verdade.** Só se conferiu que as metas estão no HTML servido.
+
+**Procedência.** PR #222, merge `83a3259`; deploy `7916023492`; a 022 aplicada pelo autor em 19/11, com os resultados colados na sessão; conferências feitas desta máquina em 19/11, às 14:30 UTC.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
