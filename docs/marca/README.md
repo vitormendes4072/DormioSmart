@@ -24,7 +24,7 @@ redes sociais e slides.
 
 ### 2.1 Horizontal — o logo principal
 
-![Smart Dormio, horizontal](logos/smart-dormio-horizontal-azul.svg)
+<img src="logos/smart-dormio-horizontal-azul.svg" width="420" alt="Smart Dormio, horizontal">
 
 "SMART" fino e espaçado ao lado de "Dormio" em negrito arredondado. É o logo do cabeçalho do site.
 Usar quando houver largura: cabeçalhos, rodapés, capas, faixas.
@@ -36,7 +36,7 @@ Usar quando houver largura: cabeçalhos, rodapés, capas, faixas.
 
 ### 2.2 Empilhado
 
-![Smart Dormio, empilhado](logos/smart-dormio-empilhado-azul.svg)
+<img src="logos/smart-dormio-empilhado-azul.svg" width="260" alt="Smart Dormio, empilhado">
 
 "SMART" sobre "Dormio", nas mesmas proporções da Dormio Labs. "SMART" tem a altura de "LABS",
 26,9 para os 71,6 de "Dormio", com o mesmo espaço entre as palavras. Usar em espaço quadrado ou
@@ -49,7 +49,7 @@ estreito: o ícone do app, o perfil de rede social, um adesivo.
 
 ### 2.3 Dormio Labs
 
-![Dormio Labs](logos/dormio-labs-azul.svg)
+<img src="logos/dormio-labs-azul.svg" width="240" alt="Dormio Labs">
 
 | Versão | SVG | PNG |
 |---|---|---|
@@ -58,7 +58,7 @@ estreito: o ícone do app, o perfil de rede social, um adesivo.
 
 ### 2.4 As versões brancas, sobre o azul da marca
 
-![Os logos brancos sobre o azul](previas/logos-brancos-no-azul.svg)
+<img src="previas/logos-brancos-no-azul.svg" width="640" alt="Os logos brancos sobre o azul">
 
 *Esta imagem é só uma prévia: as versões brancas têm fundo transparente e não aparecem sobre o
 fundo branco desta página.*
