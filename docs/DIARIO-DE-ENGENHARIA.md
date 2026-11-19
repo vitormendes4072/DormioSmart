@@ -11233,6 +11233,127 @@ O desenho da página foi aprovado pelo autor numa prévia estática, em cinco ro
 
 **Procedência.** Branch `feature/UI-14-lista-de-espera` sobre `develop` `47982e4`; commits de 17/11, às 23:33, e de 19/11. Postgres 17 em Docker local (`postgres:17`). Prévias na pasta temporária da sessão, fora do repositório. Windows 11.
 
+# 2026-11-19 (ii) — o release R10: a lista de espera no ar
+
+**O problema, como foi entendido no início.** Desde o R9, `develop` tinha recebido duas PRs: o `UI-14` (#221) e o registro do R9 (#220). O `UI-14` só fecha no ar. Ele precisava da migração 022 na produção antes do merge, de uma conferência de fora depois do deploy e de uma inscrição real do autor, gravada e removida.
+
+**Hipótese de trabalho.** A 022 entra primeiro e não muda nada do que está no ar: a tabela nasce fechada e só a rota nova a usa. O release muda o site em três pontos: a página nova, o link na landing e a política. O `vercel.json`, as dependências e o contrato de dados ficam intactos.
+
+**O que foi testado, e como.**
+- **A 022, aplicada pelo autor no SQL Editor:**
+  - o `DIAGNOSTICO-migracoes-aplicadas.sql`;
+  - uma consulta de segurança só de leitura: RLS, policies, privilégios de tabela dos papéis do cliente, quem executa a inscrição e o expurgo, e a versão do texto.
+- **`git diff --name-only origin/main origin/develop`**, antes da PR #222 (`develop` → `main`).
+- **O CI da #222:** 12 verificações, inclusive o job do App Android, que terminou por último.
+- **Depois do deploy, de fora, com `curl` e um script avulso desta máquina:**
+  - `/health`, `/lista-de-espera` e a rota nova em três pedidos que o servidor recusa antes do banco: sem consentimento, versão antiga e sem JSON;
+  - as rotas protegidas, sem token e com `Bearer` inválido;
+  - os scripts inline de `/`, `/login`, `/landing-prototipo.html`, `/privacidade` e `/lista-de-espera` contra a CSP servida;
+  - o pedaço publicado da página e o da política;
+  - os links da landing.
+- **O autor:** uma inscrição real pelo navegador, conferida no Table Editor e removida pelo bloco 4 do `CONSULTA-lista-de-espera.sql`.
+
+**Resultado medido.**
+- **A 022 na produção:**
+  - 3 de 3 marcas e 1 job do expurgo; 001 e 003 a 019 como antes; a 002 com 0 leituras sem dono;
+  - `rls_ligado = true`, `policies = 0`, `privilegios_do_cliente = 0`, `anon_inscreve = false`, `ingestao_inscreve = true`, `anon_expurga = false`, `versao = 2026-11-19`.
+- **O release:** CI 12 de 12; merge `83a3259`; deploy de produção `7916023492` com sucesso às 14:29 UTC.
+- **`/health`** `200`: banco ok, contrato 2.11.0, modelo `ml-inf-cabeca-v2`.
+- **`/lista-de-espera`** `200`. A rota responde:
+  - `400` sem consentimento, com `"campo": "consentimento"`;
+  - `409` com versão antiga, devolvendo a vigente `2026-11-19`;
+  - `415` sem JSON.
+- **`401`** sem token e com `Bearer` inválido em `/api/devices`, `/api/sleep-history` e `/api/me/perfil`; `401` sem token no `POST` de `/api/data` e de `/api/data/lote`.
+- **CSP:** igual nas cinco páginas, com `X-Frame-Options` e `X-Content-Type-Options`; 13 scripts inline, nenhum sem hash.
+- **Pacotes publicados:**
+  - o pedaço `ListaDeEspera-*.js` contém o título, a versão, a rota e o sinal;
+  - a landing tem 2 links para a lista;
+  - o `og:title` está no HTML;
+  - o pedaço da política tem a seção 2.6, a data de 19 de novembro e o prazo de 12 meses.
+- **O autor:** "Fiz, deu certo". A inscrição apareceu e foi removida.
+
+**Veredito.** A lista de espera está no ar e protegida como os testes diziam. O `UI-14` fecha. A produção fica com 001–019 e 022.
+
+**Adaptação.**
+- **A conferência só usou pedidos que o servidor recusa antes do banco.** Nenhuma inscrição de teste foi feita desta máquina: a única gravação real foi a do autor, removida por ele.
+- **A espera pelo deploy foi por um laço em segundo plano** sobre os deployments do GitHub, e não por consulta manual repetida.
+
+**O que deu errado no caminho.**
+- **O Auto-fix não ligou na PR #221.** O app não associou o repositório da PR às pastas da sessão, porque a branch estava numa worktree dentro de `.claude/`. O CI foi acompanhado à mão, e o autor avisou quando o job do App Android, o último, terminou.
+- **Na primeira consulta, o deployment do commit ainda não existia.** A espera em segundo plano resolveu.
+
+**Risco em aberto.**
+- **O teto de 100 inscrições por hora é global.** O limite por IP no firewall da Vercel segue como decisão do autor.
+- **Não há confirmação por e-mail:** é o `LGPD-14` (L3).
+- **A prévia do link no WhatsApp e no Instagram não foi vista numa conversa de verdade.** Só se conferiu que as metas estão no HTML servido.
+
+**Procedência.** PR #222, merge `83a3259`; deploy `7916023492`; a 022 aplicada pelo autor em 19/11, com os resultados colados na sessão; conferências feitas desta máquina em 19/11, às 14:30 UTC.
+
+# 2026-11-19 (iii) — UI-34: um padrão visual só para as páginas públicas
+
+**O problema, como foi entendido no início.** O autor comparou a home e a lista de espera em duas capturas e notou fontes diferentes. Ele pediu três coisas: consistência, um documento com o padrão para consulta, e a home como referência.
+
+**Hipótese de trabalho.** As duas páginas declaravam a mesma lista, `Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif`. A suspeita era que só uma delas carregasse a Inter. Se fosse isso, a correção não seria trocar de fonte: seria fazer as duas resolverem a mesma.
+
+**O que foi testado, e como.**
+- **Na produção, no navegador desta máquina, a 1280 px:**
+  - as fontes carregadas em cada página;
+  - a largura de um texto desenhado em `canvas` com a lista declarada, comparada com a Segoe UI e com a Inter;
+  - `getComputedStyle` em 16 elementos da home e 21 da lista.
+- **Na branch:**
+  - a lista na fonte do sistema;
+  - o reset `font: inherit` em `:where(button, input)`;
+  - pesos 400 declarados nas caixas e nos rótulos;
+  - o título com `clamp(42px, 5.2vw, 68px)` e −3,1 px;
+  - os textos de 10 px da lista em 11 px, e o rótulo flutuante em escala 0,8;
+  - a landing sem "Inter" na lista dela.
+- **`docs/PADRAO-VISUAL.md`**, com a escala medida.
+- **`frontend/src/padraoVisual.test.ts`**, 10 testes que leem os arquivos de verdade.
+- **Controle positivo:**
+  - os 10 testes contra os dois arquivos de `develop`;
+  - três sabotagens isoladas: a lista com outra fonte, o botão em 600, e a home com outra fonte e a lista não.
+- **De novo no navegador**, servidor da worktree: os mesmos valores calculados, contra os da home.
+
+**Resultado medido.**
+- **A home não carrega fonte nenhuma**, nem tem `@font-face`. A lista declarada resolve para a Segoe UI: 1 030 px, igual à Segoe; a Inter mede 931.
+- **A lista carregava a Inter** nos pesos 400 e 500, e o título de peso 850 saía com negrito sintetizado.
+- **Defeitos de peso na lista:**
+  - o botão de enviar saía em **400**, contra 800 na home: o reset `.le button { font: inherit }` vencia o `.le-btn`;
+  - as caixas de confirmação e os rótulos dos campos saíam em **500**, herdados da base de `label` do app.
+- **Escala:**
+  - título da lista 64 px e −3 px; o da home, 66,56 px e −3,1 px;
+  - selo e sobrelinha da home em 10 px, rodapé em 9 px.
+- **Depois da correção, na worktree:**
+  - a fonte resolve para a Segoe UI (363 px, igual à Segoe), e a Inter nem é baixada nessa página;
+  - título 66,56 px, 850, −3,1 px; botão 800; caixas 400; pílula, sinal e selo em 11 px.
+- **Controle:**
+  - contra `develop`, 8 dos 10 testes caem. Os 2 que passam são explicáveis: lá as duas páginas tinham a mesma lista (com a Inter, que outro teste pega), e o `.le-btn` já pedia 800 (quem vencia era o reset, que outro teste pega);
+  - nas sabotagens isoladas, cada uma derruba o teste certo, e a terceira derruba também o do documento.
+- **Suítes:**
+  - frontend **710 passam, 52 arquivos** (Windows, Node 22);
+  - lint, Knip, `tsc` e build passam;
+  - `conferir_csp`: 10 scripts com hash, sem sobra, porque só o estilo da landing mudou;
+  - orçamento: Landing 265 158 B, teto 289 800.
+
+**Veredito.** As duas páginas agora resolvem a mesma fonte em qualquer aparelho, e o padrão está escrito e travado por teste. O `UI-34` fecha com o release.
+
+**Adaptação.**
+- **O padrão fixa o mínimo de 11 px**, opção A do autor: a lista segue a home em tudo, menos nos textos menores que isso. Subir os da home é o `UI-35`.
+- **A fonte do padrão é a do sistema, e não a Inter carregada nas duas.** É o que a home já mostrava, e não acrescenta download.
+- **O documento entrou na lista de leitura do `CLAUDE.md`.**
+
+**O que deu errado no caminho.**
+- **Os dois defeitos de peso já estavam na lista desde o `UI-14`.** Nenhum teste os via: os da página olhavam texto e comportamento, não estilo calculado. Foi a comparação pedida pelo autor que os mostrou.
+- **O próprio padrão novo pegou dois textos da lista em 10 px**, a pílula e o cabeçalho do sinal, e o rótulo flutuante encolhendo para 10,6 px. Foram corrigidos antes do commit.
+- **A primeira captura da lista corrigida saiu em branco**: foi tirada durante a animação de entrada. A segunda, 2 s depois, mostra a página.
+
+**Risco em aberto.**
+- **O título da lista agora quebra em quatro linhas a 1280 px**, porque a Segoe UI é mais larga que a Inter. É o mesmo que acontece com o título da home.
+- **O app depois do login segue em Outfit:** é o `UI-36`, decisão do autor.
+- **A home segue com textos abaixo de 11 px:** é o `UI-35`.
+
+**Procedência.** Branch `feature/UI-34-padrao-visual` sobre `develop` `30c8495`, com a `docs/registro-release-r10` (`2ec2944`, PR #223) mesclada para não conflitar no backlog e no diário. Medições na produção e no servidor da worktree, no navegador desta máquina, em 19/11. Windows 11.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
