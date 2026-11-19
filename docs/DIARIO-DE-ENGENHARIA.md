@@ -11564,6 +11564,43 @@ Faltava um lugar que juntasse tudo e servisse para quem vai fazer um post, um sl
 
 **Procedência.** Branch `docs/BRAND-04-manual-de-marca` sobre `develop` `f377ac0`; Edge headless e Pillow 12.1.0; Windows 11; 19/11.
 
+# 2026-11-19 (ix) — o release R12: o título, o favicon e o ícone do app no ar
+
+**O problema, como foi entendido no início.** Depois do R11, `develop` recebeu a PR #226 (o registro do R11) e a #227 (o título "Seja um dos primeiros", a lista sem o cartão flutuante, o favicon do travesseiro e o ícone do app com a marca empilhada). O autor pediu para mesclar e publicar.
+
+**Hipótese de trabalho.** O release só mexe no frontend estático e na documentação: o componente e o CSS da lista, a cabeça do `index.html` e da landing, os ícones e o manifest. Sem migração e sem script novo, então a CSP não muda.
+
+**O que foi testado, e como.**
+- `git diff --name-only origin/main origin/develop` antes da PR #228, e o CI dela, 12 verificações. A #229, do manual da marca, entrou em `develop` só depois do merge do release.
+- **Depois do deploy, com `curl` desta máquina:**
+  - `/health`, `/lista-de-espera`, a rota da lista sem consentimento e uma rota protegida sem token;
+  - os cinco ícones e o manifest: código, tipo e tamanho;
+  - o SHA-256 de três ícones publicados contra os do repositório;
+  - os links de ícone no `/` e na landing;
+  - o script avulso da CSP;
+  - o pedaço publicado da página da lista.
+
+**Resultado medido.**
+- Merge `b243796`; deploy de produção `7919063890` com sucesso.
+- `/health` `200` (contrato 2.11.0); `/lista-de-espera` `200`; `400` sem consentimento; `401` sem token.
+- **Ícones:**
+  - `favicon.ico` `200 image/vnd.microsoft.icon`, 2 705 B; `favicon-32.png`, `icone-192.png`, `icone-512.png` e `icone-maskable-512.png` `200 image/png`;
+  - `favicon.ico`, `icone-512.png` e `icone-maskable-512.png` byte a byte iguais aos do repositório.
+- **Manifest:** `any`, `any` e `maskable` em arquivo próprio. **Links de ícone:** 2 no `/` e 2 na landing.
+- **CSP:** 13 scripts inline, todos com hash. **Pacote da lista:** "Seja um dos primeiros" presente; "Sem nada no pulso" e `le-flutua` ausentes.
+
+**Veredito.** O título novo, o favicon do travesseiro e o ícone do app com a marca empilhada estão no ar.
+
+**Adaptação.** O script avulso de conferência procurava a frase antiga, "Seja dos primeiros", e a deu como ausente. Ausente é o certo agora: a frase nova foi conferida à parte.
+
+**O que deu errado no caminho.** O release ficou mesclado e com o deploy pronto sem ser conferido até a sessão seguinte, porque a sessão parou no limite de uso. Nada mudou no site entre o deploy e a conferência.
+
+**Risco em aberto.**
+- **O favicon e o ícone novos só foram conferidos por download.** Ninguém viu ainda numa aba ou num celular com o cache renovado; a captura está na lista do autor.
+- **O APK Android segue com os ícones antigos:** é o `APP-17`.
+
+**Procedência.** PR #228, merge `b243796`; deploy `7919063890`; conferências desta máquina em 19/11.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
