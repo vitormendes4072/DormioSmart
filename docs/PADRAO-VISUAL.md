@@ -139,6 +139,16 @@ tamanhos reais.
 - **No navegador:** `getComputedStyle` nos elementos da tabela da seção 3, nas duas páginas e na
   mesma largura.
 
+## 9. Preferência de composição (UI-37)
+
+O autor prefere uma interface sóbria e com identidade própria. Evitar a repetição de pontos
+com halo, selos em pílula e cartões arredondados para informações rotineiras. Preferir hierarquia
+por tipografia, espaço e divisórias; manter caixas e indicadores quando ajudarem a organizar,
+comunicar estado real ou identificar controles. Não apagar a identificação de dados fictícios.
+
+A revisão do `UI-37` reduziu o título do topo em desktop; os valores da seção 3 são as medidas
+anteriores de 19/11, preservadas como referência histórica, não medições da versão revisada.
+
 ## O que este documento não cobre
 
 | Lacuna | Por quê |

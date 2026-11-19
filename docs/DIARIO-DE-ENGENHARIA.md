@@ -11564,6 +11564,50 @@ Faltava um lugar que juntasse tudo e servisse para quem vai fazer um post, um sl
 
 **Procedência.** Branch `docs/BRAND-04-manual-de-marca` sobre `develop` `f377ac0`; Edge headless e Pillow 12.1.0; Windows 11; 19/11.
 
+---
+
+# 2026-11-19 (ix) — UI-37: landing com apresentação do app Android beta
+
+**O problema.** O autor aprovou uma prévia da landing com apresentação do app Android beta,
+menos repetição visual e navegação mais clara, e pediu a adaptação à aplicação antes de publicar.
+O app ainda não tem canal de distribuição definido (`APP-12`).
+
+**Hipótese.** Adaptar a página incorporada e oferecer o mesmo contexto na versão leve, sem
+prometer um download disponível. Preservar as imagens como arquivos cacheáveis e a política CSP
+restrita, atualizando somente os hashes dos scripts alterados.
+
+**O que foi testado.** Na máquina Windows, a suíte Vitest completa; build, lint, Knip e
+`conferir_csp.py`; Chrome em 390 × 844 e 1365 × 900 com a aplicação compilada, iframe isolado e
+cabeçalhos equivalentes aos de `vercel.json`. Foram exercitados menu móvel, horário, navegação,
+simulador, telemetria, clique direto na peça, celular ilustrado, lista de espera e versão leve.
+A troca do acesso final para painel foi exercitada com `sessao=1` simulado. Quatro testes novos
+foram executados contra a landing anterior antes de aplicar a mudança; um controle removeu hash
+da CSP e outro suprimiu o cabeçalho CORS das imagens no servidor de teste.
+
+**Resultado medido.** 721 testes em 52 arquivos passaram; build, lint, Knip e CSP passaram.
+Os quatro testes novos falharam na versão anterior e passaram depois. Sem o hash, a conferência
+reprovou; sem CORS, o clique na peça falhou nas duas larguras. Com a política e os cabeçalhos
+previstos, os percursos integrados testados passaram, sem erro JS ou bloqueio CSP observado.
+O HTML da landing passou de 265 341 para 278 925 bytes, mantendo imagens em arquivos separados.
+
+**Adaptação.** A landing completa ganhou acesso ao beta indisponível, navegação móvel, telemetria
+recolhível, simplificação dos painéis e correção de avanço e retorno do simulador. A versão leve
+também identifica o app. O padrão visual registra a preferência contra repetição decorativa.
+
+**O que deu errado no caminho.** A primeira tentativa de consultar o remoto no sandbox falhou por
+rede; a atualização da referência foi feita com acesso autorizado. O primeiro `git status` na
+worktree isolada não pôde ler a configuração do repositório no sandbox; a verificação autorizada
+funcionou. Na prévia local, a análise de pixels de imagens de arquivo causava erro de origem;
+na integração foram usados recursos com CORS e o controle positivo confirmou a dependência.
+
+**Risco em aberto.** Nenhum APK ou link foi disponibilizado; o envio a testadores segue `APP-12`.
+A sessão autenticada foi simulada, não houve login real nem publicação. Os textos pequenos da
+home não foram todos revistos: `UI-35` continua aberto. A equivalência dos cabeçalhos foi testada
+em servidor local, não em deploy real.
+
+**Procedência.** Branch `feature/landing-app-android` sobre `origin/develop` `d75a41e`; Chrome,
+Playwright e Node no Windows; prévia local e aplicação compilada; 19/11/2026.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
