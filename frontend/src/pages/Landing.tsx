@@ -8,6 +8,7 @@ import { Revelar } from "../components/Revelar";
 import { TracadoDeMovimento } from "../components/TracadoDeMovimento";
 import { useAuth } from "../contexts/AuthContext";
 import { useTema } from "../hooks/useTema";
+import { URL_DO_APK, VERSAO_DO_APP_ANDROID } from "../lib/appAndroid";
 import { iniciarPonteImagensLanding } from "../lib/ponteImagensLanding";
 import { NOME_PRODUTO } from "../lib/ui";
 
@@ -258,7 +259,12 @@ function LandingLeve() {
                   O aplicativo usa o acelerômetro do celular para registrar movimentos durante a noite, inclusive com a tela apagada.
                   É um projeto acadêmico e não realiza diagnóstico clínico.
                 </p>
-                <p className="mt-4 text-sm text-muted-foreground">Distribuição beta ainda não disponível.</p>
+                <a href={URL_DO_APK} className={`${BOTAO_PRIMARIO} mt-5`} aria-describedby="instalacao-app-android">
+                  Baixar para Android
+                </a>
+                <p id="instalacao-app-android" className="mt-3 text-sm text-muted-foreground">
+                  Versão {VERSAO_DO_APP_ANDROID} (beta) · Android 7 ou mais novo. Ao abrir o arquivo, o Android pede para permitir a instalação desta fonte.
+                </p>
               </div>
               <img src="/icone-192.png" alt="" className="size-20 rounded-2xl" />
             </div>
