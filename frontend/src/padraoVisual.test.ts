@@ -108,3 +108,22 @@ describe("o ícone da aba (favicon)", () => {
     }
   });
 });
+
+describe("os ícones do app instalado (manifest)", () => {
+  const manifesto = JSON.parse(readFileSync(new URL("../public/manifest.json", import.meta.url), "utf8")) as {
+    icons: { src: string; purpose?: string }[];
+  };
+
+  it("todo ícone do manifest existe em public/", () => {
+    for (const { src } of manifesto.icons) {
+      expect(() => readFileSync(new URL(`../public${src}`, import.meta.url)), src).not.toThrow();
+    }
+  });
+
+  it("o recortável do Android (maskable) é um arquivo próprio, com margem, e não o mesmo do `any`", () => {
+    const recortaveis = manifesto.icons.filter((i) => i.purpose === "maskable").map((i) => i.src);
+    const comuns = manifesto.icons.filter((i) => i.purpose !== "maskable").map((i) => i.src);
+    expect(recortaveis.length).toBeGreaterThan(0);
+    expect(recortaveis.filter((src) => comuns.includes(src))).toEqual([]);
+  });
+});

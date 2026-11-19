@@ -103,14 +103,28 @@ de aviso legal: no mínimo 11,5 px; a caixa de consentimento usa 13 px.
 - **Halo e órbitas** no topo.
 - **Com `prefers-reduced-motion: reduce`**, nada se move, e a página funciona igual.
 
-## 7. O ícone da aba (favicon)
+## 7. Os ícones: a aba e o app
 
-- **É o ícone do app instalado** (`icone-192.png` e `icone-512.png`, o traçado de movimento
-  sobre o azul), reduzido: `favicon.ico` (16, 32 e 48 px) e `favicon-32.png`, em
-  `frontend/public/`.
-- **Toda página pública declara os dois**: o `index.html` (o app e a lista de espera) e a
-  `landing-prototipo.html`.
-- **Mudar o ícone é gerar os dois de novo** a partir do `icone-512.png`.
+Duas marcas, cada uma onde se lê. Escolha do autor em 19/11, depois de ver as duas nos
+tamanhos reais.
+
+| Onde | Marca | Arquivos em `frontend/public/` | Fonte em `docs/marca/` |
+|---|---|---|---|
+| **Aba do navegador** (favicon) | O travesseiro com o traçado de movimento, branco sobre o azul da marca, cantos arredondados | `favicon.ico` (16, 32 e 48 px), `favicon-32.png` | `favicon-travesseiro.svg` |
+| **App instalado e tela inicial** (PWA, iPhone, prévia de link) | "SMART" sobre "Dormio", empilhados como a marca da Dormio Labs, azul sobre branco | `icone-192.png`, `icone-512.png` | `icone-app.svg` |
+| **Ícone recortado do Android** (`maskable`) | A mesma marca empilhada, com margem para o círculo de 80% do sistema | `icone-maskable-512.png` | `icone-app-maskable.svg` |
+
+- **O texto não vai para a aba.** Medido em 19/11: em 16 px a marca empilhada vira uma faixa
+  azul sem letra legível, e em 32 px o "SMART" vira pontos.
+- **Os ícones do app são quadrados cheios, sem cantos transparentes.** O sistema arredonda
+  sozinho, e no iPhone o canto transparente sai preto.
+- **A marca empilhada usa os desenhos originais das letras** do `smart-dormio.svg`, sem
+  redesenho: "SMART" na altura do "LABS" e o mesmo espaço entre as palavras.
+- **Para gerar de novo:** abrir o SVG da fonte no navegador, no tamanho exato de cada arquivo,
+  e salvar em PNG. O `.ico` junta os PNGs de 16, 32 e 48 px. Toda página pública declara o
+  `.ico` e o PNG de 32 px.
+- **O app Android (APK) tem ícones próprios** (`frontend/android/…/mipmap-*`), que não seguem
+  esta seção ainda: ver `APP-17` no backlog.
 
 ## 8. Como conferir
 
@@ -119,7 +133,8 @@ de aviso legal: no mínimo 11,5 px; a caixa de consentimento usa 13 px.
   - o reset de botão vencer o peso do componente;
   - o peso do botão não for 800, ou o das caixas e rótulos não for 400;
   - o título fugir da escala da home;
-  - uma página pública ficar sem favicon, ou ele apontar para um arquivo que não existe.
+  - uma página pública ficar sem favicon, ou ele apontar para um arquivo que não existe;
+  - o manifest apontar para ícone que não existe, ou usar o mesmo arquivo como `any` e `maskable`.
 - **No navegador:** `getComputedStyle` nos elementos da tabela da seção 3, nas duas páginas e na
   mesma largura.
 
