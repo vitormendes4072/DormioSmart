@@ -19,12 +19,15 @@
   min-height: 100vh;
   background: var(--le-bg);
   color: var(--le-text);
-  font: 14px/1.5 Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  /* A fonte do padrão (docs/PADRAO-VISUAL.md): a do sistema, a mesma lista da landing. */
+  font: 14px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   transition: background-color .4s var(--le-ease), color .4s var(--le-ease);
 }
 :root[data-theme="dark"] .le { color-scheme: dark; }
 .le *, .le *::before, .le *::after { box-sizing: border-box; }
-.le button, .le input { font: inherit; }
+/* `:where` zera a especificidade: o reset não pode vencer o peso e o tamanho do `.le-btn`
+   (até o UI-34 vencia, e os botões do formulário saíam em 400). */
+.le :where(button, input) { font: inherit; }
 .le button { cursor: pointer; }
 .le :is(button, input, a):focus-visible,
 .le .le-toggle:has(input:focus-visible) { outline: 3px solid var(--le-foco); outline-offset: 2px; }
@@ -60,7 +63,7 @@
 .le-kicker { display: inline-flex; align-items: center; gap: 9px; color: var(--le-blue); font-size: 11px; font-weight: 850; letter-spacing: .9px; text-transform: uppercase; padding: 8px 12px; border: 1px solid var(--le-border); border-radius: 999px; background: var(--le-surface); }
 .le-ponto { width: 7px; height: 7px; background: var(--le-green); border-radius: 50%; box-shadow: 0 0 0 4px var(--le-greenbg); animation: le-pulsa 2.4s ease-in-out infinite; }
 @keyframes le-pulsa { 50% { box-shadow: 0 0 0 7px transparent; } }
-.le-hero h1 { font-size: clamp(42px, 5.2vw, 64px); line-height: 1.01; letter-spacing: -3px; margin: 23px 0 20px; font-weight: 850; }
+.le-hero h1 { font-size: clamp(42px, 5.2vw, 68px); line-height: 1.01; letter-spacing: -3.1px; margin: 23px 0 20px; font-weight: 850; }
 .le-hero h1 em { font-style: normal; color: var(--le-blue); }
 .le-lead { max-width: 560px; color: var(--le-muted); font-size: 16px; line-height: 1.78; margin: 0; }
 .le-so-celular { display: none; margin-top: 22px; }
@@ -91,11 +94,11 @@
 .le-cartao.atento { box-shadow: 0 28px 80px rgba(20, 121, 189, .2); border-color: color-mix(in srgb, var(--le-blue) 35%, var(--le-border)); }
 .le-cartao-topo { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
 .le-cartao-topo img { height: 18px; width: auto; }
-.le-pilula { font-size: 10px; color: var(--le-green); background: var(--le-greenbg); padding: 5px 9px; border-radius: 20px; font-weight: 800; letter-spacing: .4px; text-transform: uppercase; }
+.le-pilula { font-size: 11px; color: var(--le-green); background: var(--le-greenbg); padding: 5px 9px; border-radius: 20px; font-weight: 800; letter-spacing: .4px; text-transform: uppercase; }
 
 /* O sinal: digitar também é movimento */
 .le-sinal { position: relative; border: 1px solid var(--le-border); background: var(--le-bg); border-radius: 12px; padding: 9px 11px 6px; margin-bottom: 14px; overflow: hidden; }
-.le-sinal-topo { display: flex; justify-content: space-between; align-items: center; font-size: 10px; font-weight: 800; letter-spacing: .6px; text-transform: uppercase; color: var(--le-muted); }
+.le-sinal-topo { display: flex; justify-content: space-between; align-items: center; font-size: 11px; font-weight: 800; letter-spacing: .6px; text-transform: uppercase; color: var(--le-muted); }
 .le-sinal-estado { display: inline-flex; align-items: center; gap: 6px; color: var(--le-blue-forte); transition: color .6s; }
 .le-sinal-estado i { width: 6px; height: 6px; border-radius: 50%; background: currentColor; animation: le-pulsa 1.6s ease-in-out infinite; }
 .le-sinal.repouso .le-sinal-estado { color: var(--le-green); }
@@ -119,8 +122,8 @@
 /* Campo com rótulo flutuante e confirmação */
 .le-campo { position: relative; margin-bottom: 12px; }
 .le-campo input { width: 100%; padding: 21px 40px 8px 13px; border-radius: 11px; border: 1px solid var(--le-border); background: var(--le-bg); color: var(--le-text); font-size: 15px; outline: none; transition: border-color .25s, box-shadow .25s, background .4s; }
-.le-campo label { position: absolute; left: 14px; top: 15px; font-size: 14px; color: var(--le-muted); pointer-events: none; transform-origin: left top; transition: transform .25s var(--le-ease), color .25s; }
-.le-campo input:focus + label, .le-campo input:not(:placeholder-shown) + label { transform: translateY(-9px) scale(.76); color: var(--le-blue-forte); font-weight: 700; }
+.le-campo label { position: absolute; left: 14px; top: 15px; font-size: 14px; font-weight: 400; color: var(--le-muted); pointer-events: none; transform-origin: left top; transition: transform .25s var(--le-ease), color .25s; }
+.le-campo input:focus + label, .le-campo input:not(:placeholder-shown) + label { transform: translateY(-9px) scale(.8); color: var(--le-blue-forte); font-weight: 700; }
 .le-campo input:focus { border-color: var(--le-blue); box-shadow: 0 0 0 4px var(--le-blue2); }
 .le-opcional { font-weight: 500; color: var(--le-muted); }
 .le-marca { position: absolute; right: 12px; top: 15px; width: 20px; height: 20px; border-radius: 50%; background: var(--le-greenbg); color: var(--le-green); display: grid; place-items: center; font-size: 12px; font-weight: 900; transform: scale(0); transition: transform .35s var(--le-ease); }
@@ -142,7 +145,7 @@
 .le-abre:not(.aberto) > div { visibility: hidden; }
 
 /* Confirmações como cartões que se marcam inteiros */
-.le-toggle { display: flex; gap: 11px; align-items: flex-start; font-size: 13px; color: var(--le-muted); line-height: 1.55; margin: 0 0 10px; padding: 12px 13px; border: 1px solid var(--le-border); border-radius: 12px; background: var(--le-bg); cursor: pointer; transition: border-color .3s, background .3s, transform .2s var(--le-ease); }
+.le-toggle { display: flex; gap: 11px; align-items: flex-start; font-size: 13px; font-weight: 400; color: var(--le-muted); line-height: 1.55; margin: 0 0 10px; padding: 12px 13px; border: 1px solid var(--le-border); border-radius: 12px; background: var(--le-bg); cursor: pointer; transition: border-color .3s, background .3s, transform .2s var(--le-ease); }
 .le-toggle:active { transform: scale(.99); }
 .le-toggle input { position: absolute; opacity: 0; width: 1px; height: 1px; }
 .le-caixa { flex: none; width: 20px; height: 20px; border-radius: 6px; border: 1.5px solid color-mix(in srgb, var(--le-muted) 70%, transparent); display: grid; place-items: center; margin-top: 1px; transition: background .25s, border-color .25s; }

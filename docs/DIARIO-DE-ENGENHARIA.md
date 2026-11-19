@@ -11289,6 +11289,71 @@ O desenho da página foi aprovado pelo autor numa prévia estática, em cinco ro
 
 **Procedência.** PR #222, merge `83a3259`; deploy `7916023492`; a 022 aplicada pelo autor em 19/11, com os resultados colados na sessão; conferências feitas desta máquina em 19/11, às 14:30 UTC.
 
+# 2026-11-19 (iii) — UI-34: um padrão visual só para as páginas públicas
+
+**O problema, como foi entendido no início.** O autor comparou a home e a lista de espera em duas capturas e notou fontes diferentes. Ele pediu três coisas: consistência, um documento com o padrão para consulta, e a home como referência.
+
+**Hipótese de trabalho.** As duas páginas declaravam a mesma lista, `Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif`. A suspeita era que só uma delas carregasse a Inter. Se fosse isso, a correção não seria trocar de fonte: seria fazer as duas resolverem a mesma.
+
+**O que foi testado, e como.**
+- **Na produção, no navegador desta máquina, a 1280 px:**
+  - as fontes carregadas em cada página;
+  - a largura de um texto desenhado em `canvas` com a lista declarada, comparada com a Segoe UI e com a Inter;
+  - `getComputedStyle` em 16 elementos da home e 21 da lista.
+- **Na branch:**
+  - a lista na fonte do sistema;
+  - o reset `font: inherit` em `:where(button, input)`;
+  - pesos 400 declarados nas caixas e nos rótulos;
+  - o título com `clamp(42px, 5.2vw, 68px)` e −3,1 px;
+  - os textos de 10 px da lista em 11 px, e o rótulo flutuante em escala 0,8;
+  - a landing sem "Inter" na lista dela.
+- **`docs/PADRAO-VISUAL.md`**, com a escala medida.
+- **`frontend/src/padraoVisual.test.ts`**, 10 testes que leem os arquivos de verdade.
+- **Controle positivo:**
+  - os 10 testes contra os dois arquivos de `develop`;
+  - três sabotagens isoladas: a lista com outra fonte, o botão em 600, e a home com outra fonte e a lista não.
+- **De novo no navegador**, servidor da worktree: os mesmos valores calculados, contra os da home.
+
+**Resultado medido.**
+- **A home não carrega fonte nenhuma**, nem tem `@font-face`. A lista declarada resolve para a Segoe UI: 1 030 px, igual à Segoe; a Inter mede 931.
+- **A lista carregava a Inter** nos pesos 400 e 500, e o título de peso 850 saía com negrito sintetizado.
+- **Defeitos de peso na lista:**
+  - o botão de enviar saía em **400**, contra 800 na home: o reset `.le button { font: inherit }` vencia o `.le-btn`;
+  - as caixas de confirmação e os rótulos dos campos saíam em **500**, herdados da base de `label` do app.
+- **Escala:**
+  - título da lista 64 px e −3 px; o da home, 66,56 px e −3,1 px;
+  - selo e sobrelinha da home em 10 px, rodapé em 9 px.
+- **Depois da correção, na worktree:**
+  - a fonte resolve para a Segoe UI (363 px, igual à Segoe), e a Inter nem é baixada nessa página;
+  - título 66,56 px, 850, −3,1 px; botão 800; caixas 400; pílula, sinal e selo em 11 px.
+- **Controle:**
+  - contra `develop`, 8 dos 10 testes caem. Os 2 que passam são explicáveis: lá as duas páginas tinham a mesma lista (com a Inter, que outro teste pega), e o `.le-btn` já pedia 800 (quem vencia era o reset, que outro teste pega);
+  - nas sabotagens isoladas, cada uma derruba o teste certo, e a terceira derruba também o do documento.
+- **Suítes:**
+  - frontend **710 passam, 52 arquivos** (Windows, Node 22);
+  - lint, Knip, `tsc` e build passam;
+  - `conferir_csp`: 10 scripts com hash, sem sobra, porque só o estilo da landing mudou;
+  - orçamento: Landing 265 158 B, teto 289 800.
+
+**Veredito.** As duas páginas agora resolvem a mesma fonte em qualquer aparelho, e o padrão está escrito e travado por teste. O `UI-34` fecha com o release.
+
+**Adaptação.**
+- **O padrão fixa o mínimo de 11 px**, opção A do autor: a lista segue a home em tudo, menos nos textos menores que isso. Subir os da home é o `UI-35`.
+- **A fonte do padrão é a do sistema, e não a Inter carregada nas duas.** É o que a home já mostrava, e não acrescenta download.
+- **O documento entrou na lista de leitura do `CLAUDE.md`.**
+
+**O que deu errado no caminho.**
+- **Os dois defeitos de peso já estavam na lista desde o `UI-14`.** Nenhum teste os via: os da página olhavam texto e comportamento, não estilo calculado. Foi a comparação pedida pelo autor que os mostrou.
+- **O próprio padrão novo pegou dois textos da lista em 10 px**, a pílula e o cabeçalho do sinal, e o rótulo flutuante encolhendo para 10,6 px. Foram corrigidos antes do commit.
+- **A primeira captura da lista corrigida saiu em branco**: foi tirada durante a animação de entrada. A segunda, 2 s depois, mostra a página.
+
+**Risco em aberto.**
+- **O título da lista agora quebra em quatro linhas a 1280 px**, porque a Segoe UI é mais larga que a Inter. É o mesmo que acontece com o título da home.
+- **O app depois do login segue em Outfit:** é o `UI-36`, decisão do autor.
+- **A home segue com textos abaixo de 11 px:** é o `UI-35`.
+
+**Procedência.** Branch `feature/UI-34-padrao-visual` sobre `develop` `30c8495`, com a `docs/registro-release-r10` (`2ec2944`, PR #223) mesclada para não conflitar no backlog e no diário. Medições na produção e no servidor da worktree, no navegador desta máquina, em 19/11. Windows 11.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
