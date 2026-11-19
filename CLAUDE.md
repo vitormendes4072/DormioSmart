@@ -35,6 +35,7 @@ Ler quando o assunto aparecer (o primeiro é **gitignorado** — existe só no d
 - **`ROADMAP.md`** — prioridades e a seção "▶ Agora". Nenhum arquivo versionado depende do conteúdo dele: a RQ, a hipótese e o escopo estão na `METODOLOGIA.md`.
 - **`docs/METODOLOGIA.md`** — RQ, hipótese, escopo, validação científica, dataset + ML, reprodutibilidade. Antes de qualquer tarefa de ML ou de validação.
 - **`docs/HARDWARE.md`** — fases, BOM, contrato de dados, validação de hardware. Antes de firmware/hardware/integração.
+- **`docs/marca/README.md`** — ✏️ *(19/11, `BRAND-04`)* o manual da marca: logos, ícones e paleta, cada um em SVG e PNG, e as regras de uso. **Antes de criar peça nova de divulgação, slide ou ícone.**
 - **`docs/PADRAO-VISUAL.md`** — ✏️ *(19/11, `UI-34`)* a fonte, os pesos, a escala, as cores e os componentes das páginas públicas, medidos na home. **Antes de criar ou mudar uma página pública.** O `frontend/src/padraoVisual.test.ts` reprova a divergência de fonte e de peso.
 - **`docs/LIMITACOES-TCC.md`** — limites medidos, que são material de defesa. Limite quantificado vai para lá, não só para o diário.
 
