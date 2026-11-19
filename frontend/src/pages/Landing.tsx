@@ -1,4 +1,5 @@
 import { ArrowRight, BarChart3, BedDouble, Check, Github, Instagram, Moon, Radio, Sun, X } from "lucide-react";
+import { useEffect, useRef } from "react";
 import { Link, useSearchParams } from "react-router";
 
 import { Moldura, RotuloDeSecao } from "../components/Blueprint";
@@ -7,6 +8,7 @@ import { Revelar } from "../components/Revelar";
 import { TracadoDeMovimento } from "../components/TracadoDeMovimento";
 import { useAuth } from "../contexts/AuthContext";
 import { useTema } from "../hooks/useTema";
+import { iniciarPonteImagensLanding } from "../lib/ponteImagensLanding";
 import { NOME_PRODUTO } from "../lib/ui";
 
 /**
@@ -396,11 +398,19 @@ function LandingLeve() {
 export function Landing() {
   const { sessao } = useAuth();
   const [parametros] = useSearchParams();
+  const apresentacaoLeve = parametros.get("apresentacao") === "leve";
+  const iframe = useRef<HTMLIFrameElement>(null);
 
-  if (parametros.get("apresentacao") === "leve") return <LandingLeve />;
+  useEffect(() => {
+    if (!iframe.current) return;
+    return iniciarPonteImagensLanding(iframe.current);
+  }, [apresentacaoLeve]);
+
+  if (apresentacaoLeve) return <LandingLeve />;
 
   return (
     <iframe
+      ref={iframe}
       title="Smart Dormio — página inicial"
       src={sessao ? "/landing-prototipo.html?sessao=1" : "/landing-prototipo.html"}
       sandbox="allow-scripts allow-top-navigation-by-user-activation allow-popups allow-popups-to-escape-sandbox allow-downloads"

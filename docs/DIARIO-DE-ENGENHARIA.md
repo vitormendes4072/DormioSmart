@@ -11608,6 +11608,49 @@ em servidor local, não em deploy real.
 **Procedência.** Branch `feature/landing-app-android` sobre `origin/develop` `d75a41e`; Chrome,
 Playwright e Node no Windows; prévia local e aplicação compilada; 19/11/2026.
 
+---
+
+# 2026-11-19 (x) — UI-37: imagens na prévia protegida
+
+**O problema.** Na prévia Vercel do commit `41418f4`, o autor viu imagens quebradas no
+explorador. O arquivo WebP respondeu 200 em consulta autenticada, mas isso não exercita o
+pedido feito pelo iframe isolado no navegador.
+
+**Hipótese.** O iframe sem `allow-same-origin` faz pedidos de imagens sem o cookie SameSite;
+a proteção da prévia pode redirecioná-los à autenticação. Um servidor local com cookie fictício
+reproduziu a falha: a imagem de 1180 px ficou com largura natural zero quando o cookie era exigido.
+
+**O que foi testado.** No Windows, Chrome com a aplicação compilada em 390 × 900 e 1365 × 900;
+servidor local que respondeu 401 ou redirecionou à autenticação simulada quando faltou cookie.
+Foram verificadas a imagem principal, os ícones, a seleção direta do ESP32 e as imagens SVG da
+planta. Testes Vitest verificam origem da mensagem, caminhos permitidos, tipo e limite de tamanho;
+controles positivos removeram a restrição de caminho e, separadamente, a checagem do remetente.
+Também rodaram a suíte do frontend, build, lint, Knip, CSP e orçamento de transferência.
+
+**Resultado medido.** Antes, no servidor protegido simulado, a imagem principal tinha largura
+natural 0; depois, 1180 px. Nos dois tamanhos, imagem, ícones, planta e clique passaram sem erro
+JavaScript, tanto com 401 quanto com redirecionamento. Cada sabotagem de segurança reprovou o teste
+correspondente. A suíte completa passou com 725 testes em 53 arquivos; build, lint e Knip passaram.
+A landing compilada ficou em 274 253 bytes estimados de transferência, abaixo do teto de 289 800.
+
+**Adaptação.** O iframe continua isolado. Se o carregamento direto de uma imagem pública falhar,
+pede ao pai o conteúdo de uma lista restrita de caminhos, verifica o remetente e cria uma URL de
+objeto local. O pai valida caminho, tipo e tamanho e busca com a sessão do próprio site. As imagens
+continuam em arquivos cacheáveis, e a CSP recebeu o hash do novo script.
+
+**O que deu errado no caminho.** A primeira criação do teste usou um caminho relativo duplicado;
+a primeira execução do Vitest no sandbox falhou ao escrever no diretório de dependências ligado
+por junction. Depois, o build foi chamado uma vez na raiz, sem `package.json`, e uma atualização do diário
+foi tentada a partir de `frontend/`. Os comandos foram
+refeitos no diretório correto e, onde necessário, com a permissão já prevista para as dependências.
+
+**Risco em aberto.** O comportamento protegido foi reproduzido em servidor local, não comprova por
+si só a causa exata em todos os navegadores da Vercel. É necessário conferir a nova prévia com a
+proteção ativa. O `APP-12` permanece pendente; não houve mudança de credencial nem de proteção.
+
+**Procedência.** Branch `feature/landing-app-android`, correção sobre `41418f4`; Chrome, Node,
+Vitest e build no Windows; servidor local com autenticação fictícia; 19/11/2026.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
