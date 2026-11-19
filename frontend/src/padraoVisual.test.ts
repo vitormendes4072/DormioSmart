@@ -90,3 +90,40 @@ describe("a escala segue a da home", () => {
     expect(escala * tamanho).toBeGreaterThanOrEqual(11);
   });
 });
+
+describe("o ícone da aba (favicon)", () => {
+  const indice = readFileSync(new URL("../index.html", import.meta.url), "utf8");
+  const icones = (html: string) => [...html.matchAll(/<link[^>]*rel="icon"[^>]*>/g)].map((m) => m[0].match(/href="([^"]+)"/)?.[1]);
+
+  it.each([["o app e a lista de espera (index.html)", () => indice], ["a landing", () => landing]])(
+    "%s declara o .ico e o PNG de 32 px",
+    (_, html) => {
+      expect(icones(html())).toEqual(expect.arrayContaining(["/favicon.ico", "/favicon-32.png"]));
+    },
+  );
+
+  it("os arquivos declarados existem em public/", () => {
+    for (const caminho of new Set([...icones(indice), ...icones(landing)])) {
+      expect(() => readFileSync(new URL(`../public${caminho}`, import.meta.url)), String(caminho)).not.toThrow();
+    }
+  });
+});
+
+describe("os ícones do app instalado (manifest)", () => {
+  const manifesto = JSON.parse(readFileSync(new URL("../public/manifest.json", import.meta.url), "utf8")) as {
+    icons: { src: string; purpose?: string }[];
+  };
+
+  it("todo ícone do manifest existe em public/", () => {
+    for (const { src } of manifesto.icons) {
+      expect(() => readFileSync(new URL(`../public${src}`, import.meta.url)), src).not.toThrow();
+    }
+  });
+
+  it("o recortável do Android (maskable) é um arquivo próprio, com margem, e não o mesmo do `any`", () => {
+    const recortaveis = manifesto.icons.filter((i) => i.purpose === "maskable").map((i) => i.src);
+    const comuns = manifesto.icons.filter((i) => i.purpose !== "maskable").map((i) => i.src);
+    expect(recortaveis.length).toBeGreaterThan(0);
+    expect(recortaveis.filter((src) => comuns.includes(src))).toEqual([]);
+  });
+});

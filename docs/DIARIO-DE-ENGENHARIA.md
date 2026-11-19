@@ -11354,6 +11354,166 @@ O desenho da página foi aprovado pelo autor numa prévia estática, em cinco ro
 
 **Procedência.** Branch `feature/UI-34-padrao-visual` sobre `develop` `30c8495`, com a `docs/registro-release-r10` (`2ec2944`, PR #223) mesclada para não conflitar no backlog e no diário. Medições na produção e no servidor da worktree, no navegador desta máquina, em 19/11. Windows 11.
 
+# 2026-11-19 (iv) — o release R11: o padrão visual no ar
+
+**O problema, como foi entendido no início.** Depois do R10, `develop` recebeu o `UI-34` (#224) e o registro do R10 (#223). O `UI-34` só fecha quando a lista publicada estiver igual à home publicada.
+
+**Hipótese de trabalho.** O release só mexe no frontend: o CSS da lista, uma linha de estilo da landing e um teste. O resto é documentação. Não há migração, e a CSP não muda, porque nenhum script mudou.
+
+**O que foi testado, e como.**
+- `git diff --name-only origin/main origin/develop` antes da PR #225, e o CI dela.
+- **Depois do deploy, com `curl`:** `/health`, `/lista-de-espera`, a rota da lista sem consentimento, uma rota protegida sem token, e o mesmo script avulso do R10 (a CSP contra os scripts inline das cinco páginas).
+- **No navegador desta máquina, a 1280 px, a lista e a home publicadas:**
+  - a família de fontes calculada;
+  - a largura de um texto desenhado em `canvas` com ela, comparada com a Segoe UI;
+  - o título, o botão e, na lista, as caixas e a pílula;
+  - se a Inter foi baixada.
+
+**Resultado medido.**
+- CI 12 de 12; merge `205835e`; deploy de produção `7917378167` com sucesso.
+- `/health` `200` (contrato 2.11.0); `/lista-de-espera` `200`; `400` sem consentimento; `401` sem token.
+- CSP igual nas cinco páginas, 13 scripts inline, nenhum sem hash.
+- **Lista e home:**
+  - a mesma família, `ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif`, que nas duas resolve para a Segoe UI (363 px, igual à Segoe);
+  - título 66,56 px, 850, −3,1 px nas duas; botão 800 nas duas;
+  - na lista, caixas 400, pílula 11 px e a Inter não baixada.
+
+**Veredito.** A lista publicada agora é tipograficamente igual à home. O `UI-34` fecha.
+
+**Adaptação.** Nada nesta etapa.
+
+**O que deu errado no caminho.** Nada nesta etapa.
+
+**Risco em aberto.**
+- O `UI-35` (os textos da home abaixo de 11 px) e o `UI-36` (a fonte do app depois do login) seguem abertos.
+- **A igualdade foi medida no Windows, nesta máquina.** No Mac e no celular, as duas páginas resolvem para a mesma fonte do sistema por construção, porque a declaração é idêntica e nenhuma baixa fonte, mas isso não foi visto num aparelho.
+
+**Procedência.** PR #225, merge `205835e`; deploy `7917378167`; conferências desta máquina em 19/11.
+
+# 2026-11-19 (v) — UI-14, ajuste pedido pelo autor: o título e o cartão flutuante
+
+**O problema, como foi entendido no início.** O autor pediu duas mudanças na lista de espera publicada:
+- o título "Seja dos primeiros" passa a "Seja **um** dos primeiros";
+- sai o cartão flutuante "Sem nada no pulso", que ficava abaixo do formulário.
+
+**Hipótese de trabalho.** As duas mudanças são só da página: uma linha do componente e as quatro regras de CSS do cartão. A frase original está correta em português ("ser dos primeiros"), mas "um dos primeiros" é a forma mais comum e a que o autor quer.
+
+**O que foi testado, e como.**
+- Dois testes novos no `ListaDeEspera.test.tsx`: o título exato, e a ausência do cartão (nem o texto nem a classe).
+- **Controle positivo:** os dois testes rodados com os dois arquivos da página na versão de `develop`.
+- **Suítes:** o frontend completo, lint, Knip, build, `conferir_csp` e o orçamento da landing.
+- **No navegador**, servidor da worktree, a 1280 px.
+
+**Resultado medido.**
+- **Com a correção**, 23 testes da página passam. **Sem ela**, os 2 novos caem.
+- **Frontend:** **712 passam, 52 arquivos** (Windows, Node 22).
+- **Lint e Knip** sem erros; **build** ok; **CSP:** 10 scripts com hash, sem sobra.
+- **No navegador:** o título em quatro linhas ("Seja um dos / primeiros / a dormir com o / Smart Dormio."), e nada abaixo do cartão do formulário.
+
+**Veredito.** Pronto para revisão; vai ao ar no próximo release.
+
+**Adaptação.** Nada nesta etapa.
+
+**O que deu errado no caminho.** Nada nesta etapa.
+
+**Risco em aberto.** Nenhum novo. A frase antiga continua nas entradas do diário de 17/11 e 19/11: é histórico e não se reescreve.
+
+**Procedência.** Branch `bugfix/UI-14-titulo-e-cartao` sobre `develop` `cf3975e`; Windows 11; 19/11.
+
+# 2026-11-19 (vi) — o favicon das páginas públicas
+
+**O problema, como foi entendido no início.** O autor pediu um favicon. Nenhuma página declarava ícone de aba, e não havia `/favicon.ico`. A aba mostrava o ícone genérico do navegador.
+
+**Hipótese de trabalho.** A marca para isso já existia: o ícone do app instalado (`icone-192.png` e `icone-512.png`), o traçado de movimento sobre o azul. Bastava reduzi-lo e declará-lo nas duas entradas públicas, o `index.html` (o app e a lista de espera) e a `landing-prototipo.html`.
+
+**O que foi testado, e como.**
+- `favicon.ico` (16, 32 e 48 px) e `favicon-32.png`, gerados do `icone-512.png` com o Pillow 12.1.0; o de 32 px conferido a olho.
+- **Três testes no `padraoVisual.test.ts`:** cada página declara os dois ícones, e os arquivos declarados existem em `public/`.
+- **Duas sabotagens:** a landing sem os links; e o `index.html` apontando para um arquivo que não existe.
+- **Suítes:** o frontend completo, lint, Knip, build (os dois arquivos no `dist/`), `conferir_csp` e o orçamento da landing.
+- **No servidor da worktree**, pelo navegador: os links na página e os dois arquivos servidos.
+
+**Resultado medido.**
+- `favicon.ico` com 2 030 B; `favicon-32.png` com 613 B.
+- **Frontend:** **715 passam, 52 arquivos** (Windows, Node 22).
+- **Sabotagens:** cada uma derruba o teste certo; a do arquivo inexistente derruba também o da declaração.
+- **CSP:** 10 scripts com hash, sem sobra (só a cabeça da landing mudou, sem script). **Landing:** 265 337 B, teto 289 800.
+- **No servidor:** `/favicon.ico` `200 image/x-icon`; `/favicon-32.png` `200 image/png`; 2 links de ícone na landing servida.
+
+**Veredito.** Pronto, na mesma PR do ajuste do título (#227). Vai ao ar no próximo release.
+
+**Adaptação.**
+- **O ícone do iPhone segue o `icone-192.png`, que o `index.html` já declarava.** O de 180 px gerado no caminho foi descartado.
+- **O padrão ganhou a seção 7**, "O ícone da aba", no `docs/PADRAO-VISUAL.md`.
+
+**O que deu errado no caminho.**
+- **O primeiro controle positivo se sabotou a si mesmo.** O Git Bash converte em caminho do Windows todo argumento que começa com `/`, e isso fez duas coisas:
+  - a sabotagem do `index.html` não se aplicou;
+  - a restauração da primeira sabotagem falhou, e a landing ficou sem os links do favicon.
+
+  O resultado da segunda rodada, que parecia acusar, acusava a landing quebrada pela primeira. Os links foram repostos e conferidos. Depois as sabotagens foram refeitas com `MSYS_NO_PATHCONV=1` e restauradas por `git checkout` a partir de um commit, o que não depende de argumento. É o §1 das lições: o instrumento acusando pelo mecanismo errado.
+
+**Risco em aberto.** O ícone na aba da produção só será visto depois do release. Navegadores guardam favicon em cache, então pode demorar a trocar para quem já visitou o site.
+
+**Procedência.** Branch `bugfix/UI-14-titulo-e-cartao`, commit do favicon; Windows 11; 19/11.
+
+# 2026-11-19 (vii) — os ícones: o travesseiro na aba, a marca empilhada no app
+
+**O problema, como foi entendido no início.** O autor achou genérico o favicon da entrada (vi), o traçado do app reduzido. Ele pediu uma marca no estilo da Dormio Labs, com "SMART" em cima e "Dormio" embaixo. Montei a marca e testei como favicon nos pixels reais. Depois de ver as opções, ele escolheu:
+- **na aba:** o travesseiro com o traçado, a opção C de três marcas desenhadas;
+- **no app:** a marca empilhada.
+
+**Hipótese de trabalho.** Cada marca vai onde se lê, e a marca empilhada não precisa de letra redesenhada:
+- **A marca empilhada** usa os dois desenhos originais do `smart-dormio.svg`, nas proporções do `dormio-labs.svg`. O "SMART" fica na altura do "LABS" (26,9 de 71,6), com 19,8 de espaço.
+- **O `maskable` do manifest** precisa de um arquivo próprio. O Android recorta num círculo de 80%, e a marca larga perderia as pontas.
+
+**O que foi testado, e como.**
+- **Prévias no navegador:** o logo empilhado ao lado do da Dormio Labs, e três marcas (o "D", o "D" com o traçado, o travesseiro). Tudo em 16, 32, 48 e 120 px, e em abas claras e escuras.
+- **Os pixels reais:** cada ícone desenhado em `canvas` a 16 e 32 px e ampliado sem suavizar.
+- **A geração dos PNGs:** com o Edge em modo headless, uma página que mostra o SVG no tamanho exato, depois recortada com o Pillow. O `.ico` junta 16, 32 e 48 px.
+- **Conferência dos arquivos:**
+  - cada quadro do `.ico` comparado pixel a pixel com o PNG desenhado;
+  - a diagonal da marca contra o círculo do `maskable`.
+- **Dois testes novos no `padraoVisual.test.ts`:** todo ícone do manifest existe, e o `maskable` não é o mesmo arquivo do `any`. Duas sabotagens.
+- **Suítes completas**, e o servidor da worktree pelo navegador.
+
+**Resultado medido.**
+- **A marca empilhada como favicon:** em 16 px, uma faixa azul sem letra legível; em 32 px, o "Dormio" se lê e o "SMART" vira pontos; de 48 px para cima, nítida.
+- **Os arquivos:**
+  - `favicon.ico` com 2 705 B, e os três quadros idênticos aos desenhados;
+  - `favicon-32.png` com 839 B;
+  - `icone-192.png` com 4 890 B, `icone-512.png` com 13 304 B, `icone-maskable-512.png` com 11 602 B.
+- **O `maskable`:** a diagonal da marca, 360,9, cabe no círculo de 80% do quadrado de 472 (377,6).
+- **Testes:**
+  - frontend **717 passam, 52 arquivos** (Windows, Node 22);
+  - as duas sabotagens derrubam o teste certo;
+  - lint, Knip e build passam (os ícones no `dist/`); CSP sem mudança; Landing com 265 341 B.
+- **No servidor:** os cinco arquivos com `200` e o tipo certo; o manifest com `any`, `any` e `maskable` próprio.
+
+**Veredito.** Pronto na PR #227. Vai ao ar no próximo release.
+
+**Adaptação.**
+- **As fontes dos ícones ficaram versionadas em `docs/marca/`**, e a seção 7 do `docs/PADRAO-VISUAL.md` diz onde vai cada uma e como gerar de novo.
+- **Os ícones do app são quadrados cheios**, porque o sistema arredonda e o iPhone pinta de preto o canto transparente. O favicon mantém os cantos arredondados.
+- **A prévia de link (`og:image`) aponta para o `icone-512.png`** e passa a mostrar a marca empilhada.
+
+**O que deu errado no caminho.**
+- **O Edge headless falhou de três jeitos antes de funcionar:**
+  - com o mesmo perfil em chamadas seguidas, as chamadas saíam sem capturar, porque o processo anterior ainda estava aberto;
+  - com perfis separados e a saída mandada para `/dev/null`, também não capturou (causa não investigada);
+  - com o SVG aberto direto, a janela tem largura mínima, e a captura saiu cortada, com só um "D" no canto.
+
+  Resolvido com uma página que mostra a imagem no tamanho exato numa janela grande, e o recorte depois.
+- **Uma sabotagem não se aplicou.** O trecho escolhido aparece duas vezes no manifest (nos ícones e nos atalhos), e a troca exige ocorrência única. O "15 passaram" dessa rodada não testou nada. Refeita trocando só a primeira ocorrência, ela derrubou o teste certo.
+- **O pedido do autor chegou em duas mensagens.** A primeira, sem a imagem, parecia escolher o "D" para a aba. A segunda, com a imagem, escolheu o travesseiro. Nada tinha sido gerado com a leitura errada.
+
+**Risco em aberto.**
+- **O APK Android segue com os ícones antigos:** é o `APP-17`.
+- **Em 16 px o travesseiro vira um retângulo branco** com uma linha, reconhecível mais pela cor e pela forma que pelo desenho. O autor escolheu vendo essa prévia.
+- **Navegadores e celulares guardam ícone em cache**, então a troca pode demorar para quem já visitou ou instalou.
+
+**Procedência.** Branch `bugfix/UI-14-titulo-e-cartao`; prévias e geração na pasta temporária da sessão; Edge headless e Pillow 12.1.0; Windows 11; 19/11.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

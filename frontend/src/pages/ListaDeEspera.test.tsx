@@ -194,6 +194,17 @@ describe("o que a página não pode deixar de ter", () => {
     },
   );
 
+  it("o título diz \"Seja um dos primeiros\" (pedido do autor, 19/11)", () => {
+    abrir();
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Seja um dos primeirosa dormir com o Smart Dormio.");
+  });
+
+  it("não tem o cartão flutuante \"Sem nada no pulso\" (retirado pelo autor, 19/11)", () => {
+    abrir();
+    expect(document.body.textContent).not.toContain("Sem nada no pulso");
+    expect(document.querySelector(".le-flutua")).toBeNull();
+  });
+
   it("declara o escopo: não faz estadiamento nem diagnóstico", () => {
     abrir();
     expect(document.body.textContent).toContain("não faz estadiamento de sono nem diagnóstico clínico");
