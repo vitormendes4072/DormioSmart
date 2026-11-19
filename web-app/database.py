@@ -449,6 +449,36 @@ class Database:
             logger.exception("Falha ao resolver dispositivo.")
             return INDISPONIVEL
 
+    def inscrever_na_lista_de_espera(self, email, nome, versao):
+        """Inscreve um contato na lista de espera (UI-14, migração 022).
+
+        Devolve `"inscrito"` (também quando o e-mail já estava lá: o banco não
+        diz, e a rota não pode dizer), `"lista_cheia"` quando o teto de
+        inscrições da última hora foi atingido, e `None` quando o banco não
+        respondeu. Nunca levanta.
+
+        Vai pelo cliente da ingestão porque quem se inscreve não tem sessão:
+        não há JWT para montar o cliente do usuário. O papel `dormio_ingestao`
+        só EXECUTA a função; não lê a lista (`test_rls_lista_de_espera.py`).
+        """
+        try:
+            client = self.cliente_de_ingestao()
+            if client is None:
+                return None
+            client.rpc(
+                "inscrever_na_lista_de_espera",
+                {"p_email": email, "p_nome": nome, "p_versao": versao},
+            ).execute()
+            return "inscrito"
+        except APIError as exc:
+            if exc.code == "PT429" and exc.message == "lista_cheia":
+                return "lista_cheia"
+            logger.exception("Falha ao inscrever na lista de espera.")
+            return None
+        except Exception:
+            logger.exception("Falha ao inscrever na lista de espera.")
+            return None
+
 
 # Instância única
 db = Database()

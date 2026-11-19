@@ -76,10 +76,17 @@ varredura completa registrada nas notas do `LGPD-ELIMINACAO.md`.
 
 # Política de Privacidade — Smart Dormio
 
-**Última atualização:** 10 de novembro de 2026
+**Última atualização:** 19 de novembro de 2026
 
 > **O que mudou nesta revisão** (seção 10 pede que mudança material seja
 > anunciada):
+>
+> - **a lista de espera do lançamento** passou a existir: quem ainda não tem
+>   conta pode deixar o e-mail (e, se quiser, como prefere ser chamado) para ser
+>   avisado do lançamento e convidado para os primeiros testes. É uma nova
+>   finalidade, com consentimento próprio e prazo de 12 meses (seção 2.6).
+>
+> *Revisão anterior (10 de novembro de 2026):*
 >
 > - **o aplicativo para Android** passou a ser descrito: ele registra a noite
 >   inteira com a tela apagada e guarda arquivos no seu celular (seções 2.2 e 2.3);
@@ -252,6 +259,36 @@ pessoa identificada dormiu está perto o bastante de um dado de saúde para que 
 risco de classificá-la para baixo não valha a pena. Isso muda a base legal (seção
 4), e não muda o que o serviço é: ele não diagnostica nada (aviso no topo).
 
+### 2.6 Se você entrou na lista de espera
+
+A lista de espera é para quem **ainda não tem conta** e quer ser avisado do
+lançamento. Ela é separada de tudo o que está acima: entrar na lista não cria
+conta, e ter conta não põe ninguém na lista.
+
+| Dado | Quando | Onde fica |
+|---|---|---|
+| **Endereço de e-mail** | Na página da lista de espera, obrigatório | Tabela da lista de espera |
+| **Como você prefere ser chamado** | Na mesma página, **opcional** | Tabela da lista de espera |
+| **A versão do texto que você aceitou e a data da inscrição** | Gravadas no envio, com o relógio do servidor | Tabela da lista de espera |
+
+- **Finalidade única:** mandar **um aviso quando o Smart Dormio for lançado** e o
+  **convite para os primeiros testes**. Nada além disso: o contato não é usado
+  para propaganda, não é vendido nem repassado, e não é cruzado com conta
+  nenhuma.
+- **Como você consente:** marcando, na página, a caixa que diz exatamente essa
+  finalidade, e a de que tem 18 anos ou mais. Sem as duas, nada é enviado.
+- **Quem vê:** só o controlador (seção 1), pelo painel do banco de dados. A
+  página não lê a lista de volta, e nenhuma conta do serviço a alcança.
+- **Por quanto tempo:** até a finalidade se cumprir, e **no máximo 12 meses
+  depois da inscrição** — passado esse prazo, a inscrição é apagada
+  automaticamente (seção 7).
+- **Como sair:** pedindo pelo contato da seção 8. A inscrição é apagada, e todo
+  e-mail mandado à lista dirá como sair.
+- **Uma limitação, declarada:** o serviço ainda não envia e-mails próprios, então
+  não há confirmação por e-mail no momento da inscrição. Alguém pode, por engano
+  ou não, inscrever um endereço que não é seu. Se receber um aviso sem ter se
+  inscrito, peça a remoção pelo contato da seção 8.
+
 ## 3. Para que os dados são usados
 
 Exclusivamente para:
@@ -302,6 +339,9 @@ Exclusivamente para:
      pela interface do serviço. Quando uma tela passar a mostrá-la, ela trará o
      mesmo aviso que a resposta do servidor já traz.
 
+Os contatos da **lista de espera** (seção 2.6) têm uma finalidade só: o aviso do
+lançamento e o convite para os primeiros testes.
+
 **Não há nenhum outro uso.** Os dados não são usados para publicidade, não são
 vendidos, não são cedidos, não alimentam perfilamento comercial e não são
 combinados com dados de outras fontes.
@@ -341,7 +381,11 @@ continua enviando: o consentimento é pedido no pareamento, e um dispositivo nov
 não se pareia sem ele.
 
 Você pode revogar o consentimento a qualquer momento apagando sua conta (seção
-6.4). O uso em pesquisa tem consentimento próprio, pelo termo de participação
+6.4).
+
+**A lista de espera** (seção 2.6) também se apoia no **seu consentimento** (art.
+7º, I), dado na própria página, para a finalidade que a caixa descreve. Você o
+revoga pedindo a remoção pelo contato da seção 8. O uso em pesquisa tem consentimento próprio, pelo termo de participação
 (seção 3).
 
 ## 5. Quem tem acesso
@@ -559,6 +603,10 @@ O prazo de 12 meses segue o princípio da necessidade (LGPD, art. 6º, III): uma
 conta que ninguém usa há um ano não serve mais à finalidade para a qual os dados
 foram coletados, e o tratamento termina (art. 15, I).
 
+**A lista de espera** (seção 2.6) tem prazo próprio: **a inscrição é apagada 12
+meses depois de feita**, automaticamente, ou antes, a seu pedido. A verificação
+roda uma vez por dia.
+
 **Cópias de segurança.** O banco de dados roda no plano gratuito do provedor
 (seção 5.2), que não faz cópias de segurança automáticas. O dado apagado — por
 você ou pelo prazo acima — sai do banco no momento da eliminação, sem cópia
@@ -598,6 +646,9 @@ Mudanças materiais — nova categoria de dado, nova finalidade, novo operador �
 serão anunciadas antes de entrarem em vigor. A data no topo indica a última
 revisão.
 
+- **19 de novembro de 2026:** a lista de espera do lançamento — e-mail e,
+  opcionalmente, como a pessoa prefere ser chamada, com consentimento próprio,
+  finalidade única e prazo de 12 meses (seções 2.6, 3, 4 e 7).
 - **11 de novembro de 2026:** a intensidade da gravidade medida e a marca de
   correção de calibração do sensor, enviadas pelo celular (seção 2.2), e os
   pontos de calibração guardados no celular (seção 2.3).

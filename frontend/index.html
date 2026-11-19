@@ -20,6 +20,17 @@
       <title>Smart Dormio</title>
       <meta name="description" content="Monitoramento nao invasivo de movimento durante o repouso." />
       <meta name="robots" content="noindex, nofollow" />
+      <!-- UI-14: a prévia do link no WhatsApp, Instagram e afins. Essas redes não
+           executam o JavaScript da página, então a prévia vem daqui, e é a mesma
+           para todo endereço do site (o SPA serve este arquivo em toda rota). A
+           imagem precisa de endereço absoluto. -->
+      <meta property="og:type" content="website" />
+      <meta property="og:site_name" content="Smart Dormio" />
+      <meta property="og:title" content="Smart Dormio — lista de espera" />
+      <meta property="og:description" content="Um sensor dentro do travesseiro registra o movimento durante o repouso, sem nada no pulso. Entre na lista de espera e seja avisado do lançamento." />
+      <meta property="og:image" content="https://dormio-smart.vercel.app/icone-512.png" />
+      <meta property="og:locale" content="pt_BR" />
+      <meta name="twitter:card" content="summary" />
       <script>
         // Resolve o tema ANTES da primeira pintura. Sem isto, a pagina
         // apareceria clara por um instante antes do React aplicar o escuro —

@@ -19,6 +19,7 @@ const Noite = rotaSobDemanda("Noite", () => import("./pages/Noite").then((m) => 
 const Register = rotaSobDemanda("Register", () => import("./pages/Register").then((m) => ({ default: m.Register })));
 const Settings = rotaSobDemanda("Settings", () => import("./pages/Settings").then((m) => ({ default: m.Settings })));
 const Privacidade = rotaSobDemanda("Privacidade", () => import("./pages/Privacidade"));
+const ListaDeEspera = rotaSobDemanda("ListaDeEspera", () => import("./pages/ListaDeEspera").then((m) => ({ default: m.ListaDeEspera })));
 
 /**
  * Rotas do app. Substitui o `useState<Screen>` do prototipo: com URL de
@@ -60,6 +61,10 @@ export default function App() {
             </Suspense>
           }
         />
+
+        {/* UI-14: a lista de espera do lançamento. Pública, fora dos guardas: quem
+            se inscreve ainda não tem conta, e quem tem conta pode mandar o link. */}
+        <Route path="/lista-de-espera" element={<Suspense fallback={null}><ListaDeEspera /></Suspense>} />
 
         <Route element={<RotaProtegida />}>
           <Route element={<Layout />}>

@@ -11161,6 +11161,78 @@ Depois, o login do autor.
 
 **Procedência.** PR #219, merge `0e54644`; deploy `7871172982`; conferências feitas desta máquina em 17/11, às 20:00.
 
+# 2026-11-19 — UI-14: a lista de espera do lançamento (feita em 17/11, fechada para revisão em 19/11)
+
+**O problema, como foi entendido no início.** O autor quer divulgar o projeto e juntar quem se interessa pela ideia, para avisar do lançamento e ter os primeiros usuários. O item já existia: o `UI-14`, "lista de espera na landing", no quadro Pós-banca desde a triagem de 03/11, com o gatilho "protótipo funcionando **e** `VIA-01`". O `VIA-01` fechou em 16/11, e a placa já envia do travesseiro. Três restrições vinham de antes:
+- a landing vive num iframe isolado, sem rede nem armazenamento;
+- quem se inscreve não tem conta, então não há JWT, e o RLS por dono não serve;
+- a política de privacidade só cobria titulares de conta, e o `test_politica_cobre_as_colunas.py` só lia `sleep_data`.
+
+**Hipótese de trabalho.** Uma rota React própria, `/lista-de-espera`, ligada da landing por link de topo. O banco é a garantia, e o Flask a primeira barreira:
+- uma tabela nova, com RLS e **nenhuma** policy, sem privilégio para `anon`, `authenticated` ou a ingestão;
+- uma função de inscrição como único caminho de escrita, executável só pelo papel `dormio_ingestao`, para a chave `anon` (pública) não pular o backend;
+- o teto global de inscrições por hora no banco, para não guardar IP de ninguém;
+- o mínimo de dados: e-mail, nome opcional, a versão do texto aceito e a data;
+- a política com uma seção própria (finalidade única, base legal, prazo de 12 meses, como sair).
+
+O desenho da página foi aprovado pelo autor numa prévia estática, em cinco rodadas: marca e estética da landing, versão final sem marcações, experiência imersiva, correção do texto que descia e revisão de contraste.
+
+**O que foi testado, e como.**
+- **Banco (migração `022`), Postgres 17 em Docker:** `test_rls_lista_de_espera.py`, 32 testes:
+  - estrutura: RLS ligado, nenhuma policy, nenhum privilégio de tabela para os três papéis, funções `security definer` com `search_path` fixo;
+  - alcance: `anon` não lê, não insere e não chama a inscrição; uma conta qualquer não alcança nada; a ingestão inscreve mas não lê; ninguém do cliente executa o expurgo;
+  - a inscrição: normaliza, nome em branco vira nulo, e-mail repetido não muda nada e devolve o mesmo, versão errada e e-mail ou nome inválidos recusados;
+  - o teto: a 101ª inscrição da hora é recusada com `PT429`, e as de mais de 1 h não contam;
+  - o expurgo: apaga só o que passou de 12 meses.
+- **Mutação:** 7 sabotagens novas no `verificar_por_mutacao.py` (a lista legível pelo `anon`, sem RLS, a inscrição pelo `anon`, sem teto, o repetido reescrito, qualquer versão do texto, o expurgo com 11 meses).
+- **Diagnóstico das migrações:** três marcas da 022 e a linha informativa do agendamento; `verificar_migracoes.py` com a 022 na ordem real.
+- **Backend:** `lista_de_espera.py` (validação e campo-isca), `db.inscrever_na_lista_de_espera` e `POST /api/lista-de-espera`; `test_lista_de_espera.py`, 41 testes: as três versões iguais, o formato de e-mail do Flask igual ao do banco, caminho feliz, isca (inclusive com o resto inválido), cada campo inválido, 409, 415, 413, 429 com `Retry-After`, 503, e a camada do banco (`PT429` vira `lista_cheia`).
+- **Política:** seção 2.6 nova e ajustes nas 3, 4, 7 e 10; o teste de cobertura ganhou 3 casos, que leem as colunas da tabela e o `insert` da função.
+- **Frontend:** a página no desenho aprovado, a biblioteca (`listaDeEspera.ts`), o link na landing (topo e chamada final) e na versão leve, a prévia de link (`og:`) no `index.html`; 21 testes da página e 27 da biblioteca.
+- **No navegador**, servidor de desenvolvimento da worktree, 1280 × 800: a página igual à prévia, a sugestão de domínio, o botão dizendo o que falta, a rolagem até o botão e o título parado. **Sem enviar**: o `.env` local aponta para o backend de produção, que ainda não tem a rota.
+- **Controle positivo, testes novos contra o código de `develop` `47982e4`** (cópia por `git archive`): os 41 do backend caem na coleta (o módulo não existe); os 32 de RLS caem.
+- **Controle positivo no frontend, sete sabotagens:** botão sempre habilitado (3 testes caem), sem o campo-isca (1), o corpo sem o campo-isca (1), o 429 traduzido como indisponível (1), o resto do formulário aberto desde o início (1), uma promessa no texto (1) e a landing sem os dois links (1).
+
+**Resultado medido.** Windows 11, 17/11 e 19/11:
+- backend **634 passam, 1 pula** (Python 3.13, sem `CI=true`);
+- frontend **700 passam, 51 arquivos** (Node 22);
+- RLS **305 passam**;
+- mutação **61/61**;
+- diagnóstico das migrações: os 20 estados;
+- `tsc`, `npm run build`, ESLint, Knip (arquivos, exports e tipos), Ruff, `conferir_backlog`, `consolidar_registro` e `conferir_docs_versionados` passam;
+- `conferir_csp`: 10 scripts inline com hash, sem sobra (a CSP não mudou);
+- orçamento de carregamento: Dashboard 257 124 B gzip (teto 260 000), Login 142 010 B (teto 155 000), Landing 265 163 B estimados (teto 289 800);
+- o pedaço da página tem 16,3 kB (5,95 kB gzip), carregado só nessa rota.
+
+**Veredito.** A lista de espera está pronta para revisão. O `UI-14` **não fecha** com a PR: fecha no release, com a 022 aplicada antes do merge em `main`, o expurgo agendado, um envio de teste real e a remoção pelo SQL de saída.
+
+**Adaptação.**
+- **Cores em tokens.** A paleta da página foi para o `theme.css` (tokens `--le-*`), porque o `tema.test.ts` proíbe cor crua fora dele.
+- **Exceções declaradas.** A rota pública entrou na lista justificada do `test_privilegio_minimo.py`, nos dois sentidos: o método do banco que toca o cliente da ingestão e a rota sem cliente do usuário.
+- **Contraste.** O cinza do texto ficou mais escuro que o da landing: 5:1 em vez de 3,71:1, medido no navegador. A landing segue com o dela; corrigir lá é outro item.
+- **A página não tem os links de seção da landing.** O iframe não recebe âncora do documento de fora; o cabeçalho leva a "Conhecer o projeto".
+- **A prévia de link é a mesma para o site inteiro**, porque o SPA serve um `index.html` só.
+
+**O que deu errado no caminho.**
+- **Escrevi "18/11" em comentários, documentos e na versão do texto, e o trabalho foi em 17/11.** Corrigido em 19/11: o trabalho com 17/11, e a política e a versão do consentimento com a data em que o texto fechou (`2026-11-19`). Conferido que nenhum "18/11" anterior foi tocado.
+- **Três testes de RLS passavam sem a tabela existir.** Contra o `develop`, 29 caíam e 3 passavam: os de privilégio de tabela consultavam o catálogo, que volta vazio sem a tabela. Agora exigem a tabela, e os 32 caem. É o §1 das lições, achado pelo controle e não pela leitura.
+- **Dois guardas antigos reprovaram a primeira versão, com razão:** a rota pública fora da lista de exceções, e cor crua no CSS da página.
+- **Tirar só o link do topo da landing não derruba o teste**, que exige ao menos um link, e o da chamada final continua. Só a sabotagem dos dois foi acusada. Decidido manter: a garantia é "a landing leva à lista", não "por dois caminhos".
+- **A prévia aprovada empurrava o texto para baixo** quando o formulário se abria (`align-items: center`), apontado pelo autor numa captura. Corrigido alinhando pelo topo, e medido: o título não se move com o cartão crescendo 233 px.
+- **O primeiro servidor de desenvolvimento abriu o checkout principal** (o `launch.json` da pasta de fora aponta para ele), e a worktree não tinha o `frontend/.env`, gitignorado: página em branco, com o erro do Supabase no console. Corrigido com uma entrada própria e a cópia do `.env`, ainda ignorado.
+- **Um script de edição quebrou nas aspas triplas do Python** ao inserir as sabotagens; refeito pela ferramenta de edição.
+- **A contagem do frontend sobe 49, e os testes novos são 48** (21 + 27); a diferença de 1 não foi investigada.
+- **A sessão parou entre 17/11 e 19/11** pelo limite de uso. Em 19/11 as suítes e as 7 sabotagens novas rodaram de novo depois da troca de data.
+
+**Risco em aberto.**
+- **O teto é global.** Uma enxurrada esgota as 100 por hora e bloqueia inscrições legítimas por até 1 h; o limite por IP no firewall da Vercel é decisão do autor (linha do `UI-14`).
+- **Não há confirmação por e-mail**, então dá para inscrever endereço alheio, e sair exige pedir pelo contato. Declarado na política; é o `LGPD-14` (L3).
+- **Nada rodou na produção:** a 022, a rota, o `pg_cron` do expurgo e a prévia do link no WhatsApp e no Instagram (a imagem é o ícone de 512 px).
+- **Para o TCC, não serve à pergunta de pesquisa.** É divulgação. No texto, cabe como exemplo de privacidade desde o projeto.
+- **A área de `web-app/` e `frontend/src/` é do Codex** pelo `AGENTS.md`. O plano disse isso, e o autor aprovou o plano com a página.
+
+**Procedência.** Branch `feature/UI-14-lista-de-espera` sobre `develop` `47982e4`; commits de 17/11, às 23:33, e de 19/11. Postgres 17 em Docker local (`postgres:17`). Prévias na pasta temporária da sessão, fora do repositório. Windows 11.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

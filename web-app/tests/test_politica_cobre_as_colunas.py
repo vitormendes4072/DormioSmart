@@ -129,3 +129,50 @@ def test_o_leitor_de_migracoes_acha_as_colunas_de_verdade():
         assert arquivo >= "014", f"public.{funcao} lida de {arquivo}, não da versão mais recente"
         assert {"enmo_media", "g_x", "fs_features", "captured_at"} <= set(colunas)
         assert len(colunas) >= 20
+
+
+# ── A lista de espera (UI-14, migração 022) ──────────────────────────────────
+#
+# Outra tabela, de quem não tem conta, descrita na seção 2.6. A lista de colunas vem da criação da
+# tabela (tudo o que fica guardado, inclusive o que o banco preenche sozinho) e é conferida contra o
+# `insert` da função de inscrição, para que uma coluna nova num dos dois lados não passe calada.
+LISTA_MIGRACAO = "022_lista_de_espera.sql"
+LISTA_DESCRICAO = {
+    "email": "endereço de e-mail",
+    "nome": "como você prefere ser chamado",
+    "consentimento_versao": "a versão do texto que você aceitou",
+    "inscrito_em": "a data da inscrição",
+}
+# `id` é a chave técnica da linha: não identifica ninguém e não sai do banco.
+LISTA_SEM_DESCRICAO = {"id"}
+
+
+def _colunas_da_lista():
+    sql = (MIGRACOES / LISTA_MIGRACAO).read_text(encoding="utf-8")
+    corpo = re.search(r"create table if not exists public\.lista_de_espera \((.*?)\n\);", sql, re.S).group(1)
+    tabela = [linha.split()[0] for linha in corpo.splitlines()
+              if linha.strip() and not linha.strip().startswith(("constraint", "--", "and ", "email ~", "nome is",
+                                                                   "char_length"))]
+    insert = re.search(r"insert\s+into\s+public\.lista_de_espera\s*\((.*?)\)", sql, re.S).group(1)
+    return tabela, [c.strip() for c in insert.split(",")]
+
+
+def test_toda_coluna_da_lista_tem_descricao():
+    tabela, inseridas = _colunas_da_lista()
+    assert set(inseridas) <= set(tabela), f"a inscrição grava colunas fora da tabela: {inseridas}"
+    sem = [c for c in tabela if c not in LISTA_DESCRICAO and c not in LISTA_SEM_DESCRICAO]
+    assert not sem, (f"public.lista_de_espera guarda {sem}, que a política não descreve. Descreva na seção 2.6 "
+                     "e acrescente a LISTA_DESCRICAO neste teste.")
+
+
+def test_a_descricao_da_lista_esta_na_secao_26():
+    secao = _secao(_texto_publicavel(), "### 2.6", "## 3.")
+    faltando = [(c, d) for c, d in LISTA_DESCRICAO.items() if d.lower() not in secao]
+    assert not faltando, f"trechos ausentes da seção 2.6: {faltando}"
+
+
+def test_o_leitor_acha_as_colunas_da_lista():
+    """Guarda do próprio teste: se o regex parar de casar, os dois acima passariam vazios."""
+    tabela, inseridas = _colunas_da_lista()
+    assert tabela == ["id", "email", "nome", "consentimento_versao", "inscrito_em"], tabela
+    assert inseridas == ["email", "nome", "consentimento_versao"], inseridas

@@ -9,6 +9,7 @@ import consentimento
 import dispositivos
 import features_noite
 import inferencia
+import lista_de_espera
 import lote
 import perfil
 from auth import extrair_bearer, require_auth
@@ -323,6 +324,39 @@ def init_routes(app):
         if not recibo:
             return jsonify({"error": "consentimento nao registrado (fonte indisponivel)"}), 503
         return jsonify(recibo), 200
+
+    @app.route('/api/lista-de-espera', methods=['POST'])
+    def inscrever_na_lista_de_espera():
+        """A lista de espera do lançamento (UI-14). Pública: quem se inscreve não tem conta.
+
+        A resposta de sucesso é a MESMA para e-mail novo, e-mail repetido e pedido que caiu no
+        campo-isca: nenhuma delas pode servir para descobrir quem está na lista, nem para o
+        robô saber que foi barrado. O teto por hora é do banco (022) e volta como 429.
+        """
+        if (request.content_length or 0) > lista_de_espera.CORPO_MAX:
+            return jsonify({"error": "pedido grande demais"}), 413
+        if not request.is_json:
+            return jsonify({"error": "envie JSON"}), 415
+        corpo = request.get_json(silent=True)
+        recebido = {"status": "inscrito"}
+        if lista_de_espera.eh_isca(corpo):
+            logger.info("lista de espera: pedido com o campo-isca preenchido, descartado")
+            return jsonify(recebido), 200
+        try:
+            email, nome = lista_de_espera.validar(corpo)
+        except lista_de_espera.VersaoDesatualizada:
+            return jsonify({"error": "versao do texto desatualizada",
+                            "versao_vigente": lista_de_espera.VERSAO}), 409
+        except lista_de_espera.PedidoInvalido as e:
+            return jsonify({"error": str(e), "campo": e.campo}), 400
+        resultado = db.inscrever_na_lista_de_espera(email, nome, lista_de_espera.VERSAO)
+        if resultado == "lista_cheia":
+            resposta = jsonify({"error": "muitas inscricoes agora; tente de novo daqui a pouco"})
+            resposta.headers["Retry-After"] = "600"
+            return resposta, 429
+        if resultado != "inscrito":
+            return jsonify({"error": "fonte de dados indisponivel"}), 503
+        return jsonify(recebido), 200
 
     @app.route('/api/devices')
     @require_auth
