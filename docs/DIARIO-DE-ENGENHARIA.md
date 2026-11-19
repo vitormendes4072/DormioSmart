@@ -11420,6 +11420,43 @@ O desenho da página foi aprovado pelo autor numa prévia estática, em cinco ro
 
 **Procedência.** Branch `bugfix/UI-14-titulo-e-cartao` sobre `develop` `cf3975e`; Windows 11; 19/11.
 
+# 2026-11-19 (vi) — o favicon das páginas públicas
+
+**O problema, como foi entendido no início.** O autor pediu um favicon. Nenhuma página declarava ícone de aba, e não havia `/favicon.ico`. A aba mostrava o ícone genérico do navegador.
+
+**Hipótese de trabalho.** A marca para isso já existia: o ícone do app instalado (`icone-192.png` e `icone-512.png`), o traçado de movimento sobre o azul. Bastava reduzi-lo e declará-lo nas duas entradas públicas, o `index.html` (o app e a lista de espera) e a `landing-prototipo.html`.
+
+**O que foi testado, e como.**
+- `favicon.ico` (16, 32 e 48 px) e `favicon-32.png`, gerados do `icone-512.png` com o Pillow 12.1.0; o de 32 px conferido a olho.
+- **Três testes no `padraoVisual.test.ts`:** cada página declara os dois ícones, e os arquivos declarados existem em `public/`.
+- **Duas sabotagens:** a landing sem os links; e o `index.html` apontando para um arquivo que não existe.
+- **Suítes:** o frontend completo, lint, Knip, build (os dois arquivos no `dist/`), `conferir_csp` e o orçamento da landing.
+- **No servidor da worktree**, pelo navegador: os links na página e os dois arquivos servidos.
+
+**Resultado medido.**
+- `favicon.ico` com 2 030 B; `favicon-32.png` com 613 B.
+- **Frontend:** **715 passam, 52 arquivos** (Windows, Node 22).
+- **Sabotagens:** cada uma derruba o teste certo; a do arquivo inexistente derruba também o da declaração.
+- **CSP:** 10 scripts com hash, sem sobra (só a cabeça da landing mudou, sem script). **Landing:** 265 337 B, teto 289 800.
+- **No servidor:** `/favicon.ico` `200 image/x-icon`; `/favicon-32.png` `200 image/png`; 2 links de ícone na landing servida.
+
+**Veredito.** Pronto, na mesma PR do ajuste do título (#227). Vai ao ar no próximo release.
+
+**Adaptação.**
+- **O ícone do iPhone segue o `icone-192.png`, que o `index.html` já declarava.** O de 180 px gerado no caminho foi descartado.
+- **O padrão ganhou a seção 7**, "O ícone da aba", no `docs/PADRAO-VISUAL.md`.
+
+**O que deu errado no caminho.**
+- **O primeiro controle positivo se sabotou a si mesmo.** O Git Bash converte em caminho do Windows todo argumento que começa com `/`, e isso fez duas coisas:
+  - a sabotagem do `index.html` não se aplicou;
+  - a restauração da primeira sabotagem falhou, e a landing ficou sem os links do favicon.
+
+  O resultado da segunda rodada, que parecia acusar, acusava a landing quebrada pela primeira. Os links foram repostos e conferidos. Depois as sabotagens foram refeitas com `MSYS_NO_PATHCONV=1` e restauradas por `git checkout` a partir de um commit, o que não depende de argumento. É o §1 das lições: o instrumento acusando pelo mecanismo errado.
+
+**Risco em aberto.** O ícone na aba da produção só será visto depois do release. Navegadores guardam favicon em cache, então pode demorar a trocar para quem já visitou o site.
+
+**Procedência.** Branch `bugfix/UI-14-titulo-e-cartao`, commit do favicon; Windows 11; 19/11.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
