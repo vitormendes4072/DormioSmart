@@ -54,7 +54,7 @@ export function Noite() {
         </>
       ) : (
         <p className="text-sm text-muted-foreground">
-          O registro da noite inteira só funciona no app Android do Dormio: o navegador desliga o
+          O registro da noite inteira só funciona no app Android do Smart Dormio: o navegador desliga o
           sensor quando a tela bloqueia.
         </p>
       )}
