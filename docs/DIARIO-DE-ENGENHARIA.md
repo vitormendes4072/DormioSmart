@@ -11880,3 +11880,49 @@ O GitHub Releases dá o endereço fixo (`releases/latest/download/smart-dormio.a
 - **O Play Protect pode avisar na instalação.**
 
 **Procedência.** PR #236 (`076c2f1`); release `app-v1.1.0`; APK de `develop` `ac24598`; deploy `7926247819`; conferências desta máquina em 19/11.
+
+# 2026-11-21 (i) — APP-18: "o Smart Dormio" dentro do app e a tela de abertura com a marca
+
+**O problema, como foi entendido no início.** Desde o `APP-17`, o ícone e o nome na tela inicial do celular são "Smart Dormio", mas o app por dentro dizia "o Dormio" em quatro textos (`CartaoDaNoite.tsx`, três; `Noite.tsx`, um) e abria com a tela padrão do Capacitor (os 11 `res/drawable*/splash.png`).
+
+**Hipótese de trabalho.** O Android mostra a abertura de dois jeitos:
+- **no 10 e no 11** (o Moto E7 do autor), o `splash.png` inteiro como fundo da janela (`android:background` do `AppTheme.NoActionBarLaunch`);
+- **do 12 em diante**, o ícone do app sobre `windowSplashScreenBackground`, ignorando o `splash.png`.
+
+Então bastam três mudanças: os textos; os 11 PNGs refeitos com a marca, por script, para serem reproduzíveis; e o fundo da abertura declarado branco, para as duas versões ficarem iguais e o modo escuro não escurecer a do 12.
+
+**O que foi testado, e como.**
+- **Testes novos no `appAndroid.test.ts`, escritos antes da mudança:**
+  - as duas telas sem "Dormio" que não venha depois de "Smart";
+  - os 11 `splash.png`: fora da lista de hashes do Capacitor, no tamanho certo, cantos brancos, o azul da marca (`#35A2EF`) na faixa do meio, o desenho com 40% do lado menor e centralizado. O PNG é decodificado no próprio teste (`node:zlib`), sem dependência nova;
+  - o `windowSplashScreenBackground` `#FFFFFF` no tema da abertura.
+- **Contra o código de `develop`:** os 14 caíram (2 de texto, 11 de imagem, 1 do tema).
+- **Controle positivo da leitura das imagens:** com a lista de hashes esvaziada numa cópia do teste, as 11 imagens do Capacitor caíram pela checagem de pixel ("pixels no azul da marca: 0"), e não só pelo hash.
+- **Suítes:** `npx vitest run`, `lint`, `knip`, `knip:tipos`, `npm run build`, `ruff` no script; `npm run build:app` e `./gradlew testDebugUnitTest assembleDebug`.
+- **No emulador Pixel 6 (API 37):** o APK de depuração instalado, o app aberto a frio nos modos claro e escuro, oito capturas seguidas em cada um.
+
+**Resultado medido.**
+- **Frontend:** 754 passam, 55 arquivos (eram 740; +14). Lint, Knip e Knip de tipos saem com 0; o build passa; o Ruff, sem erro.
+- **Android:** `testDebugUnitTest` **34 passam**, 0 falhas; `app-debug.apk` com 6 528 378 B. Windows, JDK 21 do Android Studio.
+- **No emulador:** nos dois modos, a primeira captura depois da abertura é a marca empilhada azul sobre branco; depois, a tela de login. No modo escuro, entre a abertura e o login, há um quadro preto: é o WebView carregando sob o tema do app (`AppTheme.NoActionBar`, `DayNight`), e não a abertura. Esse quadro não foi comparado com o de antes desta mudança.
+
+**Veredito.** O app chama o produto de "Smart Dormio" nas telas da noite e abre com a marca. O `APP-18` está fechado.
+
+**Adaptação.**
+- **O texto do consentimento também diz "O Dormio"** (`lib/consentimento.ts`) e ficou de fora: mudá-lo é mudar a versão do consentimento nos três lugares, com migração, e pedir o aceite de novo a quem já aceitou. Virou o `LGPD-15` (L3, decisão do autor). O teste novo declara a exclusão.
+- **O `postSplashScreenTheme` previsto saiu:** o Capacitor troca o tema com `setTheme` na `BridgeActivity` e não chama `installSplashScreen`, então o atributo não teria efeito.
+- **O `versionCode` não subiu nesta branch:** a landing monta o link do download com o `versionName`, e subir a versão antes da release apontaria para um arquivo que não existe. Sobe no próximo APK (`DISTRIBUICAO-DO-APP.md`, 1.3).
+- **Fora do plano, uma linha:** o `docs/marca/README.md` dizia que o APK "ainda usa os ícones antigos", falso desde o `APP-17`.
+
+**O que deu errado no caminho.**
+- **O primeiro teste de texto passou contra o código antigo.** O arquivo foi gerado por um script Python, e o `\b` da expressão regular virou o caractere de backspace. O controle "tem de falhar em `develop`" pegou; corrigido no arquivo, os dois testes caíram como deviam.
+- **O Gradle recusou começar no Git Bash** ("Unable to establish loopback connection"), mesmo com o `jdk.net.unixdomain.tmpdir` num caminho longo e fora do sandbox. Pelo PowerShell, com a mesma opção, compilou.
+- **A instalação no emulador foi recusada** por assinatura diferente (havia um APK de release instalado). O app foi desinstalado **do emulador**, não de aparelho do autor.
+- **A primeira rodada de capturas não serviu:** o Git Bash converteu os caminhos `/sdcard` do `adb pull`, e depois a interface do sistema do emulador travou logo após o boot a frio ("System UI isn't responding"). Com `MSYS_NO_PATHCONV=1` e o aviso dispensado, as capturas saíram.
+
+**Risco em aberto.**
+- **O caminho do Android 10 e 11 não foi visto num aparelho:** o emulador é API 37. Os testes conferem os arquivos que esse caminho mostra; ver a abertura de fato é no Moto, com o próximo APK.
+- **O `LGPD-15`:** "O Dormio" segue no texto do consentimento até o autor decidir.
+- **O exemplo do modo demonstração** em `Dispositivos.tsx` se chama "Dormio Pillow Sensor". É nome de aparelho fictício, não texto sobre o produto, e ficou como está.
+
+**Procedência.** Branch `feature/APP-18-nome-e-abertura`, sobre `develop` `9f94c1a`; testes e emulador nesta máquina (Windows 11), em 21/11.
