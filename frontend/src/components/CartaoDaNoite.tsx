@@ -197,7 +197,7 @@ export function CartaoDaNoite({
               </div>
               <p className="text-xs text-muted-foreground">
                 Dentro da fronha, não deixe o celular carregando: bateria abafada esquenta. Se o
-                aparelho passar de 45 °C, o Dormio encerra a noite sozinho.
+                aparelho passar de 45 °C, o Smart Dormio encerra a noite sozinho.
               </p>
             </fieldset>
           )}
@@ -311,7 +311,7 @@ export function CartaoDaNoite({
 
         {estado && estado.recusadasPorTaxa > 0 && estado.epocasGravadas === 0 && (
           <p className="text-sm text-destructive" role="alert">
-            O sensor deste aparelho está fora da taxa que o Dormio aceita (40 a 60 Hz). As épocas
+            O sensor deste aparelho está fora da taxa que o Smart Dormio aceita (40 a 60 Hz). As épocas
             estão sendo recusadas.
           </p>
         )}
@@ -324,7 +324,7 @@ export function CartaoDaNoite({
             className="inline-flex items-center gap-2 text-sm text-amber-600 underline"
           >
             <BatteryWarning className="w-4 h-4" aria-hidden />
-            Permitir que o Dormio funcione com a economia de bateria
+            Permitir que o Smart Dormio funcione com a economia de bateria
           </button>
         )}
       </div>
