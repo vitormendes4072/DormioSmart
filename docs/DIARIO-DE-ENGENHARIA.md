@@ -12029,3 +12029,36 @@ Então bastam três mudanças: os textos; os 11 PNGs refeitos com a marca, por s
 - **O bloco vence por posição e especificidade.** Uma regra nova mais específica, escrita depois, pode voltar a encolher um texto; o teste confere o bloco, e não o tamanho computado.
 
 **Procedência.** Branch `feature/UI-35-textos-pequenos`, sobre `develop` `0b2764d`; medições no navegador do app (Chromium) e testes nesta máquina (Windows 11), em 21/11.
+
+# 2026-11-21 (iv) — VAL-01: a noite já captada, e o aviso de 30/10 superado
+
+**O problema, como foi entendido no início.** A linha do `VAL-01` ainda abria com o aviso de 30/10, "LEIA ANTES DE CAPTAR UMA NOITE": com o firmware de então, a noite sairia sem o vetor de features. Ao listar o backlog em 21/11, isso foi lido como "falta a primeira noite útil com o travesseiro", e o autor corrigiu: ele já tinha gravado com o travesseiro.
+
+**Hipótese de trabalho.** A corrente que motivou o aviso (`ARQ-01` → `FW-05` → `DATA-07b`) fechou entre 30/10 e 12/11, e a noite de 17/11 (diário, 17/11 (ii)) rodou com o firmware C2. Se o log dela mostrar o vetor em todas as épocas, o aviso está superado e o `VAL-01` tem a "noite captada"; o que falta são as outras partes do item.
+
+**O que foi testado, e como.** Os dois logs da noite (`noite-fw18-fw14-2026-11-17.log` e `…-parte2.log`, fora do repositório) foram lidos por um script:
+- as linhas de época (`[epoca N] total …, taxa … Hz, com f|sem f`);
+- as respostas dos lotes (`[lote] HTTP …: N aceitas, M rejeitadas`).
+
+**Resultado medido.**
+- **800 épocas registradas, 800 "com f", 0 "sem f".**
+- **Taxa:** 40,4 a 50,8 Hz, mediana 50,6.
+- **Envio:** 49 lotes, **812 épocas aceitas e 0 rejeitadas**. Houve respostas `200` e um envio com `HTTP -1`, falha de conexão do lado da placa.
+- **Janela do registro:** 02:44 às 11:10 de 17/11.
+
+**Veredito.** O aviso de 30/10 está superado: a noite captada existe e saiu com o vetor. O `VAL-01` continua aberto pelo que falta:
+- **o consumo medido:** a placa estava no USB (`HW-02`, `HW-10`);
+- **a estabilidade:** o sensor ficou mudo às 09:37 (`HW-11`);
+- **uma noite na bateria**, dentro do travesseiro, com o `HW-04`.
+
+**Adaptação.** A linha do `VAL-01` ganhou a situação de 21/11 no topo, e o texto antigo ficou logo abaixo, marcado como superado. O quadro do caminho crítico e o item 5 da lista de prioridades receberam a mesma nota. A contagem não muda: o item segue aberto.
+
+**O que deu errado no caminho.**
+- **Eu repeti o aviso velho ao listar o backlog**, sem conferir se a corrente já tinha fechado, e chamei de "primeira noite útil" algo que o próprio diário de 17/11 já tinha registrado. O autor corrigiu.
+- **Os logs não estavam em `dados-locais/` dentro do repositório**, como diz a procedência de 17/11 (ii), e sim em `dados-locais/` na pasta acima dele.
+
+**Risco em aberto.**
+- **As épocas no banco não foram conferidas:** o log mostra o aceite do servidor, mas não as features derivadas gravadas. Conferir é uma consulta na conta do autor.
+- **As 800 do log e as 812 aceitas não batem exatamente:** o log de época pode ter perdido linhas na serial, o defeito do `FW-19`, cuja correção ainda não foi gravada na placa.
+
+**Procedência.** Logs da noite de 17/11 nesta máquina, lidos em 21/11; branch `docs/VAL-01-situacao`, sobre `develop` `95d5dcd`.
