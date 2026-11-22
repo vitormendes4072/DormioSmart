@@ -88,7 +88,7 @@ a marca empilhada vira uma faixa azul sem letra legível.
 - **Os arquivos que o site usa** são gerados destes e ficam em `frontend/public/`:
   `favicon.ico`, `favicon-32.png`, `icone-192.png`, `icone-512.png` e `icone-maskable-512.png`
   (`PADRAO-VISUAL.md`, seção 7).
-- **O app Android (APK)** ainda usa os ícones antigos: é o `APP-17`.
+- **O app Android (APK)** usa a marca empilhada no ícone desde o 1.1.0 (`APP-17`) e na tela de abertura desde o `APP-18`, gerada por `scripts/gerar_splash_android.py`.
 
 ## 4. Cores
 

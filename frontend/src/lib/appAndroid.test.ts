@@ -2,6 +2,7 @@
 // APP-17: o APK novo com a marca e o download publicado na landing.
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
+import { inflateSync } from "node:zlib";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { URL_DO_APK, VERSAO_DO_APP_ANDROID } from "./appAndroid";
@@ -76,5 +77,134 @@ describe("o app instalado", () => {
       // Largura e altura ficam no cabeçalho IHDR do PNG, nos bytes 16 a 23.
       expect([png.readUInt32BE(16), png.readUInt32BE(20)], `${densidade}/${nome}`).toEqual([dp * fator, dp * fator]);
     }
+  });
+});
+
+// APP-18: o nome e a marca dentro do app.
+describe("os textos das telas do app", () => {
+  // As telas que só existem no app Android. O texto do consentimento
+  // (`lib/consentimento.ts`) também diz "O Dormio", mas mudá-lo é mudar a versão
+  // do consentimento nos três lugares e pedir o aceite de novo a quem já
+  // aceitou: fica fora daqui, de propósito.
+  const TELAS = ["src/components/CartaoDaNoite.tsx", "src/pages/Noite.tsx"];
+
+  it.each(TELAS)("%s chama o produto de Smart Dormio, e não de \"o Dormio\"", (tela) => {
+    const soltos = ler(tela).match(/(?<!Smart )\bDormio\b/g) ?? [];
+    expect(soltos, tela).toEqual([]);
+  });
+});
+
+/** Decodifica um PNG de 8 bits RGB ou RGBA, sem entrelaçamento: o que o Android usa aqui. */
+function lerPng(caminho: string) {
+  const png = readFileSync(resolve(caminho));
+  const largura = png.readUInt32BE(16);
+  const altura = png.readUInt32BE(20);
+  const [profundidade, tipo, , , entrelacado] = png.subarray(24, 29);
+  if (profundidade !== 8 || (tipo !== 2 && tipo !== 6) || entrelacado !== 0) {
+    throw new Error(`${caminho}: PNG fora do formato esperado (profundidade ${profundidade}, tipo ${tipo})`);
+  }
+  const canais = tipo === 6 ? 4 : 3;
+  const partes: Buffer[] = [];
+  for (let i = 8; i < png.length; ) {
+    const tamanho = png.readUInt32BE(i);
+    if (png.toString("latin1", i + 4, i + 8) === "IDAT") partes.push(png.subarray(i + 8, i + 8 + tamanho));
+    i += tamanho + 12;
+  }
+  const bruto = inflateSync(Buffer.concat(partes));
+  const linha = largura * canais;
+  const px = Buffer.alloc(linha * altura);
+  for (let y = 0; y < altura; y++) {
+    const filtro = bruto[y * (linha + 1)];
+    for (let x = 0; x < linha; x++) {
+      const v = bruto[y * (linha + 1) + 1 + x];
+      const a = x >= canais ? px[y * linha + x - canais] : 0;
+      const b = y > 0 ? px[(y - 1) * linha + x] : 0;
+      const c = x >= canais && y > 0 ? px[(y - 1) * linha + x - canais] : 0;
+      const paeth = () => {
+        const p = a + b - c;
+        const [pa, pb, pc] = [Math.abs(p - a), Math.abs(p - b), Math.abs(p - c)];
+        return pa <= pb && pa <= pc ? a : pb <= pc ? b : c;
+      };
+      const previsto = [0, a, b, (a + b) >> 1, paeth()][filtro];
+      px[y * linha + x] = (v + previsto) & 0xff;
+    }
+  }
+  const rgb = (x: number, y: number) => [...px.subarray(y * linha + x * canais, y * linha + x * canais + 3)];
+  return { largura, altura, rgb };
+}
+
+describe("a tela de abertura do app (Android 10 e 11)", () => {
+  // O `splash.png` padrão do Capacitor, como estava até o APK 1.1.0.
+  const PADRAO_DO_CAPACITOR = new Set([
+    "07fa579e1c83e04ba7f9cbcbfcf41b68e15fe3638f2c44a04e58b809103e6b69",
+    "08cc34ad7713fe7ed58bceaa37b2387b670c53cd60264b4bd6442db3098e75dc",
+    "0c7f1212f25b7b90e9a6e1d320013e4ff3d3e03e634cbb07b7b7981cac51627f",
+    "22f87e1e3bc89aa01a7dbc39c9a4db058cd0bf4ad3fe9f55712bf69eb997f4bf",
+    "3db071a03b2f8ffe0dfd4170fc59842d53cd15bba5e88af59401d58efabf7827",
+    "42aa26392546fcdee1b8d3ac6d4b41bfcceb41dc6a4f3a3c30c24a8a8f4db862",
+    "5cf98b4451bd99b20df26f9e608a46946118be6b0ae90762f9ca1786a30c76ff",
+    "60393ce8636fd263e4e1fea3fd4ab2de948c6295e898fda9b50ac4e5283be809",
+    "b73049cb37fe76d6c11b87a796766bf6af0c85483b31eb6a921657b0d764a4b9",
+    "c5015f4ba3628392b538386c5e210f0b94f352a3160adab934fd0311972137ca",
+  ]);
+  // Os mesmos tamanhos que o Capacitor gera (`scripts/gerar_splash_android.py`).
+  const TAMANHOS: Record<string, [number, number]> = {
+    drawable: [480, 320],
+    "drawable-land-mdpi": [480, 320],
+    "drawable-land-hdpi": [800, 480],
+    "drawable-land-xhdpi": [1280, 720],
+    "drawable-land-xxhdpi": [1600, 960],
+    "drawable-land-xxxhdpi": [1920, 1280],
+    "drawable-port-mdpi": [320, 480],
+    "drawable-port-hdpi": [480, 800],
+    "drawable-port-xhdpi": [720, 1280],
+    "drawable-port-xxhdpi": [960, 1600],
+    "drawable-port-xxxhdpi": [1280, 1920],
+  };
+  const AZUL_DA_MARCA = [0x35, 0xa2, 0xef];
+  const perto = (cor: number[], alvo: number[]) => cor.every((v, i) => Math.abs(v - alvo[i]) <= 6);
+
+  it.each(Object.entries(TAMANHOS))("%s tem a marca azul no centro, sobre branco", (pasta, [largura, altura]) => {
+    const caminho = `android/app/src/main/res/${pasta}/splash.png`;
+    const hash = createHash("sha256").update(readFileSync(resolve(caminho))).digest("hex");
+    expect(PADRAO_DO_CAPACITOR.has(hash), `${pasta}: ainda é a imagem do Capacitor`).toBe(false);
+
+    const img = lerPng(caminho);
+    expect([img.largura, img.altura]).toEqual([largura, altura]);
+    for (const [x, y] of [[0, 0], [largura - 1, 0], [0, altura - 1], [largura - 1, altura - 1]]) {
+      expect(img.rgb(x, y), `${pasta}: canto (${x}, ${y})`).toEqual([255, 255, 255]);
+    }
+
+    // A faixa horizontal do meio: onde há desenho, quanto dele é o azul da marca,
+    // e se a largura do desenho é 40% do lado menor.
+    let esquerda = largura;
+    let direita = -1;
+    let azuis = 0;
+    for (let y = Math.floor(altura * 0.4); y < Math.ceil(altura * 0.6); y++) {
+      for (let x = 0; x < largura; x++) {
+        const cor = img.rgb(x, y);
+        if (cor.some((v) => v < 240)) {
+          esquerda = Math.min(esquerda, x);
+          direita = Math.max(direita, x);
+        }
+        if (perto(cor, AZUL_DA_MARCA)) azuis++;
+      }
+    }
+    expect(azuis, `${pasta}: pixels no azul da marca`).toBeGreaterThan(0);
+    const esperado = Math.min(largura, altura) * 0.4;
+    expect(Math.abs(direita - esquerda + 1 - esperado), `${pasta}: largura da marca`).toBeLessThanOrEqual(esperado * 0.05);
+    expect(Math.abs((esquerda + direita) / 2 - largura / 2), `${pasta}: centralizada`).toBeLessThanOrEqual(2);
+  });
+});
+
+describe("a tela de abertura do app (Android 12 em diante)", () => {
+  it("é branca como a do Android 10 e 11, com o ícone do app", () => {
+    const estilos = ler("android/app/src/main/res/values/styles.xml");
+    const abertura = /<style name="AppTheme\.NoActionBarLaunch"[^>]*>([\s\S]*?)<\/style>/.exec(estilos)?.[1] ?? "";
+    // Sem a cor, o Theme.SplashScreen usa o fundo do sistema, que fica escuro
+    // no modo escuro. O Capacitor troca o tema sozinho (`setTheme` na
+    // BridgeActivity), sem `installSplashScreen`: o `postSplashScreenTheme`
+    // não teria efeito, e por isso não está aqui.
+    expect(abertura).toContain('<item name="windowSplashScreenBackground">#FFFFFF</item>');
   });
 });
