@@ -59,7 +59,7 @@ describe("ListaDeNoites (APP-02, etapa 4)", () => {
     expect(cartoes[0].textContent).toMatch(/Sobre o colchão/);
     expect(cartoes[0].textContent).toMatch(/40 de 100/);
     expect(cartoes[1].textContent).toMatch(/Dentro da fronha/);
-    expect(cartoes[1].textContent).toMatch(/100 %/);
+    expect(cartoes[1].textContent).toMatch(/8h 0m de 8h 0m/);
   });
 
   it("noite encerrada pelo calor diz isso", async () => {
@@ -158,7 +158,7 @@ describe("ListaDeNoites (APP-02, etapa 4)", () => {
   it("noite sem epocas nao ganha o visto de enviada nem o nome do arquivo (achado no percurso)", async () => {
     montar(plugin([{ arquivo: "noite-4.jsonl", epocas: 0, enviadas: 0 }]));
     const cartao = await screen.findByTestId("noite-noite-4.jsonl");
-    expect(cartao.textContent).toMatch(/Noite sem épocas gravadas/);
+    expect(cartao.textContent).toMatch(/Noite sem registros gravados/);
     expect(cartao.textContent).not.toMatch(/noite-4\.jsonl|0 de 0/);
   });
 });

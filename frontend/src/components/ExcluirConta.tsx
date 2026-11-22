@@ -111,8 +111,8 @@ export function ExcluirConta() {
           <p className="text-xs text-muted-foreground">Serão apagados definitivamente:</p>
           <ul className="text-xs text-muted-foreground space-y-1 list-disc pl-4">
             <li>
-              <strong className="text-foreground">Todas as suas leituras</strong> — cada
-              época de movimento já captada, de todas as noites.
+              <strong className="text-foreground">Todos os seus registros</strong> — cada
+              registro de movimento já enviado, de todas as noites.
             </li>
             <li>
               <strong className="text-foreground">Todos os seus dispositivos</strong> — o

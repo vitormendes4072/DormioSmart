@@ -30,6 +30,7 @@ import { calcularCobertura } from "../lib/cobertura";
 import {
   calcularMetricas,
   formatarDuracao,
+  formatarPorcentagem,
   formatarHora,
   prepararSerie,
   type PontoDaSerie,
@@ -77,11 +78,11 @@ function TooltipDoGrafico({
   if (ponto.lacuna) {
     return (
       <div className="bg-card border border-border rounded-xl px-3 py-2 text-sm shadow-2xl">
-        <p className="text-foreground font-semibold">Sem medição</p>
+        <p className="text-foreground font-semibold">Sem registro</p>
         <p className="text-xs text-muted-foreground mt-0.5">
           {ponto.duracaoDaLacunaMs == null
-            ? "trecho sem leitura"
-            : `${formatarDuracao(ponto.duracaoDaLacunaMs)} sem leitura`}
+            ? "trecho sem registro"
+            : `${formatarDuracao(ponto.duracaoDaLacunaMs)} sem registro`}
         </p>
       </div>
     );
@@ -91,7 +92,7 @@ function TooltipDoGrafico({
     <div className="bg-card border border-border rounded-xl px-3 py-2 text-sm shadow-2xl">
       <p className="text-muted-foreground text-xs mb-0.5">{label}</p>
       <p className="text-foreground font-semibold">
-        {ponto.intensidade == null ? "sem leitura" : `${ponto.intensidade.toFixed(2)} m/s²`}
+        {ponto.intensidade == null ? "sem registro" : `${ponto.intensidade.toFixed(2)} m/s²`}
       </p>
       <p className="text-xs mt-0.5" style={{ color: ponto.movimento ? COR_MOVIMENTO : COR_REPOUSO }}>
         {ponto.movimento ? "Movimento" : "Repouso"}
@@ -126,7 +127,7 @@ export function Dashboard() {
   const pausados = dispositivos.filter((d) => !d.revoked_at && d.receber_leituras === false);
   const avisoDePausa = pausados.length > 0 && (
     <p role="status" className="rounded-xl border border-destructive/30 p-3 text-sm text-destructive">
-      <strong>Pausado:</strong> {pausados.map((d) => d.nome).join(", ")}. Leituras recebidas durante a pausa são descartadas.
+      <strong>Pausado:</strong> {pausados.map((d) => d.nome).join(", ")}. Registros recebidos durante a pausa são descartados.
     </p>
   );
   // `limite` explicito (DASH-13): sem ele o backend devolve 20 linhas — dez
@@ -278,7 +279,7 @@ export function Dashboard() {
           não depois — porque é o que decide se eles significam algo. */}
       {recorteParcial && (
         <p role="status" className="rounded-xl border border-border px-3 py-3 text-sm text-muted-foreground">
-          Cobertura parcial: a consulta atingiu o limite de leituras.
+          Período incompleto: só os registros mais recentes foram carregados.
         </p>
       )}
       <AvisoDeLacuna cobertura={cob} />
@@ -295,35 +296,35 @@ export function Dashboard() {
 
       <div className="grid grid-cols-2 gap-2 sm:gap-3 xl:grid-cols-4">
         <CardMetrica
-          rotulo="Tempo medido"
+          rotulo="Tempo registrado"
           valor={formatarDuracao(cob.tempoCobertoMs)}
-          detalhe="Tempo com leituras na janela exibida"
+          detalhe="Sem contar o que ficou sem registro"
           icone={Clock}
           corDoIcone="text-blue-400"
         />
         <CardMetrica
-          rotulo="Leituras com movimento"
-          valor={m.eventosDeMovimento}
-          detalhe={`de ${m.totalLeituras} ${m.totalLeituras === 1 ? "leitura registrada" : "leituras registradas"}`}
+          rotulo="Com movimento"
+          valor={pctMovimento == null ? null : formatarPorcentagem(pctMovimento)}
+          detalhe="do tempo registrado"
           icone={Activity}
           corDoIcone="text-amber-400"
         />
         <CardMetrica
-          rotulo="Maior intervalo sem movimento"
+          rotulo="Maior período sem movimento registrado"
           valor={formatarDuracao(m.maiorPeriodoSemMovimentoMs)}
           // "registrado", e não "houve": a afirmação é sobre o registro do
           // aparelho, não sobre o mundo. Dentro de uma captação o aparelho
           // esteve operando e não registrou movimento; a pausa nunca
           // atravessa uma interrupção, que é o defeito do DASH-09.
-          detalhe="Sem movimento registrado, dentro do tempo medido"
+          detalhe="Não atravessa as pausas do aparelho"
           icone={Pause}
           corDoIcone="text-indigo-400"
         />
         <CardMetrica
-          rotulo="Cobertura da coleta"
-          valor={pctCoberto == null ? null : `${pctCoberto.toFixed(0)}%`}
+          rotulo="Registrado"
+          valor={pctCoberto == null ? null : formatarPorcentagem(pctCoberto)}
           detalhe={pctCoberto == null
-            ? "Janela sem duração calculável"
+            ? "Período sem duração calculável"
             : `${formatarDuracao(cob.tempoCobertoMs)} de ${formatarDuracao(cob.janelaMs)}`}
           icone={Gauge}
           corDoIcone="text-primary"
@@ -336,17 +337,17 @@ export function Dashboard() {
             <div>
               <h2 id="titulo-linha-do-tempo" className="text-base font-semibold text-foreground">Movimento ao longo do tempo</h2>
               <p className="text-xs text-muted-foreground mt-0.5">
-                Desvio do repouso ao longo da captação · |magnitude − 9,81 m/s²|
+                Intensidade do movimento
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted-foreground">
               <span className="flex items-center gap-1.5">
                 <span className="w-3 h-3 rounded-sm inline-block" style={{ background: COR_REPOUSO }} />
-                Intensidade medida
+                Intensidade
               </span>
               <span className="flex items-center gap-1.5">
                 <span className="w-3 h-3 rounded-sm inline-block" style={{ background: COR_MOVIMENTO }} />
-                Leitura com movimento
+                Com movimento
               </span>
               <span className="flex items-center gap-1.5">
                 {/* Tracejada, como a linha do grafico. */}
@@ -354,12 +355,12 @@ export function Dashboard() {
                   className="w-3 inline-block border-t-2 border-dashed"
                   style={{ borderColor: COR_MOVIMENTO }}
                 />
-                Limiar {LIMIAR_DE_MOVIMENTO.toFixed(1).replace(".", ",")}
+                Limite de movimento: {LIMIAR_DE_MOVIMENTO.toFixed(1).replace(".", ",")}
               </span>
               {temLacuna && (
                 <span className="flex items-center gap-1.5">
                   <span className="inline-block size-3 rounded-sm border border-muted-foreground/40 bg-[repeating-linear-gradient(135deg,transparent_0_2px,currentColor_2px_3px)]" />
-                  Sem medição
+                  Sem registro
                 </span>
               )}
             </div>
@@ -459,8 +460,8 @@ export function Dashboard() {
           </div>
           {temLacuna && (
             <figcaption className="mt-3 text-xs text-muted-foreground">
-              As faixas hachuradas indicam intervalos sem medição. A largura das faixas
-              não representa a duração da lacuna.
+              As faixas hachuradas são trechos sem registro. A largura da faixa
+              não representa quanto tempo ele durou.
             </figcaption>
           )}
         </figure>
@@ -520,22 +521,20 @@ export function Dashboard() {
               <thead className="border-b border-border text-xs text-muted-foreground">
                 <tr>
                   <th scope="col" className="pb-2 pr-4">Período</th>
-                  <th scope="col" className="pb-2 pr-4">Tempo medido</th>
-                  <th scope="col" className="pb-2">Cobertura</th>
+                  <th scope="col" className="pb-2">Registrado</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
                 {sessoesRecentes.map((sessao) => {
                   const resumo = calcularCobertura(sessao.leituras);
-                  const cobertura = resumo.janelaMs > 0
-                    ? `${((resumo.tempoCobertoMs / resumo.janelaMs) * 100).toFixed(0)}%`
+                  const registrado = resumo.janelaMs > 0
+                    ? `${formatarDuracao(resumo.tempoCobertoMs)} de ${formatarDuracao(resumo.janelaMs)}`
                     : "—";
                   return (
                     <tr key={sessao.inicio}>
                       <td className="py-3 pr-4">{descreverPeriodo(sessao.inicio, sessao.fim)}</td>
-                      <td className="py-3 pr-4">{formatarDuracao(resumo.tempoCobertoMs)}</td>
                       <td className="py-3">
-                        {cobertura}{borda !== undefined && sessao.leituras.includes(borda) ? " · Parcial" : ""}
+                        {registrado}{borda !== undefined && sessao.leituras.includes(borda) ? " · Parcial" : ""}
                       </td>
                     </tr>
                   );
@@ -550,13 +549,13 @@ export function Dashboard() {
         <div className="lg:col-span-2 bg-card border border-border rounded-2xl p-4 sm:p-6">
           <h3 className="text-sm font-semibold text-foreground">Repouso × Movimento</h3>
           <p className="text-xs text-muted-foreground mt-0.5 mb-5">
-            Proporção do <strong className="font-semibold">tempo medido</strong> — não da
-            contagem de leituras
+            Proporção do <strong className="font-semibold">tempo registrado</strong> — não da
+            quantidade de registros
           </p>
 
           {pctMovimento == null ? (
             <p className="text-sm text-muted-foreground">
-              Sem medição suficiente para calcular proporção.
+              Sem registro suficiente para calcular a proporção.
             </p>
           ) : (
             <div className="space-y-4">
@@ -581,11 +580,11 @@ export function Dashboard() {
                 <p className="text-lg font-bold text-foreground">
                   {formatarHora(m.janela.inicio)}
                 </p>
-                <p className="text-xs text-muted-foreground mt-0.5">Primeira leitura</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Primeiro registro</p>
               </div>
               <div className="text-center">
                 <p className="text-lg font-bold text-foreground">{formatarHora(m.janela.fim)}</p>
-                <p className="text-xs text-muted-foreground mt-0.5">Última leitura</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Último registro</p>
               </div>
             </div>
           ) : null}
@@ -593,9 +592,9 @@ export function Dashboard() {
 
         <div className="lg:col-span-3 bg-card border border-border rounded-2xl p-4 sm:p-6">
           <div className="mb-5">
-            <h3 className="text-sm font-semibold text-foreground">Leituras recentes</h3>
+            <h3 className="text-sm font-semibold text-foreground">Registros recentes</h3>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Amostras individuais, da mais recente para a mais antiga
+              Um por linha, do mais recente para o mais antigo
             </p>
           </div>
 
@@ -645,7 +644,7 @@ export function Dashboard() {
           </div>
 
           <p className="text-xs text-muted-foreground mt-4">
-            Leituras da medição mais recente à mais antiga. Sem horário de medição, vale o horário de chegada.
+            Registros da medição mais recente à mais antiga. Sem horário de medição, vale o horário de chegada.
           </p>
         </div>
       </div>
@@ -718,7 +717,7 @@ function Barra({
       <div className="flex justify-between text-xs mb-1.5">
         <span className="text-muted-foreground">{rotulo}</span>
         <span className="text-foreground font-semibold">
-          {detalhe} · {porcentagem.toFixed(0)}%
+          {detalhe} · {formatarPorcentagem(porcentagem)}
         </span>
       </div>
       <div className="h-1.5 bg-secondary rounded-full overflow-hidden">

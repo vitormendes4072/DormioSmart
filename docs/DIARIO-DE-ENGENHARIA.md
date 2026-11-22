@@ -12334,3 +12334,49 @@ O APK não muda neste release: o app Android recebe o Histórico novo no próxim
 - **Não foi visto com a conta real nem no app Android**, e não se verificou se a conta do autor tem épocas que C ou D atingiriam. A forma da noite de 17/11 veio do log serial, não do banco.
 
 **Procedência.** Branch `bugfix/UI-38-noite-partida`, sobre `develop` `8929530`; Windows 11, Python 3.13, Node 22, Postgres 17 em Docker; 22/11.
+
+# 2026-11-22 (iv) — UI-39: a linguagem das telas depois do login
+
+**O problema, como foi entendido no início.** O autor achou o app técnico e pouco intuitivo. As telas falavam em época, leitura, cobertura, lacuna, token e magnitude, nomes do código e do contrato de dados. O plano aprovado em 22/11 traz um glossário para Início, Noite, Histórico, Dispositivos, Coletar e Configurações, sem mudar o texto do consentimento.
+
+**Hipótese de trabalho.** Dá para trocar a língua sem trocar o que as telas afirmam, desde que cada rótulo novo seja conferido contra a conta que está por trás dele, e que um teste impeça o jargão de voltar.
+
+**O que foi testado, e como.**
+- **`linguagem.test.ts`, escrito antes da mudança:** lê a árvore sintática de todo arquivo que as seis telas alcançam por import, e não uma lista à mão, e reprova jargão fora de "Detalhes técnicos". Tem controle positivo do próprio detector e confere os nomes de botão que a política de privacidade cita.
+- **Testes do que muda de sentido:** "Com pausas", "Incompleta" e "Completa" no Histórico; a porcentagem que não vira "0%" nem "100%"; o cabeçalho com o número de colunas das células.
+- **Vermelho antes da mudança:** 30 testes caíram.
+- **Navegador:** cinco telas com sessão e API de mentira a 360 px, Histórico também a 390 e Início a 1280; o pareamento clicado.
+- **Emulador Pixel 6 descartável (`-read-only`), com sessão e API de mentira:** uma noite de teste de 2 min 30 s, iniciada, lida e encerrada na tela Noite.
+- **Suítes:** frontend, lint, Knip, Knip de tipos, build, orçamento, CSP, backend, Ruff e os testes JVM do app.
+
+**Resultado medido.**
+- **Frontend:** 843 passam, 58 arquivos (eram 831 em 57; +12). Backend: 665 passam, 1 pula. App: 34 testes JVM, 0 falhas.
+- **Pacote:** o painel com 257 425 B comprimidos, teto de 260 000.
+- **Navegador:** nenhum dos termos procurados no texto das telas abertas, e nenhuma página com rolagem horizontal.
+- **Emulador:** "Registros gravados 5", "Registrado 2m 30s de 2m 30s", "Calibrando: 0 de 40 registros parados", "5 registros aguardando envio."
+
+**Veredito.** O glossário está aplicado e guardado por teste. `UI-39` fechado na branch.
+
+**Adaptação.** Onde a troca literal diria mais do que o dado:
+- **"Com lacunas" não virou sempre "Com pausas".** Lacuna inclui atraso de um segundo com o aparelho ligado. "Com pausas" fica para a interrupção medida; o resto é "Incompleta".
+- **Porcentagem:** "<1%" e ">99%", para pouco movimento não virar nenhum e uma noite com pausa não virar 100%.
+- **O cartão de movimento deixou de ser contagem** e passou à fração do tempo registrado, que já alimentava a barra Repouso × Movimento.
+- **"Tempo medido" e "Cobertura" viraram uma coluna, "Registrado X de Y"**, no Histórico e nas sessões recentes.
+- **O CSV não muda:** `origem_temperatura` segue "Chip MPU6050", agora separado do rótulo da tela ("Chip do sensor").
+- **A instrução de gravar o código na placa** ficou em "Detalhes técnicos", aberto, porque sem ela o travesseiro não conecta.
+- **A frase de calibração vem do Android**, e mudou no `Calibracao.java` e no teste dele.
+
+**O que deu errado no caminho.**
+- **A troca deixou um cabeçalho a mais na tabela de sessões recentes**, com os testes de texto sem perceber. Entrou a asserção de colunas.
+- **O primeiro vermelho dessa asserção não valeu:** um `\1` virou caractere de controle no script de edição. O lint pegou, e o controle foi refeito.
+- **O dublê do pareamento devolvia o formato errado** e derrubou a tela na prévia. Corrigido no dublê.
+- **O emulador com 2 GB matou o app por falta de memória**, junto com outros processos. Refeito com 4 GB.
+
+**Risco em aberto.**
+- **O detector é por lista de termos:** jargão novo fora dela passa.
+- **As mensagens que vêm do servidor seguem técnicas e sem acento**, e o título da notificação do Android ainda diz "Dormio" em vez de "Smart Dormio": `UI-41`.
+- **No celular, a tabela do Histórico ainda esconde situação e ações na rolagem lateral, e "Configurações" encosta na borda da barra de baixo:** `UI-41`.
+- **Fórmula, limite, tabela de amostras e números do sensor seguem à vista**, com nome simples, até o `UI-40`.
+- **Não foi visto com a conta real nem em aparelho físico, e nenhum usuário leu os textos novos:** que ficaram mais claros é hipótese.
+
+**Procedência.** Branch `feature/UI-39-linguagem`, sobre `develop` `746a057`; Windows 11, Node (Vitest), Python 3.13, JDK do Android Studio, emulador Pixel 6; 22/11.

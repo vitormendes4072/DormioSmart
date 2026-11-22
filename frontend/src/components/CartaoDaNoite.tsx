@@ -5,11 +5,12 @@ import { Moldura } from "./Blueprint";
 import { TelaDeConsentimento } from "./TelaDeConsentimento";
 import { usePortaoDoConsentimento } from "../hooks/usePortaoDoConsentimento";
 import { type EnviarLote, contarRestantes, enviarNoites } from "../lib/envioDaNoite";
+import { formatarDuracao } from "../lib/metricas";
 import {
   type EstadoDaNoite,
   type PluginNoite,
   Noite,
-  coberturaDaNoite,
+  registradoDaNoite,
   POSICOES,
   type Posicao,
   noiteInterrompida,
@@ -96,9 +97,9 @@ export function CartaoDaNoite({
       const r = await enviarNoites(plugin, enviar, setProgresso);
       setRestantes(r.restantes);
       const partes: string[] = [];
-      if (r.confirmadas > 0) partes.push(`${r.confirmadas} épocas enviadas.`);
+      if (r.confirmadas > 0) partes.push(`${r.confirmadas} ${r.confirmadas === 1 ? "registro enviado" : "registros enviados"}.`);
       if (r.rejeitadas > 0) {
-        partes.push(`${r.rejeitadas} recusadas pelo servidor (${r.primeiraRejeicao ?? "sem motivo"}).`);
+        partes.push(`${r.rejeitadas} ${r.rejeitadas === 1 ? "recusado" : "recusados"} pelo servidor (${r.primeiraRejeicao ?? "sem motivo"}).`);
       }
       if (r.erro) partes.push(r.erro);
       setResultado(partes.length ? partes.join(" ") : "Nada a enviar.");
@@ -141,7 +142,7 @@ export function CartaoDaNoite({
 
   const interrompida = estado ? noiteInterrompida(estado) : false;
   const ativa = (estado?.ativa ?? false) && !interrompida;
-  const cobertura = estado ? coberturaDaNoite(estado, agora()) : null;
+  const registrado = estado ? registradoDaNoite(estado, agora()) : null;
 
   return (
     <Moldura>
@@ -242,7 +243,7 @@ export function CartaoDaNoite({
 
         {enviar && restantes !== null && restantes > 0 && !ativa && (
           <div className="flex flex-wrap items-center gap-3 text-sm">
-            <span className="text-muted-foreground">{restantes} épocas aguardando envio.</span>
+            <span className="text-muted-foreground">{restantes} {restantes === 1 ? "registro" : "registros"} aguardando envio.</span>
             <button
               type="button"
               disabled={enviando}
@@ -257,7 +258,7 @@ export function CartaoDaNoite({
 
         {enviando && progresso && (
           <p className="text-sm text-muted-foreground" aria-live="polite">
-            Enviando: {progresso.confirmadas} de {progresso.total} épocas. Mantenha o app aberto.
+            Enviando: {progresso.confirmadas} de {progresso.total} registros. Mantenha o app aberto.
           </p>
         )}
 
@@ -282,17 +283,17 @@ export function CartaoDaNoite({
         )}
         {estado && (estado.ativa || estado.epocasGravadas > 0) && (
           <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
-            <dt className="text-muted-foreground">Épocas gravadas</dt>
+            <dt className="text-muted-foreground">Registros gravados</dt>
             <dd className="tabular-nums">{estado.epocasGravadas}</dd>
-            <dt className="text-muted-foreground">Cobertura</dt>
+            <dt className="text-muted-foreground">Registrado</dt>
             <dd className="tabular-nums">
-              {cobertura === null ? "—" : `${Math.round(cobertura * 100)} %`}
+              {registrado === null ? "—" : `${formatarDuracao(registrado.registradoMs)} de ${formatarDuracao(registrado.periodoMs)}`}
             </dd>
-            <dt className="text-muted-foreground">Taxa do sensor</dt>
+            <dt className="text-muted-foreground">Ritmo do sensor</dt>
             <dd className="tabular-nums">{estado.taxaHz > 0 ? `${estado.taxaHz.toFixed(1)} Hz` : "—"}</dd>
-            <dt className="text-muted-foreground">Recusadas por taxa</dt>
+            <dt className="text-muted-foreground">Descartados pelo ritmo do sensor</dt>
             <dd className="tabular-nums">{estado.recusadasPorTaxa}</dd>
-            <dt className="text-muted-foreground">Retomadas</dt>
+            <dt className="text-muted-foreground">Vezes retomada</dt>
             <dd className="tabular-nums">{estado.retomadas}</dd>
             {estado.temperaturaC !== undefined && (
               <>
@@ -311,8 +312,8 @@ export function CartaoDaNoite({
 
         {estado && estado.recusadasPorTaxa > 0 && estado.epocasGravadas === 0 && (
           <p className="text-sm text-destructive" role="alert">
-            O sensor deste aparelho está fora da taxa que o Smart Dormio aceita (40 a 60 Hz). As épocas
-            estão sendo recusadas.
+            O sensor deste aparelho está fora do ritmo que o Smart Dormio aceita (40 a 60 Hz). Os registros
+            estão sendo descartados.
           </p>
         )}
 

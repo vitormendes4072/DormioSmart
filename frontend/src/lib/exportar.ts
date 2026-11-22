@@ -37,6 +37,14 @@ export const COLUNAS = [
 ] as const;
 
 /**
+ * O valor da coluna `origem_temperatura`. E contrato do arquivo: nao acompanha
+ * o rotulo da tela, que o UI-39 trocou por "Chip do sensor".
+ */
+function origemNoCsv(tipo: Dispositivo["tipo"] | undefined): string | null {
+  return tipo === "travesseiro" ? "Chip MPU6050" : origemDaTemperatura(tipo);
+}
+
+/**
  * Escapa um campo para CSV (RFC 4180).
  *
  * Necessario de verdade: `status` e texto livre vindo do dispositivo. Um
@@ -69,7 +77,7 @@ export function gerarCsv(leituras: LeituraSono[], dispositivos: Dispositivo[] = 
         escapar(leitura.temp),
         escapar(leitura.status),
         escapar(ehMovimento(leitura.status) ? "1" : "0"),
-        escapar(leitura.temp == null ? null : origemDaTemperatura(tipos.get(leitura.device_id ?? ""))),
+        escapar(leitura.temp == null ? null : origemNoCsv(tipos.get(leitura.device_id ?? ""))),
         escapar(leitura.bancada === true ? "1" : "0"),
       ].join(","),
     );

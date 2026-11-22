@@ -195,18 +195,18 @@ export function ListaDeNoites({
                     ? "Noite em andamento"
                     : r.inicio
                       ? r.inicio.toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })
-                      : "Noite sem épocas gravadas"}
+                      : "Noite sem registros gravados"}
                 </h3>
                 <span className="text-xs text-muted-foreground">{rotuloDaPosicao(n.notas?.posicao)}</span>
               </div>
               <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
                 <dt className="text-muted-foreground">Duração</dt>
                 <dd className="tabular-nums">{r.duracaoMs > 0 ? formatarDuracao(r.duracaoMs) : "—"}</dd>
-                <dt className="text-muted-foreground">Épocas</dt>
+                <dt className="text-muted-foreground">Registros</dt>
                 <dd className="tabular-nums">{n.epocas}</dd>
-                <dt className="text-muted-foreground">Cobertura</dt>
+                <dt className="text-muted-foreground">Registrado</dt>
                 <dd className="tabular-nums">
-                  {r.cobertura === null ? "—" : `${Math.round(r.cobertura * 100)} %`}
+                  {r.cobertura === null ? "—" : `${formatarDuracao(Math.round(r.cobertura * r.duracaoMs))} de ${formatarDuracao(r.duracaoMs)}`}
                 </dd>
                 {!n.teste && !n.ativa && n.epocas > 0 && (
                   <>

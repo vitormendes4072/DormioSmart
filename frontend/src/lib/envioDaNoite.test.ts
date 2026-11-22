@@ -145,7 +145,7 @@ describe("enviarNoites (APP-02, etapa 3)", () => {
     expect(f.ponto["noite-1.jsonl"]).toBe(20);
     expect(r.confirmadas).toBe(0);
     expect(r.restantes).toBe(80);
-    expect(r.erro).toMatch(/60 épocas ficaram pendentes/);
+    expect(r.erro).toMatch(/60 registros ficaram pendentes/);
   });
 
   it("o servidor para de avancar no meio: o laco para ali, com o que ja entrou marcado", async () => {

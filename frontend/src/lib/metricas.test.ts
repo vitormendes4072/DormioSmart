@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { GRAVIDADE, type LeituraSono } from "../types/sleep";
-import { calcularMetricas, formatarDuracao, prepararSerie } from "./metricas";
+import { calcularMetricas, formatarDuracao, formatarPorcentagem, prepararSerie } from "./metricas";
 
 const MINUTO = 60_000;
 
@@ -304,5 +304,18 @@ describe("prepararSerie marca onde faltou medicao", () => {
     for (let i = 0; i <= 6; i++) leituras.push(leitura(i));
     const m = calcularMetricas(leituras);
     expect(prepararSerie(leituras, m.cobertura).some((p) => p.lacuna)).toBe(false);
+  });
+});
+
+describe("formatarPorcentagem (UI-39)", () => {
+  it("não arredonda pouco para nada, nem quase tudo para tudo", () => {
+    expect(formatarPorcentagem(0)).toBe("0%");
+    expect(formatarPorcentagem(0.2)).toBe("<1%");
+    expect(formatarPorcentagem(7.1)).toBe("7%");
+    expect(formatarPorcentagem(99.6)).toBe(">99%");
+    expect(formatarPorcentagem(100)).toBe("100%");
+    // A soma em ponto flutuante não pode virar "<1%" nem ">99%".
+    expect(formatarPorcentagem(1e-12)).toBe("0%");
+    expect(formatarPorcentagem(99.99999999999999)).toBe("100%");
   });
 });

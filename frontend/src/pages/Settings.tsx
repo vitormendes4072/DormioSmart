@@ -157,7 +157,7 @@ function SecaoDispositivos() {
     <Secao
       titulo="Meus dispositivos"
       icone={Cpu}
-      aviso="Cada aparelho que envia leituras aparece aqui. Você pode renomear ou remover a qualquer momento."
+      aviso="Cada aparelho que envia registros aparece aqui. Você pode renomear ou remover a qualquer momento."
     >
       <MeusDispositivos />
     </Secao>
@@ -187,7 +187,7 @@ function SecaoDados() {
       const dispositivos = await listarDispositivos().catch(() => []);
       baixarCsv(leituras, dispositivos);
     } catch {
-      setErro("Não foi possível carregar suas leituras para exportar.");
+      setErro("Não foi possível carregar seus registros para exportar.");
     } finally {
       setExportando(false);
     }
@@ -197,7 +197,7 @@ function SecaoDados() {
     <Secao
       titulo="Seus dados"
       icone={Shield}
-      aviso="Exporta suas leituras em CSV — instante, magnitude, intensidade, temperatura, origem da temperatura e estado."
+      aviso="Exporta seus registros em CSV — horário, valor do sensor, intensidade do movimento, temperatura, origem da temperatura e estado."
     >
       <button
         onClick={exportar}
@@ -216,7 +216,7 @@ function SecaoDados() {
 
       {vazio ? (
         <p className="text-xs text-muted-foreground mt-3">
-          Não há leituras para exportar — o dispositivo ainda não enviou dados.
+          Não há registros para exportar — o dispositivo ainda não enviou dados.
         </p>
       ) : null}
       {erro ? <p className="text-xs text-destructive mt-3">{erro}</p> : null}
