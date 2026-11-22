@@ -91,6 +91,83 @@ describe("a escala segue a da home", () => {
   });
 });
 
+describe("os textos pequenos da home (UI-35)", () => {
+  // Medido em 21/11 no navegador, a 1280 e a 390 px: estes textos da home saíam com 7 a 10 px,
+  // abaixo do mínimo de 11 px do padrão (seção 3). A correção é um bloco de estilo próprio, o
+  // último da página e com `#screen-landing` na frente, para vencer as regras anteriores,
+  // inclusive as das larguras menores. O celular desenhado (`#sd-phone`) fica de fora: é
+  // ilustração na escala do aparelho.
+  const estilos = [...landing.matchAll(/<style([^>]*)>([\s\S]*?)<\/style>/g)];
+  const ultimo = estilos.at(-1)!;
+  const bloco = ultimo[2];
+
+  /** O tamanho declarado para um seletor dentro do bloco, ou `null` se ele não aparece. */
+  function tamanho(seletor: string): number | null {
+    for (const m of bloco.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+      const seletores = m[1].replace(/@media[^{]*\{/, "");
+      if (!seletores.includes(seletor)) continue;
+      const fs = m[2].match(/font-size:\s*([\d.]+)px/);
+      if (fs) return Number(fs[1]);
+    }
+    return null;
+  }
+
+  it("o bloco do UI-35 é o último estilo da página", () => {
+    expect(ultimo[1]).toMatch(/id="ui-35-textos-minimos"/);
+  });
+
+  it("nenhum tamanho do bloco fica abaixo de 11 px", () => {
+    const pequenos = [...bloco.matchAll(/font-size:\s*([\d.]+)px/g)].map((m) => Number(m[1])).filter((n) => n < 11);
+    expect(pequenos).toEqual([]);
+  });
+
+  it("todas as regras do bloco começam por #screen-landing", () => {
+    const seletores = [...bloco.replace(/\/\*[\s\S]*?\*\//g, "").matchAll(/([^{}]+)\{[^{}]*\}/g)]
+      .flatMap((m) => m[1].replace(/@media[^{]*\{/, "").split(/,(?![^(]*\))/))
+      .map((s) => s.trim())
+      .filter(Boolean);
+    expect(seletores.length).toBeGreaterThan(0);
+    expect(seletores.filter((s) => !s.startsWith("#screen-landing"))).toEqual([]);
+  });
+
+  it.each([
+    [".lp-kicker", 11],
+    [".lp-overline", 11],
+    [".lp-spec-row span", 12],
+    [".lp-spec-note", 12],
+    [".lp-footer", 11.5],
+    [".lp-limit-box p", 11.5],
+    [".lp-proofbar small", 11],
+    [".lp-proof-icon", 11],
+    [".lp-flow-number", 11],
+    [".beta-panel-label", 11],
+    [".lp-demo-chip", 11],
+    [".lp-play-symbol", 11],
+    [".lp-sim-chart-head b", 11],
+    [".lp-state", 11],
+    [".lp-sim-disclaimer>span", 11],
+    [".lp-final-cta p", 11],
+    [".sd-quicknav-heading>span", 11],
+    [".sd-quicknav-num", 11],
+    [".sdx-switch", 11],
+    [".sdx-leader-num", 11],
+    [".sdx-leader-name", 11],
+    [".sdx-fact-number", 11],
+    [".sdx-fact small", 11],
+    [".sdm-eyebrow", 11],
+    [".sdm-badge", 11],
+    [".sdm-segments button", 11],
+    [".sdm-visual-toolbar button", 11],
+    [".public-btn", 11],
+  ])("%s tem %s px no bloco", (seletor, px) => {
+    expect(tamanho(seletor)).toBe(px);
+  });
+
+  it("o botão do cabeçalho só é tocado na largura em que encolhia (até 650 px)", () => {
+    expect(bloco).toMatch(/@media\(max-width:650px\)\{#screen-landing \.public-actions \.public-btn\{font-size:11px\}\}/);
+  });
+});
+
 describe("o ícone da aba (favicon)", () => {
   const indice = readFileSync(new URL("../index.html", import.meta.url), "utf8");
   const icones = (html: string) => [...html.matchAll(/<link[^>]*rel="icon"[^>]*>/g)].map((m) => m[0].match(/href="([^"]+)"/)?.[1]);

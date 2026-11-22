@@ -65,16 +65,16 @@ que não tem especificidade.
 | Navegação | 13 px | 650 | normal | 1,5 | `.public-navlinks a` | — |
 | Botão do cabeçalho | 12 px | 800 | normal | 1,5 | `.public-actions .public-btn` | `.le-acoes .le-btn` |
 | Botão grande | 13 px | 800 | normal | 1,5 | `.public-btn.large` | `.le-btn.grande` |
-| Selo do topo (pílula) | 10 px na home · **11 px** no padrão | 850 | 0,9 px, maiúsculas | — | `.lp-kicker` | `.le-kicker` |
-| Sobrelinha | 10 px na home · **11 px** no padrão | 850 | 1,35 px, maiúsculas | — | `.lp-overline` | `.le-sobrelinha` |
+| Selo do topo (pílula) | **11 px** ✏️ *(na home desde o `UI-35`; antes, 10)* | 850 | 0,9 px, maiúsculas | — | `.lp-kicker` | `.le-kicker` |
+| Sobrelinha | **11 px** ✏️ *(na home desde o `UI-35`; antes, 10)* | 850 | 1,35 px, maiúsculas | — | `.lp-overline` | `.le-sobrelinha` |
 | Número em destaque | 17 px | 700 | −0,5 px | 1,5 | `.lp-spec-row strong` | `.le-spec strong` |
-| Legenda do número | 11 px na home · **12 px** no padrão | 400 | normal | 1,5 | `.lp-spec-row span` | `.le-spec span` |
-| Nota pequena | 11 px na home · **12 px** no padrão | 400 | normal | 1,55 | `.lp-spec-note` | `.le-spec-nota` |
-| Rodapé | 9 px na home · **11,5 px** no padrão | 400 | normal | 1,5 | `.lp-footer-links a` | `.le-rodape-links a` |
+| Legenda do número | **12 px** ✏️ *(na home desde o `UI-35`; antes, 10 a 1280 px e 11 em telas menores)* | 400 | normal | 1,5 | `.lp-spec-row span` | `.le-spec span` |
+| Nota pequena | **12 px** ✏️ *(na home desde o `UI-35`; antes, 9 e 11)* | 400 | normal | 1,55 | `.lp-spec-note` | `.le-spec-nota` |
+| Rodapé | **11,5 px** ✏️ *(na home desde o `UI-35`; antes, 9)* | 400 | normal | 1,5 | `.lp-footer-links a` | `.le-rodape-links a` |
 
 **O tamanho mínimo de texto é 11 px** (decisão do autor, 19/11, opção A). Onde a home usa
 menos (rodapé com 9 px, legendas e notas com 10 e 11 px), **a página nova segue o mínimo, e
-não a home**. Subir os textos pequenos da própria home é o `UI-35`. Texto de consentimento ou
+não a home**. ✏️ *21/11, `UI-35`: a home também segue o mínimo.* Um bloco de estilo próprio, o último da landing (`<style id="ui-35-textos-minimos">`), sobe para 11 px (12 e 11,5 px onde a tabela pede) todo texto da home que saía menor, a 1280 e a 390 px; o `padraoVisual.test.ts` confere o bloco. **Fica de fora o celular desenhado** (`#sd-phone`): é uma ilustração na escala do aparelho, e os textos dele seguem com 7 a 10 px. Texto de consentimento ou
 de aviso legal: no mínimo 11,5 px; a caixa de consentimento usa 13 px.
 
 ## 4. Cores
