@@ -11972,3 +11972,60 @@ Então bastam três mudanças: os textos; os 11 PNGs refeitos com a marca, por s
 - **O `LGPD-15`:** o texto do consentimento segue com "O Dormio".
 
 **Procedência.** PRs #239 (`fcc9f11`) e #240 (`495f879`); release `app-v1.1.1`; APK de `develop` `fcc9f11`; deploy `7971735657`; conferências desta máquina em 21/11.
+
+# 2026-11-21 (iii) — UI-35: nenhum texto da home abaixo de 11 px
+
+**O problema, como foi entendido no início.** O padrão visual (`docs/PADRAO-VISUAL.md`, seção 3) fixa 11 px como o menor texto, desde 19/11. A home ficou de fora: medido naquele dia, a 1280 px, rodapé com 9 px, o texto da caixa de limites com 10, selos, sobrelinhas e legendas dos números com 10 a 11.
+
+**Hipótese de trabalho.** A landing é um arquivo só (`landing-prototipo.html`, ~280 KB), com o estilo em camadas: regras antigas, depois ajustes por largura, depois ajustes com `#screen-landing` na frente. Corrigir declaração por declaração (são 260 com menos de 11 px, a maioria de telas e ilustrações que a home nem mostra) espalharia a mudança e arriscaria o desenho. Então:
+- **medir no navegador o que a home de fato mostra** abaixo de 11 px, nas duas larguras;
+- **corrigir só isso, num bloco próprio**, o último da página, com `#screen-landing` na frente de cada regra, para vencer as anteriores, inclusive as das larguras menores;
+- **deixar de fora o celular desenhado** (`#sd-phone`): é ilustração na escala de um aparelho, e subir os textos dele desmontaria o desenho.
+
+**O que foi testado, e como.**
+- **Medição:** um script no console percorre todo elemento com texto próprio dentro de `#screen-landing`, visível, fora do `#sd-phone`, e lista os de `font-size` computado abaixo de 11 px.
+  - Antes da mudança: a 1280 e a 390 px.
+  - Depois: com o bloco novo injetado no fim da página carregada (o servidor de prévia servia o checkout principal, e não a worktree), a 340, 390, 768 e 1280 px; e de novo depois de clicar em todos os botões da página (até 80, fora do celular desenhado) e de abrir o menu de seções do celular.
+- **Testes novos no `padraoVisual.test.ts`, escritos antes da mudança:**
+  - o bloco `ui-35-textos-minimos` é o último estilo da página;
+  - nenhum tamanho dele fica abaixo de 11 px;
+  - toda regra dele começa por `#screen-landing`;
+  - cada um dos 28 seletores medidos tem o tamanho do padrão;
+  - o botão do cabeçalho só é tocado até 650 px.
+- **Contra o código de `develop`:** 27 dos novos caíram. O "nenhum abaixo de 11" passou, porque o bloco não existia.
+- **Suítes:** `npx vitest run`, `lint`, `knip`, `knip:tipos`, `npm run build`, `scripts/conferir_csp.py` e `scripts/conferir_pacote_frontend.py`.
+
+**Resultado medido.**
+- **No navegador:** a 1280 px, **46 → 0** textos abaixo de 11 px; a 390 px, **43 → 0**. Depois dos cliques e do menu, 0 nas duas. Sem rolagem horizontal a 340, 390, 768 e 1280 px; a página ficou 35 px mais alta a 1280 e 81 px a 390. O botão do cabeçalho segue com 12 px a 1280.
+- **Os tamanhos:**
+  - selos e sobrelinhas, 11 px;
+  - legendas e notas dos números, 12 px;
+  - rodapé e o texto da caixa de limites, 11,5 px (é aviso, e o padrão quer aviso com 11,5);
+  - o restante, 11 px.
+- **Frontend:** 786 passam, 55 arquivos (eram 754; +32). Lint, Knip e Knip de tipos saem com 0; o build passa.
+- **CSP:** 12 scripts inline, todos com hash. O bloco novo é estilo, e o `style-src` já aceita estilo inline.
+- **Orçamento da landing:** 274 803 B transferidos estimados, teto 289 800 B; o bloco soma cerca de 0,5 KB comprimido.
+
+**Veredito.** A home segue o mínimo de 11 px, a não ser no celular desenhado. O `UI-35` está fechado.
+
+**Adaptação.**
+- **A lista de textos cresceu na medição.** Além do que o `UI-35` citava, saíram abaixo de 11 px:
+  - os números da faixa de provas e os de "Como funciona";
+  - o rótulo do painel do app;
+  - os botões e os rótulos das peças do explorador de hardware, e os do estudo dimensional;
+  - o estado da simulação;
+  - no celular, os botões do cabeçalho e o menu de seções.
+
+  Dois só apareceram com interação: os rótulos do "foco na peça" e o menu de seções.
+- **O celular desenhado ficou de fora**, de propósito, com 7 a 10 px. Se o autor quiser o mínimo também nele, é um item novo, que pede redesenhar a tela do aparelho.
+
+**O que deu errado no caminho.**
+- **O servidor de prévia abriu o checkout principal, e não a worktree.** A medição depois da mudança foi feita injetando o bloco, idêntico ao do arquivo, no fim da página carregada. A conferência do arquivo em si ficou com os testes.
+- **A primeira inserção do bloco não rodou:** a checagem de "27 blocos de estilo" do script contava ocorrências de `<style` que não são blocos. Tirada a checagem, a inserção foi pelo último `</style>`.
+- **O script de registro não rodou no Git Bash** (o heredoc foi recusado) e foi gravado como arquivo.
+
+**Risco em aberto.**
+- **Só o que os cliques alcançam foi medido.** Um estado que só aparece com o tempo (a simulação rodando até o fim, por exemplo) pode ter texto menor. As regras do bloco valem por classe, e não por estado, o que cobre os estados conhecidos.
+- **O bloco vence por posição e especificidade.** Uma regra nova mais específica, escrita depois, pode voltar a encolher um texto; o teste confere o bloco, e não o tamanho computado.
+
+**Procedência.** Branch `feature/UI-35-textos-pequenos`, sobre `develop` `0b2764d`; medições no navegador do app (Chromium) e testes nesta máquina (Windows 11), em 21/11.
