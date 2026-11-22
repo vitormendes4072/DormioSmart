@@ -791,8 +791,22 @@ describe("avisos no painel (UI-18)", PRAZO, () => {
 
   it("lacuna: mostra o aviso quando há interrupção no recorte", async () => {
     await montarComLeituras([0, 30, 180, 210], 30);
-    fireEvent.click(await screen.findByRole("button", { name: /ver todas/i }));
+    // UI-38: a pausa curta fica na sessao, e o aviso aparece sem "Ver todas".
+    expect(screen.queryByRole("button", { name: /ver todas/i })).toBeNull();
     expect(screen.getByText(lacuna)).toBeTruthy();
+  });
+
+  it("UI-38: a bancada marcada corta a sessão, e não vira pausa", async () => {
+    const agora = Date.now();
+    responderHistorico(async () => respostaJson(Array.from({ length: 50 }, (_, i) => ({
+      created_at: new Date(agora - i * 30_000).toISOString(),
+      movimento_total: 9.81, temp: null, status: "Repouso", epoca_segundos: 30,
+      device_id: "d1", bancada: i >= 20 && i < 30,
+    }))));
+    await montar("/dashboard");
+    await screen.findByRole("heading", { name: "Leituras recentes" });
+    expect(screen.queryByText(lacuna)).toBeNull();
+    expect(screen.getByRole("button", { name: /ver todas/i })).toBeTruthy();
   });
 
   it("lacuna: omite o aviso com cobertura contínua", async () => {

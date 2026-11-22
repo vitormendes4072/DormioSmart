@@ -26,7 +26,7 @@ import { nomeDoPerfil } from "../lib/perfil";
 import { useHistorico } from "../hooks/useHistorico";
 import { LIMITE_DO_PAINEL } from "../lib/api";
 import { origemDaTemperatura, classificarUltimoEnvio, descreverRecorte, descreverUltimoContato, serieMisturaInstrumentos, type Dispositivo } from "../lib/dispositivos";
-import { agruparEmSessoes, calcularCobertura } from "../lib/cobertura";
+import { calcularCobertura } from "../lib/cobertura";
 import {
   calcularMetricas,
   formatarDuracao,
@@ -44,7 +44,7 @@ import {
 } from "../types/sleep";
 import { AvisoDeLacuna, NotaDeInferencia } from "../components/AvisoDeLacuna";
 import { SeletorDeSessao } from "../components/SeletorDeSessao";
-import { semBancada } from "../lib/trecho";
+import { semBancada, sessoesDaMarca } from "../lib/trecho";
 
 /**
  * Cores da serie via token, nao hex cru (BRAND-01).
@@ -211,7 +211,10 @@ export function Dashboard() {
   //
   // Por padrão mostra a ÚLTIMA sessão, que é a resposta para "e agora?".
   // Quem quiser o histórico inteiro troca no seletor.
-  const sessoes = agruparEmSessoes(leituras);
+  //
+  // UI-38: recebe também a bancada, para cortar onde ela está. Sem o corte, a
+  // bancada marcada no meio apareceria como pausa do aparelho.
+  const sessoes = sessoesDaMarca(recebidas, false);
   const sessoesRecentes = sessoes.slice(-3).reverse();
   const ultima = sessoes.length > 0 ? sessoes[sessoes.length - 1] : null;
   const leiturasVisiveis = verTudo || ultima === null ? leituras : ultima.leituras;
@@ -243,7 +246,7 @@ export function Dashboard() {
     ? descreverPeriodo(cob.trechos[0].inicio, cob.trechos[cob.trechos.length - 1].fim)
     : undefined;
   // A tabela promete "da mais recente para a mais antiga". A API devolve
-  // assim, mas `agruparEmSessoes` reordena crescente para poder recortar — no
+  // assim, mas o agrupamento reordena crescente para poder recortar — no
   // modo padrão a tabela mostrava as MAIS ANTIGAS sob o rótulo contrário, e a
   // ordem virava sozinha ao clicar "Ver todas" (DASH-11). Ordenar aqui deixa a
   // promessa valer nos dois modos.
