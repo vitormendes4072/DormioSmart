@@ -4,10 +4,10 @@ import { useLocation } from "react-router";
 import { BarraDoWorkspace } from "../components/BarraDoWorkspace";
 import { Carregando, FalhaAoCarregar } from "../components/EstadoDaTela";
 import { apagarSessao, buscarJanelaDoHistorico, ErroApi, marcarSessao, MAX_PAGINAS_DO_HISTORICO } from "../lib/api";
-import { agruparEmSessoes, calcularCobertura } from "../lib/cobertura";
+import { calcularCobertura } from "../lib/cobertura";
 import { estaEmModoDemo } from "../lib/demo";
 import { formatarDuracao } from "../lib/metricas";
-import { ehBancada, trechoDaSessao, type Trecho } from "../lib/trecho";
+import { sessoesDaMarca, trechoDaSessao, type Trecho } from "../lib/trecho";
 import { instanteDaLeitura, type LeituraSono } from "../types/sleep";
 
 const DIA_MS = 24 * 60 * 60 * 1000;
@@ -21,6 +21,7 @@ const DATA_E_HORA = new Intl.DateTimeFormat("pt-BR", {
 type Linha = {
   chave: string;
   inicio: number;
+  fim: number;
   tempo: number;
   cobertura: number | null;
   leituras: number;
@@ -44,35 +45,34 @@ const SESSOES_DO_PROTOTIPO: Array<[number, number, number, number, number, numbe
 const EXEMPLOS = SESSOES_DO_PROTOTIPO.map(([ano, mes, dia, minutos, cobertura, leituras, lacunas]) => {
   const inicio = new Date(ano, mes - 1, dia, 22).getTime();
   return {
-    chave: String(inicio), inicio, tempo: minutos * 60_000,
+    chave: String(inicio), inicio, fim: inicio + minutos * 60_000, tempo: minutos * 60_000,
     cobertura, leituras, lacunas,
   };
 });
 
 function resumirSessoes(leituras: LeituraSono[], desdeMs: number, truncada: boolean): Linha[] {
   const borda = truncada ? leituras.at(-1) : undefined;
-  // DATA-16: a bancada é agrupada à parte, para que uma sessão marcada não se
-  // junte a uma normal do mesmo aparelho e as duas virem uma só na tela.
-  const porGrupo = new Map<string, { id: string | null; bancada: boolean; leituras: LeituraSono[] }>();
+  // UI-38: o banco age por janela de tempo, sem olhar a marca. Por isso a
+  // sessão normal e a de bancada do mesmo aparelho nunca dividem uma janela.
+  const porAparelho = new Map<string | null, LeituraSono[]>();
   for (const leitura of leituras) {
     // A API recorta pela chegada. Exclui medições antigas enviadas com atraso.
     if (!(Date.parse(instanteDaLeitura(leitura)) >= desdeMs)) continue;
     const id = leitura.device_id ?? null;
-    const bancada = ehBancada(leitura);
-    const chave = `${id ?? "sem-dispositivo"}:${bancada ? "bancada" : "normal"}`;
-    const grupo = porGrupo.get(chave);
-    if (grupo) grupo.leituras.push(leitura);
-    else porGrupo.set(chave, { id, bancada, leituras: [leitura] });
+    const grupo = porAparelho.get(id);
+    if (grupo) grupo.push(leitura);
+    else porAparelho.set(id, [leitura]);
   }
 
-  return Array.from(porGrupo.values(), ({ id, bancada, leituras: grupo }) =>
-    agruparEmSessoes(grupo).map((sessao) => {
+  return Array.from(porAparelho, ([id, grupo]) => [false, true].flatMap((bancada) =>
+    sessoesDaMarca(grupo, bancada).map((sessao, i) => {
       const cobertura = calcularCobertura(sessao.leituras);
       return {
-        chave: `${id ?? "sem-dispositivo"}:${bancada ? "bancada" : "normal"}:${sessao.inicio}`,
-        trecho: trechoDaSessao(sessao.leituras),
+        chave: `${id ?? "sem-dispositivo"}:${bancada ? "bancada" : "normal"}:${sessao.inicio}:${i}`,
+        trecho: trechoDaSessao(sessao.leituras, grupo),
         bancada,
         inicio: sessao.inicio,
+        fim: sessao.fim,
         tempo: cobertura.tempoCobertoMs,
         cobertura: cobertura.janelaMs > 0 ? (100 * cobertura.tempoCobertoMs) / cobertura.janelaMs : null,
         leituras: sessao.leituras.length,
@@ -80,7 +80,7 @@ function resumirSessoes(leituras: LeituraSono[], desdeMs: number, truncada: bool
         parcial: borda !== undefined && sessao.leituras.includes(borda),
       };
     }),
-  ).flat().sort((a, b) => b.inicio - a.inicio);
+  )).flat().sort((a, b) => b.inicio - a.inicio);
 }
 
 export function Historico() {
@@ -242,7 +242,8 @@ function SessoesDaConta({ dias }: { dias: number }) {
         <div role="alertdialog" aria-label="Confirmar exclusão da sessão"
           className="mb-3 space-y-3 rounded-xl border border-destructive/40 bg-destructive/5 p-3 text-xs text-foreground">
           <p>
-            Excluir a sessão de <strong>{DATA_E_HORA.format(confirmando.inicio)}</strong>, com{" "}
+            Excluir a sessão de <strong>{DATA_E_HORA.format(confirmando.inicio)}</strong> até{" "}
+            <strong>{DATA_E_HORA.format(confirmando.fim)}</strong>, com{" "}
             <strong>{confirmando.leituras} {confirmando.leituras === 1 ? "leitura" : "leituras"}</strong>?
             As épocas são apagadas do servidor e não há como desfazer.
           </p>

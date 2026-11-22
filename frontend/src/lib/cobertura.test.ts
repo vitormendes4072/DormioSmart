@@ -214,9 +214,9 @@ describe("o recorte muda o que o painel afirma", () => {
     expect(janelaDaUltima).toBeLessThan(10 * 60_000);
   });
 
-  it("dentro de uma sessao nao ha lacuna", () => {
-    // E a definicao: sessao E trecho coberto. Se sobrasse lacuna dentro,
-    // o agrupamento estaria errado.
+  it("sem pausa tolerada, a sessao nao inventa lacuna", () => {
+    // UI-38: a sessao pode conter pausa de ate 15 min. Aqui o silencio e de
+    // 105 min: separa, e cada lado fica sem lacuna.
     const leituras = [leitura(0), leitura(1), leitura(107), leitura(108)];
     for (const s of agruparEmSessoes(leituras)) {
       expect(calcularCobertura(s.leituras).lacunas).toHaveLength(0);
@@ -301,18 +301,20 @@ describe("jitter de rede nao e o aparelho parar", () => {
     expect(pausaDe(leituras)!).toBeLessThan(10 * MIN);
   });
 
-  it("tres intervalos de silencio separam; dois nao", () => {
+  it("tres intervalos de silencio sao interrupcao; dois nao", () => {
     // O criterio: ao menos duas leituras esperadas nao chegaram. Uma leitura
     // perdida e soluco de rede — o app descarta a epoca sem amostra e nao
     // regrava envio que falhou, entao intervalo dobrado e operacao normal.
     const uma = serie({ n: 30, intervaloMs: 30_000, epoca: 30 });
     const comSoluco = [...uma];
     comSoluco.splice(15, 1); // uma leitura some -> intervalo dobra
-    expect(agruparEmSessoes(comSoluco)).toHaveLength(1);
+    expect(calcularCobertura(comSoluco).interrupcoes).toHaveLength(0);
 
     const comParada = [...uma];
     comParada.splice(15, 3); // tres somem -> intervalo quadruplica
-    expect(agruparEmSessoes(comParada)).toHaveLength(2);
+    expect(calcularCobertura(comParada).interrupcoes).toHaveLength(1);
+    // UI-38: interrupcao curta se mede e se avisa, mas nao parte a sessao.
+    expect(agruparEmSessoes(comParada)).toHaveLength(1);
   });
 
   it("NAO HA PENHASCO: envio a cada 2x a epoca continua sendo uma captacao", () => {
@@ -541,5 +543,65 @@ describe("DASH-12 — a base de tempo e a medicao, nao a chegada", () => {
     const c = calcularCobertura([nova, antiga]);
     expect(c.trechos[0].inicio).toBe(BASE - 60_000);
     expect(agruparEmSessoes([nova, antiga])).toHaveLength(1);
+  });
+});
+
+describe("pausa curta nao parte a sessao (UI-38)", () => {
+  const EPOCA = 30_000;
+
+  /** Blocos continuos de epocas de 30 s, com o silencio pedido entre eles. */
+  function blocos(tamanhos: number[], silenciosMs: number[]): LeituraSono[] {
+    const lista: LeituraSono[] = [];
+    let t = 0;
+    tamanhos.forEach((n, bloco) => {
+      if (bloco > 0) t += silenciosMs[bloco - 1];
+      for (let i = 0; i < n; i++) {
+        t += EPOCA;
+        lista.push({
+          created_at: new Date(BASE + t).toISOString(),
+          movimento_total: GRAVIDADE + 0.2,
+          temp: null,
+          status: "Repouso",
+          epoca_segundos: 30,
+        });
+      }
+    });
+    return lista;
+  }
+
+  // A forma da noite de 17/11 (horarios sinteticos): uma queda no comeco e o
+  // sensor mudo por ~2 min perto do fim. O painel mostrava so os 40 min finais.
+  const noite = blocos([11, 708, 81], [129_000, 91_000]);
+
+  it("a noite com duas pausas curtas e uma sessao so", () => {
+    const sessoes = agruparEmSessoes(noite);
+    expect(sessoes).toHaveLength(1);
+    expect(sessoes[0].leituras).toHaveLength(800);
+    expect(sessoes[0].fim - sessoes[0].inicio).toBe(800 * EPOCA + 129_000 + 91_000);
+  });
+
+  it("as pausas seguem como interrupcao e fora do tempo registrado", () => {
+    const c = calcularCobertura(agruparEmSessoes(noite)[0].leituras);
+    expect(c.interrupcoes).toHaveLength(2);
+    expect(c.tempoCobertoMs).toBe(800 * EPOCA);
+  });
+
+  it("a maior pausa sem movimento nao atravessa a interrupcao", () => {
+    const sessoes = agruparEmSessoes(noite);
+    expect(sessoes).toHaveLength(1);
+    expect(pausaDe(sessoes[0].leituras)).toBe(708 * EPOCA);
+  });
+
+  it("15 min exatos ficam na sessao; um segundo a mais separa", () => {
+    expect(agruparEmSessoes(blocos([20, 20], [15 * MIN]))).toHaveLength(1);
+    expect(agruparEmSessoes(blocos([20, 20], [15 * MIN + 1000]))).toHaveLength(2);
+  });
+
+  it("duas horas de silencio continuam separando duas noites", () => {
+    expect(agruparEmSessoes(blocos([100, 100], [120 * MIN]))).toHaveLength(2);
+  });
+
+  it("a tolerancia e por pausa, e nao somada", () => {
+    expect(agruparEmSessoes(blocos([20, 20, 20], [10 * MIN, 10 * MIN]))).toHaveLength(1);
   });
 });

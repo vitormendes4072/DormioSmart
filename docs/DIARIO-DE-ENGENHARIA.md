@@ -12284,3 +12284,53 @@ O APK não muda neste release: o app Android recebe o Histórico novo no próxim
 - **Entre o deploy e a 024**, o site pede a versão nova e o banco ainda tem a antiga: um aceite feito nessa janela é recusado.
 
 **Procedência.** Branch `feature/LGPD-15-consentimento-smart-dormio`, sobre `develop` `778c17c`; Windows 11, Python 3.13, Node 22, Postgres 17 em Docker; 22/11.
+
+# 2026-11-22 (iii) — UI-38: a noite partida por pausa curta, e o alcance de excluir e marcar
+
+**O problema, como foi entendido no início.** O painel e o Histórico abriam uma sessão nova a cada silêncio de cerca de 90 s (três intervalos de envio). No log serial de 17/11, duas quedas curtas partiam a noite em três sessões, e o painel mostraria os 40 min finais como a última. O autor aprovou juntar pausas de até 15 min.
+
+**Hipótese de trabalho.** "O aparelho parou?" e "começou outra sessão?" pedem limites diferentes. `calcularCobertura` continua medindo a interrupção em cerca de 90 s; só o agrupamento tolera 15 min. Parecia uma mudança só de leitura, sem efeito sobre o banco.
+
+**O que foi testado, e como.**
+- **A hipótese, antes do commit:** o alcance de excluir, com o código do app e a migração 023 num Postgres 17 local. Ela caiu (ver Adaptação).
+- **Testes escritos antes de cada mudança:** 6 da tolerância; depois 10 de `trecho.test.ts`, 10 de `Historico.test.tsx` e 1 do painel. Dos 21 últimos, 20 caíram contra o código só com a tolerância; o que passou é o controle de que época de outro aparelho não trava a ação.
+- **Tela contra banco, fora da suíte:** a `resumirSessoes` real, empacotada da página, lendo os instantes no formato do Postgres; o `ler_trecho` real; `apagar_trecho` e `marcar_trecho` reais, como `authenticated`. São quatro casos fixos e 1 000 sorteados (semente 38: marcas alternadas, microssegundos, empates, pausas de 0 a 60 min). A mesma sonda rodou contra o `develop`, como controle positivo.
+- **Navegador:** a worktree servida com sessão e API de mentira, em 360, 390 e 1280 px; exclusão e desmarcação clicadas.
+- **Suítes:** frontend, lint, Knip, Knip de tipos, build, orçamento do pacote, CSP, backend, RLS e Ruff.
+
+**Resultado medido.**
+- **Frontend:** 831 passam, 57 arquivos (eram 804; +27). Backend: 665 passam, 1 pula. RLS: 323 passam.
+- **Pacote:** o painel com 257 512 B comprimidos, teto de 260 000.
+- **Os casos que motivaram a mudança de plano** (tela mostra → banco apaga):
+
+  | Caso | `develop` | Só a tolerância | Com a correção |
+  |---|---|---|---|
+  | A. bancada curta dentro da sessão normal | 20→20 | **40→50** | 20→20 |
+  | B. normal curto entre duas bancadas | 20→20 | **40→50** | 20→20 |
+  | C. uma época normal entre duas bancadas | **40→41** | **40→41** | 20→20 |
+  | D. instante com microssegundos | **4→3** | **4→3** | 4→4 |
+
+  No `develop` e com a correção, marcar deu os mesmos números de excluir.
+- **Sonda inteira:** com a correção, 0 divergências em 4 990 ações, nenhuma recusada pelo backend, e 16 linhas de 2 511 sem ação, por não haver janela exata. No `develop`, 5 198 divergências em 5 798 ações. Os dados sorteados são carregados de microssegundos de propósito: a proporção não é taxa da produção.
+
+**Veredito.** A noite com pausa curta é uma sessão só, e, nos casos exercitados, excluir e marcar alcançam só o que a linha mostra. `UI-38` fechado na branch. C e D continuam na produção até o release.
+
+**Adaptação.** O plano parou antes do commit, foi reportado, e o autor aprovou incluir a correção:
+- **a sessão é cortada onde a marca muda** (`sessoesDaMarca`), no Histórico e no painel; a bancada de um aparelho não parte a sessão de outro;
+- **os instantes vão ao banco como vieram**, sem passar pelo `toISOString`, que corta os microssegundos;
+- **se a janela ainda pegar outra época carregada** (duas no mesmo instante com marcas diferentes), a linha fica sem ações;
+- **a confirmação diz o início e o fim.**
+
+**O que deu errado no caminho.**
+- **O `DATA-16` foi publicado no R16 com dois defeitos, C e D.** O comentário de `trecho.ts` e o diário diziam que o banco atingia exatamente a sessão da tela. Os testes usavam instantes redondos e nenhuma marca intercalada, e os de RLS recebiam a janela pronta: ninguém ligava a tela ao banco. É o §1 das lições.
+- **O plano do `UI-38` não previa o efeito sobre a exclusão.** Tratou o agrupamento como só exibição.
+- **A sonda falhou duas vezes por defeito dela:** gerou `captured_at` repetido, que a 011 proíbe, e acumulou savepoints até esgotar a memória de travas. O gerador e os savepoints foram corrigidos, e os sorteados caíram de 2 000 para 1 000 pelo tempo.
+
+**Risco em aberto.**
+- **Época que o cliente não carregou** e cai na janela (chegou depois, ou ficou além do limite de páginas) ainda é atingida: `DATA-17`.
+- **Pausas que somem menos de 5% da janela não abrem o aviso de lacuna** do painel (limite anterior a este item). Com a noite inteira numa sessão, elas aparecem só na cobertura, no gráfico e no "Com lacunas" do Histórico. Interessa ao resumo do painel novo.
+- **Sessão encadeada acima de 48 h** é recusada pelo banco ao excluir ou marcar.
+- **No celular, os botões do Histórico ficam fora da área visível da tabela**, que rola na horizontal (anterior a este item).
+- **Não foi visto com a conta real nem no app Android**, e não se verificou se a conta do autor tem épocas que C ou D atingiriam. A forma da noite de 17/11 veio do log serial, não do banco.
+
+**Procedência.** Branch `bugfix/UI-38-noite-partida`, sobre `develop` `8929530`; Windows 11, Python 3.13, Node 22, Postgres 17 em Docker; 22/11.
