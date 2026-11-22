@@ -107,6 +107,8 @@ MIGRACOES_APLICADAS = (
     "022_lista_de_espera.sql",
     # DATA-16 (21/11): excluir e marcar um trecho. `test_rls_trecho.py`.
     "023_excluir_e_marcar_trecho.sql",
+    # LGPD-15 (22/11): a versao nova do consentimento. `test_rls_consentimento.py`.
+    "024_consentimento_smart_dormio.sql",
 )
 
 VARIAVEL = "DORMIO_RLS_DATABASE_URL"
