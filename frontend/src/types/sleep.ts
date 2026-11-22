@@ -48,6 +48,12 @@ export type LeituraSono = {
    * todo lugar.
    */
   captured_at?: string | null;
+  /**
+   * O titular marcou o trecho como bancada/teste (DATA-16, migração 023). A
+   * época continua guardada, mas sai do painel, das features e da inferência;
+   * o Histórico a mostra numa seção própria. Ausente antes da 023.
+   */
+  bancada?: boolean | null;
   movimento_total: number | null;
   temp: number | null;
   status: string | null;

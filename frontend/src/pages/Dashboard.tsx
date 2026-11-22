@@ -44,6 +44,7 @@ import {
 } from "../types/sleep";
 import { AvisoDeLacuna, NotaDeInferencia } from "../components/AvisoDeLacuna";
 import { SeletorDeSessao } from "../components/SeletorDeSessao";
+import { semBancada } from "../lib/trecho";
 
 /**
  * Cores da serie via token, nao hex cru (BRAND-01).
@@ -131,10 +132,13 @@ export function Dashboard() {
   // `limite` explicito (DASH-13): sem ele o backend devolve 20 linhas — dez
   // minutos de celular —, e todo o recorte por sessao operava sobre isso
   // enquanto a tela dizia descrever a captação inteira.
-  const { leituras, carregando, erro, recarregar } = useHistorico({
+  const { leituras: recebidas, carregando, erro, recarregar } = useHistorico({
     dispositivo,
     limite: LIMITE_DO_PAINEL,
   });
+  // DATA-16: o que o titular marcou como bancada/teste não entra no painel. A
+  // borda do limite continua contada sobre o que a API devolveu (abaixo).
+  const leituras = semBancada(recebidas);
 
   useEffect(() => {
     if (!carregando && hash) {
@@ -212,7 +216,7 @@ export function Dashboard() {
   const ultima = sessoes.length > 0 ? sessoes[sessoes.length - 1] : null;
   const leiturasVisiveis = verTudo || ultima === null ? leituras : ultima.leituras;
 
-  const borda = leituraNaBordaDoLimite(leituras, LIMITE_DO_PAINEL);
+  const borda = leituraNaBordaDoLimite(recebidas, LIMITE_DO_PAINEL);
   const recorteParcial = borda !== undefined && leiturasVisiveis.includes(borda);
   const m = calcularMetricas(leiturasVisiveis);
   const serie = prepararSerie(leiturasVisiveis, m.cobertura);

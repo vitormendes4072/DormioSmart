@@ -12133,3 +12133,65 @@ A exclusão é também a eliminação parcial da LGPD, que hoje só existe para 
 **Risco em aberto.** Até o `DATA-16`, a regra do caderno de coletas é o que evita poluir a conta: pausar o recebimento, ou anotar e apagar no mesmo dia, ou marcar "Gravação de teste".
 
 **Procedência.** Branch `docs/DATA-16-abrir`, sobre `develop` `418522c`; 21/11.
+
+# 2026-11-21 (vii) — DATA-16, (a) e (b): excluir e marcar uma sessão pelo Histórico
+
+**O problema, como foi entendido no início.** A conta do autor foi limpa à mão no SQL Editor três vezes (12/11, 16/11 e 21/11). O servidor guarda épocas, e não sessões: a sessão é deduzida no cliente pelas pausas no envio, e nada diz se ela foi noite, bancada ou teste. Só o celular tinha gravação de teste, e ela nem chega ao servidor. Pelo app, a única eliminação era a da conta inteira.
+
+**Hipótese de trabalho.** Dá para agir sobre uma sessão sem criar a entidade "sessão" no banco. O cliente manda o aparelho e o primeiro e o último instante das épocas que desenhou, pelo mesmo critério de tempo do banco (`coalesce(captured_at, created_at)`), e o banco age sobre as épocas do titular nesse trecho:
+- **excluir** apaga as épocas do trecho;
+- **marcar como bancada** põe uma marca por época (`sleep_data.bancada`), que tira a sessão do painel, das features e da inferência sem apagá-la.
+
+Coluna, e não tabela de trechos: cada consulta filtra sem junção, e funciona no Postgres 14 do CI. O rótulo "noite" (a parte (c)) fica para o `ESC-01`.
+
+**O que foi testado, e como.**
+- **Migração 023:** a coluna `bancada`, e as funções `apagar_trecho` e `marcar_trecho`. As duas são `security definer`, tiram o dono de `auth.uid()`, aceitam até 48 h por chamada e devolvem quantas épocas foram afetadas. Só `authenticated` as executa.
+- **`test_rls_trecho.py`, 16 testes, Postgres 17 em Docker:**
+  - o titular apaga e marca o próprio trecho, incluindo a época sem `captured_at` chegada dentro dele, e só ele;
+  - outra conta, passando o aparelho alheio, não alcança nada;
+  - janela invertida, incompleta ou acima de 48 h é recusada com o motivo, sem tocar em nada; 48 h exatas passam;
+  - sem titular, nada acontece; `anon` não executa; a conferência interna não é chamável pelo cliente.
+- **Backend (`test_trecho.py`, 31 testes):**
+  - a leitura do trecho, com aparelho, fuso, ordem e teto;
+  - as rotas `POST /api/sessoes/apagar` (com a frase de confirmação) e `POST /api/sessoes/marcar`, com 400, 401 e 503;
+  - o histórico devolve a marca, e as features e a inferência a filtram.
+- **Frontend:**
+  - `trecho.test.ts`: o trecho vai do primeiro ao último instante medido, com a chegada como reserva, e não há ação sem aparelho;
+  - `Historico.test.tsx`: a seção das marcadas, marcar e desmarcar com o trecho certo, a confirmação antes de excluir, o cancelar que não apaga, a falha que não recarrega;
+  - `api.test.ts`: as duas chamadas;
+  - `exportar.test.ts`: a coluna `bancada` do CSV.
+- **Controles positivos:**
+  - sem a 023 na lista do RLS, os 16 testes de trecho caem;
+  - sem o filtro `.eq("bancada", False)` e sem a checagem da confirmação, 5 testes do backend caem;
+  - com o botão "Excluir…" apagando direto e com a bancada agrupada junto com as sessões normais, 6 dos 7 testes do Histórico caem.
+- **Suítes completas:** backend, frontend, RLS, o diagnóstico de migrações, lint, Knip, build, a CSP, o orçamento do pacote, o Ruff e a verificação por mutação do RLS.
+
+**Resultado medido.**
+- **Backend:** 665 passam, 1 pula (eram 634; +31).
+- **Frontend:** 803 passam, 57 arquivos (eram 786; +17). Lint, Knip e Knip de tipos saem com 0; o build passa.
+- **RLS:** 321 passam (eram 305; +16).
+- **Diagnóstico de migrações:** acerta os 21 estados, inclusive a 023 na ordem real.
+- **CSP:** 12 scripts inline com hash.
+- **Pacote:** o painel tem 257 097 B comprimidos, abaixo do teto de 260 000.
+- **Ruff:** sem erro.
+
+**Veredito.** As partes (a) e (b) do `DATA-16` estão feitas na branch: excluir uma sessão e marcá-la como bancada, pelo Histórico, sem SQL. O item segue aberto pela parte (c), o rótulo "noite", que espera o `ESC-01`.
+
+**Adaptação.**
+- **O CSV leva as épocas marcadas, com a coluna `bancada`**, em vez de deixá-las de fora como o plano dizia. A exportação é a portabilidade dos dados (LGPD, art. 18, V): vai o dado inteiro, com a marca. O painel e as análises do servidor é que as excluem.
+- **"Sem a 023, o resto continua funcionando", que estava no plano, é falso.** O histórico passa a pedir a coluna `bancada`, então **a 023 tem de ser aplicada na produção antes do release**, como a 018 e a 022. Está dito no README das migrações.
+- **A política de privacidade** ganhou a eliminação de uma sessão (6.4), a marca de bancada (6.5) e a coluna nova no CSV (6.2).
+
+**O que deu errado no caminho.**
+- **Um `git checkout` do `conftest.py`**, usado para desfazer o controle positivo, apagou junto a linha nova da 023, que ainda não estava commitada. A linha foi refeita antes de rodar a suíte.
+- **O teste da página saiu sem o ambiente `jsdom`** e, depois, sem o `matchMedia` falso; os dois vieram dos testes existentes.
+- **Duas edições por script falharam na asserção:** uma no `verificar_migracoes.py`, outra nos imports do `api.test.ts`. Nos dois casos nada foi gravado, e a edição foi refeita de outro jeito.
+- **O README das migrações não lista da 017 à 022**: a 023 entrou logo depois da 016. A lacuna é anterior a este item.
+
+**Risco em aberto.**
+- **Época que chega depois** dentro de um trecho já marcado entra sem a marca. Isso pode acontecer com a fila da placa, mas é raro. Marcar de novo resolve.
+- **A sessão "Parcial"** (na borda do limite do Histórico) só leva as épocas que a tela tem; as anteriores ficam.
+- **Não foi visto no navegador com uma conta real:** a prévia local abre o checkout principal, e a tela pede login. Fica para depois do release, com a conta do autor.
+- **O rótulo "noite" (c)** segue no `DATA-16`, à espera do `ESC-01`.
+
+**Procedência.** Branch `feature/DATA-16-excluir-e-marcar-sessao`, sobre `develop` `0270c52`; Windows 11, Python 3.13, Node 22, Postgres 17 em Docker; 21/11.

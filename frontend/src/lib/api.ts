@@ -11,6 +11,7 @@
  * site nao define, e tudo continua relativo.
  */
 import type { LeituraSono } from "../types/sleep";
+import type { Trecho } from "./trecho";
 
 /** Prefixo do backend: vazio no site, o endereco completo no app (APP-02). */
 export function urlDaApi(caminho: string, base: string = import.meta.env.VITE_API_BASE ?? ""): string {
@@ -207,6 +208,30 @@ export async function buscarHistoricoCompleto(): Promise<LeituraSono[]> {
     if (pagina.length < LIMITE_DO_PAINEL) return todas;
     cursor = proximoCursor(pagina, cursor);
   }
+}
+
+/** A frase que a rota de exclusão pede no corpo (DATA-16). Vai sozinha depois
+ *  da confirmação na tela: ela barra o pedido repetido por engano, não a pessoa. */
+export const CONFIRMACAO_APAGAR_SESSAO = "APAGAR ESTA SESSAO";
+
+/** Apaga as épocas de uma sessão (DATA-16). Devolve quantas saíram. */
+export async function apagarSessao(trecho: Trecho): Promise<number> {
+  const corpo = await requisitarJson<{ epocas_apagadas?: unknown }>("/api/sessoes/apagar", {
+    method: "POST",
+    body: JSON.stringify({ ...trecho, confirmacao: CONFIRMACAO_APAGAR_SESSAO }),
+  });
+  if (typeof corpo?.epocas_apagadas !== "number") throw new Error("Resposta de exclusão inválida.");
+  return corpo.epocas_apagadas;
+}
+
+/** Marca (`true`) ou desmarca uma sessão como bancada/teste (DATA-16). Devolve quantas épocas. */
+export async function marcarSessao(trecho: Trecho, bancada: boolean): Promise<number> {
+  const corpo = await requisitarJson<{ epocas_marcadas?: unknown }>("/api/sessoes/marcar", {
+    method: "POST",
+    body: JSON.stringify({ ...trecho, bancada }),
+  });
+  if (typeof corpo?.epocas_marcadas !== "number") throw new Error("Resposta de marcação inválida.");
+  return corpo.epocas_marcadas;
 }
 
 export const MAX_PAGINAS_DO_HISTORICO = 16;

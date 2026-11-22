@@ -224,7 +224,12 @@ class Database:
                         # O id desempata chegadas no mesmo instante.
                         # O cliente reordena pelo instante de medicao com fallback
                         # — ver `instanteDaLeitura` em `types/sleep.ts`.
-                        "captured_at"
+                        "captured_at, "
+                        # `bancada` (DATA-16): o titular marcou o trecho como
+                        # bancada/teste. A linha vem, porque o Historico mostra
+                        # as marcadas numa secao propria, com "Desmarcar"; o
+                        # painel e o CSV as tiram no cliente.
+                        "bancada"
                     )
                     .eq("user_id", usuario_id))
                 if device_id:
@@ -286,6 +291,9 @@ class Database:
                     .gte("captured_at", desde)
                     .lte("captured_at", ate)
                     .not_.is_("fs_features", "null")
+                    # DATA-16: a epoca marcada como bancada nao entra nas
+                    # features nem na inferencia (mesma consulta).
+                    .eq("bancada", False)
                     .order("captured_at")
                     .range(inicio, inicio + self.PAGINA_DE_FEATURES - 1)
                     .execute()
@@ -320,6 +328,43 @@ class Database:
             return getattr(resposta, "data", None)
         except Exception:
             logger.exception("Falha ao apagar conta.")
+            return None
+
+    def apagar_trecho(self, jwt, device_id, desde, ate):
+        """Apaga as épocas do titular num aparelho, entre dois instantes (DATA-16).
+
+        Vai pelo cliente do USUÁRIO, como a `apagar_minha_conta`: o dono sai de
+        `auth.uid()` dentro da função (migração 023), e um aparelho de outra
+        conta não alcança nada. Devolve quantas épocas saíram, ou None em falha.
+        """
+        try:
+            client = self.cliente_do_usuario(jwt)
+            if client is None:
+                return None
+            resposta = client.rpc("apagar_trecho", {
+                "p_device": device_id, "p_desde": desde, "p_ate": ate,
+            }).execute()
+            return getattr(resposta, "data", None)
+        except Exception:
+            logger.exception("Falha ao apagar um trecho.")
+            return None
+
+    def marcar_trecho(self, jwt, device_id, desde, ate, bancada):
+        """Marca (True) ou desmarca (False) como bancada um trecho do titular (DATA-16).
+
+        Mesma posse da `apagar_trecho`. Devolve quantas épocas foram marcadas,
+        ou None em falha.
+        """
+        try:
+            client = self.cliente_do_usuario(jwt)
+            if client is None:
+                return None
+            resposta = client.rpc("marcar_trecho", {
+                "p_device": device_id, "p_desde": desde, "p_ate": ate, "p_bancada": bancada,
+            }).execute()
+            return getattr(resposta, "data", None)
+        except Exception:
+            logger.exception("Falha ao marcar um trecho.")
             return None
 
     def registrar_leitura(self, token_hash, leitura):

@@ -105,6 +105,8 @@ MIGRACOES_APLICADAS = (
     # UI-14 (17/11): a lista de espera. A 020 e a 021 estao reservadas e ainda
     # nao existem (docs/PLANO-CLAUDE-CODEX.md).
     "022_lista_de_espera.sql",
+    # DATA-16 (21/11): excluir e marcar um trecho. `test_rls_trecho.py`.
+    "023_excluir_e_marcar_trecho.sql",
 )
 
 VARIAVEL = "DORMIO_RLS_DATABASE_URL"

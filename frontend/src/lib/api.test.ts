@@ -1,12 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+  CONFIRMACAO_APAGAR_SESSAO,
   ErroApi,
+  apagarSessao,
   buscarHistorico,
   buscarHistoricoCompleto,
   buscarJanelaDoHistorico,
   definirCallbackDeSessaoExpirada,
   definirProvedorDeToken,
+  marcarSessao,
   urlDaApi,
 } from "./api";
 
@@ -218,5 +221,43 @@ describe("janela paginada do Histórico", () => {
       id: "1999", created_at: "2026-11-12T00:00:00Z",
     }))).mockResolvedValueOnce(resposta(503, { error: "indisponível" }));
     await expect(buscar()).rejects.toThrow("indisponível");
+  });
+});
+
+describe("excluir e marcar uma sessão (DATA-16)", () => {
+  const trecho = { device: "d1", desde: "2026-11-17T05:35:00.000Z", ate: "2026-11-17T12:36:00.000Z" };
+
+  it("apagarSessao manda o trecho e a frase de confirmação, e devolve a contagem", async () => {
+    const fetch = vi.fn(async (_url: RequestInfo | URL, opcoes?: RequestInit) => {
+      opcoesCapturadas = opcoes;
+      return resposta(200, { epocas_apagadas: 812 });
+    });
+    vi.stubGlobal("fetch", fetch);
+    await expect(apagarSessao(trecho)).resolves.toBe(812);
+    expect(String(fetch.mock.calls[0][0])).toContain("/api/sessoes/apagar");
+    expect(opcoesCapturadas?.method).toBe("POST");
+    expect(JSON.parse(String(opcoesCapturadas?.body))).toEqual({ ...trecho, confirmacao: CONFIRMACAO_APAGAR_SESSAO });
+  });
+
+  it("marcarSessao manda o trecho e a marca, e devolve a contagem", async () => {
+    const fetch = vi.fn(async (_url: RequestInfo | URL, opcoes?: RequestInit) => {
+      opcoesCapturadas = opcoes;
+      return resposta(200, { epocas_marcadas: 3, bancada: false });
+    });
+    vi.stubGlobal("fetch", fetch);
+    await expect(marcarSessao(trecho, false)).resolves.toBe(3);
+    expect(String(fetch.mock.calls[0][0])).toContain("/api/sessoes/marcar");
+    expect(JSON.parse(String(opcoesCapturadas?.body))).toEqual({ ...trecho, bancada: false });
+  });
+
+  it("resposta sem a contagem é erro, e não um zero inventado", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => resposta(200, {})));
+    await expect(apagarSessao(trecho)).rejects.toThrow("Resposta de exclusão inválida.");
+    await expect(marcarSessao(trecho, true)).rejects.toThrow("Resposta de marcação inválida.");
+  });
+
+  it("o erro do servidor chega com a mensagem dele", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => resposta(400, { error: "trecho acima de 48 h" })));
+    await expect(apagarSessao(trecho)).rejects.toThrow("trecho acima de 48 h");
   });
 });
