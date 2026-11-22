@@ -72,7 +72,7 @@ Medido em 10/11: o `aapt2 dump badging` mostra `application-debuggable` no de de
 release, e o `apksigner verify` aceita o de release (esquema v2), assinado com uma chave descartável
 de teste.
 
-**Versão:** `versionName` 1.1.0 e `versionCode` 2, em `app/build.gradle` ✏️ *(19/11, `APP-17`; o primeiro APK, de 11/11, era o 1.0.0 com `versionCode` 1)*. A versão também está em `frontend/src/lib/appAndroid.ts` e na landing, e o `appAndroid.test.ts` reprova se divergirem. A cada APK novo enviado,
+**Versão:** `versionName` 1.1.1 e `versionCode` 3, em `app/build.gradle` ✏️ *(21/11, release R15, com o `APP-18`; antes, o 1.1.0 com `versionCode` 2, de 19/11, e o primeiro APK, de 11/11, o 1.0.0 com `versionCode` 1)*. A versão também está em `frontend/src/lib/appAndroid.ts` e na landing, e o `appAndroid.test.ts` reprova se divergirem. A cada APK novo enviado,
 aumente o `versionCode`: o Android recusa instalar por cima uma versão de número igual ou menor.
 
 ### 1.3 Como mandar
