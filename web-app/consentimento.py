@@ -15,7 +15,7 @@ import perfil
 
 logger = logging.getLogger(__name__)
 
-VERSAO = "2026-11-10"
+VERSAO = "2026-11-22"  # LGPD-15, 22/11; antes "2026-11-10"
 
 PENDENTE = "consentimento para dado de saude pendente"
 

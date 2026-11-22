@@ -42,8 +42,17 @@ def _cliente(rpc_data=None):
 # --- as três versões ----------------------------------------------------------
 
 def test_a_versao_e_a_mesma_no_banco_no_backend_e_no_frontend():
-    sql = (RAIZ / "web-app" / "migrations" / "017_consentimento_destacado.sql").read_text(encoding="utf-8")
-    banco = re.search(r"versao_do_consentimento\(\).*?select '([^']+)'::text", sql, re.S).group(1)
+    # A versão vigente é a da migração MAIS RECENTE que recria a função: a 017
+    # a criou, e a 024 (LGPD-15) a trocou. Ler só a 017 deixaria o teste verde
+    # com o banco atrás do código.
+    versoes = []
+    for caminho in sorted((RAIZ / "web-app" / "migrations").glob("0*.sql")):
+        sql = caminho.read_text(encoding="utf-8")
+        achada = re.search(r"function public\.versao_do_consentimento\(\).*?select '([^']+)'::text", sql, re.S)
+        if achada:
+            versoes.append(achada.group(1))
+    assert versoes, "nenhuma migracao define versao_do_consentimento()"
+    banco = versoes[-1]
     ts = (RAIZ / "frontend" / "src" / "lib" / "consentimento.ts").read_text(encoding="utf-8")
     frontend = re.search(r'VERSAO_DO_CONSENTIMENTO\s*=\s*"([^"]+)"', ts).group(1)
     assert banco == consentimento.VERSAO == frontend

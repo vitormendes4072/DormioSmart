@@ -82,11 +82,11 @@ describe("o app instalado", () => {
 
 // APP-18: o nome e a marca dentro do app.
 describe("os textos das telas do app", () => {
-  // As telas que só existem no app Android. O texto do consentimento
-  // (`lib/consentimento.ts`) também diz "O Dormio", mas mudá-lo é mudar a versão
-  // do consentimento nos três lugares e pedir o aceite de novo a quem já
-  // aceitou: fica fora daqui, de propósito.
-  const TELAS = ["src/components/CartaoDaNoite.tsx", "src/pages/Noite.tsx"];
+  // As telas que só existem no app Android, e o texto do consentimento, que o
+  // app mostra antes da primeira noite. ✏️ 22/11 (`LGPD-15`): o consentimento
+  // ficava de fora porque mudá-lo é mudar a versão nos três lugares e pedir o
+  // aceite de novo; o autor decidiu mudar, e ele entrou.
+  const TELAS = ["src/components/CartaoDaNoite.tsx", "src/pages/Noite.tsx", "src/lib/consentimento.ts"];
 
   it.each(TELAS)("%s chama o produto de Smart Dormio, e não de \"o Dormio\"", (tela) => {
     const soltos = ler(tela).match(/(?<!Smart )\bDormio\b/g) ?? [];

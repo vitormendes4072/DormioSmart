@@ -201,7 +201,10 @@ marcas (migracao, item, marca, presente) as (values
         to_regprocedure('public.apagar_trecho(uuid,timestamptz,timestamptz)') is not null
         and to_regprocedure('public.marcar_trecho(uuid,timestamptz,timestamptz,boolean)') is not null
         and coalesce((select not has_function_privilege('anon', 'public.apagar_trecho(uuid,timestamptz,timestamptz)', 'execute')
-                         and not has_function_privilege('anon', 'public.marcar_trecho(uuid,timestamptz,timestamptz,boolean)', 'execute')), false))
+                         and not has_function_privilege('anon', 'public.marcar_trecho(uuid,timestamptz,timestamptz,boolean)', 'execute')), false)),
+    -- 024: a versao nova do consentimento (LGPD-15).
+    ('024', 'LGPD-15', 'versao_do_consentimento() devolve 2026-11-22',
+        coalesce((select pg_get_functiondef(to_regprocedure('public.versao_do_consentimento()')) like '%2026-11-22%'), false))
 ),
 esquema as (
     select migracao, min(item) as item,

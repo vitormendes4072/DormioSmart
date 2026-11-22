@@ -12238,3 +12238,49 @@ O APK não muda neste release: o app Android recebe o Histórico novo no próxim
 - **O app Android** só ganha o Histórico novo no próximo APK.
 
 **Procedência.** PR #247 (`7b234e4`); deploy `7973419286`; conferências desta máquina em 22/11.
+
+# 2026-11-22 (ii) — LGPD-15: o consentimento diz "o Smart Dormio", e cita a exclusão de uma sessão
+
+**O problema, como foi entendido no início.** O `APP-18` trocou "o Dormio" por "o Smart Dormio" nas telas do app e deixou de fora o texto do consentimento destacado (`lib/consentimento.ts`). Mudá-lo é mudar a versão nos três lugares (app, backend e banco), e quem já aceitou precisa aceitar de novo. O autor decidiu mudar. Como o aceite volta de qualquer jeito, o último item ganhou o que mudou desde 10/11: a exclusão de uma sessão pelo Histórico (`DATA-16`).
+
+**Hipótese de trabalho.** Basta trocar o texto e a versão (`2026-11-22`) nos três lugares; a mecânica da 017 cuida do resto (versão antiga não destrava a gravação, e o aceite só vale na vigente). O que muda o plano é o app Android: ele leva a tela dentro do APK. Um APK com a versão antiga não consegue aceitar a nova, e sem aceite o banco recusa as noites. Então:
+- o APK 1.1.2 vai no mesmo release;
+- a migração 024 entra depois do deploy;
+- as noites guardadas no celular são enviadas antes.
+
+**O que foi testado, e como.**
+- **Testes escritos antes da mudança:**
+  - o `appAndroid.test.ts` passou a incluir o `consentimento.ts` no teste de "o Dormio";
+  - o `test_consentimento.py` passou a ler a versão do banco na migração mais recente que recria a função, e não fixo na 017;
+  - o `test_rls_consentimento.py` ganhou dois testes: a versão vigente é a de 22/11, e o aceite de 10/11 não destrava a gravação nem é aceito de novo;
+  - o `montagem.test.ts` deixou de fixar a versão e passou a usar a constante.
+- **Controles positivos:**
+  - contra o código de antes, o teste de texto caiu no consentimento;
+  - com o texto e a versão trocados no app e no backend e ainda sem a 024, o teste de igualdade das versões caiu;
+  - sem a 024 na lista do RLS, os 2 testes novos caíram.
+- **Suítes:** backend, frontend, RLS (Postgres 17 em Docker), o diagnóstico de migrações, lint, Knip, build, a CSP, o orçamento do pacote e o Ruff.
+
+**Resultado medido.**
+- **Backend:** 665 passam, 1 pula (mesma contagem: o teste de igualdade mudou por dentro).
+- **Frontend:** 804 passam, 57 arquivos (+1). Lint, Knip e Knip de tipos com 0; o build passa.
+- **RLS:** 323 passam (+2).
+- **Diagnóstico de migrações:** acerta os 22 estados, com a 024 na ordem real.
+- **CSP:** 12 scripts inline com hash.
+- **Pacote:** a landing com 274 785 B estimados, abaixo do teto de 289 800.
+- **A versão do app:** 1.1.2 (`versionCode` 4) no `build.gradle`, no `appAndroid.ts` e na landing.
+
+**Veredito.** O texto e a versão estão trocados na branch, e o `LGPD-15` está fechado. A versão nova só vale na produção com a 024, que entra depois do deploy e com o APK 1.1.2 publicado.
+
+**Adaptação.**
+- **O último item mudou junto**, por decisão do autor entre as duas opções do plano: "Você pode apagar uma sessão a qualquer momento no Histórico, ou tudo, excluindo a conta em Configurações."
+- **O `versionCode` é 4, e não 5** como o plano dizia: o 1.1.1 tem o 3.
+
+**O que deu errado no caminho.**
+- **O plano errou o `versionCode`** (escreveu 5); a conferência pelo `build.gradle` corrigiu antes da edição.
+
+**Risco em aberto.**
+- **Quem estiver num APK anterior ao 1.1.2** (o de depuração do autor, e o enviado a um amigo em 11/11) para de enviar noites até atualizar.
+- **O celular do autor perde as noites guardadas** ao trocar o APK de depuração pelo de release, porque as assinaturas são diferentes. Por isso, elas devem ser enviadas antes.
+- **Entre o deploy e a 024**, o site pede a versão nova e o banco ainda tem a antiga: um aceite feito nessa janela é recusado.
+
+**Procedência.** Branch `feature/LGPD-15-consentimento-smart-dormio`, sobre `develop` `778c17c`; Windows 11, Python 3.13, Node 22, Postgres 17 em Docker; 22/11.

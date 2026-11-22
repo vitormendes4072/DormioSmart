@@ -60,6 +60,7 @@ import { act, fireEvent, screen, waitFor, within } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { aplicabilidadeDaIdade } from "./lib/aplicabilidade";
+import { VERSAO_DO_CONSENTIMENTO } from "./lib/consentimento";
 
 // ---------------------------------------------------------------------
 // Dublês de fronteira
@@ -398,7 +399,7 @@ describe("montagem real das telas (UI-17)", PRAZO, () => {
     vi.stubGlobal("DeviceMotionEvent", class {});
     vi.mocked(fetch).mockImplementation((entrada, opcoes) => {
       if (String(entrada) === "/api/me/perfil") {
-        return Promise.resolve(respostaJson({ ...perfilDoServidor, consentimento_saude_versao: "2026-11-10" }));
+        return Promise.resolve(respostaJson({ ...perfilDoServidor, consentimento_saude_versao: VERSAO_DO_CONSENTIMENTO }));
       }
       if (String(entrada) === "/api/devices/celular") {
         return Promise.resolve(respostaJson({ id: "celular-teste", nome: "Celular de teste" }));

@@ -15,15 +15,17 @@ import type { PerfilDoServidor } from "./perfil";
  * três. **Mudar o texto da tela é mudar a versão nos três lugares**: quem
  * aceitou o texto anterior vê a tela de novo.
  */
-export const VERSAO_DO_CONSENTIMENTO = "2026-11-10";
+// ✏️ 22/11 (`LGPD-15`): "o Smart Dormio", e a exclusão de uma sessão pelo
+// Histórico (`DATA-16`). Antes, `2026-11-10`.
+export const VERSAO_DO_CONSENTIMENTO = "2026-11-22";
 
 /** O que a pessoa consente, item por item. É o texto da tela. */
 export const TEXTO_DO_CONSENTIMENTO: readonly string[] = [
-  "O Dormio mede o movimento do aparelho enquanto você dorme e guarda essas medições na sua conta.",
+  "O Smart Dormio mede o movimento do aparelho enquanto você dorme e guarda essas medições na sua conta.",
   "A partir delas, o sistema estima, a cada 30 segundos, se você estava dormindo ou acordado.",
   "Essas medições e essa estimativa são tratadas como dado de saúde, com o cuidado que a lei exige.",
   "A estimativa não é diagnóstico e não deve orientar nenhuma decisão de saúde.",
-  "Você pode apagar tudo a qualquer momento, excluindo a conta em Configurações.",
+  "Você pode apagar uma sessão a qualquer momento no Histórico, ou tudo, excluindo a conta em Configurações.",
 ];
 
 export function consentimentoVigente(perfil: PerfilDoServidor | null): boolean {
