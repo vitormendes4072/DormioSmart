@@ -12109,3 +12109,27 @@ Com um inventário do banco, cada sessão pode ser casada com o diário e classi
 - **"Noite" e "sessão de captação"** seguem com nomes diferentes no app e no painel até o autor decidir o `ESC-01`.
 
 **Procedência.** SQL Editor do Supabase, executado pelo autor em 21/11 (resultados colados na conversa); Postgres 17 local em Docker; o SQL e o caderno em `dados-locais/`, fora do repositório; Windows 11.
+
+# 2026-11-21 (vi) — DATA-16 aberto: excluir e marcar uma sessão pelo Histórico
+
+**O problema, como foi entendido no início.** A limpeza da conta do autor (diário, 21/11 (v)) foi a terceira feita à mão no SQL Editor. O motivo é o mesmo das outras duas: o servidor não sabe o que é sessão, noite ou bancada, e só o celular tem gravação de teste.
+
+**Hipótese de trabalho.** Duas funções no Histórico eliminam o SQL manual:
+- **excluir esta sessão:** as épocas de um aparelho entre o início e o fim da sessão;
+- **marcar como bancada/teste:** um rótulo por trecho, que tira a sessão do Histórico, do painel, do CSV e da inferência.
+
+A exclusão é também a eliminação parcial da LGPD, que hoje só existe para a conta inteira.
+
+**O que foi testado, e como.** Nada: é a abertura do item. A contagem foi conferida com `scripts/conferir_backlog.py --conferir`.
+
+**Resultado medido.** O backlog passa a 39 itens abertos, L0 com 7.
+
+**Veredito.** O `DATA-16` está aberto, em L0, com peso 🟡.
+
+**Adaptação.** O rótulo "noite" como declaração do usuário fica condicionado ao `ESC-01`, que o autor decide antes de o item começar.
+
+**O que deu errado no caminho.** Nada.
+
+**Risco em aberto.** Até o `DATA-16`, a regra do caderno de coletas é o que evita poluir a conta: pausar o recebimento, ou anotar e apagar no mesmo dia, ou marcar "Gravação de teste".
+
+**Procedência.** Branch `docs/DATA-16-abrir`, sobre `develop` `418522c`; 21/11.
