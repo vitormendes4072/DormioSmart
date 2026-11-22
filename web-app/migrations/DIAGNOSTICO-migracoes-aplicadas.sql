@@ -192,7 +192,16 @@ marcas (migracao, item, marca, presente) as (values
         to_regprocedure('public.inscrever_na_lista_de_espera(text,text,text)') is not null
         and coalesce((select not has_function_privilege('anon', 'public.inscrever_na_lista_de_espera(text,text,text)', 'execute')), false)),
     ('022', 'UI-14', 'funcao expurgar_lista_de_espera',
-        to_regprocedure('public.expurgar_lista_de_espera()') is not null)
+        to_regprocedure('public.expurgar_lista_de_espera()') is not null),
+    -- 023: excluir e marcar um trecho (DATA-16). A coluna, e as duas funcoes,
+    -- que o titular executa e o visitante nao.
+    ('023', 'DATA-16', 'coluna sleep_data.bancada',
+        exists (select 1 from col where nome = 'sleep_data.bancada')),
+    ('023', 'DATA-16', 'funcoes apagar_trecho e marcar_trecho, fora do alcance de anon',
+        to_regprocedure('public.apagar_trecho(uuid,timestamptz,timestamptz)') is not null
+        and to_regprocedure('public.marcar_trecho(uuid,timestamptz,timestamptz,boolean)') is not null
+        and coalesce((select not has_function_privilege('anon', 'public.apagar_trecho(uuid,timestamptz,timestamptz)', 'execute')
+                         and not has_function_privilege('anon', 'public.marcar_trecho(uuid,timestamptz,timestamptz,boolean)', 'execute')), false))
 ),
 esquema as (
     select migracao, min(item) as item,

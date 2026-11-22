@@ -48,16 +48,25 @@ describe("gerarCsv", () => {
     expect(csv).toContain("2.0000");
   });
 
+  it("marca com 1 a época de bancada (DATA-16) e leva todas para o CSV", () => {
+    const csv = gerarCsv([leitura({ bancada: true }), leitura({ bancada: false }), leitura()]);
+    const [cabecalho, marcada, normal, antiga] = csv.split("\r\n");
+    expect(cabecalho.split(",").at(-1)).toBe("bancada");
+    expect(marcada.endsWith(",1")).toBe(true);
+    expect(normal.endsWith(",0")).toBe(true);
+    expect(antiga.endsWith(",0")).toBe(true);
+  });
+
   it("marca movimento com 1 e repouso com 0", () => {
     const csv = gerarCsv([leitura({ status: "Movimento" }), leitura({ status: "Repouso" })]);
     const [, primeira, segunda] = csv.split("\r\n");
-    expect(primeira.endsWith(",1,")).toBe(true);
-    expect(segunda.endsWith(",0,")).toBe(true);
+    expect(primeira.endsWith(",1,,0")).toBe(true);
+    expect(segunda.endsWith(",0,,0")).toBe(true);
   });
 
   it("reconhece o rotulo legado ao marcar movimento", () => {
     const csv = gerarCsv([leitura({ status: "Movimento Detectado!" })]);
-    expect(csv.split("\r\n")[1].endsWith(",1,")).toBe(true);
+    expect(csv.split("\r\n")[1].endsWith(",1,,0")).toBe(true);
   });
 
   it("deixa a celula vazia quando o campo e nulo, sem escrever 'null'", () => {
@@ -65,7 +74,7 @@ describe("gerarCsv", () => {
     const linha = csv.split("\r\n")[1];
     expect(linha).not.toContain("null");
     // A primeira celula e `captured_at`, ausente nesta leitura.
-    expect(linha).toBe(",2026-08-19T03:00:00.000Z,,,,,0,");
+    expect(linha).toBe(",2026-08-19T03:00:00.000Z,,,,,0,,0");
   });
 
   // ── DASH-12 ────────────────────────────────────────────────────────────

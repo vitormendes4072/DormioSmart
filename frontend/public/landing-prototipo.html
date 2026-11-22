@@ -1298,6 +1298,15 @@ body.sd-scroll-active #sd-scroll-progress{opacity:1}
 .lp-final-account{display:inline-flex;align-items:center;gap:7px;padding:12px 3px;color:#fff;font-size:13px;font-weight:700;text-decoration:none;white-space:nowrap}
 .lp-final-account:hover{text-decoration:underline}.lp-final-account:focus-visible{outline:2px solid #fff;outline-offset:4px}
 @media(max-width:760px){.lp-final-actions{flex-direction:column;align-items:stretch;gap:4px}.lp-final-actions .public-btn{justify-content:center}.lp-final-actions .lp-final-account{align-self:flex-start;flex:0 0 auto}}
+</style><style id="ui-35-textos-minimos">
+/* UI-35 (21/11): nenhum texto da home abaixo de 11 px (docs/PADRAO-VISUAL.md, seção 3). Fica por último e com #screen-landing na frente, para vencer as regras anteriores, inclusive as das larguras menores. O celular desenhado (#sd-phone) fica de fora: é ilustração na escala do aparelho. */
+#screen-landing :is(.lp-kicker,.lp-overline){font-size:11px}
+#screen-landing :is(.lp-spec-row span,.lp-spec-note){font-size:12px}
+#screen-landing :is(.lp-footer a,.lp-footer span,.lp-limit-box p){font-size:11.5px}
+#screen-landing :is(.lp-proofbar small,.lp-proof-icon,.lp-flow-number,.beta-panel-label,.lp-demo-chip,.lp-play-symbol,.lp-sim-chart-head b,.lp-state,.lp-sim-disclaimer>span,.lp-final-cta p,.sd-quicknav-heading>span,.sd-quicknav-num){font-size:11px}
+#screen-landing #sdx-explorer :is(.sdx-switch,.sdx-leader-num,.sdx-leader-name,.sdx-fact-number,.sdx-fact small){font-size:11px}
+#screen-landing #sdm-study :is(.sdm-eyebrow,.sdm-badge,.sdm-segments button,.sdm-visual-toolbar button){font-size:11px}
+@media(max-width:650px){#screen-landing .public-actions .public-btn{font-size:11px}}
 </style><script>
 /* Em prévias protegidas, o iframe isolado pode não enviar o cookie SameSite
    ao pedir imagens. O pai busca somente os arquivos públicos permitidos e

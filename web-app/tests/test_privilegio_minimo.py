@@ -221,6 +221,10 @@ def test_toda_rota_de_usuario_consulta_pelo_cliente_do_usuario():
         "get_features_do_usuario",
         "registrar_leitura_da_sessao",
         "apagar_minha_conta",
+        # DATA-16, 21/11: as duas montam o cliente com o JWT e chamam funcoes
+        # que tiram o dono de `auth.uid()` (migracao 023).
+        "apagar_trecho",
+        "marcar_trecho",
     }
 
     sem_rls = []

@@ -11926,3 +11926,272 @@ Então bastam três mudanças: os textos; os 11 PNGs refeitos com a marca, por s
 - **O exemplo do modo demonstração** em `Dispositivos.tsx` se chama "Dormio Pillow Sensor". É nome de aparelho fictício, não texto sobre o produto, e ficou como está.
 
 **Procedência.** Branch `feature/APP-18-nome-e-abertura`, sobre `develop` `9f94c1a`; testes e emulador nesta máquina (Windows 11), em 21/11.
+
+# 2026-11-21 (ii) — o release R15: o APK 1.1.1 com a tela de abertura da marca
+
+**O problema, como foi entendido no início.** O `APP-18` foi mesclado em `develop` (`8f28686`), mas só chega aos celulares num APK novo. E a landing monta o texto da versão e o link do download a partir do `versionName`: subir a versão sem publicar o APK mostraria "1.1.1" ao lado de um arquivo que ainda é o 1.1.0.
+
+**Hipótese de trabalho.** Seguir o caminho do R14 (diário, 19/11 (xv)), com a versão subindo numa branch curta antes:
+- `chore/R15-app-1.1.1`: `versionCode` 3 e `versionName` 1.1.1 no `build.gradle`, no `appAndroid.ts` e na landing;
+- o APK gerado do `develop` já mesclado, para corresponder ao código do `main`;
+- a release em rascunho, a PR de release, o merge com o aval do autor e a publicação antes de o deploy terminar.
+
+**O que foi testado, e como.**
+- **A versão:** PR #239, CI todo verde (12 jobs); merge em `develop` `fcc9f11`.
+- **O APK:** `npm run build:app` e `./gradlew assembleRelease` com a chave do autor, no checkout principal em `fcc9f11`. Conferido com `apksigner verify --print-certs` e `aapt2 dump badging` (build-tools 37.0.0).
+- **A release:** o rascunho criado com `gh release create --draft --target main`; depois do merge da #240, publicado com `gh release edit --draft=false --prerelease=false --latest`.
+- **Depois do deploy:**
+  - `curl` nas rotas;
+  - o link `latest` baixado e comparado por SHA-256;
+  - a CSP servida contra os scripts inline das cinco páginas, por um script que calcula o hash de cada um.
+
+**Resultado medido.**
+- **O APK:** `versionCode` 3, `versionName` 1.1.1, as três ABIs, não depurável; assinatura v2 com o mesmo certificado do 1.0.0 e do 1.1.0 (SHA-256 `06b2e4f93af786a09455851d9a6f1abd0f948ecf2b8d08ab6dd22d9b9613d14a`); 5 359 918 B (eram 5 239 362 no 1.1.0: os 11 `splash.png` novos pesam mais); SHA-256 `27931b8f031b195278e45a7ae6beaad1b68a1ca17f1e4c657cb13ab1637a3f22`.
+- **Release:**
+  - CI da #240 todo verde (12 jobs); merge `495f879`;
+  - a tag `app-v1.1.1` aponta para o `495f879`;
+  - deploy `7971735657` com sucesso.
+- **O download:** o link `releases/latest/download/smart-dormio.apk` responde `200`, com 5 359 918 B e o mesmo SHA-256.
+- **A produção:**
+  - `/health` `200` (contrato 2.11.0, modelo `ml-inf-cabeca-v2`); `/` `200`; `/api/devices` sem token `401`;
+  - a CSP é igual nas cinco páginas (`/`, `/login`, a landing, `/privacidade`, `/lista-de-espera`), com 15 scripts inline, todos com hash;
+  - a landing servida diz "Versão 1.1.1 (beta)".
+
+**Veredito.** O APK 1.1.1 está publicado, e a landing leva a ele. O `APP-18` chega aos celulares por esse arquivo.
+
+**Adaptação.** Nenhuma no caminho. A diferença para o R14 é a versão ter subido numa PR própria (#239), e não na branch do item, pelo motivo do `APP-18` (diário, 21/11 (i)).
+
+**O que deu errado no caminho.**
+- **O `npm run build:app` reescreveu de novo os finais de linha** de `capacitor.build.gradle` e `capacitor.settings.gradle`; revertidos com `git checkout` antes de qualquer commit.
+- **A primeira chamada ao `apksigner` não achou o build-tools:** a variável `LOCALAPPDATA` vem com barras invertidas e o Git Bash não expandiu o curinga. Pelo caminho `/c/Users/...`, funcionou.
+- **A worktree `r15` saiu com `git worktree remove --force`** sem o erro de caminho longo do R14.
+
+**Risco em aberto.**
+- **A abertura no Android 10 e 11 não foi vista num aparelho:** falta instalar o 1.1.1 no Moto E7. ⚠️ O celular do autor está no APK de depuração, e trocar pelo de release, de assinatura diferente, obriga a desinstalar e apaga as noites guardadas.
+- **Os dados de quem baixar não entram no TCC** sem o termo e o aval do orientador (`LGPD-03`, `APP-12`).
+- **O `LGPD-15`:** o texto do consentimento segue com "O Dormio".
+
+**Procedência.** PRs #239 (`fcc9f11`) e #240 (`495f879`); release `app-v1.1.1`; APK de `develop` `fcc9f11`; deploy `7971735657`; conferências desta máquina em 21/11.
+
+# 2026-11-21 (iii) — UI-35: nenhum texto da home abaixo de 11 px
+
+**O problema, como foi entendido no início.** O padrão visual (`docs/PADRAO-VISUAL.md`, seção 3) fixa 11 px como o menor texto, desde 19/11. A home ficou de fora: medido naquele dia, a 1280 px, rodapé com 9 px, o texto da caixa de limites com 10, selos, sobrelinhas e legendas dos números com 10 a 11.
+
+**Hipótese de trabalho.** A landing é um arquivo só (`landing-prototipo.html`, ~280 KB), com o estilo em camadas: regras antigas, depois ajustes por largura, depois ajustes com `#screen-landing` na frente. Corrigir declaração por declaração (são 260 com menos de 11 px, a maioria de telas e ilustrações que a home nem mostra) espalharia a mudança e arriscaria o desenho. Então:
+- **medir no navegador o que a home de fato mostra** abaixo de 11 px, nas duas larguras;
+- **corrigir só isso, num bloco próprio**, o último da página, com `#screen-landing` na frente de cada regra, para vencer as anteriores, inclusive as das larguras menores;
+- **deixar de fora o celular desenhado** (`#sd-phone`): é ilustração na escala de um aparelho, e subir os textos dele desmontaria o desenho.
+
+**O que foi testado, e como.**
+- **Medição:** um script no console percorre todo elemento com texto próprio dentro de `#screen-landing`, visível, fora do `#sd-phone`, e lista os de `font-size` computado abaixo de 11 px.
+  - Antes da mudança: a 1280 e a 390 px.
+  - Depois: com o bloco novo injetado no fim da página carregada (o servidor de prévia servia o checkout principal, e não a worktree), a 340, 390, 768 e 1280 px; e de novo depois de clicar em todos os botões da página (até 80, fora do celular desenhado) e de abrir o menu de seções do celular.
+- **Testes novos no `padraoVisual.test.ts`, escritos antes da mudança:**
+  - o bloco `ui-35-textos-minimos` é o último estilo da página;
+  - nenhum tamanho dele fica abaixo de 11 px;
+  - toda regra dele começa por `#screen-landing`;
+  - cada um dos 28 seletores medidos tem o tamanho do padrão;
+  - o botão do cabeçalho só é tocado até 650 px.
+- **Contra o código de `develop`:** 27 dos novos caíram. O "nenhum abaixo de 11" passou, porque o bloco não existia.
+- **Suítes:** `npx vitest run`, `lint`, `knip`, `knip:tipos`, `npm run build`, `scripts/conferir_csp.py` e `scripts/conferir_pacote_frontend.py`.
+
+**Resultado medido.**
+- **No navegador:** a 1280 px, **46 → 0** textos abaixo de 11 px; a 390 px, **43 → 0**. Depois dos cliques e do menu, 0 nas duas. Sem rolagem horizontal a 340, 390, 768 e 1280 px; a página ficou 35 px mais alta a 1280 e 81 px a 390. O botão do cabeçalho segue com 12 px a 1280.
+- **Os tamanhos:**
+  - selos e sobrelinhas, 11 px;
+  - legendas e notas dos números, 12 px;
+  - rodapé e o texto da caixa de limites, 11,5 px (é aviso, e o padrão quer aviso com 11,5);
+  - o restante, 11 px.
+- **Frontend:** 786 passam, 55 arquivos (eram 754; +32). Lint, Knip e Knip de tipos saem com 0; o build passa.
+- **CSP:** 12 scripts inline, todos com hash. O bloco novo é estilo, e o `style-src` já aceita estilo inline.
+- **Orçamento da landing:** 274 803 B transferidos estimados, teto 289 800 B; o bloco soma cerca de 0,5 KB comprimido.
+
+**Veredito.** A home segue o mínimo de 11 px, a não ser no celular desenhado. O `UI-35` está fechado.
+
+**Adaptação.**
+- **A lista de textos cresceu na medição.** Além do que o `UI-35` citava, saíram abaixo de 11 px:
+  - os números da faixa de provas e os de "Como funciona";
+  - o rótulo do painel do app;
+  - os botões e os rótulos das peças do explorador de hardware, e os do estudo dimensional;
+  - o estado da simulação;
+  - no celular, os botões do cabeçalho e o menu de seções.
+
+  Dois só apareceram com interação: os rótulos do "foco na peça" e o menu de seções.
+- **O celular desenhado ficou de fora**, de propósito, com 7 a 10 px. Se o autor quiser o mínimo também nele, é um item novo, que pede redesenhar a tela do aparelho.
+
+**O que deu errado no caminho.**
+- **O servidor de prévia abriu o checkout principal, e não a worktree.** A medição depois da mudança foi feita injetando o bloco, idêntico ao do arquivo, no fim da página carregada. A conferência do arquivo em si ficou com os testes.
+- **A primeira inserção do bloco não rodou:** a checagem de "27 blocos de estilo" do script contava ocorrências de `<style` que não são blocos. Tirada a checagem, a inserção foi pelo último `</style>`.
+- **O script de registro não rodou no Git Bash** (o heredoc foi recusado) e foi gravado como arquivo.
+
+**Risco em aberto.**
+- **Só o que os cliques alcançam foi medido.** Um estado que só aparece com o tempo (a simulação rodando até o fim, por exemplo) pode ter texto menor. As regras do bloco valem por classe, e não por estado, o que cobre os estados conhecidos.
+- **O bloco vence por posição e especificidade.** Uma regra nova mais específica, escrita depois, pode voltar a encolher um texto; o teste confere o bloco, e não o tamanho computado.
+
+**Procedência.** Branch `feature/UI-35-textos-pequenos`, sobre `develop` `0b2764d`; medições no navegador do app (Chromium) e testes nesta máquina (Windows 11), em 21/11.
+
+# 2026-11-21 (iv) — VAL-01: a noite já captada, e o aviso de 30/10 superado
+
+**O problema, como foi entendido no início.** A linha do `VAL-01` ainda abria com o aviso de 30/10, "LEIA ANTES DE CAPTAR UMA NOITE": com o firmware de então, a noite sairia sem o vetor de features. Ao listar o backlog em 21/11, isso foi lido como "falta a primeira noite útil com o travesseiro", e o autor corrigiu: ele já tinha gravado com o travesseiro.
+
+**Hipótese de trabalho.** A corrente que motivou o aviso (`ARQ-01` → `FW-05` → `DATA-07b`) fechou entre 30/10 e 12/11, e a noite de 17/11 (diário, 17/11 (ii)) rodou com o firmware C2. Se o log dela mostrar o vetor em todas as épocas, o aviso está superado e o `VAL-01` tem a "noite captada"; o que falta são as outras partes do item.
+
+**O que foi testado, e como.** Os dois logs da noite (`noite-fw18-fw14-2026-11-17.log` e `…-parte2.log`, fora do repositório) foram lidos por um script:
+- as linhas de época (`[epoca N] total …, taxa … Hz, com f|sem f`);
+- as respostas dos lotes (`[lote] HTTP …: N aceitas, M rejeitadas`).
+
+**Resultado medido.**
+- **800 épocas registradas, 800 "com f", 0 "sem f".**
+- **Taxa:** 40,4 a 50,8 Hz, mediana 50,6.
+- **Envio:** 49 lotes, **812 épocas aceitas e 0 rejeitadas**. Houve respostas `200` e um envio com `HTTP -1`, falha de conexão do lado da placa.
+- **Janela do registro:** 02:44 às 11:10 de 17/11.
+
+**Veredito.** O aviso de 30/10 está superado: a noite captada existe e saiu com o vetor. O `VAL-01` continua aberto pelo que falta:
+- **o consumo medido:** a placa estava no USB (`HW-02`, `HW-10`);
+- **a estabilidade:** o sensor ficou mudo às 09:37 (`HW-11`);
+- **uma noite na bateria**, dentro do travesseiro, com o `HW-04`.
+
+**Adaptação.** A linha do `VAL-01` ganhou a situação de 21/11 no topo, e o texto antigo ficou logo abaixo, marcado como superado. O quadro do caminho crítico e o item 5 da lista de prioridades receberam a mesma nota. A contagem não muda: o item segue aberto.
+
+**O que deu errado no caminho.**
+- **Eu repeti o aviso velho ao listar o backlog**, sem conferir se a corrente já tinha fechado, e chamei de "primeira noite útil" algo que o próprio diário de 17/11 já tinha registrado. O autor corrigiu.
+- **Os logs não estavam em `dados-locais/` dentro do repositório**, como diz a procedência de 17/11 (ii), e sim em `dados-locais/` na pasta acima dele.
+
+**Risco em aberto.**
+- **As épocas no banco não foram conferidas:** o log mostra o aceite do servidor, mas não as features derivadas gravadas. Conferir é uma consulta na conta do autor.
+- **As 800 do log e as 812 aceitas não batem exatamente:** o log de época pode ter perdido linhas na serial, o defeito do `FW-19`, cuja correção ainda não foi gravada na placa.
+
+**Procedência.** Logs da noite de 17/11 nesta máquina, lidos em 21/11; branch `docs/VAL-01-situacao`, sobre `develop` `95d5dcd`.
+
+# 2026-11-21 (v) — a conta do autor só com as três noites reais, e o que gerava a confusão
+
+**O problema, como foi entendido no início.** O autor não sabia mais o que estava gravado na conta: tinha feito "3 ou 4 medições no travesseiro", antes disso noites pelo celular, e não estava claro o que era noite real, o que era bancada, nem por qual aparelho cada coisa entrou. Pediu uma análise do projeto e a limpeza do que fosse teste.
+
+**Hipótese de trabalho.** A confusão não é só de memória, é do projeto. Quatro causas:
+- **O servidor não guarda sessão nem noite**, só épocas com o aparelho de origem (`devices.tipo`). O painel e o Histórico deduzem a "sessão de captação" pelas pausas no envio (`agruparEmSessoes`); a "noite" só existe no app do celular, enquanto ele grava.
+- **Só o celular tem "gravação de teste"** (`APP-11`). Toda bancada da placa cai na conta.
+- **Uma conta só** para desenvolvimento, bancada e noites, limpa à mão no SQL Editor (12/11 e 16/11).
+- **O registro do que foi gravado está espalhado no diário**, por assunto técnico, e não numa lista.
+
+Com um inventário do banco, cada sessão pode ser casada com o diário e classificada, e a limpeza sai por janelas explícitas, como em 12/11.
+
+**O que foi testado, e como.**
+- **Inventário (só leitura), rodado pelo autor no SQL Editor:** as sessões da conta por aparelho, com um buraco de mais de 15 min abrindo sessão nova, e a contagem de épocas com features.
+- **A prévia, a conferência e a exclusão** mantêm só as leituras de cada aparelho dentro das janelas das noites reais. Foram testadas antes num Postgres 17 local (Docker), com dados que imitam as oito sessões do inventário e uma segunda conta com leituras dentro e fora das mesmas janelas.
+- **Na produção:** o autor rodou a prévia e a exclusão.
+
+**Resultado medido.**
+- **O inventário trouxe oito sessões, todas com features em 100 % das épocas:**
+  - celular: 10/11 03:02–09:52 (815) e 11/11 04:19–12:03 (930);
+  - travesseiro, 16/11: quatro bancadas do `VIA-01` e do `FW-17` (16, 361, 9 e 106 épocas);
+  - travesseiro, 17/11 02:35–09:36 (812);
+  - travesseiro, de 17/11 11:19 a 18/11 11:48: **24,5 h sem pausa** (2 881). É o teste parado do `FW-14`, etapa 2, e a placa ligada até o dia seguinte.
+- **As bancadas de 12/11 e 13/11 não estavam mais na conta.** Tinham saído nas limpezas de 12/11 e 16/11.
+- **No Postgres local:** saíram 3 373 e ficaram 2 557, exatamente as três noites com os horários de início e fim; a segunda conta ficou intacta; o filtro do e-mail casou com maiúsculas e espaço sobrando.
+- **Na produção:** a prévia mostrou MANTER 1 745 (celular) e 812 (travesseiro), APAGAR 3 373 (travesseiro, de 16/11 18:41 a 18/11 11:48); a exclusão respondeu **3 373**.
+
+**Veredito.** A conta tem só as três noites reais: duas pelo celular (10/11 e 11/11) e uma pelo travesseiro (17/11). Tudo o que era bancada, teste ou dúvida saiu.
+
+**Adaptação.**
+- **A sessão de 24,5 h** podia conter uma noite do autor (17 para 18/11). Por decisão do autor, tudo o que fosse dúvida saiu, e a sessão foi apagada inteira.
+- **Um caderno de coletas**, local e fora do git porque traz os horários do sono do autor, passou a listar cada gravação: data, aparelho, firmware, contexto (noite real ou bancada), o que está no banco e onde está o log. Ele vem com a regra para a próxima bancada:
+  - pausar o recebimento do travesseiro (`API-07`) quando a bancada não precisa do servidor;
+  - anotar e apagar no mesmo dia quando precisa;
+  - marcar "Gravação de teste" no celular.
+
+**O que deu errado no caminho.**
+- **Eu repeti, ao listar o backlog, que faltava "a primeira noite útil com o travesseiro"**: a origem da desconfiança do autor sobre o que estava gravado (diário, 21/11 (iv)).
+- **A primeira versão da exclusão** juntava as épocas aos aparelhos por junção interna, enquanto a prévia usava junção externa. Uma época sem aparelho entraria na conta como "sai" e não seria apagada. Corrigido antes do teste, com a exclusão usando a mesma regra da prévia.
+
+**Risco em aberto.**
+- **O app ainda não sabe excluir nem marcar uma sessão.** A limpeza segue manual, pelo SQL Editor; uma função "excluir esta sessão / marcar como bancada" no Histórico resolveria e também serve aos testadores (eliminação parcial, LGPD).
+- **Noites do celular ainda não enviadas** podem estar no Moto E7, no APK de depuração; trocar pelo APK 1.1.1 apaga o que está no aparelho.
+- **"Noite" e "sessão de captação"** seguem com nomes diferentes no app e no painel até o autor decidir o `ESC-01`.
+
+**Procedência.** SQL Editor do Supabase, executado pelo autor em 21/11 (resultados colados na conversa); Postgres 17 local em Docker; o SQL e o caderno em `dados-locais/`, fora do repositório; Windows 11.
+
+# 2026-11-21 (vi) — DATA-16 aberto: excluir e marcar uma sessão pelo Histórico
+
+**O problema, como foi entendido no início.** A limpeza da conta do autor (diário, 21/11 (v)) foi a terceira feita à mão no SQL Editor. O motivo é o mesmo das outras duas: o servidor não sabe o que é sessão, noite ou bancada, e só o celular tem gravação de teste.
+
+**Hipótese de trabalho.** Duas funções no Histórico eliminam o SQL manual:
+- **excluir esta sessão:** as épocas de um aparelho entre o início e o fim da sessão;
+- **marcar como bancada/teste:** um rótulo por trecho, que tira a sessão do Histórico, do painel, do CSV e da inferência.
+
+A exclusão é também a eliminação parcial da LGPD, que hoje só existe para a conta inteira.
+
+**O que foi testado, e como.** Nada: é a abertura do item. A contagem foi conferida com `scripts/conferir_backlog.py --conferir`.
+
+**Resultado medido.** O backlog passa a 39 itens abertos, L0 com 7.
+
+**Veredito.** O `DATA-16` está aberto, em L0, com peso 🟡.
+
+**Adaptação.** O rótulo "noite" como declaração do usuário fica condicionado ao `ESC-01`, que o autor decide antes de o item começar.
+
+**O que deu errado no caminho.** Nada.
+
+**Risco em aberto.** Até o `DATA-16`, a regra do caderno de coletas é o que evita poluir a conta: pausar o recebimento, ou anotar e apagar no mesmo dia, ou marcar "Gravação de teste".
+
+**Procedência.** Branch `docs/DATA-16-abrir`, sobre `develop` `418522c`; 21/11.
+
+# 2026-11-21 (vii) — DATA-16, (a) e (b): excluir e marcar uma sessão pelo Histórico
+
+**O problema, como foi entendido no início.** A conta do autor foi limpa à mão no SQL Editor três vezes (12/11, 16/11 e 21/11). O servidor guarda épocas, e não sessões: a sessão é deduzida no cliente pelas pausas no envio, e nada diz se ela foi noite, bancada ou teste. Só o celular tinha gravação de teste, e ela nem chega ao servidor. Pelo app, a única eliminação era a da conta inteira.
+
+**Hipótese de trabalho.** Dá para agir sobre uma sessão sem criar a entidade "sessão" no banco. O cliente manda o aparelho e o primeiro e o último instante das épocas que desenhou, pelo mesmo critério de tempo do banco (`coalesce(captured_at, created_at)`), e o banco age sobre as épocas do titular nesse trecho:
+- **excluir** apaga as épocas do trecho;
+- **marcar como bancada** põe uma marca por época (`sleep_data.bancada`), que tira a sessão do painel, das features e da inferência sem apagá-la.
+
+Coluna, e não tabela de trechos: cada consulta filtra sem junção, e funciona no Postgres 14 do CI. O rótulo "noite" (a parte (c)) fica para o `ESC-01`.
+
+**O que foi testado, e como.**
+- **Migração 023:** a coluna `bancada`, e as funções `apagar_trecho` e `marcar_trecho`. As duas são `security definer`, tiram o dono de `auth.uid()`, aceitam até 48 h por chamada e devolvem quantas épocas foram afetadas. Só `authenticated` as executa.
+- **`test_rls_trecho.py`, 16 testes, Postgres 17 em Docker:**
+  - o titular apaga e marca o próprio trecho, incluindo a época sem `captured_at` chegada dentro dele, e só ele;
+  - outra conta, passando o aparelho alheio, não alcança nada;
+  - janela invertida, incompleta ou acima de 48 h é recusada com o motivo, sem tocar em nada; 48 h exatas passam;
+  - sem titular, nada acontece; `anon` não executa; a conferência interna não é chamável pelo cliente.
+- **Backend (`test_trecho.py`, 31 testes):**
+  - a leitura do trecho, com aparelho, fuso, ordem e teto;
+  - as rotas `POST /api/sessoes/apagar` (com a frase de confirmação) e `POST /api/sessoes/marcar`, com 400, 401 e 503;
+  - o histórico devolve a marca, e as features e a inferência a filtram.
+- **Frontend:**
+  - `trecho.test.ts`: o trecho vai do primeiro ao último instante medido, com a chegada como reserva, e não há ação sem aparelho;
+  - `Historico.test.tsx`: a seção das marcadas, marcar e desmarcar com o trecho certo, a confirmação antes de excluir, o cancelar que não apaga, a falha que não recarrega;
+  - `api.test.ts`: as duas chamadas;
+  - `exportar.test.ts`: a coluna `bancada` do CSV.
+- **Controles positivos:**
+  - sem a 023 na lista do RLS, os 16 testes de trecho caem;
+  - sem o filtro `.eq("bancada", False)` e sem a checagem da confirmação, 5 testes do backend caem;
+  - com o botão "Excluir…" apagando direto e com a bancada agrupada junto com as sessões normais, 6 dos 7 testes do Histórico caem.
+- **Suítes completas:** backend, frontend, RLS, o diagnóstico de migrações, lint, Knip, build, a CSP, o orçamento do pacote, o Ruff e a verificação por mutação do RLS.
+
+**Resultado medido.**
+- **Backend:** 665 passam, 1 pula (eram 634; +31).
+- **Frontend:** 803 passam, 57 arquivos (eram 786; +17). Lint, Knip e Knip de tipos saem com 0; o build passa.
+- **RLS:** 321 passam (eram 305; +16).
+- **Diagnóstico de migrações:** acerta os 21 estados, inclusive a 023 na ordem real.
+- **CSP:** 12 scripts inline com hash.
+- **Pacote:** o painel tem 257 097 B comprimidos, abaixo do teto de 260 000.
+- **Ruff:** sem erro.
+
+**Veredito.** As partes (a) e (b) do `DATA-16` estão feitas na branch: excluir uma sessão e marcá-la como bancada, pelo Histórico, sem SQL. O item segue aberto pela parte (c), o rótulo "noite", que espera o `ESC-01`.
+
+**Adaptação.**
+- **O CSV leva as épocas marcadas, com a coluna `bancada`**, em vez de deixá-las de fora como o plano dizia. A exportação é a portabilidade dos dados (LGPD, art. 18, V): vai o dado inteiro, com a marca. O painel e as análises do servidor é que as excluem.
+- **"Sem a 023, o resto continua funcionando", que estava no plano, é falso.** O histórico passa a pedir a coluna `bancada`, então **a 023 tem de ser aplicada na produção antes do release**, como a 018 e a 022. Está dito no README das migrações.
+- **A política de privacidade** ganhou a eliminação de uma sessão (6.4), a marca de bancada (6.5) e a coluna nova no CSV (6.2).
+
+**O que deu errado no caminho.**
+- **Um `git checkout` do `conftest.py`**, usado para desfazer o controle positivo, apagou junto a linha nova da 023, que ainda não estava commitada. A linha foi refeita antes de rodar a suíte.
+- **O teste da página saiu sem o ambiente `jsdom`** e, depois, sem o `matchMedia` falso; os dois vieram dos testes existentes.
+- **Duas edições por script falharam na asserção:** uma no `verificar_migracoes.py`, outra nos imports do `api.test.ts`. Nos dois casos nada foi gravado, e a edição foi refeita de outro jeito.
+- **O README das migrações não lista da 017 à 022**: a 023 entrou logo depois da 016. A lacuna é anterior a este item.
+
+**Risco em aberto.**
+- **Época que chega depois** dentro de um trecho já marcado entra sem a marca. Isso pode acontecer com a fila da placa, mas é raro. Marcar de novo resolve.
+- **A sessão "Parcial"** (na borda do limite do Histórico) só leva as épocas que a tela tem; as anteriores ficam.
+- **Não foi visto no navegador com uma conta real:** a prévia local abre o checkout principal, e a tela pede login. Fica para depois do release, com a conta do autor.
+- **O rótulo "noite" (c)** segue no `DATA-16`, à espera do `ESC-01`.
+
+**Procedência.** Branch `feature/DATA-16-excluir-e-marcar-sessao`, sobre `develop` `0270c52`; Windows 11, Python 3.13, Node 22, Postgres 17 em Docker; 21/11.

@@ -30,6 +30,10 @@ export const COLUNAS = [
   "status",
   "movimento",
   "origem_temperatura",
+  // DATA-16: a época que o titular marcou como bancada/teste. O CSV é a
+  // portabilidade dos dados (LGPD, art. 18, V): vai tudo, com a marca, e quem
+  // analisa decide. O painel e as análises do servidor é que a deixam de fora.
+  "bancada",
 ] as const;
 
 /**
@@ -66,6 +70,7 @@ export function gerarCsv(leituras: LeituraSono[], dispositivos: Dispositivo[] = 
         escapar(leitura.status),
         escapar(ehMovimento(leitura.status) ? "1" : "0"),
         escapar(leitura.temp == null ? null : origemDaTemperatura(tipos.get(leitura.device_id ?? ""))),
+        escapar(leitura.bancada === true ? "1" : "0"),
       ].join(","),
     );
   }
