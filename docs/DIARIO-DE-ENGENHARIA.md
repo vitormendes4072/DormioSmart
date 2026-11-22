@@ -12062,3 +12062,50 @@ Então bastam três mudanças: os textos; os 11 PNGs refeitos com a marca, por s
 - **As 800 do log e as 812 aceitas não batem exatamente:** o log de época pode ter perdido linhas na serial, o defeito do `FW-19`, cuja correção ainda não foi gravada na placa.
 
 **Procedência.** Logs da noite de 17/11 nesta máquina, lidos em 21/11; branch `docs/VAL-01-situacao`, sobre `develop` `95d5dcd`.
+
+# 2026-11-21 (v) — a conta do autor só com as três noites reais, e o que gerava a confusão
+
+**O problema, como foi entendido no início.** O autor não sabia mais o que estava gravado na conta: tinha feito "3 ou 4 medições no travesseiro", antes disso noites pelo celular, e não estava claro o que era noite real, o que era bancada, nem por qual aparelho cada coisa entrou. Pediu uma análise do projeto e a limpeza do que fosse teste.
+
+**Hipótese de trabalho.** A confusão não é só de memória, é do projeto. Quatro causas:
+- **O servidor não guarda sessão nem noite**, só épocas com o aparelho de origem (`devices.tipo`). O painel e o Histórico deduzem a "sessão de captação" pelas pausas no envio (`agruparEmSessoes`); a "noite" só existe no app do celular, enquanto ele grava.
+- **Só o celular tem "gravação de teste"** (`APP-11`). Toda bancada da placa cai na conta.
+- **Uma conta só** para desenvolvimento, bancada e noites, limpa à mão no SQL Editor (12/11 e 16/11).
+- **O registro do que foi gravado está espalhado no diário**, por assunto técnico, e não numa lista.
+
+Com um inventário do banco, cada sessão pode ser casada com o diário e classificada, e a limpeza sai por janelas explícitas, como em 12/11.
+
+**O que foi testado, e como.**
+- **Inventário (só leitura), rodado pelo autor no SQL Editor:** as sessões da conta por aparelho, com um buraco de mais de 15 min abrindo sessão nova, e a contagem de épocas com features.
+- **A prévia, a conferência e a exclusão** mantêm só as leituras de cada aparelho dentro das janelas das noites reais. Foram testadas antes num Postgres 17 local (Docker), com dados que imitam as oito sessões do inventário e uma segunda conta com leituras dentro e fora das mesmas janelas.
+- **Na produção:** o autor rodou a prévia e a exclusão.
+
+**Resultado medido.**
+- **O inventário trouxe oito sessões, todas com features em 100 % das épocas:**
+  - celular: 10/11 03:02–09:52 (815) e 11/11 04:19–12:03 (930);
+  - travesseiro, 16/11: quatro bancadas do `VIA-01` e do `FW-17` (16, 361, 9 e 106 épocas);
+  - travesseiro, 17/11 02:35–09:36 (812);
+  - travesseiro, de 17/11 11:19 a 18/11 11:48: **24,5 h sem pausa** (2 881). É o teste parado do `FW-14`, etapa 2, e a placa ligada até o dia seguinte.
+- **As bancadas de 12/11 e 13/11 não estavam mais na conta.** Tinham saído nas limpezas de 12/11 e 16/11.
+- **No Postgres local:** saíram 3 373 e ficaram 2 557, exatamente as três noites com os horários de início e fim; a segunda conta ficou intacta; o filtro do e-mail casou com maiúsculas e espaço sobrando.
+- **Na produção:** a prévia mostrou MANTER 1 745 (celular) e 812 (travesseiro), APAGAR 3 373 (travesseiro, de 16/11 18:41 a 18/11 11:48); a exclusão respondeu **3 373**.
+
+**Veredito.** A conta tem só as três noites reais: duas pelo celular (10/11 e 11/11) e uma pelo travesseiro (17/11). Tudo o que era bancada, teste ou dúvida saiu.
+
+**Adaptação.**
+- **A sessão de 24,5 h** podia conter uma noite do autor (17 para 18/11). Por decisão do autor, tudo o que fosse dúvida saiu, e a sessão foi apagada inteira.
+- **Um caderno de coletas**, local e fora do git porque traz os horários do sono do autor, passou a listar cada gravação: data, aparelho, firmware, contexto (noite real ou bancada), o que está no banco e onde está o log. Ele vem com a regra para a próxima bancada:
+  - pausar o recebimento do travesseiro (`API-07`) quando a bancada não precisa do servidor;
+  - anotar e apagar no mesmo dia quando precisa;
+  - marcar "Gravação de teste" no celular.
+
+**O que deu errado no caminho.**
+- **Eu repeti, ao listar o backlog, que faltava "a primeira noite útil com o travesseiro"**: a origem da desconfiança do autor sobre o que estava gravado (diário, 21/11 (iv)).
+- **A primeira versão da exclusão** juntava as épocas aos aparelhos por junção interna, enquanto a prévia usava junção externa. Uma época sem aparelho entraria na conta como "sai" e não seria apagada. Corrigido antes do teste, com a exclusão usando a mesma regra da prévia.
+
+**Risco em aberto.**
+- **O app ainda não sabe excluir nem marcar uma sessão.** A limpeza segue manual, pelo SQL Editor; uma função "excluir esta sessão / marcar como bancada" no Histórico resolveria e também serve aos testadores (eliminação parcial, LGPD).
+- **Noites do celular ainda não enviadas** podem estar no Moto E7, no APK de depuração; trocar pelo APK 1.1.1 apaga o que está no aparelho.
+- **"Noite" e "sessão de captação"** seguem com nomes diferentes no app e no painel até o autor decidir o `ESC-01`.
+
+**Procedência.** SQL Editor do Supabase, executado pelo autor em 21/11 (resultados colados na conversa); Postgres 17 local em Docker; o SQL e o caderno em `dados-locais/`, fora do repositório; Windows 11.
