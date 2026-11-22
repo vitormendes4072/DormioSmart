@@ -83,11 +83,11 @@ public final class Calibracao {
     /** O que a tela mostra: aceita, ou quantos pontos faltam, ou por que foi recusada. */
     public String resumo(int pontosMinimos) {
         if (aceita) {
-            return String.format(PT_BR, "Calibrado: erro de %.1f mg para %.1f mg, com %d épocas paradas",
+            return String.format(PT_BR, "Calibrado: erro de %.1f mg para %.1f mg, com %d registros parados",
                     1000 * erroAntesG, 1000 * erroDepoisG, pontos);
         }
         if (pontos < pontosMinimos) {
-            return String.format(PT_BR, "Calibrando: %d de %d épocas paradas", pontos, pontosMinimos);
+            return String.format(PT_BR, "Calibrando: %d de %d registros parados", pontos, pontosMinimos);
         }
         return String.format(PT_BR, "Calibração recusada: o erro ficou em %.1f mg", 1000 * erroDepoisG);
     }

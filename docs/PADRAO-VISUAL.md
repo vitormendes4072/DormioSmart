@@ -1,5 +1,7 @@
 # Padrão visual das páginas públicas — Smart Dormio
 
+> ✏️ **22/11 (`UI-39`):** a seção 10, e só ela, vale para o app depois do login: é o glossário das telas.
+
 > **Criado em 2026-11-19 (`UI-34`).** Os logos, os ícones e a paleta, cada um em arquivo próprio,
 > estão no manual da marca, [`docs/marca/README.md`](marca/README.md). Antes de criar ou mudar uma página pública, ler este
 > arquivo. **O padrão é o da home** (`frontend/public/landing-prototipo.html`): quando este
@@ -149,11 +151,41 @@ comunicar estado real ou identificar controles. Não apagar a identificação de
 A revisão do `UI-37` reduziu o título do topo em desktop; os valores da seção 3 são as medidas
 anteriores de 19/11, preservadas como referência histórica, não medições da versão revisada.
 
+## 10. A linguagem do app (`UI-39`)
+
+Vale para Início, Noite, Histórico, Dispositivos, Coletar e Configurações. O nome técnico continua
+no código, no contrato de dados e no CSV.
+
+| Não escrever na tela | Escrever | O que significa |
+|---|---|---|
+| época, leitura, amostra | **registro** | O que o aparelho grava a cada 30 s (ou no intervalo que ele declara) |
+| tempo medido | **tempo registrado** | A soma do que foi medido, sem o que ficou sem registro |
+| cobertura | **registrado X de Y** | Tempo registrado dentro do período, do início ao fim |
+| leituras com movimento (contagem) | **com movimento: N% do tempo registrado** | Fração de tempo, e não de contagem |
+| maior intervalo sem movimento | **maior período sem movimento registrado** | Não atravessa pausa do aparelho |
+| com lacunas | **com pausas** | Só quando o aparelho parou (interrupção) |
+| com lacunas, sem parada | **incompleta** | Faltou registro, mas o aparelho não parou |
+| sem medição | **sem registro** | Não se sabe se houve movimento |
+| desvio do repouso, magnitude | **intensidade do movimento** | O desvio absoluto em relação ao repouso |
+| limiar | **limite de movimento** | O critério do próprio aparelho |
+| token, credencial | **código de conexão** (o aparelho fica "vinculado") | O segredo que o travesseiro usa para enviar |
+| sessão de captação | **sessão** | Nunca "noite", no painel e no Histórico, até o `ESC-01` |
+| janela | **período** | O intervalo exibido |
+| taxa do sensor | **ritmo do sensor** | Medidas por segundo |
+
+- **Nenhum rótulo afirma mais do que a conta:** registro é do aparelho, e não da pessoa. Nada de
+  "você se mexeu", sono, qualidade ou diagnóstico.
+- **Porcentagem:** "<1%" entre zero e um, ">99%" entre 99 e 100.
+- **Termo técnico necessário** fica num bloco "Detalhes técnicos". Aviso de falha, nunca.
+- **Não mudam:** o texto do consentimento (pede versão e aceite novos) e os nomes de botão que a
+  política de privacidade cita.
+- `src/linguagem.test.ts` reprova os termos da primeira coluna nas telas.
+
 ## O que este documento não cobre
 
 | Lacuna | Por quê |
 |---|---|
-| **O app depois do login** | Usa a fonte Outfit (`theme.css`, baixada pelo `fonts.css`) e outra paleta. Alinhar o app a este padrão, ou decidir que ele tem o seu, é o `UI-36`. |
+| **O visual do app depois do login** (a linguagem está na seção 10) | Usa a fonte Outfit (`theme.css`, baixada pelo `fonts.css`) e outra paleta. Alinhar o app a este padrão, ou decidir que ele tem o seu, é o `UI-36`. |
 | **A versão leve da landing** (`/?apresentacao=leve`) | É componente do app e herda a fonte e a paleta dele. Entra no `UI-36`. |
 | **O celular desenhado na landing** | Imita a interface do aparelho, de propósito. |
 | **Outros tamanhos de tela** | A escala foi medida a 1280 px. No celular, as regras `@media` da landing e da lista são as que valem. |

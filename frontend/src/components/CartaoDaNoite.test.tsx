@@ -109,7 +109,7 @@ describe("CartaoDaNoite (APP-02)", () => {
       estado({ ativa: true, rodando: true, inicioUtcMs: INICIO, epocasGravadas: 9, taxaHz: 49.98, retomadas: 1, temperaturaC: 31.8 }),
     );
     render(<CartaoDaNoite plugin={p} agora={() => agora} />);
-    expect(await screen.findByText("90 %")).toBeTruthy();
+    expect(await screen.findByText("4m 30s de 5m 0s")).toBeTruthy();
     expect(screen.getByText("50.0 Hz")).toBeTruthy();
     expect(screen.getByText("31.8 °C")).toBeTruthy();
   });
@@ -166,7 +166,7 @@ describe("CartaoDaNoite (APP-02)", () => {
     }));
     render(<CartaoDaNoite plugin={p} agora={() => INICIO} enviar={enviar} />);
     const status = await screen.findByRole("status");
-    expect(status.textContent).toMatch(/70 épocas enviadas/);
+    expect(status.textContent).toMatch(/70 registros enviados/);
     expect(status.textContent).not.toMatch(/pendentes/);
     expect(enviar).toHaveBeenCalledTimes(6);
     expect(p.enviadas).toBe(70);
@@ -176,7 +176,7 @@ describe("CartaoDaNoite (APP-02)", () => {
     const p = plugin(estado({ ativa: false, rodando: false }), 70);
     const enviar = vi.fn(async (l: object[]) => ({ aceitas: l.map((_, i) => i), rejeitadas: [], pendentes: [] }));
     render(<CartaoDaNoite plugin={p} agora={() => INICIO} enviar={enviar} />);
-    expect((await screen.findByRole("status")).textContent).toMatch(/70 épocas enviadas/);
+    expect((await screen.findByRole("status")).textContent).toMatch(/70 registros enviados/);
     expect(enviar).toHaveBeenCalledTimes(2);
     expect(p.enviadas).toBe(70);
   });
@@ -243,7 +243,7 @@ describe("CartaoDaNoite (APP-02)", () => {
     await act(async () => fireEvent.click(encerrar));
     expect(p.encerrar).toHaveBeenCalledTimes(1);
     expect(enviar).toHaveBeenCalledTimes(1);
-    expect((await screen.findByRole("status")).textContent).toMatch(/12 épocas enviadas/);
+    expect((await screen.findByRole("status")).textContent).toMatch(/12 registros enviados/);
   });
 
   it("falha de envio fica na tela, e as epocas esperam o proximo toque", async () => {
@@ -253,7 +253,7 @@ describe("CartaoDaNoite (APP-02)", () => {
     });
     render(<CartaoDaNoite plugin={p} agora={() => INICIO} enviar={enviar} />);
     expect((await screen.findByRole("status")).textContent).toMatch(/Sem conexao/);
-    expect(await screen.findByText(/5 épocas aguardando envio/)).toBeTruthy();
+    expect(await screen.findByText(/5 registros aguardando envio/)).toBeTruthy();
     expect(p.enviadas).toBe(0);
   });
 

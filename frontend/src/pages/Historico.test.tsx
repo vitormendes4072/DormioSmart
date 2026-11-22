@@ -88,7 +88,7 @@ describe("Histórico: excluir e marcar uma sessão (DATA-16)", () => {
       desde: NOITE[0].captured_at,
       ate: NOITE.at(-1)!.captured_at,
     }, true);
-    expect(await screen.findByText(/Sessão marcada como bancada\/teste \(20 épocas\)/)).toBeTruthy();
+    expect(await screen.findByText(/Sessão marcada como bancada\/teste \(20 registros\)/)).toBeTruthy();
     expect(buscar).toHaveBeenCalledTimes(2);
   });
 
@@ -109,7 +109,7 @@ describe("Histórico: excluir e marcar uma sessão (DATA-16)", () => {
     fireEvent.click(within(principal).getByRole("button", { name: "Excluir…" }));
     const confirmacao = screen.getByRole("alertdialog", { name: "Confirmar exclusão da sessão" });
     expect(within(confirmacao).getByText(/não há como desfazer/)).toBeTruthy();
-    expect(within(confirmacao).getByText("20 leituras")).toBeTruthy();
+    expect(within(confirmacao).getByText("20 registros")).toBeTruthy();
     fireEvent.click(within(confirmacao).getByRole("button", { name: "Cancelar" }));
     expect(screen.queryByRole("alertdialog")).toBeNull();
     expect(apagar).not.toHaveBeenCalled();
@@ -125,7 +125,7 @@ describe("Histórico: excluir e marcar uma sessão (DATA-16)", () => {
       desde: NOITE[0].captured_at,
       ate: NOITE.at(-1)!.captured_at,
     }));
-    expect(await screen.findByText("Sessão excluída: 20 épocas apagadas.")).toBeTruthy();
+    expect(await screen.findByText("Sessão excluída: 20 registros apagados.")).toBeTruthy();
     expect(buscar).toHaveBeenCalledTimes(2);
   });
 
@@ -226,5 +226,38 @@ describe("excluir e marcar alcançam só a sessão mostrada (UI-38)", () => {
     mostrar();
     await screen.findByRole("region", { name: "Tabela do histórico" });
     expect(screen.queryByRole("button", { name: "Excluir…" })).toBeNull();
+  });
+});
+
+describe("a linguagem do Histórico (UI-39)", () => {
+  /** A situação da única linha, com as épocas nos instantes dados (em s). */
+  async function situacao(segundos: number[]) {
+    buscar.mockResolvedValue({
+      leituras: segundos.map((s) => {
+        const instante = new Date(AGORA - 120 * MIN + s * 1000).toISOString();
+        return { created_at: instante, captured_at: instante, epoca_segundos: 30, movimento_total: 9.8,
+          temp: null, status: "Repouso", device_id: "travesseiro" } as LeituraSono;
+      }),
+      truncada: false,
+    });
+    mostrar();
+    return (await screen.findByRole("region", { name: "Tabela do histórico" })).textContent;
+  }
+  const serie = (de: number, n: number, passo = 30) => Array.from({ length: n }, (_, i) => de + i * passo);
+
+  it("interrupção é 'Com pausas', com o registrado e o período", async () => {
+    const texto = await situacao([...serie(0, 20), ...serie(570 + 150, 20)]);
+    expect(texto).toContain("Com pausas");
+    expect(texto).toContain("20m 0s de 22m 0s");
+  });
+
+  it("falha de segundo sem o aparelho parar é 'Incompleta', e não pausa", async () => {
+    const texto = await situacao(serie(0, 20, 31));
+    expect(texto).toContain("Incompleta");
+    expect(texto).not.toContain("Com pausas");
+  });
+
+  it("sem falha nenhuma é 'Completa'", async () => {
+    expect(await situacao(serie(0, 20))).toContain("Completa");
   });
 });

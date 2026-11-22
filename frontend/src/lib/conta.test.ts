@@ -81,25 +81,25 @@ describe("interpretarRecibo", () => {
 
 describe("descreverRecibo", () => {
   it("descreve o que saiu, com números", () => {
-    expect(descreverRecibo(recibo())).toBe("812 leituras, 2 dispositivos e o perfil");
+    expect(descreverRecibo(recibo())).toBe("812 registros, 2 dispositivos e o perfil");
   });
 
   it("concorda no singular", () => {
     expect(
       descreverRecibo(recibo({ leituras_apagadas: 1, dispositivos_apagados: 1 })),
-    ).toBe("1 leitura, 1 dispositivo e o perfil");
+    ).toBe("1 registro, 1 dispositivo e o perfil");
   });
 
   it("omite o perfil quando ele não foi apagado", () => {
     const texto = descreverRecibo(recibo({ perfil_apagado: false }));
-    expect(texto).toBe("812 leituras e 2 dispositivos");
+    expect(texto).toBe("812 registros e 2 dispositivos");
   });
 
   it("não quebra com uma conta que nunca captou nada", () => {
     const texto = descreverRecibo(
       recibo({ leituras_apagadas: 0, dispositivos_apagados: 0, perfil_apagado: true }),
     );
-    expect(texto).toBe("0 leituras, 0 dispositivos e o perfil");
+    expect(texto).toBe("0 registros, 0 dispositivos e o perfil");
   });
 });
 

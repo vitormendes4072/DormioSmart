@@ -56,11 +56,11 @@ export function prepararDispositivoDoCelular(): Promise<Dispositivo> {
  * coisa bem especifica que merece texto proprio.
  */
 export function mensagemDeFalha(status: number): string {
-  if (status === 401) return "Sua sessao expirou. Entre de novo para continuar.";
-  if (status === 404) return "O dispositivo deste aparelho nao existe mais. Recarregue a pagina.";
-  if (status === 400) return "O servidor recusou a leitura como invalida.";
-  if (status === 503) return "Servidor indisponivel. A leitura nao foi gravada.";
-  if (status === 0) return "Sem conexao. A leitura nao foi gravada.";
+  if (status === 401) return "Sua sessão expirou. Entre de novo para continuar.";
+  if (status === 404) return "O dispositivo deste aparelho não existe mais. Recarregue a página.";
+  if (status === 400) return "O servidor recusou o registro como inválido.";
+  if (status === 503) return "Servidor indisponível. O registro não foi gravado.";
+  if (status === 0) return "Sem conexão. O registro não foi gravado.";
   return `Falha ao enviar (erro ${status}).`;
 }
 
@@ -128,7 +128,7 @@ export type RespostaDoLote = {
  */
 export const PRAZO_DO_LOTE_MS = 60_000;
 
-const MENSAGEM_DE_PRAZO = "O servidor nao respondeu a tempo. As epocas continuam no aparelho.";
+const MENSAGEM_DE_PRAZO = "O servidor não respondeu a tempo. Os registros continuam no aparelho.";
 
 export async function enviarLote(
   leituras: object[],
