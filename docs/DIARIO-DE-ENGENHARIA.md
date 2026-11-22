@@ -11926,3 +11926,49 @@ Então bastam três mudanças: os textos; os 11 PNGs refeitos com a marca, por s
 - **O exemplo do modo demonstração** em `Dispositivos.tsx` se chama "Dormio Pillow Sensor". É nome de aparelho fictício, não texto sobre o produto, e ficou como está.
 
 **Procedência.** Branch `feature/APP-18-nome-e-abertura`, sobre `develop` `9f94c1a`; testes e emulador nesta máquina (Windows 11), em 21/11.
+
+# 2026-11-21 (ii) — o release R15: o APK 1.1.1 com a tela de abertura da marca
+
+**O problema, como foi entendido no início.** O `APP-18` foi mesclado em `develop` (`8f28686`), mas só chega aos celulares num APK novo. E a landing monta o texto da versão e o link do download a partir do `versionName`: subir a versão sem publicar o APK mostraria "1.1.1" ao lado de um arquivo que ainda é o 1.1.0.
+
+**Hipótese de trabalho.** Seguir o caminho do R14 (diário, 19/11 (xv)), com a versão subindo numa branch curta antes:
+- `chore/R15-app-1.1.1`: `versionCode` 3 e `versionName` 1.1.1 no `build.gradle`, no `appAndroid.ts` e na landing;
+- o APK gerado do `develop` já mesclado, para corresponder ao código do `main`;
+- a release em rascunho, a PR de release, o merge com o aval do autor e a publicação antes de o deploy terminar.
+
+**O que foi testado, e como.**
+- **A versão:** PR #239, CI todo verde (12 jobs); merge em `develop` `fcc9f11`.
+- **O APK:** `npm run build:app` e `./gradlew assembleRelease` com a chave do autor, no checkout principal em `fcc9f11`. Conferido com `apksigner verify --print-certs` e `aapt2 dump badging` (build-tools 37.0.0).
+- **A release:** o rascunho criado com `gh release create --draft --target main`; depois do merge da #240, publicado com `gh release edit --draft=false --prerelease=false --latest`.
+- **Depois do deploy:**
+  - `curl` nas rotas;
+  - o link `latest` baixado e comparado por SHA-256;
+  - a CSP servida contra os scripts inline das cinco páginas, por um script que calcula o hash de cada um.
+
+**Resultado medido.**
+- **O APK:** `versionCode` 3, `versionName` 1.1.1, as três ABIs, não depurável; assinatura v2 com o mesmo certificado do 1.0.0 e do 1.1.0 (SHA-256 `06b2e4f93af786a09455851d9a6f1abd0f948ecf2b8d08ab6dd22d9b9613d14a`); 5 359 918 B (eram 5 239 362 no 1.1.0: os 11 `splash.png` novos pesam mais); SHA-256 `27931b8f031b195278e45a7ae6beaad1b68a1ca17f1e4c657cb13ab1637a3f22`.
+- **Release:**
+  - CI da #240 todo verde (12 jobs); merge `495f879`;
+  - a tag `app-v1.1.1` aponta para o `495f879`;
+  - deploy `7971735657` com sucesso.
+- **O download:** o link `releases/latest/download/smart-dormio.apk` responde `200`, com 5 359 918 B e o mesmo SHA-256.
+- **A produção:**
+  - `/health` `200` (contrato 2.11.0, modelo `ml-inf-cabeca-v2`); `/` `200`; `/api/devices` sem token `401`;
+  - a CSP é igual nas cinco páginas (`/`, `/login`, a landing, `/privacidade`, `/lista-de-espera`), com 15 scripts inline, todos com hash;
+  - a landing servida diz "Versão 1.1.1 (beta)".
+
+**Veredito.** O APK 1.1.1 está publicado, e a landing leva a ele. O `APP-18` chega aos celulares por esse arquivo.
+
+**Adaptação.** Nenhuma no caminho. A diferença para o R14 é a versão ter subido numa PR própria (#239), e não na branch do item, pelo motivo do `APP-18` (diário, 21/11 (i)).
+
+**O que deu errado no caminho.**
+- **O `npm run build:app` reescreveu de novo os finais de linha** de `capacitor.build.gradle` e `capacitor.settings.gradle`; revertidos com `git checkout` antes de qualquer commit.
+- **A primeira chamada ao `apksigner` não achou o build-tools:** a variável `LOCALAPPDATA` vem com barras invertidas e o Git Bash não expandiu o curinga. Pelo caminho `/c/Users/...`, funcionou.
+- **A worktree `r15` saiu com `git worktree remove --force`** sem o erro de caminho longo do R14.
+
+**Risco em aberto.**
+- **A abertura no Android 10 e 11 não foi vista num aparelho:** falta instalar o 1.1.1 no Moto E7. ⚠️ O celular do autor está no APK de depuração, e trocar pelo de release, de assinatura diferente, obriga a desinstalar e apaga as noites guardadas.
+- **Os dados de quem baixar não entram no TCC** sem o termo e o aval do orientador (`LGPD-03`, `APP-12`).
+- **O `LGPD-15`:** o texto do consentimento segue com "O Dormio".
+
+**Procedência.** PRs #239 (`fcc9f11`) e #240 (`495f879`); release `app-v1.1.1`; APK de `develop` `fcc9f11`; deploy `7971735657`; conferências desta máquina em 21/11.
