@@ -12,6 +12,7 @@ import inferencia
 import lista_de_espera
 import lote
 import perfil
+import trecho
 from auth import extrair_bearer, require_auth
 from database import INDISPONIVEL, db
 from consulta import ler_parametros, validar_instante, validar_uuid
@@ -592,6 +593,53 @@ def init_routes(app):
         return jsonify(gravado), 200
 
     # --- Direito de eliminação (SEC-07, LGPD art. 18, VI) ---
+
+    # --- Uma sessão: excluir e marcar como bancada (DATA-16) ---
+    #
+    # O cliente manda o aparelho e os instantes da sessão que desenhou; o banco
+    # age sobre as épocas DO TITULAR nesse trecho (`auth.uid()`, migração 023).
+
+    @app.route('/api/sessoes/apagar', methods=['POST'])
+    @require_auth
+    def apagar_sessao():
+        """Apaga as épocas de uma sessão. Irreversível.
+
+        Pede a frase de confirmação no corpo, como a exclusão da conta: um
+        pedido repetido por engano não a escreve.
+        """
+        corpo = request.get_json(silent=True)
+        if not isinstance(corpo, dict) or corpo.get("confirmacao") != trecho.CONFIRMACAO_APAGAR:
+            return jsonify({
+                "error": "confirmacao necessaria",
+                "envie": {"confirmacao": trecho.CONFIRMACAO_APAGAR},
+            }), 400
+        lido, erro = trecho.ler_trecho(corpo)
+        if erro:
+            return jsonify({"error": erro}), 400
+        apagadas = db.apagar_trecho(g.jwt, *lido)
+        if apagadas is None:
+            return jsonify({"error": "fonte de dados indisponivel"}), 503
+        return jsonify({"epocas_apagadas": apagadas}), 200
+
+    @app.route('/api/sessoes/marcar', methods=['POST'])
+    @require_auth
+    def marcar_sessao():
+        """Marca (`bancada: true`) ou desmarca uma sessão como bancada/teste.
+
+        A sessão marcada continua guardada, mas sai do Histórico principal, do
+        painel, do CSV, das features e da inferência.
+        """
+        corpo = request.get_json(silent=True)
+        lido, erro = trecho.ler_trecho(corpo)
+        if erro:
+            return jsonify({"error": erro}), 400
+        bancada = corpo.get("bancada")
+        if not isinstance(bancada, bool):
+            return jsonify({"error": "'bancada' obrigatorio, true ou false"}), 400
+        marcadas = db.marcar_trecho(g.jwt, *lido, bancada)
+        if marcadas is None:
+            return jsonify({"error": "fonte de dados indisponivel"}), 503
+        return jsonify({"epocas_marcadas": marcadas, "bancada": bancada}), 200
 
     @app.route('/api/me', methods=['DELETE'])
     @require_auth

@@ -455,7 +455,9 @@ da noite ficam só no seu celular, e você as vê no próprio aplicativo.
 
 ✅ **Implementado, com uma limitação declarada.** Em *Configurações → Seus dados*
 há a exportação em CSV, com instante, magnitude, intensidade, temperatura e
-estado de cada leitura.
+estado de cada leitura, e se ela está marcada como bancada/teste (6.5). As
+marcadas também vão: o arquivo é o seu dado inteiro, e não só o que o painel
+mostra.
 
 ⚠️ **A exportação traz no máximo 2.000 leituras**, as mais recentes. Uma noite de
 oito horas em épocas de 30 segundos produz cerca de 960 leituras, então o limite
@@ -506,6 +508,11 @@ digite uma frase de confirmação, e é **irreversível**. Ela apaga:
 - todos os seus dispositivos;
 - o seu perfil.
 
+✅ **Eliminação de uma sessão.** Em *Histórico*, cada sessão tem *Excluir…*:
+depois de uma confirmação, as leituras daquele aparelho entre o início e o fim
+da sessão são apagadas do servidor, e a tela diz quantas saíram. Também é
+**irreversível**, e só alcança as suas leituras.
+
 > ✏️ **Correção de procedência, 2026-10-17.** O "✅ Implementado" acima está
 > escrito desde 29/09 e, **na versão versionada do aplicativo, a tela não
 > existia**: o componente `ExcluirConta` estava commitado e testado, e as três
@@ -551,10 +558,15 @@ celular** (seção 2.3) continuam lá até você **desinstalar o aplicativo**.
   *Configurações → Conta → Editar dados*. O campo volta a ficar vazio no banco,
   e a frase da seção 3 deixa de aparecer. É eliminação daquele dado, não
   bloqueio dele.
-- **Bloqueio temporário do tratamento, e anonimização de um subconjunto das
-  leituras:** ❌ sem mecanismo. O que existe é a eliminação total (6.4) e a
-  eliminação de leituras individuais pela API. Uma solicitação por esses será
-  atendida manualmente, pelo canal da seção 8.
+- **Tirar uma sessão das análises:** ✅ em *Histórico*, *Marcar como
+  bancada/teste*. As leituras continuam guardadas, mas saem do painel, da
+  estimativa de sono e vigília e das medidas calculadas no servidor; *Desmarcar*
+  as traz de volta. Serve para um teste ou uma sessão que você não quer ver
+  analisada sem apagá-la.
+- **Bloqueio temporário de todo o tratamento, e anonimização de um subconjunto
+  das leituras:** ❌ sem mecanismo. O que existe é a eliminação total ou de uma
+  sessão (6.4) e a marca acima. Uma solicitação por esses será atendida
+  manualmente, pelo canal da seção 8.
 - **Por que as leituras não são anonimizadas como alternativa a apagá-las:** ver
   a seção 2.5 — uma série longa de movimento noturno é, por si, capaz de
   distinguir uma pessoa de outra, então chamar de anonimizado o que não é seria

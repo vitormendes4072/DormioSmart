@@ -1,17 +1,21 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useLocation } from "react-router";
 
 import { BarraDoWorkspace } from "../components/BarraDoWorkspace";
 import { Carregando, FalhaAoCarregar } from "../components/EstadoDaTela";
-import { buscarJanelaDoHistorico, ErroApi, MAX_PAGINAS_DO_HISTORICO } from "../lib/api";
+import { apagarSessao, buscarJanelaDoHistorico, ErroApi, marcarSessao, MAX_PAGINAS_DO_HISTORICO } from "../lib/api";
 import { agruparEmSessoes, calcularCobertura } from "../lib/cobertura";
 import { estaEmModoDemo } from "../lib/demo";
 import { formatarDuracao } from "../lib/metricas";
+import { ehBancada, trechoDaSessao, type Trecho } from "../lib/trecho";
 import { instanteDaLeitura, type LeituraSono } from "../types/sleep";
 
 const DIA_MS = 24 * 60 * 60 * 1000;
 const DATA = new Intl.DateTimeFormat("pt-BR", {
   day: "2-digit", month: "short", year: "numeric",
+});
+const DATA_E_HORA = new Intl.DateTimeFormat("pt-BR", {
+  day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit",
 });
 
 type Linha = {
@@ -22,6 +26,11 @@ type Linha = {
   leituras: number;
   lacunas: boolean;
   parcial?: boolean;
+  /** Aparelho e instantes da sessão, para excluir ou marcar (DATA-16). Ausente
+   *  nos exemplos e nas leituras sem aparelho. */
+  trecho?: Trecho | null;
+  /** A sessão foi marcada como bancada/teste. */
+  bancada?: boolean;
 };
 
 const SESSOES_DO_PROTOTIPO: Array<[number, number, number, number, number, number, boolean]> = [
@@ -42,21 +51,27 @@ const EXEMPLOS = SESSOES_DO_PROTOTIPO.map(([ano, mes, dia, minutos, cobertura, l
 
 function resumirSessoes(leituras: LeituraSono[], desdeMs: number, truncada: boolean): Linha[] {
   const borda = truncada ? leituras.at(-1) : undefined;
-  const porDispositivo = new Map<string | null, LeituraSono[]>();
+  // DATA-16: a bancada é agrupada à parte, para que uma sessão marcada não se
+  // junte a uma normal do mesmo aparelho e as duas virem uma só na tela.
+  const porGrupo = new Map<string, { id: string | null; bancada: boolean; leituras: LeituraSono[] }>();
   for (const leitura of leituras) {
     // A API recorta pela chegada. Exclui medições antigas enviadas com atraso.
     if (!(Date.parse(instanteDaLeitura(leitura)) >= desdeMs)) continue;
     const id = leitura.device_id ?? null;
-    const grupo = porDispositivo.get(id);
-    if (grupo) grupo.push(leitura);
-    else porDispositivo.set(id, [leitura]);
+    const bancada = ehBancada(leitura);
+    const chave = `${id ?? "sem-dispositivo"}:${bancada ? "bancada" : "normal"}`;
+    const grupo = porGrupo.get(chave);
+    if (grupo) grupo.leituras.push(leitura);
+    else porGrupo.set(chave, { id, bancada, leituras: [leitura] });
   }
 
-  return Array.from(porDispositivo, ([id, grupo]) =>
+  return Array.from(porGrupo.values(), ({ id, bancada, leituras: grupo }) =>
     agruparEmSessoes(grupo).map((sessao) => {
       const cobertura = calcularCobertura(sessao.leituras);
       return {
-        chave: `${id ?? "sem-dispositivo"}:${sessao.inicio}`,
+        chave: `${id ?? "sem-dispositivo"}:${bancada ? "bancada" : "normal"}:${sessao.inicio}`,
+        trecho: trechoDaSessao(sessao.leituras),
+        bancada,
         inicio: sessao.inicio,
         tempo: cobertura.tempoCobertoMs,
         cobertura: cobertura.janelaMs > 0 ? (100 * cobertura.tempoCobertoMs) / cobertura.janelaMs : null,
@@ -138,12 +153,76 @@ function SessoesDaConta({ dias }: { dias: number }) {
     ? resumirSessoes(resultado.leituras, Date.parse(janela.desde), resultado.truncada)
     : [], [resultado, janela]);
 
+  // DATA-16: excluir e marcar. `confirmando` é a sessão cuja exclusão espera
+  // o segundo clique; `ocupado` trava as ações enquanto uma está no servidor.
+  const [confirmando, setConfirmando] = useState<Linha | null>(null);
+  const [ocupado, setOcupado] = useState(false);
+  const [aviso, setAviso] = useState<{ texto: string; falha: boolean } | null>(null);
+
+  function recarregar() {
+    setResultado(null);
+    setPagina(1);
+    setTentativa((atual) => atual + 1);
+  }
+
+  async function agir(linha: Linha, acao: "apagar" | "marcar" | "desmarcar") {
+    if (!linha.trecho) return;
+    setOcupado(true);
+    setAviso(null);
+    try {
+      if (acao === "apagar") {
+        const n = await apagarSessao(linha.trecho);
+        setAviso({ texto: `Sessão excluída: ${n} ${n === 1 ? "época apagada" : "épocas apagadas"}.`, falha: false });
+      } else {
+        const n = await marcarSessao(linha.trecho, acao === "marcar");
+        setAviso({
+          texto: acao === "marcar"
+            ? `Sessão marcada como bancada/teste (${n} ${n === 1 ? "época" : "épocas"}). Ela sai do painel e das análises.`
+            : `Sessão desmarcada (${n} ${n === 1 ? "época" : "épocas"}). Ela volta ao painel e às análises.`,
+          falha: false,
+        });
+      }
+      setConfirmando(null);
+      recarregar();
+    } catch (falha) {
+      setAviso({
+        texto: falha instanceof ErroApi ? falha.message : "Não foi possível concluir. Tente novamente.",
+        falha: true,
+      });
+    } finally {
+      setOcupado(false);
+    }
+  }
+
   if (erro) return <FalhaAoCarregar mensagem={erro} aoTentarNovamente={() => {
     setErro(null);
     setPagina(1);
     setTentativa((atual) => atual + 1);
   }} />;
   if (!resultado) return <Carregando mensagem={`Carregando sessões... página ${pagina} de até ${MAX_PAGINAS_DO_HISTORICO}.`} />;
+
+  const normais = linhas.filter((linha) => !linha.bancada);
+  const marcadas = linhas.filter((linha) => linha.bancada);
+  const acoes = (linha: Linha) => linha.trecho ? (
+    <div className="flex flex-wrap justify-end gap-1.5">
+      <button
+        type="button"
+        disabled={ocupado}
+        onClick={() => agir(linha, linha.bancada ? "desmarcar" : "marcar")}
+        className="rounded-lg border border-border px-2 py-1 text-[11px] font-semibold text-foreground hover:bg-secondary disabled:opacity-50"
+      >
+        {linha.bancada ? "Desmarcar" : "Marcar como bancada"}
+      </button>
+      <button
+        type="button"
+        disabled={ocupado}
+        onClick={() => { setAviso(null); setConfirmando(linha); }}
+        className="rounded-lg border border-destructive/40 px-2 py-1 text-[11px] font-semibold text-destructive hover:bg-destructive/5 disabled:opacity-50"
+      >
+        Excluir…
+      </button>
+    </div>
+  ) : null;
 
   return (
     <>
@@ -152,16 +231,56 @@ function SessoesDaConta({ dias }: { dias: number }) {
           A consulta atingiu o limite de leituras. O histórico deste período pode estar incompleto.
         </p>
       )}
-      {linhas.length > 0
-        ? <TabelaDeSessoes linhas={linhas} />
+      {aviso && (
+        <p role={aviso.falha ? "alert" : "status"} className={`mb-3 rounded-lg px-3 py-2 text-xs ${aviso.falha
+          ? "bg-destructive/10 text-destructive"
+          : "bg-emerald-500/10 text-foreground"}`}>
+          {aviso.texto}
+        </p>
+      )}
+      {confirmando && (
+        <div role="alertdialog" aria-label="Confirmar exclusão da sessão"
+          className="mb-3 space-y-3 rounded-xl border border-destructive/40 bg-destructive/5 p-3 text-xs text-foreground">
+          <p>
+            Excluir a sessão de <strong>{DATA_E_HORA.format(confirmando.inicio)}</strong>, com{" "}
+            <strong>{confirmando.leituras} {confirmando.leituras === 1 ? "leitura" : "leituras"}</strong>?
+            As épocas são apagadas do servidor e não há como desfazer.
+          </p>
+          <div className="flex gap-2">
+            <button type="button" disabled={ocupado} onClick={() => setConfirmando(null)}
+              className="flex-1 rounded-lg border border-border px-3 py-2 font-medium hover:bg-secondary disabled:opacity-60">
+              Cancelar
+            </button>
+            <button type="button" disabled={ocupado} onClick={() => agir(confirmando, "apagar")}
+              className="flex-1 rounded-lg bg-destructive px-3 py-2 font-medium text-white hover:opacity-90 disabled:opacity-40">
+              {ocupado ? "Apagando..." : "Excluir definitivamente"}
+            </button>
+          </div>
+        </div>
+      )}
+      {normais.length > 0
+        ? <TabelaDeSessoes linhas={normais} acoes={acoes} />
         : <p className="py-12 text-center text-sm text-muted-foreground">Nenhuma sessão no período selecionado.</p>}
+      {marcadas.length > 0 && (
+        <section aria-label="Sessões marcadas como bancada/teste" className="mt-6 space-y-2">
+          <h2 className="text-sm font-semibold text-foreground">Marcadas como bancada/teste</h2>
+          <p className="text-xs text-muted-foreground">
+            Continuam guardadas, mas ficam fora do painel e das análises. Desmarque para que voltem.
+          </p>
+          <TabelaDeSessoes linhas={marcadas} acoes={acoes} rotulo="Tabela das sessões marcadas como bancada" />
+        </section>
+      )}
     </>
   );
 }
 
-function TabelaDeSessoes({ linhas }: { linhas: Linha[] }) {
+function TabelaDeSessoes({ linhas, acoes, rotulo = "Tabela do histórico" }: {
+  linhas: Linha[];
+  acoes?: (linha: Linha) => ReactNode;
+  rotulo?: string;
+}) {
   return (
-    <div className="overflow-x-auto rounded-sm" role="region" aria-label="Tabela do histórico" tabIndex={0}>
+    <div className="overflow-x-auto rounded-sm" role="region" aria-label={rotulo} tabIndex={0}>
       <table className="w-full min-w-[32rem] text-left text-xs text-foreground">
         <thead className="border-b border-border text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
           <tr>
@@ -170,10 +289,13 @@ function TabelaDeSessoes({ linhas }: { linhas: Linha[] }) {
             <th scope="col" className="px-2 py-3">Cobertura</th>
             <th scope="col" className="px-2 py-3">Leituras</th>
             <th scope="col" className="px-2 py-3 text-right">Status</th>
+            {acoes && <th scope="col" className="px-2 py-3 text-right">Ações</th>}
           </tr>
         </thead>
         <tbody className="divide-y divide-border border-b border-border">
-          {linhas.map(({ chave, inicio, tempo, cobertura, leituras, lacunas, parcial }) => (
+          {linhas.map((linha) => {
+            const { chave, inicio, tempo, cobertura, leituras, lacunas, parcial } = linha;
+            return (
             <tr key={chave}>
               <th scope="row" className="whitespace-nowrap px-2 py-3 font-semibold">{DATA.format(inicio).replace(/ de |\./g, " ").replace(/ +/g, " ")}</th>
               <td className="whitespace-nowrap px-2 py-3">{formatarDuracao(tempo)}</td>
@@ -189,8 +311,10 @@ function TabelaDeSessoes({ linhas }: { linhas: Linha[] }) {
                   {parcial ? "Parcial" : cobertura === null ? "Sem estimativa" : lacunas ? "Com lacunas" : "Completa"}
                 </span>
               </td>
+              {acoes && <td className="px-2 py-3 text-right">{acoes(linha)}</td>}
             </tr>
-          ))}
+            );
+          })}
         </tbody>
       </table>
     </div>
