@@ -12195,3 +12195,46 @@ Coluna, e não tabela de trechos: cada consulta filtra sem junção, e funciona 
 - **O rótulo "noite" (c)** segue no `DATA-16`, à espera do `ESC-01`.
 
 **Procedência.** Branch `feature/DATA-16-excluir-e-marcar-sessao`, sobre `develop` `0270c52`; Windows 11, Python 3.13, Node 22, Postgres 17 em Docker; 21/11.
+
+# 2026-11-22 (i) — o release R16: excluir e marcar uma sessão, e os textos da home
+
+**O problema, como foi entendido no início.** O `develop` tinha o `DATA-16` (a) e (b) e o `UI-35` fora da produção. O `DATA-16` depende da migração 023: o histórico passa a pedir a coluna `bancada`, e publicar o código sem ela derrubaria o Histórico.
+
+**Hipótese de trabalho.** A ordem segura é:
+- aplicar a 023 na produção e conferir;
+- só então mesclar em `main`;
+- conferir de fora.
+
+O APK não muda neste release: o app Android recebe o Histórico novo no próximo.
+
+**O que foi testado, e como.**
+- **A 023:** aplicada pelo autor no SQL Editor e conferida por uma consulta só de leitura: a coluna, as duas funções e `anon` sem acesso.
+- **A PR #247:** CI todo verde (12 jobs), mesclada com `--no-ff`.
+- **Depois do deploy:**
+  - `curl` nas rotas;
+  - a CSP servida contra os scripts inline das cinco páginas;
+  - a landing servida;
+  - os pedaços JS publicados.
+
+**Resultado medido.**
+- **A 023:** as quatro conferências vieram `true`.
+- **O release:** merge `7b234e4`; deploy `7973419286` com sucesso.
+- **A produção:**
+  - `/health` `200` (contrato 2.11.0);
+  - `401` sem token em `/api/devices`, `/api/sessoes/apagar` e `/api/sessoes/marcar`, e com `Bearer` inválido em `/api/sessoes/apagar`;
+  - a CSP igual nas cinco páginas, 15 scripts inline, todos com hash;
+  - a landing servida com o bloco `ui-35-textos-minimos`;
+  - o pedaço do Histórico com "Marcar como bancada", e o pedaço principal com as duas rotas novas.
+
+**Veredito.** O `DATA-16` (a) e (b) e o `UI-35` estão na produção.
+
+**Adaptação.** Nenhuma no caminho.
+
+**O que deu errado no caminho.**
+- **O `git push` travou sem mensagem** depois do merge da #246 e de novo no do release: o gerenciador de credenciais do Windows esperava uma janela que não apareceu. O push saiu pelo `gh` como ajudante de credencial, só naquela chamada, sem mudar a configuração do autor.
+
+**Risco em aberto.**
+- **O Histórico não foi visto com a conta do autor no navegador:** excluir e marcar foram testados no código e no Postgres local, não na tela publicada.
+- **O app Android** só ganha o Histórico novo no próximo APK.
+
+**Procedência.** PR #247 (`7b234e4`); deploy `7973419286`; conferências desta máquina em 22/11.
