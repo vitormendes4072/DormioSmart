@@ -12380,3 +12380,46 @@ O APK não muda neste release: o app Android recebe o Histórico novo no próxim
 - **Não foi visto com a conta real nem em aparelho físico, e nenhum usuário leu os textos novos:** que ficaram mais claros é hipótese.
 
 **Procedência.** Branch `feature/UI-39-linguagem`, sobre `develop` `746a057`; Windows 11, Node (Vitest), Python 3.13, JDK do Android Studio, emulador Pixel 6; 22/11.
+
+# 2026-11-22 (v) — UI-40: o painel em camadas
+
+**O problema, como foi entendido no início.** Mesmo com a linguagem do `UI-39`, o Início abria com quatro cartões, um gráfico com eixo em m/s², a tabela de amostras e a fórmula no mesmo nível. Quem só quer saber "gravou a noite?" tinha de montar a resposta. O cartão da noite misturava o que importa com números do sensor. O plano aprovado em 22/11 pede um resumo no topo, um gráfico simples e o técnico recolhido, sem nota de sono e sem esconder aviso de falha.
+
+**Hipótese de trabalho.** Dá para pôr a resposta em quatro frases, todas contas que já existiam, e recolher o resto, desde que o que é falha fique fora do que se recolhe.
+
+**O que foi testado, e como.**
+- **Testes escritos antes:** `ResumoDaSessao.test.tsx` (as frases e as bordas: zero, uma e várias paradas, meia-noite, todas as sessões, registro sem duração, nenhuma interpretação), o bloco das camadas em `montagem.test.ts` e o dos detalhes em `CartaoDaNoite.test.tsx`. Contra o código de antes, 18 falharam (o arquivo do resumo inteiro conta como uma falha, por falta do componente).
+- **Sabotagem:** 15 mudanças no código pronto (cada aviso posto num bloco recolhido, detalhes abertos de saída, parada contada entre sessões e outras), uma por vez.
+- **Navegador:** API e sessão de mentira, 360, 390 e 1280 px, tema escuro a 360, detalhes abertos, "Ver todas" e modo de demonstração.
+- **Emulador Pixel 6 descartável (`-read-only`, 4 GB):** uma noite de teste de 2 min na tela Noite, com os detalhes recolhidos, abertos e depois de encerrar.
+- **Suítes:** frontend, lint, Knip, Knip de tipos, build, orçamento, CSP, backend, Ruff e JVM do app.
+
+**Resultado medido.**
+- **Frontend:** 864 passam, 59 arquivos (eram 843 em 58). Backend: 665 passam, 1 pula. App: 34 testes JVM, 0 falhas.
+- **Sabotagem:** 15 de 15 derrubaram teste.
+- **Pacote:** o painel com 257 163 B comprimidos, teto de 260 000, sem dependência nova.
+- **Navegador, com dados sintéticos na forma da noite de 17/11:** "6h 40m de 6h 43m", "O registro parou 2 vezes, a mais longa por 2m 9s", "Movimento em 7% do tempo registrado". Sem rolagem horizontal da página.
+- **Emulador:** os detalhes seguem abertos depois da releitura de 5 s do serviço.
+
+**Veredito.** O Início responde no topo, e o técnico ficou a um toque. `UI-40` fechado na branch.
+
+**Adaptação.**
+- **"Última sessão" e "Sessões anteriores", e não "Último registro" e "Registros anteriores"** como no esboço: no glossário do `UI-39`, registro é o trecho de 30 s.
+- **A linha do limite ficou no gráfico**, sem o número: sem ela, uma noite só de repouso parece muito movimento (`DASH-07`). O eixo em m/s² saiu.
+- **O resumo conta paradas abaixo de 5%**, que o aviso de lacuna não mostrava desde que o `UI-38` juntou a noite.
+- **Em "todas as sessões", o denominador é o número de sessões:** o intervalo entre noites não é parada nem tempo perdido.
+- **Na Noite, o que era falha entre os números do sensor virou aviso:** descarte por ritmo, mesmo com registros gravados, e retomada. A temperatura ficou à vista, por causa da regra dos 45 °C.
+- **A nota de escopo** virou "Não é diagnóstico nem mede fases do sono", a frase do plano, mantendo "indícios de movimento".
+- **`CardMetrica` foi removido**, sem uso.
+
+**O que deu errado no caminho.**
+- **Os detalhes diziam "12% do período" em "todas as sessões"**, contando a tarde entre noites. Visto no navegador; corrigido com teste que falhou antes.
+- **"6m 30s" quebrava no meio da linha a 360 px.** Corrigido.
+
+**Risco em aberto.**
+- **"O registro parou" descreve o que chegou:** não separa o aparelho parado de um envio perdido.
+- **O resumo herda o limite de 2 000 registros do painel:** sessões anteriores além dele só no Histórico, e o aviso de período incompleto continua à vista.
+- **A tabela de amostras ainda rola na horizontal dentro dos detalhes**, e a barra de baixo segue apertada (`UI-41`).
+- **Não foi visto com a conta real, em aparelho físico nem por outra pessoa:** que ficou mais intuitivo é hipótese. As capturas do texto do TCC e o catálogo de telas de 10/11 mostram o painel antigo.
+
+**Procedência.** Branch `feature/UI-40-painel-em-camadas`, sobre `develop` `b30bde6`; Windows 11, Node (Vitest), Python 3.13, JDK do Android Studio, emulador Pixel 6; 22/11.
