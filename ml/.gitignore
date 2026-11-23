@@ -59,3 +59,5 @@ experimentos/saida/ml13/*
 experimentos/saida/ml-inf/*
 !experimentos/saida/ml-inf/agregados.json
 !experimentos/saida/ml-inf/agregados-v2.json
+# 23/11: a análise de vigília por noite, também só agregados.
+!experimentos/saida/ml-inf/vigilia-por-noite.json

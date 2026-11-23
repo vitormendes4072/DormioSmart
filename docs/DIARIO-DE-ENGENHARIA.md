@@ -12549,3 +12549,35 @@ O APK não muda neste release: o app Android recebe o Histórico novo no próxim
 - **Nada disso está na produção.**
 
 **Procedência.** PRs #255, #256 e #257 mescladas em `develop` (`e6b6c99`, `e75049b`, `8845ee6`); revisão em Postgres 17 em Docker, Windows 11, Python 3.13, Node 22; 22 e 23/11.
+
+# 2026-11-23 (ii) — a vigília que o modelo reconhece, por época e por noite
+
+**O problema, como foi entendido no início.** O autor perguntou se o modelo de sono serve: um classificador que diz "sono" a noite toda acerta quase sempre, porque a pessoa dorme quase a noite toda, e não diz nada sobre quando ela esteve acordada. O κ médio publicado (0,30 a 0,46 conforme a base) não responde a isso, nem ao que importa para o produto: o erro em cada noite.
+
+**Hipótese de trabalho.** As probabilidades por época guardadas da rodada do ML-INF v2 (`dados-locais/ml-inf-cabeca-v2-2026-11-07-final`) bastam para medir a vigília reconhecida, a troca no ponto de corte e o erro por noite, sem treinar nada de novo.
+
+**O que foi testado, e como.**
+- **Conferência:** as matrizes de confusão recalculadas dos `.npz` contra as publicadas no `agregados-v2.json`, nas quatro bases; e que a classe servida é `probabilidade > 0,5`.
+- **`ml/experimentos/analise_vigilia_por_noite.py`**, com 5 testes (`test_analise_vigilia_por_noite.py`): as contagens contra o `confusion_matrix` e o `recall_score` do scikit-learn, o "sempre sono", o erro por noite em minutos com sinal, a troca entre sensibilidade e especificidade e o corte escolhido só na Wearanize. Controle positivo: com a especificidade trocada pela sensibilidade e o sinal do erro invertido, 4 dos 5 caem.
+- **O corte alternativo foi escolhido só na Wearanize** (fora da amostra, LOSO) e medido nas externas, para não escolher olhando a resposta.
+- **O limiar de movimento (1,2 m/s²)** contra as medianas da bancada do `VIA-01` (16/11).
+
+**Resultado medido** (`ml/experimentos/saida/ml-inf/vigilia-por-noite.json`).
+- **Por época, vigília reconhecida (especificidade):** 0,76 na Wearanize, 0,60 na Walch, 0,42 na DREAMT, 0,36 na Newcastle. Sensibilidade ao sono 0,87 a 0,90. F1 da vigília 0,45 a 0,55. AUC 0,89 na Wearanize e 0,65 a 0,81 nas externas. A acurácia do modelo é menor que a do "sempre sono" na Wearanize (0,872 contra 0,895) e na Walch.
+- **Mover o corte só troca uma coisa pela outra:** de 0,5 para 0,6, a especificidade sobe 5 a 8 pontos e a sensibilidade cai 4 a 7, com κ médio igual ou menor em todas as bases. O corte de maior κ na Wearanize (0,30) baixa a especificidade externa para 0,25 a 0,47.
+- **Por noite, o erro do tempo total de sono:** viés de −37, +67, −23 e +20 min (Wearanize, Newcastle, Walch, DREAMT), com limites de 95% de até [−150; +284] min; o erro passa de 1 h em 30%, 48%, 14% e 38% das noites.
+- **A vigília estimada por noite acompanha a real só nas bases com mais vigília:** correlação entre noites de 0,52 e 0,61 na Wearanize e na Newcastle, mas **0,01 na Walch e −0,13 na DREAMT**. Ali o modelo não separa uma noite com muita vigília de uma com pouca.
+- **O limiar de movimento:** na bancada, o pico mediano parado ficou 0,03 m/s² acima da gravidade, e o de movimento, 2,6 a 3,2. O 1,2 cai no meio de um vão largo e separa o movimento deliberado (0 de 16 épocas paradas, 23 de 26 com movimento). Não foi medido com o movimento pequeno de quem dorme.
+
+**Veredito.** Por época, o modelo está na faixa da actigrafia publicada (especificidade média de 51% na meta-análise já citada em `LIMITACOES-TCC.md`), abaixo do teto humano (κ 0,61). Por noite, não sustenta uma afirmação sobre a vigília de uma pessoa numa noite. O app já não a mostra, e não deve mostrar enquanto isso valer (`ML-10`). Mais dados públicos do mesmo tipo dificilmente mudam isso: o limite é físico (acordado e parado é igual a dormindo) e a queda nas externas vem da troca de pessoa e sensor.
+
+**Adaptação.** O roteiro da conversa virou módulo versionado com testes, e grava só agregados.
+
+**O que deu errado no caminho.**
+- **O primeiro roteiro rodou com `python -I`, que tira a pasta atual do caminho:** o módulo não foi achado. Rodou sem `-I`; os dados são lidos com `allow_pickle=False`.
+
+**Risco em aberto.**
+- **Nada disto foi medido no travesseiro:** não há noite dele com referência de sono. As bases têm sensor de cabeça ou de punho (`VAL-02`, `ML-12` (c)).
+- **Se treinar juntando várias bases melhora a robustez entre coortes** é o `ML-18`, novo.
+
+**Procedência.** Probabilidades da rodada final do ML-INF v2 (07/11); branch `docs/analise-vigilia-por-noite`, sobre `develop` `96e7b40`; Windows 11, Python 3.11.9 do `ml/.venv`; 23/11.

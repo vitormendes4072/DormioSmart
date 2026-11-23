@@ -1,0 +1,302 @@
+{
+ "corte_servido": 0.5,
+ "corte_de_maior_kappa_na_wearanize": 0.3,
+ "coortes": {
+  "wearanize-cabeca": {
+   "rotulo": "Wearanize cabeça (LOSO)",
+   "por_epoca": {
+    "vp": 69578,
+    "vn": 6956,
+    "fp": 2229,
+    "fn": 9032,
+    "sensibilidade": 0.8851036763770512,
+    "especificidade": 0.7573217201959717,
+    "precisao_vigilia": 0.43507630723042284,
+    "f1_vigilia": 0.5526556230882295,
+    "acuracia_balanceada": 0.8212126982865114,
+    "acuracia": 0.871735292442622,
+    "fracao_vigilia": 0.10461871404977505
+   },
+   "auc": 0.8867373361198179,
+   "especificidade_com_sensibilidade": {
+    "0.80": 0.8279804028307022,
+    "0.85": 0.7939031028851388,
+    "0.90": 0.7375068045726728
+   },
+   "cortes": {
+    "0.30": {
+     "sensibilidade": 0.9467243353262944,
+     "especificidade": 0.6440936309199782,
+     "kappa_medio": 0.5404120389780513
+    },
+    "0.50": {
+     "sensibilidade": 0.8851036763770512,
+     "especificidade": 0.7573217201959717,
+     "kappa_medio": 0.45687096176855563
+    },
+    "0.60": {
+     "sensibilidade": 0.8267014374761481,
+     "especificidade": 0.8105606967882417,
+     "kappa_medio": 0.3907204126604338
+    },
+    "0.70": {
+     "sensibilidade": 0.7228724080905737,
+     "especificidade": 0.8682634730538922,
+     "kappa_medio": 0.2998329132218282
+    }
+   },
+   "por_noite": {
+    "noites": 92,
+    "vies_tst_min": -36.97282608695652,
+    "dp_tst_min": 36.74790598283483,
+    "limites_95_min": [
+     -108.99872181331278,
+     35.053069639399745
+    ],
+    "fracao_erro_acima_60_min": 0.30434782608695654,
+    "vigilia_real_media_min": 49.91847826086956,
+    "vigilia_prevista_media_min": 86.8913043478261,
+    "correlacao_vigilia_entre_noites": 0.5222908550903602,
+    "fracao_noites_kappa_abaixo_0_2": 0.06521739130434782,
+    "kappa_medio": 0.45687096176855563
+   },
+   "sempre_sono_por_noite": {
+    "noites": 92,
+    "vies_tst_min": 49.91847826086956,
+    "dp_tst_min": 42.59438628168984,
+    "limites_95_min": [
+     -33.566518851242535,
+     133.40347537298166
+    ],
+    "fracao_erro_acima_60_min": 0.25,
+    "vigilia_real_media_min": 49.91847826086956,
+    "vigilia_prevista_media_min": 0.0,
+    "correlacao_vigilia_entre_noites": NaN,
+    "fracao_noites_kappa_abaixo_0_2": 1.0,
+    "kappa_medio": 0.0
+   }
+  },
+  "newcastle": {
+   "rotulo": "Newcastle (externa)",
+   "por_epoca": {
+    "vp": 19012,
+    "vn": 3290,
+    "fp": 5880,
+    "fn": 2258,
+    "sensibilidade": 0.8938410907381288,
+    "especificidade": 0.35877862595419846,
+    "precisao_vigilia": 0.5930064888248018,
+    "f1_vigilia": 0.4470716129908955,
+    "acuracia_balanceada": 0.6263098583461636,
+    "acuracia": 0.7326544021024967,
+    "fracao_vigilia": 0.3012483574244415
+   },
+   "auc": 0.650144330129472,
+   "especificidade_com_sensibilidade": {
+    "0.80": 0.48582333696837515,
+    "0.85": 0.42693565976008724,
+    "0.90": 0.3491821155943293
+   },
+   "cortes": {
+    "0.30": {
+     "sensibilidade": 0.9457451810061119,
+     "especificidade": 0.25408942202835333,
+     "kappa_medio": 0.271463995608787
+    },
+    "0.50": {
+     "sensibilidade": 0.8938410907381288,
+     "especificidade": 0.35877862595419846,
+     "kappa_medio": 0.29530984191938486
+    },
+    "0.60": {
+     "sensibilidade": 0.8512929007992478,
+     "especificidade": 0.42551799345692476,
+     "kappa_medio": 0.29564679572559316
+    },
+    "0.70": {
+     "sensibilidade": 0.7755054066760696,
+     "especificidade": 0.5138495092693566,
+     "kappa_medio": 0.2813127601686797
+    }
+   },
+   "por_noite": {
+    "noites": 27,
+    "vies_tst_min": 67.07407407407408,
+    "dp_tst_min": 110.71000786042715,
+    "limites_95_min": [
+     -149.91754133236313,
+     284.0656894805113
+    ],
+    "fracao_erro_acima_60_min": 0.48148148148148145,
+    "vigilia_real_media_min": 169.8148148148148,
+    "vigilia_prevista_media_min": 102.74074074074075,
+    "correlacao_vigilia_entre_noites": 0.612709712268389,
+    "fracao_noites_kappa_abaixo_0_2": 0.37037037037037035,
+    "kappa_medio": 0.29530984191938486
+   },
+   "sempre_sono_por_noite": {
+    "noites": 27,
+    "vies_tst_min": 169.8148148148148,
+    "dp_tst_min": 128.15534054631243,
+    "limites_95_min": [
+     -81.36965265595754,
+     420.9992822855871
+    ],
+    "fracao_erro_acima_60_min": 0.8518518518518519,
+    "vigilia_real_media_min": 169.8148148148148,
+    "vigilia_prevista_media_min": 0.0,
+    "correlacao_vigilia_entre_noites": NaN,
+    "fracao_noites_kappa_abaixo_0_2": 1.0,
+    "kappa_medio": 0.0
+   }
+  },
+  "walch_principal": {
+   "rotulo": "Walch principal (externa)",
+   "por_epoca": {
+    "vp": 19168,
+    "vn": 1200,
+    "fp": 816,
+    "fn": 2119,
+    "sensibilidade": 0.900455677173862,
+    "especificidade": 0.5952380952380952,
+    "precisao_vigilia": 0.3615546851461284,
+    "f1_vigilia": 0.4498594189315839,
+    "acuracia_balanceada": 0.7478468862059786,
+    "acuracia": 0.8740505514311462,
+    "fracao_vigilia": 0.0865124662060679
+   },
+   "auc": 0.8120725929306283,
+   "especificidade_com_sensibilidade": {
+    "0.80": 0.7093253968253969,
+    "0.85": 0.6691468253968254,
+    "0.90": 0.5952380952380952
+   },
+   "cortes": {
+    "0.30": {
+     "sensibilidade": 0.9566871799689952,
+     "especificidade": 0.4742063492063492,
+     "kappa_medio": 0.45681775094383814
+    },
+    "0.50": {
+     "sensibilidade": 0.900455677173862,
+     "especificidade": 0.5952380952380952,
+     "kappa_medio": 0.40822546082030364
+    },
+    "0.60": {
+     "sensibilidade": 0.8423920702776342,
+     "especificidade": 0.6755952380952381,
+     "kappa_medio": 0.3449015840741266
+    },
+    "0.70": {
+     "sensibilidade": 0.7189364400808005,
+     "especificidade": 0.7574404761904762,
+     "kappa_medio": 0.23930872421689825
+    }
+   },
+   "por_noite": {
+    "noites": 29,
+    "vies_tst_min": -22.46551724137931,
+    "dp_tst_min": 32.26368232307551,
+    "limites_95_min": [
+     -85.7023345946073,
+     40.77130011184868
+    ],
+    "fracao_erro_acima_60_min": 0.13793103448275862,
+    "vigilia_real_media_min": 34.758620689655174,
+    "vigilia_prevista_media_min": 57.224137931034484,
+    "correlacao_vigilia_entre_noites": 0.008011518245579592,
+    "fracao_noites_kappa_abaixo_0_2": 0.13793103448275862,
+    "kappa_medio": 0.40822546082030364
+   },
+   "sempre_sono_por_noite": {
+    "noites": 29,
+    "vies_tst_min": 34.758620689655174,
+    "dp_tst_min": 17.059046976424046,
+    "limites_95_min": [
+     1.322888615864045,
+     68.1943527634463
+    ],
+    "fracao_erro_acima_60_min": 0.06896551724137931,
+    "vigilia_real_media_min": 34.758620689655174,
+    "vigilia_prevista_media_min": 0.0,
+    "correlacao_vigilia_entre_noites": NaN,
+    "fracao_noites_kappa_abaixo_0_2": 1.0,
+    "kappa_medio": 0.0
+   }
+  },
+  "dreamt": {
+   "rotulo": "DREAMT (externa)",
+   "por_epoca": {
+    "vp": 50660,
+    "vn": 8327,
+    "fp": 11282,
+    "fn": 7469,
+    "sensibilidade": 0.8715099175970686,
+    "especificidade": 0.4246519455352134,
+    "precisao_vigilia": 0.5271587743732591,
+    "f1_vigilia": 0.4703855387657111,
+    "acuracia_balanceada": 0.648080931566141,
+    "acuracia": 0.7587923538038025,
+    "fracao_vigilia": 0.25224471944222904
+   },
+   "auc": 0.7101161183565726,
+   "especificidade_com_sensibilidade": {
+    "0.80": 0.5054821765515835,
+    "0.85": 0.4477025855474527,
+    "0.90": 0.3905859554286297
+   },
+   "cortes": {
+    "0.30": {
+     "sensibilidade": 0.9468251647198472,
+     "especificidade": 0.31398847467999386,
+     "kappa_medio": 0.35077511966536
+    },
+    "0.50": {
+     "sensibilidade": 0.8715099175970686,
+     "especificidade": 0.4246519455352134,
+     "kappa_medio": 0.3470445121838043
+    },
+    "0.60": {
+     "sensibilidade": 0.8003062154862461,
+     "especificidade": 0.5047172216839206,
+     "kappa_medio": 0.3264653059174158
+    },
+    "0.70": {
+     "sensibilidade": 0.6845120335804847,
+     "especificidade": 0.6090570656331277,
+     "kappa_medio": 0.2775629496573309
+    }
+   },
+   "por_noite": {
+    "noites": 97,
+    "vies_tst_min": 19.65463917525773,
+    "dp_tst_min": 80.46600475332548,
+    "limites_95_min": [
+     -138.0587301412602,
+     177.36800849177567
+    ],
+    "fracao_erro_acima_60_min": 0.38144329896907214,
+    "vigilia_real_media_min": 101.07731958762886,
+    "vigilia_prevista_media_min": 81.42268041237114,
+    "correlacao_vigilia_entre_noites": -0.13352707432359243,
+    "fracao_noites_kappa_abaixo_0_2": 0.24742268041237114,
+    "kappa_medio": 0.3470445121838043
+   },
+   "sempre_sono_por_noite": {
+    "noites": 97,
+    "vies_tst_min": 101.07731958762886,
+    "dp_tst_min": 67.44489804208482,
+    "limites_95_min": [
+     -31.114680574857374,
+     233.2693197501151
+    ],
+    "fracao_erro_acima_60_min": 0.6391752577319587,
+    "vigilia_real_media_min": 101.07731958762886,
+    "vigilia_prevista_media_min": 0.0,
+    "correlacao_vigilia_entre_noites": NaN,
+    "fracao_noites_kappa_abaixo_0_2": 1.0,
+    "kappa_medio": 0.0
+   }
+  }
+ }
+}
