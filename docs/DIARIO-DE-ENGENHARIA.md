@@ -12881,3 +12881,71 @@ existe ali. As mutações individuais verificam as falhas com o executor present
 - **Dois celulares na mesma conta** gravam no mesmo dispositivo "celular", e as noites se misturam. Caso raro hoje; anotado na linha do `UI-42`.
 
 **Procedência.** Branch `feature/UI-42-parear-so-travesseiro`, sobre `develop` `1c07d76`; Windows 11, Node 22, navegador do app de desktop; 23/11.
+
+# 2026-11-23 (xi) — APP-20, etapa 1: o lembrete de dormir
+
+**O problema, como foi entendido no início.** O autor notou que o app é passivo: só notifica enquanto grava a noite, e nunca chama a pessoa. A ideia é um app que acompanhe o dia a dia (lembrar de dormir, devolver algo de manhã). A etapa 1 é o lembrete de dormir; a da manhã espera a escolha do autor (`APP-20`).
+
+**Hipótese de trabalho.** Tudo pode ser local: o próprio celular agenda e mostra, sem Firebase e sem servidor. Um alarme inexato (`setAndAllowWhileIdle`) basta, porque alguns minutos de atraso não importam, e não pede a permissão de alarme exato. O app já pede a permissão de notificar (para a notificação da noite).
+
+**O que foi testado, e como.**
+- **As contas, na JVM** (`LembreteDeDormirTest`, 8 testes): o próximo disparo hoje ou amanhã; o próprio minuto vai para amanhã (o alarme que dispara não se repete); a virada do dia, do mês e do ano; o dia da mudança de horário (Nova York, 08/03/2026), em que o intervalo é de 23 h e o lembrete segue o relógio de parede; não lembrar desligado nem com a noite gravando; o horário válido.
+- **No emulador Pixel 6, Android 37** (`LembreteDeDormirNativoTest`): o alarme agendado no Android e cancelado ao desligar; a notificação no canal "Lembretes"; nada com a noite gravando (pelo estado em arquivo); nada desligado; e um roteiro, só quando pedido, que agenda para o minuto seguinte e espera o alarme de verdade disparar o receptor do manifesto.
+- **A tela** (`LembreteDeDormir.test.tsx`, 8 testes): ler e gravar o horário; ligar; o aviso de permissão desligada; a falha que não finge ter ligado; a seção só no app.
+- **Controle positivo:** 4 sabotagens na JVM, 6 na tela, 2 só no emulador (a noite em arquivo ignorada; desligar sem desfazer a intenção do alarme), e o roteiro sem o receptor no manifesto.
+
+**Resultado medido.**
+- **JVM:** 42 passam (+8). **Emulador:** 11 passam, 4 pulados (+4). **O roteiro:** o lembrete apareceu 57 s depois de agendado; sem o receptor no manifesto, não aparece.
+- **Frontend:** 951 em 64 arquivos, sobre o `develop` com o `APP-19`; lint, Knip, tipos, build e CSP passam; o painel fica em 259 763 B comprimidos, com teto de 260 000 B.
+- **Sabotagens:** 10 de 10 (JVM e tela), 2 de 2 no emulador, e o controle do roteiro.
+
+**Adaptação.**
+- **O cancelamento:** o `dumpsys alarm` guarda histórico, e a ação do lembrete continuava lá depois de cancelada. Desligar passou a desfazer também a intenção pendente do alarme, e o teste confere que ela deixou de existir.
+- **O toque na notificação** abre o app, que começa na Noite. Com o app já aberto em outra tela, ele fica onde estava; uma navegação forçada não entrou.
+- **O roteiro do alarme de verdade** não estava no plano; entrou porque nenhum outro teste exercitava o receptor declarado no manifesto.
+
+**O que deu errado no caminho.**
+- **As 4 primeiras sabotagens da JVM "caíram" sem rodar teste nenhum:** o script chamava `gradlew.bat` sem o caminho, e o `cmd` não o achava. Percebido ao procurar o teste derrubado no relatório e não achar falha nenhuma. Refeitas com o caminho certo e com uma rodada de controle sem sabotagem, que tem de passar; uma delas foi conferida no relatório (`naoLembraComANoiteEmAndamentoNemDesligado`).
+- **O `tsc` reprovou** três testes antigos, cujos plugins falsos não tinham os dois métodos novos; o build parou por isso, e a conferência do pacote quebrou sem a pasta gerada.
+- **O emulador matou o app por falta de memória** duas vezes (o `lowmemorykiller` derrubou o renderizador do WebView), e o `ServicoDaNoiteTest` caiu junto. Não é deste item: passou na rodada limpa.
+- **Este branch saiu do `develop` antes do `APP-19`;** o orçamento do painel foi medido de novo depois de trazer o `develop`.
+
+**Risco em aberto.**
+- **A folga do painel é de 237 B:** a próxima tela no pacote principal provavelmente estoura o teto (`UI-15`).
+- **Só visto no emulador:** a seção de Configurações não foi vista num celular com a conta do autor.
+- **A etapa 2** espera a escolha do autor (`APP-20`).
+- **Só chega com o APK 1.1.4** (R19).
+
+**Procedência.** Branch `feature/APP-20-lembrete-de-dormir`, sobre `develop` `1c07d76`; Windows 11, JDK do Android Studio, emulador Pixel 6 (Android 37), Node 22; 23/11.
+
+# 2026-11-23 (xii) — UI-43, etapa 0: o inventário antes do redesenho
+
+**O problema, como foi entendido no início.** O autor notou que o celular de exemplo da landing mostra um app diferente do real, e quer levar o visual mais moderno da landing para o app, sem perder função nem dado, e com a landing mostrando o app de verdade. Antes de qualquer tela mudar, era preciso saber exatamente o que cada versão tem e o que protege cada função do app.
+
+**Hipótese de trabalho.** A divergência é só de visual. Os testes existentes protegem as funções, e o redesenho pode ir tela por tela apoiado neles.
+
+**O que foi testado, e como.**
+- **As quatro abas da landing**, lidas pelo texto e capturadas em imagem: uma cópia da `public/` servida localmente, com uma página que abre a landing, troca a aba e fixa o celular no canto; capturas pelo Edge sem interface.
+- **As telas do app**, em modo demonstração (`?demo=1`), na largura de celular, pelo mesmo Edge.
+- **O inventário:** os títulos de todos os testes das telas, ligados a cada função; e uma busca nos testes por função, para achar as que nenhum teste exercita.
+
+**Resultado medido.**
+- **A divergência não é só de visual.** A landing tem Relatório e Eventos, que o app não tem; o app tem Noite, Histórico e Dispositivos, que a landing não mostra. A landing ainda promete o que o sensor não mede: nomes de gesto ("Giro corporal", "Ajuste de posição") e uma "sensibilidade" ajustável.
+- **O que vale levar:** o número em destaque num cartão escuro, os cartões de métrica, a etiqueta em maiúsculas com título curto, o cabeçalho com a marca, a barra de abas com ícone e o gráfico com período e valor ao tocar.
+- **Quatro funções sem teste de tela:** a escolha da janela do Histórico (24 h, 7 dias, 30 dias), renomear, revogar e sair. Ganham teste antes de a tela delas mudar.
+- **O documento:** `docs/REDESENHO-DO-APP.md`, com a comparação, o inventário, as decisões do autor e as etapas. A comparação em imagem foi entregue ao autor, fora do repositório.
+
+**Adaptação.** A hipótese de que só o visual divergia caiu: a landing mostra funções que o app não tem, e duas delas não poderiam existir como estão. Por isso há a etapa 7 (a landing honesta) e a decisão sobre "períodos com movimento".
+
+**O que deu errado no caminho.**
+- **A primeira captura do celular saiu deslocada:** a landing anima o aparelho. O celular passou a ser fixado no canto antes da captura.
+- **As primeiras capturas do app saíram cortadas à direita:** o Edge sem interface não abre uma janela de 390 px. Refeitas a 500 px, ainda no layout de celular.
+- **O Edge devolveu o controle antes de gravar a imagem,** e a listagem logo depois parecia ter perdido arquivos.
+- **A primeira versão do inventário citava testes que não existem** (`TracadoDeMovimento.test.tsx`, e renomear e revogar como cobertos por `dispositivos.test.ts`). Conferido arquivo a arquivo antes de versionar, e corrigido.
+
+**Risco em aberto.**
+- **O orçamento do painel tem 237 B de folga:** a base visual provavelmente precisa tirar algo do pacote principal (`UI-43`, `UI-15`).
+- **A tela Noite só aparece no app;** não entrou na comparação em imagem (`UI-43`).
+- **As decisões do autor**, tomadas no mesmo dia, depois do inventário: as cinco abas do app, com o visual da barra da landing; os "períodos com movimento" depois do redesenho, no `UI-44`; a fonte do sistema, o que fecha o `UI-36`. A etapa 1 (a base visual) espera o plano aprovado (`UI-43`).
+
+**Procedência.** Branch `docs/UI-43-inventario-do-redesenho`, sobre `develop` `1c07d76`; Windows 11, Edge sem interface, servidor de desenvolvimento do Vite; 23/11.

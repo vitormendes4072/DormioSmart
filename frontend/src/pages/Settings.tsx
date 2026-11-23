@@ -1,4 +1,5 @@
 import {
+  BellRing,
   Cpu,
   Download,
   Loader2,
@@ -12,6 +13,7 @@ import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
 
 import { EditarPerfil } from "../components/EditarPerfil";
+import { LembreteDeDormir } from "../components/LembreteDeDormir";
 import { ExcluirConta } from "../components/ExcluirConta";
 import { MeusDispositivos } from "../components/MeusDispositivos";
 import { SeletorDeTema } from "../components/SeletorDeTema";
@@ -19,6 +21,7 @@ import { buscarHistoricoCompleto } from "../lib/api";
 import { estaEmModoDemo } from "../lib/demo";
 import { baixarCsv } from "../lib/exportar";
 import { listarDispositivos } from "../lib/dispositivos";
+import { noiteNativaDisponivel } from "../lib/noiteNativa";
 import { useAuth } from "../contexts/AuthContext";
 
 /**
@@ -27,7 +30,8 @@ import { useAuth } from "../contexts/AuthContext";
  * Regra desta tela: nenhum controle que nao faca nada. O prototipo tinha
  * "Metas de Sono" (pressupoe medir duracao de sono, que o dispositivo nao
  * mede) e quatro interruptores de notificacao sem nada por tras — os dois
- * blocos foram removidos, nao desabilitados: nao ha plano de implementa-los.
+ * blocos foram removidos, nao desabilitados. A notificacao que voltou, o
+ * lembrete de dormir (APP-20), so aparece no app, onde de fato funciona.
  *
  * O que depende de sessao aparece DESABILITADO com o motivo dito na tela. Um
  * controle desabilitado e explicado nao engana ninguem; um interruptor que
@@ -46,6 +50,7 @@ export function Settings() {
       {estaEmModoDemo(search) ? <SecaoAcessoDemonstrativo /> : (
         <>
           <SecaoConta />
+          {noiteNativaDisponivel() ? <SecaoLembrete /> : null}
           <SecaoDispositivos />
           <SecaoDados />
           <SecaoSair />
@@ -95,6 +100,18 @@ function SecaoAcessoDemonstrativo() {
       >
         {sessao ? "Abrir configurações da conta" : "Entrar"}
       </Link>
+    </Secao>
+  );
+}
+
+function SecaoLembrete() {
+  return (
+    <Secao
+      titulo="Lembrete de dormir"
+      icone={BellRing}
+      aviso="Todo dia, no horário escolhido, o app lembra você de começar a registrar a noite. O horário fica só no celular."
+    >
+      <LembreteDeDormir />
     </Secao>
   );
 }

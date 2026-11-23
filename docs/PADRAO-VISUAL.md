@@ -197,7 +197,7 @@ Um número técnico que passe a significar falha vira aviso fora dos detalhes.
 
 | Lacuna | Por quê |
 |---|---|
-| **O visual do app depois do login** (a linguagem está na seção 10) | Usa a fonte Outfit (`theme.css`, baixada pelo `fonts.css`) e outra paleta. Alinhar o app a este padrão, ou decidir que ele tem o seu, é o `UI-36`. |
+| **O visual do app depois do login** (a linguagem está na seção 10) | Usa a fonte Outfit (`theme.css`, baixada pelo `fonts.css`) e outra paleta. ✏️ *23/11, `UI-36` decidido pelo autor: o app segue a **fonte do sistema** deste documento; a troca é a etapa 1 do `UI-43` (`docs/REDESENHO-DO-APP.md`), que também leva a paleta e os cartões do celular de exemplo da landing.* |
 | **A versão leve da landing** (`/?apresentacao=leve`) | É componente do app e herda a fonte e a paleta dele. Entra no `UI-36`. |
 | **O celular desenhado na landing** | Imita a interface do aparelho, de propósito. |
 | **Outros tamanhos de tela** | A escala foi medida a 1280 px. No celular, as regras `@media` da landing e da lista são as que valem. |
