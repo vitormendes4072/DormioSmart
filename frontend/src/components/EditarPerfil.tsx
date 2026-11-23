@@ -1,3 +1,4 @@
+import { DetalhesDaFalha, MensagemDeFalha } from "./MensagemDeFalha";
 /**
  * Edição de perfil (UI-11 + PERFIL-01 / LGPD art. 18, III).
  *
@@ -136,12 +137,13 @@ export function EditarPerfil() {
 
         {/* Falha de leitura é dita, não escondida: nome em branco quando a
             leitura falhou faria quem tem nome ver a tela de quem não tem. */}
-        {erro ? <p className="text-xs text-destructive mt-3">{erro}</p> : null}
+        {erro ? <div role="alert" className="text-xs text-destructive mt-3"><MensagemDeFalha erro={erro} /></div> : null}
 
         {resultado && resultado.tipo !== "nada-a-fazer" ? (
-          <p className="text-xs text-muted-foreground mt-3">
+          <div className="text-xs text-muted-foreground mt-3">
             {descreverResultado(resultado, atual.email)}
-          </p>
+            {resultado.tipo === "erro" && <DetalhesDaFalha texto={resultado.detalhe} />}
+          </div>
         ) : null}
 
         <button
@@ -228,7 +230,7 @@ export function EditarPerfil() {
       </div>
 
       {resultado ? (
-        <p
+        <div
           className={
             resultado.tipo === "invalido" || resultado.tipo === "erro"
               ? "text-xs text-destructive"
@@ -236,7 +238,8 @@ export function EditarPerfil() {
           }
         >
           {descreverResultado(resultado, atual.email)}
-        </p>
+          {resultado.tipo === "erro" && <DetalhesDaFalha texto={resultado.detalhe} />}
+        </div>
       ) : null}
 
       <div className="flex gap-2">

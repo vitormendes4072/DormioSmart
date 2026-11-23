@@ -1,16 +1,19 @@
 import { describe, expect, it } from "vitest";
 
-import { ITENS_NAV, ITEM_NOITE, itensDeNavegacao } from "./nav";
+import { itensDeNavegacao } from "./nav";
 
-describe("navegacao (APP-02, etapa 4)", () => {
-  it("no site, a navegacao e a de sempre, sem a noite", () => {
-    expect(itensDeNavegacao(false)).toEqual(ITENS_NAV);
-    expect(itensDeNavegacao(false).some((i) => i.to === "/noite")).toBe(false);
+describe("destinos da navegação (UI-41)", () => {
+  it("mantém Coletar no site", () => {
+    expect(itensDeNavegacao(false).map(({ label, to }) => [label, to])).toEqual([
+      ["Início", "/dashboard"], ["Coletar", "/coletar"], ["Histórico", "/historico"],
+      ["Dispositivos", "/dispositivos"], ["Configurações", "/configuracoes"],
+    ]);
   });
 
-  it("no app, a noite vem primeiro", () => {
-    const itens = itensDeNavegacao(true);
-    expect(itens[0]).toBe(ITEM_NOITE);
-    expect(itens.slice(1)).toEqual(ITENS_NAV);
+  it("oferece Noite no app", () => {
+    expect(itensDeNavegacao(true).map(({ label, to }) => [label, to])).toEqual([
+      ["Noite", "/noite"], ["Início", "/dashboard"], ["Histórico", "/historico"],
+      ["Dispositivos", "/dispositivos"], ["Configurações", "/configuracoes"],
+    ]);
   });
 });

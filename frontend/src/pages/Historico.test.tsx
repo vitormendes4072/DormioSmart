@@ -56,6 +56,9 @@ function mostrar() {
 }
 
 beforeEach(() => {
+  vi.stubGlobal("HTMLDialogElement", window.HTMLDialogElement);
+  HTMLDialogElement.prototype.showModal = function () { this.setAttribute("open", ""); };
+  HTMLDialogElement.prototype.close = function () { this.removeAttribute("open"); };
   vi.stubGlobal("crypto", webcrypto);
   vi.stubGlobal("matchMedia", vi.fn(() => ({ matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn() })));
   buscar.mockResolvedValue({ leituras: [...NOITE, ...BANCADA], truncada: false });
@@ -117,6 +120,26 @@ describe("Histórico: excluir e marcar uma sessão (DATA-16)", () => {
     fireEvent.click(within(confirmacao).getByRole("button", { name: "Cancelar" }));
     expect(screen.queryByRole("alertdialog")).toBeNull();
     expect(apagar).not.toHaveBeenCalled();
+  });
+
+  it("mantém a confirmação aberta se Escape ocorrer durante a exclusão", async () => {
+    let concluir!: (quantidade: number) => void;
+    apagar.mockImplementationOnce(() => new Promise((resolve) => { concluir = resolve; }));
+    mostrar();
+    const principal = await screen.findByRole("region", { name: "Tabela do histórico" });
+    fireEvent.click(within(principal).getByRole("button", { name: "Excluir…" }));
+    const dialogo = screen.getByRole("alertdialog", { name: "Confirmar exclusão da sessão" });
+    fireEvent.click(within(dialogo).getByRole("button", { name: "Excluir definitivamente" }));
+    expect(apagar).toHaveBeenCalledTimes(1);
+    const cancelar = new Event("cancel", { cancelable: true });
+    fireEvent(dialogo, cancelar);
+    expect(cancelar.defaultPrevented).toBe(true);
+    expect(screen.getByRole("alertdialog")).toBe(dialogo);
+    expect(dialogo.hasAttribute("open")).toBe(true);
+
+    concluir(20);
+    expect(await screen.findByText("Sessão excluída: 20 registros apagados.")).toBeTruthy();
+    expect(screen.queryByRole("alertdialog")).toBeNull();
   });
 
   it("confirmar apaga a sessão, mostra quantas épocas saíram e recarrega", async () => {
@@ -276,4 +299,27 @@ it("DATA-17: divergência avisa e recarrega sem sucesso", async () => {
   expect((await screen.findByRole("alert")).textContent).toContain("A sessão mudou");
   expect(buscar).toHaveBeenCalledTimes(2);
   expect(screen.queryByText(/Sessão marcada como bancada/)).toBeNull();
+});
+
+it("UI-41: a lista de cartões traz situação, ações e a confirmação modal", async () => {
+  vi.stubGlobal("matchMedia", vi.fn((consulta: string) => ({
+    matches: consulta === "(max-width: 767px)", addEventListener: vi.fn(), removeEventListener: vi.fn(),
+  })));
+  mostrar();
+  const lista = await screen.findByRole("list", { name: "Sessões do histórico" });
+  expect(within(lista).getByText("Completa")).toBeTruthy();
+  expect(within(lista).getByRole("button", { name: "Marcar como bancada" })).toBeTruthy();
+  fireEvent.click(within(lista).getByRole("button", { name: "Excluir…" }));
+  const dialogo = screen.getByRole("alertdialog", { name: "Confirmar exclusão da sessão" });
+  expect(dialogo.tagName).toBe("DIALOG");
+  expect(apagar).not.toHaveBeenCalled();
+});
+
+it("UI-41: um erro desconhecido do Histórico aparece com detalhes recolhidos", async () => {
+  buscar.mockRejectedValueOnce(new ErroApi(500, "Não foi possível concluir o pedido.", "mensagem original"));
+  mostrar();
+  expect(await screen.findByText("Não foi possível concluir o pedido.")).toBeTruthy();
+  const detalhes = screen.getByText("Detalhes técnicos").closest("details");
+  expect(detalhes?.hasAttribute("open")).toBe(false);
+  expect(detalhes?.textContent).toContain("mensagem original");
 });

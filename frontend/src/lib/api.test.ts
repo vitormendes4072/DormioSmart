@@ -92,10 +92,10 @@ describe("tratamento de erro", () => {
     expect(aoExpirar).toHaveBeenCalledOnce();
   });
 
-  it("propaga a mensagem que o backend mandou em {error}", async () => {
-    vi.stubGlobal("fetch", vi.fn(async () => resposta(503, { error: "dados nao persistidos" })));
+  it("traduz uma falha conhecida do backend", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => resposta(503, { error: "fonte de dados indisponivel" })));
 
-    await expect(buscarHistorico()).rejects.toThrow("dados nao persistidos");
+    await expect(buscarHistorico()).rejects.toThrow("Não foi possível acessar os dados agora.");
   });
 
   it("cai para mensagem generica quando o corpo do erro nao e JSON", async () => {
@@ -107,7 +107,7 @@ describe("tratamento de erro", () => {
       },
     } as unknown as Response)));
 
-    await expect(buscarHistorico()).rejects.toThrow("Erro 500");
+    await expect(buscarHistorico()).rejects.toThrow("Não foi possível concluir o pedido.");
   });
 
   it("falha de rede vira ErroApi com status 0, nao excecao crua", async () => {
@@ -168,8 +168,8 @@ describe("exportação paginada", () => {
   it("não retorna dados parciais se a segunda página falha", async () => {
     const linha = { id: "00000000-0000-0000-0000-000000000001", created_at: "2026-11-01T00:00:00Z" };
     vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce(resposta(200, Array(2000).fill(linha)))
-      .mockResolvedValueOnce(resposta(503, { error: "indisponível" })));
-    await expect(buscarHistoricoCompleto()).rejects.toThrow("indisponível");
+      .mockResolvedValueOnce(resposta(503, { error: "fonte de dados indisponivel" })));
+    await expect(buscarHistoricoCompleto()).rejects.toThrow("Não foi possível acessar os dados agora.");
   });
 });
 
@@ -219,8 +219,8 @@ describe("janela paginada do Histórico", () => {
     const { buscar, fetchSimulado } = simular(6700);
     fetchSimulado.mockImplementationOnce(async () => resposta(200, Array(2000).fill({
       id: "1999", created_at: "2026-11-12T00:00:00Z",
-    }))).mockResolvedValueOnce(resposta(503, { error: "indisponível" }));
-    await expect(buscar()).rejects.toThrow("indisponível");
+    }))).mockResolvedValueOnce(resposta(503, { error: "fonte de dados indisponivel" }));
+    await expect(buscar()).rejects.toThrow("Não foi possível acessar os dados agora.");
   });
 });
 
@@ -261,6 +261,13 @@ describe("excluir e marcar uma sessão (DATA-16)", () => {
 
   it("o erro do servidor chega com a mensagem dele", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => resposta(400, { error: "trecho acima de 48 h" })));
-    await expect(apagarSessao(trecho)).rejects.toThrow("trecho acima de 48 h");
+    await expect(apagarSessao(trecho)).rejects.toThrow("Esta sessão ultrapassa 48 horas");
+  });
+});
+
+it("UI-41: guarda o texto desconhecido fora da mensagem principal", async () => {
+  vi.stubGlobal("fetch", vi.fn(async () => resposta(500, {error: "erro novo do servidor"})));
+  await expect(buscarHistorico()).rejects.toMatchObject({
+    status: 500, message: "Não foi possível concluir o pedido.", detalhe: "erro novo do servidor",
   });
 });

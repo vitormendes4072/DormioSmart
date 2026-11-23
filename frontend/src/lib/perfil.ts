@@ -94,7 +94,7 @@
  */
 import type { User } from "@supabase/supabase-js";
 
-import { requisitarJson } from "./api";
+import { ErroApi, requisitarJson } from "./api";
 import { traduzirErroDeAuth } from "./autenticacao";
 import { obterSupabase } from "./supabase";
 
@@ -138,7 +138,7 @@ export type ResultadoDePerfil =
   /** O e-mail depende de confirmação; o endereço de acesso segue o antigo. */
   | { tipo: "email-pendente"; emailPendente: string; perfilGravado: boolean; residuoLimpo: boolean }
   | { tipo: "invalido"; mensagem: string }
-  | { tipo: "erro"; mensagem: string; perfilGravado: boolean; residuoLimpo: boolean };
+  | { tipo: "erro"; mensagem: string; detalhe?: string; perfilGravado: boolean; residuoLimpo: boolean };
 
 const SEM_CONFIGURACAO = "Autenticação não configurada. Confira o arquivo frontend/.env.";
 
@@ -420,6 +420,7 @@ export async function atualizarPerfil(
       return {
         tipo: "erro",
         mensagem: erro instanceof Error ? erro.message : "Não foi possível salvar o perfil.",
+        detalhe: erro instanceof ErroApi ? erro.detalhe : undefined,
         perfilGravado: false,
         residuoLimpo: false,
       };

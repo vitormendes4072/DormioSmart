@@ -1,3 +1,5 @@
+import { MensagemDeFalha } from "./MensagemDeFalha";
+import type { ErroApi } from "../lib/api";
 import { AlertTriangle, Loader2, Radio } from "lucide-react";
 
 /**
@@ -39,7 +41,7 @@ export function FalhaAoCarregar({
   mensagem,
   aoTentarNovamente,
 }: {
-  mensagem: string;
+  mensagem: string | ErroApi;
   aoTentarNovamente: () => void;
 }) {
   return (
@@ -49,7 +51,7 @@ export function FalhaAoCarregar({
       </div>
       <div>
         <p className="text-sm font-medium text-foreground">Não foi possível carregar</p>
-        <p className="text-sm text-muted-foreground mt-1 max-w-sm">{mensagem}</p>
+        <div className="text-sm text-muted-foreground mt-1 max-w-sm"><MensagemDeFalha erro={mensagem} /></div>
       </div>
       <button
         onClick={aoTentarNovamente}
