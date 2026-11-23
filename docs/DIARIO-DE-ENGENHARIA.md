@@ -11789,7 +11789,7 @@ Vitest e build no Windows; servidor local com autenticação fictícia; 19/11/20
 
 **Risco em aberto.** A inserção posterior à conferência não é recusada, mas também não é atingida; pode deixar uma sessão incompleta. O teste com gatilho não reproduz todos os agendamentos concorrentes. A conferência página real × banco com lotes chegando será refeita pelo Claude na revisão. Não houve teste em produção, conta real, APK, Postgres 14 ou 16.
 
-**Procedência.** Branch `bugfix/DATA-17-conferir-sessao`, árvore sobre `develop` `2b8fbd5`; Windows 11, Python 3.13, Node 22, Postgres 17 em Docker; 22/11/2026.
+**Procedência.** Branch `bugfix/DATA-17-conferir-sessao`, código `a6fc480` sobre `develop` `2b8fbd5`; Windows 11, Python 3.13, Node 22, Postgres 17 em Docker; 22/11/2026.
 
 # O que este diário não cobre
 
