@@ -5,6 +5,7 @@ import { BarraDoWorkspace } from "../components/BarraDoWorkspace";
 import { CartaoDeDispositivo, EstadoDoDispositivo, MeusDispositivos } from "../components/MeusDispositivos";
 import { estaEmModoDemo } from "../lib/demo";
 import type { TipoDeDispositivo } from "../lib/dispositivos";
+import { noiteNativaDisponivel } from "../lib/noiteNativa";
 
 export function Dispositivos() {
   const { search } = useLocation();
@@ -41,7 +42,7 @@ export function Dispositivos() {
       <section className="rounded-[14px] border border-border bg-card p-4 shadow-sm">
         <h2 className="text-sm font-bold text-foreground">Sobre o pareamento</h2>
         <p className="mt-2 text-xs text-muted-foreground">
-          O travesseiro usa um código de conexão próprio. O celular é vinculado à sua conta ao usar Coletar.
+          O travesseiro usa um código de conexão próprio. O celular é vinculado à sua conta ao usar {noiteNativaDisponivel() ? "Noite" : "Coletar"}.
         </p>
       </section>
     </div>

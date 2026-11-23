@@ -626,6 +626,22 @@ describe("montagem real das telas (UI-17)", PRAZO, () => {
     expect(criar).not.toHaveBeenCalled();
   });
 
+  it.each([
+    ["site", false, "Coletar"],
+    ["app", true, "Noite"],
+  ] as const)("explica o vínculo do celular no %s", async (_, nativo, tela) => {
+    const plataforma = vi.spyOn(Capacitor, "isNativePlatform").mockReturnValue(nativo);
+    const plugin = vi.spyOn(Capacitor, "isPluginAvailable").mockImplementation((nome) => nome === "Noite");
+    try {
+      await montar("/dispositivos");
+      const quadro = screen.getByRole("heading", { name: "Sobre o pareamento" }).closest("section");
+      expect(quadro?.textContent).toContain(`O celular é vinculado à sua conta ao usar ${tela}.`);
+    } finally {
+      plataforma.mockRestore();
+      plugin.mockRestore();
+    }
+  });
+
   it("abre Noite ao escolher o celular no app", async () => {
     const plataforma = vi.spyOn(Capacitor, "isNativePlatform").mockReturnValue(true);
     const plugin = vi.spyOn(Capacitor, "isPluginAvailable").mockImplementation((nome) => nome === "Noite");
