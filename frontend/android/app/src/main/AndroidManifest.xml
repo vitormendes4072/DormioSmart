@@ -35,6 +35,22 @@
             android:exported="false"
             android:foregroundServiceType="health" />
 
+        <!-- APP-20: o lembrete de dormir. O do alarme nao e exportado; o da
+             inicializacao recebe avisos do sistema e so reagenda. -->
+        <receiver
+            android:name=".ReceptorDoLembrete"
+            android:exported="false" />
+        <receiver
+            android:name=".ReceptorDeInicializacao"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+                <action android:name="android.intent.action.TIME_SET" />
+            </intent-filter>
+        </receiver>
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"
@@ -60,6 +76,8 @@
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <!-- Android 13+: a notificacao fixa e o sinal de que a noite esta sendo registrada. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- APP-20: reagendar o lembrete de dormir depois de reiniciar o celular. -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <!-- O pedido de isencao da otimizacao de bateria, feito pelo usuario na tela. -->
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
 </manifest>
