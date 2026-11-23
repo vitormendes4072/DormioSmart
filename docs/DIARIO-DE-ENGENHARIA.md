@@ -12681,3 +12681,46 @@ O celular fica sobre o colchão, perto do travesseiro, em todas as noites.
 - **Nada disto está na produção** até o próximo release; no celular, a barra nova e o título da notificação chegam com o APK 1.1.3.
 
 **Procedência.** PR #259 (`919c409`, `6257fbc`, `9d0b58c`) mesclada em `develop` `e9b7cf2`; revisão no Windows 11, Node 22, Python 3.13, navegador do app de desktop; 23/11.
+
+# 2026-11-23 (vi) — CAL-03, etapa 3: a análise e o protocolo, antes das noites
+
+**O problema, como foi entendido no início.** A autocalibração do celular está no app desde a etapa 2 (diário, 11/11 (viii)), mas nunca foi conferida numa noite real. A pergunta é a de 10/11: sem calibração, o piso da medida de movimento das épocas paradas subia de menos de 1 mg para 23 mg só por virar o celular. Com a calibração, o piso passa a ser o mesmo nas duas posições? As noites do `VIA-02` vão começar, e podiam servir também a esta pergunta, sem noite extra.
+
+**Hipótese de trabalho.** Basta um script que leia os arquivos do `VIA-02`, como a análise dele, com o critério fixado antes dos dados. Os dados da conta seriam baixados como em 10/11, pelo cabo.
+
+**O que foi testado, e como.**
+- **De onde viriam os dados:**
+  - **A cópia pelo cabo** (`adb run-as`, a de 10/11) só funciona com o app de depuração. O autor usa o de release, e trocar de app apagaria as noites guardadas.
+  - **A exportação do servidor:** lida a consulta de `/api/features`. Ela não trazia a marca de calibração, a norma da gravidade nem a temperatura, e a `inclinacao_rel` não diz a posição: é o ângulo até a postura típica **da janela**, e cada noite teria a sua.
+- **A mudança no backend:**
+  - a consulta das features passou a pedir `g_norma`, `calibrada` e `temp`, que estão gravados desde a migração 018;
+  - a rota devolve, por época, esses três e a direção da gravidade `g`;
+  - fica fora de `derivar_noite`, que o `ml/` também chama e que é conferida contra o dourado;
+  - contrato 2.12.0, MINOR, como a 2.3.0 (campo novo na resposta).
+- **A análise** (`scripts/analisar_cal03.py`): época parada pela régua do app (magnitude dinâmica abaixo de 10 mg); orientação pelo z da gravidade (até 30° da vertical); por noite e por orientação, o piso, a norma e a temperatura, com a época calibrada separada da que não é. O veredito exige 2 noites calibradas em cada orientação, pisos a até 3 mg e normas a até 0,5 % de 1 g.
+- **O protocolo** (`docs/PROTOCOLO-VIA-02.md`): a tela alterna entre noites, o autor anota a linha "Calibração do sensor" ao iniciar a noite, e o trecho de console leva as duas anotações no arquivo. A sintaxe do trecho foi conferida com `node --check`.
+- **Testes com noites sintéticas**, com o erro do Moto E7 medido em 10/11: 15 do script e 5 da rota.
+- **Controle positivo:** 15 sabotagens, 10 no script e 5 na rota e na consulta.
+
+**Resultado medido.**
+- **Backend:** 715 passam, 1 pula (eram 695); o `test_simulador_c2.py` do `ml/`, que passa pela `derivar_noite` do servidor, 24 passam; Ruff limpo.
+- **As 15 sabotagens caem**, cada uma no teste esperado:
+  - no script: a régua de parado a 100 mg, o sinal da orientação trocado, a orientação a 60°, a calibrada misturada com a sem calibração, a diferença sem módulo, a norma fora do veredito, sem o mínimo de paradas, uma noite bastando, a exportação antiga aceita e o veredito com as épocas sem calibração;
+  - na rota: sem os campos, a consulta sem as colunas, a época sem a calibração, os pares sem ordenar e sem a conferência da ordem.
+- **O controle sem calibração**, com os números de 10/11, acha 14,5 mg de diferença (a de 10/11 era 22,1 mg; os sintéticos usam os pisos da mesa, de 4,2 e 18,7 mg).
+
+**Adaptação.**
+- **A hipótese era só o script, com os dados pelo cabo;** a leitura do código, antes do plano, mostrou que nenhum dos dois caminhos trazia o necessário, e o plano aprovado já incluiu a mudança no backend.
+- **Um teste a mais**, o do viés invertido, escrito antes de rodar as sabotagens: nenhum teste tinha a diferença negativa, e a sabotagem do módulo não teria como cair.
+
+**O que deu errado no caminho.**
+- **A primeira rodada das sabotagens parou na segunda:** a saída do pytest veio em cp1252 e o leitor esperava UTF-8. Foi refeita com `PYTHONIOENCODING=utf-8`; o arquivo sabotado já tinha sido restaurado pelo `finally`.
+- **O `ml/.venv` não existe na worktree;** o teste do `ml/` rodou com o ambiente do checkout principal.
+
+**Risco em aberto.**
+- **O release:** sem o contrato 2.12.0 na produção, a exportação sai sem os campos e o script a recusa. As noites gravadas antes dele saem completas quando baixadas depois (`CAL-03`).
+- **Os limiares provisórios do app** (10 mg e 2 °C) seguem sem validação: a análise os descreve, e validá-los pediria uma referência (`CAL-03`).
+- **A temperatura** muda o erro do sensor e não é separada: aparece ao lado de cada piso.
+- **Um aparelho só**, o Moto E7.
+
+**Procedência.** Branch `feature/CAL-03-etapa3-analise`, sobre `develop` `b6d779a`; Windows 11, Python 3.13 (backend) e 3.11.9 (`ml/`); 23/11.
