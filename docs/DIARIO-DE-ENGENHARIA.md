@@ -12854,6 +12854,70 @@ existe ali. As mutações individuais verificam as falhas com o executor present
 
 **Procedência.** Branch `feature/APP-19-versao-do-app`, sobre `develop` `282fde0`; Windows 11, Python 3.13, Node 22, Postgres 17 em Docker; 23/11.
 
+# 2026-11-23 (x) — UI-42: o pareamento só do travesseiro
+
+**O problema, como foi entendido no início.** O autor estranhou a opção "Celular" em "Parear novo dispositivo": quem tem o app já grava com o celular, sem parear nada. Lido o código, a opção nem pareava: escolher "Celular" trocava o botão "Parear" por um link para Coletar (site) ou Noite (app). O celular entra na conta sozinho, na primeira noite gravada, pelo create-or-get do `APP-08`. A opção parecia um tipo de aparelho a parear e era um atalho disfarçado, com um texto de ajuda que ainda citava a Coletar no app.
+
+**Hipótese de trabalho.** Basta tirar a escolha de tipo: o quadro pareia o travesseiro, e uma linha explica que o celular não precisa de pareamento, com o link para a tela certa. O backend não muda.
+
+**O que foi testado, e como.**
+- **O quadro** (`montagem.test.ts`, a montagem real das telas): o título "Parear um travesseiro", nenhum botão de escolha, o "Parear" pedindo `tipo: "travesseiro"`; a explicação levando à Coletar no site e à Noite no app.
+- **O texto de ajuda** de cada tipo, que só o quadro usava, saiu, e a lista de tipos deixou de ser exportada (o Knip apontou o export sem uso).
+- **No navegador**, o quadro do modo demonstração, que também ganhou o título novo.
+- **Controle positivo:** 5 sabotagens (o título antigo, sem a explicação, o link trocado entre app e site, parear como celular e a escolha de tipo de volta).
+
+**Resultado medido.**
+- **Frontend:** 944 em 63 arquivos, sobre o `develop` com o `APP-19`; lint, tipos, Knip, build e CSP passam; o painel fica em 259 637 B comprimidos, com teto de 260 000 B.
+- **Sabotagens:** 5 de 5.
+
+**Adaptação.** O plano não citava o quadro do modo demonstração; ele mudou de título para os dois dizerem o mesmo.
+
+**O que deu errado no caminho.**
+- **Os testes do link acharam dois "Coletar" e dois "Noite":** a barra de navegação também os tem. A busca passou a ser dentro do parágrafo da explicação.
+- **O Knip reprovou** a lista de tipos exportada sem uso, depois que o quadro deixou de usá-la.
+
+**Risco em aberto.**
+- **Não visto com a conta do autor:** o quadro real só aparece com login; foi visto o do modo demonstração, e o real pelos testes.
+- **Dois celulares na mesma conta** gravam no mesmo dispositivo "celular", e as noites se misturam. Caso raro hoje; anotado na linha do `UI-42`.
+
+**Procedência.** Branch `feature/UI-42-parear-so-travesseiro`, sobre `develop` `1c07d76`; Windows 11, Node 22, navegador do app de desktop; 23/11.
+
+# 2026-11-23 (xi) — APP-20, etapa 1: o lembrete de dormir
+
+**O problema, como foi entendido no início.** O autor notou que o app é passivo: só notifica enquanto grava a noite, e nunca chama a pessoa. A ideia é um app que acompanhe o dia a dia (lembrar de dormir, devolver algo de manhã). A etapa 1 é o lembrete de dormir; a da manhã espera a escolha do autor (`APP-20`).
+
+**Hipótese de trabalho.** Tudo pode ser local: o próprio celular agenda e mostra, sem Firebase e sem servidor. Um alarme inexato (`setAndAllowWhileIdle`) basta, porque alguns minutos de atraso não importam, e não pede a permissão de alarme exato. O app já pede a permissão de notificar (para a notificação da noite).
+
+**O que foi testado, e como.**
+- **As contas, na JVM** (`LembreteDeDormirTest`, 8 testes): o próximo disparo hoje ou amanhã; o próprio minuto vai para amanhã (o alarme que dispara não se repete); a virada do dia, do mês e do ano; o dia da mudança de horário (Nova York, 08/03/2026), em que o intervalo é de 23 h e o lembrete segue o relógio de parede; não lembrar desligado nem com a noite gravando; o horário válido.
+- **No emulador Pixel 6, Android 37** (`LembreteDeDormirNativoTest`): o alarme agendado no Android e cancelado ao desligar; a notificação no canal "Lembretes"; nada com a noite gravando (pelo estado em arquivo); nada desligado; e um roteiro, só quando pedido, que agenda para o minuto seguinte e espera o alarme de verdade disparar o receptor do manifesto.
+- **A tela** (`LembreteDeDormir.test.tsx`, 8 testes): ler e gravar o horário; ligar; o aviso de permissão desligada; a falha que não finge ter ligado; a seção só no app.
+- **Controle positivo:** 4 sabotagens na JVM, 6 na tela, 2 só no emulador (a noite em arquivo ignorada; desligar sem desfazer a intenção do alarme), e o roteiro sem o receptor no manifesto.
+
+**Resultado medido.**
+- **JVM:** 42 passam (+8). **Emulador:** 11 passam, 4 pulados (+4). **O roteiro:** o lembrete apareceu 57 s depois de agendado; sem o receptor no manifesto, não aparece.
+- **Frontend:** 951 em 64 arquivos, sobre o `develop` com o `APP-19`; lint, Knip, tipos, build e CSP passam; o painel fica em 259 763 B comprimidos, com teto de 260 000 B.
+- **Sabotagens:** 10 de 10 (JVM e tela), 2 de 2 no emulador, e o controle do roteiro.
+
+**Adaptação.**
+- **O cancelamento:** o `dumpsys alarm` guarda histórico, e a ação do lembrete continuava lá depois de cancelada. Desligar passou a desfazer também a intenção pendente do alarme, e o teste confere que ela deixou de existir.
+- **O toque na notificação** abre o app, que começa na Noite. Com o app já aberto em outra tela, ele fica onde estava; uma navegação forçada não entrou.
+- **O roteiro do alarme de verdade** não estava no plano; entrou porque nenhum outro teste exercitava o receptor declarado no manifesto.
+
+**O que deu errado no caminho.**
+- **As 4 primeiras sabotagens da JVM "caíram" sem rodar teste nenhum:** o script chamava `gradlew.bat` sem o caminho, e o `cmd` não o achava. Percebido ao procurar o teste derrubado no relatório e não achar falha nenhuma. Refeitas com o caminho certo e com uma rodada de controle sem sabotagem, que tem de passar; uma delas foi conferida no relatório (`naoLembraComANoiteEmAndamentoNemDesligado`).
+- **O `tsc` reprovou** três testes antigos, cujos plugins falsos não tinham os dois métodos novos; o build parou por isso, e a conferência do pacote quebrou sem a pasta gerada.
+- **O emulador matou o app por falta de memória** duas vezes (o `lowmemorykiller` derrubou o renderizador do WebView), e o `ServicoDaNoiteTest` caiu junto. Não é deste item: passou na rodada limpa.
+- **Este branch saiu do `develop` antes do `APP-19`;** o orçamento do painel foi medido de novo depois de trazer o `develop`.
+
+**Risco em aberto.**
+- **A folga do painel é de 237 B:** a próxima tela no pacote principal provavelmente estoura o teto (`UI-15`).
+- **Só visto no emulador:** a seção de Configurações não foi vista num celular com a conta do autor.
+- **A etapa 2** espera a escolha do autor (`APP-20`).
+- **Só chega com o APK 1.1.4** (R19).
+
+**Procedência.** Branch `feature/APP-20-lembrete-de-dormir`, sobre `develop` `1c07d76`; Windows 11, JDK do Android Studio, emulador Pixel 6 (Android 37), Node 22; 23/11.
+
 # 2026-11-23 (xii) — UI-43, etapa 0: o inventário antes do redesenho
 
 **O problema, como foi entendido no início.** O autor notou que o celular de exemplo da landing mostra um app diferente do real, e quer levar o visual mais moderno da landing para o app, sem perder função nem dado, e com a landing mostrando o app de verdade. Antes de qualquer tela mudar, era preciso saber exatamente o que cada versão tem e o que protege cada função do app.

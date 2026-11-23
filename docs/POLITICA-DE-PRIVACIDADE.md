@@ -221,6 +221,9 @@ impede a coleta por esse caminho e não afeta o restante do aplicativo.
   só as 2 000 mais recentes. Servem para o aplicativo corrigir o erro do
   acelerômetro nas noites seguintes, e **não saem do celular**. Ao lado do
   arquivo de cada noite fica a calibração que ela usou.
+- **O lembrete de dormir**, se você o ligar em *Configurações*: só se está ligado
+  e o horário escolhido. O próprio celular agenda e mostra o lembrete, que **não
+  passa pelo servidor** e não leva dado nenhum do seu sono.
 
 Esses arquivos ficam na área privada do aplicativo, e **não entram no backup automático do Android** para a nuvem. Eles saem do
 celular quando você **desinstala o aplicativo**.

@@ -14,6 +14,8 @@ function plugin(noites: NoiteGravada[]) {
     iniciar: vi.fn(),
     encerrar: vi.fn(),
     estado: vi.fn(),
+    lembrete: vi.fn(async () => ({ ativo: false, hora: 22, minuto: 30, notificacoes: true })),
+    definirLembrete: vi.fn(async (o: { ativo: boolean; hora: number; minuto: number }) => ({ ...o, notificacoes: true })),
     pedirIsencaoDeBateria: vi.fn(),
     lerEpocas: vi.fn(),
     marcarEnviadas: vi.fn(),
