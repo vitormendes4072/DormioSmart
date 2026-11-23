@@ -12423,3 +12423,355 @@ O APK não muda neste release: o app Android recebe o Histórico novo no próxim
 - **Não foi visto com a conta real, em aparelho físico nem por outra pessoa:** que ficou mais intuitivo é hipótese. As capturas do texto do TCC e o catálogo de telas de 10/11 mostram o painel antigo.
 
 **Procedência.** Branch `feature/UI-40-painel-em-camadas`, sobre `develop` `b30bde6`; Windows 11, Node (Vitest), Python 3.13, JDK do Android Studio, emulador Pixel 6; 22/11.
+
+# 2026-11-22 (vi) — o release R17: consentimento novo, a correção do alcance e a usabilidade
+
+**O problema, como foi entendido no início.** O `develop` tinha quatro itens fora da produção: `LGPD-15`, `UI-38`, `UI-39` e `UI-40`. O `UI-38` corrige dois defeitos do `DATA-16` no ar desde o R16: a exclusão levava uma época normal entre duas bancadas, e deixava para trás a última época com microssegundos. O `LGPD-15` muda a versão do consentimento, o que amarra a ordem a uma migração e a um APK.
+
+**Hipótese de trabalho.** A ordem segura é:
+- o autor envia as noites guardadas no celular, antes de o APK de depuração deixar de aceitar o consentimento;
+- o APK 1.1.2 gerado de `develop` e deixado em rascunho;
+- merge e deploy;
+- a 024 pelo autor, logo depois do deploy;
+- a publicação do APK.
+
+**O que foi testado, e como.**
+- **O APK, antes do rascunho:** certificado, `versionCode` e `versionName`, `debuggable` e o conteúdo do pacote web (a versão `2026-11-22` presente, nenhum dublê de teste).
+- **O script da 024:** comparado com a migração versionada e rodado duas vezes num Postgres 17 local, com a conferência.
+- **A PR #253:** CI verde, mesclada com `--no-ff`, com a árvore de `main` comparada à testada.
+- **Depois do deploy:** `curl` nas rotas e nas cinco páginas, e os pedaços JS publicados.
+- **A 024 na produção:** aplicada pelo autor, com a conferência colada.
+- **O download público:** baixado pelo link fixo do site e conferido.
+
+**Resultado medido.**
+- **O release:** merge `d629769`; deploy `7987918215` com sucesso; 13 de 13 verificações verdes na PR.
+- **A produção:**
+  - `/health` `200` (contrato 2.11.0);
+  - `401` sem token em `/api/devices`, `/api/sessoes/apagar` e `/api/me/consentimento`;
+  - a mesma CSP nas cinco páginas;
+  - o pedaço do Início com o resumo e os detalhes técnicos, o do Histórico com "Com pausas" e "Incompleta", e o consentimento `2026-11-22`.
+- **A 024:** as quatro conferências `true` (versão nova, `authenticated` executa, `anon` sem acesso, imutável).
+- **O APK 1.1.2:** `app-v1.1.2` publicado como a mais recente, com a etiqueta em `d629769`. O link fixo baixa um arquivo de SHA-256 `d5a36c8b1fe4568703f5e5a40cd17c2c6d8a0f0b7e7cde566263151ca96b7b9d`, com o certificado do autor e `versionCode` 4.
+
+**Veredito.** Os quatro itens estão na produção e no APK 1.1.2. Os dois defeitos do `DATA-16` saíram do ar.
+
+**Adaptação.**
+- **A 024 entrou antes da publicação do APK**, e não depois, como o README das migrações pedia. Entre uma e outra, minutos: nesse intervalo, só quem estava num APK antigo ficaria sem aceitar, e ficaria assim de qualquer forma até atualizar.
+
+**O que deu errado no caminho.**
+- **O site esteve no ar alguns minutos com a versão nova antes da 024**, como previsto: um aceite feito nessa janela seria recusado.
+
+**Risco em aberto.**
+- **Quem está num APK anterior ao 1.1.2** (o de depuração do autor e o de um amigo, de 11/11) não grava até atualizar.
+- **O autor perde o que ficou no celular** ao trocar o APK de depuração pelo de release (assinaturas diferentes). Ele confirmou ter enviado as noites antes.
+- **As telas novas não foram vistas com a conta real nem em aparelho físico.** Fica com o autor.
+
+**Procedência.** PR #253, `main` `d629769`, release `app-v1.1.2`; Windows 11, Postgres 17 em Docker, build-tools 37.0.0; 22/11.
+
+# 2026-11-22 (vii) — UI-41 (b): a notificação da noite diz "Smart Dormio"
+
+**O problema, como foi entendido no início.** O `APP-18` trocou "o Dormio" por "o Smart Dormio" nas telas do app, mas o serviço da noite ficou de fora. Seguiam com o nome antigo o título da notificação ("Dormio registrando a noite") e a descrição do canal nas configurações do Android. O teste de marca do `APP-18` (`appAndroid.test.ts`) só lia três arquivos do frontend. Havia ainda o canal: criado só quando faltava, ele guardaria a descrição antiga em quem atualiza o app.
+
+**Hipótese de trabalho.** Trocar os dois textos e criar o canal a cada vez que o serviço sobe. Para um canal que já existe, o Android atualiza nome e descrição e mantém o que a pessoa configurou.
+
+**O que foi testado, e como.**
+- **Dois testes no `appAndroid.test.ts`, antes da mudança:** os literais de texto do `ServicoDaNoite.java` sem "Dormio" solto, e o canal sem a condição de só criar quando falta. Os dois caíram contra o código de antes.
+- **Controle positivo:** com o título antigo e a descrição nova, o primeiro teste cai e aponta o literal "Dormio registrando a noite".
+- **Emulador Pixel 6 descartável (`-read-only`), com sessão e API de mentira:** uma noite iniciada e a notificação lida pelo `dumpsys notification`.
+- **Suítes:** frontend e lint; testes JVM e `assembleDebug` do app.
+
+**Resultado medido.**
+- **Frontend:** 866 passam, 59 arquivos (eram 864; +2). Lint sem erro.
+- **App:** 34 testes JVM, 0 falhas.
+- **Emulador:** `android.title` "Smart Dormio registrando a noite"; o canal "Registro da noite", importância baixa.
+
+**Veredito.** A parte (b) do `UI-41` está feita na branch; o item segue aberto por (a), (c) e (d). Chega ao celular no APK 1.1.3.
+
+**Adaptação.** Nenhuma.
+
+**O que deu errado no caminho.**
+- **O teste saiu corrompido na primeira escrita:** o heredoc tirou uma barra da regex e transformou `\b` em caractere de controle. O teste "não tinha testes", e a corrupção foi achada lendo os caracteres crus. O bloco foi reescrito a partir de um arquivo, fora do shell.
+- **O `dumpsys` não mostrou a descrição do canal**, e a captura da gaveta pegou o launcher do emulador travado.
+
+**Risco em aberto.**
+- **A descrição do canal e a atualização de um canal já existente não foram vistas no aparelho:** a primeira só pelo teste, a segunda pela documentação do Android. O emulador não tinha o canal antes.
+
+**Procedência.** Branch `bugfix/UI-41b-nome-na-notificacao`, sobre `develop` `2b8fbd5`; Windows 11, Node 22, JDK do Android Studio, emulador Pixel 6; 22/11.
+
+# 2026-11-22 (viii) — DATA-17: conferir a sessão antes de alterar
+
+**O problema, como foi entendido no início.** A 023 age por janela, inclusive sobre época que a tela não carregou. O `UI-38` limitou o alcance entre as carregadas, mas não protegeu contra lote tardio nem limite de páginas.
+
+**Hipótese de trabalho.** Contagem, marca e impressão SHA-256 dos IDs exibidos identificam a sessão no instante da conferência. A mutação usa apenas os IDs travados. O dono vem de `auth.uid()` e o teto segue em 48 h.
+
+**O que foi testado, e como.** Dez testes novos de campos obrigatórios/inválidos no backend, onze casos RLS de assinaturas e divergência, e um caso de frontend sem ID foram executados contra `develop` antes da implementação e falharam; o vetor SHA-256 no Postgres passou. Depois: suíte de backend, frontend e RLS; diagnóstico de migrações; lint e build. O teste de 409 e o de chegada durante a operação foram escritos depois da implementação; o de 409 foi sabotado removendo temporariamente o recarregamento. Três sabotagens SQL removem individualmente a conferência de contagem, marca e IDs. Na revisão, o teste de chegada foi substituído por duas conexões: B trava uma época, A chama a função e espera nessa trava, B insere e confirma, e A prossegue. `pg_blocking_pids` e `pg_locks` distinguem a espera no `SELECT FOR UPDATE` daquela na própria mutação; a thread e a consulta têm prazo. Duas sabotagens adicionais alteram por intervalo e retiram a trava.
+
+**Resultado medido.** Backend: 679 passam, 1 pula. Frontend: 869 passam, 59 arquivos; lint e build passam. RLS: 337 passam em Postgres 17. O diagnóstico acerta 23 estados e a 002. As sabotagens de contagem, marca e IDs derrubaram respectivamente 1, 2 e 2 testes: `test_data17_recusa_contagem_errada`, `test_data17_confere_identidade_e_marca[marca-*]` e `[troca-*]`; sem recarregar no 409, o teste da tela falhou por uma chamada de busca em vez de duas. O teste de duas conexões passou em apagar e marcar, conferindo as cinco épocas originais e a nova intacta; as sabotagens de alteração por intervalo e de ausência de trava derrubaram os dois casos cada. Em `develop` com o `conftest.py` dele, os dois casos caíram por ausência das novas assinaturas, não pela corrida; a sabotagem por intervalo demonstra a detecção específica da corrida. Sem a guarda frontend de marcas misturadas, o novo teste dela caiu.
+
+**Adaptação.** O autor aprovou complementar a contagem com a impressão dos IDs: contagem igual não identifica uma troca; `FOR UPDATE` não impede inserção na janela. A 025 trava e guarda os IDs, confere os três campos e altera só esses IDs. Ausência de campos pede atualização (400), divergência dá 409 e recarrega, banco fora dá 503. O APK 1.1.2 precisará de atualização. Aplicar a 025 logo após o deploy: entre os dois, as duas ações retornam 503.
+
+**O que deu errado no caminho.** Scripts foram chamados no diretório errado e não gravaram; foram repetidos no diretório correto. Uma tentativa de controle do 409 não reconheceu CRLF; foi refeita e o arquivo restaurado. O lint apontou uma variável não usada num teste, corrigida. RLS e diagnóstico foram iniciados ao mesmo tempo no mesmo Postgres e o RLS recusou o setup por outros bancos temporários; foram repetidos em sequência. O teste original com gatilho não distinguia alteração por IDs de alteração por intervalo: a linha inserida durante um comando não entra no snapshot desse comando. O primeiro teste de duas conexões também não detectou a retirada do `FOR UPDATE`, pois confundia o bloqueio da mutação com o da conferência; a inspeção dos tipos de trava corrigiu o controle. A primeira suíte frontend da revisão falhou ao acessar o servidor local no sandbox (`EACCES`); fora dele, passou. O Git no sandbox não pôde criar o lock do índice na pasta do repositório principal; a operação foi repetida com acesso autorizado. No primeiro push da revisão, o gerenciador de credenciais ficou aguardando; o envio foi repetido com a autenticação já ativa do GitHub CLI.
+
+**Risco em aberto.** A inserção posterior à conferência não é recusada, mas também não é atingida; pode deixar uma sessão incompleta. O teste de duas conexões cobre uma ordem específica de concorrência, não todos os agendamentos. O Claude relatou na revisão a sonda página real × banco e seus controles; ela não foi reexecutada nesta etapa. Não houve teste local em produção, conta real, APK, Postgres 14 ou 16.
+
+**Procedência.** Branch `bugfix/DATA-17-conferir-sessao`, revisão dos testes sobre `6c908f2` e `develop` `2b8fbd5`; Windows 11, Python 3.13, Node 22, Postgres 17 em Docker; 22/11/2026. A sonda da revisão foi relatada pelo Claude e separada das execuções desta etapa.
+
+# 2026-11-23 (i) — revisão e integração do DATA-17 (PR #257) e do UI-41 (b) (PR #256)
+
+**O problema, como foi entendido no início.** O `DATA-17` voltou do Codex (PR #257): a 025 confere contagem, marca e SHA-256 dos ids e altera só os ids travados. A revisão tinha de mostrar, executando, que a correção fecha o que promete. A integração tinha de juntar a #255 (reserva da 025), a #256 (`UI-41` (b)) e a #257 sem perder registro.
+
+**Hipótese de trabalho.** Os testes da PR caem contra o código de antes, e cada parte da 025 tem um teste que cai sem ela. A conferência tela × banco do `UI-38`, repetida com o contrato novo, não acha alteração indevida.
+
+**O que foi testado, e como.**
+- **Os testes da PR contra o `develop` de antes** (`2b8fbd5`, com o `conftest.py` dele).
+- **Doze sabotagens do revisor**, no código da PR, uma por vez.
+- **A sonda tela × banco:** a `resumirSessoes` e a `impressaoDosIds` reais, o `ler_trecho` real e a 025 real em Postgres 17, em 154 casos. Cada ação foi tentada sem mudança, com uma época chegando na janela depois de a tela carregar e com uma época mostrada trocada por outra da mesma marca. Controle positivo: a 025 com o hash desligado.
+- **A verificação por mutação do RLS** e as suítes inteiras, na PR e depois sobre o merge.
+
+**Resultado medido.**
+- **Contra o código de antes:** backend 20 de 45 caem, RLS 27 de 30, frontend 9 de 61.
+- **Primeira rodada (`6c908f2`):** sonda sem mudança 678 de 678 certas; chegadas 678 de 678 recusadas; trocas 374 de 374 recusadas; com o hash desligado, 58 trocas alteraram registros (a sonda acusa). **Mas a alteração por intervalo, no lugar dos ids travados, passava em toda a suíte:** o teste do gatilho inseria a época dentro do próprio comando, que nunca a enxerga.
+- **Segunda rodada (`496f311`):** o Codex trocou esse teste por um de duas conexões (B trava uma época, A espera no `for update`, B insere e confirma). Passou três vezes seguidas; as 10 sabotagens que rodei caíram, inclusive a alteração por intervalo, a falta de trava e a guarda de marcas misturadas no cliente. Mutação do RLS: **66 de 66**.
+- **Sobre o merge (`8845ee6`):** backend 679 + 1 pula, frontend 871 (59 arquivos), RLS 337, os 23 estados das migrações; lint, Knip, build, CSP e orçamento.
+
+**Veredito.** O `DATA-17` está fechado em `develop`. Vai para a produção no próximo release, com a 025 logo depois do deploy e o APK 1.1.3.
+
+**Adaptação.** O plano aprovado previa só contagem e marca; o Codex propôs, e o autor aprovou, a impressão dos ids e a alteração só dos ids travados (diário 22/11 (viii)).
+
+**O que deu errado no caminho.**
+- **A primeira verificação por mutação rodou ao mesmo tempo que as minhas sabotagens**, em outro banco, mas lendo os mesmos arquivos de migração. A rodada de referência pegou a 025 trocada pela versão por intervalo e acusou "6 alteradas". Foi refeita sozinha.
+- **Um banco de teste ficou com a versão de uma sabotagem**, porque o roteiro restaurava só o arquivo; uma prova foi refeita com a 025 reaplicada do zero.
+- **A entrada do `DATA-17` entrou no meio do diário** e com a mesma numeração da do `UI-41` (b); foi movida para o fim, como (viii), e conferida contra o diário de antes da #257.
+
+**Risco em aberto.**
+- **A época que chega depois da conferência não é recusada, só não é atingida.** A sessão pode ficar incompleta, e o autor apaga o resto numa segunda ação.
+- **O APK 1.1.2 recebe 400 ao excluir ou marcar** até o 1.1.3.
+- **Nada disso está na produção.**
+
+**Procedência.** PRs #255, #256 e #257 mescladas em `develop` (`e6b6c99`, `e75049b`, `8845ee6`); revisão em Postgres 17 em Docker, Windows 11, Python 3.13, Node 22; 22 e 23/11.
+
+# 2026-11-23 (ii) — a vigília que o modelo reconhece, por época e por noite
+
+**O problema, como foi entendido no início.** O autor perguntou se o modelo de sono serve: um classificador que diz "sono" a noite toda acerta quase sempre, porque a pessoa dorme quase a noite toda, e não diz nada sobre quando ela esteve acordada. O κ médio publicado (0,30 a 0,46 conforme a base) não responde a isso, nem ao que importa para o produto: o erro em cada noite.
+
+**Hipótese de trabalho.** As probabilidades por época guardadas da rodada do ML-INF v2 (`dados-locais/ml-inf-cabeca-v2-2026-11-07-final`) bastam para medir a vigília reconhecida, a troca no ponto de corte e o erro por noite, sem treinar nada de novo.
+
+**O que foi testado, e como.**
+- **Conferência:** as matrizes de confusão recalculadas dos `.npz` contra as publicadas no `agregados-v2.json`, nas quatro bases; e que a classe servida é `probabilidade > 0,5`.
+- **`ml/experimentos/analise_vigilia_por_noite.py`**, com 5 testes (`test_analise_vigilia_por_noite.py`): as contagens contra o `confusion_matrix` e o `recall_score` do scikit-learn, o "sempre sono", o erro por noite em minutos com sinal, a troca entre sensibilidade e especificidade e o corte escolhido só na Wearanize. Controle positivo: com a especificidade trocada pela sensibilidade e o sinal do erro invertido, 4 dos 5 caem.
+- **O corte alternativo foi escolhido só na Wearanize** (fora da amostra, LOSO) e medido nas externas, para não escolher olhando a resposta.
+- **O limiar de movimento (1,2 m/s²)** contra as medianas da bancada do `VIA-01` (16/11).
+
+**Resultado medido** (`ml/experimentos/saida/ml-inf/vigilia-por-noite.json`).
+- **Por época, vigília reconhecida (especificidade):** 0,76 na Wearanize, 0,60 na Walch, 0,42 na DREAMT, 0,36 na Newcastle. Sensibilidade ao sono 0,87 a 0,90. F1 da vigília 0,45 a 0,55. AUC 0,89 na Wearanize e 0,65 a 0,81 nas externas. A acurácia do modelo é menor que a do "sempre sono" na Wearanize (0,872 contra 0,895) e na Walch.
+- **Mover o corte só troca uma coisa pela outra:** de 0,5 para 0,6, a especificidade sobe 5 a 8 pontos e a sensibilidade cai 4 a 7, com κ médio igual ou menor em todas as bases. O corte de maior κ na Wearanize (0,30) baixa a especificidade externa para 0,25 a 0,47.
+- **Por noite, o erro do tempo total de sono:** viés de −37, +67, −23 e +20 min (Wearanize, Newcastle, Walch, DREAMT), com limites de 95% de até [−150; +284] min; o erro passa de 1 h em 30%, 48%, 14% e 38% das noites.
+- **A vigília estimada por noite acompanha a real só nas bases com mais vigília:** correlação entre noites de 0,52 e 0,61 na Wearanize e na Newcastle, mas **0,01 na Walch e −0,13 na DREAMT**. Ali o modelo não separa uma noite com muita vigília de uma com pouca.
+- **O limiar de movimento:** na bancada, o pico mediano parado ficou 0,03 m/s² acima da gravidade, e o de movimento, 2,6 a 3,2. O 1,2 cai no meio de um vão largo e separa o movimento deliberado (0 de 16 épocas paradas, 23 de 26 com movimento). Não foi medido com o movimento pequeno de quem dorme.
+
+**Veredito.** Por época, o modelo está na faixa da actigrafia publicada (especificidade média de 51% na meta-análise já citada em `LIMITACOES-TCC.md`), abaixo do teto humano (κ 0,61). Por noite, não sustenta uma afirmação sobre a vigília de uma pessoa numa noite. O app já não a mostra, e não deve mostrar enquanto isso valer (`ML-10`). Mais dados públicos do mesmo tipo dificilmente mudam isso: o limite é físico (acordado e parado é igual a dormindo) e a queda nas externas vem da troca de pessoa e sensor.
+
+**Adaptação.** O roteiro da conversa virou módulo versionado com testes, e grava só agregados.
+
+**O que deu errado no caminho.**
+- **O primeiro roteiro rodou com `python -I`, que tira a pasta atual do caminho:** o módulo não foi achado. Rodou sem `-I`; os dados são lidos com `allow_pickle=False`.
+
+**Risco em aberto.**
+- **Nada disto foi medido no travesseiro:** não há noite dele com referência de sono. As bases têm sensor de cabeça ou de punho (`VAL-02`, `ML-12` (c)).
+- **Se treinar juntando várias bases melhora a robustez entre coortes** é o `ML-18`, novo.
+
+**Procedência.** Probabilidades da rodada final do ML-INF v2 (07/11); branch `docs/analise-vigilia-por-noite`, sobre `develop` `96e7b40`; Windows 11, Python 3.11.9 do `ml/.venv`; 23/11.
+
+# 2026-11-23 (iii) — o protocolo e a análise do VIA-02, antes da primeira noite
+
+**O problema, como foi entendido no início.** O autor propôs gravar a mesma noite com o app e com o travesseiro e cruzar os dados. É o `VIA-02`, que estava no backlog sem protocolo. Os dois aparelhos já gravam para a mesma conta e calculam as mesmas 8 features com o mesmo núcleo em C++, então a comparação mede onde o sensor está e quanto acopla ao corpo, não a conta. Nada no app nem no firmware precisava mudar.
+
+**Hipótese de trabalho.** Basta um trecho de console que baixe as duas séries da noite e um script que as pareie. O critério do veredito tem de ser fixado agora, antes de existir dado.
+
+**O que foi testado, e como.**
+- **`scripts/analisar_via02.py`** e 16 testes com noites sintéticas (`web-app/tests/test_analisar_via02.py`). Os testes cobrem:
+  - as grades defasadas de 0, 5, 15 e 29 s concordando inteiras;
+  - séries independentes não concordando nem "captando";
+  - atraso de relógio de 1 e 2 registros medido e corrigido;
+  - buraco no travesseiro ou no celular sem virar discordância nem parear com registro distante;
+  - perder 5% do movimento capta, perder 50% não;
+  - com pouco movimento, 80% vistos não bastam (o intervalo segura o veredito);
+  - menos de 5 noites e noite curta;
+  - a direção do "viu", o limiar candidato e a concordância do modelo;
+  - a saída 2 sem pares.
+- **Controle positivo:** 8 regras sabotadas uma a uma, cada uma derrubando ao menos um teste. As regras são: sem corrigir o atraso, o empate do pareamento invertido, a sobreposição mínima ignorada, o intervalo fora do veredito, sem o mínimo de noites, a noite curta entrando, o "viu" invertido e o limiar errado.
+- **O trecho de console** do `docs/PROTOCOLO-VIA-02.md` passou pelo `node --check`. Cinco arquivos no formato que ele baixa (com `janela`, `posicao_do_celular` e `inferencia` nula) passaram pela linha de comando da análise.
+
+**Resultado medido.**
+- Suíte do backend: **695 passam, 1 pula** (+16).
+- Sabotagens: **8 de 8** pegas.
+- **Não há resultado do `VIA-02` ainda:** nenhuma noite foi gravada.
+
+**Veredito.** O critério fica fixado:
+- pareamento por sobreposição de ao menos 15 s;
+- atraso de −2 a +2 registros escolhido pela correlação de Pearson da intensidade;
+- veredito sobre ao menos 5 noites de pelo menos 120 pares: o travesseiro "capta" se viu ao menos 80% dos registros com movimento no celular e se o limite inferior do intervalo de 95% (bootstrap por blocos de 20 pares) passa de 70%.
+
+O celular fica sobre o colchão, perto do travesseiro, em todas as noites.
+
+**Adaptação.** O atraso era escolhido pela correlação de postos (Spearman). Passou à de Pearson, porque numa noite quase toda parada a ordem das épocas paradas é ruído: no deslocamento certo, a correlação de postos caiu a 0,25, e um vizinho ganhou por acaso. Pearson e κ escolheram o mesmo deslocamento nos 23 casos conferidos. A saída por noite relata as duas.
+
+**O que deu errado no caminho.**
+- **O teste do buraco deu 479 pares em vez de 480:** com a correlação de postos, o atraso escolhido foi +1. Foi o que levou à troca por Pearson.
+- **Três sabotagens sobreviveram na primeira rodada:** o empate invertido, a sobreposição ignorada e o "viu" invertido. Os testes conferiam o κ, que o atraso corrigia por baixo, e não o par escolhido nem a direção. Ganharam três asserções: atraso 0 nas defasagens até 15 s, um buraco no celular e a direção do "viu".
+- **A asserção do atraso 0 falhou com 29 s de defasagem, no código certo:** com 29 s, o registro de 29 s de sobreposição é o anterior. Defasagem de 29 s e −1 s mais um registro de atraso são indistinguíveis, e medir +1 ali é correto. A asserção ficou restrita às defasagens até 15 s.
+
+**Risco em aberto.**
+- **O veredito depende de haver movimento na noite.** Com pouco movimento, o intervalo é largo e pode não decidir nem com 5 noites. Nesse caso, gravar mais noites, sem mudar o critério.
+- **O limiar do celular** sai como candidato, e decidir o valor é o `DATA-06`.
+- **O tempo de envio do lote** segue sem medida (`API-06`, `INFRA-05`).
+
+**Procedência.** Branch `feature/VIA-02-protocolo-e-analise`, sobre `develop` `7543014`; Windows 11, Python 3.13; 23/11.
+
+---
+
+# 2026-11-23 (iv) — UI-41 (a), (c) e (d): avisos e ações à vista
+
+**O problema, como foi entendido no início.** A API e a resposta do lote deixavam texto técnico chegar à tela. No Histórico, situação e ações exigiam rolagem lateral e a confirmação ficava no topo da lista. Na barra móvel, “Configurações” avançava sobre a borda do próprio link com seis destinos.
+
+**Hipótese de trabalho.** Traduzir na apresentação e recolher o texto original quando ocorrer uma falha desconhecida. Usar os mesmos dados e ações em cartões e tabela, com confirmação modal. Dar espaço aos rótulos da barra móvel sem mudar seus nomes.
+
+**O que foi testado, e como.** Os três primeiros testes de API e Histórico foram escritos e rodados antes da implementação. A regressão de mensagens lê os literais, inclusive modelos de texto, usando a árvore sintática das rotas e validações Python. No Edge, um cenário sintético com 40 sessões montou o Histórico e a barra reais, simulando cinco e seis destinos. Foram medidas largura da página e cartões, posição de “Configurações”, as ações e a confirmação no fim da lista. A sonda verificou foco em Cancelar, Escape, retorno ao botão, ausência de pedido de exclusão ao cancelar e tabela a 1280 px. Após a revisão, foram testados os destinos do site e do app, o atalho de Dispositivos para Noite e o evento cancel enquanto a promessa de exclusão está pendente. No Edge, a sonda mediu o texto em seu link nos dois modos e repetiu a medição com a barra anterior.
+
+**Resultado medido.** Os três testes iniciais falharam em `develop`. O controle inseriu uma mensagem inédita numa rota e o inventário acusou seu texto. Repassar o motivo cru da Noite derrubou dois testes. Remover os detalhes do Histórico derrubou um. A 360, 390 e 411 px, `develop` exigiu 218, 188 e 167 px de rolagem dentro da tabela. No modo de seis destinos, o rótulo ultrapassou seu link em 8,6, 6,1 e 4,4 px. Com a correção, sobraram pelo menos 4 px no link e o excedente da página e dos cartões foi zero. Frontend: 921 passaram em 60 arquivos. Backend sem RLS: 679 passaram, 1 pulou. Lint, Knip, Knip de tipos, build e CSP passaram. Painel: 259 632 de 260 000 B gzip. Login: 145 282 de 155 000 B gzip. Landing: 278 463 de 289 800 B estimados de transferência. Na revisão, os dois testes dos destinos do app e do atalho falharam antes do ajuste. Sem a guarda de Escape, caiu o teste que exige o diálogo aberto. O rótulo antigo ocupou duas linhas nas três larguras no modo app. Com cinco destinos, o texto de 64,4 px coube numa linha em 68, 74 e 78 px úteis para 360, 390 e 411 px, respectivamente. Na revisão anterior, passaram 923 testes em 60 arquivos. O controle do quadro Sobre o pareamento manteve o caso do site passando e derrubou o caso do app com a frase antiga, que citava Coletar. Lint, Knip, Knip de tipos, build e CSP passaram. Orçamento atualizado: 259 634 B gzip no painel, 145 285 B gzip no login e 278 468 B estimados na landing.
+
+**Adaptação.** O modal usa o diálogo nativo com `alertdialog`. O inventário mantém uma lista explícita de entradas que recebem a frase genérica com detalhes recolhidos. O tradutor entrou no pacote comum. A interface da lista de espera mantém mensagens de validação próprias para os campos que a pessoa pode corrigir. Por decisão do autor, Noite substituiu Coletar na navegação do app e no atalho de Dispositivos para celular. O site manteve seus cinco destinos e a rota /coletar segue acessível.
+
+**O que deu errado no caminho.** Uma busca com expansão de chaves não funcionou em PowerShell. Dois testes antigos presumiam propagação literal ou um dublê sem a classe de erro. O compilador rejeitou métodos fora do alvo TypeScript, substituídos por equivalentes compatíveis. O primeiro cenário do navegador precisou do preâmbulo do Vite e de IDs de aparelhos distintos para formar a lista longa. Num controle positivo, a asserção do script esperava outra classe de erro ao remover os detalhes. O controle foi repetido e confirmou que faltava o elemento esperado. Uma busca repetiu a expansão de chaves incompatível com PowerShell. A porta 5179 estava ocupada e a sonda rodou na 5181. A primeira sincronização com VIA-02 foi recusada por diferenças locais de fim de linha nos registros. A restauração pela worktree do Git permitiu incorporar a base e recolocar a entrada no fim.
+
+**Risco em aberto.** O inventário cobre os literais das rotas e validações listadas, com análise explícita dos modelos. Falhas montadas dinamicamente ainda podem cair na frase genérica com o motivo recolhido. A prova de layout do app simulou cinco destinos no Edge. A conferência no WebView e no emulador não foi feita porque exige o login do autor. O painel ficou a 366 B gzip do teto na revisão de `6257fbc`. Com o ajuste da frase de pareamento, a medição local foi de 259 642 B gzip, com 358 B de folga.
+
+**Procedência.** `bugfix/UI-41-acd` sobre `develop` `96e7b40`, Windows, Node, Python e Edge via Playwright CLI. Executado em 23/11/2026. Dados sintéticos e arquivos temporários da sonda removidos da worktree. Revisão medida sobre `develop` `7543014` e sincronizada com `f8344df`. Testes e Edge com modo app simulado executados na mesma máquina em 23/11.
+
+# 2026-11-23 (v) — revisão e integração do UI-41 (a), (c) e (d) (PR #259)
+
+**O problema, como foi entendido no início.** O Codex entregou a PR #259 com as três partes do `UI-41` que faltavam (o (b), a notificação, já estava em `develop` pela #256). A revisão por execução tinha de confirmar o relatório, inclusive a frase "Configurações cabe por inteiro na barra móvel".
+
+**Hipótese de trabalho.** Os testes e as medições da PR bastam; a revisão confere por execução, com sabotagens e medindo a barra no navegador.
+
+**O que foi testado, e como.**
+- **Suítes** sobre a PR sincronizada com `develop`: vitest, build, lint, Knip (arquivos e tipos), backend com os orçamentos de bundle, CSP e as conferências de documento.
+- **As 43 frases do tradutor contra o backend:** todas existem como mensagem real; as que ficaram sem frase são de ingestão do aparelho e de parâmetros, e caem na frase genérica com o texto em "Detalhes técnicos".
+- **Sabotagens**, 15 ao fim: texto cru do servidor, detalhe perdido ou aberto, moldes com `{}`, a API repassando o texto, os cartões de volta à tabela, a confirmação sem modal, o erro fora da confirmação, o motivo cru no cartão da noite, o Esc durante a exclusão, "Coletar" de volta à barra do app, Dispositivos mandando o app à Coletar, a frase do pareamento e o rótulo quebrando.
+- **A barra no navegador**, a 360, 390 e 411 px, no modo do site e simulando o do app.
+
+**Resultado medido.**
+- **Na primeira versão, "Configurações" se partia no meio da palavra:** "Configuraçõe" numa linha e o "s" na outra, a 360 px no site e, com os seis destinos do app, também a 390 e 411 px (o texto tem 64 px, e havia de 52 a 61 px).
+- **Decisão do autor:** no app, "Coletar" saiu da barra. Ali ela era redundante com "Noite", que grava com a tela ligada ou apagada; no site, "Coletar" é o único jeito de gravar com o celular e fica. Com cinco destinos e 2 px de folga lateral, sem quebra no meio da palavra: 64,4 px em 68 px úteis a 360 px.
+- **Versão final (`9d0b58c`):** 925 testes de frontend em 60 arquivos; backend 695 passam, 1 pula; build, lint, Knip, CSP e conferências passam; 14 de 15 sabotagens caem, e a frase do pareamento sabotada derruba o teste do app.
+- **A sabotagem que escapa é a do rótulo quebrando:** é de layout, e o jsdom não mede texto. Ela foi conferida no navegador.
+
+**Veredito.** Mesclada em `develop` (`e9b7cf2`) com a aprovação do autor. O `UI-41` está completo.
+
+**Adaptação.** O plano aprovado dizia "sem mudar os nomes"; a correção do (d) virou a troca de "Coletar" por "Noite" no app, por decisão do autor, depois que a medição mostrou que só o espaçamento não bastava com seis destinos.
+
+**O que deu errado no caminho.**
+- **O relatório da primeira versão dizia que "Configurações" cabia, e a medição mostrou o contrário:** a prova do Codex mediu a borda do link, e não a quebra da palavra.
+- **A entrada do Codex no diário entrou de novo no meio do arquivo**, e com a numeração de outra entrada, como na #257. Foi movida para o fim, como 23/11 (iv).
+- **A primeira prévia do navegador serviu o código errado:** o `launch.json` lido era o da pasta acima do repositório, que aponta para o checkout principal. A entrada da revisão foi para lá.
+- **O `git push` travou duas vezes no gerenciador de credenciais do Windows;** o primeiro terminou sozinho, e o segundo foi refeito com o `gh` como ajudante de credenciais.
+
+**Risco em aberto.**
+- **Não visto no emulador nem no WebView:** a barra e o Histórico só aparecem depois do login do autor. A sobra de "Configurações" a 360 px é de 3,6 px, medida com a fonte do navegador.
+- **Nada disto está na produção** até o próximo release; no celular, a barra nova e o título da notificação chegam com o APK 1.1.3.
+
+**Procedência.** PR #259 (`919c409`, `6257fbc`, `9d0b58c`) mesclada em `develop` `e9b7cf2`; revisão no Windows 11, Node 22, Python 3.13, navegador do app de desktop; 23/11.
+
+# 2026-11-23 (vi) — CAL-03, etapa 3: a análise e o protocolo, antes das noites
+
+**O problema, como foi entendido no início.** A autocalibração do celular está no app desde a etapa 2 (diário, 11/11 (viii)), mas nunca foi conferida numa noite real. A pergunta é a de 10/11: sem calibração, o piso da medida de movimento das épocas paradas subia de menos de 1 mg para 23 mg só por virar o celular. Com a calibração, o piso passa a ser o mesmo nas duas posições? As noites do `VIA-02` vão começar, e podiam servir também a esta pergunta, sem noite extra.
+
+**Hipótese de trabalho.** Basta um script que leia os arquivos do `VIA-02`, como a análise dele, com o critério fixado antes dos dados. Os dados da conta seriam baixados como em 10/11, pelo cabo.
+
+**O que foi testado, e como.**
+- **De onde viriam os dados:**
+  - **A cópia pelo cabo** (`adb run-as`, a de 10/11) só funciona com o app de depuração. O autor usa o de release, e trocar de app apagaria as noites guardadas.
+  - **A exportação do servidor:** lida a consulta de `/api/features`. Ela não trazia a marca de calibração, a norma da gravidade nem a temperatura, e a `inclinacao_rel` não diz a posição: é o ângulo até a postura típica **da janela**, e cada noite teria a sua.
+- **A mudança no backend:**
+  - a consulta das features passou a pedir `g_norma`, `calibrada` e `temp`, que estão gravados desde a migração 018;
+  - a rota devolve, por época, esses três e a direção da gravidade `g`;
+  - fica fora de `derivar_noite`, que o `ml/` também chama e que é conferida contra o dourado;
+  - contrato 2.12.0, MINOR, como a 2.3.0 (campo novo na resposta).
+- **A análise** (`scripts/analisar_cal03.py`): época parada pela régua do app (magnitude dinâmica abaixo de 10 mg); orientação pelo z da gravidade (até 30° da vertical); por noite e por orientação, o piso, a norma e a temperatura, com a época calibrada separada da que não é. O veredito exige 2 noites calibradas em cada orientação, pisos a até 3 mg e normas a até 0,5 % de 1 g.
+- **O protocolo** (`docs/PROTOCOLO-VIA-02.md`): a tela alterna entre noites, o autor anota a linha "Calibração do sensor" ao iniciar a noite, e o trecho de console leva as duas anotações no arquivo. A sintaxe do trecho foi conferida com `node --check`.
+- **Testes com noites sintéticas**, com o erro do Moto E7 medido em 10/11: 15 do script e 5 da rota.
+- **Controle positivo:** 15 sabotagens, 10 no script e 5 na rota e na consulta.
+
+**Resultado medido.**
+- **Backend:** 715 passam, 1 pula (eram 695); o `test_simulador_c2.py` do `ml/`, que passa pela `derivar_noite` do servidor, 24 passam; Ruff limpo.
+- **As 15 sabotagens caem**, cada uma no teste esperado:
+  - no script: a régua de parado a 100 mg, o sinal da orientação trocado, a orientação a 60°, a calibrada misturada com a sem calibração, a diferença sem módulo, a norma fora do veredito, sem o mínimo de paradas, uma noite bastando, a exportação antiga aceita e o veredito com as épocas sem calibração;
+  - na rota: sem os campos, a consulta sem as colunas, a época sem a calibração, os pares sem ordenar e sem a conferência da ordem.
+- **O controle sem calibração**, com os números de 10/11, acha 14,5 mg de diferença (a de 10/11 era 22,1 mg; os sintéticos usam os pisos da mesa, de 4,2 e 18,7 mg).
+
+**Adaptação.**
+- **A hipótese era só o script, com os dados pelo cabo;** a leitura do código, antes do plano, mostrou que nenhum dos dois caminhos trazia o necessário, e o plano aprovado já incluiu a mudança no backend.
+- **Um teste a mais**, o do viés invertido, escrito antes de rodar as sabotagens: nenhum teste tinha a diferença negativa, e a sabotagem do módulo não teria como cair.
+
+**O que deu errado no caminho.**
+- **A primeira rodada das sabotagens parou na segunda:** a saída do pytest veio em cp1252 e o leitor esperava UTF-8. Foi refeita com `PYTHONIOENCODING=utf-8`; o arquivo sabotado já tinha sido restaurado pelo `finally`.
+- **O `ml/.venv` não existe na worktree;** o teste do `ml/` rodou com o ambiente do checkout principal.
+
+**Risco em aberto.**
+- **O release:** sem o contrato 2.12.0 na produção, a exportação sai sem os campos e o script a recusa. As noites gravadas antes dele saem completas quando baixadas depois (`CAL-03`).
+- **Os limiares provisórios do app** (10 mg e 2 °C) seguem sem validação: a análise os descreve, e validá-los pediria uma referência (`CAL-03`).
+- **A temperatura** muda o erro do sensor e não é separada: aparece ao lado de cada piso.
+- **Um aparelho só**, o Moto E7.
+
+**Procedência.** Branch `feature/CAL-03-etapa3-analise`, sobre `develop` `b6d779a`; Windows 11, Python 3.13 (backend) e 3.11.9 (`ml/`); 23/11.
+
+---
+
+# 2026-11-23 (vii) — ML-18: treino entre bases e teste fora da coorte
+
+**O problema, como foi entendido no início.** O v2 de cabeça reconhece menos vigília nas externas. Avaliar se o treino conjunto melhora a transferência sem converter o ganho de especificidade em perda excessiva de sensibilidade.
+
+**Hipótese de trabalho.** A variedade de pessoas e sensores pode melhorar a robustez fora da base. O protocolo registrado antes da rodada exige que a média das três externas independentes ganhe 5 pontos percentuais de especificidade, preserve κ e perca no máximo 2 pontos de sensibilidade, pelos deltas centrais.
+
+**O que foi testado, e como.** Quatro divisões de treino e cinco avaliações pareadas. Ao testar uma Wearanize, retiram-se os dois braços do treino conjunto. A referência LOSO do pulso exclui do treino de cabeça a pessoa avaliada. Nas demais bases, a referência é o JSON servido. O pré-processamento é o mesmo do v2, com as estatísticas sem rótulo da própria gravação, oito features e corte de 0,5. Dois mil bootstraps por pessoas e 20 permutações por divisão, com sementes no [protocolo](../ml/experimentos/PROTOCOLO-ML-18.md). As três sabotagens derrubaram seus testes: retirar a guarda de identidade, excluir só um braço Wearanize e preservar os rótulos em vez de embaralhá-los. No controle sintético, vazar a pessoa por observações distintas elevou AUC de 0,50 a 1,00. O teste de permutação sem embaralhamento devolveu AUC 0,99993 em observações de teste distintas.
+
+**Resultado medido.** A média externa mudou +9,59 p.p. em especificidade (IC95% +8,07 a +11,15), +0,0257 em κ (+0,0083 a +0,0430) e −3,02 p.p. em sensibilidade (−3,66 a −2,36). **Não atingiu o critério**, pela sensibilidade. A referência reproduziu as métricas históricas disponíveis em tolerância de 1e-12. O maior módulo do Δκ individual foi 0,450 na cabeça, com média individual −0,173. A média da AUC embaralhada variou de 0,464 a 0,496 entre as bases. Detalhes, incluindo cobertura, F1, AUC, viés, limites, correlação de vigília, dispersão e IC, nos [agregados](../ml/experimentos/saida/ml18/agregados.json).
+
+| Base | Δ especificidade (p.p.) | Δ κ | Δ sensibilidade (p.p.) | Noites com erro >1 h, ref. → conjunto | Atingiu |
+|---|---:|---:|---:|---:|---|
+| Wearanize cabeça | −2,66 | −0,195 | −11,28 | 30,4% → 78,3% | Não |
+| Wearanize pulso | +12,24 | −0,020 | −5,86 | 43,5% → 72,8% | Não |
+| Walch principal | +12,60 | −0,054 | −6,90 | 13,8% → 41,4% | Não |
+| DREAMT | +6,82 | +0,091 | +1,84 | 38,1% → 29,9% | Sim |
+| Newcastle | +9,33 | +0,041 | −3,99 | 48,1% → 48,1% | Não |
+
+O ganho em especificidade não se traduziu em melhora consistente por noite. O treino conjunto
+aprofundou a subestimação do tempo total de sono: o viés (previsto menos pontuado) passou de
+−22 para −52 min na Walch, de −37 para −84 min na Wearanize cabeça e de −53 para −84 min
+na Wearanize pulso. A fração de noites com erro absoluto acima de 1 h piorou nessas três bases,
+ficou igual na Newcastle e melhorou só na DREAMT.
+
+Na revisão da PR #266, os controles foram reexecutados no Windows, com Python 3.11.9. Cada
+sabotagem do caminho de decisão fez cair o teste correspondente:
+
+| Sabotagem | Teste que falhou |
+|---|---|
+| LOSO inclui a pessoa avaliada | `test_referencia_loso_exclui_a_pessoa_avaliada` (cabeça e pulso) |
+| Classificação de 0,5 como sono | `test_classes_classifica_empate_como_vigilia` |
+| Wearanize pulso incluída na média externa | `test_execucao_calcula_media_e_intervalo_so_das_tres_externas` |
+| Sinal invertido no bootstrap | `test_bootstrap_subtrai_a_referencia_do_conjunto` |
+| Bootstrap por época | `test_bootstrap_reamostra_a_pessoa_inteira` |
+| Chave de identidade inclui o braço | `test_pessoa_vazada_entre_bracos_e_bloqueada_e_inflaria_auc` |
+| Sinal invertido nos deltas por noite, inclusive nos limites | `test_delta_noturno_subtrai_a_referencia_do_conjunto` |
+
+Os três controles originais também voltaram a falhar sob sabotagem. Contra o código de
+`develop` `c70c6ed`, o arquivo de testes deu um erro de coleta porque o executor ainda não
+existe ali. As mutações individuais verificam as falhas com o executor presente.
+
+**Adaptação.** Nenhuma no protocolo da rodada. Nas Wearanize a comparação mede o custo de nunca ter visto a coorte: o conjunto não viu nenhum braço, enquanto o v2 LOSO viu as outras pessoas. A DREAMT respondeu por 59,1% das épocas no treino sem Wearanize. Os dois braços Wearanize somaram 61,9%, 76,6% e 63,5% das épocas nos treinos que deixaram Walch, DREAMT e Newcastle de fora, respectivamente. Isso descreve a composição, sem atribuir causalidade. Pesos por base seriam outro experimento.
+
+**O que deu errado no caminho.** A primeira busca usou um glob que o PowerShell não expandiu. Os testes novos antes do executor deram erro de coleta por módulo ausente. Os controles por sabotagem depois confirmaram as falhas específicas. A reextração DREAMT tomou a maior parte da preparação, pois reconstruiu as features a partir do carregador histórico. No CI, a captura do hash Git foi reprovada por não declarar a codificação de saída. Acrescentado UTF-8, sem alterar os cálculos da rodada. A conferência local seguiu a junction e acusou scripts históricos. Removido apenas o vínculo, com os dados preservados, e repetida a checagem.
+
+**Risco em aberto.** Identidades anônimas de estudos distintos não têm chave comum demonstrável. Os resultados noturnos cobrem as épocas avaliáveis, e as bases já eram conhecidas no projeto. O ganho de uma base não sustenta afirmar robustez geral, medir vigília de uma pessoa ou trocar o modelo servido. A AUC subiu nas três bases externas (+0,036 na Walch, +0,049 na DREAMT e +0,017 na Newcastle), então o corte fixo de 0,5 pode explicar parte da perda de sensibilidade. Essa hipótese não foi testada. Escolher o corte usando apenas as bases de treino seria outro experimento, a decidir pelo autor.
+
+**Procedência.** Windows e Python 3.11.9 do ambiente ML local. Protocolo `74f675c`, executor e rodada `80a51f8` sobre `develop` `b6d779a`. A suíte local passou com 325 testes na rodada original e 332 na revisão sobre `develop` `c70c6ed`. Dados locais usados pela junction ignorada `ml/dados/bruto/ml18-local`, apontada a `dados-locais/`. A junction foi removida no fim da execução, e os dados continuam no diretório local. Nenhum vetor individual exportado. 23/11/2026.

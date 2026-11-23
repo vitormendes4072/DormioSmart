@@ -6,7 +6,7 @@ consultas de features e do histórico levam o filtro e a coluna. A posse e o
 alcance de verdade estão em `tests/rls/test_rls_trecho.py`, contra Postgres.
 """
 import inspect
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
@@ -19,6 +19,7 @@ JWT = "jwt-da-ana"
 ID_ANA = "aaaaaaaa-0000-4000-8000-aaaaaaaaaaaa"
 DEVICE = "dddddddd-0000-4000-8000-dddddddddddd"
 DESDE, ATE = "2026-11-17T02:35:00-03:00", "2026-11-17T09:36:00-03:00"
+CONF = {"epocas_esperadas": 2, "bancada_atual": False, "impressao_ids": "a" * 64}
 
 
 def _client():
@@ -37,13 +38,13 @@ def _chamar(caminho, corpo, metodo, retorno=7):
 
 def _apagar(corpo=None, retorno=7):
     if corpo is None:
-        corpo = {"device": DEVICE, "desde": DESDE, "ate": ATE, "confirmacao": trecho.CONFIRMACAO_APAGAR}
+        corpo = {"device": DEVICE, "desde": DESDE, "ate": ATE, "confirmacao": trecho.CONFIRMACAO_APAGAR, **CONF}
     return _chamar("/api/sessoes/apagar", corpo, "apagar_trecho", retorno)
 
 
 def _marcar(corpo=None, retorno=7):
     if corpo is None:
-        corpo = {"device": DEVICE, "desde": DESDE, "ate": ATE, "bancada": True}
+        corpo = {"device": DEVICE, "desde": DESDE, "ate": ATE, "bancada": True, **CONF}
     return _chamar("/api/sessoes/marcar", corpo, "marcar_trecho", retorno)
 
 
@@ -65,14 +66,14 @@ def test_trecho_invalido_e_recusado_com_motivo(corpo, motivo):
 
 def test_trecho_valido_volta_normalizado():
     lido, erro = trecho.ler_trecho({"device": DEVICE.upper(), "desde": "2026-11-17T05:35:00Z",
-                                    "ate": "2026-11-17T12:36:00Z"})
+                                    "ate": "2026-11-17T12:36:00Z", **CONF})
     assert erro is None
-    assert lido == (DEVICE, "2026-11-17T05:35:00+00:00", "2026-11-17T12:36:00+00:00")
+    assert lido == (DEVICE, "2026-11-17T05:35:00+00:00", "2026-11-17T12:36:00+00:00", *CONF.values())
 
 
 def test_48h_exatas_sao_aceitas():
     _, erro = trecho.ler_trecho({"device": DEVICE, "desde": "2026-11-15T00:00:00Z",
-                                 "ate": "2026-11-17T00:00:00Z"})
+                                 "ate": "2026-11-17T00:00:00Z", **CONF})
     assert erro is None
 
 
@@ -82,7 +83,7 @@ def test_apagar_repassa_o_jwt_e_o_trecho_e_devolve_a_contagem():
     resposta, banco = _apagar(retorno=812)
     assert resposta.status_code == 200
     assert resposta.get_json() == {"epocas_apagadas": 812}
-    banco.assert_called_once_with(JWT, DEVICE, "2026-11-17T02:35:00-03:00", "2026-11-17T09:36:00-03:00")
+    banco.assert_called_once_with(JWT, DEVICE, "2026-11-17T02:35:00-03:00", "2026-11-17T09:36:00-03:00", *CONF.values())
 
 
 @pytest.mark.parametrize("confirmacao", [None, "", "sim", "apagar esta sessao"])
@@ -121,10 +122,10 @@ def test_apagar_zero_epocas_e_200_com_zero():
 
 @pytest.mark.parametrize("bancada", [True, False])
 def test_marcar_e_desmarcar_repassam_a_marca(bancada):
-    resposta, banco = _marcar({"device": DEVICE, "desde": DESDE, "ate": ATE, "bancada": bancada}, retorno=3)
+    resposta, banco = _marcar({"device": DEVICE, "desde": DESDE, "ate": ATE, "bancada": bancada, **CONF}, retorno=3)
     assert resposta.status_code == 200
     assert resposta.get_json() == {"epocas_marcadas": 3, "bancada": bancada}
-    banco.assert_called_once_with(JWT, DEVICE, "2026-11-17T02:35:00-03:00", "2026-11-17T09:36:00-03:00", bancada)
+    banco.assert_called_once_with(JWT, DEVICE, "2026-11-17T02:35:00-03:00", "2026-11-17T09:36:00-03:00", *CONF.values(), bancada)
 
 
 @pytest.mark.parametrize("bancada", [None, "true", 1, 0])
@@ -166,6 +167,58 @@ def test_o_historico_devolve_a_marca():
 
 @pytest.mark.parametrize("metodo,funcao", [("apagar_trecho", "apagar_trecho"), ("marcar_trecho", "marcar_trecho")])
 def test_as_operacoes_usam_o_cliente_do_usuario(metodo, funcao):
-    fonte = inspect.getsource(getattr(database.Database, metodo))
+    fonte = inspect.getsource(database.Database._alterar_trecho)
     assert "self.cliente_do_usuario(jwt)" in fonte
-    assert f'client.rpc("{funcao}"' in fonte
+    assert "client.rpc(operacao" in fonte
+
+
+# DATA-17: o cliente antigo não pode passar sem conferir a sessão.
+@pytest.mark.parametrize("funcao", [_apagar, _marcar])
+@pytest.mark.parametrize("campo", ["epocas_esperadas", "bancada_atual", "impressao_ids"])
+def test_data17_campo_ausente_pede_atualizacao_e_nao_chama_banco(funcao, campo):
+    corpo = {"device": DEVICE, "desde": DESDE, "ate": ATE, "confirmacao": trecho.CONFIRMACAO_APAGAR,
+             "bancada": True, "epocas_esperadas": 2, "bancada_atual": False, "impressao_ids": "a" * 64}
+    del corpo[campo]
+    resposta, banco = funcao(corpo)
+    assert resposta.status_code == 400
+    assert "Atualize o aplicativo" in resposta.get_json()["error"]
+    banco.assert_not_called()
+
+@pytest.mark.parametrize("campo,valor", [("epocas_esperadas", True), ("epocas_esperadas", -1),
+    ("bancada_atual", 1), ("impressao_ids", "invalida")])
+def test_data17_campo_invalido_nao_chama_banco(campo, valor):
+    corpo = {"device": DEVICE, "desde": DESDE, "ate": ATE, "bancada": True,
+             "epocas_esperadas": 2, "bancada_atual": False, "impressao_ids": "a" * 64}
+    corpo[campo] = valor
+    resposta, banco = _marcar(corpo)
+    assert resposta.status_code == 400
+    banco.assert_not_called()
+
+
+@pytest.mark.parametrize("funcao", [_apagar, _marcar])
+def test_data17_divergencia_retorna_409(funcao):
+    with patch.object(database.db, "validar_token_de_usuario", return_value=ID_ANA), \
+         patch.object(database.db, "apagar_trecho" if funcao == _apagar else "marcar_trecho", side_effect=database.TrechoDivergente):
+        corpo = {"device": DEVICE, "desde": DESDE, "ate": ATE, "confirmacao": trecho.CONFIRMACAO_APAGAR, "bancada": True, **CONF}
+        resposta = _client().post("/api/sessoes/apagar" if funcao == _apagar else "/api/sessoes/marcar", json=corpo, headers={"Authorization": f"Bearer {JWT}"})
+    assert resposta.status_code == 409
+    assert "sessão mudou" in resposta.get_json()["error"]
+
+
+@pytest.mark.parametrize("operacao", ["apagar_trecho", "marcar_trecho"])
+def test_data17_rpc_traduz_o_erro_real_do_postgrest(operacao):
+    from postgrest.exceptions import APIError
+    client = MagicMock()
+    client.rpc.return_value.execute.side_effect = APIError({
+        "code": "P0001", "message": "trecho_divergente", "details": None, "hint": None,
+    })
+    args = (JWT, DEVICE, DESDE, ATE, 2, False, "a" * 64)
+    if operacao == "marcar_trecho":
+        args += (True,)
+    with patch.object(database.db, "cliente_do_usuario", return_value=client):
+        with pytest.raises(database.TrechoDivergente):
+            getattr(database.db, operacao)(*args)
+    parametros = client.rpc.call_args.args[1]
+    assert parametros["p_epocas_esperadas"] == 2
+    assert parametros["p_bancada_atual"] is False
+    assert parametros["p_impressao_ids"] == "a" * 64

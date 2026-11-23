@@ -1,9 +1,11 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import type { LeituraSono } from "../types/sleep";
-import { ehBancada, semBancada, sessoesDaMarca, trechoDaSessao } from "./trecho";
+import { ehBancada, impressaoDosIds, semBancada, sessoesDaMarca, trechoDaSessao } from "./trecho";
 
+let proximoId = 0;
 const leitura = (extra: Partial<LeituraSono> = {}): LeituraSono => ({
+  id: `00000000-0000-0000-0000-${String(++proximoId).padStart(12, "0")}`,
   created_at: "2026-11-17T12:00:00.000Z",
   movimento_total: 9.8,
   temp: null,
@@ -19,7 +21,7 @@ describe("trechoDaSessao (DATA-16)", () => {
       leitura({ captured_at: "2026-11-17T05:35:00.000Z" }),
       leitura({ captured_at: "2026-11-17T05:00:00.000Z" }),
     ]);
-    expect(trecho).toEqual({ device: "d1", desde: "2026-11-17T05:00:00.000Z", ate: "2026-11-17T05:35:00.000Z" });
+    expect(trecho).toMatchObject({ device: "d1", desde: "2026-11-17T05:00:00.000Z", ate: "2026-11-17T05:35:00.000Z" });
   });
 
   it("usa a chegada quando a medição não foi declarada, como o banco (coalesce)", () => {
@@ -27,7 +29,7 @@ describe("trechoDaSessao (DATA-16)", () => {
       leitura({ captured_at: null, created_at: "2026-11-17T06:00:00.000Z" }),
       leitura({ captured_at: "2026-11-17T05:00:00.000Z" }),
     ]);
-    expect(trecho).toEqual({ device: "d1", desde: "2026-11-17T05:00:00.000Z", ate: "2026-11-17T06:00:00.000Z" });
+    expect(trecho).toMatchObject({ device: "d1", desde: "2026-11-17T05:00:00.000Z", ate: "2026-11-17T06:00:00.000Z" });
   });
 
   it("não age sem leitura, sem aparelho ou com aparelhos misturados", () => {
@@ -61,14 +63,14 @@ describe("o trecho leva só o que a tela mostrou (UI-38)", () => {
     expect(trechoDaSessao([
       leitura({ captured_at: null, created_at: ate }),
       leitura({ captured_at: null, created_at: desde }),
-    ])).toEqual({ device: "d1", desde, ate });
+    ])).toMatchObject({ device: "d1", desde, ate });
   });
 
   it("ordena dentro do mesmo milissegundo, e entre fusos", () => {
     const antes = "2026-11-17T05:00:00.1231+00:00";
     const depois = "2026-11-17T02:00:00.123999-03:00";
     expect(trechoDaSessao([leitura({ captured_at: depois }), leitura({ captured_at: antes })]))
-      .toEqual({ device: "d1", desde: antes, ate: depois });
+      .toMatchObject({ device: "d1", desde: antes, ate: depois });
   });
 
   it("não age quando a janela pega época do mesmo aparelho fora da sessão", () => {
@@ -127,4 +129,33 @@ describe("sessoesDaMarca (UI-38)", () => {
     const todas = [...serie(0, 50), ...serie(20, 10, { bancada: true, device_id: "d2" })];
     expect(tamanhos(todas, false)).toEqual([50]);
   });
+});
+
+
+describe("DATA-17: identidade da sessão", () => {
+  it("não oferece ação para sessão com marcas diferentes", () => {
+    const normal = leitura({ bancada: false });
+    const bancada = leitura({ bancada: true });
+    expect(trechoDaSessao([normal, bancada])).toBeNull();
+  });
+
+  it("não oferece ação para leitura sem id", () => {
+    expect(trechoDaSessao([leitura({ id: undefined })])).toBeNull();
+  });
+});
+
+
+it("DATA-17: hash canônico independe da ordem e da caixa", async () => {
+  const ids = ["FFFFFFFF-FFFF-FFFF-FFFF-FFFFFFFFFFFF", "00000000-0000-0000-0000-000000000001"];
+  expect(await impressaoDosIds(ids)).toBe("20ee2864a148031ef14ad1732f7ecebf7e5d06b9d9e71336b0c24629afc119d5");
+});
+
+
+it("DATA-17: sem SHA-256 não oferece ação", () => {
+  try {
+    for (const crypto of [{}, { subtle: {} }]) {
+      vi.stubGlobal("crypto", crypto);
+      expect(trechoDaSessao([leitura()])).toBeNull();
+    }
+  } finally { vi.unstubAllGlobals(); }
 });

@@ -1,3 +1,4 @@
+import { MensagemDeFalha } from "../components/MensagemDeFalha";
 import {
   Activity,
   AlertTriangle,
@@ -180,7 +181,7 @@ function ColetaReal() {
   // aparelho prepara o próprio dispositivo sem o usuário ver credencial.
   const [dispositivo, setDispositivo] = useState<string | null>(null);
   const [nomeDoDispositivo, setNomeDoDispositivo] = useState<string | null>(null);
-  const [erroDePreparo, setErroDePreparo] = useState<string | null>(null);
+  const [erroDePreparo, setErroDePreparo] = useState<string | ErroApi | null>(null);
 
   const {
     estado, erro, registros, amostrasNaEpoca, decorridoMs, comecar, parar,
@@ -211,7 +212,7 @@ function ColetaReal() {
       .catch((e) => {
         if (!vivo) return;
         setErroDePreparo(
-          e instanceof ErroApi ? e.message : "Não foi possível preparar este aparelho.",
+          e instanceof ErroApi ? e : "Não foi possível preparar este aparelho.",
         );
       });
     return () => {
@@ -269,9 +270,9 @@ function ColetaReal() {
             Iniciar coleta
           </button>
         ) : erroDePreparo ? (
-          <p className="text-sm text-destructive" role="alert">
-            {erroDePreparo}
-          </p>
+          <div className="text-sm text-destructive" role="alert">
+            <MensagemDeFalha erro={erroDePreparo} />
+          </div>
         ) : !pronto ? (
           <p className="inline-flex items-center gap-2 text-sm text-muted-foreground">
             <Loader2 className="w-4 h-4 animate-spin" aria-hidden />

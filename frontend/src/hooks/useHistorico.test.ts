@@ -89,7 +89,7 @@ describe("useHistorico: somente o carregamento vigente pode publicar estado", ()
     await novo.falha();
     await antigo.sucesso("A");
     expect(result.current).toMatchObject({
-      leituras: [], erro: "fonte indisponivel", carregando: false,
+      leituras: [], erro: { message: "fonte indisponivel" }, carregando: false,
     });
   });
 

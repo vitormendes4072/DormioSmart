@@ -79,6 +79,9 @@ function textos(nome: string, codigo: string): Array<{ linha: number; texto: str
 
   const ver = (no: ts.Node): void => {
     if (ts.isImportDeclaration(no) || ts.isTypeNode(no)) return;
+    // As chaves do tradutor são a entrada da API. Seus valores continuam sob o glossário.
+    if (nome === "lib/mensagemDoServidor.ts" && no.parent && ts.isPropertyAssignment(no.parent)
+      && no.parent.name === no && ts.isStringLiteral(no)) return;
     if (ts.isJsxAttribute(no)
       && /^(className|id|key|htmlFor|data-testid|aria-labelledby|aria-controls|dataKey)$/.test(no.name.getText())) return;
     // `console.*` é para quem desenvolve.

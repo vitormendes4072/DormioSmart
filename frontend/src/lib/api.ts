@@ -10,8 +10,9 @@
  * O build do app define `VITE_API_BASE` com o endereco do backend; o build do
  * site nao define, e tudo continua relativo.
  */
+import { mensagemDoServidor } from "./mensagemDoServidor";
 import type { LeituraSono } from "../types/sleep";
-import type { Trecho } from "./trecho";
+import { impressaoDosIds, type Trecho } from "./trecho";
 
 /** Prefixo do backend: vazio no site, o endereco completo no app (APP-02). */
 export function urlDaApi(caminho: string, base: string = import.meta.env.VITE_API_BASE ?? ""): string {
@@ -23,7 +24,7 @@ export function urlDaApi(caminho: string, base: string = import.meta.env.VITE_AP
 export class ErroApi extends Error {
   readonly status: number;
 
-  constructor(status: number, mensagem: string) {
+  constructor(status: number, mensagem: string, readonly detalhe?: string) {
     super(mensagem);
     this.name = "ErroApi";
     this.status = status;
@@ -81,17 +82,18 @@ export async function requisitarJson<T>(caminho: string, opcoes: RequestInit = {
   } catch {
     // Falha de rede nao tem status HTTP. Usamos 0 para distinguir de qualquer
     // resposta real do servidor.
-    throw new ErroApi(0, "Nao foi possivel conectar ao servidor.");
+    throw new ErroApi(0, "Não foi possível conectar ao servidor.");
   }
 
   if (resposta.status === 401) {
     // A resposta pode pertencer a uma sessão que já foi trocada ou renovada.
     if (token === (obterToken?.() ?? null)) aoPerderSessao?.();
-    throw new ErroApi(401, "Sessao expirada. Entre novamente.");
+    throw new ErroApi(401, "Sessão expirada. Entre novamente.");
   }
 
   if (!resposta.ok) {
-    throw new ErroApi(resposta.status, await extrairMensagemDeErro(resposta));
+    const { mensagem, detalhe } = await extrairMensagemDeErro(resposta);
+    throw new ErroApi(resposta.status, mensagem, detalhe);
   }
 
   return (await resposta.json()) as T;
@@ -99,14 +101,14 @@ export async function requisitarJson<T>(caminho: string, opcoes: RequestInit = {
 
 /** O backend devolve `{"error": "..."}` nas falhas (ver contrato, secao 5).
  *  Se o corpo nao for JSON, cai para uma mensagem generica em vez de estourar. */
-async function extrairMensagemDeErro(resposta: Response): Promise<string> {
+async function extrairMensagemDeErro(resposta: Response) {
   try {
-    const corpo = (await resposta.json()) as { error?: string };
-    if (corpo?.error) return corpo.error;
+    const corpo = (await resposta.json()) as { error?: unknown } | null;
+    if (corpo?.error) return mensagemDoServidor(corpo.error);
   } catch {
     // corpo vazio ou nao-JSON — segue para a mensagem generica
   }
-  return `Erro ${resposta.status} ao falar com o servidor.`;
+  return mensagemDoServidor(null);
 }
 
 /**
@@ -216,9 +218,11 @@ export const CONFIRMACAO_APAGAR_SESSAO = "APAGAR ESTA SESSAO";
 
 /** Apaga as épocas de uma sessão (DATA-16). Devolve quantas saíram. */
 export async function apagarSessao(trecho: Trecho): Promise<number> {
+  const { ids, ...janela } = trecho;
+  const impressao_ids = await impressaoDosIds(ids);
   const corpo = await requisitarJson<{ epocas_apagadas?: unknown }>("/api/sessoes/apagar", {
     method: "POST",
-    body: JSON.stringify({ ...trecho, confirmacao: CONFIRMACAO_APAGAR_SESSAO }),
+    body: JSON.stringify({ ...janela, impressao_ids, confirmacao: CONFIRMACAO_APAGAR_SESSAO }),
   });
   if (typeof corpo?.epocas_apagadas !== "number") throw new Error("Resposta de exclusão inválida.");
   return corpo.epocas_apagadas;
@@ -226,9 +230,11 @@ export async function apagarSessao(trecho: Trecho): Promise<number> {
 
 /** Marca (`true`) ou desmarca uma sessão como bancada/teste (DATA-16). Devolve quantas épocas. */
 export async function marcarSessao(trecho: Trecho, bancada: boolean): Promise<number> {
+  const { ids, ...janela } = trecho;
+  const impressao_ids = await impressaoDosIds(ids);
   const corpo = await requisitarJson<{ epocas_marcadas?: unknown }>("/api/sessoes/marcar", {
     method: "POST",
-    body: JSON.stringify({ ...trecho, bancada }),
+    body: JSON.stringify({ ...janela, impressao_ids, bancada }),
   });
   if (typeof corpo?.epocas_marcadas !== "number") throw new Error("Resposta de marcação inválida.");
   return corpo.epocas_marcadas;

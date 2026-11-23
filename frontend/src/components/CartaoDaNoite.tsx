@@ -1,3 +1,5 @@
+import { mensagemDoServidor } from "../lib/mensagemDoServidor";
+import { DetalhesDaFalha } from "./MensagemDeFalha";
 import { BatteryWarning, Loader2, Moon, Square, UploadCloud } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -56,7 +58,7 @@ export function CartaoDaNoite({
   const [erro, setErro] = useState<string | null>(null);
   const [restantes, setRestantes] = useState<number | null>(null);
   const [enviando, setEnviando] = useState(false);
-  const [resultado, setResultado] = useState<string | null>(null);
+  const [resultado, setResultado] = useState<{ mensagem: string; detalhe?: string } | null>(null);
   const [progresso, setProgresso] = useState<{ confirmadas: number; total: number } | null>(null);
   // Etapa 4: a posição do celular entra no protocolo e é obrigatória para
   // iniciar. Uma noite sem posição anotada não serve à comparação
@@ -98,14 +100,15 @@ export function CartaoDaNoite({
       setRestantes(r.restantes);
       const partes: string[] = [];
       if (r.confirmadas > 0) partes.push(`${r.confirmadas} ${r.confirmadas === 1 ? "registro enviado" : "registros enviados"}.`);
+      const recusa = mensagemDoServidor(r.primeiraRejeicao, "O servidor não aceitou o registro.");
       if (r.rejeitadas > 0) {
-        partes.push(`${r.rejeitadas} ${r.rejeitadas === 1 ? "recusado" : "recusados"} pelo servidor (${r.primeiraRejeicao ?? "sem motivo"}).`);
+        partes.push(`${r.rejeitadas} ${r.rejeitadas === 1 ? "recusado" : "recusados"} pelo servidor. ${recusa.mensagem}`);
       }
       if (r.erro) partes.push(r.erro);
-      setResultado(partes.length ? partes.join(" ") : "Nada a enviar.");
+      setResultado({ mensagem: partes.length ? partes.join(" ") : "Nada a enviar.", detalhe: recusa.detalhe });
       aoMudar?.();
     } catch {
-      setResultado("Não foi possível ler as noites do aparelho.");
+      setResultado({ mensagem: "Não foi possível ler as noites do aparelho." });
     } finally {
       setEnviando(false);
       setProgresso(null);
@@ -263,9 +266,10 @@ export function CartaoDaNoite({
         )}
 
         {resultado && !enviando && (
-          <p className="text-sm text-muted-foreground" role="status">
-            {resultado}
-          </p>
+          <div className="text-sm text-muted-foreground" role="status">
+            {resultado.mensagem}
+            <DetalhesDaFalha texto={resultado.detalhe} />
+          </div>
         )}
 
         {portao.telaAberta && (

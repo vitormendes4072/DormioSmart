@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { MensagemDeFalha } from "../components/MensagemDeFalha";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { useLocation } from "react-router";
 
 import { BarraDoWorkspace } from "../components/BarraDoWorkspace";
@@ -9,6 +10,18 @@ import { estaEmModoDemo } from "../lib/demo";
 import { formatarDuracao } from "../lib/metricas";
 import { sessoesDaMarca, trechoDaSessao, type Trecho } from "../lib/trecho";
 import { instanteDaLeitura, type LeituraSono } from "../types/sleep";
+
+const TELA_ESTREITA = "(max-width: 767px)";
+
+function observarLargura(atualizar: () => void) {
+  const midia = window.matchMedia?.(TELA_ESTREITA);
+  midia?.addEventListener("change", atualizar);
+  return () => midia?.removeEventListener("change", atualizar);
+}
+
+function telaEstreita() {
+  return window.matchMedia?.(TELA_ESTREITA).matches ?? false;
+}
 
 const DIA_MS = 24 * 60 * 60 * 1000;
 const DATA = new Intl.DateTimeFormat("pt-BR", {
@@ -55,8 +68,8 @@ const EXEMPLOS = SESSOES_DO_PROTOTIPO.map(([ano, mes, dia, minutos, cobertura, l
 
 function resumirSessoes(leituras: LeituraSono[], desdeMs: number, truncada: boolean): Linha[] {
   const borda = truncada ? leituras.at(-1) : undefined;
-  // UI-38: o banco age por janela de tempo, sem olhar a marca. Por isso a
-  // sessão normal e a de bancada do mesmo aparelho nunca dividem uma janela.
+  // UI-38: separar as marcas preserva os limites da sessão antes da
+  // conferência de identidade no servidor (DATA-17).
   const porAparelho = new Map<string | null, LeituraSono[]>();
   for (const leitura of leituras) {
     // A API recorta pela chegada. Exclui medições antigas enviadas com atraso.
@@ -117,7 +130,7 @@ export function Historico() {
       <section aria-label="Sessões do período" className="rounded-[14px] border border-border bg-card p-4 shadow-sm">
         {demo ? (
           <>
-            <TabelaDeSessoes linhas={EXEMPLOS.filter((linha) => linha.inicio > EXEMPLOS[0].inicio - dias * DIA_MS)} />
+            <ListaDeSessoes linhas={EXEMPLOS.filter((linha) => linha.inicio > EXEMPLOS[0].inicio - dias * DIA_MS)} />
             <p className="pt-4 text-xs text-muted-foreground">Dados de exemplo para demonstrar a navegação do histórico.</p>
           </>
         ) : <SessoesDaConta key={dias} dias={dias} />}
@@ -138,7 +151,7 @@ function SessoesDaConta({ dias }: { dias: number }) {
   const [tentativa, setTentativa] = useState(0);
   const [pagina, setPagina] = useState(1);
   const [resultado, setResultado] = useState<Awaited<ReturnType<typeof buscarJanelaDoHistorico>> | null>(null);
-  const [erro, setErro] = useState<string | null>(null);
+  const [erro, setErro] = useState<string | ErroApi | null>(null);
 
   useEffect(() => {
     const controle = new AbortController();
@@ -146,7 +159,7 @@ function SessoesDaConta({ dias }: { dias: number }) {
       (dados) => { if (!controle.signal.aborted) setResultado(dados); },
       (falha: unknown) => {
         if (!controle.signal.aborted) {
-          setErro(falha instanceof ErroApi ? falha.message : "Não foi possível carregar as sessões.");
+          setErro(falha instanceof ErroApi ? falha : "Não foi possível carregar as sessões.");
         }
       },
     );
@@ -161,7 +174,7 @@ function SessoesDaConta({ dias }: { dias: number }) {
   // o segundo clique; `ocupado` trava as ações enquanto uma está no servidor.
   const [confirmando, setConfirmando] = useState<Linha | null>(null);
   const [ocupado, setOcupado] = useState(false);
-  const [aviso, setAviso] = useState<{ texto: string; falha: boolean } | null>(null);
+  const [aviso, setAviso] = useState<{ texto: string | ErroApi; falha: boolean } | null>(null);
 
   function recarregar() {
     setResultado(null);
@@ -189,8 +202,12 @@ function SessoesDaConta({ dias }: { dias: number }) {
       setConfirmando(null);
       recarregar();
     } catch (falha) {
+      if (falha instanceof ErroApi && falha.status === 409) {
+        setConfirmando(null);
+        recarregar();
+      }
       setAviso({
-        texto: falha instanceof ErroApi ? falha.message : "Não foi possível concluir. Tente novamente.",
+        texto: falha instanceof ErroApi ? falha : "Não foi possível concluir. Tente novamente.",
         falha: true,
       });
     } finally {
@@ -213,7 +230,7 @@ function SessoesDaConta({ dias }: { dias: number }) {
         type="button"
         disabled={ocupado}
         onClick={() => agir(linha, linha.bancada ? "desmarcar" : "marcar")}
-        className="rounded-lg border border-border px-2 py-1 text-[11px] font-semibold text-foreground hover:bg-secondary disabled:opacity-50"
+        className="rounded-lg border border-border min-h-9 px-2 py-1 text-xs font-semibold md:min-h-0 md:text-[11px] text-foreground hover:bg-secondary disabled:opacity-50"
       >
         {linha.bancada ? "Desmarcar" : "Marcar como bancada"}
       </button>
@@ -221,7 +238,7 @@ function SessoesDaConta({ dias }: { dias: number }) {
         type="button"
         disabled={ocupado}
         onClick={() => { setAviso(null); setConfirmando(linha); }}
-        className="rounded-lg border border-destructive/40 px-2 py-1 text-[11px] font-semibold text-destructive hover:bg-destructive/5 disabled:opacity-50"
+        className="rounded-lg border border-destructive/40 min-h-9 px-2 py-1 text-xs font-semibold md:min-h-0 md:text-[11px] text-destructive hover:bg-destructive/5 disabled:opacity-50"
       >
         Excluir…
       </button>
@@ -235,24 +252,24 @@ function SessoesDaConta({ dias }: { dias: number }) {
           Há mais registros do que esta tela consegue carregar. O histórico deste período pode estar incompleto.
         </p>
       )}
-      {aviso && (
-        <p role={aviso.falha ? "alert" : "status"} className={`mb-3 rounded-lg px-3 py-2 text-xs ${aviso.falha
+      {aviso && !confirmando && (
+        <div role={aviso.falha ? "alert" : "status"} className={`mb-3 rounded-lg px-3 py-2 text-xs ${aviso.falha
           ? "bg-destructive/10 text-destructive"
           : "bg-emerald-500/10 text-foreground"}`}>
-          {aviso.texto}
-        </p>
+          <MensagemDeFalha erro={aviso.texto} />
+        </div>
       )}
       {confirmando && (
-        <div role="alertdialog" aria-label="Confirmar exclusão da sessão"
-          className="mb-3 space-y-3 rounded-xl border border-destructive/40 bg-destructive/5 p-3 text-xs text-foreground">
+        <ConfirmacaoDeExclusao ocupado={ocupado} aoCancelar={() => setConfirmando(null)}>
           <p>
             Excluir a sessão de <strong>{DATA_E_HORA.format(confirmando.inicio)}</strong> até{" "}
             <strong>{DATA_E_HORA.format(confirmando.fim)}</strong>, com{" "}
             <strong>{confirmando.leituras} {confirmando.leituras === 1 ? "registro" : "registros"}</strong>?
             Os registros são apagados do servidor e não há como desfazer.
           </p>
-          <div className="flex gap-2">
-            <button type="button" disabled={ocupado} onClick={() => setConfirmando(null)}
+          {aviso?.falha && <div role="alert" className="text-destructive"><MensagemDeFalha erro={aviso.texto} /></div>}
+          <div className="flex flex-wrap gap-2">
+            <button type="button" data-foco-inicial disabled={ocupado} onClick={() => setConfirmando(null)}
               className="flex-1 rounded-lg border border-border px-3 py-2 font-medium hover:bg-secondary disabled:opacity-60">
               Cancelar
             </button>
@@ -261,10 +278,10 @@ function SessoesDaConta({ dias }: { dias: number }) {
               {ocupado ? "Apagando..." : "Excluir definitivamente"}
             </button>
           </div>
-        </div>
+        </ConfirmacaoDeExclusao>
       )}
       {normais.length > 0
-        ? <TabelaDeSessoes linhas={normais} acoes={acoes} />
+        ? <ListaDeSessoes linhas={normais} acoes={acoes} />
         : <p className="py-12 text-center text-sm text-muted-foreground">Nenhuma sessão no período selecionado.</p>}
       {marcadas.length > 0 && (
         <section aria-label="Sessões marcadas como bancada/teste" className="mt-6 space-y-2">
@@ -272,18 +289,83 @@ function SessoesDaConta({ dias }: { dias: number }) {
           <p className="text-xs text-muted-foreground">
             Continuam guardadas, mas ficam fora do painel e das análises. Desmarque para que voltem.
           </p>
-          <TabelaDeSessoes linhas={marcadas} acoes={acoes} rotulo="Tabela das sessões marcadas como bancada" />
+          <ListaDeSessoes linhas={marcadas} acoes={acoes} rotulo="Tabela das sessões marcadas como bancada" />
         </section>
       )}
     </>
   );
 }
 
-function TabelaDeSessoes({ linhas, acoes, rotulo = "Tabela do histórico" }: {
+function ConfirmacaoDeExclusao({ ocupado, aoCancelar, children }: {
+  ocupado: boolean;
+  aoCancelar: () => void;
+  children: ReactNode;
+}) {
+  const ref = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    const dialogo = ref.current;
+    if (!dialogo) return;
+    const origem = document.activeElement;
+    dialogo.showModal();
+    dialogo.querySelector<HTMLElement>("[data-foco-inicial]")?.focus();
+    return () => {
+      dialogo.close();
+      if (origem instanceof HTMLElement && origem.isConnected) origem.focus();
+    };
+  }, []);
+  return (
+    <dialog ref={ref} role="alertdialog" aria-label="Confirmar exclusão da sessão"
+      onCancel={(evento) => { evento.preventDefault(); if (!ocupado) aoCancelar(); }}
+      className="m-auto max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-sm space-y-3 overflow-y-auto rounded-xl border border-destructive/40 bg-card p-4 text-sm text-foreground backdrop:bg-black/60">
+      {children}
+    </dialog>
+  );
+}
+
+function dataDaSessao(linha: Linha) {
+  return DATA.format(linha.inicio).replace(/ de |\./g, " ").replace(/ +/g, " ");
+}
+
+function tempoDaSessao(linha: Linha) {
+  return linha.periodo === null ? "—" : `${formatarDuracao(linha.tempo)} de ${formatarDuracao(linha.periodo)}`;
+}
+
+function SituacaoDaSessao({ linha: { parcial, lacunas, periodo, pausas } }: { linha: Linha }) {
+  return (
+    <span className={`inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-[11px] font-semibold ${parcial || lacunas
+      ? "bg-amber-500/10 text-amber-800 dark:text-amber-300"
+      : periodo === null ? "bg-secondary text-muted-foreground" : "bg-emerald-500/10 text-emerald-800 dark:text-emerald-300"}`}>
+      <span className="size-1.5 shrink-0 rounded-full bg-current" aria-hidden />
+      {parcial ? "Parcial" : periodo === null ? "Sem estimativa" : !lacunas ? "Completa" : pausas ? "Com pausas" : "Incompleta"}
+    </span>
+  );
+}
+
+function ListaDeSessoes({ linhas, acoes, rotulo = "Tabela do histórico" }: {
   linhas: Linha[];
   acoes?: (linha: Linha) => ReactNode;
   rotulo?: string;
 }) {
+  const estreita = useSyncExternalStore(observarLargura, telaEstreita);
+  if (estreita) return (
+    <ul aria-label={rotulo === "Tabela do histórico" ? "Sessões do histórico" : "Sessões de bancada"}
+      className="divide-y divide-border">
+      {linhas.map((linha) => (
+        <li key={linha.chave} className="min-w-0 space-y-2 py-3 text-xs text-foreground">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <strong>{dataDaSessao(linha)}</strong>
+            <SituacaoDaSessao linha={linha} />
+          </div>
+          <dl className="grid grid-cols-[1fr_auto] gap-x-3">
+            <div><dt className="text-muted-foreground">Registrado</dt><dd>{tempoDaSessao(linha)}</dd></div>
+            <div className="text-right"><dt className="text-muted-foreground">Registros</dt><dd>{linha.leituras}</dd></div>
+          </dl>
+          {acoes?.(linha)}
+        </li>
+      ))}
+    </ul>
+  );
+
   return (
     <div className="overflow-x-auto rounded-sm" role="region" aria-label={rotulo} tabIndex={0}>
       <table className="w-full min-w-[32rem] text-left text-xs text-foreground">
@@ -297,27 +379,15 @@ function TabelaDeSessoes({ linhas, acoes, rotulo = "Tabela do histórico" }: {
           </tr>
         </thead>
         <tbody className="divide-y divide-border border-b border-border">
-          {linhas.map((linha) => {
-            const { chave, inicio, tempo, periodo, leituras, lacunas, pausas, parcial } = linha;
-            return (
-            <tr key={chave}>
-              <th scope="row" className="whitespace-nowrap px-2 py-3 font-semibold">{DATA.format(inicio).replace(/ de |\./g, " ").replace(/ +/g, " ")}</th>
-              <td className="px-2 py-3">{periodo === null ? "—" : `${formatarDuracao(tempo)} de ${formatarDuracao(periodo)}`}</td>
-              <td className="px-2 py-3">{leituras}</td>
-              <td className="px-2 py-3 text-right">
-                <span className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2 py-1 text-[11px] font-semibold ${parcial || lacunas
-                  ? "bg-amber-500/10 text-amber-800 dark:text-amber-300"
-                  : periodo === null
-                    ? "bg-secondary text-muted-foreground"
-                    : "bg-emerald-500/10 text-emerald-800 dark:text-emerald-300"}`}>
-                  <span className="size-1.5 rounded-full bg-current" aria-hidden />
-                  {parcial ? "Parcial" : periodo === null ? "Sem estimativa" : !lacunas ? "Completa" : pausas ? "Com pausas" : "Incompleta"}
-                </span>
-              </td>
+          {linhas.map((linha) => (
+            <tr key={linha.chave}>
+              <th scope="row" className="whitespace-nowrap px-2 py-3 font-semibold">{dataDaSessao(linha)}</th>
+              <td className="px-2 py-3">{tempoDaSessao(linha)}</td>
+              <td className="px-2 py-3">{linha.leituras}</td>
+              <td className="px-2 py-3 text-right"><SituacaoDaSessao linha={linha} /></td>
               {acoes && <td className="px-2 py-3 text-right">{acoes(linha)}</td>}
             </tr>
-            );
-          })}
+          ))}
         </tbody>
       </table>
     </div>

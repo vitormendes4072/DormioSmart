@@ -338,3 +338,20 @@ describe("os números do sensor em Detalhes técnicos (UI-40)", () => {
     expect(screen.getAllByRole("alert")).toHaveLength(1);
   });
 });
+
+it.each([
+  ["campo ts esta no futuro", "O horário do aparelho está adiantado.", false],
+  ["motivo novo do lote", "O servidor não aceitou o registro.", true],
+])("UI-41: apresenta a recusa %s na tela da Noite", async (original, frase, temDetalhes) => {
+  const p = plugin(estado({ ativa: false, rodando: false }), 1);
+  const enviar = async () => ({ aceitas: [], rejeitadas: [{ indice: 0, erro: original }], pendentes: [] });
+  render(<CartaoDaNoite plugin={p} agora={() => INICIO} enviar={enviar} />);
+  const aviso = await screen.findByRole("status");
+  expect(aviso.textContent).toContain(frase);
+  const detalhes = aviso.querySelector("details");
+  expect(Boolean(detalhes)).toBe(temDetalhes);
+  if (temDetalhes) {
+    expect(detalhes?.open).toBe(false);
+    expect(detalhes?.textContent).toContain(original);
+  }
+});

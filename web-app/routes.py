@@ -14,7 +14,7 @@ import lote
 import perfil
 import trecho
 from auth import extrair_bearer, require_auth
-from database import INDISPONIVEL, db
+from database import INDISPONIVEL, TrechoDivergente, db
 from consulta import ler_parametros, validar_instante, validar_uuid
 from ingestao import CAMINHO_SESSAO, CAMINHO_TOKEN, extrair_device_id, identificar_caminho
 from device_auth import extrair_token, gerar_token, hash_token
@@ -78,7 +78,11 @@ def _resposta_de_falha(e, rota):
 # 2.10.0 (13/11, DATA-14) e MINOR: `t` declarado por tipo de aparelho (chip no
 # travesseiro, bateria no celular) e ausente quando nao lido. Nada da ingestao
 # mudou: o `t` ja era opcional e a faixa e a mesma.
-CONTRATO_DE_DADOS = "2.11.0"
+#
+# 2.12.0 (23/11, CAL-03 etapa 3) e MINOR: `GET /api/features` devolve, por
+# epoca, `g`, `g_norma`, `calibrada` e `temp`, que ja estavam gravados. Campos
+# novos na resposta; a ingestao nao muda.
+CONTRATO_DE_DADOS = "2.12.0"
 
 # Frase exigida no corpo de `DELETE /api/me` (SEC-07). Em portugues e em
 # maiusculas de proposito: tem de ser digitada, e nao pode ser o resultado de
@@ -211,6 +215,7 @@ def init_routes(app):
 
         epocas = [e for e in map(features_noite.epoca_da_linha, linhas) if e is not None]
         saida, g_ref = features_noite.derivar_noite(epocas)
+        features_noite.com_orientacao(saida, epocas)
         return jsonify({
             "device_id": device_id,
             "desde": desde.isoformat(),
@@ -616,7 +621,10 @@ def init_routes(app):
         lido, erro = trecho.ler_trecho(corpo)
         if erro:
             return jsonify({"error": erro}), 400
-        apagadas = db.apagar_trecho(g.jwt, *lido)
+        try:
+            apagadas = db.apagar_trecho(g.jwt, *lido)
+        except TrechoDivergente:
+            return jsonify({"error": "A sessão mudou desde que a tela carregou. Recarregue e confira antes de tentar de novo."}), 409
         if apagadas is None:
             return jsonify({"error": "fonte de dados indisponivel"}), 503
         return jsonify({"epocas_apagadas": apagadas}), 200
@@ -636,7 +644,10 @@ def init_routes(app):
         bancada = corpo.get("bancada")
         if not isinstance(bancada, bool):
             return jsonify({"error": "'bancada' obrigatorio, true ou false"}), 400
-        marcadas = db.marcar_trecho(g.jwt, *lido, bancada)
+        try:
+            marcadas = db.marcar_trecho(g.jwt, *lido, bancada)
+        except TrechoDivergente:
+            return jsonify({"error": "A sessão mudou desde que a tela carregou. Recarregue e confira antes de tentar de novo."}), 409
         if marcadas is None:
             return jsonify({"error": "fonte de dados indisponivel"}), 503
         return jsonify({"epocas_marcadas": marcadas, "bancada": bancada}), 200

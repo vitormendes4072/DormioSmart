@@ -433,6 +433,40 @@ brutas a 50 Hz. Um impulso de uma ou duas leituras brutas chega, portanto, atenu
 mantém o pico e as características descrevendo o mesmo sinal; a magnitude da atenuação não foi
 medida no dispositivo.
 
+**Desempenho por noite, além do desempenho por época.** As métricas época a época não
+dizem quanto se erra numa noite. Medido sobre as mesmas avaliações externas do modelo de
+inferência, o erro do tempo total de sono teve viés de −23 a +67 minutos por noite conforme a
+coorte, com limites de concordância de 95% de até −150 a +284 minutos, e ultrapassou uma hora
+em 14% a 48% das noites. Nas coortes com pouca vigília, a vigília estimada para cada noite não
+acompanhou a vigília pontuada (correlação entre noites de 0,01 e −0,13); nas de mais vigília,
+acompanhou em parte (0,52 e 0,61). Por essa razão, a aplicação não apresenta ao usuário uma
+estimativa de sono ou de vigília por noite. Mover o ponto de corte do classificador apenas
+troca sensibilidade por especificidade, sem ganho de concordância (REFERÊNCIA INTERNA —
+análise de 23/11, `vigilia-por-noite.json`).
+
+**Treino conjunto e transferência entre bases (ML-18, 23/11).** Em cinco avaliações,
+o treino conjunto deixou de fora toda a base avaliada, incluindo os dois braços quando
+o teste era na Wearanize. Nas três bases externas, a referência foi o modelo servido.
+Na Wearanize, a comparação com o v2 em LOSO mede o custo de nunca ter visto aquela
+coorte, pois o LOSO treinou com as outras pessoas dela. Essas duas avaliações ficam
+fora da média externa. Ao corte fixo de 0,5, a média externa ganhou 9,59 p.p. em
+especificidade e 0,0257 em κ, mas perdeu 3,02 p.p. em sensibilidade. A perda excedeu
+o limite pré-fixado de 2 p.p. Só a DREAMT atingiu os três cortes.
+
+| Base avaliada | Δ especificidade (p.p.) | Δ κ | Δ sensibilidade (p.p.) | Viés do tempo de sono (min), ref. → conjunto | Noites com erro absoluto >1 h, ref. → conjunto |
+|---|---:|---:|---:|---:|---:|
+| Wearanize cabeça | −2,66 | −0,195 | −11,28 | −37 → −84 | 30,4% → 78,3% |
+| Wearanize pulso | +12,24 | −0,020 | −5,86 | −53 → −84 | 43,5% → 72,8% |
+| Walch principal | +12,60 | −0,054 | −6,90 | −22 → −52 | 13,8% → 41,4% |
+| DREAMT | +6,82 | +0,091 | +1,84 | +20 → +18 | 38,1% → 29,9% |
+| Newcastle | +9,33 | +0,041 | −3,99 | +67 → +36 | 48,1% → 48,1% |
+
+O viés é o tempo de sono previsto menos o pontuado. A subestimação se aprofundou
+nos dois braços da Wearanize e na Walch. A proporção de noites com erro absoluto
+acima de uma hora piorou nessas três bases, ficou igual na Newcastle e melhorou
+apenas na DREAMT. O ganho médio em especificidade não se traduziu em melhora
+consistente por noite. [Agregados do ML-18](../ml/experimentos/saida/ml18/agregados.json)
+
 **Sobre a métrica de acurácia.** Registra-se, por rigor metodológico, que a acurácia global
 não constitui métrica informativa neste domínio. Dado que a proporção de épocas de sono em
 um registro noturno é elevada, um classificador trivial que atribuísse a totalidade das

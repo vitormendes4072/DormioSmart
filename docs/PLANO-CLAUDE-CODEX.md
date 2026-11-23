@@ -53,6 +53,9 @@ novo, o autor reserva aqui antes.
 | `020` | `API-06` (lote numa chamada) | Codex |
 | `021` | `DATA-06` (o limiar viaja com a leitura) | Codex |
 | `022` | `UI-14` (a lista de espera) *(17/11; até ali livre: o `APP-11` não precisou, a marca é só local)* | Claude |
+| `023` | `DATA-16` (excluir e marcar uma sessão) *(21/11; na produção desde o R16)* | Claude |
+| `024` | `LGPD-15` (a versão nova do consentimento) *(22/11; na produção desde o R17)* | Claude |
+| `025` | `DATA-17` (excluir e marcar só o que a tela mostrou) *(22/11, reservada pelo autor)* | Codex |
 
 IDs novos de backlog seguem a regra 5 do `AGENTS.md`: conferir em `origin/develop` e avisar o autor.
 

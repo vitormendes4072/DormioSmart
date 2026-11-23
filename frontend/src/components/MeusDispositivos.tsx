@@ -1,9 +1,11 @@
+import { MensagemDeFalha } from "./MensagemDeFalha";
 import { AlertTriangle, Check, Copy, Cpu, Loader2, Pencil, Plus, Radio, Smartphone, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 
 import { Link } from "react-router";
 
 import { ErroApi } from "../lib/api";
+import { noiteNativaDisponivel } from "../lib/noiteNativa";
 import {
   NOME_MAXIMO,
   descreverUltimoContato,
@@ -24,7 +26,7 @@ import { INPUT_CLS } from "../lib/ui";
 export function MeusDispositivos({ mostrarPareamento = true }: { mostrarPareamento?: boolean }) {
   const [lista, setLista] = useState<Dispositivo[]>([]);
   const [carregando, setCarregando] = useState(true);
-  const [erro, setErro] = useState<string | null>(null);
+  const [erro, setErro] = useState<string | ErroApi | null>(null);
   const [aguardando, setAguardando] = useState<string | null>(null);
   const [verificando, setVerificando] = useState(false);
 
@@ -34,7 +36,7 @@ export function MeusDispositivos({ mostrarPareamento = true }: { mostrarPareamen
     try {
       setLista(await listarDispositivos());
     } catch (e) {
-      setErro(e instanceof ErroApi ? e.message : "Falha ao carregar dispositivos.");
+      setErro(e instanceof ErroApi ? e : "Falha ao carregar dispositivos.");
     } finally {
       setCarregando(false);
     }
@@ -57,7 +59,7 @@ export function MeusDispositivos({ mostrarPareamento = true }: { mostrarPareamen
         setAguardando((esperado) => esperado === id ? null : esperado);
       }
     } catch (e) {
-      setErro(e instanceof ErroApi ? e.message : "Não foi possível verificar o primeiro envio.");
+      setErro(e instanceof ErroApi ? e : "Não foi possível verificar o primeiro envio.");
     } finally {
       consultaEmAndamento.current = false;
       setVerificando(false);
@@ -87,7 +89,7 @@ export function MeusDispositivos({ mostrarPareamento = true }: { mostrarPareamen
       await revogarDispositivo(dispositivo.id);
       await carregar();
     } catch (e) {
-      setErro(e instanceof ErroApi ? e.message : "Não foi possível revogar.");
+      setErro(e instanceof ErroApi ? e : "Não foi possível revogar.");
     }
   }
 
@@ -103,9 +105,9 @@ export function MeusDispositivos({ mostrarPareamento = true }: { mostrarPareamen
   return (
     <div className="space-y-4">
       {erro ? (
-        <p role="alert" className="text-sm text-destructive">
-          {erro}
-        </p>
+        <div role="alert" className="text-sm text-destructive">
+          <MensagemDeFalha erro={erro} />
+        </div>
       ) : null}
 
       {lista.length === 0 ? (!erro && (
@@ -143,9 +145,10 @@ export function MeusDispositivos({ mostrarPareamento = true }: { mostrarPareamen
 
 function GuiaPareamento({ aoParear }: { aoParear: (aparelho: Dispositivo) => void }) {
   const [tipo, setTipo] = useState<TipoDeDispositivo>("travesseiro");
+  const noApp = noiteNativaDisponivel();
   const [pareando, setPareando] = useState(false);
   const [novoToken, setNovoToken] = useState<Pareamento | null>(null);
-  const [falha, setFalha] = useState<string | null>(null);
+  const [falha, setFalha] = useState<string | ErroApi | null>(null);
 
   async function parear() {
     setPareando(true);
@@ -155,7 +158,7 @@ function GuiaPareamento({ aoParear }: { aoParear: (aparelho: Dispositivo) => voi
       aoParear(resultado.device);
       setNovoToken(resultado);
     } catch (e) {
-      setFalha(e instanceof ErroApi ? e.message : "Não foi possível parear o travesseiro.");
+      setFalha(e instanceof ErroApi ? e : "Não foi possível parear o travesseiro.");
     } finally {
       setPareando(false);
     }
@@ -166,7 +169,7 @@ function GuiaPareamento({ aoParear }: { aoParear: (aparelho: Dispositivo) => voi
       <div className="space-y-3 rounded-xl border border-border bg-card p-4">
         <p className="text-sm font-semibold text-foreground">Parear novo dispositivo</p>
 
-        {falha && <p role="alert" className="text-sm text-destructive">{falha}</p>}
+        {falha && <div role="alert" className="text-sm text-destructive"><MensagemDeFalha erro={falha} /></div>}
         <fieldset className="space-y-2" disabled={pareando}>
           <legend className="text-xs uppercase tracking-wider text-muted-foreground mb-2">
             O novo dispositivo será um
@@ -186,15 +189,15 @@ function GuiaPareamento({ aoParear }: { aoParear: (aparelho: Dispositivo) => voi
               />
               <span className="min-w-0">
                 <span className="block text-sm font-medium text-foreground">{rotulo}</span>
-                <span className="block text-xs text-muted-foreground">{ajuda}</span>
+                <span className="block text-xs text-muted-foreground">{valor === "celular" && noApp ? "Sensor de movimento do próprio celular, pela tela Noite." : ajuda}</span>
               </span>
             </label>
           ))}
         </fieldset>
 
         {tipo === "celular" ? (
-          <Link to="/coletar" className="inline-block rounded-xl bg-secondary px-4 py-3 text-sm font-semibold">
-            Ir para Coletar
+          <Link to={noApp ? "/noite" : "/coletar"} className="inline-block rounded-xl bg-secondary px-4 py-3 text-sm font-semibold">
+            {noApp ? "Ir para Noite" : "Ir para Coletar"}
           </Link>
         ) : (
         <button
@@ -312,7 +315,7 @@ function LinhaDoDispositivo({
   verificando: boolean;
   aoRevogar: () => void;
   aoAlterarRecebimento: (dispositivo: Dispositivo) => void;
-  aoFalhar: (mensagem: string) => void;
+  aoFalhar: (mensagem: string | ErroApi) => void;
 }) {
   const [editando, setEditando] = useState(false);
   const [nome, setNome] = useState(dispositivo.nome);
@@ -329,7 +332,7 @@ function LinhaDoDispositivo({
     try {
       aoAlterarRecebimento(await alterarRecebimento(dispositivo.id, pausado));
     } catch (e) {
-      aoFalhar(e instanceof ErroApi ? e.message : "Não foi possível alterar o recebimento.");
+      aoFalhar(e instanceof ErroApi ? e : "Não foi possível alterar o recebimento.");
     } finally {
       setAlterandoRecebimento(false);
     }
@@ -347,7 +350,7 @@ function LinhaDoDispositivo({
       await aoAtualizar();
       setEditando(false);
     } catch (e) {
-      aoFalhar(e instanceof ErroApi ? e.message : "Não foi possível renomear.");
+      aoFalhar(e instanceof ErroApi ? e : "Não foi possível renomear.");
       setNome(dispositivo.nome);
     } finally {
       setSalvando(false);

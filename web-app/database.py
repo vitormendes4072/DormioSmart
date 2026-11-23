@@ -41,6 +41,10 @@ INDISPONIVEL = _Indisponivel()
 logger = logging.getLogger(__name__)
 
 
+class TrechoDivergente(Exception):
+    """A sessão carregada não coincide com a janela no banco."""
+
+
 class Database:
     def __init__(self):
         # Apenas salva as credenciais, NÃO conecta ainda.
@@ -285,7 +289,11 @@ class Database:
                     client.table("sleep_data")
                     .select("captured_at, epoca_segundos, enmo_media, enmo_desvio, "
                             "enmo_max, mag_din_media, zcr, p_frac, g_x, g_y, g_z, "
-                            "fs_features")
+                            # CAL-03, etapa 3: a orientacao, a calibracao e a
+                            # temperatura saem junto, para conferir em noite
+                            # real se a calibracao tirou o vies da orientacao.
+                            # As features e a inferencia nao as usam.
+                            "fs_features, g_norma, calibrada, temp")
                     .eq("user_id", usuario_id)
                     .eq("device_id", device_id)
                     .gte("captured_at", desde)
@@ -330,41 +338,29 @@ class Database:
             logger.exception("Falha ao apagar conta.")
             return None
 
-    def apagar_trecho(self, jwt, device_id, desde, ate):
-        """Apaga as épocas do titular num aparelho, entre dois instantes (DATA-16).
+    def apagar_trecho(self, jwt, device_id, desde, ate, epocas_esperadas, bancada_atual, impressao_ids):
+        return self._alterar_trecho("apagar_trecho", jwt, device_id, desde, ate,
+                                    epocas_esperadas, bancada_atual, impressao_ids)
 
-        Vai pelo cliente do USUÁRIO, como a `apagar_minha_conta`: o dono sai de
-        `auth.uid()` dentro da função (migração 023), e um aparelho de outra
-        conta não alcança nada. Devolve quantas épocas saíram, ou None em falha.
-        """
+    def marcar_trecho(self, jwt, device_id, desde, ate, epocas_esperadas, bancada_atual, impressao_ids, bancada):
+        return self._alterar_trecho("marcar_trecho", jwt, device_id, desde, ate,
+                                    epocas_esperadas, bancada_atual, impressao_ids, bancada)
+
+    def _alterar_trecho(self, operacao, jwt, device_id, desde, ate, quantidade, marca, impressao, bancada=None):
         try:
             client = self.cliente_do_usuario(jwt)
             if client is None:
                 return None
-            resposta = client.rpc("apagar_trecho", {
-                "p_device": device_id, "p_desde": desde, "p_ate": ate,
-            }).execute()
+            parametros = {"p_device": device_id, "p_desde": desde, "p_ate": ate,
+                          "p_epocas_esperadas": quantidade, "p_bancada_atual": marca, "p_impressao_ids": impressao}
+            if operacao == "marcar_trecho":
+                parametros["p_bancada"] = bancada
+            resposta = client.rpc(operacao, parametros).execute()
             return getattr(resposta, "data", None)
-        except Exception:
-            logger.exception("Falha ao apagar um trecho.")
-            return None
-
-    def marcar_trecho(self, jwt, device_id, desde, ate, bancada):
-        """Marca (True) ou desmarca (False) como bancada um trecho do titular (DATA-16).
-
-        Mesma posse da `apagar_trecho`. Devolve quantas épocas foram marcadas,
-        ou None em falha.
-        """
-        try:
-            client = self.cliente_do_usuario(jwt)
-            if client is None:
-                return None
-            resposta = client.rpc("marcar_trecho", {
-                "p_device": device_id, "p_desde": desde, "p_ate": ate, "p_bancada": bancada,
-            }).execute()
-            return getattr(resposta, "data", None)
-        except Exception:
-            logger.exception("Falha ao marcar um trecho.")
+        except Exception as erro:
+            if getattr(erro, "code", None) == "P0001" and getattr(erro, "message", None) == "trecho_divergente":
+                raise TrechoDivergente from erro
+            logger.exception("Falha ao alterar um trecho.")
             return None
 
     def registrar_leitura(self, token_hash, leitura):
