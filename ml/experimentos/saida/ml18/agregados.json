@@ -1,0 +1,903 @@
+{
+  "procedencia": {
+    "commit": "80a51f89d074ea213b37cdff19904a9a6345d269",
+    "python": "3.11.9",
+    "sistema": "Windows",
+    "hash_config": "aec203907e6f",
+    "modelo_sha256": "167583b14f98f4ccfa416e6abf1f5d647b4f30dbce0e2595d07b41fe1202a52f",
+    "manifesto_dreamt_sha256": "bf3f4d71fa9959c30d48598278013df0d6db8afa05bad770411e28f101780c3a",
+    "manifesto_ml17_sha256": "fe2dadb2dd24f79d372f76b5e38cd242aa5fa7c7bacc779f496105338e527a8b",
+    "semente_modelo": 20260910,
+    "semente_bootstrap": 20261123,
+    "semente_permutacao": 18112026,
+    "reamostras": 2000,
+    "permutacoes": 20
+  },
+  "bases": {
+    "wearanize/cabeca": {
+      "cobertura": {
+        "pessoas": 92,
+        "noites": 92,
+        "epocas": 87795,
+        "epocas_vigilia": 9185
+      },
+      "treino": {
+        "walch_principal": {
+          "pessoas": 29,
+          "noites": 29,
+          "epocas": 23303,
+          "epocas_vigilia": 2016,
+          "fracao_epocas": 0.17723473353564392
+        },
+        "dreamt": {
+          "pessoas": 97,
+          "noites": 97,
+          "epocas": 77738,
+          "epocas_vigilia": 19609,
+          "fracao_epocas": 0.5912489257002913
+        },
+        "newcastle": {
+          "pessoas": 27,
+          "noites": 27,
+          "epocas": 30440,
+          "epocas_vigilia": 9170,
+          "fracao_epocas": 0.23151634076406477
+        }
+      },
+      "pessoas_distintas_no_treino": 153,
+      "referencia": {
+        "por_epoca": {
+          "vp": 69578,
+          "vn": 6956,
+          "fp": 2229,
+          "fn": 9032,
+          "sensibilidade": 0.8851036763770512,
+          "especificidade": 0.7573217201959717,
+          "precisao_vigilia": 0.43507630723042284,
+          "f1_vigilia": 0.5526556230882295,
+          "acuracia_balanceada": 0.8212126982865114,
+          "acuracia": 0.871735292442622,
+          "fracao_vigilia": 0.10461871404977505,
+          "kappa": 0.4840961801110877,
+          "auc": 0.8867373361198179
+        },
+        "por_noite": {
+          "noites": 92,
+          "vies_tst_min": -36.97282608695652,
+          "dp_tst_min": 36.74790598283483,
+          "limites_95_min": [
+            -108.99872181331278,
+            35.053069639399745
+          ],
+          "fracao_erro_acima_60_min": 0.30434782608695654,
+          "vigilia_real_media_min": 49.91847826086956,
+          "vigilia_prevista_media_min": 86.8913043478261,
+          "correlacao_vigilia_entre_noites": 0.5222908550903602,
+          "fracao_noites_kappa_abaixo_0_2": 0.06521739130434782,
+          "kappa_medio": 0.45687096176855563
+        }
+      },
+      "conjunto": {
+        "por_epoca": {
+          "vp": 60707,
+          "vn": 6712,
+          "fp": 2473,
+          "fn": 17903,
+          "sensibilidade": 0.7722554382394098,
+          "especificidade": 0.7307566684812193,
+          "precisao_vigilia": 0.2726792606134471,
+          "f1_vigilia": 0.3971597633136095,
+          "acuracia_balanceada": 0.7515060533603146,
+          "acuracia": 0.7679138903126602,
+          "fracao_vigilia": 0.10461871404977505,
+          "kappa": 0.28878639587758637,
+          "auc": 0.8277468123507123
+        },
+        "por_noite": {
+          "noites": 92,
+          "vies_tst_min": -83.8586956521739,
+          "dp_tst_min": 46.592595157972326,
+          "limites_95_min": [
+            -175.18018216179968,
+            7.46279085745185
+          ],
+          "fracao_erro_acima_60_min": 0.782608695652174,
+          "vigilia_real_media_min": 49.91847826086956,
+          "vigilia_prevista_media_min": 133.77717391304347,
+          "correlacao_vigilia_entre_noites": 0.23852055798302224,
+          "fracao_noites_kappa_abaixo_0_2": 0.31521739130434784,
+          "kappa_medio": 0.28408998943528174
+        }
+      },
+      "delta_por_epoca": {
+        "especificidade": -0.02656505171475232,
+        "kappa": -0.19530978423350132,
+        "sensibilidade": -0.11284823813764144,
+        "f1_vigilia": -0.15549585977461994,
+        "auc": -0.05899052376910552
+      },
+      "delta_por_noite": {
+        "vies_tst_min": -46.885869565217384,
+        "fracao_erro_acima_60_min": 0.4782608695652174,
+        "correlacao_vigilia_entre_noites": -0.283770297107338,
+        "limites_95_min": [
+          -66.1814603484869,
+          -27.590278781947895
+        ]
+      },
+      "delta_kappa_por_pessoa": {
+        "pessoas_validas": 92,
+        "media": -0.1727809723332739,
+        "maior_modulo": 0.44984899190966654,
+        "minimo": -0.44984899190966654,
+        "maximo": 0.2905374704966649
+      },
+      "ic_delta_por_epoca": {
+        "especificidade": {
+          "ic95": [
+            -0.05551691922910759,
+            0.003829187594902933
+          ],
+          "reamostras_validas": 2000
+        },
+        "kappa": {
+          "ic95": [
+            -0.2215552487223583,
+            -0.16742021468230558
+          ],
+          "reamostras_validas": 2000
+        },
+        "sensibilidade": {
+          "ic95": [
+            -0.12469366108579863,
+            -0.10024179642360367
+          ],
+          "reamostras_validas": 2000
+        },
+        "f1_vigilia": {
+          "ic95": [
+            -0.17673686741134104,
+            -0.13260981698914373
+          ],
+          "reamostras_validas": 2000
+        },
+        "auc": {
+          "ic95": [
+            -0.07567280200696826,
+            -0.04131476522385603
+          ],
+          "reamostras_validas": 2000
+        }
+      },
+      "controle_permutado": {
+        "auc_media": 0.4957215907143282,
+        "auc_min": 0.4323465864468632,
+        "auc_max": 0.5540386507345199,
+        "auc_dp": 0.04012945084874005
+      },
+      "melhorou": false
+    },
+    "wearanize/pulso": {
+      "cobertura": {
+        "pessoas": 92,
+        "noites": 92,
+        "epocas": 87795,
+        "epocas_vigilia": 9185
+      },
+      "treino": {
+        "walch_principal": {
+          "pessoas": 29,
+          "noites": 29,
+          "epocas": 23303,
+          "epocas_vigilia": 2016,
+          "fracao_epocas": 0.17723473353564392
+        },
+        "dreamt": {
+          "pessoas": 97,
+          "noites": 97,
+          "epocas": 77738,
+          "epocas_vigilia": 19609,
+          "fracao_epocas": 0.5912489257002913
+        },
+        "newcastle": {
+          "pessoas": 27,
+          "noites": 27,
+          "epocas": 30440,
+          "epocas_vigilia": 9170,
+          "fracao_epocas": 0.23151634076406477
+        }
+      },
+      "pessoas_distintas_no_treino": 153,
+      "referencia": {
+        "por_epoca": {
+          "vp": 66021,
+          "vn": 6268,
+          "fp": 2917,
+          "fn": 12589,
+          "sensibilidade": 0.8398549802824068,
+          "especificidade": 0.6824169842133914,
+          "precisao_vigilia": 0.33239645754892083,
+          "f1_vigilia": 0.44704372013408455,
+          "acuracia_balanceada": 0.7611359822478991,
+          "acuracia": 0.8233840195910929,
+          "fracao_vigilia": 0.10461871404977505,
+          "kappa": 0.3565016482992108,
+          "auc": 0.8269940862108975
+        },
+        "por_noite": {
+          "noites": 92,
+          "vies_tst_min": -52.56521739130435,
+          "dp_tst_min": 52.87805883866794,
+          "limites_95_min": [
+            -156.2062127150935,
+            51.075777932484804
+          ],
+          "fracao_erro_acima_60_min": 0.43478260869565216,
+          "vigilia_real_media_min": 49.91847826086956,
+          "vigilia_prevista_media_min": 102.4836956521739,
+          "correlacao_vigilia_entre_noites": 0.08419703638974893,
+          "fracao_noites_kappa_abaixo_0_2": 0.2717391304347826,
+          "kappa_medio": 0.3735422679795324
+        }
+      },
+      "conjunto": {
+        "por_epoca": {
+          "vp": 61415,
+          "vn": 7392,
+          "fp": 1793,
+          "fn": 17195,
+          "sensibilidade": 0.7812619259636179,
+          "especificidade": 0.8047904191616766,
+          "precisao_vigilia": 0.30064668320657256,
+          "f1_vigilia": 0.4377590903707213,
+          "acuracia_balanceada": 0.7930261725626473,
+          "acuracia": 0.7837234466655276,
+          "fracao_vigilia": 0.10461871404977505,
+          "kappa": 0.33672120537312444,
+          "auc": 0.8636218698359777
+        },
+        "por_noite": {
+          "noites": 92,
+          "vies_tst_min": -83.70652173913044,
+          "dp_tst_min": 45.19579822040697,
+          "limites_95_min": [
+            -172.2902862511281,
+            4.87724277286722
+          ],
+          "fracao_erro_acima_60_min": 0.7282608695652174,
+          "vigilia_real_media_min": 49.91847826086956,
+          "vigilia_prevista_media_min": 133.625,
+          "correlacao_vigilia_entre_noites": 0.29196280643987393,
+          "fracao_noites_kappa_abaixo_0_2": 0.2826086956521739,
+          "kappa_medio": 0.3299525889481648
+        }
+      },
+      "delta_por_epoca": {
+        "especificidade": 0.12237343494828523,
+        "kappa": -0.019780442926086383,
+        "sensibilidade": -0.05859305431878892,
+        "f1_vigilia": -0.00928462976336325,
+        "auc": 0.036627783625080124
+      },
+      "delta_por_noite": {
+        "vies_tst_min": -31.141304347826086,
+        "fracao_erro_acima_60_min": 0.29347826086956524,
+        "correlacao_vigilia_entre_noites": 0.207765770050125,
+        "limites_95_min": [
+          -16.084073536034595,
+          -46.198535159617585
+        ]
+      },
+      "delta_kappa_por_pessoa": {
+        "pessoas_validas": 92,
+        "media": -0.043589679031367456,
+        "maior_modulo": 0.3977498174427505,
+        "minimo": -0.3977498174427505,
+        "maximo": 0.3361733851575812
+      },
+      "ic_delta_por_epoca": {
+        "especificidade": {
+          "ic95": [
+            0.09600709614777163,
+            0.15010916392967055
+          ],
+          "reamostras_validas": 2000
+        },
+        "kappa": {
+          "ic95": [
+            -0.04909311859081704,
+            0.009118829491642244
+          ],
+          "reamostras_validas": 2000
+        },
+        "sensibilidade": {
+          "ic95": [
+            -0.07319862789759429,
+            -0.04308461593976039
+          ],
+          "reamostras_validas": 2000
+        },
+        "f1_vigilia": {
+          "ic95": [
+            -0.03372539500850655,
+            0.014482929349984016
+          ],
+          "reamostras_validas": 2000
+        },
+        "auc": {
+          "ic95": [
+            0.020525297154348872,
+            0.05130492448619529
+          ],
+          "reamostras_validas": 2000
+        }
+      },
+      "controle_permutado": {
+        "auc_media": 0.48097096323249006,
+        "auc_min": 0.39945866036427563,
+        "auc_max": 0.5223172616038176,
+        "auc_dp": 0.032239772301767916
+      },
+      "melhorou": false
+    },
+    "walch_principal": {
+      "cobertura": {
+        "pessoas": 29,
+        "noites": 29,
+        "epocas": 23303,
+        "epocas_vigilia": 2016
+      },
+      "treino": {
+        "wearanize/cabeca": {
+          "pessoas": 92,
+          "noites": 92,
+          "epocas": 87795,
+          "epocas_vigilia": 9185,
+          "fracao_epocas": 0.3093900651236221
+        },
+        "wearanize/pulso": {
+          "pessoas": 92,
+          "noites": 92,
+          "epocas": 87795,
+          "epocas_vigilia": 9185,
+          "fracao_epocas": 0.3093900651236221
+        },
+        "dreamt": {
+          "pessoas": 97,
+          "noites": 97,
+          "epocas": 77738,
+          "epocas_vigilia": 19609,
+          "fracao_epocas": 0.27394914155225397
+        },
+        "newcastle": {
+          "pessoas": 27,
+          "noites": 27,
+          "epocas": 30440,
+          "epocas_vigilia": 9170,
+          "fracao_epocas": 0.10727072820050182
+        }
+      },
+      "pessoas_distintas_no_treino": 216,
+      "referencia": {
+        "por_epoca": {
+          "vp": 19168,
+          "vn": 1200,
+          "fp": 816,
+          "fn": 2119,
+          "sensibilidade": 0.900455677173862,
+          "especificidade": 0.5952380952380952,
+          "precisao_vigilia": 0.3615546851461284,
+          "f1_vigilia": 0.4498594189315839,
+          "acuracia_balanceada": 0.7478468862059786,
+          "acuracia": 0.8740505514311462,
+          "fracao_vigilia": 0.0865124662060679,
+          "kappa": 0.3834979412209544,
+          "auc": 0.8120725929306283
+        },
+        "por_noite": {
+          "noites": 29,
+          "vies_tst_min": -22.46551724137931,
+          "dp_tst_min": 32.26368232307551,
+          "limites_95_min": [
+            -85.7023345946073,
+            40.77130011184868
+          ],
+          "fracao_erro_acima_60_min": 0.13793103448275862,
+          "vigilia_real_media_min": 34.758620689655174,
+          "vigilia_prevista_media_min": 57.224137931034484,
+          "correlacao_vigilia_entre_noites": 0.008011518245579592,
+          "fracao_noites_kappa_abaixo_0_2": 0.13793103448275862,
+          "kappa_medio": 0.40822546082030364
+        }
+      },
+      "conjunto": {
+        "por_epoca": {
+          "vp": 17699,
+          "vn": 1454,
+          "fp": 562,
+          "fn": 3588,
+          "sensibilidade": 0.8314464226993,
+          "especificidade": 0.7212301587301587,
+          "precisao_vigilia": 0.2883776279254264,
+          "f1_vigilia": 0.4120147350524228,
+          "acuracia_balanceada": 0.7763382907147294,
+          "acuracia": 0.8219113418873106,
+          "fracao_vigilia": 0.0865124662060679,
+          "kappa": 0.3290878107837599,
+          "auc": 0.8479332624203908
+        },
+        "por_noite": {
+          "noites": 29,
+          "vies_tst_min": -52.172413793103445,
+          "dp_tst_min": 36.56068239977129,
+          "limites_95_min": [
+            -123.83135129665517,
+            19.48652371044828
+          ],
+          "fracao_erro_acima_60_min": 0.41379310344827586,
+          "vigilia_real_media_min": 34.758620689655174,
+          "vigilia_prevista_media_min": 86.93103448275862,
+          "correlacao_vigilia_entre_noites": -0.029841885638999806,
+          "fracao_noites_kappa_abaixo_0_2": 0.2413793103448276,
+          "kappa_medio": 0.349512862022334
+        }
+      },
+      "delta_por_epoca": {
+        "especificidade": 0.1259920634920635,
+        "kappa": -0.05441013043719445,
+        "sensibilidade": -0.06900925447456197,
+        "f1_vigilia": -0.03784468387916107,
+        "auc": 0.03586066948976252
+      },
+      "delta_por_noite": {
+        "vies_tst_min": -29.706896551724135,
+        "fracao_erro_acima_60_min": 0.27586206896551724,
+        "correlacao_vigilia_entre_noites": -0.0378534038845794,
+        "limites_95_min": [
+          -38.12901670204788,
+          -21.2847764014004
+        ]
+      },
+      "delta_kappa_por_pessoa": {
+        "pessoas_validas": 29,
+        "media": -0.05871259879796955,
+        "maior_modulo": 0.25258796000612027,
+        "minimo": -0.25258796000612027,
+        "maximo": 0.09867900277330621
+      },
+      "ic_delta_por_epoca": {
+        "especificidade": {
+          "ic95": [
+            0.10050505442968254,
+            0.15175406602782276
+          ],
+          "reamostras_validas": 2000
+        },
+        "kappa": {
+          "ic95": [
+            -0.08669062410590295,
+            -0.026342562209533887
+          ],
+          "reamostras_validas": 2000
+        },
+        "sensibilidade": {
+          "ic95": [
+            -0.08071663529259429,
+            -0.05814118423861772
+          ],
+          "reamostras_validas": 2000
+        },
+        "f1_vigilia": {
+          "ic95": [
+            -0.06619392127718166,
+            -0.013470509070906213
+          ],
+          "reamostras_validas": 2000
+        },
+        "auc": {
+          "ic95": [
+            0.008840238890542959,
+            0.06623173560553593
+          ],
+          "reamostras_validas": 2000
+        }
+      },
+      "controle_permutado": {
+        "auc_media": 0.46431703929516566,
+        "auc_min": 0.41349366667636034,
+        "auc_max": 0.5309918826677882,
+        "auc_dp": 0.03289143000611922
+      },
+      "melhorou": false
+    },
+    "dreamt": {
+      "cobertura": {
+        "pessoas": 97,
+        "noites": 97,
+        "epocas": 77738,
+        "epocas_vigilia": 19609,
+        "qualidade_carregamento": {
+          "gravacoes_encontradas": 100,
+          "epocas_na_grade": 77839,
+          "sem_rotulo": 4,
+          "cauda_incompleta": 97,
+          "gravacoes_fase_ambigua": 3,
+          "gravacoes_avaliaveis": 97,
+          "epocas_retidas": 77738,
+          "max_cauda_incompleta_por_gravacao": 1,
+          "max_lacuna_temporal_por_gravacao": 0,
+          "max_acc_ausente_por_gravacao": 0,
+          "max_sem_rotulo_por_gravacao": 1
+        }
+      },
+      "treino": {
+        "wearanize/cabeca": {
+          "pessoas": 92,
+          "noites": 92,
+          "epocas": 87795,
+          "epocas_vigilia": 9185,
+          "fracao_epocas": 0.38282759131917343
+        },
+        "wearanize/pulso": {
+          "pessoas": 92,
+          "noites": 92,
+          "epocas": 87795,
+          "epocas_vigilia": 9185,
+          "fracao_epocas": 0.38282759131917343
+        },
+        "walch_principal": {
+          "pessoas": 29,
+          "noites": 29,
+          "epocas": 23303,
+          "epocas_vigilia": 2016,
+          "fracao_epocas": 0.10161206629660799
+        },
+        "newcastle": {
+          "pessoas": 27,
+          "noites": 27,
+          "epocas": 30440,
+          "epocas_vigilia": 9170,
+          "fracao_epocas": 0.13273275106504515
+        }
+      },
+      "pessoas_distintas_no_treino": 148,
+      "referencia": {
+        "por_epoca": {
+          "vp": 50660,
+          "vn": 8327,
+          "fp": 11282,
+          "fn": 7469,
+          "sensibilidade": 0.8715099175970686,
+          "especificidade": 0.4246519455352134,
+          "precisao_vigilia": 0.5271587743732591,
+          "f1_vigilia": 0.4703855387657111,
+          "acuracia_balanceada": 0.648080931566141,
+          "acuracia": 0.7587923538038025,
+          "fracao_vigilia": 0.25224471944222904,
+          "kappa": 0.31655700437183554,
+          "auc": 0.7101161183565726
+        },
+        "por_noite": {
+          "noites": 97,
+          "vies_tst_min": 19.65463917525773,
+          "dp_tst_min": 80.46600475332548,
+          "limites_95_min": [
+            -138.0587301412602,
+            177.36800849177567
+          ],
+          "fracao_erro_acima_60_min": 0.38144329896907214,
+          "vigilia_real_media_min": 101.07731958762886,
+          "vigilia_prevista_media_min": 81.42268041237114,
+          "correlacao_vigilia_entre_noites": -0.13352707432359243,
+          "fracao_noites_kappa_abaixo_0_2": 0.24742268041237114,
+          "kappa_medio": 0.3470445121838043
+        }
+      },
+      "conjunto": {
+        "por_epoca": {
+          "vp": 51728,
+          "vn": 9665,
+          "fp": 9944,
+          "fn": 6401,
+          "sensibilidade": 0.889882846771835,
+          "especificidade": 0.49288591973073587,
+          "precisao_vigilia": 0.6015809784638366,
+          "f1_vigilia": 0.5418360196215837,
+          "acuracia_balanceada": 0.6913843832512855,
+          "acuracia": 0.789742468290926,
+          "fracao_vigilia": 0.25224471944222904,
+          "kappa": 0.40714270998823965,
+          "auc": 0.7587422920588516
+        },
+        "por_noite": {
+          "noites": 97,
+          "vies_tst_min": 18.262886597938145,
+          "dp_tst_min": 66.16303619278231,
+          "limites_95_min": [
+            -111.41666433991517,
+            147.94243753579147
+          ],
+          "fracao_erro_acima_60_min": 0.29896907216494845,
+          "vigilia_real_media_min": 101.07731958762886,
+          "vigilia_prevista_media_min": 82.81443298969072,
+          "correlacao_vigilia_entre_noites": 0.25220751489670085,
+          "fracao_noites_kappa_abaixo_0_2": 0.12371134020618557,
+          "kappa_medio": 0.40844607171486685
+        }
+      },
+      "delta_por_epoca": {
+        "especificidade": 0.06823397419552246,
+        "kappa": 0.09058570561640411,
+        "sensibilidade": 0.018372929174766406,
+        "f1_vigilia": 0.07145048085587258,
+        "auc": 0.04862617370227895
+      },
+      "delta_por_noite": {
+        "vies_tst_min": -1.3917525773195862,
+        "fracao_erro_acima_60_min": -0.0824742268041237,
+        "correlacao_vigilia_entre_noites": 0.38573458922029324,
+        "limites_95_min": [
+          26.64206580134504,
+          -29.4255709559842
+        ]
+      },
+      "delta_kappa_por_pessoa": {
+        "pessoas_validas": 97,
+        "media": 0.06140155953106266,
+        "maior_modulo": 0.26044890013873745,
+        "minimo": -0.09482600580075495,
+        "maximo": 0.26044890013873745
+      },
+      "ic_delta_por_epoca": {
+        "especificidade": {
+          "ic95": [
+            0.053250984765629374,
+            0.0826622502327084
+          ],
+          "reamostras_validas": 2000
+        },
+        "kappa": {
+          "ic95": [
+            0.07164773250664969,
+            0.10897855610265547
+          ],
+          "reamostras_validas": 2000
+        },
+        "sensibilidade": {
+          "ic95": [
+            0.005613359125722856,
+            0.032043590404940675
+          ],
+          "reamostras_validas": 2000
+        },
+        "f1_vigilia": {
+          "ic95": [
+            0.05866348104845135,
+            0.08419563667954456
+          ],
+          "reamostras_validas": 2000
+        },
+        "auc": {
+          "ic95": [
+            0.03830113408913649,
+            0.058556003897891014
+          ],
+          "reamostras_validas": 2000
+        }
+      },
+      "controle_permutado": {
+        "auc_media": 0.4900415309866826,
+        "auc_min": 0.44287574037897026,
+        "auc_max": 0.5269240448055148,
+        "auc_dp": 0.02159530773575992
+      },
+      "melhorou": true
+    },
+    "newcastle": {
+      "cobertura": {
+        "pessoas": 27,
+        "noites": 27,
+        "epocas": 30440,
+        "epocas_vigilia": 9170
+      },
+      "treino": {
+        "wearanize/cabeca": {
+          "pessoas": 92,
+          "noites": 92,
+          "epocas": 87795,
+          "epocas_vigilia": 9185,
+          "fracao_epocas": 0.3173722395537738
+        },
+        "wearanize/pulso": {
+          "pessoas": 92,
+          "noites": 92,
+          "epocas": 87795,
+          "epocas_vigilia": 9185,
+          "fracao_epocas": 0.3173722395537738
+        },
+        "walch_principal": {
+          "pessoas": 29,
+          "noites": 29,
+          "epocas": 23303,
+          "epocas_vigilia": 2016,
+          "fracao_epocas": 0.08423857051451211
+        },
+        "dreamt": {
+          "pessoas": 97,
+          "noites": 97,
+          "epocas": 77738,
+          "epocas_vigilia": 19609,
+          "fracao_epocas": 0.2810169503779403
+        }
+      },
+      "pessoas_distintas_no_treino": 218,
+      "referencia": {
+        "por_epoca": {
+          "vp": 19012,
+          "vn": 3290,
+          "fp": 5880,
+          "fn": 2258,
+          "sensibilidade": 0.8938410907381288,
+          "especificidade": 0.35877862595419846,
+          "precisao_vigilia": 0.5930064888248018,
+          "f1_vigilia": 0.4470716129908955,
+          "acuracia_balanceada": 0.6263098583461636,
+          "acuracia": 0.7326544021024967,
+          "fracao_vigilia": 0.3012483574244415,
+          "kappa": 0.28459332951352956,
+          "auc": 0.650144330129472
+        },
+        "por_noite": {
+          "noites": 27,
+          "vies_tst_min": 67.07407407407408,
+          "dp_tst_min": 110.71000786042715,
+          "limites_95_min": [
+            -149.91754133236313,
+            284.0656894805113
+          ],
+          "fracao_erro_acima_60_min": 0.48148148148148145,
+          "vigilia_real_media_min": 169.8148148148148,
+          "vigilia_prevista_media_min": 102.74074074074075,
+          "correlacao_vigilia_entre_noites": 0.612709712268389,
+          "fracao_noites_kappa_abaixo_0_2": 0.37037037037037035,
+          "kappa_medio": 0.29530984191938486
+        }
+      },
+      "conjunto": {
+        "por_epoca": {
+          "vp": 18163,
+          "vn": 4146,
+          "fp": 5024,
+          "fn": 3107,
+          "sensibilidade": 0.8539257169722614,
+          "especificidade": 0.4521264994547437,
+          "precisao_vigilia": 0.5716255342616848,
+          "f1_vigilia": 0.5049016623028679,
+          "acuracia_balanceada": 0.6530261082135025,
+          "acuracia": 0.7328843626806834,
+          "fracao_vigilia": 0.3012483574244415,
+          "kappa": 0.32540127845458156,
+          "auc": 0.6671486660319442
+        },
+        "por_noite": {
+          "noites": 27,
+          "vies_tst_min": 35.5,
+          "dp_tst_min": 106.47869053694049,
+          "limites_95_min": [
+            -173.19823345240337,
+            244.19823345240337
+          ],
+          "fracao_erro_acima_60_min": 0.48148148148148145,
+          "vigilia_real_media_min": 169.8148148148148,
+          "vigilia_prevista_media_min": 134.3148148148148,
+          "correlacao_vigilia_entre_noites": 0.7152646925486268,
+          "fracao_noites_kappa_abaixo_0_2": 0.37037037037037035,
+          "kappa_medio": 0.3236413980464309
+        }
+      },
+      "delta_por_epoca": {
+        "especificidade": 0.09334787350054524,
+        "kappa": 0.040807948941052,
+        "sensibilidade": -0.0399153737658674,
+        "f1_vigilia": 0.05783004931197244,
+        "auc": 0.01700433590247219
+      },
+      "delta_por_noite": {
+        "vies_tst_min": -31.574074074074076,
+        "fracao_erro_acima_60_min": 0.0,
+        "correlacao_vigilia_entre_noites": 0.1025549802802378,
+        "limites_95_min": [
+          -23.280692120040243,
+          -39.86745602810794
+        ]
+      },
+      "delta_kappa_por_pessoa": {
+        "pessoas_validas": 27,
+        "media": 0.028331556127045916,
+        "maior_modulo": 0.1381564102569821,
+        "minimo": -0.09618246536949326,
+        "maximo": 0.1381564102569821
+      },
+      "ic_delta_por_epoca": {
+        "especificidade": {
+          "ic95": [
+            0.05688460219044895,
+            0.12770717421335387
+          ],
+          "reamostras_validas": 2000
+        },
+        "kappa": {
+          "ic95": [
+            0.0004319118390069801,
+            0.0764445947617506
+          ],
+          "reamostras_validas": 2000
+        },
+        "sensibilidade": {
+          "ic95": [
+            -0.050703743396406376,
+            -0.02916412908562181
+          ],
+          "reamostras_validas": 2000
+        },
+        "f1_vigilia": {
+          "ic95": [
+            0.024191444019219008,
+            0.08801697617549253
+          ],
+          "reamostras_validas": 2000
+        },
+        "auc": {
+          "ic95": [
+            0.007070279785272559,
+            0.027151139452288874
+          ],
+          "reamostras_validas": 2000
+        }
+      },
+      "controle_permutado": {
+        "auc_media": 0.4906626988826733,
+        "auc_min": 0.46445484370601997,
+        "auc_max": 0.5127675998316295,
+        "auc_dp": 0.012706167504526035
+      },
+      "melhorou": false
+    }
+  },
+  "media_externa": {
+    "bases": [
+      "walch_principal",
+      "dreamt",
+      "newcastle"
+    ],
+    "delta": {
+      "especificidade": 0.09585797039604373,
+      "kappa": 0.025661174706753886,
+      "sensibilidade": -0.03018389968855432
+    },
+    "melhorou": false,
+    "ic_delta": {
+      "especificidade": {
+        "ic95": [
+          0.08071868978783209,
+          0.11148700233678069
+        ],
+        "reamostras_validas": 2000
+      },
+      "kappa": {
+        "ic95": [
+          0.008330041706059162,
+          0.043025842382096904
+        ],
+        "reamostras_validas": 2000
+      },
+      "sensibilidade": {
+        "ic95": [
+          -0.03667517816230177,
+          -0.023564961426166417
+        ],
+        "reamostras_validas": 2000
+      }
+    }
+  }
+}

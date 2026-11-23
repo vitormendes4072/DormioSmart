@@ -58,7 +58,8 @@
 Até 29/10 esta linha mandava rodar o `DATA-03`, fechado em 28/10.)* **Se tem um fim de semana:** solde. **Se tem um mês sem ferro de solda:** escreva os
 `CALC-*` e `DIAG-*`, que são o que a banca lê.
 
-**Contagem:** 39 itens abertos · **L0: 8** · L1: 16 · L2: 5 · L3: 10. *(Recontado linha a linha em 03/11, e não por delta; desde o `DOC-13`, o CI reconta.)*
+**Contagem:** 38 itens abertos · **L0: 7** · L1: 16 · L2: 5 · L3: 10. *(Recontado linha a linha em 03/11, e não por delta; desde o `DOC-13`, o CI reconta.)*
+*(23/11, sobre `develop` `c70c6ed`: fecha `ML-18` em L0. Saldo: 38 abertos, L0 7.)*
 *(23/11, sobre `develop` `e9b7cf2`: fecha `UI-41` em L0. Saldo: 39 abertos, L0 8.)*
 *(23/11, sobre `develop` `96e7b40`: abre `ML-18` (L0). Saldo: 40 abertos, L0 9.)*
 *(23/11, sobre `develop` `8845ee6`: fecha `DATA-17` em L0. Saldo: 39 abertos, L0 8.)*
@@ -307,7 +308,6 @@ E um **peso**: 🔴 caminho crítico da defesa · 🟡 importante · ⚪ polimen
        API-06 · CAL-03 · APP-12
        INFRA-05                              ← 11/11: o backend perto do banco
        DATA-16                               ← 21/11: excluir e marcar uma sessão pelo Histórico
-       ML-18                                 ← 23/11: treinar juntando bases, testar numa de fora
 
    L3  TAMBÉM DEPENDE DE VOCÊ:
        RQ-01 · HW-02 · LGPD-03 · ESC-01 · LGPD-01 (definir o controlador)
@@ -507,7 +507,7 @@ diagrama** — que é o que a banca lê.
 | Item | O quê | Peso |
 |---|---|:---:|
 | **ML-06b** ✅ *(03/11: `ml/src/carregar/walch.py`, com 8 testes e 6/6 sabotagens acusadas; a validação externa rodou na Walch (`ml04 --coorte walch`). P1 e P2 confirmadas; P3 confirmada na especificidade e **não** no κ (o HMM ganhou mais κ que a janela). Ver X.4 e o diário, 03/11 (vii) a (ix))* *(novo)* | **Escrever `ml/src/carregar/walch.py`.** A interface única garante que é só isso — sem tocar em feature, época, baseline, modelo ou métrica. Dá para escrever contra a documentação do dataset **antes** do `ML-06a`, mas só valida com o dado em mãos. ⚠️ Escrever carregador sem ver o arquivo real foi o que produziu as 10 armadilhas já catalogadas: escreva, mas **não confie até rodar**. | ✅ |
-| **ML-18** *(novo — 23/11, saído da análise de vigília por noite; diário 23/11 (ii))* | **Treinar juntando bases e testar numa que ficou de fora.** O modelo servido foi treinado só na Wearanize de cabeça, e a capacidade de separar vigília cai fora dela (AUC 0,89 → 0,65–0,81). Treinar com Wearanize (cabeça e pulso), Walch e DREAMT e avaliar deixando uma base inteira de fora mede se a robustez entre coortes melhora. Não promete passar do teto da actigrafia: acordado e parado é igual a dormindo. Relatar especificidade, F1 da vigília, κ e o erro por noite em minutos, nunca só a acurácia. | ⚪ |
+| **ML-18** ✅ | Avaliação entre bases concluída (diário 23/11 (vii)). Na média externa: +9,59 p.p. em especificidade, +0,0257 em κ e −3,02 p.p. em sensibilidade. Não atingiu o critério pré-fixado. Apenas DREAMT atingiu os três cortes. Modelo servido preservado. | ✅ |
 
 ### Backend, dados e API
 
