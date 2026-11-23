@@ -433,6 +433,17 @@ brutas a 50 Hz. Um impulso de uma ou duas leituras brutas chega, portanto, atenu
 mantém o pico e as características descrevendo o mesmo sinal; a magnitude da atenuação não foi
 medida no dispositivo.
 
+**Desempenho por noite, além do desempenho por época.** As métricas época a época não
+dizem quanto se erra numa noite. Medido sobre as mesmas avaliações externas do modelo de
+inferência, o erro do tempo total de sono teve viés de −23 a +67 minutos por noite conforme a
+coorte, com limites de concordância de 95% de até −150 a +284 minutos, e ultrapassou uma hora
+em 14% a 48% das noites. Nas coortes com pouca vigília, a vigília estimada para cada noite não
+acompanhou a vigília pontuada (correlação entre noites de 0,01 e −0,13); nas de mais vigília,
+acompanhou em parte (0,52 e 0,61). Por essa razão, a aplicação não apresenta ao usuário uma
+estimativa de sono ou de vigília por noite. Mover o ponto de corte do classificador apenas
+troca sensibilidade por especificidade, sem ganho de concordância (REFERÊNCIA INTERNA —
+análise de 23/11, `vigilia-por-noite.json`).
+
 **Sobre a métrica de acurácia.** Registra-se, por rigor metodológico, que a acurácia global
 não constitui métrica informativa neste domínio. Dado que a proporção de épocas de sono em
 um registro noturno é elevada, um classificador trivial que atribuísse a totalidade das
