@@ -182,10 +182,14 @@ public class ServicoDaNoite extends Service implements SensorEventListener {
 
     private void entrarEmPrimeiroPlano() {
         final NotificationManager nm = getSystemService(NotificationManager.class);
-        if (Build.VERSION.SDK_INT >= 26 && nm.getNotificationChannel(CANAL) == null) {
+        // Sempre, e não só quando o canal falta (UI-41 b): para um canal que já
+        // existe, o Android atualiza o nome e a descrição e mantém o que a pessoa
+        // configurou (a importância, o silêncio). Assim quem atualiza o app vê o
+        // texto novo nas configurações de notificação.
+        if (Build.VERSION.SDK_INT >= 26) {
             final NotificationChannel canal = new NotificationChannel(
                     CANAL, "Registro da noite", NotificationManager.IMPORTANCE_LOW);
-            canal.setDescription("Aparece enquanto o Dormio registra o movimento da noite.");
+            canal.setDescription("Aparece enquanto o Smart Dormio registra o movimento da noite.");
             nm.createNotificationChannel(canal);
         }
         final Intent abrir = new Intent(this, MainActivity.class)
@@ -201,7 +205,7 @@ public class ServicoDaNoite extends Service implements SensorEventListener {
 
     private Notification notificacao(String texto) {
         return new NotificationCompat.Builder(this, CANAL)
-                .setContentTitle("Dormio registrando a noite")
+                .setContentTitle("Smart Dormio registrando a noite")
                 .setContentText(texto)
                 .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
                 .setOngoing(true)

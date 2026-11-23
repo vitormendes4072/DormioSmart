@@ -12467,3 +12467,33 @@ O APK não muda neste release: o app Android recebe o Histórico novo no próxim
 - **As telas novas não foram vistas com a conta real nem em aparelho físico.** Fica com o autor.
 
 **Procedência.** PR #253, `main` `d629769`, release `app-v1.1.2`; Windows 11, Postgres 17 em Docker, build-tools 37.0.0; 22/11.
+
+# 2026-11-22 (vii) — UI-41 (b): a notificação da noite diz "Smart Dormio"
+
+**O problema, como foi entendido no início.** O `APP-18` trocou "o Dormio" por "o Smart Dormio" nas telas do app, mas o serviço da noite ficou de fora. Seguiam com o nome antigo o título da notificação ("Dormio registrando a noite") e a descrição do canal nas configurações do Android. O teste de marca do `APP-18` (`appAndroid.test.ts`) só lia três arquivos do frontend. Havia ainda o canal: criado só quando faltava, ele guardaria a descrição antiga em quem atualiza o app.
+
+**Hipótese de trabalho.** Trocar os dois textos e criar o canal a cada vez que o serviço sobe. Para um canal que já existe, o Android atualiza nome e descrição e mantém o que a pessoa configurou.
+
+**O que foi testado, e como.**
+- **Dois testes no `appAndroid.test.ts`, antes da mudança:** os literais de texto do `ServicoDaNoite.java` sem "Dormio" solto, e o canal sem a condição de só criar quando falta. Os dois caíram contra o código de antes.
+- **Controle positivo:** com o título antigo e a descrição nova, o primeiro teste cai e aponta o literal "Dormio registrando a noite".
+- **Emulador Pixel 6 descartável (`-read-only`), com sessão e API de mentira:** uma noite iniciada e a notificação lida pelo `dumpsys notification`.
+- **Suítes:** frontend e lint; testes JVM e `assembleDebug` do app.
+
+**Resultado medido.**
+- **Frontend:** 866 passam, 59 arquivos (eram 864; +2). Lint sem erro.
+- **App:** 34 testes JVM, 0 falhas.
+- **Emulador:** `android.title` "Smart Dormio registrando a noite"; o canal "Registro da noite", importância baixa.
+
+**Veredito.** A parte (b) do `UI-41` está feita na branch; o item segue aberto por (a), (c) e (d). Chega ao celular no APK 1.1.3.
+
+**Adaptação.** Nenhuma.
+
+**O que deu errado no caminho.**
+- **O teste saiu corrompido na primeira escrita:** o heredoc tirou uma barra da regex e transformou `\b` em caractere de controle. O teste "não tinha testes", e a corrupção foi achada lendo os caracteres crus. O bloco foi reescrito a partir de um arquivo, fora do shell.
+- **O `dumpsys` não mostrou a descrição do canal**, e a captura da gaveta pegou o launcher do emulador travado.
+
+**Risco em aberto.**
+- **A descrição do canal e a atualização de um canal já existente não foram vistas no aparelho:** a primeira só pelo teste, a segunda pela documentação do Android. O emulador não tinha o canal antes.
+
+**Procedência.** Branch `bugfix/UI-41b-nome-na-notificacao`, sobre `develop` `2b8fbd5`; Windows 11, Node 22, JDK do Android Studio, emulador Pixel 6; 22/11.
