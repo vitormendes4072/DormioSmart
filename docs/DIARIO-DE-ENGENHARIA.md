@@ -12423,3 +12423,47 @@ O APK não muda neste release: o app Android recebe o Histórico novo no próxim
 - **Não foi visto com a conta real, em aparelho físico nem por outra pessoa:** que ficou mais intuitivo é hipótese. As capturas do texto do TCC e o catálogo de telas de 10/11 mostram o painel antigo.
 
 **Procedência.** Branch `feature/UI-40-painel-em-camadas`, sobre `develop` `b30bde6`; Windows 11, Node (Vitest), Python 3.13, JDK do Android Studio, emulador Pixel 6; 22/11.
+
+# 2026-11-22 (vi) — o release R17: consentimento novo, a correção do alcance e a usabilidade
+
+**O problema, como foi entendido no início.** O `develop` tinha quatro itens fora da produção: `LGPD-15`, `UI-38`, `UI-39` e `UI-40`. O `UI-38` corrige dois defeitos do `DATA-16` no ar desde o R16: a exclusão levava uma época normal entre duas bancadas, e deixava para trás a última época com microssegundos. O `LGPD-15` muda a versão do consentimento, o que amarra a ordem a uma migração e a um APK.
+
+**Hipótese de trabalho.** A ordem segura é:
+- o autor envia as noites guardadas no celular, antes de o APK de depuração deixar de aceitar o consentimento;
+- o APK 1.1.2 gerado de `develop` e deixado em rascunho;
+- merge e deploy;
+- a 024 pelo autor, logo depois do deploy;
+- a publicação do APK.
+
+**O que foi testado, e como.**
+- **O APK, antes do rascunho:** certificado, `versionCode` e `versionName`, `debuggable` e o conteúdo do pacote web (a versão `2026-11-22` presente, nenhum dublê de teste).
+- **O script da 024:** comparado com a migração versionada e rodado duas vezes num Postgres 17 local, com a conferência.
+- **A PR #253:** CI verde, mesclada com `--no-ff`, com a árvore de `main` comparada à testada.
+- **Depois do deploy:** `curl` nas rotas e nas cinco páginas, e os pedaços JS publicados.
+- **A 024 na produção:** aplicada pelo autor, com a conferência colada.
+- **O download público:** baixado pelo link fixo do site e conferido.
+
+**Resultado medido.**
+- **O release:** merge `d629769`; deploy `7987918215` com sucesso; 13 de 13 verificações verdes na PR.
+- **A produção:**
+  - `/health` `200` (contrato 2.11.0);
+  - `401` sem token em `/api/devices`, `/api/sessoes/apagar` e `/api/me/consentimento`;
+  - a mesma CSP nas cinco páginas;
+  - o pedaço do Início com o resumo e os detalhes técnicos, o do Histórico com "Com pausas" e "Incompleta", e o consentimento `2026-11-22`.
+- **A 024:** as quatro conferências `true` (versão nova, `authenticated` executa, `anon` sem acesso, imutável).
+- **O APK 1.1.2:** `app-v1.1.2` publicado como a mais recente, com a etiqueta em `d629769`. O link fixo baixa um arquivo de SHA-256 `d5a36c8b1fe4568703f5e5a40cd17c2c6d8a0f0b7e7cde566263151ca96b7b9d`, com o certificado do autor e `versionCode` 4.
+
+**Veredito.** Os quatro itens estão na produção e no APK 1.1.2. Os dois defeitos do `DATA-16` saíram do ar.
+
+**Adaptação.**
+- **A 024 entrou antes da publicação do APK**, e não depois, como o README das migrações pedia. Entre uma e outra, minutos: nesse intervalo, só quem estava num APK antigo ficaria sem aceitar, e ficaria assim de qualquer forma até atualizar.
+
+**O que deu errado no caminho.**
+- **O site esteve no ar alguns minutos com a versão nova antes da 024**, como previsto: um aceite feito nessa janela seria recusado.
+
+**Risco em aberto.**
+- **Quem está num APK anterior ao 1.1.2** (o de depuração do autor e o de um amigo, de 11/11) não grava até atualizar.
+- **O autor perde o que ficou no celular** ao trocar o APK de depuração pelo de release (assinaturas diferentes). Ele confirmou ter enviado as noites antes.
+- **As telas novas não foram vistas com a conta real nem em aparelho físico.** Fica com o autor.
+
+**Procedência.** PR #253, `main` `d629769`, release `app-v1.1.2`; Windows 11, Postgres 17 em Docker, build-tools 37.0.0; 22/11.
