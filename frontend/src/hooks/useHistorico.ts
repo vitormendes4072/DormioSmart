@@ -7,7 +7,7 @@ import type { LeituraSono } from "../types/sleep";
 type EstadoHistorico = {
   leituras: LeituraSono[];
   carregando: boolean;
-  erro: string | null;
+  erro: string | ErroApi | null;
   recarregar: () => void;
 };
 
@@ -27,7 +27,7 @@ export function useHistorico(filtro: FiltroDeHistorico = {}): EstadoHistorico {
   const { dispositivo = null, desde = null, ate = null, limite = null } = filtro;
   const [leituras, setLeituras] = useState<LeituraSono[]>([]);
   const [carregando, setCarregando] = useState(true);
-  const [erro, setErro] = useState<string | null>(null);
+  const [erro, setErro] = useState<string | ErroApi | null>(null);
   const ativo = useRef(false);
   const geracao = useRef(0);
 
@@ -47,7 +47,7 @@ export function useHistorico(filtro: FiltroDeHistorico = {}): EstadoHistorico {
     } catch (e) {
       if (vigente()) {
         // 401 ja disparou o callback do cliente; aqui so exibimos a falha.
-        setErro(e instanceof ErroApi ? e.message : "Falha inesperada ao carregar.");
+        setErro(e instanceof ErroApi ? e : "Falha inesperada ao carregar.");
         setLeituras([]);
       }
     } finally {

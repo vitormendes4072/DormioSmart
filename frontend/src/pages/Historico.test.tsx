@@ -56,6 +56,9 @@ function mostrar() {
 }
 
 beforeEach(() => {
+  vi.stubGlobal("HTMLDialogElement", window.HTMLDialogElement);
+  HTMLDialogElement.prototype.showModal = function () { this.setAttribute("open", ""); };
+  HTMLDialogElement.prototype.close = function () { this.removeAttribute("open"); };
   vi.stubGlobal("crypto", webcrypto);
   vi.stubGlobal("matchMedia", vi.fn(() => ({ matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn() })));
   buscar.mockResolvedValue({ leituras: [...NOITE, ...BANCADA], truncada: false });
@@ -276,4 +279,27 @@ it("DATA-17: divergência avisa e recarrega sem sucesso", async () => {
   expect((await screen.findByRole("alert")).textContent).toContain("A sessão mudou");
   expect(buscar).toHaveBeenCalledTimes(2);
   expect(screen.queryByText(/Sessão marcada como bancada/)).toBeNull();
+});
+
+it("UI-41: a lista de cartões traz situação, ações e a confirmação modal", async () => {
+  vi.stubGlobal("matchMedia", vi.fn((consulta: string) => ({
+    matches: consulta === "(max-width: 767px)", addEventListener: vi.fn(), removeEventListener: vi.fn(),
+  })));
+  mostrar();
+  const lista = await screen.findByRole("list", { name: "Sessões do histórico" });
+  expect(within(lista).getByText("Completa")).toBeTruthy();
+  expect(within(lista).getByRole("button", { name: "Marcar como bancada" })).toBeTruthy();
+  fireEvent.click(within(lista).getByRole("button", { name: "Excluir…" }));
+  const dialogo = screen.getByRole("alertdialog", { name: "Confirmar exclusão da sessão" });
+  expect(dialogo.tagName).toBe("DIALOG");
+  expect(apagar).not.toHaveBeenCalled();
+});
+
+it("UI-41: um erro desconhecido do Histórico aparece com detalhes recolhidos", async () => {
+  buscar.mockRejectedValueOnce(new ErroApi(500, "Não foi possível concluir o pedido.", "mensagem original"));
+  mostrar();
+  expect(await screen.findByText("Não foi possível concluir o pedido.")).toBeTruthy();
+  const detalhes = screen.getByText("Detalhes técnicos").closest("details");
+  expect(detalhes?.hasAttribute("open")).toBe(false);
+  expect(detalhes?.textContent).toContain("mensagem original");
 });

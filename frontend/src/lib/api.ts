@@ -10,6 +10,7 @@
  * O build do app define `VITE_API_BASE` com o endereco do backend; o build do
  * site nao define, e tudo continua relativo.
  */
+import { mensagemDoServidor } from "./mensagemDoServidor";
 import type { LeituraSono } from "../types/sleep";
 import { impressaoDosIds, type Trecho } from "./trecho";
 
@@ -23,7 +24,7 @@ export function urlDaApi(caminho: string, base: string = import.meta.env.VITE_AP
 export class ErroApi extends Error {
   readonly status: number;
 
-  constructor(status: number, mensagem: string) {
+  constructor(status: number, mensagem: string, readonly detalhe?: string) {
     super(mensagem);
     this.name = "ErroApi";
     this.status = status;
@@ -81,17 +82,18 @@ export async function requisitarJson<T>(caminho: string, opcoes: RequestInit = {
   } catch {
     // Falha de rede nao tem status HTTP. Usamos 0 para distinguir de qualquer
     // resposta real do servidor.
-    throw new ErroApi(0, "Nao foi possivel conectar ao servidor.");
+    throw new ErroApi(0, "Não foi possível conectar ao servidor.");
   }
 
   if (resposta.status === 401) {
     // A resposta pode pertencer a uma sessão que já foi trocada ou renovada.
     if (token === (obterToken?.() ?? null)) aoPerderSessao?.();
-    throw new ErroApi(401, "Sessao expirada. Entre novamente.");
+    throw new ErroApi(401, "Sessão expirada. Entre novamente.");
   }
 
   if (!resposta.ok) {
-    throw new ErroApi(resposta.status, await extrairMensagemDeErro(resposta));
+    const { mensagem, detalhe } = await extrairMensagemDeErro(resposta);
+    throw new ErroApi(resposta.status, mensagem, detalhe);
   }
 
   return (await resposta.json()) as T;
@@ -99,14 +101,14 @@ export async function requisitarJson<T>(caminho: string, opcoes: RequestInit = {
 
 /** O backend devolve `{"error": "..."}` nas falhas (ver contrato, secao 5).
  *  Se o corpo nao for JSON, cai para uma mensagem generica em vez de estourar. */
-async function extrairMensagemDeErro(resposta: Response): Promise<string> {
+async function extrairMensagemDeErro(resposta: Response) {
   try {
-    const corpo = (await resposta.json()) as { error?: string };
-    if (corpo?.error) return corpo.error;
+    const corpo = (await resposta.json()) as { error?: unknown } | null;
+    if (corpo?.error) return mensagemDoServidor(corpo.error);
   } catch {
     // corpo vazio ou nao-JSON — segue para a mensagem generica
   }
-  return `Erro ${resposta.status} ao falar com o servidor.`;
+  return mensagemDoServidor(null);
 }
 
 /**

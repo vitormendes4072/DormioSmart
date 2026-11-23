@@ -55,7 +55,8 @@ vi.mock("./supabase", () => ({
   problemaDeConfiguracao: () => null,
 }));
 
-vi.mock("./api", () => ({
+vi.mock("./api", async (original) => ({
+  ...await original<typeof import("./api")>(),
   requisitarJson: (...argumentos: unknown[]) => requisitar(...argumentos),
 }));
 

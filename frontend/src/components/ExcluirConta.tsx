@@ -1,3 +1,4 @@
+import { MensagemDeFalha } from "./MensagemDeFalha";
 /**
  * Exclusão de conta (UI-10 / SEC-07 / LGPD art. 18, V).
  *
@@ -50,7 +51,7 @@ type Estado = "fechado" | "confirmando" | "apagando" | "concluido";
 export function ExcluirConta() {
   const [estado, setEstado] = useState<Estado>("fechado");
   const [texto, setTexto] = useState("");
-  const [erro, setErro] = useState<string | null>(null);
+  const [erro, setErro] = useState<string | ErroApi | null>(null);
   const [resultado, setResultado] = useState<ResultadoDeExclusao | null>(null);
 
   async function confirmar() {
@@ -65,7 +66,7 @@ export function ExcluirConta() {
       // pessoa achar que apagou quando não apagou.
       setErro(
         e instanceof ErroApi
-          ? e.message
+          ? e
           : "Não foi possível concluir a exclusão. Nada foi apagado.",
       );
       setEstado("confirmando");
@@ -151,7 +152,7 @@ export function ExcluirConta() {
         />
       </div>
 
-      {erro ? <p className="text-xs text-destructive">{erro}</p> : null}
+      {erro ? <div role="alert" className="text-xs text-destructive"><MensagemDeFalha erro={erro} /></div> : null}
 
       <div className="flex gap-2">
         <button

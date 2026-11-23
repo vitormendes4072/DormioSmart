@@ -11771,6 +11771,26 @@ Vitest e build no Windows; servidor local com autenticação fictícia; 19/11/20
 
 **Procedência.** Branch `docs/BRAND-05-grafia-do-nome` sobre `develop` `67bc830`; Windows 11; 19/11.
 
+---
+
+# 2026-11-23 (ii) — UI-41 (a), (c) e (d): avisos e ações à vista
+
+**O problema, como foi entendido no início.** A API e a resposta do lote deixavam texto técnico chegar à tela. No Histórico, situação e ações exigiam rolagem lateral e a confirmação ficava no topo da lista. Na barra móvel, “Configurações” avançava sobre a borda do próprio link com seis destinos.
+
+**Hipótese de trabalho.** Traduzir na apresentação e recolher o texto original quando ocorrer uma falha desconhecida. Usar os mesmos dados e ações em cartões e tabela, com confirmação modal. Dar espaço aos rótulos da barra móvel sem mudar seus nomes.
+
+**O que foi testado, e como.** Os três primeiros testes de API e Histórico foram escritos e rodados antes da implementação. A regressão de mensagens lê os literais, inclusive modelos de texto, usando a árvore sintática das rotas e validações Python. No Edge, um cenário sintético com 40 sessões montou o Histórico e a barra reais, simulando cinco e seis destinos. Foram medidas largura da página e cartões, posição de “Configurações”, as ações e a confirmação no fim da lista. A sonda verificou foco em Cancelar, Escape, retorno ao botão, ausência de pedido de exclusão ao cancelar e tabela a 1280 px.
+
+**Resultado medido.** Os três testes iniciais falharam em `develop`. O controle inseriu uma mensagem inédita numa rota e o inventário acusou seu texto. Repassar o motivo cru da Noite derrubou dois testes. Remover os detalhes do Histórico derrubou um. A 360, 390 e 411 px, `develop` exigiu 218, 188 e 167 px de rolagem dentro da tabela. No modo de seis destinos, o rótulo ultrapassou seu link em 8,6, 6,1 e 4,4 px. Com a correção, sobraram pelo menos 4 px no link e o excedente da página e dos cartões foi zero. Frontend: 921 passaram em 60 arquivos. Backend sem RLS: 679 passaram, 1 pulou. Lint, Knip, Knip de tipos, build e CSP passaram. Painel: 259 632 de 260 000 B gzip. Login: 145 282 de 155 000 B gzip. Landing: 278 463 de 289 800 B estimados de transferência.
+
+**Adaptação.** O modal usa o diálogo nativo com `alertdialog`. O inventário mantém uma lista explícita de entradas que recebem a frase genérica com detalhes recolhidos. O tradutor entrou no pacote comum. A interface da lista de espera mantém mensagens de validação próprias para os campos que a pessoa pode corrigir.
+
+**O que deu errado no caminho.** Uma busca com expansão de chaves não funcionou em PowerShell. Dois testes antigos presumiam propagação literal ou um dublê sem a classe de erro. O compilador rejeitou métodos fora do alvo TypeScript, substituídos por equivalentes compatíveis. O primeiro cenário do navegador precisou do preâmbulo do Vite e de IDs de aparelhos distintos para formar a lista longa. Num controle positivo, a asserção do script esperava outra classe de erro ao remover os detalhes. O controle foi repetido e confirmou que faltava o elemento esperado.
+
+**Risco em aberto.** O inventário cobre os literais das rotas e validações listadas, com análise explícita dos modelos. Falhas montadas dinamicamente ainda podem cair na frase genérica com o motivo recolhido. A prova de layout do app simulou seis destinos no Edge. A conferência em WebView e emulador fica para a revisão. O painel ficou a 368 B do teto.
+
+**Procedência.** `bugfix/UI-41-acd` sobre `develop` `96e7b40`, Windows, Node, Python e Edge via Playwright CLI. Executado em 23/11/2026. Dados sintéticos e arquivos temporários da sonda removidos da worktree.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

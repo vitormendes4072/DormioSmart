@@ -657,11 +657,11 @@ describe("montagem real das telas (UI-17)", PRAZO, () => {
 
   it("mostra a mensagem do ErroApi 403 no alerta de pareamento", async () => {
     const { criar } = simularPareamento();
-    const mensagem = "Consentimento para dados de saúde pendente.";
+    const mensagem = "consentimento para dado de saude pendente";
     criar.mockReturnValueOnce(new Response(JSON.stringify({ error: mensagem }), { status: 403 }));
     fireEvent.click(await abrirPareamento());
     const alerta = await screen.findByRole("alert");
-    expect(alerta.textContent).toBe(mensagem);
+    expect(alerta.textContent).toBe("Revise e aceite o consentimento para continuar.");
     expect(alerta.classList.contains("text-destructive")).toBe(true);
   });
 

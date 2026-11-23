@@ -34,7 +34,7 @@ import { buscarPerfil, type PerfilDoServidor } from "../lib/perfil";
 type ContextoDePerfil = {
   perfil: PerfilDoServidor | null;
   carregando: boolean;
-  erro: string | null;
+  erro: string | Error | null;
   recarregar: () => Promise<void>;
 };
 
@@ -65,7 +65,7 @@ export function PerfilProvider({ children }: { children: ReactNode }) {
       if (vigente()) setResultado({ usuarioId: atual.usuarioId, perfil, erro: null, carregando: false });
     } catch (falha) {
       if (vigente()) {
-        const erro = falha instanceof Error ? falha.message : "Não foi possível carregar o perfil.";
+        const erro = falha instanceof Error ? falha : "Não foi possível carregar o perfil.";
         setResultado({ usuarioId: atual.usuarioId, perfil: null, erro, carregando: false });
       }
     }
