@@ -1,20 +1,9 @@
 import { Radio } from "lucide-react";
-import { useEffect, useId, useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Link, useLocation } from "react-router";
-import {
-  Bar,
-  Area,
-  ComposedChart,
-  CartesianGrid,
-  Line,
-  ReferenceLine,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
 
 import { BarraDoWorkspace } from "../components/BarraDoWorkspace";
+import { GraficoDeMovimento } from "../components/GraficoDeMovimento";
 import { destinoDoWorkspace } from "../components/nav";
 import { Carregando, FalhaAoCarregar, SemLeituras } from "../components/EstadoDaTela";
 import { NotaDeEscopo } from "../components/NotaDeEscopo";
@@ -34,7 +23,6 @@ import {
   formatarPorcentagem,
   formatarHora,
   prepararSerie,
-  type PontoDaSerie,
   leituraNaBordaDoLimite,
 } from "../lib/metricas";
 import {
@@ -63,47 +51,8 @@ import { semBancada, sessoesDaMarca } from "../lib/trecho";
 const COR_MOVIMENTO = "var(--chart-movimento)";
 const COR_REPOUSO = "var(--chart-repouso)";
 
-function TooltipDoGrafico({
-  active,
-  payload,
-  label,
-}: {
-  active?: boolean;
-  payload?: Array<{ payload: PontoDaSerie }>;
-  label?: string;
-}) {
-  const ponto = payload?.[0]?.payload;
-  if (!active || !ponto) return null;
-
-  // Lacuna nao e leitura: dizer "Repouso" aqui seria o mesmo defeito que o
-  // DASH-09 corrigiu nas metricas, so que no tooltip.
-  if (ponto.lacuna) {
-    return (
-      <div className="bg-card border border-border rounded-xl px-3 py-2 text-sm shadow-2xl">
-        <p className="text-foreground font-semibold">Sem registro</p>
-        <p className="text-xs text-muted-foreground mt-0.5">
-          {ponto.duracaoDaLacunaMs == null
-            ? "trecho sem registro"
-            : `${formatarDuracao(ponto.duracaoDaLacunaMs)} sem registro`}
-        </p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="bg-card border border-border rounded-xl px-3 py-2 text-sm shadow-2xl">
-      <p className="text-muted-foreground text-xs mb-0.5">{label}</p>
-      <p className="text-foreground font-semibold">
-        {ponto.intensidade == null ? "sem registro" : ponto.movimento ? "Movimento" : "Repouso"}
-      </p>
-    </div>
-  );
-}
-
 export function Dashboard() {
   const { hash, key, search } = useLocation();
-  const padraoDaLacuna = useId();
-  const gradienteDoGrafico = useId();
   // `null` = todos os dispositivos. O recorte por instrumento (DASH-05) e
   // opcional: sem ele o painel se comporta como antes.
   const [dispositivo, setDispositivo] = useState<string | null>(null);
@@ -211,16 +160,6 @@ export function Dashboard() {
   const m = calcularMetricas(leiturasVisiveis);
   const serie = prepararSerie(leiturasVisiveis, m.cobertura);
   const temLacuna = serie.some((p) => p.lacuna);
-  // A coluna cinza precisa de altura para existir; usa o topo da série, ou o
-  // limiar quando tudo ficou abaixo dele.
-  const topo = Math.max(
-    LIMIAR_DE_MOVIMENTO,
-    ...serie.map((p) => p.intensidade ?? 0),
-  );
-  const serieComLacuna = serie.map((p) => ({
-    ...p,
-    alturaDaLacuna: p.lacuna ? topo : undefined,
-  }));
   // Por TEMPO MEDIDO, e não por contagem de amostra (DASH-09). Com
   // amostragem irregular, "9 eventos em 20 leituras = 45%" não significava
   // nada: as 20 leituras podiam cobrir três minutos de uma janela de duas
@@ -327,86 +266,9 @@ export function Dashboard() {
             </div>
           </div>
           <div className="h-52 sm:h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart data={serieComLacuna} margin={{ top: 4, right: 4, left: 4, bottom: 0 }}>
-                <defs>
-                  <linearGradient id={gradienteDoGrafico} x1="0" x2="0" y1="0" y2="1">
-                    <stop offset="0%" stopColor={COR_REPOUSO} stopOpacity={0.26} />
-                    <stop offset="100%" stopColor={COR_REPOUSO} stopOpacity={0} />
-                  </linearGradient>
-                  <pattern id={padraoDaLacuna} width="6" height="6" patternUnits="userSpaceOnUse">
-                    <rect width="6" height="6" fill="var(--muted-foreground)" fillOpacity={0.12} />
-                    <path d="M-1 1L1 -1M0 6L6 0M5 7L7 5" stroke="var(--muted-foreground)" strokeOpacity={0.65} />
-                  </pattern>
-                </defs>
-                <CartesianGrid vertical={false} stroke="var(--border)" strokeDasharray="3 5" />
-                <XAxis
-                  dataKey="hora"
-                  tickFormatter={(hora: string) => (/^\d/.test(hora) ? hora.slice(0, 5) : "")}
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{ fill: "var(--muted-foreground)", fontSize: 11, fontFamily: "Outfit" }}
-                  minTickGap={24}
-                />
-                {/* Sem números no eixo (UI-40): a referência é a linha do limite. */}
-                <YAxis hide />
-                <Tooltip
-                  content={<TooltipDoGrafico />}
-                  cursor={{ fill: "var(--secondary)", fillOpacity: 0.5 }}
-                />
-                {/* A fronteira da decisao, desenhada (DASH-07).
-                    Sem ela o grafico engana: numa captacao so de repouso o eixo
-                    se ajusta ao maior valor, as barras enchem a altura toda e
-                    parece muito movimento — quando na verdade nada chegou perto
-                    do limiar. Foi exatamente o que aconteceu na primeira coleta
-                    com hardware real, em 2026-08-24.
-                    O tracado da landing ja mostrava a faixa de limiar; aqui,
-                    onde o dado e real, ela importa mais.
-                    `ifOverflow="extendDomain"` garante que a linha apareca
-                    mesmo quando todos os pontos ficam abaixo dela. */}
-                <ReferenceLine
-                  y={LIMIAR_DE_MOVIMENTO}
-                  ifOverflow="extendDomain"
-                  stroke={COR_MOVIMENTO}
-                  strokeDasharray="5 4"
-                  strokeWidth={1.5}
-                />
-                {/* A lacuna vira uma coluna cinza de altura cheia. O eixo é
-                    categórico — cada leitura ocupa a mesma largura — então um
-                    buraco de duas horas ficava visualmente idêntico a dez
-                    segundos. Sem esta coluna, a tela não mostrava que a coleta
-                    tinha caído (DASH-09). */}
-                {temLacuna && (
-                  <Bar
-                    dataKey="alturaDaLacuna"
-                    radius={[3, 3, 0, 0]}
-                    isAnimationActive={false}
-                    fill={`url(#${padraoDaLacuna})`}
-                  />
-                )}
-                <Area
-                  type="linear"
-                  dataKey="intensidade"
-                  stroke="none"
-                  fill={`url(#${gradienteDoGrafico})`}
-                  connectNulls={false}
-                  isAnimationActive={false}
-                />
-                <Line
-                  type="linear"
-                  dataKey="intensidade"
-                  stroke={COR_REPOUSO}
-                  strokeWidth={2.5}
-                  connectNulls={false}
-                  isAnimationActive={false}
-                  dot={({ cx, cy, payload }: { cx?: number; cy?: number; payload?: PontoDaSerie }) =>
-                    payload?.movimento && cx != null && cy != null
-                      ? <circle key={`${cx}-${cy}`} cx={cx} cy={cy} r={3} fill={COR_MOVIMENTO} />
-                      : <g key={`${cx}-${cy}`} />
-                  }
-                />
-              </ComposedChart>
-            </ResponsiveContainer>
+            {/* Desenhado à mão desde o UI-43 (etapa 1): o mesmo gráfico, sem o recharts. A linha
+                do limite segue sempre visível (DASH-07), e a lacuna, hachurada (DASH-09). */}
+            <GraficoDeMovimento serie={serie} limite={LIMIAR_DE_MOVIMENTO} />
           </div>
           {temLacuna && (
             <figcaption className="mt-3 text-xs text-muted-foreground">

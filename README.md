@@ -102,7 +102,7 @@ vercel.json  # roteamento: /api e /health para o Flask, o resto para o frontend
 ## 🛠️ Stack
 **Firmware:** C++ · Arduino · ESP32 · MPU6050 · Wokwi  
 **Backend:** Python 3.11 · Flask · Supabase (PostgreSQL + Auth, com RLS) · Vercel  
-**Frontend:** React 18 · TypeScript · Vite · Tailwind CSS · Recharts · React Router  
+**Frontend:** React 18 · TypeScript · Vite · Tailwind CSS · React Router (o gráfico do painel é SVG próprio desde 23/11, `UI-43`)  
 **ML:** Python 3.11 · numpy · pandas · scipy · scikit-learn  
 **Qualidade:** pytest · vitest · GitHub Actions (CI)
 
