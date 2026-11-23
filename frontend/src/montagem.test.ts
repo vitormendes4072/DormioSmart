@@ -132,7 +132,7 @@ beforeEach(() => {
     }),
   );
 
-  // Idem `ResizeObserver`, que o recharts usa no painel.
+  // Idem `ResizeObserver`, que o painel usava com o recharts; o stub fica, inofensivo, para o próximo componente que o use.
   vi.stubGlobal(
     "ResizeObserver",
     class {

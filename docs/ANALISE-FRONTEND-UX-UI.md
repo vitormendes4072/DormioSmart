@@ -136,7 +136,7 @@ Prioridades são uma proposta desta análise, não itens oficialmente criados ou
 
 ## 8. Arquitetura técnica para manutenção
 
-- **Interface:** React 18, TypeScript, Vite, Tailwind CSS, React Router, Lucide e Recharts; versões em `frontend/package.json`.
+- **Interface:** React 18, TypeScript, Vite, Tailwind CSS, React Router e Lucide (o gráfico do painel é SVG próprio desde 23/11, `UI-43`); versões em `frontend/package.json`.
 - **Estado e dados:** `AuthProvider` envolve `PerfilProvider`; hooks específicos coordenam histórico, coleta, dispositivos, tema, consentimento e envio; `lib/api.ts` e módulos adjacentes encapsulam comunicação.
 - **Android:** Capacitor envolve o mesmo frontend; o plugin nativo de noite e seu serviço suportam funções indisponíveis no navegador. `vite.config.ts` define o endereço de backend para build `app`.
 - **Privacidade:** política é carregada sob demanda; controle de consentimento também depende de backend/banco, não apenas da caixa na interface.

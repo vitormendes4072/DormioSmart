@@ -12949,3 +12949,40 @@ existe ali. As mutações individuais verificam as falhas com o executor present
 - **As decisões do autor**, tomadas no mesmo dia, depois do inventário: as cinco abas do app, com o visual da barra da landing; os "períodos com movimento" depois do redesenho, no `UI-44`; a fonte do sistema, o que fecha o `UI-36`. A etapa 1 (a base visual) espera o plano aprovado (`UI-43`).
 
 **Procedência.** Branch `docs/UI-43-inventario-do-redesenho`, sobre `develop` `1c07d76`; Windows 11, Edge sem interface, servidor de desenvolvimento do Vite; 23/11.
+
+# 2026-11-23 (xiii) — UI-43, etapa 1 (a): o gráfico do Início em SVG próprio
+
+**O problema, como foi entendido no início.** O redesenho precisa de espaço no pacote do painel, que estava a 350 B do teto de 260 000 B comprimidos. Medido o pacote, o recharts sozinho pesava ~111 KB comprimidos, quase metade dele, para desenhar um gráfico só. O gráfico do celular de exemplo da landing é SVG feito à mão.
+
+**Hipótese de trabalho.** O gráfico pode ser desenhado à mão com o mesmo comportamento, e a conta separada do desenho deixa testar cada regra sem DOM.
+
+**O que foi testado, e como.**
+- **A geometria** (`lib/geometriaDoGrafico.ts`): o eixo categórico (cada ponto no centro da sua faixa, como o recharts); a linha e a área que quebram na lacuna; o limite sempre visível (DASH-07), com folga no topo; marcador só no ponto com movimento; coluna só na lacuna (DASH-09); as horas do eixo só de pontos com hora, uma por minuto, no máximo seis; a posição do dedo virando a faixa, sem sair da série.
+- **O componente** (`GraficoDeMovimento.tsx`): o desenho, a dica ao passar o dedo (o horário e "Movimento" ou "Repouso", por escrito; na lacuna, "Sem registro" e a duração), e as setas do teclado, que o gráfico anterior não tinha.
+- **O painel** com o gráfico novo, e o recharts removido do `package.json`.
+- **No navegador:** o Início antes e depois, no claro e no escuro, a 500 px; a dica pelas setas na prévia.
+- **Controle positivo:** 12 sabotagens.
+
+**Resultado medido.**
+- **O pacote do painel:** de 259 650 para **156 131 B** comprimidos, com teto de 260 000 B (o login e a landing não mudam).
+- **Frontend:** 965 em 65 arquivos (+13); lint, tipos, Knip, build e CSP passam; os testes do painel que já existiam ("Limite de movimento", a ordem das camadas, os avisos) passam sem mudança.
+- **Sabotagens:** 12 de 12, depois de reforçar um teste (abaixo).
+- **Na tela:** o gráfico novo é praticamente igual ao anterior; o eixo mostra 5 horas espaçadas em vez de 7.
+
+**Adaptação.**
+- **Uma marca por minuto no eixo:** o primeiro teste achou "23:00" duas vezes, de dois pontos no mesmo minuto. O recharts escondia a repetição pela distância mínima entre marcas; aqui ela é tirada na conta.
+- **As setas do teclado** não estavam no plano; entraram porque o gráfico ganhou um foco próprio para a dica.
+
+**O que deu errado no caminho.**
+- **A sabotagem do rótulo "sem dados" no eixo escapou:** o rótulo sai cortado ("sem d"), e o teste procurava o texto inteiro. O teste passou a conferir que todo rótulo é um horário.
+- **O jsdom não tem `PointerEvent`:** a dica não aparecia no teste porque o evento chegava sem a posição. O teste ganhou um substituto.
+- **Uma expectativa minha estava errada:** a duração da lacuna sai "2h 0m", no formato que o app já usa, e não "2h".
+- **O Knip reprovou** três exportações que só a geometria usava.
+- **As capturas do Edge sem interface** só gravavam a imagem quando a saída era lida até o fim; em laço, saíam vazias.
+- **A pasta da worktree do `APP-20` ficou presa** por um processo, mesmo depois de parar o Gradle; o registro da worktree saiu do git, e a pasta entra na lista das que o autor apaga à mão.
+
+**Risco em aberto.**
+- **O gráfico só foi visto com os dados de demonstração;** uma noite real com lacuna não foi vista no navegador, só nos testes (`UI-43`).
+- **A escolha do período e o valor ao tocar,** no estilo da landing, ficam para a etapa 2 (o Início).
+
+**Procedência.** Branch `feature/UI-43-grafico-proprio`, sobre `develop` `a56d9b2`; Windows 11, Node 22, Edge sem interface e o navegador do app de desktop; 23/11.
