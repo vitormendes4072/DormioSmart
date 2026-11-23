@@ -11,7 +11,7 @@
  * site nao define, e tudo continua relativo.
  */
 import type { LeituraSono } from "../types/sleep";
-import type { Trecho } from "./trecho";
+import { impressaoDosIds, type Trecho } from "./trecho";
 
 /** Prefixo do backend: vazio no site, o endereco completo no app (APP-02). */
 export function urlDaApi(caminho: string, base: string = import.meta.env.VITE_API_BASE ?? ""): string {
@@ -216,9 +216,11 @@ export const CONFIRMACAO_APAGAR_SESSAO = "APAGAR ESTA SESSAO";
 
 /** Apaga as épocas de uma sessão (DATA-16). Devolve quantas saíram. */
 export async function apagarSessao(trecho: Trecho): Promise<number> {
+  const { ids, ...janela } = trecho;
+  const impressao_ids = await impressaoDosIds(ids);
   const corpo = await requisitarJson<{ epocas_apagadas?: unknown }>("/api/sessoes/apagar", {
     method: "POST",
-    body: JSON.stringify({ ...trecho, confirmacao: CONFIRMACAO_APAGAR_SESSAO }),
+    body: JSON.stringify({ ...janela, impressao_ids, confirmacao: CONFIRMACAO_APAGAR_SESSAO }),
   });
   if (typeof corpo?.epocas_apagadas !== "number") throw new Error("Resposta de exclusão inválida.");
   return corpo.epocas_apagadas;
@@ -226,9 +228,11 @@ export async function apagarSessao(trecho: Trecho): Promise<number> {
 
 /** Marca (`true`) ou desmarca uma sessão como bancada/teste (DATA-16). Devolve quantas épocas. */
 export async function marcarSessao(trecho: Trecho, bancada: boolean): Promise<number> {
+  const { ids, ...janela } = trecho;
+  const impressao_ids = await impressaoDosIds(ids);
   const corpo = await requisitarJson<{ epocas_marcadas?: unknown }>("/api/sessoes/marcar", {
     method: "POST",
-    body: JSON.stringify({ ...trecho, bancada }),
+    body: JSON.stringify({ ...janela, impressao_ids, bancada }),
   });
   if (typeof corpo?.epocas_marcadas !== "number") throw new Error("Resposta de marcação inválida.");
   return corpo.epocas_marcadas;

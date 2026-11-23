@@ -7,18 +7,28 @@
  * mesmo `instanteDaLeitura` que o banco usa (`coalesce(captured_at,
  * created_at)`, migração 023).
  *
- * O banco age sobre TUDO o que estiver na janela, sem olhar a marca. Para que
- * isso seja a sessão da tela e só ela (UI-38):
+ * Para que a janela represente a sessão carregada (UI-38):
  *  - a sessão é cortada onde a marca muda (`sessoesDaMarca`);
  *  - os instantes vão como vieram: o `Date` do JS corta os microssegundos do
  *    Postgres, e a última época ficava fora da janela;
  *  - se ainda assim a janela pegar outra época carregada, não há ação.
- * O que chega ao banco depois de a tela carregar não dá para ver daqui.
+ * A 025 confere contagem, marca e SHA-256 dos IDs no banco e age somente
+ * sobre IDs travados. Inserções posteriores à conferência ficam fora.
  */
 import { instanteDaLeitura, type LeituraSono } from "../types/sleep";
 import { agruparEmSessoes, calcularCobertura, type Sessao } from "./cobertura";
 
-export type Trecho = { device: string; desde: string; ate: string };
+export type Trecho = { device: string; desde: string; ate: string; epocas_esperadas: number; bancada_atual: boolean; ids: string[] };
+
+// UUID canônico minúsculo, ordenado por comparação simples; unir com vírgulas,
+// sem espaços nem vírgula final, codificar em UTF-8 e SHA-256 em hex minúsculo.
+// A ordem é a mesma de ORDER BY id (uuid), independente da collation.
+export async function impressaoDosIds(ids: string[]): Promise<string> {
+  if (typeof globalThis.crypto?.subtle?.digest !== "function") throw new Error("Não foi possível conferir esta sessão neste aparelho.");
+  const dados = new TextEncoder().encode([...ids].map((id) => id.toLowerCase()).sort().join(","));
+  const hash = await globalThis.crypto.subtle.digest("SHA-256", dados);
+  return Array.from(new Uint8Array(hash), (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
 
 const calculados = new WeakMap<LeituraSono, number>();
 
@@ -40,7 +50,11 @@ function micro(leitura: LeituraSono): number {
  * de um aparelho misturado, ou com outra época de `carregadas` dentro da janela.
  */
 export function trechoDaSessao(leituras: LeituraSono[], carregadas = leituras): Trecho | null {
-  if (leituras.length === 0) return null;
+  if (leituras.length === 0 || typeof globalThis.crypto?.subtle?.digest !== "function") return null;
+  const ids = leituras.map((leitura) => leitura.id?.toLowerCase() ?? "");
+  if (ids.some((id) => !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(id))
+      || new Set(ids).size !== ids.length) return null;
+  if (leituras.some((leitura) => ehBancada(leitura) !== ehBancada(leituras[0]))) return null;
   const device = leituras[0].device_id;
   if (!device || leituras.some((leitura) => leitura.device_id !== device)) return null;
   let primeira = leituras[0];
@@ -53,7 +67,7 @@ export function trechoDaSessao(leituras: LeituraSono[], carregadas = leituras): 
   const naJanela = carregadas.filter((leitura) => leitura.device_id === device
     && micro(leitura) >= micro(primeira) && micro(leitura) <= micro(ultima));
   if (naJanela.length !== leituras.length) return null;
-  return { device, desde: instanteDaLeitura(primeira), ate: instanteDaLeitura(ultima) };
+  return { device, desde: instanteDaLeitura(primeira), ate: instanteDaLeitura(ultima), epocas_esperadas: leituras.length, bancada_atual: ehBancada(leituras[0]), ids };
 }
 
 /** A época que o titular marcou como bancada/teste. */

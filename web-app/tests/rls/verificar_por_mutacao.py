@@ -47,6 +47,28 @@ ARQUIVO_ALVO = pathlib.Path("tests/rls/pos_migracao.sql")
 # caem, para que a suíte não acuse por acidente.
 # ---------------------------------------------------------------------
 SABOTADORES = {
+    "data17_ignora_contagem": dict(
+        descricao="DATA-17 ignora a contagem esperada",
+        sql="""do $$ declare fonte text; begin
+          select pg_get_functiondef('public._ids_trecho(uuid,timestamptz,timestamptz,bigint,boolean,text)'::regprocedure) into fonte;
+          fonte := replace(fonte, 'pg_catalog.cardinality(v_ids) <> p_epocas_esperadas', 'false');
+          execute fonte; end $$;""",
+        minimo=1, exige="test_data17_recusa_contagem_errada"),
+    "data17_ignora_ids": dict(
+        descricao="DATA-17 ignora a impressão dos IDs",
+        sql="""do $$ declare fonte text; begin
+          select pg_get_functiondef('public._ids_trecho(uuid,timestamptz,timestamptz,bigint,boolean,text)'::regprocedure) into fonte;
+          fonte := replace(fonte, 'pg_catalog.encode(pg_catalog.sha256(pg_catalog.convert_to(pg_catalog.array_to_string(v_ids, '',''), ''UTF8'')), ''hex'') <> p_impressao_ids', 'false');
+          execute fonte; end $$;""",
+        minimo=1, exige="test_data17_confere_identidade_e_marca[troca"),
+    "data17_ignora_marca": dict(
+        descricao="DATA-17 ignora a marca atual",
+        sql="""do $$ declare fonte text; begin
+          select pg_get_functiondef('public._ids_trecho(uuid,timestamptz,timestamptz,bigint,boolean,text)'::regprocedure) into fonte;
+          fonte := replace(fonte, 'v_diferentes <> 0', 'false');
+          execute fonte; end $$;""",
+        minimo=1, exige="test_data17_confere_identidade_e_marca[marca"),
+
     # --- SEC-05: o RLS por dono ---
     "rls_desligado": dict(
         descricao="RLS desligado em sleep_data",

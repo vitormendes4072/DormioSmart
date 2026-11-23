@@ -11771,6 +11771,26 @@ Vitest e build no Windows; servidor local com autenticação fictícia; 19/11/20
 
 **Procedência.** Branch `docs/BRAND-05-grafia-do-nome` sobre `develop` `67bc830`; Windows 11; 19/11.
 
+---
+
+# 2026-11-22 (vii) — DATA-17: conferir a sessão antes de alterar
+
+**O problema, como foi entendido no início.** A 023 age por janela, inclusive sobre época que a tela não carregou. O `UI-38` limitou o alcance entre as carregadas, mas não protegeu contra lote tardio nem limite de páginas.
+
+**Hipótese de trabalho.** Contagem, marca e impressão SHA-256 dos IDs exibidos identificam a sessão no instante da conferência. A mutação usa apenas os IDs travados. O dono vem de `auth.uid()` e o teto segue em 48 h.
+
+**O que foi testado, e como.** Dez testes novos de campos obrigatórios/inválidos no backend, onze casos RLS de assinaturas e divergência, e um caso de frontend sem ID foram executados contra `develop` antes da implementação e falharam; o vetor SHA-256 no Postgres passou. Depois: suíte de backend, frontend e RLS; diagnóstico de migrações; lint e build. Um gatilho de teste insere uma época depois da conferência e antes da mutação. O teste de 409 e o de chegada durante a operação foram escritos depois da implementação; o de 409 foi sabotado removendo temporariamente o recarregamento. Três sabotagens SQL removem individualmente a conferência de contagem, marca e IDs.
+
+**Resultado medido.** Backend: 679 passam, 1 pula. Frontend: 868 passam, 59 arquivos; lint e build passam. RLS: 337 passam em Postgres 17. O diagnóstico acerta 23 estados e a 002. As sabotagens de contagem, marca e IDs derrubaram respectivamente 1, 2 e 2 testes: `test_data17_recusa_contagem_errada`, `test_data17_confere_identidade_e_marca[marca-*]` e `[troca-*]`; sem recarregar no 409, o teste da tela falhou por uma chamada de busca em vez de duas. O gatilho confirmou que a época inserida durante a operação permanece sem ser marcada ou apagada.
+
+**Adaptação.** O autor aprovou complementar a contagem com a impressão dos IDs: contagem igual não identifica uma troca; `FOR UPDATE` não impede inserção na janela. A 025 trava e guarda os IDs, confere os três campos e altera só esses IDs. Ausência de campos pede atualização (400), divergência dá 409 e recarrega, banco fora dá 503. O APK 1.1.2 precisará de atualização. Aplicar a 025 logo após o deploy: entre os dois, as duas ações retornam 503.
+
+**O que deu errado no caminho.** Scripts foram chamados no diretório errado e não gravaram; foram repetidos no diretório correto. Uma tentativa de controle do 409 não reconheceu CRLF; foi refeita e o arquivo restaurado. O lint apontou uma variável não usada num teste, corrigida. RLS e diagnóstico foram iniciados ao mesmo tempo no mesmo Postgres e o RLS recusou o setup por outros bancos temporários; foram repetidos em sequência.
+
+**Risco em aberto.** A inserção posterior à conferência não é recusada, mas também não é atingida; pode deixar uma sessão incompleta. O teste com gatilho não reproduz todos os agendamentos concorrentes. A conferência página real × banco com lotes chegando será refeita pelo Claude na revisão. Não houve teste em produção, conta real, APK, Postgres 14 ou 16.
+
+**Procedência.** Branch `bugfix/DATA-17-conferir-sessao`, árvore sobre `develop` `2b8fbd5`; Windows 11, Python 3.13, Node 22, Postgres 17 em Docker; 22/11/2026.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

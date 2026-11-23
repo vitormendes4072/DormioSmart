@@ -225,7 +225,10 @@ describe("janela paginada do Histórico", () => {
 });
 
 describe("excluir e marcar uma sessão (DATA-16)", () => {
-  const trecho = { device: "d1", desde: "2026-11-17T05:35:00.000Z", ate: "2026-11-17T12:36:00.000Z" };
+  const trecho = { device: "d1", desde: "2026-11-17T05:35:00.000Z", ate: "2026-11-17T12:36:00.000Z", epocas_esperadas: 1, bancada_atual: false, ids: ["00000000-0000-0000-0000-000000000001"] };
+  const janela = { device: trecho.device, desde: trecho.desde, ate: trecho.ate,
+    epocas_esperadas: trecho.epocas_esperadas, bancada_atual: trecho.bancada_atual };
+  const impressao_ids = "7ac1b8d7010bb6cd3a3e84e7f90136b880bbc899e428ece49333372911ab9052";
 
   it("apagarSessao manda o trecho e a frase de confirmação, e devolve a contagem", async () => {
     const fetch = vi.fn(async (_url: RequestInfo | URL, opcoes?: RequestInit) => {
@@ -236,7 +239,7 @@ describe("excluir e marcar uma sessão (DATA-16)", () => {
     await expect(apagarSessao(trecho)).resolves.toBe(812);
     expect(String(fetch.mock.calls[0][0])).toContain("/api/sessoes/apagar");
     expect(opcoesCapturadas?.method).toBe("POST");
-    expect(JSON.parse(String(opcoesCapturadas?.body))).toEqual({ ...trecho, confirmacao: CONFIRMACAO_APAGAR_SESSAO });
+    expect(JSON.parse(String(opcoesCapturadas?.body))).toEqual({ ...janela, impressao_ids, confirmacao: CONFIRMACAO_APAGAR_SESSAO });
   });
 
   it("marcarSessao manda o trecho e a marca, e devolve a contagem", async () => {
@@ -247,7 +250,7 @@ describe("excluir e marcar uma sessão (DATA-16)", () => {
     vi.stubGlobal("fetch", fetch);
     await expect(marcarSessao(trecho, false)).resolves.toBe(3);
     expect(String(fetch.mock.calls[0][0])).toContain("/api/sessoes/marcar");
-    expect(JSON.parse(String(opcoesCapturadas?.body))).toEqual({ ...trecho, bancada: false });
+    expect(JSON.parse(String(opcoesCapturadas?.body))).toEqual({ ...janela, impressao_ids, bancada: false });
   });
 
   it("resposta sem a contagem é erro, e não um zero inventado", async () => {
