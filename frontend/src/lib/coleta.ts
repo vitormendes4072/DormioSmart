@@ -44,9 +44,15 @@ export class ErroDeIngestao extends Error {
  * Create-or-get no servidor: uma chamada por sessao de coleta criando um
  * dispositivo novo encheria a conta de orfaos e tornaria o painel inutil.
  * A resposta nunca traz token.
+ *
+ * APP-19: o app manda a propria versao (`versaoApp`), para contar quantas
+ * pessoas tem cada versao instalada; o site nao manda nada.
  */
-export function prepararDispositivoDoCelular(): Promise<Dispositivo> {
-  return requisitarJson<Dispositivo>("/api/devices/celular", { method: "POST" });
+export function prepararDispositivoDoCelular(versaoApp?: string): Promise<Dispositivo> {
+  return requisitarJson<Dispositivo>("/api/devices/celular", {
+    method: "POST",
+    ...(versaoApp ? { body: JSON.stringify({ versao_app: versaoApp }) } : {}),
+  });
 }
 
 /**

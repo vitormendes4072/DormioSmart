@@ -751,6 +751,49 @@ SABOTADORES = {
         minimo=1,
         exige="test_o_expurgo_apaga_so_o_que_passou_de_12_meses",
     ),
+    # APP-19 (23/11): a versao do app no aparelho, migracao 026.
+    "versao_sem_formato": dict(
+        descricao="a restricao do formato da versao do app sai",
+        sql="alter table public.devices drop constraint devices_versao_app_formato;",
+        minimo=1,
+        exige="test_fora_da_regua_e_recusado",
+    ),
+    "versao_sem_a_data": dict(
+        descricao="a versao do app passa a valer sem o instante em que foi vista",
+        sql="""
+            alter table public.devices drop constraint devices_versao_app_formato;
+            alter table public.devices add constraint devices_versao_app_formato check (
+                versao_app is null or versao_app ~ '^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$');
+        """,
+        minimo=1,
+        exige="test_versao_sem_a_data_e_recusada",
+    ),
+    "versao_regua_estreita": dict(
+        descricao="a regua do banco fica mais estreita que a do Flask (2 digitos)",
+        sql="""
+            alter table public.devices drop constraint devices_versao_app_formato;
+            alter table public.devices add constraint devices_versao_app_formato check (
+                versao_app is null or (versao_app ~ '^[0-9]{1,2}\.[0-9]{1,2}\.[0-9]{1,2}$'
+                                       and versao_vista_em is not null));
+        """,
+        minimo=1,
+        exige="test_a_regua_do_flask_passa",
+    ),
+    "versao_do_aparelho_alheio": dict(
+        # So abrir o update nao basta: o `where` do update tambem passa pela
+        # policy de select, que segura (medido em 23/11). A regressao real e
+        # abrir as duas.
+        descricao="as policies de select e update de devices deixam qualquer autenticado ver e alterar",
+        sql="""
+            drop policy devices_select_own on public.devices;
+            create policy devices_select_own on public.devices for select to authenticated using (true);
+            drop policy devices_update_own on public.devices;
+            create policy devices_update_own on public.devices for update to authenticated
+                using (true) with check (true);
+        """,
+        minimo=1,
+        exige="test_ninguem_grava_a_versao_do_aparelho_alheio",
+    ),
 }
 
 

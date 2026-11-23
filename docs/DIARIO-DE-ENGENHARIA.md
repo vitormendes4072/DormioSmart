@@ -12812,3 +12812,44 @@ existe ali. As mutações individuais verificam as falhas com o executor present
 - **A análise do `CAL-03`** depende das noites, ainda não gravadas.
 
 **Procedência.** PR #264 mesclada em `main` `d33330c`; deploy `8009393815`; release `app-v1.1.3`; conferências desta máquina (Windows 11) e do autor no SQL Editor; 23/11.
+
+# 2026-11-23 (ix) — APP-19: quem tem cada versão do app, e o aviso de versão nova
+
+**O problema, como foi entendido no início.** O autor perguntou quantas pessoas baixaram o app, qual versão, quantas têm cada versão instalada e se dá para avisar quem ficou numa versão antiga. O GitHub conta os downloads de cada APK. Mas download não é instalação, e o app não informava a própria versão a ninguém.
+
+**Hipótese de trabalho.** Sem a Play Store, só o app pode contar. A chamada que ele já faz a cada envio de noite (`POST /api/devices/celular`) pode levar a versão, e o servidor a guarda no aparelho. Para o aviso, o app lê a versão publicada num arquivo do site, que vai ao ar no mesmo deploy do APK novo. Uma notificação com o app fechado (Firebase) ficou de fora.
+
+**O que foi testado, e como.**
+- **Os downloads no GitHub** (`gh api .../releases`), antes de qualquer código.
+- **Banco:** migração 026 (`devices.versao_app` e `versao_vista_em`, com uma restrição de formato igual à régua do Flask); a marca no diagnóstico; o verificador de migrações; 14 testes de RLS (`test_rls_versao_do_app.py`); 4 sabotagens no verificador por mutação.
+- **Backend:** a rota grava a versão válida no aparelho existente ou recém-criado; o site (sem versão) e a versão fora do formato não gravam nada nem mudam a resposta; uma falha ao gravar não trava o envio. 15 testes (`test_versao_do_app.py`).
+- **Frontend:** `atualizacaoDoApp.ts` (comparação número a número, busca sem cache e sem lançar); a faixa `AvisoDeAtualizacao` no `Layout`, só no app e carregada à parte do pacote; a Noite manda `VERSAO_DO_APP_ANDROID`; `public/versao-do-app.json` conferido contra a versão da landing e do `build.gradle`. 18 testes.
+- **A consulta de contagem** (`CONSULTA-versoes-do-app.sql`), num Postgres 17 com aparelhos de exemplo.
+- **Política:** §2.2 (o dado) e finalidade 7 da §3 (contagem agregada e o aviso), sem novo aceite, como no plano aprovado.
+- **Controle positivo:** 17 sabotagens no backend e no frontend e 4 no banco.
+
+**Resultado medido.**
+- **Downloads em 23/11:** 1.1.0, 3; 1.1.1, 2; 1.1.2, 4; 1.1.3, 1. Cada conferência de release do Claude baixa uma vez: o da 1.1.3 é o meu, e os outros têm um meu cada.
+- **Suítes:** backend 730 passam, 1 pula (eram 715); frontend 943 em 63 arquivos (eram 925); RLS 351 (eram 337); o verificador de migrações acerta os 24 estados; build, build do app, lint, Knip e CSP passam.
+- **Sabotagens:** 17 de 17 no backend e no frontend; 70 de 70 no banco.
+- **O orçamento do painel:** 259 754 B comprimidos, com teto de 260 000 B.
+- **A consulta:** ordena as versões como números (1.1.10 antes de 1.1.4), separa os ativos dos últimos 30 dias e não conta o travesseiro.
+
+**Adaptação.**
+- **A faixa tem duas travas:** a busca não roda fora do app, e a faixa não aparece fora do app. A primeira sabotagem, na segunda trava, escapou, porque a primeira já segura. A sabotagem passou a mirar a busca, que é a trava que decide.
+- **A sabotagem das policies de `devices`:** abrir só a de `update` não deixou alterar o aparelho alheio. O `where` do `update` também passa pela policy de `select`, que seguiu fechada. É defesa em profundidade, e a sabotagem passou a abrir as duas.
+
+**O que deu errado no caminho.**
+- **O CI reprovou a primeira versão da PR pelo orçamento do painel:** 260 209 B comprimidos, 209 B acima do teto. Eu não tinha rodado o `conferir_pacote_frontend.py` localmente. A faixa passou a ser carregada à parte (`lazy`), só no app, em vez de subir o teto; o painel voltou a 259 754 B, e uma sabotagem nova confere o carregamento à parte.
+- **A primeira rodada das sabotagens do banco deu "sabotador quebrado" em todas,** inclusive nas antigas. Eu tinha criado mais dois bancos no mesmo servidor (o do verificador de migrações e o da consulta), e os papéis do Supabase são do servidor inteiro, como o `CI-11` já registra. Refeita num servidor só para ela.
+- **O teste da faixa** achou dois botões "Agora não": o arquivo não limpava a tela entre os testes. Entrou o `cleanup`.
+- **Um script de edição em várias etapas** se embaralhou ao trocar a ordem das migrações no verificador; as três trocas foram refeitas uma a uma e conferidas.
+- **O `build:app`** tocou dois arquivos do Gradle (fim de linha), restaurados com `git checkout`.
+
+**Risco em aberto.**
+- **O app até a 1.1.3** não informa a versão nem vê o aviso; a quem tem essas versões, só o autor avisa, por mensagem (`APP-19`).
+- **"Sem versão" mistura** o app antigo com o celular usado só pelo site.
+- **A política mudou sem novo aceite;** a confirmar com o orientador, junto do `LGPD-03`.
+- **Na produção, só com o R19:** a 026 antes ou junto do deploy (sem ela, a gravação da versão falha e é só registrada no log), e o APK 1.1.4.
+
+**Procedência.** Branch `feature/APP-19-versao-do-app`, sobre `develop` `282fde0`; Windows 11, Python 3.13, Node 22, Postgres 17 em Docker; 23/11.
