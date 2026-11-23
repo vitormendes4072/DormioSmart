@@ -12853,3 +12853,35 @@ existe ali. As mutações individuais verificam as falhas com o executor present
 - **Na produção, só com o R19:** a 026 antes ou junto do deploy (sem ela, a gravação da versão falha e é só registrada no log), e o APK 1.1.4.
 
 **Procedência.** Branch `feature/APP-19-versao-do-app`, sobre `develop` `282fde0`; Windows 11, Python 3.13, Node 22, Postgres 17 em Docker; 23/11.
+
+# 2026-11-23 (xii) — UI-43, etapa 0: o inventário antes do redesenho
+
+**O problema, como foi entendido no início.** O autor notou que o celular de exemplo da landing mostra um app diferente do real, e quer levar o visual mais moderno da landing para o app, sem perder função nem dado, e com a landing mostrando o app de verdade. Antes de qualquer tela mudar, era preciso saber exatamente o que cada versão tem e o que protege cada função do app.
+
+**Hipótese de trabalho.** A divergência é só de visual. Os testes existentes protegem as funções, e o redesenho pode ir tela por tela apoiado neles.
+
+**O que foi testado, e como.**
+- **As quatro abas da landing**, lidas pelo texto e capturadas em imagem: uma cópia da `public/` servida localmente, com uma página que abre a landing, troca a aba e fixa o celular no canto; capturas pelo Edge sem interface.
+- **As telas do app**, em modo demonstração (`?demo=1`), na largura de celular, pelo mesmo Edge.
+- **O inventário:** os títulos de todos os testes das telas, ligados a cada função; e uma busca nos testes por função, para achar as que nenhum teste exercita.
+
+**Resultado medido.**
+- **A divergência não é só de visual.** A landing tem Relatório e Eventos, que o app não tem; o app tem Noite, Histórico e Dispositivos, que a landing não mostra. A landing ainda promete o que o sensor não mede: nomes de gesto ("Giro corporal", "Ajuste de posição") e uma "sensibilidade" ajustável.
+- **O que vale levar:** o número em destaque num cartão escuro, os cartões de métrica, a etiqueta em maiúsculas com título curto, o cabeçalho com a marca, a barra de abas com ícone e o gráfico com período e valor ao tocar.
+- **Quatro funções sem teste de tela:** a escolha da janela do Histórico (24 h, 7 dias, 30 dias), renomear, revogar e sair. Ganham teste antes de a tela delas mudar.
+- **O documento:** `docs/REDESENHO-DO-APP.md`, com a comparação, o inventário, as decisões do autor e as etapas. A comparação em imagem foi entregue ao autor, fora do repositório.
+
+**Adaptação.** A hipótese de que só o visual divergia caiu: a landing mostra funções que o app não tem, e duas delas não poderiam existir como estão. Por isso há a etapa 7 (a landing honesta) e a decisão sobre "períodos com movimento".
+
+**O que deu errado no caminho.**
+- **A primeira captura do celular saiu deslocada:** a landing anima o aparelho. O celular passou a ser fixado no canto antes da captura.
+- **As primeiras capturas do app saíram cortadas à direita:** o Edge sem interface não abre uma janela de 390 px. Refeitas a 500 px, ainda no layout de celular.
+- **O Edge devolveu o controle antes de gravar a imagem,** e a listagem logo depois parecia ter perdido arquivos.
+- **A primeira versão do inventário citava testes que não existem** (`TracadoDeMovimento.test.tsx`, e renomear e revogar como cobertos por `dispositivos.test.ts`). Conferido arquivo a arquivo antes de versionar, e corrigido.
+
+**Risco em aberto.**
+- **O orçamento do painel tem 237 B de folga:** a base visual provavelmente precisa tirar algo do pacote principal (`UI-43`, `UI-15`).
+- **A tela Noite só aparece no app;** não entrou na comparação em imagem (`UI-43`).
+- **As decisões do autor** (as abas, os "períodos com movimento", a fonte do `UI-36`) vêm antes da etapa 1.
+
+**Procedência.** Branch `docs/UI-43-inventario-do-redesenho`, sobre `develop` `1c07d76`; Windows 11, Edge sem interface, servidor de desenvolvimento do Vite; 23/11.
