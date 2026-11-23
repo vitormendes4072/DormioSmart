@@ -24,6 +24,7 @@ describe("o envio do app (APP-19)", () => {
 
   it("o aviso de versão nova está na casca das telas depois do login", () => {
     const layout = readFileSync(resolve("src/components/Layout.tsx"), "utf8");
-    expect(layout).toMatch(/<AvisoDeAtualizacao \/>\s*<Outlet \/>/);
+    expect(layout).toMatch(/noiteNativaDisponivel\(\) \? \(\s*<Suspense fallback=\{null\}>\s*<AvisoDeAtualizacao \/>/);
+    expect(layout).toMatch(/lazy\(\(\) =>\s*import\("\.\/AvisoDeAtualizacao"\)/);
   });
 });

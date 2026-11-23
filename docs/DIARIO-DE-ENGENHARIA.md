@@ -12823,15 +12823,16 @@ existe ali. As mutações individuais verificam as falhas com o executor present
 - **Os downloads no GitHub** (`gh api .../releases`), antes de qualquer código.
 - **Banco:** migração 026 (`devices.versao_app` e `versao_vista_em`, com uma restrição de formato igual à régua do Flask); a marca no diagnóstico; o verificador de migrações; 14 testes de RLS (`test_rls_versao_do_app.py`); 4 sabotagens no verificador por mutação.
 - **Backend:** a rota grava a versão válida no aparelho existente ou recém-criado; o site (sem versão) e a versão fora do formato não gravam nada nem mudam a resposta; uma falha ao gravar não trava o envio. 15 testes (`test_versao_do_app.py`).
-- **Frontend:** `atualizacaoDoApp.ts` (comparação número a número, busca sem cache e sem lançar); a faixa `AvisoDeAtualizacao` no `Layout`, só no app; a Noite manda `VERSAO_DO_APP_ANDROID`; `public/versao-do-app.json` conferido contra a versão da landing e do `build.gradle`. 18 testes.
+- **Frontend:** `atualizacaoDoApp.ts` (comparação número a número, busca sem cache e sem lançar); a faixa `AvisoDeAtualizacao` no `Layout`, só no app e carregada à parte do pacote; a Noite manda `VERSAO_DO_APP_ANDROID`; `public/versao-do-app.json` conferido contra a versão da landing e do `build.gradle`. 18 testes.
 - **A consulta de contagem** (`CONSULTA-versoes-do-app.sql`), num Postgres 17 com aparelhos de exemplo.
 - **Política:** §2.2 (o dado) e finalidade 7 da §3 (contagem agregada e o aviso), sem novo aceite, como no plano aprovado.
-- **Controle positivo:** 16 sabotagens no backend e no frontend e 4 no banco.
+- **Controle positivo:** 17 sabotagens no backend e no frontend e 4 no banco.
 
 **Resultado medido.**
 - **Downloads em 23/11:** 1.1.0, 3; 1.1.1, 2; 1.1.2, 4; 1.1.3, 1. Cada conferência de release do Claude baixa uma vez: o da 1.1.3 é o meu, e os outros têm um meu cada.
 - **Suítes:** backend 730 passam, 1 pula (eram 715); frontend 943 em 63 arquivos (eram 925); RLS 351 (eram 337); o verificador de migrações acerta os 24 estados; build, build do app, lint, Knip e CSP passam.
-- **Sabotagens:** 16 de 16 no backend e no frontend; 70 de 70 no banco.
+- **Sabotagens:** 17 de 17 no backend e no frontend; 70 de 70 no banco.
+- **O orçamento do painel:** 259 754 B comprimidos, com teto de 260 000 B.
 - **A consulta:** ordena as versões como números (1.1.10 antes de 1.1.4), separa os ativos dos últimos 30 dias e não conta o travesseiro.
 
 **Adaptação.**
@@ -12839,6 +12840,7 @@ existe ali. As mutações individuais verificam as falhas com o executor present
 - **A sabotagem das policies de `devices`:** abrir só a de `update` não deixou alterar o aparelho alheio. O `where` do `update` também passa pela policy de `select`, que seguiu fechada. É defesa em profundidade, e a sabotagem passou a abrir as duas.
 
 **O que deu errado no caminho.**
+- **O CI reprovou a primeira versão da PR pelo orçamento do painel:** 260 209 B comprimidos, 209 B acima do teto. Eu não tinha rodado o `conferir_pacote_frontend.py` localmente. A faixa passou a ser carregada à parte (`lazy`), só no app, em vez de subir o teto; o painel voltou a 259 754 B, e uma sabotagem nova confere o carregamento à parte.
 - **A primeira rodada das sabotagens do banco deu "sabotador quebrado" em todas,** inclusive nas antigas. Eu tinha criado mais dois bancos no mesmo servidor (o do verificador de migrações e o da consulta), e os papéis do Supabase são do servidor inteiro, como o `CI-11` já registra. Refeita num servidor só para ela.
 - **O teste da faixa** achou dois botões "Agora não": o arquivo não limpava a tela entre os testes. Entrou o `cleanup`.
 - **Um script de edição em várias etapas** se embaralhou ao trocar a ordem das migrações no verificador; as três trocas foram refeitas uma a uma e conferidas.

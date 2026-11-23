@@ -1,11 +1,18 @@
+import { lazy, Suspense } from "react";
 import { Outlet, useLocation } from "react-router";
 
 import { estaEmModoDemo } from "../lib/demo";
+import { noiteNativaDisponivel } from "../lib/noiteNativa";
 
-import { AvisoDeAtualizacao } from "./AvisoDeAtualizacao";
 import { FaixaDemo } from "./FaixaDemo";
 import { MobileNav } from "./MobileNav";
 import { Sidebar } from "./Sidebar";
+
+// APP-19: o aviso de versão nova só existe no app, e vem num pedaço à parte do pacote: o site
+// não o baixa, e o orçamento do painel (`scripts/conferir_pacote_frontend.py`) não muda.
+const AvisoDeAtualizacao = lazy(() =>
+  import("./AvisoDeAtualizacao").then((m) => ({ default: m.AvisoDeAtualizacao })),
+);
 
 /** Casca das telas autenticadas. A proteção de rota de verdade (redirecionar
  *  quem não tem sessão) é o AUTH-04 — hoje qualquer URL é acessível. */
@@ -19,7 +26,11 @@ export function Layout() {
         <Sidebar painel={painel} />
         {/* pb-20 no celular abre espaço para a barra inferior não cobrir conteúdo */}
         <main className={painel ? "min-w-0 flex-1 px-4 pb-20 pt-5 md:px-[30px] md:pt-[26px]" : "min-w-0 flex-1 overflow-y-auto p-4 pb-20 md:p-8"}>
-          <AvisoDeAtualizacao />
+          {noiteNativaDisponivel() ? (
+            <Suspense fallback={null}>
+              <AvisoDeAtualizacao />
+            </Suspense>
+          ) : null}
           <Outlet />
         </main>
         <MobileNav />
