@@ -12601,3 +12601,49 @@ O APK não muda neste release: o app Android recebe o Histórico novo no próxim
 - **Se treinar juntando várias bases melhora a robustez entre coortes** é o `ML-18`, novo.
 
 **Procedência.** Probabilidades da rodada final do ML-INF v2 (07/11); branch `docs/analise-vigilia-por-noite`, sobre `develop` `96e7b40`; Windows 11, Python 3.11.9 do `ml/.venv`; 23/11.
+
+# 2026-11-23 (iii) — o protocolo e a análise do VIA-02, antes da primeira noite
+
+**O problema, como foi entendido no início.** O autor propôs gravar a mesma noite com o app e com o travesseiro e cruzar os dados. É o `VIA-02`, que estava no backlog sem protocolo. Os dois aparelhos já gravam para a mesma conta e calculam as mesmas 8 features com o mesmo núcleo em C++, então a comparação mede onde o sensor está e quanto acopla ao corpo, não a conta. Nada no app nem no firmware precisava mudar.
+
+**Hipótese de trabalho.** Basta um trecho de console que baixe as duas séries da noite e um script que as pareie. O critério do veredito tem de ser fixado agora, antes de existir dado.
+
+**O que foi testado, e como.**
+- **`scripts/analisar_via02.py`** e 16 testes com noites sintéticas (`web-app/tests/test_analisar_via02.py`). Os testes cobrem:
+  - as grades defasadas de 0, 5, 15 e 29 s concordando inteiras;
+  - séries independentes não concordando nem "captando";
+  - atraso de relógio de 1 e 2 registros medido e corrigido;
+  - buraco no travesseiro ou no celular sem virar discordância nem parear com registro distante;
+  - perder 5% do movimento capta, perder 50% não;
+  - com pouco movimento, 80% vistos não bastam (o intervalo segura o veredito);
+  - menos de 5 noites e noite curta;
+  - a direção do "viu", o limiar candidato e a concordância do modelo;
+  - a saída 2 sem pares.
+- **Controle positivo:** 8 regras sabotadas uma a uma, cada uma derrubando ao menos um teste. As regras são: sem corrigir o atraso, o empate do pareamento invertido, a sobreposição mínima ignorada, o intervalo fora do veredito, sem o mínimo de noites, a noite curta entrando, o "viu" invertido e o limiar errado.
+- **O trecho de console** do `docs/PROTOCOLO-VIA-02.md` passou pelo `node --check`. Cinco arquivos no formato que ele baixa (com `janela`, `posicao_do_celular` e `inferencia` nula) passaram pela linha de comando da análise.
+
+**Resultado medido.**
+- Suíte do backend: **695 passam, 1 pula** (+16).
+- Sabotagens: **8 de 8** pegas.
+- **Não há resultado do `VIA-02` ainda:** nenhuma noite foi gravada.
+
+**Veredito.** O critério fica fixado:
+- pareamento por sobreposição de ao menos 15 s;
+- atraso de −2 a +2 registros escolhido pela correlação de Pearson da intensidade;
+- veredito sobre ao menos 5 noites de pelo menos 120 pares: o travesseiro "capta" se viu ao menos 80% dos registros com movimento no celular e se o limite inferior do intervalo de 95% (bootstrap por blocos de 20 pares) passa de 70%.
+
+O celular fica sobre o colchão, perto do travesseiro, em todas as noites.
+
+**Adaptação.** O atraso era escolhido pela correlação de postos (Spearman). Passou à de Pearson, porque numa noite quase toda parada a ordem das épocas paradas é ruído: no deslocamento certo, a correlação de postos caiu a 0,25, e um vizinho ganhou por acaso. Pearson e κ escolheram o mesmo deslocamento nos 23 casos conferidos. A saída por noite relata as duas.
+
+**O que deu errado no caminho.**
+- **O teste do buraco deu 479 pares em vez de 480:** com a correlação de postos, o atraso escolhido foi +1. Foi o que levou à troca por Pearson.
+- **Três sabotagens sobreviveram na primeira rodada:** o empate invertido, a sobreposição ignorada e o "viu" invertido. Os testes conferiam o κ, que o atraso corrigia por baixo, e não o par escolhido nem a direção. Ganharam três asserções: atraso 0 nas defasagens até 15 s, um buraco no celular e a direção do "viu".
+- **A asserção do atraso 0 falhou com 29 s de defasagem, no código certo:** com 29 s, o registro de 29 s de sobreposição é o anterior. Defasagem de 29 s e −1 s mais um registro de atraso são indistinguíveis, e medir +1 ali é correto. A asserção ficou restrita às defasagens até 15 s.
+
+**Risco em aberto.**
+- **O veredito depende de haver movimento na noite.** Com pouco movimento, o intervalo é largo e pode não decidir nem com 5 noites. Nesse caso, gravar mais noites, sem mudar o critério.
+- **O limiar do celular** sai como candidato, e decidir o valor é o `DATA-06`.
+- **O tempo de envio do lote** segue sem medida (`API-06`, `INFRA-05`).
+
+**Procedência.** Branch `feature/VIA-02-protocolo-e-analise`, sobre `develop` `7543014`; Windows 11, Python 3.13; 23/11.
