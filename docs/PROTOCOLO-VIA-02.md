@@ -12,6 +12,10 @@ limiar de movimento do celular, que o `DATA-06` espera.
 sensores concordando não provam que estão certos (isso é o `VAL-02`). Uma pessoa, várias noites
 (n = 1). Nenhuma mudança no app ou no firmware: os dois aparelhos já gravam para a mesma conta.
 
+**As mesmas noites servem à etapa 3 do `CAL-03`** (seção no fim): se a autocalibração do
+celular tirou o viés da orientação. Para isso, a tela do celular alterna entre as noites (passo 5
+abaixo) e você anota uma linha do app; nenhuma noite a mais.
+
 ---
 
 ## Antes de cada noite
@@ -23,8 +27,17 @@ sensores concordando não provam que estão certos (isso é o `VAL-02`). Uma pes
 4. **A posição do celular é a mesma em todas as noites: sobre o colchão, perto do travesseiro**, e
    no app escolha **"Sobre o colchão"**. É o uso normal do app, e é ele que se quer comparar com o
    travesseiro. Trocar de posição entre noites mistura duas perguntas.
-5. Anote a hora em que **iniciou a noite no app** e a hora em que **encerrou**, em data, horas e
+5. **A tela alterna de uma noite para a outra:** numa noite, deitado **com a tela para cima**; na
+   seguinte, **com a tela para baixo**, e assim por diante. Continua "Sobre o colchão": muda só o
+   lado, e isso não mexe no rótulo de movimento que o `VIA-02` compara (o viés da posição é de
+   0,02 g, e o rótulo começa em 0,12 g). É o que o `CAL-03` precisa: a calibração só acerta o eixo
+   da tela vendo os dois lados dele.
+6. Anote a hora em que **iniciou a noite no app** e a hora em que **encerrou**, em data, horas e
    minutos.
+7. **Logo depois de iniciar a noite**, abra **Detalhes técnicos** no cartão da noite e anote a
+   linha **"Calibração do sensor"** (por exemplo "Calibrado: …", "Calibrando: 12 de 40 épocas
+   paradas" ou "Calibração recusada: …"). Ela só aparece ali, e diz com que calibração a noite foi
+   gravada.
 
 ## De manhã
 
@@ -44,6 +57,9 @@ sensores concordando não provam que estão certos (isso é o `VAL-02`). Uma pes
 const INICIO = "2026-11-24 23:30";
 const FIM = "2026-11-25 07:00";
 const POSICAO_DO_CELULAR = "colchao";
+// CAL-03: "cima" ou "baixo", e a linha "Calibração do sensor" anotada ao iniciar.
+const ORIENTACAO_DO_CELULAR = "cima";
+const LINHA_DE_CALIBRACAO = "";
 
 const quando = (texto) => { const [d, hm] = texto.split(" "); const [a, me, di] = d.split("-").map(Number); const [h, mi] = hm.split(":").map(Number); return new Date(a, me - 1, di, h, mi, 0, 0); };
 const desde = new Date(quando(INICIO).getTime() - 10 * 60000).toISOString();
@@ -66,7 +82,7 @@ const baixar = async (tipo) => {
 const travesseiro = await baixar('travesseiro');
 const celular = await baixar('celular');
 
-const arquivo = { protocolo: 'VIA-02', gerado_em: new Date().toISOString(), janela: { inicio: quando(INICIO).toISOString(), fim: quando(FIM).toISOString() }, posicao_do_celular: POSICAO_DO_CELULAR, travesseiro, celular };
+const arquivo = { protocolo: 'VIA-02', gerado_em: new Date().toISOString(), janela: { inicio: quando(INICIO).toISOString(), fim: quando(FIM).toISOString() }, posicao_do_celular: POSICAO_DO_CELULAR, orientacao_do_celular: ORIENTACAO_DO_CELULAR, linha_de_calibracao: LINHA_DE_CALIBRACAO, travesseiro, celular };
 const a = document.createElement('a');
 a.href = URL.createObjectURL(new Blob([JSON.stringify(arquivo, null, 1)], { type: 'application/json' }));
 a.download = `via02-${INICIO.slice(0, 10)}.json`;
@@ -134,3 +150,49 @@ O resultado vai para o diário. Os dados brutos ficam fora do repositório, que 
 
 As noites ficam na conta do autor e aparecem no painel como duas sessões, uma por aparelho. Não há
 nada a apagar: são noites reais.
+
+---
+
+## Junto: a etapa 3 do `CAL-03` (critério fixado em 23/11, antes dos dados)
+
+**A pergunta.** Na noite de 10/11, sem calibração, o celular parado com a tela para baixo lia a
+gravidade 2 % maior, e o piso da medida de movimento subia de menos de 1 mg para 23 mg sem
+movimento nenhum. Desde a etapa 2, o app junta as épocas paradas entre noites e calibra cada
+noite nova. Com noites reais, o piso passa a ser o mesmo nas duas posições?
+
+**Os dados.** Os mesmos arquivos, só a parte do celular. É preciso a exportação do contrato
+**2.12.0** ou mais novo, em que cada época traz a direção da gravidade, a norma, a marca de
+calibração e a temperatura; o script recusa o arquivo de antes. As noites gravadas antes do
+release continuam no banco e saem completas quando baixadas depois dele.
+
+**O critério** (o script `scripts/analisar_cal03.py` faz a conta e o repete no cabeçalho):
+1. **Época parada:** a magnitude dinâmica abaixo de 10 mg, a mesma régua com que o app escolhe os
+   pontos de calibração.
+2. **Orientação** pela gravidade: tela para cima ou para baixo com o eixo da tela a menos de 30°
+   da vertical; em pé, de lado ou inclinado não entra.
+3. **Por noite e por orientação**, com a época calibrada separada da que não é: o piso (a mediana
+   da medida de movimento das épocas paradas), a mediana da norma e a da temperatura. Grupo com
+   menos de 30 épocas paradas (15 min) não entra.
+4. **O veredito, só com as épocas calibradas, com ao menos 2 noites em cada orientação:** a
+   calibração **tirou o viés** se a diferença entre os pisos das duas orientações fica em **até
+   3 mg** (eram 22,1 mg sem calibração e 7,9 mg com a calibração de mesa) e se a norma de cada
+   orientação fica a **até 0,5 % de 1 g**. Com menos noites, "inconclusivo".
+5. **Também se relata**, sem decidir: o mesmo para as épocas sem calibração (o controle: o viés
+   tem de aparecer ali), a noite calibrada só em parte, a orientação declarada contra a medida e
+   a linha anotada do app.
+
+**O que esta etapa não decide.** Os limiares do app (os 10 mg de época parada e os 2 °C de faixa
+de temperatura para estimar o termo de temperatura) seguem provisórios: a análise os descreve.
+Validá-los pediria uma referência que não existe aqui. A temperatura aparece ao lado de cada
+piso, porque também muda o erro do sensor.
+
+**Conferência do critério com dados sintéticos** (`web-app/tests/test_analisar_cal03.py`, no CI),
+com o erro do Moto E7 medido em 10/11: sem calibração, o controle acha o viés; calibrada nas duas
+posições, tira; calibrada sem corrigir, com o viés invertido ou com a norma fora de 1 g, não tira;
+época em movimento ou de lado não entra no piso; a calibrada não se mistura com a que não é; poucas
+épocas ou uma noite por orientação dão "inconclusivo"; a exportação antiga é recusada. Controle
+positivo: 10 regras do script sabotadas, e cada uma derruba ao menos um teste.
+
+```bash
+python scripts/analisar_cal03.py dados-locais/via02-*.json --json dados-locais/cal03-resultado.json
+```

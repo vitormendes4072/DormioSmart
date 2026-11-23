@@ -209,3 +209,51 @@ def test_a_consulta_usa_o_cliente_do_usuario():
     confere que o método de fato monta o cliente com o JWT."""
     fonte = inspect.getsource(database.Database.get_features_do_usuario)
     assert "self.cliente_do_usuario(jwt)" in fonte and '.eq("user_id", usuario_id)' in fonte
+
+
+# ── 4. A orientação e a calibração na resposta (CAL-03, etapa 3) ────────────
+
+def _linha_calibrada(segundos, g, g_norma, calibrada, temp):
+    return dict(_linha(segundos, g), g_norma=g_norma, calibrada=calibrada, temp=temp)
+
+
+def test_rota_devolve_a_orientacao_e_a_calibracao_de_cada_epoca():
+    """Sem `g` e `calibrada` não há como separar tela para cima de tela para
+    baixo nem a noite calibrada da sem calibração. A entrada vai fora de ordem
+    para que um par errado entre época e campo apareça."""
+    linhas = [_linha_calibrada(30, (0.0, 0.0, -1.0), 1.0004, True, 18.5),
+              _linha_calibrada(0, (0.0, 0.0, 1.0), 0.9991, False, 19.0)]
+    resp, _ = _get(_JANELA, linhas)
+    epocas = resp.get_json()["epocas"]
+    assert [e["g"] for e in epocas] == [[0.0, 0.0, 1.0], [0.0, 0.0, -1.0]]
+    assert [e["g_norma"] for e in epocas] == [0.9991, 1.0004]
+    assert [e["calibrada"] for e in epocas] == [False, True]
+    assert [e["temp"] for e in epocas] == [19.0, 18.5]
+
+
+def test_sem_calibracao_gravada_os_campos_vem_nulos():
+    """Travesseiro e app anterior à 2.9.0: `null`, e não um 1 g inventado."""
+    resp, _ = _get(_JANELA, [_linha(0), _linha(30)])
+    for e in resp.get_json()["epocas"]:
+        assert e["g_norma"] is None and e["calibrada"] is None and e["temp"] is None
+        assert e["g"] == [0.0, 0.0, 1.0]
+
+
+def test_a_consulta_pede_as_colunas_da_calibracao():
+    fonte = inspect.getsource(database.Database.get_features_do_usuario)
+    for coluna in ("g_norma", "calibrada", "temp"):
+        assert coluna in fonte, coluna
+
+
+def test_derivar_noite_nao_ganha_campos():
+    """O `ml/` também chama `derivar_noite`; o que ela devolve segue igual."""
+    saida, _ = fn.derivar_noite([fn.epoca_da_linha(_linha_calibrada(0, (0, 0, 1), 1.0, True, 20.0))])
+    assert set(saida[0]) == {"instante", *fn.ORDEM_FEATURES, "fs"}
+
+
+def test_com_orientacao_recusa_epocas_fora_da_ordem():
+    a = fn.epoca_da_linha(_linha(0))
+    b = fn.epoca_da_linha(_linha(30))
+    saida, _ = fn.derivar_noite([a, b])
+    with pytest.raises(ValueError):
+        fn.com_orientacao(saida, [dict(a, instante=b["instante"]), b])

@@ -169,4 +169,31 @@ def epoca_da_linha(linha):
              "fs": linha["fs_features"]}
     for nome in DO_DISPOSITIVO:
         epoca[nome] = linha[nome]
+    for nome in DA_CALIBRACAO:
+        epoca[nome] = linha.get(nome)
     return epoca
+
+
+#: O que a época leva além das features, só para a conferência da calibração
+#: (`CAL-03`, etapa 3): a norma da gravidade média (`gn`, em g), a marca de
+#: calibração (`cal`) e a temperatura. Nulos no travesseiro e no app anterior
+#: à 2.9.0. Nenhuma feature e nenhuma inferência os usa.
+DA_CALIBRACAO = ("g_norma", "calibrada", "temp")
+
+
+def com_orientacao(saida, epocas):
+    """Acrescenta a cada época de `derivar_noite` a direção da gravidade `g`
+    e os campos de `DA_CALIBRACAO`, para a resposta de `/api/features`.
+
+    Fica fora de `derivar_noite` de propósito: o `ml/` também a chama, e o que
+    ela devolve é conferido contra o dourado. `epocas` é a mesma lista que foi
+    a `derivar_noite`; a ordenação é a mesma (estável, pelo instante).
+    """
+    ordenadas = sorted(epocas, key=lambda e: e["instante"])
+    for linha, e in zip(saida, ordenadas, strict=True):
+        if linha["instante"] != e["instante"].isoformat():
+            raise ValueError("épocas fora da ordem de derivar_noite")
+        linha["g"] = list(e["g"])
+        for nome in DA_CALIBRACAO:
+            linha[nome] = e.get(nome)
+    return saida

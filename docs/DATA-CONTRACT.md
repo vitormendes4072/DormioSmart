@@ -1,6 +1,6 @@
 # Contrato de dados — Smart Dormio
 
-**Versão:** 2.11.0 · **Itens:** API-03, DATA-01, DATA-02, SEC-02, SEC-03, DASH-05, DASH-06, DATA-04, APP-01, SEC-06, SEC-07, APP-08, DASH-08, DASH-12, DASH-13, DATA-07a, DATA-07b, DATA-07c, ML-INF, CAL-03, DATA-14
+**Versão:** 2.12.0 · **Itens:** API-03, DATA-01, DATA-02, SEC-02, SEC-03, DASH-05, DASH-06, DATA-04, APP-01, SEC-06, SEC-07, APP-08, DASH-08, DASH-12, DASH-13, DATA-07a, DATA-07b, DATA-07c, ML-INF, CAL-03, DATA-14
 
 > **2.10.0 (MINOR — nada quebra em campo):** `t` é a temperatura **do aparelho que mediu**: a
 > do chip do MPU6050 no travesseiro e a da **bateria** no celular — a mesma coisa que a
@@ -426,7 +426,13 @@ Authorization: Bearer <JWT do usuário>
   apareceria como uma virada enorme "em 30 s". Sem buraco, o resultado é
   idêntico ao do `ml/`.
 - Resposta `200`: `{"device_id", "desde", "ate", "ordem_features", "g_ref",
-  "lacuna_maxima_s", "epocas": [{"instante", <as oito pelo nome>, "fs"}]}`.
+  "lacuna_maxima_s", "epocas": [{"instante", <as oito pelo nome>, "fs", "g",
+  "g_norma", "calibrada", "temp"}]}`. Desde a 2.12.0 (`CAL-03`, etapa 3), cada
+  época traz também a direção da gravidade `g` (unitária, como chegou), a norma
+  da gravidade média `g_norma` (em g), a marca `calibrada` e a temperatura
+  `temp`, que já estavam gravadas: servem para conferir em noite real se a
+  calibração tirou o viés da orientação. São `null` no travesseiro e nas
+  leituras de app anterior à 2.9.0, e nenhuma feature nem a inferência os usa.
   `400` para parâmetro faltando, sem fuso ou janela acima de 24 h; `401` sem
   JWT; `503` se a consulta falhar — uma lista vazia pareceria noite sem
   movimento.
@@ -963,6 +969,7 @@ unidade alterada, novo header obrigatório). **MINOR** = campo opcional novo.
 
 | Versão | Data | Mudança |
 |---|---|---|
+| 2.12.0 | 2026-11-23 | **MINOR.** `CAL-03`, etapa 3: `GET /api/features` devolve, por época, `g`, `g_norma`, `calibrada` e `temp`, que já estavam gravados (migração 018 e `t`). Campos novos na resposta, como a 2.3.0; a ingestão não muda e nenhum aparelho precisa ser atualizado. |
 | 2.11.0 | 2026-11-13 | **MINOR.** API-07: pausar ou retomar o recebimento por aparelho. Descarte explícito durante a pausa, com `aparelho_pausado` no avulso e no lote. |
 | 2.10.0 | 2026-11-13 | **MINOR.** `t` declarado por tipo de aparelho (`DATA-14`): chip do MPU6050 no travesseiro, bateria no celular, ausente quando não lida. O núcleo do celular deixa de mandar os 25,0 °C que inventava sem a temperatura da bateria, e não grava ponto de calibração sem ela. Sem campo novo, sem migração, faixa igual. |
 | 2.9.0 | 2026-11-11 | **MINOR.** `gn` e `cal`, opcionais e só com `f` (`CAL-03`): a norma da gravidade média da época e a marca de calibração. Validados na ingestão (`validacao._validar_calibracao`) e no banco (`sleep_data_calibracao_valida`), gravados em `g_norma` e `calibrada` (migração 018). Payload sem eles continua correto. |
