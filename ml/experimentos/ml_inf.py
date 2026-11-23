@@ -40,7 +40,7 @@ def sha_dados(X, y, ids):
     return h.hexdigest()
 
 
-def dados_ml17(evidencia, cfg, *, temporal=False):
+def dados_ml17(evidencia, cfg, *, temporal=False, incluir_pulso=False):
     """Reutiliza somente o cache local congelado e autenticado pela ML-17."""
     publico = json.loads((ML / 'experimentos/saida/ml17/manifesto.json').read_text(encoding='utf-8'))
     privado = json.loads((evidencia / 'rodadas/manifesto.json').read_text(encoding='utf-8'))
@@ -78,17 +78,18 @@ def dados_ml17(evidencia, cfg, *, temporal=False):
     treino = pickle.loads(bytes_conferidos(pkl))
     if treino['identidade']['hash_config'] != cfg.hash or len(treino['sujeitos']) != 92:
         raise ValueError('configuração ou seleção de treino diferente da ML-17')
-    treino = treino['dados']['cabeca']
     conjuntos = {
-        'wearanize/cabeca': treino,
+        'wearanize/cabeca': treino['dados']['cabeca'],
         'newcastle': externa('newcastle_features_ml17-v1', f'{cfg.hash}_*.npz', esquerdo=True),
         'walch_principal': externa('walch_features_ml17-v1', f'{cfg.hash}_principal_*.npz'),
     }
     if temporal:
         conjuntos['walch_todos'] = externa('walch_features_ml17-v1', f'{cfg.hash}_todos_*.npz')
+    if incluir_pulso:
+        conjuntos['wearanize/pulso'] = treino['dados']['pulso']
     execucoes = publico['execucoes']
     for nome, dados in conjuntos.items():
-        rodada = 'newcastle' if nome == 'wearanize/cabeca' else nome
+        rodada = 'newcastle' if nome.startswith('wearanize/') else nome
         esperado = execucoes['depois/' + rodada]['hash_entradas'][nome]['sha256']
         if sha_dados(dados['X'], dados['y'], dados['id']) != esperado:
             raise ValueError('X/y/IDs carregados divergem da rodada ML-17: ' + nome)

@@ -12724,3 +12724,54 @@ O celular fica sobre o colchão, perto do travesseiro, em todas as noites.
 - **Um aparelho só**, o Moto E7.
 
 **Procedência.** Branch `feature/CAL-03-etapa3-analise`, sobre `develop` `b6d779a`; Windows 11, Python 3.13 (backend) e 3.11.9 (`ml/`); 23/11.
+
+---
+
+# 2026-11-23 (vii) — ML-18: treino entre bases e teste fora da coorte
+
+**O problema, como foi entendido no início.** O v2 de cabeça reconhece menos vigília nas externas. Avaliar se o treino conjunto melhora a transferência sem converter o ganho de especificidade em perda excessiva de sensibilidade.
+
+**Hipótese de trabalho.** A variedade de pessoas e sensores pode melhorar a robustez fora da base. O protocolo registrado antes da rodada exige que a média das três externas independentes ganhe 5 pontos percentuais de especificidade, preserve κ e perca no máximo 2 pontos de sensibilidade, pelos deltas centrais.
+
+**O que foi testado, e como.** Quatro divisões de treino e cinco avaliações pareadas. Ao testar uma Wearanize, retiram-se os dois braços do treino conjunto. A referência LOSO do pulso exclui do treino de cabeça a pessoa avaliada. Nas demais bases, a referência é o JSON servido. O pré-processamento é o mesmo do v2, com as estatísticas sem rótulo da própria gravação, oito features e corte de 0,5. Dois mil bootstraps por pessoas e 20 permutações por divisão, com sementes no [protocolo](../ml/experimentos/PROTOCOLO-ML-18.md). As três sabotagens derrubaram seus testes: retirar a guarda de identidade, excluir só um braço Wearanize e preservar os rótulos em vez de embaralhá-los. No controle sintético, vazar a pessoa por observações distintas elevou AUC de 0,50 a 1,00. O teste de permutação sem embaralhamento devolveu AUC 0,99993 em observações de teste distintas.
+
+**Resultado medido.** A média externa mudou +9,59 p.p. em especificidade (IC95% +8,07 a +11,15), +0,0257 em κ (+0,0083 a +0,0430) e −3,02 p.p. em sensibilidade (−3,66 a −2,36). **Não atingiu o critério**, pela sensibilidade. A referência reproduziu as métricas históricas disponíveis em tolerância de 1e-12. O maior módulo do Δκ individual foi 0,450 na cabeça, com média individual −0,173. A média da AUC embaralhada variou de 0,464 a 0,496 entre as bases. Detalhes, incluindo cobertura, F1, AUC, viés, limites, correlação de vigília, dispersão e IC, nos [agregados](../ml/experimentos/saida/ml18/agregados.json).
+
+| Base | Δ especificidade (p.p.) | Δ κ | Δ sensibilidade (p.p.) | Noites com erro >1 h, ref. → conjunto | Atingiu |
+|---|---:|---:|---:|---:|---|
+| Wearanize cabeça | −2,66 | −0,195 | −11,28 | 30,4% → 78,3% | Não |
+| Wearanize pulso | +12,24 | −0,020 | −5,86 | 43,5% → 72,8% | Não |
+| Walch principal | +12,60 | −0,054 | −6,90 | 13,8% → 41,4% | Não |
+| DREAMT | +6,82 | +0,091 | +1,84 | 38,1% → 29,9% | Sim |
+| Newcastle | +9,33 | +0,041 | −3,99 | 48,1% → 48,1% | Não |
+
+O ganho em especificidade não se traduziu em melhora consistente por noite. O treino conjunto
+aprofundou a subestimação do tempo total de sono: o viés (previsto menos pontuado) passou de
+−22 para −52 min na Walch, de −37 para −84 min na Wearanize cabeça e de −53 para −84 min
+na Wearanize pulso. A fração de noites com erro absoluto acima de 1 h piorou nessas três bases,
+ficou igual na Newcastle e melhorou só na DREAMT.
+
+Na revisão da PR #266, os controles foram reexecutados no Windows, com Python 3.11.9. Cada
+sabotagem do caminho de decisão fez cair o teste correspondente:
+
+| Sabotagem | Teste que falhou |
+|---|---|
+| LOSO inclui a pessoa avaliada | `test_referencia_loso_exclui_a_pessoa_avaliada` (cabeça e pulso) |
+| Classificação de 0,5 como sono | `test_classes_classifica_empate_como_vigilia` |
+| Wearanize pulso incluída na média externa | `test_execucao_calcula_media_e_intervalo_so_das_tres_externas` |
+| Sinal invertido no bootstrap | `test_bootstrap_subtrai_a_referencia_do_conjunto` |
+| Bootstrap por época | `test_bootstrap_reamostra_a_pessoa_inteira` |
+| Chave de identidade inclui o braço | `test_pessoa_vazada_entre_bracos_e_bloqueada_e_inflaria_auc` |
+| Sinal invertido nos deltas por noite, inclusive nos limites | `test_delta_noturno_subtrai_a_referencia_do_conjunto` |
+
+Os três controles originais também voltaram a falhar sob sabotagem. Contra o código de
+`develop` `c70c6ed`, o arquivo de testes deu um erro de coleta porque o executor ainda não
+existe ali. As mutações individuais verificam as falhas com o executor presente.
+
+**Adaptação.** Nenhuma no protocolo da rodada. Nas Wearanize a comparação mede o custo de nunca ter visto a coorte: o conjunto não viu nenhum braço, enquanto o v2 LOSO viu as outras pessoas. A DREAMT respondeu por 59,1% das épocas no treino sem Wearanize. Os dois braços Wearanize somaram 61,9%, 76,6% e 63,5% das épocas nos treinos que deixaram Walch, DREAMT e Newcastle de fora, respectivamente. Isso descreve a composição, sem atribuir causalidade. Pesos por base seriam outro experimento.
+
+**O que deu errado no caminho.** A primeira busca usou um glob que o PowerShell não expandiu. Os testes novos antes do executor deram erro de coleta por módulo ausente. Os controles por sabotagem depois confirmaram as falhas específicas. A reextração DREAMT tomou a maior parte da preparação, pois reconstruiu as features a partir do carregador histórico. No CI, a captura do hash Git foi reprovada por não declarar a codificação de saída. Acrescentado UTF-8, sem alterar os cálculos da rodada. A conferência local seguiu a junction e acusou scripts históricos. Removido apenas o vínculo, com os dados preservados, e repetida a checagem.
+
+**Risco em aberto.** Identidades anônimas de estudos distintos não têm chave comum demonstrável. Os resultados noturnos cobrem as épocas avaliáveis, e as bases já eram conhecidas no projeto. O ganho de uma base não sustenta afirmar robustez geral, medir vigília de uma pessoa ou trocar o modelo servido. A AUC subiu nas três bases externas (+0,036 na Walch, +0,049 na DREAMT e +0,017 na Newcastle), então o corte fixo de 0,5 pode explicar parte da perda de sensibilidade. Essa hipótese não foi testada. Escolher o corte usando apenas as bases de treino seria outro experimento, a decidir pelo autor.
+
+**Procedência.** Windows e Python 3.11.9 do ambiente ML local. Protocolo `74f675c`, executor e rodada `80a51f8` sobre `develop` `b6d779a`. A suíte local passou com 325 testes na rodada original e 332 na revisão sobre `develop` `c70c6ed`. Dados locais usados pela junction ignorada `ml/dados/bruto/ml18-local`, apontada a `dados-locais/`. A junction foi removida no fim da execução, e os dados continuam no diretório local. Nenhum vetor individual exportado. 23/11/2026.
