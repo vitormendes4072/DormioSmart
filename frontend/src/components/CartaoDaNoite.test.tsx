@@ -56,6 +56,8 @@ function plugin(
       p.atual = { ...p.atual, ativa: false, rodando: false };
     }),
     estado: vi.fn(async () => p.atual),
+    lembrete: vi.fn(async () => ({ ativo: false, hora: 22, minuto: 30, notificacoes: true })),
+    definirLembrete: vi.fn(async (o: { ativo: boolean; hora: number; minuto: number }) => ({ ...o, notificacoes: true })),
     pedirIsencaoDeBateria: vi.fn(async () => ({ isentoDeBateria: false })),
     salvarNotas: vi.fn(async ({ notas }: { arquivo: string; notas: object }) => notas),
   };

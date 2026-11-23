@@ -12881,3 +12881,39 @@ existe ali. As mutações individuais verificam as falhas com o executor present
 - **Dois celulares na mesma conta** gravam no mesmo dispositivo "celular", e as noites se misturam. Caso raro hoje; anotado na linha do `UI-42`.
 
 **Procedência.** Branch `feature/UI-42-parear-so-travesseiro`, sobre `develop` `1c07d76`; Windows 11, Node 22, navegador do app de desktop; 23/11.
+
+# 2026-11-23 (xi) — APP-20, etapa 1: o lembrete de dormir
+
+**O problema, como foi entendido no início.** O autor notou que o app é passivo: só notifica enquanto grava a noite, e nunca chama a pessoa. A ideia é um app que acompanhe o dia a dia (lembrar de dormir, devolver algo de manhã). A etapa 1 é o lembrete de dormir; a da manhã espera a escolha do autor (`APP-20`).
+
+**Hipótese de trabalho.** Tudo pode ser local: o próprio celular agenda e mostra, sem Firebase e sem servidor. Um alarme inexato (`setAndAllowWhileIdle`) basta, porque alguns minutos de atraso não importam, e não pede a permissão de alarme exato. O app já pede a permissão de notificar (para a notificação da noite).
+
+**O que foi testado, e como.**
+- **As contas, na JVM** (`LembreteDeDormirTest`, 8 testes): o próximo disparo hoje ou amanhã; o próprio minuto vai para amanhã (o alarme que dispara não se repete); a virada do dia, do mês e do ano; o dia da mudança de horário (Nova York, 08/03/2026), em que o intervalo é de 23 h e o lembrete segue o relógio de parede; não lembrar desligado nem com a noite gravando; o horário válido.
+- **No emulador Pixel 6, Android 37** (`LembreteDeDormirNativoTest`): o alarme agendado no Android e cancelado ao desligar; a notificação no canal "Lembretes"; nada com a noite gravando (pelo estado em arquivo); nada desligado; e um roteiro, só quando pedido, que agenda para o minuto seguinte e espera o alarme de verdade disparar o receptor do manifesto.
+- **A tela** (`LembreteDeDormir.test.tsx`, 8 testes): ler e gravar o horário; ligar; o aviso de permissão desligada; a falha que não finge ter ligado; a seção só no app.
+- **Controle positivo:** 4 sabotagens na JVM, 6 na tela, 2 só no emulador (a noite em arquivo ignorada; desligar sem desfazer a intenção do alarme), e o roteiro sem o receptor no manifesto.
+
+**Resultado medido.**
+- **JVM:** 42 passam (+8). **Emulador:** 11 passam, 4 pulados (+4). **O roteiro:** o lembrete apareceu 57 s depois de agendado; sem o receptor no manifesto, não aparece.
+- **Frontend:** 951 em 64 arquivos, sobre o `develop` com o `APP-19`; lint, Knip, tipos, build e CSP passam; o painel fica em 259 763 B comprimidos, com teto de 260 000 B.
+- **Sabotagens:** 10 de 10 (JVM e tela), 2 de 2 no emulador, e o controle do roteiro.
+
+**Adaptação.**
+- **O cancelamento:** o `dumpsys alarm` guarda histórico, e a ação do lembrete continuava lá depois de cancelada. Desligar passou a desfazer também a intenção pendente do alarme, e o teste confere que ela deixou de existir.
+- **O toque na notificação** abre o app, que começa na Noite. Com o app já aberto em outra tela, ele fica onde estava; uma navegação forçada não entrou.
+- **O roteiro do alarme de verdade** não estava no plano; entrou porque nenhum outro teste exercitava o receptor declarado no manifesto.
+
+**O que deu errado no caminho.**
+- **As 4 primeiras sabotagens da JVM "caíram" sem rodar teste nenhum:** o script chamava `gradlew.bat` sem o caminho, e o `cmd` não o achava. Percebido ao procurar o teste derrubado no relatório e não achar falha nenhuma. Refeitas com o caminho certo e com uma rodada de controle sem sabotagem, que tem de passar; uma delas foi conferida no relatório (`naoLembraComANoiteEmAndamentoNemDesligado`).
+- **O `tsc` reprovou** três testes antigos, cujos plugins falsos não tinham os dois métodos novos; o build parou por isso, e a conferência do pacote quebrou sem a pasta gerada.
+- **O emulador matou o app por falta de memória** duas vezes (o `lowmemorykiller` derrubou o renderizador do WebView), e o `ServicoDaNoiteTest` caiu junto. Não é deste item: passou na rodada limpa.
+- **Este branch saiu do `develop` antes do `APP-19`;** o orçamento do painel foi medido de novo depois de trazer o `develop`.
+
+**Risco em aberto.**
+- **A folga do painel é de 237 B:** a próxima tela no pacote principal provavelmente estoura o teto (`UI-15`).
+- **Só visto no emulador:** a seção de Configurações não foi vista num celular com a conta do autor.
+- **A etapa 2** espera a escolha do autor (`APP-20`).
+- **Só chega com o APK 1.1.4** (R19).
+
+**Procedência.** Branch `feature/APP-20-lembrete-de-dormir`, sobre `develop` `1c07d76`; Windows 11, JDK do Android Studio, emulador Pixel 6 (Android 37), Node 22; 23/11.

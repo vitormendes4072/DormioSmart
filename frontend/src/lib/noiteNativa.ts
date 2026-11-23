@@ -83,7 +83,19 @@ export type NoiteGravada = {
   teste?: boolean;
 };
 
+/** APP-20: o lembrete de dormir, guardado no celular. */
+export type EstadoDoLembrete = {
+  ativo: boolean;
+  hora: number;
+  minuto: number;
+  /** O app pode notificar (no Android 13+, depende da permissão). */
+  notificacoes: boolean;
+};
+
 export interface PluginNoite {
+  lembrete(): Promise<EstadoDoLembrete>;
+  /** Ligar pede a permissão de notificar, se faltar. */
+  definirLembrete(o: { ativo: boolean; hora: number; minuto: number }): Promise<EstadoDoLembrete>;
   iniciar(o?: { posicao?: Posicao; teste?: boolean }): Promise<{ notificacoes: boolean }>;
   encerrar(): Promise<void>;
   compartilharTeste(o: { arquivo: string }): Promise<void>;
