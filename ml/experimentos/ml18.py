@@ -267,7 +267,7 @@ def executar(cache, dreamt):
     amostras = np.mean([boots[n][:, :len(CRITERIO)] for n in EXTERNAS], axis=0)
     return serializavel(dict(
         procedencia={
-            "commit": subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ML, text=True).strip(),
+            "commit": subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ML, encoding="utf-8").strip(),
             "python": platform.python_version(), "sistema": platform.system(), "hash_config": cfg.hash,
             "modelo_sha256": sha256(MODELO), "manifesto_dreamt_sha256": hash_dreamt,
             "manifesto_ml17_sha256": sha256(ML / "experimentos/saida/ml17/manifesto.json"),
