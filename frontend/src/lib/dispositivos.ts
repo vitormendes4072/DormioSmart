@@ -12,16 +12,14 @@ import { requisitarJson } from "./api";
  *  amortecido, e compartilhado com quem dorme do lado. */
 export type TipoDeDispositivo = "travesseiro" | "celular";
 
-export const TIPOS: { valor: TipoDeDispositivo; rotulo: string; ajuda: string }[] = [
+const TIPOS: { valor: TipoDeDispositivo; rotulo: string }[] = [
   {
     valor: "travesseiro",
     rotulo: "Travesseiro",
-    ajuda: "Sensor de movimento dentro do travesseiro.",
   },
   {
     valor: "celular",
     rotulo: "Celular",
-    ajuda: "Sensor de movimento do próprio celular, pela tela Coletar.",
   },
 ];
 

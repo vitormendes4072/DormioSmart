@@ -12853,3 +12853,31 @@ existe ali. As mutações individuais verificam as falhas com o executor present
 - **Na produção, só com o R19:** a 026 antes ou junto do deploy (sem ela, a gravação da versão falha e é só registrada no log), e o APK 1.1.4.
 
 **Procedência.** Branch `feature/APP-19-versao-do-app`, sobre `develop` `282fde0`; Windows 11, Python 3.13, Node 22, Postgres 17 em Docker; 23/11.
+
+# 2026-11-23 (x) — UI-42: o pareamento só do travesseiro
+
+**O problema, como foi entendido no início.** O autor estranhou a opção "Celular" em "Parear novo dispositivo": quem tem o app já grava com o celular, sem parear nada. Lido o código, a opção nem pareava: escolher "Celular" trocava o botão "Parear" por um link para Coletar (site) ou Noite (app). O celular entra na conta sozinho, na primeira noite gravada, pelo create-or-get do `APP-08`. A opção parecia um tipo de aparelho a parear e era um atalho disfarçado, com um texto de ajuda que ainda citava a Coletar no app.
+
+**Hipótese de trabalho.** Basta tirar a escolha de tipo: o quadro pareia o travesseiro, e uma linha explica que o celular não precisa de pareamento, com o link para a tela certa. O backend não muda.
+
+**O que foi testado, e como.**
+- **O quadro** (`montagem.test.ts`, a montagem real das telas): o título "Parear um travesseiro", nenhum botão de escolha, o "Parear" pedindo `tipo: "travesseiro"`; a explicação levando à Coletar no site e à Noite no app.
+- **O texto de ajuda** de cada tipo, que só o quadro usava, saiu, e a lista de tipos deixou de ser exportada (o Knip apontou o export sem uso).
+- **No navegador**, o quadro do modo demonstração, que também ganhou o título novo.
+- **Controle positivo:** 5 sabotagens (o título antigo, sem a explicação, o link trocado entre app e site, parear como celular e a escolha de tipo de volta).
+
+**Resultado medido.**
+- **Frontend:** 944 em 63 arquivos, sobre o `develop` com o `APP-19`; lint, tipos, Knip, build e CSP passam; o painel fica em 259 637 B comprimidos, com teto de 260 000 B.
+- **Sabotagens:** 5 de 5.
+
+**Adaptação.** O plano não citava o quadro do modo demonstração; ele mudou de título para os dois dizerem o mesmo.
+
+**O que deu errado no caminho.**
+- **Os testes do link acharam dois "Coletar" e dois "Noite":** a barra de navegação também os tem. A busca passou a ser dentro do parágrafo da explicação.
+- **O Knip reprovou** a lista de tipos exportada sem uso, depois que o quadro deixou de usá-la.
+
+**Risco em aberto.**
+- **Não visto com a conta do autor:** o quadro real só aparece com login; foi visto o do modo demonstração, e o real pelos testes.
+- **Dois celulares na mesma conta** gravam no mesmo dispositivo "celular", e as noites se misturam. Caso raro hoje; anotado na linha do `UI-42`.
+
+**Procedência.** Branch `feature/UI-42-parear-so-travesseiro`, sobre `develop` `1c07d76`; Windows 11, Node 22, navegador do app de desktop; 23/11.
