@@ -110,6 +110,8 @@ MIGRACOES_APLICADAS = (
     # LGPD-15 (22/11): a versao nova do consentimento. `test_rls_consentimento.py`.
     "024_consentimento_smart_dormio.sql",
     "025_conferir_identidade_trecho.sql",
+    # APP-19 (23/11): a versao do app informada pelo celular. `test_rls_versao_do_app.py`.
+    "026_versao_do_app.sql",
 )
 
 VARIAVEL = "DORMIO_RLS_DATABASE_URL"
