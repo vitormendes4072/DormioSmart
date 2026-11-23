@@ -11771,26 +11771,6 @@ Vitest e build no Windows; servidor local com autenticação fictícia; 19/11/20
 
 **Procedência.** Branch `docs/BRAND-05-grafia-do-nome` sobre `develop` `67bc830`; Windows 11; 19/11.
 
----
-
-# 2026-11-22 (vii) — DATA-17: conferir a sessão antes de alterar
-
-**O problema, como foi entendido no início.** A 023 age por janela, inclusive sobre época que a tela não carregou. O `UI-38` limitou o alcance entre as carregadas, mas não protegeu contra lote tardio nem limite de páginas.
-
-**Hipótese de trabalho.** Contagem, marca e impressão SHA-256 dos IDs exibidos identificam a sessão no instante da conferência. A mutação usa apenas os IDs travados. O dono vem de `auth.uid()` e o teto segue em 48 h.
-
-**O que foi testado, e como.** Dez testes novos de campos obrigatórios/inválidos no backend, onze casos RLS de assinaturas e divergência, e um caso de frontend sem ID foram executados contra `develop` antes da implementação e falharam; o vetor SHA-256 no Postgres passou. Depois: suíte de backend, frontend e RLS; diagnóstico de migrações; lint e build. O teste de 409 e o de chegada durante a operação foram escritos depois da implementação; o de 409 foi sabotado removendo temporariamente o recarregamento. Três sabotagens SQL removem individualmente a conferência de contagem, marca e IDs. Na revisão, o teste de chegada foi substituído por duas conexões: B trava uma época, A chama a função e espera nessa trava, B insere e confirma, e A prossegue. `pg_blocking_pids` e `pg_locks` distinguem a espera no `SELECT FOR UPDATE` daquela na própria mutação; a thread e a consulta têm prazo. Duas sabotagens adicionais alteram por intervalo e retiram a trava.
-
-**Resultado medido.** Backend: 679 passam, 1 pula. Frontend: 869 passam, 59 arquivos; lint e build passam. RLS: 337 passam em Postgres 17. O diagnóstico acerta 23 estados e a 002. As sabotagens de contagem, marca e IDs derrubaram respectivamente 1, 2 e 2 testes: `test_data17_recusa_contagem_errada`, `test_data17_confere_identidade_e_marca[marca-*]` e `[troca-*]`; sem recarregar no 409, o teste da tela falhou por uma chamada de busca em vez de duas. O teste de duas conexões passou em apagar e marcar, conferindo as cinco épocas originais e a nova intacta; as sabotagens de alteração por intervalo e de ausência de trava derrubaram os dois casos cada. Em `develop` com o `conftest.py` dele, os dois casos caíram por ausência das novas assinaturas, não pela corrida; a sabotagem por intervalo demonstra a detecção específica da corrida. Sem a guarda frontend de marcas misturadas, o novo teste dela caiu.
-
-**Adaptação.** O autor aprovou complementar a contagem com a impressão dos IDs: contagem igual não identifica uma troca; `FOR UPDATE` não impede inserção na janela. A 025 trava e guarda os IDs, confere os três campos e altera só esses IDs. Ausência de campos pede atualização (400), divergência dá 409 e recarrega, banco fora dá 503. O APK 1.1.2 precisará de atualização. Aplicar a 025 logo após o deploy: entre os dois, as duas ações retornam 503.
-
-**O que deu errado no caminho.** Scripts foram chamados no diretório errado e não gravaram; foram repetidos no diretório correto. Uma tentativa de controle do 409 não reconheceu CRLF; foi refeita e o arquivo restaurado. O lint apontou uma variável não usada num teste, corrigida. RLS e diagnóstico foram iniciados ao mesmo tempo no mesmo Postgres e o RLS recusou o setup por outros bancos temporários; foram repetidos em sequência. O teste original com gatilho não distinguia alteração por IDs de alteração por intervalo: a linha inserida durante um comando não entra no snapshot desse comando. O primeiro teste de duas conexões também não detectou a retirada do `FOR UPDATE`, pois confundia o bloqueio da mutação com o da conferência; a inspeção dos tipos de trava corrigiu o controle. A primeira suíte frontend da revisão falhou ao acessar o servidor local no sandbox (`EACCES`); fora dele, passou. O Git no sandbox não pôde criar o lock do índice na pasta do repositório principal; a operação foi repetida com acesso autorizado. No primeiro push da revisão, o gerenciador de credenciais ficou aguardando; o envio foi repetido com a autenticação já ativa do GitHub CLI.
-
-**Risco em aberto.** A inserção posterior à conferência não é recusada, mas também não é atingida; pode deixar uma sessão incompleta. O teste de duas conexões cobre uma ordem específica de concorrência, não todos os agendamentos. O Claude relatou na revisão a sonda página real × banco e seus controles; ela não foi reexecutada nesta etapa. Não houve teste local em produção, conta real, APK, Postgres 14 ou 16.
-
-**Procedência.** Branch `bugfix/DATA-17-conferir-sessao`, revisão dos testes sobre `6c908f2` e `develop` `2b8fbd5`; Windows 11, Python 3.13, Node 22, Postgres 17 em Docker; 22/11/2026. A sonda da revisão foi relatada pelo Claude e separada das execuções desta etapa.
-
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
@@ -12517,3 +12497,55 @@ O APK não muda neste release: o app Android recebe o Histórico novo no próxim
 - **A descrição do canal e a atualização de um canal já existente não foram vistas no aparelho:** a primeira só pelo teste, a segunda pela documentação do Android. O emulador não tinha o canal antes.
 
 **Procedência.** Branch `bugfix/UI-41b-nome-na-notificacao`, sobre `develop` `2b8fbd5`; Windows 11, Node 22, JDK do Android Studio, emulador Pixel 6; 22/11.
+
+# 2026-11-22 (viii) — DATA-17: conferir a sessão antes de alterar
+
+**O problema, como foi entendido no início.** A 023 age por janela, inclusive sobre época que a tela não carregou. O `UI-38` limitou o alcance entre as carregadas, mas não protegeu contra lote tardio nem limite de páginas.
+
+**Hipótese de trabalho.** Contagem, marca e impressão SHA-256 dos IDs exibidos identificam a sessão no instante da conferência. A mutação usa apenas os IDs travados. O dono vem de `auth.uid()` e o teto segue em 48 h.
+
+**O que foi testado, e como.** Dez testes novos de campos obrigatórios/inválidos no backend, onze casos RLS de assinaturas e divergência, e um caso de frontend sem ID foram executados contra `develop` antes da implementação e falharam; o vetor SHA-256 no Postgres passou. Depois: suíte de backend, frontend e RLS; diagnóstico de migrações; lint e build. O teste de 409 e o de chegada durante a operação foram escritos depois da implementação; o de 409 foi sabotado removendo temporariamente o recarregamento. Três sabotagens SQL removem individualmente a conferência de contagem, marca e IDs. Na revisão, o teste de chegada foi substituído por duas conexões: B trava uma época, A chama a função e espera nessa trava, B insere e confirma, e A prossegue. `pg_blocking_pids` e `pg_locks` distinguem a espera no `SELECT FOR UPDATE` daquela na própria mutação; a thread e a consulta têm prazo. Duas sabotagens adicionais alteram por intervalo e retiram a trava.
+
+**Resultado medido.** Backend: 679 passam, 1 pula. Frontend: 869 passam, 59 arquivos; lint e build passam. RLS: 337 passam em Postgres 17. O diagnóstico acerta 23 estados e a 002. As sabotagens de contagem, marca e IDs derrubaram respectivamente 1, 2 e 2 testes: `test_data17_recusa_contagem_errada`, `test_data17_confere_identidade_e_marca[marca-*]` e `[troca-*]`; sem recarregar no 409, o teste da tela falhou por uma chamada de busca em vez de duas. O teste de duas conexões passou em apagar e marcar, conferindo as cinco épocas originais e a nova intacta; as sabotagens de alteração por intervalo e de ausência de trava derrubaram os dois casos cada. Em `develop` com o `conftest.py` dele, os dois casos caíram por ausência das novas assinaturas, não pela corrida; a sabotagem por intervalo demonstra a detecção específica da corrida. Sem a guarda frontend de marcas misturadas, o novo teste dela caiu.
+
+**Adaptação.** O autor aprovou complementar a contagem com a impressão dos IDs: contagem igual não identifica uma troca; `FOR UPDATE` não impede inserção na janela. A 025 trava e guarda os IDs, confere os três campos e altera só esses IDs. Ausência de campos pede atualização (400), divergência dá 409 e recarrega, banco fora dá 503. O APK 1.1.2 precisará de atualização. Aplicar a 025 logo após o deploy: entre os dois, as duas ações retornam 503.
+
+**O que deu errado no caminho.** Scripts foram chamados no diretório errado e não gravaram; foram repetidos no diretório correto. Uma tentativa de controle do 409 não reconheceu CRLF; foi refeita e o arquivo restaurado. O lint apontou uma variável não usada num teste, corrigida. RLS e diagnóstico foram iniciados ao mesmo tempo no mesmo Postgres e o RLS recusou o setup por outros bancos temporários; foram repetidos em sequência. O teste original com gatilho não distinguia alteração por IDs de alteração por intervalo: a linha inserida durante um comando não entra no snapshot desse comando. O primeiro teste de duas conexões também não detectou a retirada do `FOR UPDATE`, pois confundia o bloqueio da mutação com o da conferência; a inspeção dos tipos de trava corrigiu o controle. A primeira suíte frontend da revisão falhou ao acessar o servidor local no sandbox (`EACCES`); fora dele, passou. O Git no sandbox não pôde criar o lock do índice na pasta do repositório principal; a operação foi repetida com acesso autorizado. No primeiro push da revisão, o gerenciador de credenciais ficou aguardando; o envio foi repetido com a autenticação já ativa do GitHub CLI.
+
+**Risco em aberto.** A inserção posterior à conferência não é recusada, mas também não é atingida; pode deixar uma sessão incompleta. O teste de duas conexões cobre uma ordem específica de concorrência, não todos os agendamentos. O Claude relatou na revisão a sonda página real × banco e seus controles; ela não foi reexecutada nesta etapa. Não houve teste local em produção, conta real, APK, Postgres 14 ou 16.
+
+**Procedência.** Branch `bugfix/DATA-17-conferir-sessao`, revisão dos testes sobre `6c908f2` e `develop` `2b8fbd5`; Windows 11, Python 3.13, Node 22, Postgres 17 em Docker; 22/11/2026. A sonda da revisão foi relatada pelo Claude e separada das execuções desta etapa.
+
+# 2026-11-23 (i) — revisão e integração do DATA-17 (PR #257) e do UI-41 (b) (PR #256)
+
+**O problema, como foi entendido no início.** O `DATA-17` voltou do Codex (PR #257): a 025 confere contagem, marca e SHA-256 dos ids e altera só os ids travados. A revisão tinha de mostrar, executando, que a correção fecha o que promete. A integração tinha de juntar a #255 (reserva da 025), a #256 (`UI-41` (b)) e a #257 sem perder registro.
+
+**Hipótese de trabalho.** Os testes da PR caem contra o código de antes, e cada parte da 025 tem um teste que cai sem ela. A conferência tela × banco do `UI-38`, repetida com o contrato novo, não acha alteração indevida.
+
+**O que foi testado, e como.**
+- **Os testes da PR contra o `develop` de antes** (`2b8fbd5`, com o `conftest.py` dele).
+- **Doze sabotagens do revisor**, no código da PR, uma por vez.
+- **A sonda tela × banco:** a `resumirSessoes` e a `impressaoDosIds` reais, o `ler_trecho` real e a 025 real em Postgres 17, em 154 casos. Cada ação foi tentada sem mudança, com uma época chegando na janela depois de a tela carregar e com uma época mostrada trocada por outra da mesma marca. Controle positivo: a 025 com o hash desligado.
+- **A verificação por mutação do RLS** e as suítes inteiras, na PR e depois sobre o merge.
+
+**Resultado medido.**
+- **Contra o código de antes:** backend 20 de 45 caem, RLS 27 de 30, frontend 9 de 61.
+- **Primeira rodada (`6c908f2`):** sonda sem mudança 678 de 678 certas; chegadas 678 de 678 recusadas; trocas 374 de 374 recusadas; com o hash desligado, 58 trocas alteraram registros (a sonda acusa). **Mas a alteração por intervalo, no lugar dos ids travados, passava em toda a suíte:** o teste do gatilho inseria a época dentro do próprio comando, que nunca a enxerga.
+- **Segunda rodada (`496f311`):** o Codex trocou esse teste por um de duas conexões (B trava uma época, A espera no `for update`, B insere e confirma). Passou três vezes seguidas; as 10 sabotagens que rodei caíram, inclusive a alteração por intervalo, a falta de trava e a guarda de marcas misturadas no cliente. Mutação do RLS: **66 de 66**.
+- **Sobre o merge (`8845ee6`):** backend 679 + 1 pula, frontend 871 (59 arquivos), RLS 337, os 23 estados das migrações; lint, Knip, build, CSP e orçamento.
+
+**Veredito.** O `DATA-17` está fechado em `develop`. Vai para a produção no próximo release, com a 025 logo depois do deploy e o APK 1.1.3.
+
+**Adaptação.** O plano aprovado previa só contagem e marca; o Codex propôs, e o autor aprovou, a impressão dos ids e a alteração só dos ids travados (diário 22/11 (viii)).
+
+**O que deu errado no caminho.**
+- **A primeira verificação por mutação rodou ao mesmo tempo que as minhas sabotagens**, em outro banco, mas lendo os mesmos arquivos de migração. A rodada de referência pegou a 025 trocada pela versão por intervalo e acusou "6 alteradas". Foi refeita sozinha.
+- **Um banco de teste ficou com a versão de uma sabotagem**, porque o roteiro restaurava só o arquivo; uma prova foi refeita com a 025 reaplicada do zero.
+- **A entrada do `DATA-17` entrou no meio do diário** e com a mesma numeração da do `UI-41` (b); foi movida para o fim, como (viii), e conferida contra o diário de antes da #257.
+
+**Risco em aberto.**
+- **A época que chega depois da conferência não é recusada, só não é atingida.** A sessão pode ficar incompleta, e o autor apaga o resto numa segunda ação.
+- **O APK 1.1.2 recebe 400 ao excluir ou marcar** até o 1.1.3.
+- **Nada disso está na produção.**
+
+**Procedência.** PRs #255, #256 e #257 mescladas em `develop` (`e6b6c99`, `e75049b`, `8845ee6`); revisão em Postgres 17 em Docker, Windows 11, Python 3.13, Node 22; 22 e 23/11.
