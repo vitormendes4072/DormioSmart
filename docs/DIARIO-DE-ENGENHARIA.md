@@ -12776,6 +12776,43 @@ existe ali. As mutações individuais verificam as falhas com o executor present
 
 **Procedência.** Windows e Python 3.11.9 do ambiente ML local. Protocolo `74f675c`, executor e rodada `80a51f8` sobre `develop` `b6d779a`. A suíte local passou com 325 testes na rodada original e 332 na revisão sobre `develop` `c70c6ed`. Dados locais usados pela junction ignorada `ml/dados/bruto/ml18-local`, apontada a `dados-locais/`. A junction foi removida no fim da execução, e os dados continuam no diretório local. Nenhum vetor individual exportado. 23/11/2026.
 
+# 2026-11-23 (viii) — release R18: DATA-17, UI-41, CAL-03 etapa 3 e o APK 1.1.3
+
+**O problema, como foi entendido no início.** O `develop` tinha, sem estar na produção, o `DATA-17` (excluir e marcar conferem a sessão), o `UI-41` completo, a exportação do `CAL-03` (contrato 2.12.0) e, sem efeito no site, o `VIA-02` e o `ML-18`. A migração 025 troca as assinaturas de `apagar_trecho` e `marcar_trecho`: entre o deploy e a migração, as duas ações respondem 503. O APK 1.1.3 estava em rascunho desde a preparação do release, mais cedo no mesmo dia.
+
+**Hipótese de trabalho.** Com o CI verde, o merge, a release publicada, o deploy e a 025 logo em seguida bastam. O APK do rascunho continua válido se nada de `frontend/` e de `firmware/` mudou depois dele.
+
+**O que foi testado, e como.**
+- **O APK do rascunho:** `git diff b6d779a origin/develop -- frontend firmware` vazio; o arquivo baixado do rascunho com o SHA-256 da geração.
+- **O SQL da 025 para o autor** (`dados-locais/R18-migracao-025.sql`, fora do repositório): a migração e uma conferência de cinco colunas, testados num Postgres 17 local com a base e as migrações até a 024. Controle positivo: a conferência rodada antes da migração.
+- **O merge:** a PR #264 com o CI 11 de 11 (depois de entrar o `ML-18`), mesclada em `main` como `d33330c`.
+- **A release:** a tag `app-v1.1.3` no `d33330c` e o rascunho publicado como a mais recente, antes de o deploy terminar.
+- **A produção, depois do deploy** `8009393815`: `/health`, as rotas sem credencial, a CSP das cinco páginas, a versão na landing, o link `latest` e o `conferir_producao.py`.
+- **A 025 na produção:** aplicada pelo autor no SQL Editor, com a conferência do mesmo arquivo.
+
+**Resultado medido.**
+- **O APK:** nada mudou em `frontend/` nem `firmware/`; o rascunho e o link `latest` dão o SHA-256 `f289157e…aa22`, com 5 366 172 B e `200`.
+- **O SQL no Postgres local:** sem a 025 a conferência dá `f f f t t`; com ela, `t t t t t`; rodado de novo, `t t t t t`.
+- **A produção:**
+  - `/health` `200`, banco ok, contrato **2.12.0**, modelo `ml-inf-cabeca-v2`;
+  - `401` sem token em dispositivos, features, apagar e marcar, e com `Bearer` inválido em apagar;
+  - a CSP igual nas cinco páginas;
+  - a landing com "Versão 1.1.3 (beta)".
+- **A 025 na produção:** cinco de cinco `true`, segundo o autor. **Produção com 001–019 e 022–025.**
+
+**Adaptação.** A primeira tentativa de publicar a release falhou com `422`: o rascunho apontava para uma tag que ainda não existia. A tag foi criada no `d33330c`, enviada e a release publicada em seguida.
+
+**O que deu errado no caminho.**
+- **A conferência da primeira versão do SQL dava erro em vez de `false`** quando rodada sem a 025, porque procurava a função nova pelo nome. Acusava a falha, mas de um jeito confuso para quem lê. Passou a responder `false`, e o teste foi refeito.
+- **A publicação da release** recusada pela tag inexistente, como descrito acima.
+
+**Risco em aberto.**
+- **Não conferido com a conta do autor:** o Histórico em cartões, a barra com "Noite" e o excluir e marcar com a 025 (`UI-41`, `DATA-17`).
+- **O APK 1.1.3 instalado no celular do autor:** a 1.1.2 deixa de conseguir excluir e marcar, como as notas da release avisam.
+- **A análise do `CAL-03`** depende das noites, ainda não gravadas.
+
+**Procedência.** PR #264 mesclada em `main` `d33330c`; deploy `8009393815`; release `app-v1.1.3`; conferências desta máquina (Windows 11) e do autor no SQL Editor; 23/11.
+
 # 2026-11-23 (ix) — APP-19: quem tem cada versão do app, e o aviso de versão nova
 
 **O problema, como foi entendido no início.** O autor perguntou quantas pessoas baixaram o app, qual versão, quantas têm cada versão instalada e se dá para avisar quem ficou numa versão antiga. O GitHub conta os downloads de cada APK. Mas download não é instalação, e o app não informava a própria versão a ninguém.
