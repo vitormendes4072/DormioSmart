@@ -83,7 +83,7 @@ function DispositivosDemonstrativos({ mostrarPareamento }: { mostrarPareamento: 
         ))}
       </ul>
       <section id="pareamento-dispositivo" hidden={!mostrarPareamento} className="rounded-xl border border-border bg-card p-4">
-        <h2 className="text-sm font-semibold text-foreground">Parear novo dispositivo</h2>
+        <h2 className="text-sm font-semibold text-foreground">Parear um travesseiro</h2>
         <p className="mt-2 text-xs text-muted-foreground">Entre na sua conta para parear um aparelho real.</p>
       </section>
     </div>

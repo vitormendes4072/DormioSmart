@@ -617,11 +617,23 @@ describe("montagem real das telas (UI-17)", PRAZO, () => {
     return await screen.findByRole("button", { name: "Parear" });
   }
 
-  it("leva o celular a Coletar sem gerar token manual", async () => {
+  it("pareia só o travesseiro, sem escolha de tipo (UI-42)", async () => {
     const { criar } = simularPareamento();
     await abrirPareamento();
-    fireEvent.click(screen.getByRole("radio", { name: /celular/i }));
-    fireEvent.click(screen.getByRole("link", { name: "Ir para Coletar" }));
+    expect(screen.getByText("Parear um travesseiro")).toBeTruthy();
+    expect(screen.queryAllByRole("radio")).toHaveLength(0);
+    expect(screen.queryByText(/O novo dispositivo será um/i)).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Parear" }));
+    await waitFor(() => expect(criar).toHaveBeenCalledTimes(1));
+    const corpo = JSON.parse(String((vi.mocked(fetch).mock.calls.find(([u, o]) => String(u) === "/api/devices" && o?.method === "POST")?.[1] as RequestInit).body));
+    expect(corpo.tipo).toBe("travesseiro");
+  });
+
+  it("no site, explica que o celular entra pela Coletar, sem gerar token manual", async () => {
+    const { criar } = simularPareamento();
+    await abrirPareamento();
+    const explicacao = screen.getByText(/O celular não precisa de pareamento/);
+    fireEvent.click(within(explicacao).getByRole("link", { name: "Coletar" }));
     expect(await screen.findByRole("heading", { name: /nova coleta/i })).toBeTruthy();
     expect(criar).not.toHaveBeenCalled();
   });
@@ -642,14 +654,13 @@ describe("montagem real das telas (UI-17)", PRAZO, () => {
     }
   });
 
-  it("abre Noite ao escolher o celular no app", async () => {
+  it("no app, a explicação leva à Noite", async () => {
     const plataforma = vi.spyOn(Capacitor, "isNativePlatform").mockReturnValue(true);
     const plugin = vi.spyOn(Capacitor, "isPluginAvailable").mockImplementation((nome) => nome === "Noite");
     const { criar } = simularPareamento();
     try {
       await abrirPareamento();
-      fireEvent.click(screen.getByRole("radio", { name: /celular/i }));
-      const irParaNoite = screen.getByRole("link", { name: "Ir para Noite" });
+      const irParaNoite = within(screen.getByText(/O celular não precisa de pareamento/)).getByRole("link", { name: "Noite" });
       expect(irParaNoite.getAttribute("href")).toBe("/noite");
       expect(criar).not.toHaveBeenCalled();
     } finally {
