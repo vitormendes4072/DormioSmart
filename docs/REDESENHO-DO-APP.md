@@ -127,8 +127,8 @@ de hoje, para que o redesenho não as perca em silêncio.
 1. **As abas.** ✅ **Decidido pelo autor em 23/11: as cinco do app** (Início, Noite, Histórico,
    Dispositivos, Configurações), com o visual da barra da landing. O "Relatório" da landing vira a parte
    de baixo do Início, ou uma tela aberta pelo gráfico.
-2. **"Períodos com movimento"** (a versão honesta dos "Eventos"): entrar agora, como função nova, ou
-   depois.
+2. **"Períodos com movimento"** (a versão honesta dos "Eventos"). ✅ **Decidido pelo autor em 23/11:
+   depois do redesenho**, como item próprio (`UI-44`). O redesenho muda só a aparência.
 3. **A fonte** (`UI-36`): o app usa a Outfit; a landing e as páginas públicas, a do sistema. O redesenho
    precisa de uma só.
 
