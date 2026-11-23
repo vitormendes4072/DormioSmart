@@ -437,16 +437,25 @@ def init_routes(app):
         if recusa:
             return recusa
 
-        device = dispositivos.primeiro_do_tipo(client, g.usuario_id, "celular")
-        if device is not None:
-            return jsonify(device), 200
+        # APP-19: o app (desde a 1.1.4) manda a propria versao; o site, nao.
+        # Fora do formato, e ignorada: a versao nao pode travar o envio da noite.
+        corpo = request.get_json(silent=True)
+        versao = dispositivos.validar_versao_app(
+            corpo.get("versao_app") if isinstance(corpo, dict) else None)
 
-        device = dispositivos.criar(
-            client, dispositivos.NOME_CELULAR, hash_token(gerar_token()), "celular",
-        )
+        device = dispositivos.primeiro_do_tipo(client, g.usuario_id, "celular")
+        status = 200
         if device is None:
-            return jsonify({"error": "nao foi possivel preparar o dispositivo"}), 503
-        return jsonify(device), 201
+            device = dispositivos.criar(
+                client, dispositivos.NOME_CELULAR, hash_token(gerar_token()), "celular",
+            )
+            if device is None:
+                return jsonify({"error": "nao foi possivel preparar o dispositivo"}), 503
+            status = 201
+        if versao:
+            dispositivos.registrar_versao(
+                client, g.usuario_id, device["id"], versao, datetime.now(timezone.utc).isoformat())
+        return jsonify(device), status
 
     @app.route('/api/devices/<device_id>', methods=['PATCH'])
     @require_auth

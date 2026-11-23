@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 
 import { useAuth } from "../contexts/AuthContext";
+import { VERSAO_DO_APP_ANDROID } from "../lib/appAndroid";
 import { enviarLote, prepararDispositivoDoCelular } from "../lib/coleta";
 import type { EnviarLote } from "../lib/envioDaNoite";
 
@@ -19,7 +20,8 @@ export function useEnvioDoCelular(ativo: boolean): EnviarLote | undefined {
   useEffect(() => {
     if (!ativo || !jwt || dispositivo) return;
     let vivo = true;
-    prepararDispositivoDoCelular()
+    // Só o app usa este gancho (a Noite nativa): ele informa a própria versão (APP-19).
+    prepararDispositivoDoCelular(VERSAO_DO_APP_ANDROID)
       .then((d) => vivo && setDispositivo(d.id))
       .catch(() => {
         // Sem dispositivo, sem envio: a tela continua, e as épocas esperam.

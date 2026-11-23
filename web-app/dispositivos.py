@@ -18,6 +18,7 @@ lista de campos abaixo é apresentação, não proteção, e por um tempo o
 comentário dela dizia o contrário.
 """
 import logging
+import re
 
 logger = logging.getLogger(__name__)
 
@@ -206,6 +207,42 @@ def revogar(client, usuario_id, device_id, agora):
     except Exception:
         logger.exception("Falha ao revogar device.")
         return None
+
+
+#: APP-19: a versão do app Android, MAJOR.MINOR.PATCH com até 3 dígitos cada.
+#: A mesma régua de `devices_versao_app_formato` (migração 026).
+_VERSAO_APP = re.compile(r"[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}")
+
+
+def validar_versao_app(valor):
+    """A versão, se tiver o formato; senão None. Nunca levanta.
+
+    Ausente ou fora do formato não é erro para quem chama: a versão é dado
+    técnico, e recusá-la travaria o envio da noite, que é o que importa.
+    """
+    if isinstance(valor, str) and _VERSAO_APP.fullmatch(valor):
+        return valor
+    return None
+
+
+def registrar_versao(client, usuario_id, device_id, versao, agora):
+    """Grava a versão do app no aparelho do titular. True se gravou.
+
+    Melhor esforço: uma falha aqui é registrada no log e não muda a resposta
+    da rota, pelo mesmo motivo de `validar_versao_app`.
+    """
+    try:
+        resposta = (
+            client.table("devices")
+            .update({"versao_app": versao, "versao_vista_em": agora})
+            .eq("id", device_id)
+            .eq("user_id", usuario_id)
+            .execute()
+        )
+        return bool(resposta.data)
+    except Exception:
+        logger.exception("Falha ao registrar a versao do app.")
+        return False
 
 
 def alterar_recebimento(client, usuario_id, device_id, receber):

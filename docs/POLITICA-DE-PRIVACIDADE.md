@@ -174,6 +174,12 @@ continuamente e o resume em **épocas** de 30 segundos. Cada época enviada regi
   resumi-la;
 - O **identificador do aparelho** que enviou.
 
+**Do aplicativo para Android, a versão instalada.** A partir da versão 1.1.4, ao
+enviar uma noite, o aplicativo informa o **número da versão** dele (por exemplo,
+"1.1.4"), e o servidor o guarda junto do dispositivo celular, com **quando** foi
+informado pela última vez. É um dado técnico do aparelho, sem nada sobre o seu
+sono; a finalidade está na seção 3. A versão para navegador não informa nada.
+
 **No aplicativo para Android**, a noite é registrada por um serviço do próprio
 aplicativo, que **continua medindo com a tela apagada**, do momento em que você
 toca em *Iniciar a noite* até tocar em *Encerrar*. Enquanto ele mede, uma
@@ -338,6 +344,15 @@ Exclusivamente para:
    - **Onde aparece:** hoje, em nenhuma tela; está disponível para a sua sessão
      pela interface do serviço. Quando uma tela passar a mostrá-la, ela trará o
      mesmo aviso que a resposta do servidor já traz.
+
+7. **Saber quais versões do aplicativo estão em uso e avisar de atualização.**
+   Desde 23 de novembro de 2026. O responsável pelo projeto conta **quantos
+   celulares há com cada versão** do aplicativo para Android (seção 2.2), para
+   saber quantas pessoas ainda usam uma versão antiga. A contagem é só agregada,
+   por versão: nenhuma versão é consultada pessoa a pessoa, e ela não é cruzada
+   com medições. Para avisar de versão nova, o próprio aplicativo pergunta ao
+   site qual é a versão publicada e mostra o aviso na tela; essa pergunta não
+   leva dado seu.
 
 Os contatos da **lista de espera** (seção 2.6) têm uma finalidade só: o aviso do
 lançamento e o convite para os primeiros testes.
