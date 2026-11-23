@@ -58,7 +58,8 @@
 Até 29/10 esta linha mandava rodar o `DATA-03`, fechado em 28/10.)* **Se tem um fim de semana:** solde. **Se tem um mês sem ferro de solda:** escreva os
 `CALC-*` e `DIAG-*`, que são o que a banca lê.
 
-**Contagem:** 39 itens abertos · **L0: 8** · L1: 16 · L2: 5 · L3: 10. *(Recontado linha a linha em 03/11, e não por delta; desde o `DOC-13`, o CI reconta.)*
+**Contagem:** 40 itens abertos · **L0: 9** · L1: 16 · L2: 5 · L3: 10. *(Recontado linha a linha em 03/11, e não por delta; desde o `DOC-13`, o CI reconta.)*
+*(23/11, sobre `develop` `96e7b40`: abre `ML-18` (L0). Saldo: 40 abertos, L0 9.)*
 *(23/11, sobre `develop` `8845ee6`: fecha `DATA-17` em L0. Saldo: 39 abertos, L0 8.)*
 *(22/11, sobre `develop` `b30bde6`: fecha `UI-40` em L0. Saldo: 40 abertos, L0 9.)*
 *(22/11, sobre `develop` `746a057`: abre e fecha `UI-39` e abre `UI-40` e `UI-41` (L0). Saldo: 41 abertos, L0 10.)*
@@ -306,6 +307,7 @@ E um **peso**: 🔴 caminho crítico da defesa · 🟡 importante · ⚪ polimen
        INFRA-05                              ← 11/11: o backend perto do banco
        DATA-16                               ← 21/11: excluir e marcar uma sessão pelo Histórico
        UI-41                                 ← 22/11: o que o glossário não alcançou
+       ML-18                                 ← 23/11: treinar juntando bases, testar numa de fora
 
    L3  TAMBÉM DEPENDE DE VOCÊ:
        RQ-01 · HW-02 · LGPD-03 · ESC-01 · LGPD-01 (definir o controlador)
@@ -505,6 +507,7 @@ diagrama** — que é o que a banca lê.
 | Item | O quê | Peso |
 |---|---|:---:|
 | **ML-06b** ✅ *(03/11: `ml/src/carregar/walch.py`, com 8 testes e 6/6 sabotagens acusadas; a validação externa rodou na Walch (`ml04 --coorte walch`). P1 e P2 confirmadas; P3 confirmada na especificidade e **não** no κ (o HMM ganhou mais κ que a janela). Ver X.4 e o diário, 03/11 (vii) a (ix))* *(novo)* | **Escrever `ml/src/carregar/walch.py`.** A interface única garante que é só isso — sem tocar em feature, época, baseline, modelo ou métrica. Dá para escrever contra a documentação do dataset **antes** do `ML-06a`, mas só valida com o dado em mãos. ⚠️ Escrever carregador sem ver o arquivo real foi o que produziu as 10 armadilhas já catalogadas: escreva, mas **não confie até rodar**. | ✅ |
+| **ML-18** *(novo — 23/11, saído da análise de vigília por noite; diário 23/11 (ii))* | **Treinar juntando bases e testar numa que ficou de fora.** O modelo servido foi treinado só na Wearanize de cabeça, e a capacidade de separar vigília cai fora dela (AUC 0,89 → 0,65–0,81). Treinar com Wearanize (cabeça e pulso), Walch e DREAMT e avaliar deixando uma base inteira de fora mede se a robustez entre coortes melhora. Não promete passar do teto da actigrafia: acordado e parado é igual a dormindo. Relatar especificidade, F1 da vigília, κ e o erro por noite em minutos, nunca só a acurácia. | ⚪ |
 
 ### Backend, dados e API
 
@@ -736,7 +739,7 @@ Depende de dado real captado — uma noite medida, ou o protocolo do `VIA-02`.
 | **VAL-02** | Validação quantitativa: F1, matriz de confusão, curva de corrente×tempo medida. | 🔴 |
 | **DASH-04** | Visualização de **noite completa**: linha do tempo e lacunas como indicador de repouso. O gráfico já está preparado; falta o dado. ✏️ *08/11: a estimativa de sono por época já existe em `GET /api/inferencia` (`ML-INF`). Mostrá-la ao usuário é inferência sobre saúde: a política de privacidade precisa dizer isso antes (`LGPD-03`), e a tela tem de levar o `aviso` que a rota devolve.* | 🔴 |
 | **ML-09** *(✏️ 28/10: era `ML-04`, que é a validação externa fechada em 18/09)* | Calibração do modelo para o Dormio com dado próprio. **Ajuste de limiar, não re-treino** — n=1 não treina nada. ⚠️ **A validação externa reforçou a cautela:** o que parece ganho numa coorte pode não atravessar; com n=1 não há como distinguir. | 🟡 |
-| **ML-10** *(✏️ 28/10: era `ML-05`, que é o teto interavaliador fechado em 28/09)* | O que o modelo devolve ao usuário — e o que **não** devolver. Ver §6 do plano de ML. **Um número novo entra aqui:** a especificidade externa de 0,507 é o que o produto deve assumir, não os 0,802 internos. | 🟡 |
+| **ML-10** *(✏️ 28/10: era `ML-05`, que é o teto interavaliador fechado em 28/09)* | ✏️ **23/11 (diário 23/11 (ii)):** por noite, o erro do tempo de sono passa de 1 h em 14% a 48% das noites externas, e a vigília estimada não acompanha a real nas bases com pouca vigília (correlação 0,01 e −0,13). Enquanto isso valer, **nenhuma estimativa de sono ou de vigília por noite vai para a tela**; o app mostra movimento. <br>O que o modelo devolve ao usuário — e o que **não** devolver. Ver §6 do plano de ML. **Um número novo entra aqui:** a especificidade externa de 0,507 é o que o produto deve assumir, não os 0,802 internos. | 🟡 |
 | **ML-INF** ✅ *(08/11, inferência servida por `GET /api/inferencia`, contrato 2.8.0; 07/11, v2 e dois dourados por noite preparados)* | 📌 **08/11: a inferência roda no backend, sob demanda e sem gravar.** `web-app/inferencia.py` aplica o `ml-inf-cabeca-v2` em Python puro sobre a janela pedida (a mesma consulta de `/api/features`): só épocas de 30 s a 32 Hz, `d_angulo` nulo vira 0, mínimo de 23 épocas válidas (abaixo, `422`), z-score da janela, contexto ±11 preso a cada segmento, classe por `logit > 0`. As duas noites douradas da v2 passam pelo caminho real do servidor a 1e-12 (medido: 6e-15); 14/14 sabotagens acusadas. **Sob demanda e não em lote, como o plano previa:** sem migração, sem dado de saúde inferido gravado, e uma versão nova do modelo vale na hora. O z-score é da janela pedida, e o modelo foi treinado com noites inteiras: o que é "a noite" continua no `ESC-01`. A tela é o `DASH-04`; a validação com dado do travesseiro, o `VAL-02`. Diário, 08/11 (i). ⬇️ *Texto anterior:* Modelo de cabeça original com oito features, z-score por gravação e contexto ±11. Reproduziu as avaliações externas de Newcastle, Walch e DREAMT. Contrato, comparação com a v1 e limites em `docs/RELATORIO-ML-INF-V2.md`. Resta integrar a inferência Python em lote ao fim da sessão e executar os dourados pelo backend. | ✅ |
 | **HW-07** ✅ *(16/11, não acionado)* | **Não acionado pelo `VIA-01`** (16/11): o critério fixado antes dos dados mandava ficar na v1 se o par parado × corpo separasse, e separou nos dois ciclos. Reabrir se uma noite real (`VAL-01`) mostrar viradas de corpo sem registro. <br>⬇️ *Texto anterior:* ✏️ **03/11 (triagem):** fica como **contingência** do `VIA-01`, não como plano. Arquitetura v2 — **fusão de 2 acelerômetros** (travesseiro + sob o colchão), se o `VIA-01` mostrar que o travesseiro subcapta movimento de corpo. Gatilho, não plano. **Implica rever a redação da RQ** (travesseiro → cama/travesseiro). | ✅ |
 | *(→ `LGPD-02`)* | ✏️ **28/10 (`GIT-06`)**: não é item — é o `LGPD-02` de L0, que estava listado aqui também e contado duas vezes. O bloqueio de distribuição está escrito lá. | — |
