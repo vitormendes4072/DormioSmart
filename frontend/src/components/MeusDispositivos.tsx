@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import { Link } from "react-router";
 
 import { ErroApi } from "../lib/api";
+import { noiteNativaDisponivel } from "../lib/noiteNativa";
 import {
   NOME_MAXIMO,
   descreverUltimoContato,
@@ -144,6 +145,7 @@ export function MeusDispositivos({ mostrarPareamento = true }: { mostrarPareamen
 
 function GuiaPareamento({ aoParear }: { aoParear: (aparelho: Dispositivo) => void }) {
   const [tipo, setTipo] = useState<TipoDeDispositivo>("travesseiro");
+  const noApp = noiteNativaDisponivel();
   const [pareando, setPareando] = useState(false);
   const [novoToken, setNovoToken] = useState<Pareamento | null>(null);
   const [falha, setFalha] = useState<string | ErroApi | null>(null);
@@ -187,15 +189,15 @@ function GuiaPareamento({ aoParear }: { aoParear: (aparelho: Dispositivo) => voi
               />
               <span className="min-w-0">
                 <span className="block text-sm font-medium text-foreground">{rotulo}</span>
-                <span className="block text-xs text-muted-foreground">{ajuda}</span>
+                <span className="block text-xs text-muted-foreground">{valor === "celular" && noApp ? "Sensor de movimento do próprio celular, pela tela Noite." : ajuda}</span>
               </span>
             </label>
           ))}
         </fieldset>
 
         {tipo === "celular" ? (
-          <Link to="/coletar" className="inline-block rounded-xl bg-secondary px-4 py-3 text-sm font-semibold">
-            Ir para Coletar
+          <Link to={noApp ? "/noite" : "/coletar"} className="inline-block rounded-xl bg-secondary px-4 py-3 text-sm font-semibold">
+            {noApp ? "Ir para Noite" : "Ir para Coletar"}
           </Link>
         ) : (
         <button

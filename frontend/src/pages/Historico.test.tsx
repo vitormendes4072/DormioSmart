@@ -122,6 +122,26 @@ describe("Histórico: excluir e marcar uma sessão (DATA-16)", () => {
     expect(apagar).not.toHaveBeenCalled();
   });
 
+  it("mantém a confirmação aberta se Escape ocorrer durante a exclusão", async () => {
+    let concluir!: (quantidade: number) => void;
+    apagar.mockImplementationOnce(() => new Promise((resolve) => { concluir = resolve; }));
+    mostrar();
+    const principal = await screen.findByRole("region", { name: "Tabela do histórico" });
+    fireEvent.click(within(principal).getByRole("button", { name: "Excluir…" }));
+    const dialogo = screen.getByRole("alertdialog", { name: "Confirmar exclusão da sessão" });
+    fireEvent.click(within(dialogo).getByRole("button", { name: "Excluir definitivamente" }));
+    expect(apagar).toHaveBeenCalledTimes(1);
+    const cancelar = new Event("cancel", { cancelable: true });
+    fireEvent(dialogo, cancelar);
+    expect(cancelar.defaultPrevented).toBe(true);
+    expect(screen.getByRole("alertdialog")).toBe(dialogo);
+    expect(dialogo.hasAttribute("open")).toBe(true);
+
+    concluir(20);
+    expect(await screen.findByText("Sessão excluída: 20 registros apagados.")).toBeTruthy();
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+  });
+
   it("confirmar apaga a sessão, mostra quantas épocas saíram e recarrega", async () => {
     mostrar();
     const principal = await screen.findByRole("region", { name: "Tabela do histórico" });

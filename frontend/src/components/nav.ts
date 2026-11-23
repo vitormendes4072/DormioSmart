@@ -11,7 +11,7 @@ type ItemNav = {
 
 /** Fonte única da navegação: consumida pela Sidebar (desktop) e pela
  *  MobileNav (celular), para as duas nunca saírem de sincronia. */
-export const ITENS_NAV: ItemNav[] = [
+const ITENS_NAV: ItemNav[] = [
   { to: "/dashboard", label: "Início", icon: Home },
   { to: "/coletar", label: "Coletar", icon: Smartphone },
   { to: "/historico", label: "Histórico", icon: Clock3 },
@@ -20,14 +20,14 @@ export const ITENS_NAV: ItemNav[] = [
 ];
 
 /**
- * APP-02, etapa 4: no app Android, a noite inteira tem tela própria, e ela vem
- * primeiro. No site, a navegação é a de sempre — o registro da noite só
- * existe no app.
+ * No app, a tela Noite substitui Coletar na navegação (UI-41).
  */
-export const ITEM_NOITE: ItemNav = { to: "/noite", label: "Noite", icon: Moon };
+const ITEM_NOITE: ItemNav = { to: "/noite", label: "Noite", icon: Moon };
+
+const ITENS_NAV_APP = [ITEM_NOITE, ...ITENS_NAV.filter(({ to }) => to !== "/coletar")];
 
 export function itensDeNavegacao(nativo: boolean = noiteNativaDisponivel()): ItemNav[] {
-  return nativo ? [ITEM_NOITE, ...ITENS_NAV] : ITENS_NAV;
+  return nativo ? ITENS_NAV_APP : ITENS_NAV;
 }
 
 /** As telas com demonstração própria compartilham a navegação local. */

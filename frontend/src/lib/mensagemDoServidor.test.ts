@@ -118,4 +118,3 @@ print(json.dumps(sorted({m for nome in nomes for m in mensagens(ast.parse((raiz 
     expect(literais.filter((chave) => !Object.prototype.hasOwnProperty.call(tabela, chave) && !genericas.has(chave))).toEqual([]);
   });
 });
-

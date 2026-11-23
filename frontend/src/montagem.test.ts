@@ -53,6 +53,7 @@
  * com o resultado medido, estão na entrada de 19/10 (ii) do
  * `docs/DIARIO-DE-ENGENHARIA.md` e no item `UI-17` do backlog.
  */
+import { Capacitor } from "@capacitor/core";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
@@ -623,6 +624,22 @@ describe("montagem real das telas (UI-17)", PRAZO, () => {
     fireEvent.click(screen.getByRole("link", { name: "Ir para Coletar" }));
     expect(await screen.findByRole("heading", { name: /nova coleta/i })).toBeTruthy();
     expect(criar).not.toHaveBeenCalled();
+  });
+
+  it("abre Noite ao escolher o celular no app", async () => {
+    const plataforma = vi.spyOn(Capacitor, "isNativePlatform").mockReturnValue(true);
+    const plugin = vi.spyOn(Capacitor, "isPluginAvailable").mockImplementation((nome) => nome === "Noite");
+    const { criar } = simularPareamento();
+    try {
+      await abrirPareamento();
+      fireEvent.click(screen.getByRole("radio", { name: /celular/i }));
+      const irParaNoite = screen.getByRole("link", { name: "Ir para Noite" });
+      expect(irParaNoite.getAttribute("href")).toBe("/noite");
+      expect(criar).not.toHaveBeenCalled();
+    } finally {
+      plataforma.mockRestore();
+      plugin.mockRestore();
+    }
   });
 
   it.each([false, true])("copia a credencial ou oferece seleção manual e a remove ao fechar (%s)", async (falhar) => {
