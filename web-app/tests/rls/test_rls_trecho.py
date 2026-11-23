@@ -5,6 +5,9 @@ banco (como a ingestão grava), e somem no rollback do fim. O trecho é o
 `coalesce(captured_at, created_at)` do cliente: uma época sem `captured_at`
 entra pelo instante de chegada.
 """
+import threading
+import time
+
 import psycopg2
 import pytest
 
@@ -48,95 +51,216 @@ def _existe(sessao, linha):
 
 def test_a_epoca_nasce_fora_da_bancada(como, cenario):
     with como(cenario["ana"]) as ana:
-        assert ana.executar("select bancada from sleep_data where id = %s",
-                            (cenario["leitura_ana"],)) == [(False,)]
+        assert ana.executar("select bancada from sleep_data where id = %s", (cenario["leitura_ana"],)) == [(False,)]
 
-
-def test_titular_apaga_o_proprio_trecho_e_so_ele(como, cenario):
+@pytest.mark.parametrize("operacao", ["apagar", "marcar"])
+def test_data17_outra_conta_nao_alcanca_nada(como, cenario, operacao):
     with como(cenario["ana"]) as ana:
         ids = _semear(ana, cenario)
-        assert ana.executar("select apagar_trecho(%s, %s, %s)",
-                            (cenario["device_ana"], DESDE, ATE)) == [(4,)]
-        for linha in ids["dentro"] + [ids["chegada"]]:
-            assert _existe(ana, linha) is None
-        assert _existe(ana, ids["fora"]) is False
+        sql = ("select apagar_trecho(%s,%s,%s,%s,%s,%s)" if operacao == "apagar" else
+               "select marcar_trecho(%s,%s,%s,true,%s,%s,%s)")
+        assert ana.executar(sql, (cenario["device_bruno"], DESDE, ATE, 0, False, _hash_ids([]))) == [(0,)]
         assert _existe(ana, ids["bruno"]) is False
 
-
-def test_titular_marca_e_desmarca_o_proprio_trecho(como, cenario):
-    with como(cenario["ana"]) as ana:
-        ids = _semear(ana, cenario)
-        assert ana.executar("select marcar_trecho(%s, %s, %s, true)",
-                            (cenario["device_ana"], DESDE, ATE)) == [(4,)]
-        for linha in ids["dentro"] + [ids["chegada"]]:
-            assert _existe(ana, linha) is True
-        assert _existe(ana, ids["fora"]) is False
-        assert _existe(ana, ids["bruno"]) is False
-        assert ana.executar("select marcar_trecho(%s, %s, %s, false)",
-                            (cenario["device_ana"], DESDE, ATE)) == [(4,)]
-        for linha in ids["dentro"]:
-            assert _existe(ana, linha) is False
-
-
-@pytest.mark.parametrize("funcao", ["apagar", "marcar"])
-def test_aparelho_de_outra_conta_nao_e_alcancado(como, cenario, funcao):
-    """O dono vem de `auth.uid()`: a Ana passando o aparelho do Bruno, na
-    janela da época dele, não apaga nem marca nada."""
-    with como(cenario["ana"]) as ana:
-        ids = _semear(ana, cenario)
-        sql = ("select apagar_trecho(%s, %s, %s)" if funcao == "apagar"
-               else "select marcar_trecho(%s, %s, %s, true)")
-        assert ana.executar(sql, (cenario["device_bruno"], DESDE, ATE)) == [(0,)]
-        assert _existe(ana, ids["bruno"]) is False
-
-
-@pytest.mark.parametrize("janela,mensagem", [
-    (("2026-11-17 03:00:00+00", "2026-11-17 02:00:00+00"), "trecho_invertido"),
-    (("2026-11-15 00:00:00+00", "2026-11-17 00:00:01+00"), "trecho_acima_de_48h"),
-    ((None, "2026-11-17 00:00:00+00"), "trecho_incompleto"),
-])
-@pytest.mark.parametrize("funcao", ["apagar", "marcar"])
-def test_janela_fora_do_aceito_e_recusada_sem_tocar_em_nada(como, cenario, janela, mensagem, funcao):
-    with como(cenario["ana"]) as ana:
-        ids = _semear(ana, cenario)
-        sql = ("select apagar_trecho(%s, %s, %s)" if funcao == "apagar"
-               else "select marcar_trecho(%s, %s, %s, true)")
-        ana.executar("savepoint antes")
-        with pytest.raises(psycopg2.Error) as erro:
-            ana.executar(sql, (cenario["device_ana"], *janela))
-        assert erro.value.pgcode == "22023"
-        assert erro.value.diag.message_primary == mensagem
-        ana.executar("rollback to savepoint antes")
-        assert all(_existe(ana, linha) is False for linha in ids["dentro"])
-
-
-def test_janela_de_48h_exatas_e_aceita(como, cenario):
-    with como(cenario["ana"]) as ana:
-        _semear(ana, cenario)
-        assert ana.executar("select apagar_trecho(%s, %s, %s)",
-                            (cenario["device_ana"], "2026-11-16 03:00:00+00",
-                             "2026-11-18 03:00:00+00")) == [(5,)]
-
-
-def test_sem_titular_nao_faz_nada(como, cenario):
-    """Papel autenticado sem `sub`: a função devolve nulo, como a
-    `apagar_minha_conta()`, e não apaga nada."""
-    with como(None) as sem_dono:
-        assert sem_dono.executar("select apagar_trecho(%s, %s, %s)",
-                                 (cenario["device_ana"], DESDE, ATE)) == [(None,)]
-
-
-@pytest.mark.parametrize("assinatura", [
-    "apagar_trecho(%s, %s, %s)",
-    "marcar_trecho(%s, %s, %s, true)",
-])
-def test_anon_nao_executa(como_anon, cenario, assinatura):
+@pytest.mark.parametrize("operacao", ["apagar", "marcar"])
+def test_data17_anon_nao_executa(como_anon, cenario, operacao):
     with como_anon() as anon:
-        erro = anon.negado("select " + assinatura, (cenario["device_ana"], DESDE, ATE))
+        sql = ("select apagar_trecho(%s,%s,%s,%s,%s,%s)" if operacao == "apagar" else
+               "select marcar_trecho(%s,%s,%s,true,%s,%s,%s)")
+        erro = anon.negado(sql, (cenario["device_ana"], DESDE, ATE, 0, False, _hash_ids([])))
         assert erro.pgcode == "42501"
 
+@pytest.mark.parametrize("operacao", ["apagar", "marcar"])
+@pytest.mark.parametrize("janela,mensagem", [((ATE, DESDE), "trecho_invertido"),
+    (("2026-11-15 00:00:00+00", "2026-11-17 00:00:01+00"), "trecho_acima_de_48h"),
+    ((None, ATE), "trecho_incompleto")])
+def test_data17_janela_invalida(como, cenario, operacao, janela, mensagem):
+    with como(cenario["ana"]) as ana:
+        sql = ("select apagar_trecho(%s,%s,%s,%s,%s,%s)" if operacao == "apagar" else
+               "select marcar_trecho(%s,%s,%s,true,%s,%s,%s)")
+        ana.executar("savepoint janela")
+        with pytest.raises(psycopg2.Error, match=mensagem):
+            ana.executar(sql, (cenario["device_ana"], *janela, 0, False, _hash_ids([])))
+        ana.executar("rollback to savepoint janela")
 
 def test_a_conferencia_da_janela_nao_e_chamavel_pelo_cliente(como, cenario):
     with como(cenario["ana"]) as ana:
         erro = ana.negado("select _conferir_trecho(%s, %s, %s)", (cenario["device_ana"], DESDE, ATE))
+        assert erro.pgcode == "42501"
+
+
+def test_data17_assinaturas_antigas_foram_removidas(como, cenario):
+    with como(cenario["ana"]) as ana:
+        assert ana.executar("select to_regprocedure('public.apagar_trecho(uuid,timestamptz,timestamptz)')") == [(None,)]
+        assert ana.executar("select to_regprocedure('public.marcar_trecho(uuid,timestamptz,timestamptz,boolean)')") == [(None,)]
+
+
+def _hash_ids(ids):
+    import hashlib
+    return hashlib.sha256(",".join(sorted(str(i).lower() for i in ids)).encode("utf-8")).hexdigest()
+
+@pytest.mark.parametrize("operacao", ["apagar", "marcar"])
+@pytest.mark.parametrize("alteracao", ["extra", "menos", "marca", "troca", "nenhuma"])
+def test_data17_confere_identidade_e_marca(como, cenario, operacao, alteracao):
+    with como(cenario["ana"]) as ana:
+        ids = _semear(ana, cenario)
+        esperados = ids["dentro"] + [ids["chegada"]]
+        impressao = _hash_ids(esperados)
+        ana.executar("reset role")
+        if alteracao in ("menos", "troca"):
+            ana.executar("delete from sleep_data where id = %s", (esperados[0],))
+        if alteracao in ("extra", "troca"):
+            ana.executar("insert into sleep_data (user_id, device_id, movimento_total, status, captured_at) values (%s, %s, 9.8, 'Repouso', %s)",
+                         (cenario["ana"], cenario["device_ana"], "2026-11-17 03:00:15+00"))
+        if alteracao == "marca":
+            ana.executar("update sleep_data set bancada = true where id = %s", (esperados[0],))
+        antes = ana.executar("select id, bancada from sleep_data where user_id = %s and device_id = %s order by id", (cenario["ana"], cenario["device_ana"]))
+        ana.executar("set local role authenticated")
+        sql = ("select apagar_trecho(%s,%s,%s,%s,%s,%s)" if operacao == "apagar"
+               else "select marcar_trecho(%s,%s,%s,true,%s,%s,%s)")
+        args = (cenario["device_ana"], DESDE, ATE, len(esperados), False, impressao)
+        ana.executar("savepoint teste_data17")
+        if alteracao == "nenhuma":
+            assert ana.executar(sql, args) == [(4,)]
+        else:
+            with pytest.raises(psycopg2.Error, match="trecho_divergente"):
+                ana.executar(sql, args)
+            ana.executar("rollback to savepoint teste_data17")
+            ana.executar("reset role")
+            depois = ana.executar("select id, bancada from sleep_data where user_id = %s and device_id = %s order by id", (cenario["ana"], cenario["device_ana"]))
+            assert depois == antes
+
+def test_data17_hash_vetor_fixo(como, cenario):
+    ids = ["ffffffff-ffff-ffff-ffff-ffffffffffff", "00000000-0000-0000-0000-000000000001"]
+    with como(cenario["ana"]) as ana:
+        assert ana.executar("select encode(sha256(convert_to(string_agg(id::text, ',' order by id), 'UTF8')), 'hex') from unnest(%s::uuid[]) id", (ids,))[0][0] == _hash_ids(ids)
+
+
+@pytest.mark.parametrize("operacao", ["apagar", "marcar"])
+def test_data17_chegada_depois_da_conferencia_nao_e_atingida(url_do_banco, cenario, operacao):
+    """B insere após o snapshot do FOR UPDATE, antes do DELETE/UPDATE de A."""
+    inicio, fim = "2030-01-01 03:00:00+00", "2030-01-01 03:10:00+00"
+    ids = []
+    nova = None
+    a = psycopg2.connect(url_do_banco)
+    b = psycopg2.connect(url_do_banco)
+    preparacao = psycopg2.connect(url_do_banco)
+    resultado = {}
+    tarefa = None
+    try:
+        with preparacao.cursor() as cursor:
+            for minuto in range(0, 10, 2):
+                cursor.execute(
+                    "insert into public.sleep_data (user_id, device_id, movimento_total, status, captured_at) "
+                    "values (%s, %s, 9.8, 'Repouso', %s) returning id",
+                    (cenario["ana"], cenario["device_ana"], f"2030-01-01 03:{minuto:02d}:00+00"),
+                )
+                ids.append(cursor.fetchone()[0])
+        preparacao.commit()
+
+        with b.cursor() as cursor:
+            cursor.execute("select id from public.sleep_data where id = %s for update", (ids[2],))
+            assert cursor.fetchone() is not None
+        with a.cursor() as cursor:
+            cursor.execute("set local statement_timeout = '8s'")
+            cursor.execute("select set_config('request.jwt.claims', %s, true)",
+                           ('{"sub":"%s","role":"authenticated"}' % cenario["ana"],))
+            cursor.execute("set local role authenticated")
+            cursor.execute("select pg_backend_pid()")
+            pid_a = cursor.fetchone()[0]
+
+        def chamar():
+            try:
+                with a.cursor() as cursor:
+                    sql = ("select public.apagar_trecho(%s,%s,%s,%s,%s,%s)" if operacao == "apagar"
+                           else "select public.marcar_trecho(%s,%s,%s,true,%s,%s,%s)")
+                    cursor.execute(sql, (cenario["device_ana"], inicio, fim, len(ids), False, _hash_ids(ids)))
+                    resultado["quantidade"] = cursor.fetchone()[0]
+                a.commit()
+            except Exception as erro:
+                resultado["erro"] = erro
+                a.rollback()
+
+        tarefa = threading.Thread(target=chamar, daemon=True)
+        tarefa.start()
+        prazo = time.monotonic() + 5
+        with b.cursor() as cursor:
+            while time.monotonic() < prazo:
+                cursor.execute("select pg_backend_pid() = any(pg_blocking_pids(%s))", (pid_a,))
+                if cursor.fetchone()[0]:
+                    break
+                if not tarefa.is_alive():
+                    break
+                time.sleep(0.05)
+            else:
+                pytest.fail("A não ficou bloqueada pela trava de B em até 5 segundos")
+            assert tarefa.is_alive(), f"A terminou sem esperar a trava: {resultado}"
+            # DELETE/UPDATE também bloqueiam na linha. A trava da tabela
+            # distingue esse caso do SELECT FOR UPDATE que precisa precedê-los.
+            cursor.execute(
+                "select mode from pg_catalog.pg_locks "
+                "where pid = %s and relation = 'public.sleep_data'::regclass and granted",
+                (pid_a,),
+            )
+            modos = {linha[0] for linha in cursor.fetchall()}
+            assert "RowShareLock" in modos and "RowExclusiveLock" not in modos, (
+                f"A não está bloqueada no SELECT FOR UPDATE: {modos}"
+            )
+            cursor.execute(
+                "insert into public.sleep_data (user_id, device_id, movimento_total, status, captured_at) "
+                "values (%s, %s, 9.8, 'Repouso', %s) returning id",
+                (cenario["ana"], cenario["device_ana"], "2030-01-01 03:05:15+00"),
+            )
+            nova = cursor.fetchone()[0]
+        b.commit()
+        tarefa.join(timeout=10)
+        assert not tarefa.is_alive(), "A não terminou em até 10 segundos"
+        assert "erro" not in resultado, resultado
+        assert resultado["quantidade"] == len(ids)
+        with preparacao.cursor() as cursor:
+            cursor.execute("select bancada from public.sleep_data where id = any(%s::uuid[])", (ids,))
+            alteradas = cursor.fetchall()
+            assert alteradas == ([] if operacao == "apagar" else [(True,)] * len(ids))
+            cursor.execute("select bancada from public.sleep_data where id = %s", (nova,))
+            assert cursor.fetchone() == (False,)
+    finally:
+        b.rollback()
+        if tarefa is not None and tarefa.is_alive():
+            a.cancel()
+            tarefa.join(timeout=10)
+        with preparacao.cursor() as cursor:
+            cursor.execute("delete from public.sleep_data where id = any(%s::uuid[])", (ids + ([nova] if nova else []),))
+        preparacao.commit()
+        a.close()
+        b.close()
+        preparacao.close()
+
+
+def test_data17_recusa_contagem_errada(como, cenario):
+    with como(cenario["ana"]) as ana:
+        ids = _semear(ana, cenario)
+        esperados = ids["dentro"] + [ids["chegada"]]
+        with pytest.raises(psycopg2.Error, match="trecho_divergente"):
+            ana.executar("select apagar_trecho(%s,%s,%s,%s,%s,%s)",
+                         (cenario["device_ana"], DESDE, ATE, 5, False, _hash_ids(esperados)))
+
+
+def test_data17_sem_titular_nao_faz_nada(como, cenario):
+    with como(None) as sessao:
+        assert sessao.executar("select apagar_trecho(%s,%s,%s,%s,%s,%s)",
+            (cenario["device_ana"], DESDE, ATE, 0, False, _hash_ids([]))) == [(None,)]
+
+def test_data17_limite_exato_de_48_horas(como, cenario):
+    with como(cenario["ana"]) as ana:
+        ids = _semear(ana, cenario)
+        esperados = ids["dentro"] + [ids["chegada"], ids["fora"]]
+        assert ana.executar("select apagar_trecho(%s,%s,%s,%s,%s,%s)",
+            (cenario["device_ana"], "2026-11-16 03:00:00+00", "2026-11-18 03:00:00+00",
+             5, False, _hash_ids(esperados))) == [(5,)]
+
+
+def test_data17_conferencia_dos_ids_nao_e_chamavel(como, cenario):
+    with como(cenario["ana"]) as ana:
+        erro = ana.negado("select _ids_trecho(%s,%s,%s,%s,%s,%s)",
+            (cenario["device_ana"], DESDE, ATE, 0, False, _hash_ids([])))
         assert erro.pgcode == "42501"

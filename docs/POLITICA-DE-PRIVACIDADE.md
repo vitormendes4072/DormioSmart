@@ -509,9 +509,11 @@ digite uma frase de confirmação, e é **irreversível**. Ela apaga:
 - o seu perfil.
 
 ✅ **Eliminação de uma sessão.** Em *Histórico*, cada sessão tem *Excluir…*:
-depois de uma confirmação, as leituras daquele aparelho entre o início e o fim
-da sessão são apagadas do servidor, e a tela diz quantas saíram. Também é
-**irreversível**, e só alcança as suas leituras.
+depois de uma confirmação, são apagados os registros que a tela mostrou para
+aquela sessão, e a tela diz quantos saíram. Se o conjunto de registros ou sua marca tiver mudado até a
+conferência no servidor, nada é apagado: recarregue e confira antes de tentar
+de novo. Um registro que chegar depois dessa conferência não é recusado, mas
+também não é apagado. A exclusão é **irreversível** e só alcança seus registros.
 
 > ✏️ **Correção de procedência, 2026-10-17.** O "✅ Implementado" acima está
 > escrito desde 29/09 e, **na versão versionada do aplicativo, a tela não

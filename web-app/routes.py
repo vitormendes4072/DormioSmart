@@ -14,7 +14,7 @@ import lote
 import perfil
 import trecho
 from auth import extrair_bearer, require_auth
-from database import INDISPONIVEL, db
+from database import INDISPONIVEL, TrechoDivergente, db
 from consulta import ler_parametros, validar_instante, validar_uuid
 from ingestao import CAMINHO_SESSAO, CAMINHO_TOKEN, extrair_device_id, identificar_caminho
 from device_auth import extrair_token, gerar_token, hash_token
@@ -616,7 +616,10 @@ def init_routes(app):
         lido, erro = trecho.ler_trecho(corpo)
         if erro:
             return jsonify({"error": erro}), 400
-        apagadas = db.apagar_trecho(g.jwt, *lido)
+        try:
+            apagadas = db.apagar_trecho(g.jwt, *lido)
+        except TrechoDivergente:
+            return jsonify({"error": "A sessão mudou desde que a tela carregou. Recarregue e confira antes de tentar de novo."}), 409
         if apagadas is None:
             return jsonify({"error": "fonte de dados indisponivel"}), 503
         return jsonify({"epocas_apagadas": apagadas}), 200
@@ -636,7 +639,10 @@ def init_routes(app):
         bancada = corpo.get("bancada")
         if not isinstance(bancada, bool):
             return jsonify({"error": "'bancada' obrigatorio, true ou false"}), 400
-        marcadas = db.marcar_trecho(g.jwt, *lido, bancada)
+        try:
+            marcadas = db.marcar_trecho(g.jwt, *lido, bancada)
+        except TrechoDivergente:
+            return jsonify({"error": "A sessão mudou desde que a tela carregou. Recarregue e confira antes de tentar de novo."}), 409
         if marcadas is None:
             return jsonify({"error": "fonte de dados indisponivel"}), 503
         return jsonify({"epocas_marcadas": marcadas, "bancada": bancada}), 200

@@ -36,6 +36,8 @@ const ROTULOS_MOVIMENTO = ["Movimento", "Movimento Detectado!"];
 /** Uma leitura como devolvida por `GET /api/sleep-history`. Os campos sao
  *  anulaveis porque o banco aceita nulo — a UI precisa lidar com isso. */
 export type LeituraSono = {
+  /** UUID retornado pelo histórico; sem ele não há ação sobre a sessão. */
+  id?: string | null;
   /** Instante em que a linha CHEGOU ao banco (`default now()`). Sempre
    *  presente — e o que o Postgres garante, nao o dispositivo. */
   created_at: string;

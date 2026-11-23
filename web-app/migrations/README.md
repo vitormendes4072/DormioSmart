@@ -24,6 +24,8 @@ Scripts SQL versionados, aplicados **em ordem numérica** no Supabase
 | 023 | `023_excluir_e_marcar_trecho.sql` | DATA-16 | `sleep_data.bancada` e as funções `apagar_trecho` e `marcar_trecho`: o titular exclui ou marca como bancada/teste as épocas de um aparelho entre dois instantes (até 48 h), pelo `auth.uid()`. **Aplicar antes do release:** o histórico passa a pedir a coluna `bancada`. |
 | 024 | `024_consentimento_smart_dormio.sql` | LGPD-15 | A versão do consentimento passa a `2026-11-22` ("o Smart Dormio" e a exclusão de uma sessão). Quem aceitou a de 10/11 vê a tela de novo. **Aplicar depois do deploy** do backend e do frontend com a versão nova, e com o APK 1.1.2 publicado. ✏️ *Aplicada na produção em 22/11, no release R17, logo depois do deploy e minutos antes do APK.* |
 
+| 025 | `025_conferir_identidade_trecho.sql` | DATA-17 | Confere contagem, marca e impressão dos IDs; remove as assinaturas antigas. **Aplicar logo depois do deploy**: entre o deploy e a 025, excluir e marcar respondem 503, sem alterar registros. O APK 1.1.2 recebe 400 até atualizar. |
+
 ## Quais estão aplicadas no banco
 
 Nada registra quais migrações rodaram — são aplicadas à mão. Para saber, rode

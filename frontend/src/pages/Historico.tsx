@@ -189,6 +189,10 @@ function SessoesDaConta({ dias }: { dias: number }) {
       setConfirmando(null);
       recarregar();
     } catch (falha) {
+      if (falha instanceof ErroApi && falha.status === 409) {
+        setConfirmando(null);
+        recarregar();
+      }
       setAviso({
         texto: falha instanceof ErroApi ? falha.message : "Não foi possível concluir. Tente novamente.",
         falha: true,
