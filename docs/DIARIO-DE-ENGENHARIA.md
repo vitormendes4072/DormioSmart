@@ -12882,6 +12882,6 @@ existe ali. As mutações individuais verificam as falhas com o executor present
 **Risco em aberto.**
 - **O orçamento do painel tem 237 B de folga:** a base visual provavelmente precisa tirar algo do pacote principal (`UI-43`, `UI-15`).
 - **A tela Noite só aparece no app;** não entrou na comparação em imagem (`UI-43`).
-- **As decisões do autor** (as abas, os "períodos com movimento", a fonte do `UI-36`) vêm antes da etapa 1.
+- **As decisões do autor**, tomadas no mesmo dia, depois do inventário: as cinco abas do app, com o visual da barra da landing; os "períodos com movimento" depois do redesenho, no `UI-44`; a fonte do sistema, o que fecha o `UI-36`. A etapa 1 (a base visual) espera o plano aprovado (`UI-43`).
 
 **Procedência.** Branch `docs/UI-43-inventario-do-redesenho`, sobre `develop` `1c07d76`; Windows 11, Edge sem interface, servidor de desenvolvimento do Vite; 23/11.
