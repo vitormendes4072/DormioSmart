@@ -142,6 +142,6 @@ de hoje, para que o redesenho não as perca em silêncio.
 | 2–6 | Uma tela por vez: Início, Noite, Histórico, Dispositivos, Configurações | Os testes da seção 2 passando; imagens antes e depois a 360 e 390 px; a Noite no emulador |
 | 7 | A landing mostra as telas novas, com as mesmas abas e textos | Um teste que compara as abas e os rótulos da landing com os do app |
 
-**Riscos.** O orçamento do painel tem 237 B de folga (23/11): a etapa 1 provavelmente precisa tirar
-algo do pacote principal antes de pôr o visual novo. A tela Noite só aparece no app, e a conferência
+**Riscos.** ~~O orçamento do painel tem 237 B de folga~~: resolvido na etapa 1 pela troca do gráfico do
+recharts por SVG próprio (156 131 B de 260 000 B, 23/11). A tela Noite só aparece no app, e a conferência
 visual dela é no emulador.
