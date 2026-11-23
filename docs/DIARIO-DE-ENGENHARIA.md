@@ -12745,10 +12745,33 @@ O celular fica sobre o colchão, perto do travesseiro, em todas as noites.
 | DREAMT | +6,82 | +0,091 | +1,84 | 38,1% → 29,9% | Sim |
 | Newcastle | +9,33 | +0,041 | −3,99 | 48,1% → 48,1% | Não |
 
+O ganho em especificidade não se traduziu em melhora consistente por noite. O treino conjunto
+aprofundou a subestimação do tempo total de sono: o viés (previsto menos pontuado) passou de
+−22 para −52 min na Walch, de −37 para −84 min na Wearanize cabeça e de −53 para −84 min
+na Wearanize pulso. A fração de noites com erro absoluto acima de 1 h piorou nessas três bases,
+ficou igual na Newcastle e melhorou só na DREAMT.
+
+Na revisão da PR #266, os controles foram reexecutados no Windows, com Python 3.11.9. Cada
+sabotagem do caminho de decisão fez cair o teste correspondente:
+
+| Sabotagem | Teste que falhou |
+|---|---|
+| LOSO inclui a pessoa avaliada | `test_referencia_loso_exclui_a_pessoa_avaliada` (cabeça e pulso) |
+| Classificação de 0,5 como sono | `test_classes_classifica_empate_como_vigilia` |
+| Wearanize pulso incluída na média externa | `test_execucao_calcula_media_e_intervalo_so_das_tres_externas` |
+| Sinal invertido no bootstrap | `test_bootstrap_subtrai_a_referencia_do_conjunto` |
+| Bootstrap por época | `test_bootstrap_reamostra_a_pessoa_inteira` |
+| Chave de identidade inclui o braço | `test_pessoa_vazada_entre_bracos_e_bloqueada_e_inflaria_auc` |
+| Sinal invertido nos deltas por noite, inclusive nos limites | `test_delta_noturno_subtrai_a_referencia_do_conjunto` |
+
+Os três controles originais também voltaram a falhar sob sabotagem. Contra o código de
+`develop` `c70c6ed`, o arquivo de testes deu um erro de coleta porque o executor ainda não
+existe ali. As mutações individuais verificam as falhas com o executor presente.
+
 **Adaptação.** Nenhuma no protocolo da rodada. Nas Wearanize a comparação mede o custo de nunca ter visto a coorte: o conjunto não viu nenhum braço, enquanto o v2 LOSO viu as outras pessoas. A DREAMT respondeu por 59,1% das épocas no treino sem Wearanize. Os dois braços Wearanize somaram 61,9%, 76,6% e 63,5% das épocas nos treinos que deixaram Walch, DREAMT e Newcastle de fora, respectivamente. Isso descreve a composição, sem atribuir causalidade. Pesos por base seriam outro experimento.
 
 **O que deu errado no caminho.** A primeira busca usou um glob que o PowerShell não expandiu. Os testes novos antes do executor deram erro de coleta por módulo ausente. Os controles por sabotagem depois confirmaram as falhas específicas. A reextração DREAMT tomou a maior parte da preparação, pois reconstruiu as features a partir do carregador histórico. No CI, a captura do hash Git foi reprovada por não declarar a codificação de saída. Acrescentado UTF-8, sem alterar os cálculos da rodada. A conferência local seguiu a junction e acusou scripts históricos. Removido apenas o vínculo, com os dados preservados, e repetida a checagem.
 
-**Risco em aberto.** Identidades anônimas de estudos distintos não têm chave comum demonstrável. Os resultados noturnos cobrem as épocas avaliáveis, e as bases já eram conhecidas no projeto. O ganho de uma base não sustenta afirmar robustez geral, medir vigília de uma pessoa ou trocar o modelo servido.
+**Risco em aberto.** Identidades anônimas de estudos distintos não têm chave comum demonstrável. Os resultados noturnos cobrem as épocas avaliáveis, e as bases já eram conhecidas no projeto. O ganho de uma base não sustenta afirmar robustez geral, medir vigília de uma pessoa ou trocar o modelo servido. A AUC subiu nas três bases externas (+0,036 na Walch, +0,049 na DREAMT e +0,017 na Newcastle), então o corte fixo de 0,5 pode explicar parte da perda de sensibilidade. Essa hipótese não foi testada. Escolher o corte usando apenas as bases de treino seria outro experimento, a decidir pelo autor.
 
-**Procedência.** Windows e Python 3.11.9 do ambiente ML local. Protocolo `74f675c`, executor e rodada `80a51f8` sobre `develop` `b6d779a`. A suíte local passou com 325 testes. Antes de fechar o registro, branch sincronizada com `c70c6ed`. Dados locais usados pela junction ignorada `ml/dados/bruto/ml18-local`, apontada a `dados-locais/`. A junction foi removida no fim da execução, e os dados continuam no diretório local. Nenhum vetor individual exportado. 23/11/2026.
+**Procedência.** Windows e Python 3.11.9 do ambiente ML local. Protocolo `74f675c`, executor e rodada `80a51f8` sobre `develop` `b6d779a`. A suíte local passou com 325 testes na rodada original e 332 na revisão sobre `develop` `c70c6ed`. Dados locais usados pela junction ignorada `ml/dados/bruto/ml18-local`, apontada a `dados-locais/`. A junction foi removida no fim da execução, e os dados continuam no diretório local. Nenhum vetor individual exportado. 23/11/2026.
