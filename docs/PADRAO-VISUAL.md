@@ -181,6 +181,18 @@ no código, no contrato de dados e no CSV.
   política de privacidade cita.
 - `src/linguagem.test.ts` reprova os termos da primeira coluna nas telas.
 
+### As camadas do Início e da Noite (`UI-40`)
+
+1. **O que está errado**, se algo estiver: pausa, mistura de aparelhos, período incompleto, falta de registro.
+2. **O resumo da sessão**, em frases: quando, registrado X de Y, quantas vezes parou, movimento em % do tempo,
+   maior período sem movimento registrado. Sem nota e sem interpretação.
+3. **O gráfico**, sem número no eixo e com a linha do limite, e o estado do envio.
+4. **As sessões anteriores.**
+5. **"Detalhes técnicos", recolhido:** fórmula, limite, contagens, amostras e números do sensor.
+6. **A nota de escopo**, sempre visível.
+
+Um número técnico que passe a significar falha vira aviso fora dos detalhes.
+
 ## O que este documento não cobre
 
 | Lacuna | Por quê |

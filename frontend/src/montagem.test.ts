@@ -511,10 +511,11 @@ describe("montagem real das telas (UI-17)", PRAZO, () => {
   it("marca apenas a sessão na borda na tabela do painel", async () => {
     simularSessoesNaBorda();
     await montar("/dashboard");
-    const secao = await screen.findByRole("region", { name: "Sessões recentes" });
-    const [, recente, antiga] = within(secao).getAllByRole("row");
-    expect(within(recente).getByText(/^(.+) de \1$/)).toBeTruthy();
-    expect(within(secao).getAllByRole("columnheader")).toHaveLength(within(recente).getAllByRole("cell").length);
+    // UI-40: a sessão exibida está no resumo; aqui ficam as de antes dela.
+    const secao = await screen.findByRole("region", { name: "Sessões anteriores" });
+    const [, ...linhas] = within(secao).getAllByRole("row");
+    const antiga = linhas[linhas.length - 1];
+    expect(within(secao).getAllByRole("columnheader")).toHaveLength(within(antiga).getAllByRole("cell").length);
     expect(within(antiga).getByText(/ de .+ · Parcial/)).toBeTruthy();
   });
 
@@ -771,7 +772,7 @@ describe("rotas esperadas (UI-18)", PRAZO, () => {
 describe("avisos no painel (UI-18)", PRAZO, () => {
   const lacuna = /faltou registro em/i;
   const inferencia = /foi estimada pelo intervalo entre eles/i;
-  const escopo = /não realiza estadiamento de sono.*nem diagnóstico clínico/i;
+  const escopo = /não é diagnóstico nem mede fases do sono/i;
 
   function responderHistorico(responder: () => Promise<Response>) {
     const original = vi.mocked(fetch).getMockImplementation()!;
@@ -787,7 +788,7 @@ describe("avisos no painel (UI-18)", PRAZO, () => {
       movimento_total: 9.81, temp: null, status: "Repouso", epoca_segundos: epoca,
     }))));
     await montar("/dashboard");
-    await screen.findByRole("heading", { name: "Registros recentes" });
+    await screen.findByRole("heading", { name: /^Última sessão/ });
   }
 
   it("lacuna: mostra o aviso quando há interrupção no recorte", async () => {
@@ -805,17 +806,17 @@ describe("avisos no painel (UI-18)", PRAZO, () => {
       device_id: "d1", bancada: i >= 20 && i < 30,
     }))));
     await montar("/dashboard");
-    await screen.findByRole("heading", { name: "Registros recentes" });
+    await screen.findByRole("heading", { name: /^Última sessão/ });
     expect(screen.queryByText(lacuna)).toBeNull();
     expect(screen.getByRole("button", { name: /ver todas/i })).toBeTruthy();
   });
 
-  it("UI-39: os quatro números falam a língua do glossário", async () => {
+  it("UI-39: o resumo fala a língua do glossário", async () => {
     await montarComLeituras([0, 30, 60], 30);
-    for (const rotulo of ["Tempo registrado", "Com movimento", "Maior período sem movimento registrado", "Registrado"]) {
-      expect(screen.getAllByText(rotulo).length).toBeGreaterThan(0);
+    const resumo = screen.getByRole("region", { name: /^Última sessão/ }).textContent;
+    for (const termo of ["Registrado", "do tempo registrado", "Maior período sem movimento registrado"]) {
+      expect(resumo).toContain(termo);
     }
-    expect(screen.getByText("do tempo registrado")).toBeTruthy();
     expect(screen.getByText("Intensidade do movimento")).toBeTruthy();
   });
 
@@ -881,5 +882,115 @@ describe("toda rota do App.tsx monta (UI-17)", PRAZO, () => {
   it.each(rotas)("a rota %s renderiza alguma coisa", async (rota) => {
     await montar(rota);
     expect(document.getElementById("root")?.childElementCount).toBeGreaterThan(0);
+  });
+});
+
+describe("o painel em camadas (UI-40)", PRAZO, () => {
+  function responder({ dispositivos, leituras }: { dispositivos: unknown[]; leituras: unknown[] }) {
+    const original = vi.mocked(fetch).getMockImplementation()!;
+    vi.mocked(fetch).mockImplementation((entrada, opcoes) => {
+      const caminho = String(entrada);
+      if (caminho.startsWith("/api/devices")) return Promise.resolve(respostaJson(dispositivos));
+      if (caminho.startsWith("/api/sleep-history")) return Promise.resolve(respostaJson(leituras));
+      return original(entrada, opcoes);
+    });
+  }
+
+  const travesseiro = { id: "p", nome: "Meu travesseiro", tipo: "travesseiro", last_seen_at: null, revoked_at: null };
+  const celular = { id: "c", nome: "Meu celular", tipo: "celular", last_seen_at: null, revoked_at: null };
+  const leitura = (segundos: number, extra = {}) => ({
+    created_at: new Date(Date.now() - segundos * 1000).toISOString(),
+    movimento_total: 9.81, temp: null, status: "Repouso", epoca_segundos: 30, device_id: "p", ...extra,
+  });
+  const detalhes = () =>
+    [...document.querySelectorAll("details")].find((d) =>
+      d.querySelector("summary")?.textContent?.includes("Detalhes técnicos"))!;
+  /** Está na tela sem precisar abrir nada. */
+  const aVista = (elemento: Element) => elemento.closest("details:not([open])") === null;
+
+  async function abrir() {
+    await montar("/dashboard");
+    await screen.findByRole("heading", { name: /^(Última sessão|\d+ sessões)/ });
+  }
+
+  it("os detalhes técnicos nascem recolhidos, com fórmula, limite e tabela dentro", async () => {
+    responder({ dispositivos: [travesseiro], leituras: [0, 30, 60].map((s) => leitura(s)) });
+    await abrir();
+    const tecnico = detalhes();
+    expect(tecnico.open).toBe(false);
+    expect(tecnico.textContent).toContain("magnitude");
+    expect(tecnico.textContent).toContain("1,2 m/s²");
+    expect(tecnico.textContent).toContain("Registros recentes");
+
+    const fora = document.querySelector("main")!.cloneNode(true) as HTMLElement;
+    fora.querySelectorAll("details, style").forEach((no) => no.remove());
+    expect(fora.textContent).not.toMatch(/m\/s²|9,81|1,2|magnitude|Registros recentes/);
+    // DASH-07: sem a linha do limite, só repouso parece muito movimento.
+    expect(fora.textContent).toContain("Limite de movimento");
+  });
+
+  it("a ordem é resumo, gráfico, sessões anteriores, detalhes e escopo", async () => {
+    responder({ dispositivos: [travesseiro], leituras: [0, 30, 60, 7200, 7230].map((s) => leitura(s)) });
+    await abrir();
+    const ordem = [
+      screen.getByRole("heading", { name: /^Última sessão/ }),
+      screen.getByRole("heading", { name: "Movimento ao longo do tempo" }),
+      screen.getByRole("heading", { name: "Sessões anteriores" }),
+      detalhes(),
+      screen.getByText(/não é diagnóstico nem mede fases do sono/i),
+    ];
+    for (let i = 1; i < ordem.length; i++) {
+      expect(ordem[i - 1].compareDocumentPosition(ordem[i]) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    }
+  });
+
+  it("o resumo diz o aparelho da sessão, mesmo com todos selecionados", async () => {
+    responder({ dispositivos: [travesseiro, celular], leituras: [0, 30, 60].map((s) => leitura(s)) });
+    await abrir();
+    expect(screen.getByRole("heading", { name: "Última sessão · Meu travesseiro" })).toBeTruthy();
+  });
+
+  it("sem sessão anterior, diz isso em vez de repetir a atual", async () => {
+    responder({ dispositivos: [travesseiro], leituras: [0, 30, 60].map((s) => leitura(s)) });
+    await abrir();
+    expect(screen.getByText("Nenhuma sessão anterior nos registros carregados.")).toBeTruthy();
+  });
+
+  it("nenhum aviso de falha fica escondido", async () => {
+    responder({
+      dispositivos: [{ ...travesseiro, receber_leituras: false }, celular],
+      // Com pausa e sem duração declarada em parte: lacuna e inferência juntas.
+      leituras: [0, 30, 60, 300, 330, 360].map((s) =>
+        leitura(s, { device_id: s < 100 ? "p" : "c", epoca_segundos: s === 30 ? null : 30 })),
+    });
+    await abrir();
+    for (const aviso of [
+      /leituras? recebidas|registros recebidos durante a pausa/i,
+      /faltou registro em/i,
+      /o registro parou 1 vez/i,
+      /foi estimada pelo intervalo entre eles/i,
+      /medem o mesmo movimento de formas diferentes/i,
+      /não é diagnóstico nem mede fases do sono/i,
+    ]) {
+      const achados = screen.getAllByText((_, elemento) =>
+        elemento?.tagName === "P" && aviso.test(elemento.textContent ?? ""));
+      expect(achados.length, String(aviso)).toBeGreaterThan(0);
+      for (const elemento of achados) expect(aVista(elemento), String(aviso)).toBe(true);
+    }
+  });
+
+  it("em todas as sessões, os detalhes não dividem pelo intervalo entre elas", async () => {
+    responder({ dispositivos: [travesseiro], leituras: [0, 30, 60, 7200, 7230].map((s) => leitura(s)) });
+    await abrir();
+    expect(detalhes().textContent).toContain("do período.");
+    fireEvent.click(screen.getByRole("button", { name: /ver todas/i }));
+    expect(detalhes().textContent).not.toContain("do período.");
+  });
+
+  it("o limite de registros e o estado do envio ficam à vista", async () => {
+    responder({ dispositivos: [travesseiro], leituras: Array.from({ length: 2000 }, (_, i) => leitura(i * 30)) });
+    await abrir();
+    expect(aVista(screen.getByText(/^Período incompleto/))).toBe(true);
+    expect(aVista(screen.getByText("Nunca enviou"))).toBe(true);
   });
 });

@@ -293,3 +293,48 @@ describe("CartaoDaNoite (APP-02)", () => {
     expect(await screen.findByText("Última noite")).toBeTruthy();
   });
 });
+
+describe("os números do sensor em Detalhes técnicos (UI-40)", () => {
+  const aVista = (elemento: Element) => elemento.closest("details:not([open])") === null;
+  const gravando = (extra = {}) => plugin(estado({
+    ativa: true, rodando: true, inicioUtcMs: INICIO, epocasGravadas: 9, taxaHz: 49.98, ...extra,
+  }));
+  const agora = () => INICIO + 3000 + 4200 + 10 * 30_000;
+
+  it("ritmo, contagens e calibração recolhidos; o registrado e a temperatura à vista", async () => {
+    render(<CartaoDaNoite
+      plugin={gravando({ temperaturaC: 31.8, calibracao: "Calibrando: 1 de 40 registros parados" })}
+      agora={agora}
+    />);
+    expect(aVista(await screen.findByText("4m 30s de 5m 0s"))).toBe(true);
+    expect(aVista(screen.getByText("31.8 °C"))).toBe(true);
+    for (const texto of ["50.0 Hz", "Registros gravados", "Calibrando: 1 de 40 registros parados"]) {
+      expect(aVista(screen.getByText(texto)), texto).toBe(false);
+    }
+  });
+
+  it("descarte por ritmo aparece mesmo com registros gravados", async () => {
+    render(<CartaoDaNoite plugin={gravando({ recusadasPorTaxa: 3 })} agora={agora} />);
+    const aviso = await screen.findByText(/3 registros descartados/);
+    expect(aVista(aviso)).toBe(true);
+    expect(aviso.getAttribute("role")).toBe("alert");
+  });
+
+  it("retomada aparece como aviso", async () => {
+    render(<CartaoDaNoite plugin={gravando({ retomadas: 1 })} agora={agora} />);
+    expect(aVista(await screen.findByText(/precisou ser retomado 1 vez/))).toBe(true);
+  });
+
+  it("sem descarte nem retomada, não inventa aviso", async () => {
+    render(<CartaoDaNoite plugin={gravando()} agora={agora} />);
+    await screen.findByText("4m 30s de 5m 0s");
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(screen.queryByText(/precisou ser retomado/)).toBeNull();
+  });
+
+  it("o alerta de sensor que não grava nada fica à vista", async () => {
+    render(<CartaoDaNoite plugin={gravando({ epocasGravadas: 0, recusadasPorTaxa: 5 })} agora={agora} />);
+    expect(aVista(await screen.findByText(/fora do ritmo que o Smart Dormio aceita/))).toBe(true);
+    expect(screen.getAllByRole("alert")).toHaveLength(1);
+  });
+});

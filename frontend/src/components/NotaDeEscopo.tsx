@@ -15,8 +15,7 @@ export function NotaDeEscopo() {
       <Info className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
       <span>
         Registra <strong className="font-medium text-foreground">indícios de movimento</strong>{" "}
-        durante o repouso, por acelerometria. Não realiza estadiamento de sono (REM, profundo)
-        nem diagnóstico clínico.
+        durante o repouso. Não é diagnóstico nem mede fases do sono.
       </span>
     </p>
   );

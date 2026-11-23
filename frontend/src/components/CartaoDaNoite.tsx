@@ -22,11 +22,11 @@ const INTERVALO_DE_LEITURA_MS = 5000;
 /**
  * O registro da noite inteira, só no app Android (APP-02, etapas 2 e 3).
  *
- * Mínimo de propósito: iniciar, encerrar e os números que dizem se a noite
- * está sendo registrada de verdade. A tela completa é a etapa 4. Os números
- * não se escondem: a cobertura é o que mostra se o aparelho deixou o app
- * trabalhar a noite toda, e a taxa recusada mostra um sensor que o núcleo
- * não aceita.
+ * Mínimo de propósito: iniciar, encerrar e o que diz se a noite está sendo
+ * registrada de verdade. A tela completa é a etapa 4. O registrado fica à
+ * vista: é o que mostra se o aparelho deixou o app trabalhar a noite toda. Os
+ * números do sensor vão para "Detalhes técnicos" (UI-40), e o que neles é
+ * FALHA (descarte por ritmo, retomada) sai de lá como aviso, sempre visível.
  */
 export function CartaoDaNoite({
   plugin = Noite,
@@ -282,32 +282,53 @@ export function CartaoDaNoite({
           <h3 className="text-sm font-semibold text-foreground">Última noite</h3>
         )}
         {estado && (estado.ativa || estado.epocasGravadas > 0) && (
-          <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
-            <dt className="text-muted-foreground">Registros gravados</dt>
-            <dd className="tabular-nums">{estado.epocasGravadas}</dd>
-            <dt className="text-muted-foreground">Registrado</dt>
-            <dd className="tabular-nums">
-              {registrado === null ? "—" : `${formatarDuracao(registrado.registradoMs)} de ${formatarDuracao(registrado.periodoMs)}`}
-            </dd>
-            <dt className="text-muted-foreground">Ritmo do sensor</dt>
-            <dd className="tabular-nums">{estado.taxaHz > 0 ? `${estado.taxaHz.toFixed(1)} Hz` : "—"}</dd>
-            <dt className="text-muted-foreground">Descartados pelo ritmo do sensor</dt>
-            <dd className="tabular-nums">{estado.recusadasPorTaxa}</dd>
-            <dt className="text-muted-foreground">Vezes retomada</dt>
-            <dd className="tabular-nums">{estado.retomadas}</dd>
-            {estado.temperaturaC !== undefined && (
-              <>
-                <dt className="text-muted-foreground">Temperatura do aparelho</dt>
-                <dd className="tabular-nums">{estado.temperaturaC.toFixed(1)} °C</dd>
-              </>
+          <>
+            <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+              <dt className="text-muted-foreground">Registrado</dt>
+              <dd className="tabular-nums">
+                {registrado === null ? "—" : `${formatarDuracao(registrado.registradoMs)} de ${formatarDuracao(registrado.periodoMs)}`}
+              </dd>
+              {/* À vista: é o número da regra dos 45 °C. */}
+              {estado.temperaturaC !== undefined && (
+                <>
+                  <dt className="text-muted-foreground">Temperatura do aparelho</dt>
+                  <dd className="tabular-nums">{estado.temperaturaC.toFixed(1)} °C</dd>
+                </>
+              )}
+            </dl>
+
+            {estado.retomadas > 0 && (
+              <p className="text-sm text-amber-800 dark:text-amber-300">
+                O registro precisou ser retomado {estado.retomadas} {estado.retomadas === 1 ? "vez" : "vezes"}.
+              </p>
             )}
-            {estado.calibracao && (
-              <>
-                <dt className="text-muted-foreground">Calibração do sensor</dt>
-                <dd data-testid="calibracao">{estado.calibracao}</dd>
-              </>
+            {estado.recusadasPorTaxa > 0 && estado.epocasGravadas > 0 && (
+              <p className="text-sm text-destructive" role="alert">
+                {estado.recusadasPorTaxa} {estado.recusadasPorTaxa === 1 ? "registro descartado" : "registros descartados"}:
+                {" "}o sensor saiu do ritmo aceito.
+              </p>
             )}
-          </dl>
+
+            <details className="text-sm">
+              <summary className="cursor-pointer py-1 text-muted-foreground">Detalhes técnicos</summary>
+              <dl className="mt-1 grid grid-cols-2 gap-x-4 gap-y-1">
+                <dt className="text-muted-foreground">Registros gravados</dt>
+                <dd className="tabular-nums">{estado.epocasGravadas}</dd>
+                <dt className="text-muted-foreground">Ritmo do sensor</dt>
+                <dd className="tabular-nums">{estado.taxaHz > 0 ? `${estado.taxaHz.toFixed(1)} Hz` : "—"}</dd>
+                <dt className="text-muted-foreground">Descartados pelo ritmo do sensor</dt>
+                <dd className="tabular-nums">{estado.recusadasPorTaxa}</dd>
+                <dt className="text-muted-foreground">Vezes retomada</dt>
+                <dd className="tabular-nums">{estado.retomadas}</dd>
+                {estado.calibracao && (
+                  <>
+                    <dt className="text-muted-foreground">Calibração do sensor</dt>
+                    <dd data-testid="calibracao">{estado.calibracao}</dd>
+                  </>
+                )}
+              </dl>
+            </details>
+          </>
         )}
 
         {estado && estado.recusadasPorTaxa > 0 && estado.epocasGravadas === 0 && (
