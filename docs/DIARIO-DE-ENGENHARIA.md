@@ -12986,3 +12986,28 @@ existe ali. As mutações individuais verificam as falhas com o executor present
 - **A escolha do período e o valor ao tocar,** no estilo da landing, ficam para a etapa 2 (o Início).
 
 **Procedência.** Branch `feature/UI-43-grafico-proprio`, sobre `develop` `a56d9b2`; Windows 11, Node 22, Edge sem interface e o navegador do app de desktop; 23/11.
+
+# 2026-11-23 (xiv) — o lockfile do UI-43 e um merge com o CI vermelho
+
+**O problema, como foi entendido no início.** A PR #272 (o gráfico próprio) foi mesclada em `develop` com 3 checks do CI falhando. O `npm ci` do CI recusou o `package-lock.json`: faltavam pacotes opcionais (`@emnapi/*`) que o Linux exige e que o `npm uninstall recharts` do Windows (npm 11.6.1) tinha tirado. O frontend e o app Android pararam de instalar no CI, no `develop`.
+
+**Hipótese de trabalho.** O lockfile tem de ser gerado pelo npm do CI (Node 22, npm 10): partir do lockfile anterior à remoção e deixar o npm do Linux sincronizar com o `package.json` sem o recharts.
+
+**O que foi testado, e como.**
+- O lockfile de `a56d9b2` (com o recharts), e `npm install --package-lock-only` no contêiner `node:22` (npm 10.9.9).
+- `npm ci` no contêiner, numa cópia limpa, e no Windows.
+- Suíte do frontend, build e orçamento do painel.
+
+**Resultado medido.**
+- **O lockfile novo:** sem o recharts, com os 23 registros `@emnapi` (o quebrado tinha 18); `npm ci` instala 478 pacotes no Linux e passa no Windows.
+- **Frontend:** 965 em 65 arquivos; build passa; painel 156 131 B comprimidos.
+
+**Adaptação.** Nenhuma no gráfico; só o lockfile.
+
+**O que deu errado no caminho.**
+- **Mesclei a #272 sem ler o resultado do CI.** O comando que esperava o CI e o merge iam na mesma linha, e o merge rodou mesmo com "3 fail" na saída. Daqui em diante, o resultado do CI é lido antes, num passo separado, e só um verde total libera o merge.
+- **Gerar lockfile com o npm do Windows:** o `npm uninstall` local reescreveu o lockfile do jeito do Windows. Mudança de dependência passa a ser feita no contêiner com o npm do CI, e conferida com `npm ci` lá antes do push.
+
+**Risco em aberto.** Nenhum novo: o `develop` volta a instalar quando esta correção entrar.
+
+**Procedência.** Branch `bugfix/UI-43-lockfile`, sobre `develop` `5f2170c`; contêiner `node:22` (npm 10.9.9) e Windows 11 (npm 11.6.1); 23/11.
