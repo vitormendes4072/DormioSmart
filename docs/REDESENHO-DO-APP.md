@@ -129,8 +129,9 @@ de hoje, para que o redesenho não as perca em silêncio.
    de baixo do Início, ou uma tela aberta pelo gráfico.
 2. **"Períodos com movimento"** (a versão honesta dos "Eventos"). ✅ **Decidido pelo autor em 23/11:
    depois do redesenho**, como item próprio (`UI-44`). O redesenho muda só a aparência.
-3. **A fonte** (`UI-36`): o app usa a Outfit; a landing e as páginas públicas, a do sistema. O redesenho
-   precisa de uma só.
+3. **A fonte** (`UI-36`). ✅ **Decidido pelo autor em 23/11: a do sistema**, a mesma da landing e das
+   páginas públicas (`docs/PADRAO-VISUAL.md`, seção 1). A Outfit sai do app na etapa 1, e com ela a
+   chamada ao Google Fonts a cada abertura.
 
 ## 4. As etapas
 
