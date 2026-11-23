@@ -133,6 +133,12 @@ describe("sessoesDaMarca (UI-38)", () => {
 
 
 describe("DATA-17: identidade da sessão", () => {
+  it("não oferece ação para sessão com marcas diferentes", () => {
+    const normal = leitura({ bancada: false });
+    const bancada = leitura({ bancada: true });
+    expect(trechoDaSessao([normal, bancada])).toBeNull();
+  });
+
   it("não oferece ação para leitura sem id", () => {
     expect(trechoDaSessao([leitura({ id: undefined })])).toBeNull();
   });

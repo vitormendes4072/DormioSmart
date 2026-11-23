@@ -47,6 +47,32 @@ ARQUIVO_ALVO = pathlib.Path("tests/rls/pos_migracao.sql")
 # caem, para que a suíte não acuse por acidente.
 # ---------------------------------------------------------------------
 SABOTADORES = {
+    "data17_altera_por_intervalo": dict(
+        descricao="DATA-17 altera a janela em vez dos IDs travados",
+        sql="""do $$ declare fonte text; assinatura text; begin
+          foreach assinatura in array array[
+            'public.apagar_trecho(uuid,timestamptz,timestamptz,bigint,boolean,text)',
+            'public.marcar_trecho(uuid,timestamptz,timestamptz,boolean,bigint,boolean,text)'
+          ] loop
+            select pg_get_functiondef(assinatura::regprocedure) into fonte;
+            if position('id = any(v_ids)' in fonte) = 0 then
+              raise exception 'sabotagem não encontrou a mutação por IDs';
+            end if;
+            fonte := replace(fonte, 'id = any(v_ids)',
+              'device_id = p_device and coalesce(captured_at, created_at) between p_desde and p_ate');
+            execute fonte;
+          end loop; end $$;""",
+        minimo=2, exige="test_data17_chegada_depois_da_conferencia_nao_e_atingida"),
+    "data17_sem_trava": dict(
+        descricao="DATA-17 confere sem travar as linhas",
+        sql="""do $$ declare fonte text; begin
+          select pg_get_functiondef('public._ids_trecho(uuid,timestamptz,timestamptz,bigint,boolean,text)'::regprocedure) into fonte;
+          if position('order by id for update' in fonte) = 0 then
+            raise exception 'sabotagem não encontrou a trava';
+          end if;
+          fonte := replace(fonte, 'order by id for update', 'order by id');
+          execute fonte; end $$;""",
+        minimo=2, exige="test_data17_chegada_depois_da_conferencia_nao_e_atingida"),
     "data17_ignora_contagem": dict(
         descricao="DATA-17 ignora a contagem esperada",
         sql="""do $$ declare fonte text; begin

@@ -5,6 +5,9 @@ banco (como a ingestão grava), e somem no rollback do fim. O trecho é o
 `coalesce(captured_at, created_at)` do cliente: uma época sem `captured_at`
 entra pelo instante de chegada.
 """
+import threading
+import time
+
 import psycopg2
 import pytest
 
@@ -134,27 +137,103 @@ def test_data17_hash_vetor_fixo(como, cenario):
 
 
 @pytest.mark.parametrize("operacao", ["apagar", "marcar"])
-def test_data17_chegada_depois_da_conferencia_nao_e_atingida(como, cenario, operacao):
-    with como(cenario["ana"]) as ana:
-        ids = _semear(ana, cenario)
-        esperados = ids["dentro"] + [ids["chegada"]]
-        ana.executar("reset role")
-        ana.executar("""create function pg_temp.data17_inserir() returns trigger language plpgsql as $$
-        begin
-          insert into public.sleep_data(user_id, device_id, movimento_total, status, captured_at)
-          select OLD.user_id, OLD.device_id, 9.8, 'Repouso', '2026-11-17 03:00:15+00'
-          where not exists (select 1 from public.sleep_data where device_id=OLD.device_id and captured_at='2026-11-17 03:00:15+00');
-          if TG_OP = 'UPDATE' then return NEW; end if;
-          return OLD;
-        end $$""")
-        evento = "delete" if operacao == "apagar" else "update"
-        ana.executar(f"create trigger data17_inserir before {evento} on public.sleep_data for each row execute function pg_temp.data17_inserir()")
-        ana.executar("set local role authenticated")
-        sql = ("select apagar_trecho(%s,%s,%s,%s,%s,%s)" if operacao == "apagar" else
-               "select marcar_trecho(%s,%s,%s,true,%s,%s,%s)")
-        assert ana.executar(sql, (cenario["device_ana"], DESDE, ATE, 4, False, _hash_ids(esperados))) == [(4,)]
-        ana.executar("reset role")
-        assert ana.executar("select bancada from public.sleep_data where device_id=%s and captured_at='2026-11-17 03:00:15+00'", (cenario["device_ana"],)) == [(False,)]
+def test_data17_chegada_depois_da_conferencia_nao_e_atingida(url_do_banco, cenario, operacao):
+    """B insere após o snapshot do FOR UPDATE, antes do DELETE/UPDATE de A."""
+    inicio, fim = "2030-01-01 03:00:00+00", "2030-01-01 03:10:00+00"
+    ids = []
+    nova = None
+    a = psycopg2.connect(url_do_banco)
+    b = psycopg2.connect(url_do_banco)
+    preparacao = psycopg2.connect(url_do_banco)
+    resultado = {}
+    tarefa = None
+    try:
+        with preparacao.cursor() as cursor:
+            for minuto in range(0, 10, 2):
+                cursor.execute(
+                    "insert into public.sleep_data (user_id, device_id, movimento_total, status, captured_at) "
+                    "values (%s, %s, 9.8, 'Repouso', %s) returning id",
+                    (cenario["ana"], cenario["device_ana"], f"2030-01-01 03:{minuto:02d}:00+00"),
+                )
+                ids.append(cursor.fetchone()[0])
+        preparacao.commit()
+
+        with b.cursor() as cursor:
+            cursor.execute("select id from public.sleep_data where id = %s for update", (ids[2],))
+            assert cursor.fetchone() is not None
+        with a.cursor() as cursor:
+            cursor.execute("set local statement_timeout = '8s'")
+            cursor.execute("select set_config('request.jwt.claims', %s, true)",
+                           ('{"sub":"%s","role":"authenticated"}' % cenario["ana"],))
+            cursor.execute("set local role authenticated")
+            cursor.execute("select pg_backend_pid()")
+            pid_a = cursor.fetchone()[0]
+
+        def chamar():
+            try:
+                with a.cursor() as cursor:
+                    sql = ("select public.apagar_trecho(%s,%s,%s,%s,%s,%s)" if operacao == "apagar"
+                           else "select public.marcar_trecho(%s,%s,%s,true,%s,%s,%s)")
+                    cursor.execute(sql, (cenario["device_ana"], inicio, fim, len(ids), False, _hash_ids(ids)))
+                    resultado["quantidade"] = cursor.fetchone()[0]
+                a.commit()
+            except Exception as erro:
+                resultado["erro"] = erro
+                a.rollback()
+
+        tarefa = threading.Thread(target=chamar, daemon=True)
+        tarefa.start()
+        prazo = time.monotonic() + 5
+        with b.cursor() as cursor:
+            while time.monotonic() < prazo:
+                cursor.execute("select pg_backend_pid() = any(pg_blocking_pids(%s))", (pid_a,))
+                if cursor.fetchone()[0]:
+                    break
+                if not tarefa.is_alive():
+                    break
+                time.sleep(0.05)
+            else:
+                pytest.fail("A não ficou bloqueada pela trava de B em até 5 segundos")
+            assert tarefa.is_alive(), f"A terminou sem esperar a trava: {resultado}"
+            # DELETE/UPDATE também bloqueiam na linha. A trava da tabela
+            # distingue esse caso do SELECT FOR UPDATE que precisa precedê-los.
+            cursor.execute(
+                "select mode from pg_catalog.pg_locks "
+                "where pid = %s and relation = 'public.sleep_data'::regclass and granted",
+                (pid_a,),
+            )
+            modos = {linha[0] for linha in cursor.fetchall()}
+            assert "RowShareLock" in modos and "RowExclusiveLock" not in modos, (
+                f"A não está bloqueada no SELECT FOR UPDATE: {modos}"
+            )
+            cursor.execute(
+                "insert into public.sleep_data (user_id, device_id, movimento_total, status, captured_at) "
+                "values (%s, %s, 9.8, 'Repouso', %s) returning id",
+                (cenario["ana"], cenario["device_ana"], "2030-01-01 03:05:15+00"),
+            )
+            nova = cursor.fetchone()[0]
+        b.commit()
+        tarefa.join(timeout=10)
+        assert not tarefa.is_alive(), "A não terminou em até 10 segundos"
+        assert "erro" not in resultado, resultado
+        assert resultado["quantidade"] == len(ids)
+        with preparacao.cursor() as cursor:
+            cursor.execute("select bancada from public.sleep_data where id = any(%s::uuid[])", (ids,))
+            alteradas = cursor.fetchall()
+            assert alteradas == ([] if operacao == "apagar" else [(True,)] * len(ids))
+            cursor.execute("select bancada from public.sleep_data where id = %s", (nova,))
+            assert cursor.fetchone() == (False,)
+    finally:
+        b.rollback()
+        if tarefa is not None and tarefa.is_alive():
+            a.cancel()
+            tarefa.join(timeout=10)
+        with preparacao.cursor() as cursor:
+            cursor.execute("delete from public.sleep_data where id = any(%s::uuid[])", (ids + ([nova] if nova else []),))
+        preparacao.commit()
+        a.close()
+        b.close()
+        preparacao.close()
 
 
 def test_data17_recusa_contagem_errada(como, cenario):
