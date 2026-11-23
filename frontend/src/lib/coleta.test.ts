@@ -108,7 +108,7 @@ describe("mensagemDeFalha", () => {
 
   it("distingue recusa, indisponibilidade e rede", () => {
     expect(mensagemDeFalha(400)).not.toBe(mensagemDeFalha(503));
-    expect(mensagemDeFalha(0).toLowerCase()).toContain("conexao");
+    expect(mensagemDeFalha(0).toLowerCase()).toContain("conexão");
   });
 });
 

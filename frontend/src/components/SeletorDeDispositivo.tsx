@@ -90,16 +90,16 @@ export function AvisoDeMistura({
 
   return (
     <p className="text-xs text-muted-foreground">
-      A série reúne <strong className="font-semibold">todos os dispositivos</strong>
+      O gráfico reúne <strong className="font-semibold">todos os dispositivos</strong>
       {serieMisturaTipos(dispositivos, selecionado) ? (
         <>
           {" "}
-          — <strong className="font-semibold">{tipos.join(" e ")}</strong>, que são instrumentos
+          — <strong className="font-semibold">{tipos.join(" e ")}</strong>, que são aparelhos
           diferentes
         </>
       ) : null}
-      . Instrumentos em posições diferentes medem o mesmo movimento de formas diferentes — escolha
-      um dispositivo acima para comparar séries separadas.
+      . Aparelhos em posições diferentes medem o mesmo movimento de formas diferentes — escolha
+      um dispositivo acima para ver cada um separado.
     </p>
   );
 }

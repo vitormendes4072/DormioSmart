@@ -12195,3 +12195,231 @@ Coluna, e não tabela de trechos: cada consulta filtra sem junção, e funciona 
 - **O rótulo "noite" (c)** segue no `DATA-16`, à espera do `ESC-01`.
 
 **Procedência.** Branch `feature/DATA-16-excluir-e-marcar-sessao`, sobre `develop` `0270c52`; Windows 11, Python 3.13, Node 22, Postgres 17 em Docker; 21/11.
+
+# 2026-11-22 (i) — o release R16: excluir e marcar uma sessão, e os textos da home
+
+**O problema, como foi entendido no início.** O `develop` tinha o `DATA-16` (a) e (b) e o `UI-35` fora da produção. O `DATA-16` depende da migração 023: o histórico passa a pedir a coluna `bancada`, e publicar o código sem ela derrubaria o Histórico.
+
+**Hipótese de trabalho.** A ordem segura é:
+- aplicar a 023 na produção e conferir;
+- só então mesclar em `main`;
+- conferir de fora.
+
+O APK não muda neste release: o app Android recebe o Histórico novo no próximo.
+
+**O que foi testado, e como.**
+- **A 023:** aplicada pelo autor no SQL Editor e conferida por uma consulta só de leitura: a coluna, as duas funções e `anon` sem acesso.
+- **A PR #247:** CI todo verde (12 jobs), mesclada com `--no-ff`.
+- **Depois do deploy:**
+  - `curl` nas rotas;
+  - a CSP servida contra os scripts inline das cinco páginas;
+  - a landing servida;
+  - os pedaços JS publicados.
+
+**Resultado medido.**
+- **A 023:** as quatro conferências vieram `true`.
+- **O release:** merge `7b234e4`; deploy `7973419286` com sucesso.
+- **A produção:**
+  - `/health` `200` (contrato 2.11.0);
+  - `401` sem token em `/api/devices`, `/api/sessoes/apagar` e `/api/sessoes/marcar`, e com `Bearer` inválido em `/api/sessoes/apagar`;
+  - a CSP igual nas cinco páginas, 15 scripts inline, todos com hash;
+  - a landing servida com o bloco `ui-35-textos-minimos`;
+  - o pedaço do Histórico com "Marcar como bancada", e o pedaço principal com as duas rotas novas.
+
+**Veredito.** O `DATA-16` (a) e (b) e o `UI-35` estão na produção.
+
+**Adaptação.** Nenhuma no caminho.
+
+**O que deu errado no caminho.**
+- **O `git push` travou sem mensagem** depois do merge da #246 e de novo no do release: o gerenciador de credenciais do Windows esperava uma janela que não apareceu. O push saiu pelo `gh` como ajudante de credencial, só naquela chamada, sem mudar a configuração do autor.
+
+**Risco em aberto.**
+- **O Histórico não foi visto com a conta do autor no navegador:** excluir e marcar foram testados no código e no Postgres local, não na tela publicada.
+- **O app Android** só ganha o Histórico novo no próximo APK.
+
+**Procedência.** PR #247 (`7b234e4`); deploy `7973419286`; conferências desta máquina em 22/11.
+
+# 2026-11-22 (ii) — LGPD-15: o consentimento diz "o Smart Dormio", e cita a exclusão de uma sessão
+
+**O problema, como foi entendido no início.** O `APP-18` trocou "o Dormio" por "o Smart Dormio" nas telas do app e deixou de fora o texto do consentimento destacado (`lib/consentimento.ts`). Mudá-lo é mudar a versão nos três lugares (app, backend e banco), e quem já aceitou precisa aceitar de novo. O autor decidiu mudar. Como o aceite volta de qualquer jeito, o último item ganhou o que mudou desde 10/11: a exclusão de uma sessão pelo Histórico (`DATA-16`).
+
+**Hipótese de trabalho.** Basta trocar o texto e a versão (`2026-11-22`) nos três lugares; a mecânica da 017 cuida do resto (versão antiga não destrava a gravação, e o aceite só vale na vigente). O que muda o plano é o app Android: ele leva a tela dentro do APK. Um APK com a versão antiga não consegue aceitar a nova, e sem aceite o banco recusa as noites. Então:
+- o APK 1.1.2 vai no mesmo release;
+- a migração 024 entra depois do deploy;
+- as noites guardadas no celular são enviadas antes.
+
+**O que foi testado, e como.**
+- **Testes escritos antes da mudança:**
+  - o `appAndroid.test.ts` passou a incluir o `consentimento.ts` no teste de "o Dormio";
+  - o `test_consentimento.py` passou a ler a versão do banco na migração mais recente que recria a função, e não fixo na 017;
+  - o `test_rls_consentimento.py` ganhou dois testes: a versão vigente é a de 22/11, e o aceite de 10/11 não destrava a gravação nem é aceito de novo;
+  - o `montagem.test.ts` deixou de fixar a versão e passou a usar a constante.
+- **Controles positivos:**
+  - contra o código de antes, o teste de texto caiu no consentimento;
+  - com o texto e a versão trocados no app e no backend e ainda sem a 024, o teste de igualdade das versões caiu;
+  - sem a 024 na lista do RLS, os 2 testes novos caíram.
+- **Suítes:** backend, frontend, RLS (Postgres 17 em Docker), o diagnóstico de migrações, lint, Knip, build, a CSP, o orçamento do pacote e o Ruff.
+
+**Resultado medido.**
+- **Backend:** 665 passam, 1 pula (mesma contagem: o teste de igualdade mudou por dentro).
+- **Frontend:** 804 passam, 57 arquivos (+1). Lint, Knip e Knip de tipos com 0; o build passa.
+- **RLS:** 323 passam (+2).
+- **Diagnóstico de migrações:** acerta os 22 estados, com a 024 na ordem real.
+- **CSP:** 12 scripts inline com hash.
+- **Pacote:** a landing com 274 785 B estimados, abaixo do teto de 289 800.
+- **A versão do app:** 1.1.2 (`versionCode` 4) no `build.gradle`, no `appAndroid.ts` e na landing.
+
+**Veredito.** O texto e a versão estão trocados na branch, e o `LGPD-15` está fechado. A versão nova só vale na produção com a 024, que entra depois do deploy e com o APK 1.1.2 publicado.
+
+**Adaptação.**
+- **O último item mudou junto**, por decisão do autor entre as duas opções do plano: "Você pode apagar uma sessão a qualquer momento no Histórico, ou tudo, excluindo a conta em Configurações."
+- **O `versionCode` é 4, e não 5** como o plano dizia: o 1.1.1 tem o 3.
+
+**O que deu errado no caminho.**
+- **O plano errou o `versionCode`** (escreveu 5); a conferência pelo `build.gradle` corrigiu antes da edição.
+
+**Risco em aberto.**
+- **Quem estiver num APK anterior ao 1.1.2** (o de depuração do autor, e o enviado a um amigo em 11/11) para de enviar noites até atualizar.
+- **O celular do autor perde as noites guardadas** ao trocar o APK de depuração pelo de release, porque as assinaturas são diferentes. Por isso, elas devem ser enviadas antes.
+- **Entre o deploy e a 024**, o site pede a versão nova e o banco ainda tem a antiga: um aceite feito nessa janela é recusado.
+
+**Procedência.** Branch `feature/LGPD-15-consentimento-smart-dormio`, sobre `develop` `778c17c`; Windows 11, Python 3.13, Node 22, Postgres 17 em Docker; 22/11.
+
+# 2026-11-22 (iii) — UI-38: a noite partida por pausa curta, e o alcance de excluir e marcar
+
+**O problema, como foi entendido no início.** O painel e o Histórico abriam uma sessão nova a cada silêncio de cerca de 90 s (três intervalos de envio). No log serial de 17/11, duas quedas curtas partiam a noite em três sessões, e o painel mostraria os 40 min finais como a última. O autor aprovou juntar pausas de até 15 min.
+
+**Hipótese de trabalho.** "O aparelho parou?" e "começou outra sessão?" pedem limites diferentes. `calcularCobertura` continua medindo a interrupção em cerca de 90 s; só o agrupamento tolera 15 min. Parecia uma mudança só de leitura, sem efeito sobre o banco.
+
+**O que foi testado, e como.**
+- **A hipótese, antes do commit:** o alcance de excluir, com o código do app e a migração 023 num Postgres 17 local. Ela caiu (ver Adaptação).
+- **Testes escritos antes de cada mudança:** 6 da tolerância; depois 10 de `trecho.test.ts`, 10 de `Historico.test.tsx` e 1 do painel. Dos 21 últimos, 20 caíram contra o código só com a tolerância; o que passou é o controle de que época de outro aparelho não trava a ação.
+- **Tela contra banco, fora da suíte:** a `resumirSessoes` real, empacotada da página, lendo os instantes no formato do Postgres; o `ler_trecho` real; `apagar_trecho` e `marcar_trecho` reais, como `authenticated`. São quatro casos fixos e 1 000 sorteados (semente 38: marcas alternadas, microssegundos, empates, pausas de 0 a 60 min). A mesma sonda rodou contra o `develop`, como controle positivo.
+- **Navegador:** a worktree servida com sessão e API de mentira, em 360, 390 e 1280 px; exclusão e desmarcação clicadas.
+- **Suítes:** frontend, lint, Knip, Knip de tipos, build, orçamento do pacote, CSP, backend, RLS e Ruff.
+
+**Resultado medido.**
+- **Frontend:** 831 passam, 57 arquivos (eram 804; +27). Backend: 665 passam, 1 pula. RLS: 323 passam.
+- **Pacote:** o painel com 257 512 B comprimidos, teto de 260 000.
+- **Os casos que motivaram a mudança de plano** (tela mostra → banco apaga):
+
+  | Caso | `develop` | Só a tolerância | Com a correção |
+  |---|---|---|---|
+  | A. bancada curta dentro da sessão normal | 20→20 | **40→50** | 20→20 |
+  | B. normal curto entre duas bancadas | 20→20 | **40→50** | 20→20 |
+  | C. uma época normal entre duas bancadas | **40→41** | **40→41** | 20→20 |
+  | D. instante com microssegundos | **4→3** | **4→3** | 4→4 |
+
+  No `develop` e com a correção, marcar deu os mesmos números de excluir.
+- **Sonda inteira:** com a correção, 0 divergências em 4 990 ações, nenhuma recusada pelo backend, e 16 linhas de 2 511 sem ação, por não haver janela exata. No `develop`, 5 198 divergências em 5 798 ações. Os dados sorteados são carregados de microssegundos de propósito: a proporção não é taxa da produção.
+
+**Veredito.** A noite com pausa curta é uma sessão só, e, nos casos exercitados, excluir e marcar alcançam só o que a linha mostra. `UI-38` fechado na branch. C e D continuam na produção até o release.
+
+**Adaptação.** O plano parou antes do commit, foi reportado, e o autor aprovou incluir a correção:
+- **a sessão é cortada onde a marca muda** (`sessoesDaMarca`), no Histórico e no painel; a bancada de um aparelho não parte a sessão de outro;
+- **os instantes vão ao banco como vieram**, sem passar pelo `toISOString`, que corta os microssegundos;
+- **se a janela ainda pegar outra época carregada** (duas no mesmo instante com marcas diferentes), a linha fica sem ações;
+- **a confirmação diz o início e o fim.**
+
+**O que deu errado no caminho.**
+- **O `DATA-16` foi publicado no R16 com dois defeitos, C e D.** O comentário de `trecho.ts` e o diário diziam que o banco atingia exatamente a sessão da tela. Os testes usavam instantes redondos e nenhuma marca intercalada, e os de RLS recebiam a janela pronta: ninguém ligava a tela ao banco. É o §1 das lições.
+- **O plano do `UI-38` não previa o efeito sobre a exclusão.** Tratou o agrupamento como só exibição.
+- **A sonda falhou duas vezes por defeito dela:** gerou `captured_at` repetido, que a 011 proíbe, e acumulou savepoints até esgotar a memória de travas. O gerador e os savepoints foram corrigidos, e os sorteados caíram de 2 000 para 1 000 pelo tempo.
+
+**Risco em aberto.**
+- **Época que o cliente não carregou** e cai na janela (chegou depois, ou ficou além do limite de páginas) ainda é atingida: `DATA-17`.
+- **Pausas que somem menos de 5% da janela não abrem o aviso de lacuna** do painel (limite anterior a este item). Com a noite inteira numa sessão, elas aparecem só na cobertura, no gráfico e no "Com lacunas" do Histórico. Interessa ao resumo do painel novo.
+- **Sessão encadeada acima de 48 h** é recusada pelo banco ao excluir ou marcar.
+- **No celular, os botões do Histórico ficam fora da área visível da tabela**, que rola na horizontal (anterior a este item).
+- **Não foi visto com a conta real nem no app Android**, e não se verificou se a conta do autor tem épocas que C ou D atingiriam. A forma da noite de 17/11 veio do log serial, não do banco.
+
+**Procedência.** Branch `bugfix/UI-38-noite-partida`, sobre `develop` `8929530`; Windows 11, Python 3.13, Node 22, Postgres 17 em Docker; 22/11.
+
+# 2026-11-22 (iv) — UI-39: a linguagem das telas depois do login
+
+**O problema, como foi entendido no início.** O autor achou o app técnico e pouco intuitivo. As telas falavam em época, leitura, cobertura, lacuna, token e magnitude, nomes do código e do contrato de dados. O plano aprovado em 22/11 traz um glossário para Início, Noite, Histórico, Dispositivos, Coletar e Configurações, sem mudar o texto do consentimento.
+
+**Hipótese de trabalho.** Dá para trocar a língua sem trocar o que as telas afirmam, desde que cada rótulo novo seja conferido contra a conta que está por trás dele, e que um teste impeça o jargão de voltar.
+
+**O que foi testado, e como.**
+- **`linguagem.test.ts`, escrito antes da mudança:** lê a árvore sintática de todo arquivo que as seis telas alcançam por import, e não uma lista à mão, e reprova jargão fora de "Detalhes técnicos". Tem controle positivo do próprio detector e confere os nomes de botão que a política de privacidade cita.
+- **Testes do que muda de sentido:** "Com pausas", "Incompleta" e "Completa" no Histórico; a porcentagem que não vira "0%" nem "100%"; o cabeçalho com o número de colunas das células.
+- **Vermelho antes da mudança:** 30 testes caíram.
+- **Navegador:** cinco telas com sessão e API de mentira a 360 px, Histórico também a 390 e Início a 1280; o pareamento clicado.
+- **Emulador Pixel 6 descartável (`-read-only`), com sessão e API de mentira:** uma noite de teste de 2 min 30 s, iniciada, lida e encerrada na tela Noite.
+- **Suítes:** frontend, lint, Knip, Knip de tipos, build, orçamento, CSP, backend, Ruff e os testes JVM do app.
+
+**Resultado medido.**
+- **Frontend:** 843 passam, 58 arquivos (eram 831 em 57; +12). Backend: 665 passam, 1 pula. App: 34 testes JVM, 0 falhas.
+- **Pacote:** o painel com 257 425 B comprimidos, teto de 260 000.
+- **Navegador:** nenhum dos termos procurados no texto das telas abertas, e nenhuma página com rolagem horizontal.
+- **Emulador:** "Registros gravados 5", "Registrado 2m 30s de 2m 30s", "Calibrando: 0 de 40 registros parados", "5 registros aguardando envio."
+
+**Veredito.** O glossário está aplicado e guardado por teste. `UI-39` fechado na branch.
+
+**Adaptação.** Onde a troca literal diria mais do que o dado:
+- **"Com lacunas" não virou sempre "Com pausas".** Lacuna inclui atraso de um segundo com o aparelho ligado. "Com pausas" fica para a interrupção medida; o resto é "Incompleta".
+- **Porcentagem:** "<1%" e ">99%", para pouco movimento não virar nenhum e uma noite com pausa não virar 100%.
+- **O cartão de movimento deixou de ser contagem** e passou à fração do tempo registrado, que já alimentava a barra Repouso × Movimento.
+- **"Tempo medido" e "Cobertura" viraram uma coluna, "Registrado X de Y"**, no Histórico e nas sessões recentes.
+- **O CSV não muda:** `origem_temperatura` segue "Chip MPU6050", agora separado do rótulo da tela ("Chip do sensor").
+- **A instrução de gravar o código na placa** ficou em "Detalhes técnicos", aberto, porque sem ela o travesseiro não conecta.
+- **A frase de calibração vem do Android**, e mudou no `Calibracao.java` e no teste dele.
+
+**O que deu errado no caminho.**
+- **A troca deixou um cabeçalho a mais na tabela de sessões recentes**, com os testes de texto sem perceber. Entrou a asserção de colunas.
+- **O primeiro vermelho dessa asserção não valeu:** um `\1` virou caractere de controle no script de edição. O lint pegou, e o controle foi refeito.
+- **O dublê do pareamento devolvia o formato errado** e derrubou a tela na prévia. Corrigido no dublê.
+- **O emulador com 2 GB matou o app por falta de memória**, junto com outros processos. Refeito com 4 GB.
+
+**Risco em aberto.**
+- **O detector é por lista de termos:** jargão novo fora dela passa.
+- **As mensagens que vêm do servidor seguem técnicas e sem acento**, e o título da notificação do Android ainda diz "Dormio" em vez de "Smart Dormio": `UI-41`.
+- **No celular, a tabela do Histórico ainda esconde situação e ações na rolagem lateral, e "Configurações" encosta na borda da barra de baixo:** `UI-41`.
+- **Fórmula, limite, tabela de amostras e números do sensor seguem à vista**, com nome simples, até o `UI-40`.
+- **Não foi visto com a conta real nem em aparelho físico, e nenhum usuário leu os textos novos:** que ficaram mais claros é hipótese.
+
+**Procedência.** Branch `feature/UI-39-linguagem`, sobre `develop` `746a057`; Windows 11, Node (Vitest), Python 3.13, JDK do Android Studio, emulador Pixel 6; 22/11.
+
+# 2026-11-22 (v) — UI-40: o painel em camadas
+
+**O problema, como foi entendido no início.** Mesmo com a linguagem do `UI-39`, o Início abria com quatro cartões, um gráfico com eixo em m/s², a tabela de amostras e a fórmula no mesmo nível. Quem só quer saber "gravou a noite?" tinha de montar a resposta. O cartão da noite misturava o que importa com números do sensor. O plano aprovado em 22/11 pede um resumo no topo, um gráfico simples e o técnico recolhido, sem nota de sono e sem esconder aviso de falha.
+
+**Hipótese de trabalho.** Dá para pôr a resposta em quatro frases, todas contas que já existiam, e recolher o resto, desde que o que é falha fique fora do que se recolhe.
+
+**O que foi testado, e como.**
+- **Testes escritos antes:** `ResumoDaSessao.test.tsx` (as frases e as bordas: zero, uma e várias paradas, meia-noite, todas as sessões, registro sem duração, nenhuma interpretação), o bloco das camadas em `montagem.test.ts` e o dos detalhes em `CartaoDaNoite.test.tsx`. Contra o código de antes, 18 falharam (o arquivo do resumo inteiro conta como uma falha, por falta do componente).
+- **Sabotagem:** 15 mudanças no código pronto (cada aviso posto num bloco recolhido, detalhes abertos de saída, parada contada entre sessões e outras), uma por vez.
+- **Navegador:** API e sessão de mentira, 360, 390 e 1280 px, tema escuro a 360, detalhes abertos, "Ver todas" e modo de demonstração.
+- **Emulador Pixel 6 descartável (`-read-only`, 4 GB):** uma noite de teste de 2 min na tela Noite, com os detalhes recolhidos, abertos e depois de encerrar.
+- **Suítes:** frontend, lint, Knip, Knip de tipos, build, orçamento, CSP, backend, Ruff e JVM do app.
+
+**Resultado medido.**
+- **Frontend:** 864 passam, 59 arquivos (eram 843 em 58). Backend: 665 passam, 1 pula. App: 34 testes JVM, 0 falhas.
+- **Sabotagem:** 15 de 15 derrubaram teste.
+- **Pacote:** o painel com 257 163 B comprimidos, teto de 260 000, sem dependência nova.
+- **Navegador, com dados sintéticos na forma da noite de 17/11:** "6h 40m de 6h 43m", "O registro parou 2 vezes, a mais longa por 2m 9s", "Movimento em 7% do tempo registrado". Sem rolagem horizontal da página.
+- **Emulador:** os detalhes seguem abertos depois da releitura de 5 s do serviço.
+
+**Veredito.** O Início responde no topo, e o técnico ficou a um toque. `UI-40` fechado na branch.
+
+**Adaptação.**
+- **"Última sessão" e "Sessões anteriores", e não "Último registro" e "Registros anteriores"** como no esboço: no glossário do `UI-39`, registro é o trecho de 30 s.
+- **A linha do limite ficou no gráfico**, sem o número: sem ela, uma noite só de repouso parece muito movimento (`DASH-07`). O eixo em m/s² saiu.
+- **O resumo conta paradas abaixo de 5%**, que o aviso de lacuna não mostrava desde que o `UI-38` juntou a noite.
+- **Em "todas as sessões", o denominador é o número de sessões:** o intervalo entre noites não é parada nem tempo perdido.
+- **Na Noite, o que era falha entre os números do sensor virou aviso:** descarte por ritmo, mesmo com registros gravados, e retomada. A temperatura ficou à vista, por causa da regra dos 45 °C.
+- **A nota de escopo** virou "Não é diagnóstico nem mede fases do sono", a frase do plano, mantendo "indícios de movimento".
+- **`CardMetrica` foi removido**, sem uso.
+
+**O que deu errado no caminho.**
+- **Os detalhes diziam "12% do período" em "todas as sessões"**, contando a tarde entre noites. Visto no navegador; corrigido com teste que falhou antes.
+- **"6m 30s" quebrava no meio da linha a 360 px.** Corrigido.
+
+**Risco em aberto.**
+- **"O registro parou" descreve o que chegou:** não separa o aparelho parado de um envio perdido.
+- **O resumo herda o limite de 2 000 registros do painel:** sessões anteriores além dele só no Histórico, e o aviso de período incompleto continua à vista.
+- **A tabela de amostras ainda rola na horizontal dentro dos detalhes**, e a barra de baixo segue apertada (`UI-41`).
+- **Não foi visto com a conta real, em aparelho físico nem por outra pessoa:** que ficou mais intuitivo é hipótese. As capturas do texto do TCC e o catálogo de telas de 10/11 mostram o painel antigo.
+
+**Procedência.** Branch `feature/UI-40-painel-em-camadas`, sobre `develop` `b30bde6`; Windows 11, Node (Vitest), Python 3.13, JDK do Android Studio, emulador Pixel 6; 22/11.

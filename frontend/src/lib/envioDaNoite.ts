@@ -133,7 +133,7 @@ async function enviarNoitesPendentes(
       // para. Com avanço, as pendentes são só o resto do lote que não coube no
       // tempo do servidor, e o laço as relê a partir do ponto novo.
       if (ponto <= antes) {
-        r.erro = `${leituras.length - k} épocas ficaram pendentes no servidor. Tente de novo em instantes.`;
+        r.erro = `${leituras.length - k} registros ficaram pendentes no servidor. Tente de novo em instantes.`;
         break envio;
       }
     }

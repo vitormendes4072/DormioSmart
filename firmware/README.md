@@ -45,7 +45,7 @@ cp firmware/secrets.example.h firmware/secrets.h
 |---|---|---|
 | `WIFI_SSID` | `Wokwi-GUEST` | sua rede |
 | `WIFI_PASSWORD` | vazio | sua senha |
-| `DEVICE_TOKEN` | token do dispositivo pareado na aplicação | idem |
+| `DEVICE_TOKEN` | token do dispositivo pareado na aplicação (na tela, "código de conexão") | idem |
 
 O **`DEVICE_TOKEN`** é gerado ao parear o dispositivo na aplicação e exibido uma
 única vez (SEC-02). Sem ele, `POST /api/data` responde **401** e nada é gravado —

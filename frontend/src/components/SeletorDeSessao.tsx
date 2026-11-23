@@ -39,14 +39,14 @@ export function SeletorDeSessao({
       <span className="inline-flex items-center gap-2 text-muted-foreground">
         <Layers className="w-4 h-4 flex-shrink-0" aria-hidden />
         {verTudo ? (
-          `Mostrando as ${total} sessões de captação`
+          `Mostrando as ${total} sessões`
         ) : (
           <span>
-            Mostrando a última de {total} sessões de captação
+            Mostrando a última de {total} sessões
             {leiturasFora > 0 && (
               <>
                 {" "}
-                — {leiturasFora} {leiturasFora === 1 ? "leitura ficou" : "leituras ficaram"} de
+                — {leiturasFora} {leiturasFora === 1 ? "registro ficou" : "registros ficaram"} de
                 fora
               </>
             )}

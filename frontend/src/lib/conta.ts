@@ -118,7 +118,7 @@ export function descreverRecibo(recibo: ReciboDeExclusao): string {
   const partes: string[] = [];
 
   const n = recibo?.leituras_apagadas ?? 0;
-  partes.push(n === 1 ? "1 leitura" : `${n.toLocaleString("pt-BR")} leituras`);
+  partes.push(n === 1 ? "1 registro" : `${n.toLocaleString("pt-BR")} registros`);
 
   const d = recibo?.dispositivos_apagados ?? 0;
   partes.push(d === 1 ? "1 dispositivo" : `${d} dispositivos`);

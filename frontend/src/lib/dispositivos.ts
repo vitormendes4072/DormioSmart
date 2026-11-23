@@ -16,12 +16,12 @@ export const TIPOS: { valor: TipoDeDispositivo; rotulo: string; ajuda: string }[
   {
     valor: "travesseiro",
     rotulo: "Travesseiro",
-    ajuda: "ESP32 com MPU6050 embarcado no travesseiro.",
+    ajuda: "Sensor de movimento dentro do travesseiro.",
   },
   {
     valor: "celular",
     rotulo: "Celular",
-    ajuda: "Acelerometro do proprio aparelho, pela tela de coleta.",
+    ajuda: "Sensor de movimento do próprio celular, pela tela Coletar.",
   },
 ];
 
@@ -77,7 +77,7 @@ export function estaAtivo(dispositivo: Dispositivo): boolean {
 const JANELA_DE_ENVIO_RECENTE_MS = 20 * 60_000;
 
 export function classificarUltimoEnvio(dispositivo: Dispositivo, agora = Date.now()) {
-  if (!estaAtivo(dispositivo)) return "Credencial revogada";
+  if (!estaAtivo(dispositivo)) return "Revogado";
   if (!dispositivo.last_seen_at) return "Nunca enviou";
   const idadeMs = agora - Date.parse(dispositivo.last_seen_at);
   if (!Number.isFinite(idadeMs) || idadeMs < 0) return "Horário indisponível";
@@ -218,7 +218,7 @@ export function serieMisturaTipos(
 
 /** Origem declarada no contrato 2.10.0. Aparelhos sem tipo ficam sem atribuição. */
 export function origemDaTemperatura(tipo: TipoDeDispositivo | undefined): string | null {
-  if (tipo === "travesseiro") return "Chip MPU6050";
+  if (tipo === "travesseiro") return "Chip do sensor";
   if (tipo === "celular") return "Bateria";
   return null;
 }

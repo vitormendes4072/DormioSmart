@@ -84,6 +84,25 @@ def test_consentir_com_versao_errada_e_recusado(como, cenario):
         assert erro.pgcode == CHECK, erro
 
 
+def test_a_versao_vigente_e_a_do_lgpd_15(como, cenario):
+    """LGPD-15 (22/11): o texto passou a dizer "o Smart Dormio" e a citar a
+    exclusao de uma sessao; a versao vigente e a da 024."""
+    with como(cenario["ana"]) as ana:
+        assert ana.executar("select public.versao_do_consentimento()") == [("2026-11-22",)]
+
+
+def test_o_aceite_do_texto_de_10_11_nao_vale_mais(como, cenario):
+    """Quem aceitou o texto de 10/11 ve a tela de novo: a versao antiga nao
+    destrava a gravacao, e consentir nela e recusado."""
+    with como(cenario["ana"]) as ana:
+        _sem_consentimento(ana, cenario["ana"], versao="2026-11-10")
+        erro = ana.negado("select public.registrar_leitura_da_sessao(%s, %s::jsonb)",
+                          (cenario["device_ana"], LEITURA))
+        assert erro.pgcode == SEM_PRIVILEGIO, erro
+        erro = ana.negado("select public.consentir_dado_de_saude(%s)", ("2026-11-10",))
+        assert erro.pgcode == CHECK, erro
+
+
 def test_o_titular_nao_escreve_o_consentimento_direto(como, cenario):
     with como(cenario["ana"]) as ana:
         _sem_consentimento(ana, cenario["ana"])

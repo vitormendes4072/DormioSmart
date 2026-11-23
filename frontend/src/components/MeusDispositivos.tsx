@@ -78,8 +78,8 @@ export function MeusDispositivos({ mostrarPareamento = true }: { mostrarPareamen
 
   async function revogar(dispositivo: Dispositivo) {
     const confirmado = window.confirm(
-      `Revogar "${dispositivo.nome}"?\n\nO token para de funcionar imediatamente e não pode ` +
-        `ser reativado. As leituras já enviadas continuam no histórico.`,
+      `Revogar "${dispositivo.nome}"?\n\nO código de conexão para de funcionar imediatamente e não pode ` +
+        `ser reativado. Os registros já enviados continuam no histórico.`,
     );
     if (!confirmado) return;
 
@@ -243,10 +243,10 @@ function TokenRecemCriado({
         <AlertTriangle className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
         <div className="min-w-0">
           <p className="text-sm font-semibold text-foreground">
-            Copie agora — este token não será mostrado de novo
+            Copie agora — este código de conexão não será mostrado de novo
           </p>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Guardamos apenas um resumo criptográfico dele. Se perder, será preciso parear
+            Não guardamos o código, só uma forma de conferi-lo. Se perder, será preciso parear
             outro dispositivo.
           </p>
         </div>
@@ -258,7 +258,7 @@ function TokenRecemCriado({
         </code>
         <button
           onClick={copiar}
-          aria-label="Copiar token"
+          aria-label="Copiar código de conexão"
           className="flex-shrink-0 p-2 rounded-lg bg-secondary hover:bg-secondary/70 transition"
         >
           {copia === "copiado" ? (
@@ -269,16 +269,23 @@ function TokenRecemCriado({
         </button>
       </div>
 
-      {copia === "manual" && <p role="status">Selecione o token acima e copie manualmente.</p>}
-      {copia === "copiado" && <p role="status">Token copiado.</p>}
+      {copia === "manual" && <p role="status">Selecione o código acima e copie manualmente.</p>}
+      {copia === "copiado" && <p role="status">Código copiado.</p>}
       <p className="text-xs text-muted-foreground">
+        O código precisa ser gravado na placa do travesseiro.
+      </p>
+      {/* Aberto: sem este passo o travesseiro não conecta. */}
+      <details open className="text-xs text-muted-foreground">
+        <summary className="cursor-pointer font-semibold">Detalhes técnicos</summary>
+        <p className="mt-1">
         Cole em <code className="font-mono">firmware/secrets.h</code>, no campo{" "}
         <code className="font-mono">DEVICE_TOKEN</code>. O <code>secrets.h</code> é ignorado pelo Git e nunca deve
         ser commitado. Depois, grave o firmware na placa seguindo o{" "}
         <a className="underline" href="https://github.com/vitormendes4072/DormioSmart/blob/main/firmware/README.md">
           firmware/README.md
         </a>.
-      </p>
+        </p>
+      </details>
 
       <button
         onClick={aoFechar}
@@ -316,7 +323,7 @@ function LinhaDoDispositivo({
 
   async function alternarRecebimento() {
     if (!pausado && !window.confirm(
-      "Enquanto pausado, as leituras deste aparelho são descartadas e não podem ser recuperadas.",
+      "Enquanto pausado, os registros deste aparelho são descartados e não podem ser recuperados.",
     )) return;
     setAlterandoRecebimento(true);
     try {
@@ -395,7 +402,7 @@ function LinhaDoDispositivo({
               {" · "}
               {dispositivo.last_seen_at ? `Último envio ${descreverUltimoContato(dispositivo)}` : "Aguardando primeiro envio"}
             </p>
-            <EstadoDoDispositivo ativo={ativo}>{ativo ? "Credencial ativa" : "Revogado"}</EstadoDoDispositivo>
+            <EstadoDoDispositivo ativo={ativo}>{ativo ? "Vinculado" : "Revogado"}</EstadoDoDispositivo>
             {ativo && !dispositivo.last_seen_at && (
               <button type="button" onClick={verificarEnvio} disabled={verificando} className="text-xs font-semibold text-primary">
                 Verificar agora

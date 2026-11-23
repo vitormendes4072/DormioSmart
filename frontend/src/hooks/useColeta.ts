@@ -47,8 +47,8 @@ import { ErroDeIngestao, enviarLeitura } from "../lib/coleta";
 export const ESPERA_DE_SINAL_MS = 2500;
 
 export const MENSAGEM_SEM_SINAL =
-  "Nenhuma amostra chegou do acelerometro. Computador nao tem esse sensor — " +
-  "abra esta pagina no celular.";
+  "O sensor de movimento não respondeu. Computador não tem esse sensor — " +
+  "abra esta página no celular.";
 
 export type EstadoDaColeta = "ocioso" | "coletando" | "encerrada" | "erro";
 

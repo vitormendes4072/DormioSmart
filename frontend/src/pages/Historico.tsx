@@ -4,10 +4,10 @@ import { useLocation } from "react-router";
 import { BarraDoWorkspace } from "../components/BarraDoWorkspace";
 import { Carregando, FalhaAoCarregar } from "../components/EstadoDaTela";
 import { apagarSessao, buscarJanelaDoHistorico, ErroApi, marcarSessao, MAX_PAGINAS_DO_HISTORICO } from "../lib/api";
-import { agruparEmSessoes, calcularCobertura } from "../lib/cobertura";
+import { calcularCobertura } from "../lib/cobertura";
 import { estaEmModoDemo } from "../lib/demo";
 import { formatarDuracao } from "../lib/metricas";
-import { ehBancada, trechoDaSessao, type Trecho } from "../lib/trecho";
+import { sessoesDaMarca, trechoDaSessao, type Trecho } from "../lib/trecho";
 import { instanteDaLeitura, type LeituraSono } from "../types/sleep";
 
 const DIA_MS = 24 * 60 * 60 * 1000;
@@ -21,10 +21,14 @@ const DATA_E_HORA = new Intl.DateTimeFormat("pt-BR", {
 type Linha = {
   chave: string;
   inicio: number;
+  fim: number;
   tempo: number;
-  cobertura: number | null;
+  /** Do início ao fim, com os trechos sem registro; `null` se não dá para calcular. */
+  periodo: number | null;
   leituras: number;
   lacunas: boolean;
+  /** O aparelho parou. Sem isto, trecho sem registro não é pausa (UI-39). */
+  pausas: boolean;
   parcial?: boolean;
   /** Aparelho e instantes da sessão, para excluir ou marcar (DATA-16). Ausente
    *  nos exemplos e nas leituras sem aparelho. */
@@ -44,43 +48,43 @@ const SESSOES_DO_PROTOTIPO: Array<[number, number, number, number, number, numbe
 const EXEMPLOS = SESSOES_DO_PROTOTIPO.map(([ano, mes, dia, minutos, cobertura, leituras, lacunas]) => {
   const inicio = new Date(ano, mes - 1, dia, 22).getTime();
   return {
-    chave: String(inicio), inicio, tempo: minutos * 60_000,
-    cobertura, leituras, lacunas,
+    chave: String(inicio), inicio, fim: inicio + minutos * 60_000, tempo: minutos * 60_000,
+    periodo: (minutos * 60_000 * 100) / cobertura, leituras, lacunas, pausas: lacunas,
   };
 });
 
 function resumirSessoes(leituras: LeituraSono[], desdeMs: number, truncada: boolean): Linha[] {
   const borda = truncada ? leituras.at(-1) : undefined;
-  // DATA-16: a bancada é agrupada à parte, para que uma sessão marcada não se
-  // junte a uma normal do mesmo aparelho e as duas virem uma só na tela.
-  const porGrupo = new Map<string, { id: string | null; bancada: boolean; leituras: LeituraSono[] }>();
+  // UI-38: o banco age por janela de tempo, sem olhar a marca. Por isso a
+  // sessão normal e a de bancada do mesmo aparelho nunca dividem uma janela.
+  const porAparelho = new Map<string | null, LeituraSono[]>();
   for (const leitura of leituras) {
     // A API recorta pela chegada. Exclui medições antigas enviadas com atraso.
     if (!(Date.parse(instanteDaLeitura(leitura)) >= desdeMs)) continue;
     const id = leitura.device_id ?? null;
-    const bancada = ehBancada(leitura);
-    const chave = `${id ?? "sem-dispositivo"}:${bancada ? "bancada" : "normal"}`;
-    const grupo = porGrupo.get(chave);
-    if (grupo) grupo.leituras.push(leitura);
-    else porGrupo.set(chave, { id, bancada, leituras: [leitura] });
+    const grupo = porAparelho.get(id);
+    if (grupo) grupo.push(leitura);
+    else porAparelho.set(id, [leitura]);
   }
 
-  return Array.from(porGrupo.values(), ({ id, bancada, leituras: grupo }) =>
-    agruparEmSessoes(grupo).map((sessao) => {
+  return Array.from(porAparelho, ([id, grupo]) => [false, true].flatMap((bancada) =>
+    sessoesDaMarca(grupo, bancada).map((sessao, i) => {
       const cobertura = calcularCobertura(sessao.leituras);
       return {
-        chave: `${id ?? "sem-dispositivo"}:${bancada ? "bancada" : "normal"}:${sessao.inicio}`,
-        trecho: trechoDaSessao(sessao.leituras),
+        chave: `${id ?? "sem-dispositivo"}:${bancada ? "bancada" : "normal"}:${sessao.inicio}:${i}`,
+        trecho: trechoDaSessao(sessao.leituras, grupo),
         bancada,
         inicio: sessao.inicio,
+        fim: sessao.fim,
         tempo: cobertura.tempoCobertoMs,
-        cobertura: cobertura.janelaMs > 0 ? (100 * cobertura.tempoCobertoMs) / cobertura.janelaMs : null,
+        periodo: cobertura.janelaMs > 0 ? cobertura.janelaMs : null,
         leituras: sessao.leituras.length,
         lacunas: cobertura.lacunas.length > 0,
+        pausas: cobertura.interrupcoes.length > 0,
         parcial: borda !== undefined && sessao.leituras.includes(borda),
       };
     }),
-  ).flat().sort((a, b) => b.inicio - a.inicio);
+  )).flat().sort((a, b) => b.inicio - a.inicio);
 }
 
 export function Historico() {
@@ -95,7 +99,7 @@ export function Historico() {
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <h1 className="text-2xl font-extrabold tracking-tight text-foreground sm:text-[27px]">Histórico de sessões</h1>
-            <p className="mt-0.5 text-xs text-muted-foreground">Acompanhe os períodos de coleta e a cobertura das medições.</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">Veja cada sessão e quanto dela foi registrado.</p>
           </div>
           <select
             aria-label="Período do histórico"
@@ -120,7 +124,7 @@ export function Historico() {
       </section>
 
       <p className="rounded-xl border border-border border-l-4 border-l-primary px-3 py-3 text-xs text-muted-foreground">
-        A cobertura descreve a janela observada da sessão. Onde faltam medições, não é possível saber se houve movimento.
+        O tempo registrado é só o que o aparelho mediu. Onde faltam registros, não é possível saber se houve movimento.
       </p>
     </div>
   );
@@ -172,13 +176,13 @@ function SessoesDaConta({ dias }: { dias: number }) {
     try {
       if (acao === "apagar") {
         const n = await apagarSessao(linha.trecho);
-        setAviso({ texto: `Sessão excluída: ${n} ${n === 1 ? "época apagada" : "épocas apagadas"}.`, falha: false });
+        setAviso({ texto: `Sessão excluída: ${n} ${n === 1 ? "registro apagado" : "registros apagados"}.`, falha: false });
       } else {
         const n = await marcarSessao(linha.trecho, acao === "marcar");
         setAviso({
           texto: acao === "marcar"
-            ? `Sessão marcada como bancada/teste (${n} ${n === 1 ? "época" : "épocas"}). Ela sai do painel e das análises.`
-            : `Sessão desmarcada (${n} ${n === 1 ? "época" : "épocas"}). Ela volta ao painel e às análises.`,
+            ? `Sessão marcada como bancada/teste (${n} ${n === 1 ? "registro" : "registros"}). Ela sai do painel e das análises.`
+            : `Sessão desmarcada (${n} ${n === 1 ? "registro" : "registros"}). Ela volta ao painel e às análises.`,
           falha: false,
         });
       }
@@ -228,7 +232,7 @@ function SessoesDaConta({ dias }: { dias: number }) {
     <>
       {resultado.truncada && (
         <p role="status" className="mb-3 rounded-lg bg-amber-500/10 px-3 py-2 text-xs text-foreground">
-          A consulta atingiu o limite de leituras. O histórico deste período pode estar incompleto.
+          Há mais registros do que esta tela consegue carregar. O histórico deste período pode estar incompleto.
         </p>
       )}
       {aviso && (
@@ -242,9 +246,10 @@ function SessoesDaConta({ dias }: { dias: number }) {
         <div role="alertdialog" aria-label="Confirmar exclusão da sessão"
           className="mb-3 space-y-3 rounded-xl border border-destructive/40 bg-destructive/5 p-3 text-xs text-foreground">
           <p>
-            Excluir a sessão de <strong>{DATA_E_HORA.format(confirmando.inicio)}</strong>, com{" "}
-            <strong>{confirmando.leituras} {confirmando.leituras === 1 ? "leitura" : "leituras"}</strong>?
-            As épocas são apagadas do servidor e não há como desfazer.
+            Excluir a sessão de <strong>{DATA_E_HORA.format(confirmando.inicio)}</strong> até{" "}
+            <strong>{DATA_E_HORA.format(confirmando.fim)}</strong>, com{" "}
+            <strong>{confirmando.leituras} {confirmando.leituras === 1 ? "registro" : "registros"}</strong>?
+            Os registros são apagados do servidor e não há como desfazer.
           </p>
           <div className="flex gap-2">
             <button type="button" disabled={ocupado} onClick={() => setConfirmando(null)}
@@ -285,30 +290,28 @@ function TabelaDeSessoes({ linhas, acoes, rotulo = "Tabela do histórico" }: {
         <thead className="border-b border-border text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
           <tr>
             <th scope="col" className="px-2 py-3">Data</th>
-            <th scope="col" className="px-2 py-3">Tempo medido</th>
-            <th scope="col" className="px-2 py-3">Cobertura</th>
-            <th scope="col" className="px-2 py-3">Leituras</th>
-            <th scope="col" className="px-2 py-3 text-right">Status</th>
+            <th scope="col" className="px-2 py-3">Registrado</th>
+            <th scope="col" className="px-2 py-3">Registros</th>
+            <th scope="col" className="px-2 py-3 text-right">Situação</th>
             {acoes && <th scope="col" className="px-2 py-3 text-right">Ações</th>}
           </tr>
         </thead>
         <tbody className="divide-y divide-border border-b border-border">
           {linhas.map((linha) => {
-            const { chave, inicio, tempo, cobertura, leituras, lacunas, parcial } = linha;
+            const { chave, inicio, tempo, periodo, leituras, lacunas, pausas, parcial } = linha;
             return (
             <tr key={chave}>
               <th scope="row" className="whitespace-nowrap px-2 py-3 font-semibold">{DATA.format(inicio).replace(/ de |\./g, " ").replace(/ +/g, " ")}</th>
-              <td className="whitespace-nowrap px-2 py-3">{formatarDuracao(tempo)}</td>
-              <td className="px-2 py-3">{cobertura === null ? "—" : `${Math.round(cobertura)}%`}</td>
+              <td className="px-2 py-3">{periodo === null ? "—" : `${formatarDuracao(tempo)} de ${formatarDuracao(periodo)}`}</td>
               <td className="px-2 py-3">{leituras}</td>
               <td className="px-2 py-3 text-right">
                 <span className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2 py-1 text-[11px] font-semibold ${parcial || lacunas
                   ? "bg-amber-500/10 text-amber-800 dark:text-amber-300"
-                  : cobertura === null
+                  : periodo === null
                     ? "bg-secondary text-muted-foreground"
                     : "bg-emerald-500/10 text-emerald-800 dark:text-emerald-300"}`}>
                   <span className="size-1.5 rounded-full bg-current" aria-hidden />
-                  {parcial ? "Parcial" : cobertura === null ? "Sem estimativa" : lacunas ? "Com lacunas" : "Completa"}
+                  {parcial ? "Parcial" : periodo === null ? "Sem estimativa" : !lacunas ? "Completa" : pausas ? "Com pausas" : "Incompleta"}
                 </span>
               </td>
               {acoes && <td className="px-2 py-3 text-right">{acoes(linha)}</td>}

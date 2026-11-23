@@ -39,14 +39,14 @@ export function AvisoDeLacuna({ cobertura }: { cobertura: Cobertura }) {
       <AlertTriangle className="w-5 h-5 flex-shrink-0 text-amber-500" aria-hidden />
       <div className="text-sm text-muted-foreground space-y-1.5">
         <p className="font-semibold text-foreground">
-          Faltou medição em {formatarDuracao(perdidoMs)} desta janela.
+          Faltou registro em {formatarDuracao(perdidoMs)} deste período.
         </p>
         <p>
           {interrupcoes.length === 0 ? (
             <>
-              O aparelho não parou em nenhum momento — cada leitura resume menos tempo do
-              que o intervalo até a próxima, então o que faltou está espalhado por toda a
-              janela.
+              O aparelho não parou em nenhum momento — cada registro cobre menos tempo do
+              que o intervalo até o próximo, então o que faltou está espalhado por todo o
+              período.
             </>
           ) : (
             <>
@@ -57,13 +57,13 @@ export function AvisoDeLacuna({ cobertura }: { cobertura: Cobertura }) {
                 ? `, o silêncio mais longo de ${formatarDuracao(maiorInterrupcaoMs)}`
                 : ""}
               {perdaDistribuida
-                ? ", e o restante do que faltou está espalhado entre as leituras"
+                ? ", e o restante do que faltou está espalhado entre os registros"
                 : ""}
               .
             </>
           )}{" "}
           Os números abaixo valem para o tempo{" "}
-          <strong className="font-semibold">que foi medido</strong> — nada se afirma sobre
+          <strong className="font-semibold">registrado</strong> — nada se afirma sobre
           o resto.
         </p>
       </div>
@@ -85,8 +85,8 @@ export function NotaDeInferencia({ cobertura }: { cobertura: Cobertura }) {
 
   return (
     <p className="text-xs text-muted-foreground">
-      A duração das leituras que não a declaram foi estimada pelo intervalo entre elas —
-      o dispositivo não informa quanto tempo cada amostra resume.
+      A duração de parte dos registros foi estimada pelo intervalo entre eles —
+      o aparelho não informa quanto tempo cada um cobre.
     </p>
   );
 }

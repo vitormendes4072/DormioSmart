@@ -9,7 +9,7 @@ import { AlertTriangle, Loader2, Radio } from "lucide-react";
  * usuario esperar por um dado que nunca vem.
  */
 
-export function Carregando({ mensagem = "Carregando leituras..." }: { mensagem?: string }) {
+export function Carregando({ mensagem = "Carregando registros..." }: { mensagem?: string }) {
   return (
     <div className="flex flex-col items-center justify-center gap-3 py-16 text-muted-foreground">
       <Loader2 className="w-6 h-6 animate-spin" />
@@ -25,7 +25,7 @@ export function SemLeituras() {
         <Radio className="w-6 h-6 text-muted-foreground" />
       </div>
       <div>
-        <p className="text-sm font-medium text-foreground">Nenhuma leitura registrada</p>
+        <p className="text-sm font-medium text-foreground">Nenhum registro ainda</p>
         <p className="text-sm text-muted-foreground mt-1 max-w-sm">
           O dispositivo ainda não enviou dados. Verifique se ele está ligado, conectado à
           rede e pareado a esta conta.

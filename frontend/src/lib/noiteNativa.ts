@@ -131,11 +131,28 @@ export const ATRASO_DE_FECHAMENTO_MS = 4200;
  * poder ter fechado.
  */
 export function coberturaDaNoite(e: EstadoDaNoite, agoraMs: number): number | null {
+  const esperadas = epocasEsperadas(e, agoraMs);
+  return esperadas === null ? null : Math.min(1, e.epocasGravadas / esperadas);
+}
+
+function epocasEsperadas(e: EstadoDaNoite, agoraMs: number): number | null {
   if (e.inicioUtcMs <= 0) return null;
   const decorrido = agoraMs - e.inicioUtcMs - ANTECEDENCIA_DA_ORIGEM_MS - ATRASO_DE_FECHAMENTO_MS;
   const esperadas = Math.floor(decorrido / DURACAO_DA_EPOCA_MS);
-  if (esperadas <= 0) return null;
-  return Math.min(1, e.epocasGravadas / esperadas);
+  return esperadas > 0 ? esperadas : null;
+}
+
+/** A mesma conta da cobertura, em tempo: "registrado X de Y" (UI-39). */
+export function registradoDaNoite(
+  e: EstadoDaNoite,
+  agoraMs: number,
+): { registradoMs: number; periodoMs: number } | null {
+  const esperadas = epocasEsperadas(e, agoraMs);
+  if (esperadas === null) return null;
+  return {
+    registradoMs: Math.min(e.epocasGravadas, esperadas) * DURACAO_DA_EPOCA_MS,
+    periodoMs: esperadas * DURACAO_DA_EPOCA_MS,
+  };
 }
 
 type ResumoDaNoiteGravada = {

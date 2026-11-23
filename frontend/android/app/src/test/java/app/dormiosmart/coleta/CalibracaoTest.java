@@ -102,9 +102,9 @@ public class CalibracaoTest {
 
     @Test
     public void oResumoDizOQueATelaMostra() {
-        assertEquals("Calibrado: erro de 15,5 mg para 0,6 mg, com 120 épocas paradas",
+        assertEquals("Calibrado: erro de 15,5 mg para 0,6 mg, com 120 registros parados",
                 Calibracao.doResultado(resultado(true, 120)).resumo(40));
-        assertEquals("Calibrando: 23 de 40 épocas paradas",
+        assertEquals("Calibrando: 23 de 40 registros parados",
                 Calibracao.doResultado(resultado(false, 23)).resumo(40));
         assertEquals("Calibração recusada: o erro ficou em 0,6 mg",
                 Calibracao.doResultado(resultado(false, 120)).resumo(40));

@@ -99,6 +99,17 @@ export type Trecho = { inicio: number; fim: number };
  */
 const FATOR_DE_INTERRUPCAO = 3;
 
+/**
+ * Ate quanto silencio ainda e a MESMA sessao (UI-38).
+ *
+ * "O aparelho parou?" e "comecou outra sessao?" sao perguntas diferentes. A
+ * primeira se responde em ~90 s e alimenta o aviso e a maior pausa. Responder
+ * a segunda com o mesmo limite partiu a noite de 17/11 em tres, e o painel
+ * mostrava os 40 min finais como a ultima sessao. Por isso este limite nao
+ * entra em `calcularCobertura`: so junta blocos na hora de agrupar.
+ */
+const PAUSA_DENTRO_DA_SESSAO_MS = 15 * 60_000;
+
 export type Cobertura = {
   /** Trechos em que houve medicao, em ordem e sem sobreposicao. */
   trechos: Trecho[];
@@ -436,10 +447,11 @@ export function avaliarCobertura(cobertura: Cobertura): AvisoDeCobertura | null 
  * de fato esteve medindo. Se um dia o projeto decidir afirmar noites, isso
  * vira decisao de escopo (e depende do `DATA-02`), nao de tela.
  *
- * O corte e a INTERRUPCAO — o aparelho parar de mandar —, e nao qualquer
- * descontinuidade de cobertura. Ver o cabecalho deste arquivo.
+ * O corte e o SILENCIO LONGO (UI-38): interrupcao de ate
+ * `PAUSA_DENTRO_DA_SESSAO_MS` fica dentro da sessao, e continua sendo
+ * interrupcao para o aviso, o tempo registrado e a maior pausa.
  */
-type Sessao = {
+export type Sessao = {
   inicio: number;
   fim: number;
   leituras: LeituraSono[];
@@ -451,7 +463,17 @@ export function agruparEmSessoes(leituras: LeituraSono[]): Sessao[] {
 
   const lista = datadas(leituras);
 
-  return cobertura.blocos
+  const juntos: Trecho[] = [];
+  for (const bloco of cobertura.blocos) {
+    const anterior = juntos[juntos.length - 1];
+    if (anterior && bloco.inicio - anterior.fim <= PAUSA_DENTRO_DA_SESSAO_MS) {
+      anterior.fim = Math.max(anterior.fim, bloco.fim);
+    } else {
+      juntos.push({ ...bloco });
+    }
+  }
+
+  return juntos
     .map((bloco) => ({
       inicio: bloco.inicio,
       fim: bloco.fim,

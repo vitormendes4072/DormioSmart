@@ -303,7 +303,7 @@ function ColetaReal() {
               <div className="text-sm text-muted-foreground">
                 <p>
                   {resumo.total} {resumo.total === 1 ? "registro" : "registros"} nesta
-                  sessão, {formatarDuracao(decorridoMs)} de captação.
+                  sessão, em {formatarDuracao(decorridoMs)}.
                 </p>
                 <Link
                   to="/dashboard"

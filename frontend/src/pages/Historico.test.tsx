@@ -88,7 +88,7 @@ describe("Histórico: excluir e marcar uma sessão (DATA-16)", () => {
       desde: NOITE[0].captured_at,
       ate: NOITE.at(-1)!.captured_at,
     }, true);
-    expect(await screen.findByText(/Sessão marcada como bancada\/teste \(20 épocas\)/)).toBeTruthy();
+    expect(await screen.findByText(/Sessão marcada como bancada\/teste \(20 registros\)/)).toBeTruthy();
     expect(buscar).toHaveBeenCalledTimes(2);
   });
 
@@ -109,7 +109,7 @@ describe("Histórico: excluir e marcar uma sessão (DATA-16)", () => {
     fireEvent.click(within(principal).getByRole("button", { name: "Excluir…" }));
     const confirmacao = screen.getByRole("alertdialog", { name: "Confirmar exclusão da sessão" });
     expect(within(confirmacao).getByText(/não há como desfazer/)).toBeTruthy();
-    expect(within(confirmacao).getByText("20 leituras")).toBeTruthy();
+    expect(within(confirmacao).getByText("20 registros")).toBeTruthy();
     fireEvent.click(within(confirmacao).getByRole("button", { name: "Cancelar" }));
     expect(screen.queryByRole("alertdialog")).toBeNull();
     expect(apagar).not.toHaveBeenCalled();
@@ -125,7 +125,7 @@ describe("Histórico: excluir e marcar uma sessão (DATA-16)", () => {
       desde: NOITE[0].captured_at,
       ate: NOITE.at(-1)!.captured_at,
     }));
-    expect(await screen.findByText("Sessão excluída: 20 épocas apagadas.")).toBeTruthy();
+    expect(await screen.findByText("Sessão excluída: 20 registros apagados.")).toBeTruthy();
     expect(buscar).toHaveBeenCalledTimes(2);
   });
 
@@ -147,5 +147,117 @@ describe("Histórico: excluir e marcar uma sessão (DATA-16)", () => {
     mostrar();
     const principal = await screen.findByRole("region", { name: "Tabela do histórico" });
     expect(within(principal).queryByRole("button")).toBeNull();
+  });
+});
+
+/** O que a função do banco alcança (migração 023): o aparelho e a janela,
+ *  inclusiva nas duas pontas, sem olhar a marca. */
+function alcance(todas: LeituraSono[], trecho: { device: string; desde: string; ate: string }) {
+  const micro = (iso: string) =>
+    Date.parse(iso) * 1000 + Number((/\.\d{3}(\d{1,3})/.exec(iso)?.[1] ?? "").padEnd(3, "0"));
+  return todas.filter((l) => {
+    const t = micro(l.captured_at || l.created_at);
+    return l.device_id === trecho.device && t >= micro(trecho.desde) && t <= micro(trecho.ate);
+  });
+}
+
+describe("excluir e marcar alcançam só a sessão mostrada (UI-38)", () => {
+  /** `n` épocas a partir da época `de` de uma série de 30 s. */
+  const pedaco = (de: number, n: number, bancada = false) =>
+    sessao("travesseiro", 300 - de / 2, n, bancada);
+  const comMicro = pedaco(0, 4).map((l) => ({
+    ...l, captured_at: null, created_at: l.created_at.replace("Z", "456+00:00"),
+  }));
+
+  const CASOS: Array<[string, LeituraSono[], number[], number[]]> = [
+    ["A: bancada curta dentro da sessão normal",
+      [...pedaco(0, 20), ...pedaco(20, 10, true), ...pedaco(30, 20)], [20, 20], [10]],
+    ["B: normal curto entre duas bancadas",
+      [...pedaco(0, 20, true), ...pedaco(20, 10), ...pedaco(30, 20, true)], [10], [20, 20]],
+    ["C: uma época normal entre duas bancadas",
+      [...pedaco(0, 20, true), ...pedaco(20, 1), ...pedaco(21, 20, true)], [1], [20, 20]],
+    ["D: instante com microssegundos", comMicro, [4], []],
+  ];
+
+  describe.each(CASOS)("%s", (_, todas, normais, marcadas) => {
+    const linhas = [...normais.map((n) => [n, false] as const), ...marcadas.map((n) => [n, true] as const)];
+
+    for (const acao of ["excluir", "marcar"] as const) {
+      it(`${acao} leva exatamente as épocas de cada linha`, async () => {
+        buscar.mockResolvedValue({ leituras: [...todas].reverse(), truncada: false });
+        const nome = (bancada: boolean) =>
+          acao === "excluir" ? "Excluir…" : bancada ? "Desmarcar" : "Marcar como bancada";
+
+        for (const [indice, [esperadas, bancada]] of linhas.entries()) {
+          cleanup();
+          apagar.mockClear();
+          marcar.mockClear();
+          mostrar();
+          await screen.findByRole("region", { name: "Tabela do histórico" });
+          const botoes = screen.getAllByRole("button", { name: acao === "excluir"
+            ? nome(bancada)
+            : /^(Marcar como bancada|Desmarcar)$/ });
+          expect(botoes).toHaveLength(linhas.length);
+          fireEvent.click(botoes[indice]);
+          if (acao === "excluir") fireEvent.click(screen.getByRole("button", { name: "Excluir definitivamente" }));
+
+          const chamada = acao === "excluir" ? apagar : marcar;
+          await waitFor(() => expect(chamada).toHaveBeenCalledTimes(1));
+          const atingidas = alcance(todas, chamada.mock.calls[0][0]);
+          expect(atingidas).toHaveLength(esperadas);
+          expect(atingidas.every((l) => (l.bancada === true) === bancada)).toBe(true);
+        }
+      });
+    }
+  });
+
+  it("a confirmação diz o início e o fim", async () => {
+    mostrar();
+    const principal = await screen.findByRole("region", { name: "Tabela do histórico" });
+    fireEvent.click(within(principal).getByRole("button", { name: "Excluir…" }));
+    const hora = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
+    const texto = screen.getByRole("alertdialog").textContent;
+    expect(texto).toContain(hora.format(Date.parse(NOITE[0].captured_at!) - 30_000));
+    expect(texto).toContain(hora.format(Date.parse(NOITE.at(-1)!.captured_at!)));
+  });
+
+  it("sem como separar (mesmo instante, marcas diferentes), a linha fica sem ações", async () => {
+    buscar.mockResolvedValue({ leituras: [...pedaco(0, 1), ...pedaco(0, 1, true)], truncada: false });
+    mostrar();
+    await screen.findByRole("region", { name: "Tabela do histórico" });
+    expect(screen.queryByRole("button", { name: "Excluir…" })).toBeNull();
+  });
+});
+
+describe("a linguagem do Histórico (UI-39)", () => {
+  /** A situação da única linha, com as épocas nos instantes dados (em s). */
+  async function situacao(segundos: number[]) {
+    buscar.mockResolvedValue({
+      leituras: segundos.map((s) => {
+        const instante = new Date(AGORA - 120 * MIN + s * 1000).toISOString();
+        return { created_at: instante, captured_at: instante, epoca_segundos: 30, movimento_total: 9.8,
+          temp: null, status: "Repouso", device_id: "travesseiro" } as LeituraSono;
+      }),
+      truncada: false,
+    });
+    mostrar();
+    return (await screen.findByRole("region", { name: "Tabela do histórico" })).textContent;
+  }
+  const serie = (de: number, n: number, passo = 30) => Array.from({ length: n }, (_, i) => de + i * passo);
+
+  it("interrupção é 'Com pausas', com o registrado e o período", async () => {
+    const texto = await situacao([...serie(0, 20), ...serie(570 + 150, 20)]);
+    expect(texto).toContain("Com pausas");
+    expect(texto).toContain("20m 0s de 22m 0s");
+  });
+
+  it("falha de segundo sem o aparelho parar é 'Incompleta', e não pausa", async () => {
+    const texto = await situacao(serie(0, 20, 31));
+    expect(texto).toContain("Incompleta");
+    expect(texto).not.toContain("Com pausas");
+  });
+
+  it("sem falha nenhuma é 'Completa'", async () => {
+    expect(await situacao(serie(0, 20))).toContain("Completa");
   });
 });

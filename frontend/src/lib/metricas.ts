@@ -152,6 +152,29 @@ export function calcularMetricas(leituras: LeituraSono[]): Metricas {
 }
 
 
+/**
+ * Porcentagem inteira, de 0 a 100, que nao afirma mais do que foi medido
+ * (UI-39): pouco nao vira "0%" e quase tudo nao vira "100%". A folga e para a
+ * sobra de ponto flutuante.
+ */
+export function formatarPorcentagem(valor: number): string {
+  const folga = 1e-9;
+  if (valor > folga && valor < 1) return "<1%";
+  if (valor > 99 && valor < 100 - folga) return ">99%";
+  return `${Math.round(valor)}%`;
+}
+
+/** "17/11, das 02:44 às 09:37"; se cruza o dia, "de 16/11, 23:00 a 17/11, 07:00" (UI-40). */
+export function descreverQuando(inicioMs: number, fimMs: number): string {
+  const dia = (ms: number) =>
+    new Date(ms).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
+  const hora = (ms: number) =>
+    new Date(ms).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+  return new Date(inicioMs).toDateString() === new Date(fimMs).toDateString()
+    ? `${dia(inicioMs)}, das ${hora(inicioMs)} às ${hora(fimMs)}`
+    : `de ${dia(inicioMs)}, ${hora(inicioMs)} a ${dia(fimMs)}, ${hora(fimMs)}`;
+}
+
 /** Duracao legivel: "8h 15m", "45m", "2m 30s", "12s". */
 export function formatarDuracao(ms: number | null): string {
   if (ms == null || ms < 0) return "--";

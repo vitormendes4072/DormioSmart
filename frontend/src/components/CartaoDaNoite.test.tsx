@@ -109,7 +109,7 @@ describe("CartaoDaNoite (APP-02)", () => {
       estado({ ativa: true, rodando: true, inicioUtcMs: INICIO, epocasGravadas: 9, taxaHz: 49.98, retomadas: 1, temperaturaC: 31.8 }),
     );
     render(<CartaoDaNoite plugin={p} agora={() => agora} />);
-    expect(await screen.findByText("90 %")).toBeTruthy();
+    expect(await screen.findByText("4m 30s de 5m 0s")).toBeTruthy();
     expect(screen.getByText("50.0 Hz")).toBeTruthy();
     expect(screen.getByText("31.8 °C")).toBeTruthy();
   });
@@ -166,7 +166,7 @@ describe("CartaoDaNoite (APP-02)", () => {
     }));
     render(<CartaoDaNoite plugin={p} agora={() => INICIO} enviar={enviar} />);
     const status = await screen.findByRole("status");
-    expect(status.textContent).toMatch(/70 épocas enviadas/);
+    expect(status.textContent).toMatch(/70 registros enviados/);
     expect(status.textContent).not.toMatch(/pendentes/);
     expect(enviar).toHaveBeenCalledTimes(6);
     expect(p.enviadas).toBe(70);
@@ -176,7 +176,7 @@ describe("CartaoDaNoite (APP-02)", () => {
     const p = plugin(estado({ ativa: false, rodando: false }), 70);
     const enviar = vi.fn(async (l: object[]) => ({ aceitas: l.map((_, i) => i), rejeitadas: [], pendentes: [] }));
     render(<CartaoDaNoite plugin={p} agora={() => INICIO} enviar={enviar} />);
-    expect((await screen.findByRole("status")).textContent).toMatch(/70 épocas enviadas/);
+    expect((await screen.findByRole("status")).textContent).toMatch(/70 registros enviados/);
     expect(enviar).toHaveBeenCalledTimes(2);
     expect(p.enviadas).toBe(70);
   });
@@ -243,7 +243,7 @@ describe("CartaoDaNoite (APP-02)", () => {
     await act(async () => fireEvent.click(encerrar));
     expect(p.encerrar).toHaveBeenCalledTimes(1);
     expect(enviar).toHaveBeenCalledTimes(1);
-    expect((await screen.findByRole("status")).textContent).toMatch(/12 épocas enviadas/);
+    expect((await screen.findByRole("status")).textContent).toMatch(/12 registros enviados/);
   });
 
   it("falha de envio fica na tela, e as epocas esperam o proximo toque", async () => {
@@ -253,7 +253,7 @@ describe("CartaoDaNoite (APP-02)", () => {
     });
     render(<CartaoDaNoite plugin={p} agora={() => INICIO} enviar={enviar} />);
     expect((await screen.findByRole("status")).textContent).toMatch(/Sem conexao/);
-    expect(await screen.findByText(/5 épocas aguardando envio/)).toBeTruthy();
+    expect(await screen.findByText(/5 registros aguardando envio/)).toBeTruthy();
     expect(p.enviadas).toBe(0);
   });
 
@@ -291,5 +291,50 @@ describe("CartaoDaNoite (APP-02)", () => {
   it("depois de encerrar, os numeros vem sob o titulo da ultima noite (achado no percurso)", async () => {
     render(<CartaoDaNoite plugin={plugin(estado({ epocasGravadas: 4, inicioUtcMs: INICIO }))} agora={() => INICIO} />);
     expect(await screen.findByText("Última noite")).toBeTruthy();
+  });
+});
+
+describe("os números do sensor em Detalhes técnicos (UI-40)", () => {
+  const aVista = (elemento: Element) => elemento.closest("details:not([open])") === null;
+  const gravando = (extra = {}) => plugin(estado({
+    ativa: true, rodando: true, inicioUtcMs: INICIO, epocasGravadas: 9, taxaHz: 49.98, ...extra,
+  }));
+  const agora = () => INICIO + 3000 + 4200 + 10 * 30_000;
+
+  it("ritmo, contagens e calibração recolhidos; o registrado e a temperatura à vista", async () => {
+    render(<CartaoDaNoite
+      plugin={gravando({ temperaturaC: 31.8, calibracao: "Calibrando: 1 de 40 registros parados" })}
+      agora={agora}
+    />);
+    expect(aVista(await screen.findByText("4m 30s de 5m 0s"))).toBe(true);
+    expect(aVista(screen.getByText("31.8 °C"))).toBe(true);
+    for (const texto of ["50.0 Hz", "Registros gravados", "Calibrando: 1 de 40 registros parados"]) {
+      expect(aVista(screen.getByText(texto)), texto).toBe(false);
+    }
+  });
+
+  it("descarte por ritmo aparece mesmo com registros gravados", async () => {
+    render(<CartaoDaNoite plugin={gravando({ recusadasPorTaxa: 3 })} agora={agora} />);
+    const aviso = await screen.findByText(/3 registros descartados/);
+    expect(aVista(aviso)).toBe(true);
+    expect(aviso.getAttribute("role")).toBe("alert");
+  });
+
+  it("retomada aparece como aviso", async () => {
+    render(<CartaoDaNoite plugin={gravando({ retomadas: 1 })} agora={agora} />);
+    expect(aVista(await screen.findByText(/precisou ser retomado 1 vez/))).toBe(true);
+  });
+
+  it("sem descarte nem retomada, não inventa aviso", async () => {
+    render(<CartaoDaNoite plugin={gravando()} agora={agora} />);
+    await screen.findByText("4m 30s de 5m 0s");
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(screen.queryByText(/precisou ser retomado/)).toBeNull();
+  });
+
+  it("o alerta de sensor que não grava nada fica à vista", async () => {
+    render(<CartaoDaNoite plugin={gravando({ epocasGravadas: 0, recusadasPorTaxa: 5 })} agora={agora} />);
+    expect(aVista(await screen.findByText(/fora do ritmo que o Smart Dormio aceita/))).toBe(true);
+    expect(screen.getAllByRole("alert")).toHaveLength(1);
   });
 });
