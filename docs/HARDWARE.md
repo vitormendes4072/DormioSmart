@@ -65,7 +65,7 @@ Apresentar trade-offs (o que ganha, o que perde, o que já foi comprado e seria 
 
 ## Contrato de dados (firmware ↔ backend ↔ banco)
 
-> ✏️ *16/11: o contrato existe — `docs/DATA-CONTRACT.md`, versão 2.11.0, conferido pelos testes do backend, do firmware e do app. A lista abaixo é o que ele precisava cobrir, escrita antes dele.*
+> ✏️ *16/11: o contrato existe — `docs/DATA-CONTRACT.md`, versão 2.12.0, conferido pelos testes do backend, do firmware e do app. A lista abaixo é o que ele precisava cobrir, escrita antes dele.*
 
 O dado que viaja do ESP32 até o Supabase precisa de um **contrato explícito e versionado**, definido **antes** de implementar a integração. É pré-requisito da Fase 2 e do ML — sem ele, integração, banco e ML ficam construídos sobre suposições que divergem. Documentar e manter como fonte da verdade:
 

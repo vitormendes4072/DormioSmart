@@ -289,7 +289,11 @@ class Database:
                     client.table("sleep_data")
                     .select("captured_at, epoca_segundos, enmo_media, enmo_desvio, "
                             "enmo_max, mag_din_media, zcr, p_frac, g_x, g_y, g_z, "
-                            "fs_features")
+                            # CAL-03, etapa 3: a orientacao, a calibracao e a
+                            # temperatura saem junto, para conferir em noite
+                            # real se a calibracao tirou o vies da orientacao.
+                            # As features e a inferencia nao as usam.
+                            "fs_features, g_norma, calibrada, temp")
                     .eq("user_id", usuario_id)
                     .eq("device_id", device_id)
                     .gte("captured_at", desde)

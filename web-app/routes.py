@@ -78,7 +78,11 @@ def _resposta_de_falha(e, rota):
 # 2.10.0 (13/11, DATA-14) e MINOR: `t` declarado por tipo de aparelho (chip no
 # travesseiro, bateria no celular) e ausente quando nao lido. Nada da ingestao
 # mudou: o `t` ja era opcional e a faixa e a mesma.
-CONTRATO_DE_DADOS = "2.11.0"
+#
+# 2.12.0 (23/11, CAL-03 etapa 3) e MINOR: `GET /api/features` devolve, por
+# epoca, `g`, `g_norma`, `calibrada` e `temp`, que ja estavam gravados. Campos
+# novos na resposta; a ingestao nao muda.
+CONTRATO_DE_DADOS = "2.12.0"
 
 # Frase exigida no corpo de `DELETE /api/me` (SEC-07). Em portugues e em
 # maiusculas de proposito: tem de ser digitada, e nao pode ser o resultado de
@@ -211,6 +215,7 @@ def init_routes(app):
 
         epocas = [e for e in map(features_noite.epoca_da_linha, linhas) if e is not None]
         saida, g_ref = features_noite.derivar_noite(epocas)
+        features_noite.com_orientacao(saida, epocas)
         return jsonify({
             "device_id": device_id,
             "desde": desde.isoformat(),
