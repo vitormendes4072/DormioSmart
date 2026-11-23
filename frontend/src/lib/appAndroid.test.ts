@@ -92,6 +92,21 @@ describe("os textos das telas do app", () => {
     const soltos = ler(tela).match(/(?<!Smart )\bDormio\b/g) ?? [];
     expect(soltos, tela).toEqual([]);
   });
+
+  it("a notificação da noite chama o produto de Smart Dormio (UI-41 b)", () => {
+    // O serviço Java ficou fora da troca do APP-18. Só os literais contam: os
+    // nomes internos (`DormioNoite`, `dormio:noite`) ninguém vê.
+    const servico = ler("android/app/src/main/java/app/dormiosmart/coleta/ServicoDaNoite.java");
+    const literais = [...servico.matchAll(/"((?:[^"\\]|\\.)*)"/g)].map((m) => m[1]);
+    expect(literais.some((texto) => texto.includes("Smart Dormio"))).toBe(true);
+    expect(literais.filter((texto) => /(?<!Smart )\bDormio\b/.test(texto))).toEqual([]);
+  });
+
+  it("o canal da notificação é atualizado também em quem já tem o app (UI-41 b)", () => {
+    const servico = ler("android/app/src/main/java/app/dormiosmart/coleta/ServicoDaNoite.java");
+    expect(servico).not.toMatch(/getNotificationChannel\(CANAL\)\s*==\s*null/);
+    expect(servico).toMatch(/createNotificationChannel\(/);
+  });
 });
 
 /** Decodifica um PNG de 8 bits RGB ou RGBA, sem entrelaçamento: o que o Android usa aqui. */
