@@ -12647,3 +12647,37 @@ O celular fica sobre o colchão, perto do travesseiro, em todas as noites.
 **Risco em aberto.** O inventário cobre os literais das rotas e validações listadas, com análise explícita dos modelos. Falhas montadas dinamicamente ainda podem cair na frase genérica com o motivo recolhido. A prova de layout do app simulou cinco destinos no Edge. A conferência no WebView e no emulador não foi feita porque exige o login do autor. O painel ficou a 366 B gzip do teto na revisão de `6257fbc`. Com o ajuste da frase de pareamento, a medição local foi de 259 642 B gzip, com 358 B de folga.
 
 **Procedência.** `bugfix/UI-41-acd` sobre `develop` `96e7b40`, Windows, Node, Python e Edge via Playwright CLI. Executado em 23/11/2026. Dados sintéticos e arquivos temporários da sonda removidos da worktree. Revisão medida sobre `develop` `7543014` e sincronizada com `f8344df`. Testes e Edge com modo app simulado executados na mesma máquina em 23/11.
+
+# 2026-11-23 (v) — revisão e integração do UI-41 (a), (c) e (d) (PR #259)
+
+**O problema, como foi entendido no início.** O Codex entregou a PR #259 com as três partes do `UI-41` que faltavam (o (b), a notificação, já estava em `develop` pela #256). A revisão por execução tinha de confirmar o relatório, inclusive a frase "Configurações cabe por inteiro na barra móvel".
+
+**Hipótese de trabalho.** Os testes e as medições da PR bastam; a revisão confere por execução, com sabotagens e medindo a barra no navegador.
+
+**O que foi testado, e como.**
+- **Suítes** sobre a PR sincronizada com `develop`: vitest, build, lint, Knip (arquivos e tipos), backend com os orçamentos de bundle, CSP e as conferências de documento.
+- **As 43 frases do tradutor contra o backend:** todas existem como mensagem real; as que ficaram sem frase são de ingestão do aparelho e de parâmetros, e caem na frase genérica com o texto em "Detalhes técnicos".
+- **Sabotagens**, 15 ao fim: texto cru do servidor, detalhe perdido ou aberto, moldes com `{}`, a API repassando o texto, os cartões de volta à tabela, a confirmação sem modal, o erro fora da confirmação, o motivo cru no cartão da noite, o Esc durante a exclusão, "Coletar" de volta à barra do app, Dispositivos mandando o app à Coletar, a frase do pareamento e o rótulo quebrando.
+- **A barra no navegador**, a 360, 390 e 411 px, no modo do site e simulando o do app.
+
+**Resultado medido.**
+- **Na primeira versão, "Configurações" se partia no meio da palavra:** "Configuraçõe" numa linha e o "s" na outra, a 360 px no site e, com os seis destinos do app, também a 390 e 411 px (o texto tem 64 px, e havia de 52 a 61 px).
+- **Decisão do autor:** no app, "Coletar" saiu da barra. Ali ela era redundante com "Noite", que grava com a tela ligada ou apagada; no site, "Coletar" é o único jeito de gravar com o celular e fica. Com cinco destinos e 2 px de folga lateral, sem quebra no meio da palavra: 64,4 px em 68 px úteis a 360 px.
+- **Versão final (`9d0b58c`):** 925 testes de frontend em 60 arquivos; backend 695 passam, 1 pula; build, lint, Knip, CSP e conferências passam; 14 de 15 sabotagens caem, e a frase do pareamento sabotada derruba o teste do app.
+- **A sabotagem que escapa é a do rótulo quebrando:** é de layout, e o jsdom não mede texto. Ela foi conferida no navegador.
+
+**Veredito.** Mesclada em `develop` (`e9b7cf2`) com a aprovação do autor. O `UI-41` está completo.
+
+**Adaptação.** O plano aprovado dizia "sem mudar os nomes"; a correção do (d) virou a troca de "Coletar" por "Noite" no app, por decisão do autor, depois que a medição mostrou que só o espaçamento não bastava com seis destinos.
+
+**O que deu errado no caminho.**
+- **O relatório da primeira versão dizia que "Configurações" cabia, e a medição mostrou o contrário:** a prova do Codex mediu a borda do link, e não a quebra da palavra.
+- **A entrada do Codex no diário entrou de novo no meio do arquivo**, e com a numeração de outra entrada, como na #257. Foi movida para o fim, como 23/11 (iv).
+- **A primeira prévia do navegador serviu o código errado:** o `launch.json` lido era o da pasta acima do repositório, que aponta para o checkout principal. A entrada da revisão foi para lá.
+- **O `git push` travou duas vezes no gerenciador de credenciais do Windows;** o primeiro terminou sozinho, e o segundo foi refeito com o `gh` como ajudante de credenciais.
+
+**Risco em aberto.**
+- **Não visto no emulador nem no WebView:** a barra e o Histórico só aparecem depois do login do autor. A sobra de "Configurações" a 360 px é de 3,6 px, medida com a fonte do navegador.
+- **Nada disto está na produção** até o próximo release; no celular, a barra nova e o título da notificação chegam com o APK 1.1.3.
+
+**Procedência.** PR #259 (`919c409`, `6257fbc`, `9d0b58c`) mesclada em `develop` `e9b7cf2`; revisão no Windows 11, Node 22, Python 3.13, navegador do app de desktop; 23/11.
