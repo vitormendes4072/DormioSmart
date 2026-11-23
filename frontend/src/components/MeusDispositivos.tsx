@@ -11,7 +11,6 @@ import {
   descreverUltimoContato,
   estaAtivo,
   listarDispositivos,
-  TIPOS,
   rotuloDoTipo,
   type TipoDeDispositivo,
   parearDispositivo,
@@ -143,8 +142,12 @@ export function MeusDispositivos({ mostrarPareamento = true }: { mostrarPareamen
   );
 }
 
+/**
+ * O pareamento é só do travesseiro (UI-42). O celular entra na conta sozinho, na
+ * primeira noite gravada pela Noite (app) ou pela Coletar (site): escolher
+ * "Celular" aqui não pareava nada, só levava a essas telas.
+ */
 function GuiaPareamento({ aoParear }: { aoParear: (aparelho: Dispositivo) => void }) {
-  const [tipo, setTipo] = useState<TipoDeDispositivo>("travesseiro");
   const noApp = noiteNativaDisponivel();
   const [pareando, setPareando] = useState(false);
   const [novoToken, setNovoToken] = useState<Pareamento | null>(null);
@@ -167,39 +170,10 @@ function GuiaPareamento({ aoParear }: { aoParear: (aparelho: Dispositivo) => voi
   if (novoToken) return <TokenRecemCriado pareamento={novoToken} aoFechar={() => setNovoToken(null)} />;
   return (
       <div className="space-y-3 rounded-xl border border-border bg-card p-4">
-        <p className="text-sm font-semibold text-foreground">Parear novo dispositivo</p>
+        <p className="text-sm font-semibold text-foreground">Parear um travesseiro</p>
+        <p className="text-xs text-muted-foreground">O travesseiro recebe um código de conexão próprio, mostrado uma vez só.</p>
 
         {falha && <div role="alert" className="text-sm text-destructive"><MensagemDeFalha erro={falha} /></div>}
-        <fieldset className="space-y-2" disabled={pareando}>
-          <legend className="text-xs uppercase tracking-wider text-muted-foreground mb-2">
-            O novo dispositivo será um
-          </legend>
-          {TIPOS.map(({ valor, rotulo, ajuda }) => (
-            <label
-              key={valor}
-              className="flex items-start gap-3 rounded-xl border border-border p-3 cursor-pointer transition-colors hover:border-primary/40 has-[:checked]:border-primary/60 has-[:checked]:bg-secondary/50"
-            >
-              <input
-                type="radio"
-                name="tipo-do-dispositivo"
-                value={valor}
-                checked={tipo === valor}
-                onChange={() => setTipo(valor)}
-                className="mt-0.5 accent-[var(--primary)]"
-              />
-              <span className="min-w-0">
-                <span className="block text-sm font-medium text-foreground">{rotulo}</span>
-                <span className="block text-xs text-muted-foreground">{valor === "celular" && noApp ? "Sensor de movimento do próprio celular, pela tela Noite." : ajuda}</span>
-              </span>
-            </label>
-          ))}
-        </fieldset>
-
-        {tipo === "celular" ? (
-          <Link to={noApp ? "/noite" : "/coletar"} className="inline-block rounded-xl bg-secondary px-4 py-3 text-sm font-semibold">
-            {noApp ? "Ir para Noite" : "Ir para Coletar"}
-          </Link>
-        ) : (
         <button
           onClick={parear}
           disabled={pareando}
@@ -208,7 +182,14 @@ function GuiaPareamento({ aoParear }: { aoParear: (aparelho: Dispositivo) => voi
           {pareando ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
           {pareando ? "Preparando..." : "Parear"}
         </button>
-        )}
+
+        <p className="text-xs text-muted-foreground">
+          O celular não precisa de pareamento: ele aparece aqui sozinho depois da primeira noite gravada em{" "}
+          <Link to={noApp ? "/noite" : "/coletar"} className="font-semibold text-foreground underline underline-offset-2">
+            {noApp ? "Noite" : "Coletar"}
+          </Link>
+          .
+        </p>
       </div>
   );
 }
