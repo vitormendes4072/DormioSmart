@@ -138,7 +138,8 @@ describe("CartaoDaNoite (APP-02)", () => {
   it("taxa recusada sem nenhuma epoca vira alerta, e nao uma noite vazia silenciosa", async () => {
     const p = plugin(estado({ ativa: true, rodando: true, inicioUtcMs: INICIO, recusadasPorTaxa: 4 }));
     render(<CartaoDaNoite plugin={p} agora={() => INICIO + 200_000} />);
-    expect((await screen.findByRole("alert")).textContent).toMatch(/40 a 60 Hz/);
+    expect((await screen.findByRole("alert")).textContent).toMatch(/fora do ritmo/);
+    expect(screen.getByText("40 a 60 Hz").closest("details")?.open).toBe(false);
   });
 
   it("sem a isencao de bateria, oferece o pedido", async () => {
@@ -153,7 +154,7 @@ describe("CartaoDaNoite (APP-02)", () => {
     const p = plugin(estado({ ativa: true, rodando: false, inicioUtcMs: INICIO, epocasGravadas: 40 }));
     render(<CartaoDaNoite plugin={p} agora={() => INICIO + 3_600_000} />);
     expect((await screen.findByRole("alert")).textContent).toMatch(/interrompido/);
-    const iniciar = screen.getByRole("button", { name: /iniciar a noite/i });
+    const iniciar = screen.getByRole("button", { name: "Retomar" });
     await act(async () => fireEvent.click(iniciar));
     expect(p.iniciar).toHaveBeenCalledTimes(1);
   });
@@ -317,7 +318,7 @@ describe("os números do sensor em Detalhes técnicos (UI-40)", () => {
 
   it("descarte por ritmo aparece mesmo com registros gravados", async () => {
     render(<CartaoDaNoite plugin={gravando({ recusadasPorTaxa: 3 })} agora={agora} />);
-    const aviso = await screen.findByText(/3 registros descartados/);
+    const aviso = await screen.findByText(/Houve descarte de registros/);
     expect(aVista(aviso)).toBe(true);
     expect(aviso.getAttribute("role")).toBe("alert");
   });
@@ -338,6 +339,17 @@ describe("os números do sensor em Detalhes técnicos (UI-40)", () => {
     render(<CartaoDaNoite plugin={gravando({ epocasGravadas: 0, recusadasPorTaxa: 5 })} agora={agora} />);
     expect(aVista(await screen.findByText(/fora do ritmo que o Smart Dormio aceita/))).toBe(true);
     expect(screen.getAllByRole("alert")).toHaveLength(1);
+  });
+
+  it("alertas de ritmo não exibem Hz nem contagens de descarte", async () => {
+    for (const epocasGravadas of [0, 9]) {
+      const { unmount } = render(
+        <CartaoDaNoite plugin={gravando({ epocasGravadas, recusadasPorTaxa: 3 })} agora={agora} />,
+      );
+      const alerta = await screen.findByRole("alert");
+      expect(alerta.textContent).not.toMatch(/\bHz\b|\p{Nd}/iu);
+      unmount();
+    }
   });
 });
 

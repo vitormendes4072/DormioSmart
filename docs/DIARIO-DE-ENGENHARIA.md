@@ -11771,6 +11771,61 @@ Vitest e build no Windows; servidor local com autenticação fictícia; 19/11/20
 
 **Procedência.** Branch `docs/BRAND-05-grafia-do-nome` sobre `develop` `67bc830`; Windows 11; 19/11.
 
+---
+
+# 2026-11-24 (ii) — UI-43, etapa 3: a tela Noite
+
+**O problema, como foi entendido no início.** A Noite ainda usava os cartões do painel antigo e dependia do serviço nativo para aparecer. Isso também impedia conferir a tela no navegador sem aparelho e sem conta.
+
+**Hipótese de trabalho.** Os componentes visuais do Início servem para hierarquizar a Noite. Um plugin de desenvolvimento permite conferir o mesmo conteúdo que o Android monta.
+
+**O que foi testado, e como.** Suíte completa, lint, TypeScript, Knip, Knip de tipos, builds web e Android, sincronização do Capacitor, CSP e orçamento. Em Edge com Playwright, 48 capturas a 360 e 390 px, nos dois temas, nos seis cenários, antes e depois. A comparação anterior usou os cartões de develop com a mesma demonstração e a mesma barra do app. Os 12 testes de cartão e botão falharam nessa versão. O preview de produção mandou /noite?demo=1 ao login, e os pacotes web e Android ficaram sem o módulo de demonstração. Cada sabotagem derrubou os testes abaixo em Noite.test.tsx.
+
+| Sabotagem temporária | Teste que falhou |
+|---|---|
+| Aceitar o parâmetro sem verificar desenvolvimento | em produção, ?demo=1 mostra a Noite do site sem montar o plugin falso |
+| Tirar o nome acessível do cartão de preparo | mostra o cartão certo no cenário parada |
+| Trocar a etiqueta com o horário de início | mostra o cartão certo no cenário gravando |
+| Retirar o papel de alerta da interrupção | mostra o cartão certo no cenário interrompida |
+| Trocar a etiqueta Última noite | mostra o cartão certo no cenário encerrada |
+| Tirar o nome acessível do cartão de bateria | mostra o cartão certo no cenário bateria |
+| Trocar os artigos da lista por contêineres genéricos | mostra o cartão certo no cenário lista |
+| Retirar o destaque de Iniciar a noite | destaca o botão principal certo no cenário parada, encerrada, bateria e lista (quatro testes) |
+| Retirar o destaque de Encerrar a noite | destaca o botão principal certo no cenário gravando |
+| Retirar o destaque de Retomar | destaca o botão principal certo no cenário interrompida |
+
+**Resultado medido.** 994 testes em 67 arquivos, com 47 testes anteriores de Noite, lista e consentimento passando. Painel 157 163 B gzip de 260 000 B, login 146 832 B gzip de 155 000 B, landing 278 860 B transferidos estimados de 289 800 B. “Configurações” mediu 65,2 px numa célula de 72 px a 360 px, em uma linha e sem rolagem horizontal nos dois temas. A aba Noite apareceu ativa na barra de cinco destinos.
+
+**Adaptação.** A ação da noite interrompida passou de “Iniciar a noite” a “Retomar”, inclusive no alerta. Os alertas de descarte permaneceram à vista com texto corrido. A faixa de 40 a 60 Hz e a contagem de descartes ficam nos Detalhes técnicos, recolhidos. Três expectativas em CartaoDaNoite.test.tsx acompanharam essas mudanças intencionais. A métrica percentual usa “Do período foi registrado”, conforme o vocabulário do UI-39. Para uma noite encerrada, o cálculo usa o horário da última época gravada quando disponível, para o denominador parar de crescer após o fim.
+
+**O que deu errado no caminho.** A primeira medição da barra encontrou dois rótulos “Configurações” no DOM e passou a usar o link móvel. A primeira leitura do tema procurava uma classe em vez do atributo data-theme. As capturas iniciais também revelaram a barra do site na demonstração. Uma rodada de sabotagem precisou normalizar as quebras de linha dos arquivos e ajustar o filtro aos títulos parametrizados do Vitest. O TypeScript reprovou a opção exact na busca por papel. A busca passou a usar o nome literal, que já faz a correspondência exata.
+
+**Risco em aberto.** A conferência visual usou o navegador e o plugin de demonstração. O build Android sincronizou os arquivos, sem um percurso com o serviço nativo em aparelho.
+
+**Procedência.** Branch feature/UI-43-noite sobre develop 5284345. Windows 11, Node 24.11.0 e Edge com Playwright, 24/11/2026. Capturas locais em output/playwright, fora dos commits.
+
+---
+
+# 2026-11-24 (iii) — UI-43, etapa 3: controles da revisão da PR #276
+
+**O problema, como foi entendido no início.** A revisão encontrou duas regressões que passavam pela suíte. O chunk da demo podia ser publicado mesmo com sua rota bloqueada. O alerta de ritmo podia voltar a mostrar números técnicos.
+
+**Hipótese de trabalho.** Conferir todo o diretório de assets do build protege o pacote publicado. Conferir o conteúdo de role=alert com zero e com alguns registros protege os dois textos de descarte.
+
+**O que foi testado, e como.** A condição de importação da demo foi trocada por true e o build web recompilado. A conferência de produção em conferir_pacote_frontend.py falhou ao localizar “Cenário da demonstração” no chunk NoiteDemo. Inserir “40 a 60 Hz” no alerta sem registros derrubou “alertas de ritmo não exibem Hz nem contagens de descarte”, em CartaoDaNoite.test.tsx. Repetir com “3 registros descartados” no alerta da noite com registros derrubou o mesmo teste. O teste também falhou com o cartão de origin/develop, que ainda mostrava “40 a 60 Hz” no alerta. Os arquivos foram restaurados após cada controle.
+
+**Resultado medido.** 995 testes em 67 arquivos. Build web, verificação do pacote, CSP, lint e conferências de documentação passaram com o código restaurado. O Dashboard ficou em 157 163 B gzip de 260 000 B.
+
+**Adaptação.** A conferência dos assets ficou no mesmo script de orçamento já executado depois do build no CI. O teste da tela usa o plugin falso existente e inspeciona o alerta nos dois estados.
+
+**O que deu errado no caminho.** A verificação anterior da rota cobria o acesso à demonstração, mas esse resultado também passava com o chunk presente no pacote. Nesta revisão, a primeira busca dos arquivos usou um glob aceito pelo rg no Unix e rejeitado pelo PowerShell. A busca foi repetida com os caminhos explícitos.
+
+**Risco em aberto.** A inspeção do pacote procura o rótulo exclusivo atual do seletor. Uma alteração desse rótulo precisa atualizar o marcador usado pelo script.
+
+**Procedência.** PR #276, feature/UI-43-noite sobre develop 5284345. Windows 11, Node 24.11.0, 24/11/2026.
+
+---
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

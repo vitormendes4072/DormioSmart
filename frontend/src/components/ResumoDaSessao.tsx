@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
 
+import { CartaoDeMetrica, CartaoEmDestaque, EtiquetaDeRegistro } from "./CartoesDeRegistro";
+
 import { calcularCobertura, type Sessao } from "../lib/cobertura";
 import {
   calcularMetricas,
@@ -59,29 +61,14 @@ export function ResumoDaSessao({
         <h1 className="order-2 text-2xl font-extrabold tracking-tight text-foreground sm:text-[27px]">
           Seus registros
         </h1>
-        <h2 id="resumo-da-sessao" className="order-1 wrap-anywhere text-[11px] font-extrabold uppercase tracking-wider text-primary">
-          {verTudo ? `${sessoes.length} sessões` : "Última sessão"} · {aparelho}
+        <h2 id="resumo-da-sessao" className="order-1 leading-none">
+          <EtiquetaDeRegistro>{verTudo ? `${sessoes.length} sessões` : "Última sessão"} · {aparelho}</EtiquetaDeRegistro>
         </h2>
       </div>
 
-      <div
-        role="group"
-        aria-labelledby="tempo-registrado"
-        className="relative overflow-hidden rounded-2xl border border-(color:--sessao-destaque-borda) bg-(image:--sessao-destaque-fundo) p-4 text-white shadow-md sm:p-5"
-      >
-        <span aria-hidden="true" className="pointer-events-none absolute -top-20 -right-10 size-44 rounded-full bg-(image:--sessao-destaque-brilho)" />
-        <p id="tempo-registrado" className="text-[11px] font-extrabold uppercase tracking-widest text-(color:--sessao-destaque-rotulo)">
-          Registrado
-        </p>
-        <p className="mt-1">
-          <strong className="block text-4xl leading-tight font-extrabold tracking-tight sm:text-[42px]">
-            {formatarDuracao(cobertura.tempoCobertoMs)}
-          </strong>
-          <span className="block text-sm text-(color:--sessao-destaque-legenda)">
-            {" "}{[janela, quando].filter(Boolean).join(" · ")}
-          </span>
-        </p>
-      </div>
+      <CartaoEmDestaque rotulo="Registrado" valor={formatarDuracao(cobertura.tempoCobertoMs)}>
+        {[janela, quando].filter(Boolean).join(" · ")}
+      </CartaoEmDestaque>
 
       <ul aria-label="Métricas da sessão" className="grid gap-2 min-[360px]:grid-cols-3">
         <CartaoDeMetrica valor={movimento ?? "—"}>
@@ -113,16 +100,5 @@ export function ResumoDaSessao({
 
       {children && <div className="pt-1">{children}</div>}
     </section>
-  );
-}
-
-function CartaoDeMetrica({ valor, children }: { valor: string; children: ReactNode }) {
-  return (
-    <li className="min-w-0 space-y-1.5 rounded-2xl border border-border bg-card p-2.5 text-xs leading-snug text-muted-foreground sm:p-4 sm:text-sm">
-      <strong className="block text-xl leading-tight font-extrabold tracking-tight text-foreground sm:text-2xl">
-        {valor}
-      </strong>
-      {children}
-    </li>
   );
 }
