@@ -13011,3 +13011,41 @@ existe ali. As mutações individuais verificam as falhas com o executor present
 **Risco em aberto.** Nenhum novo: o `develop` volta a instalar quando esta correção entrar.
 
 **Procedência.** Branch `bugfix/UI-43-lockfile`, sobre `develop` `5f2170c`; contêiner `node:22` (npm 10.9.9) e Windows 11 (npm 11.6.1); 23/11.
+
+# 2026-11-23 (xv) — UI-43, etapa 1 (b): a fonte do sistema, o cabeçalho e a barra
+
+**O problema, como foi entendido no início.** Com o espaço liberado pelo gráfico próprio, faltava a base visual comum a todas as telas: a fonte decidida pelo autor (a do sistema, `UI-36`), os cantos do celular de exemplo da landing, um cabeçalho de app no celular e a aba ativa destacada.
+
+**Hipótese de trabalho.** A paleta já é quase a da landing; a diferença está na fonte, nos cantos, no cabeçalho e na barra. Os cartões em destaque e de métrica entram com as telas, porque componente sem uso é reprovado pelo Knip.
+
+**O que foi testado, e como.**
+- **A fonte:** o `fonts.css` (Outfit e Inter do Google Fonts) saiu; o `theme.css` declara a pilha das páginas públicas, e o `body` a usa; a CSP do `vercel.json` deixou de abrir `fonts.googleapis.com` e `fonts.gstatic.com`. O `padraoVisual.test.ts` passou a conferir o app também.
+- **Os cantos:** `--radius` de 14 para 16 px.
+- **O cabeçalho** (`CabecalhoDoApp`, só abaixo de `md`): a marca e o nome da tela, pela rota, entre os destinos da barra; no celular, o caminho "Smart Dormio / tela" da `BarraDoWorkspace` se esconde para não repetir.
+- **A barra de abas:** a pílula atrás do ícone da aba ativa, e o rótulo dela em negrito.
+- **No navegador:** a 360 px, a largura de cada rótulo, a pílula, o cabeçalho e a fonte calculada; antes e depois do Histórico (claro e escuro) e do Início, a 500 px.
+- **No emulador** (Pixel 6, Android 37): o APK de depuração com a base nova, na tela de login.
+- **Controle positivo:** 10 sabotagens.
+
+**Resultado medido.**
+- **Frontend:** 974 em 66 arquivos (+9); lint, tipos, Knip, build e CSP passam; o painel fica em 156 378 B comprimidos.
+- **A 360 px:** "Configurações" ocupa 65,2 px de 72 px, numa linha; a pílula só na aba ativa; o cabeçalho com "Smart Dormio | HISTÓRICO"; o caminho escondido; a fonte calculada é `ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif`.
+- **No Android,** o texto sai em Roboto, e o app não pede fonte a ninguém.
+- **Sabotagens:** 10 de 10.
+
+**Adaptação.**
+- **A pílula atrás só do ícone,** e não do ícone e do rótulo como na landing: com cinco abas, o rótulo "Configurações" não caberia a 360 px com a pílula em volta.
+- **As cores não mudaram:** a paleta do app já é quase a do celular da landing (fundo `#f4f7fb` contra `#f3f7fc`), e mexer nela mudaria o contraste já medido sem ganho visível.
+
+**O que deu errado no caminho.**
+- **No celular, o selo de demonstração e o botão do tema encostaram à esquerda** quando o caminho sumiu: a linha usava `justify-between` com um item só. Visto na captura; passou a `justify-end` no celular, com um teste.
+- **Um teste falhou uma vez na suíte inteira** e não se repetiu em duas rodadas seguidas: o `raw.test.ts`, sensível a carga, que já está no diário.
+- **O emulador travou** ("System UI isn't responding"), depois de horas ligado e com pouca memória; foi preciso dispensar o aviso e abrir o app de novo.
+- **As capturas do Edge sem interface** voltaram a falhar em parte; refeitas uma a uma.
+- **Um script de registro embutido no shell quebrou** com as aspas do texto; foi gravado em arquivo.
+
+**Risco em aberto.**
+- **A linha do selo e do tema ainda ocupa espaço** abaixo do cabeçalho no celular; juntar os dois é da etapa 2 (`UI-43`).
+- **As telas depois do login não foram vistas no emulador:** sem conta, só a de login (`UI-43`).
+
+**Procedência.** Branch `feature/UI-43-base-visual`, sobre `develop` `98f4dc0`; Windows 11, Node 22, Edge sem interface, o navegador do app de desktop e o emulador Pixel 6 (Android 37); 23/11.

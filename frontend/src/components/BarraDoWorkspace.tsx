@@ -8,8 +8,9 @@ export function BarraDoWorkspace({ secao }: { secao: string }) {
   const escuro = aplicado === "dark";
 
   return (
-    <div className="mb-6 flex items-center justify-between gap-3">
-      <p className="text-[10px] text-muted-foreground">
+    <div className="mb-6 flex items-center justify-end gap-3 md:justify-between">
+      {/* No celular, o cabeçalho do app já diz a tela (UI-43); o caminho fica para o computador. */}
+      <p className="hidden text-[10px] text-muted-foreground md:block">
         Smart Dormio <span className="mx-2">/</span> {secao}
       </p>
       <div className="flex items-center gap-2">
