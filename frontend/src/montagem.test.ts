@@ -73,6 +73,7 @@ const SESSAO = {
 };
 
 let sessaoDoServidor: typeof SESSAO | null = SESSAO;
+const encerrarSessao = vi.fn(async () => ({ error: null }));
 
 vi.mock("@supabase/supabase-js", () => ({
   createClient: () => ({
@@ -81,7 +82,7 @@ vi.mock("@supabase/supabase-js", () => ({
       // O `AuthContext` chama o `unsubscribe` ao desmontar; sem ele o teste
       // quebraria na limpeza e não no que está sob teste.
       onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
-      signOut: async () => ({ error: null }),
+      signOut: () => encerrarSessao(),
       updateUser: async () => ({ data: { user: SESSAO.user }, error: null }),
     },
   }),
@@ -103,6 +104,7 @@ function respostaJson(corpo: unknown): Response {
 
 beforeEach(() => {
   sessaoDoServidor = SESSAO;
+  encerrarSessao.mockClear();
   // Lidos no topo de `lib/supabase.ts`, então têm de valer antes do import
   // dinâmico. Valores de teste: a suíte não depende do `.env` de ninguém.
   vi.stubEnv("VITE_SUPABASE_URL", "https://projeto-de-teste.supabase.co");
@@ -285,6 +287,51 @@ describe("montagem real das telas (UI-17)", PRAZO, () => {
     expect(screen.getByText("não informada")).toBeTruthy();
   });
 
+  it("sair encerra a sessão com signOut e leva ao login", async () => {
+    await montar("/configuracoes");
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Sair da conta" }));
+    });
+
+    expect(encerrarSessao).toHaveBeenCalledTimes(1);
+    expect(window.location.pathname).toBe("/login");
+    expect(await screen.findByRole("button", { name: "Entrar" })).toBeTruthy();
+  });
+
+  it.each([
+    ["Aparência", "radio", "Claro"],
+    ["Conta", "button", "Editar dados"],
+    ["Lembrete de dormir", "checkbox", "Lembrar todo dia"],
+    ["Meus dispositivos", "button", "Parear"],
+    ["Seus dados", "button", "Exportar meus dados (CSV)"],
+    ["Sair", "button", "Sair da conta"],
+    ["Excluir conta", "button", "Excluir minha conta"],
+  ] as const)("agrupa a seção %s num cartão com seu controle", async (titulo, papel, nome) => {
+    const lembrete = titulo === "Lembrete de dormir";
+    if (lembrete) {
+      vi.doMock("./lib/noiteNativa", async (original) => ({
+        ...await original<typeof import("./lib/noiteNativa")>(),
+        noiteNativaDisponivel: () => true,
+        Noite: { lembrete: async () => ({ ativo: true, hora: 22, minuto: 30, notificacoes: true }) },
+      }));
+    }
+
+    try {
+      await montar(titulo === "Aparência" ? "/configuracoes?demo=1" : "/configuracoes");
+      const cartao = await screen.findByRole("region", { name: titulo });
+      expect(cartao.classList.contains("rounded-2xl")).toBe(true);
+      expect(cartao.classList.contains("border")).toBe(true);
+      expect(cartao.classList.contains("bg-card")).toBe(true);
+      expect(await within(cartao).findByRole(papel, { name: nome })).toBeTruthy();
+      if (titulo === "Excluir conta") {
+        expect(screen.getByRole("region", { name: "Seus dados" }).contains(cartao)).toBe(false);
+      }
+    } finally {
+      if (lembrete) vi.doUnmock("./lib/noiteNativa");
+    }
+  });
+
   it("o ExcluirConta está renderizado, e a barreira de duas etapas funciona na tela", async () => {
     await montar("/configuracoes");
 
@@ -303,6 +350,39 @@ describe("montagem real das telas (UI-17)", PRAZO, () => {
 
     expect(document.getElementById("confirmacao-exclusao")).not.toBeNull();
     expect(screen.getByText(/Isto é irreversível/i)).toBeTruthy();
+  });
+
+  it("só envia a exclusão da conta depois da frase exata", async () => {
+    const original = vi.mocked(fetch).getMockImplementation()!;
+    const excluir = vi.fn<(opcoes?: RequestInit) => Promise<Response>>().mockResolvedValue(respostaJson({
+      leituras_apagadas: 1,
+      dispositivos_apagados: 1,
+      perfil_apagado: true,
+      conta_de_acesso_removida: true,
+    }));
+    vi.mocked(fetch).mockImplementation((entrada, opcoes) =>
+      String(entrada) === "/api/me" ? excluir(opcoes) : original(entrada, opcoes));
+
+    await montar("/configuracoes");
+    fireEvent.click(screen.getByRole("button", { name: "Excluir minha conta" }));
+    const campo = screen.getByRole("textbox", { name: /para confirmar, digite/i });
+    const botao = screen.getByRole("button", { name: "Excluir definitivamente" }) as HTMLButtonElement;
+
+    for (const texto of ["", "APAGAR MINHA NOITE", "apagar minha conta", "APAGAR MINHA CONTA "]) {
+      fireEvent.change(campo, { target: { value: texto } });
+      expect(botao.disabled, JSON.stringify(texto)).toBe(true);
+      await act(async () => { fireEvent.click(botao); });
+      expect(excluir).not.toHaveBeenCalled();
+    }
+
+    fireEvent.change(campo, { target: { value: "APAGAR MINHA CONTA" } });
+    expect(botao.disabled).toBe(false);
+    await act(async () => { fireEvent.click(botao); });
+    expect(excluir).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({
+      method: "DELETE",
+      body: JSON.stringify({ confirmacao: "APAGAR MINHA CONTA" }),
+    }));
+    expect(await screen.findByText("Conta excluída.")).toBeTruthy();
   });
 
   it("Configurações leva à Política de Privacidade (LGPD-01 (b))", async () => {

@@ -14,3 +14,6 @@ export const BOTAO_PRIMARIO_CLS =
 /** Nome do produto. Existe como constante para não voltar a espalhar string
  *  de marca pelo código — o protótipo do Figma dizia "Dormix" em 3 lugares. */
 export const NOME_PRODUTO = "Smart Dormio";
+
+/** Linha de um grupo de Configurações, com espaço para o controle ou o valor à direita. */
+export const LINHA_DE_CONFIGURACAO = "flex min-h-11 items-center justify-between gap-3 py-2.5";

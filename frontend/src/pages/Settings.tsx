@@ -1,5 +1,6 @@
 import {
   BellRing,
+  ChevronRight,
   Cpu,
   Download,
   Loader2,
@@ -9,9 +10,10 @@ import {
   Trash2,
   User,
 } from "lucide-react";
-import { useState } from "react";
+import { useId, useState, type ReactNode } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
 
+import { EtiquetaDeRegistro, SUPERFICIE_DO_CARTAO_DE_REGISTRO } from "../components/CartoesDeRegistro";
 import { EditarPerfil } from "../components/EditarPerfil";
 import { LembreteDeDormir } from "../components/LembreteDeDormir";
 import { ExcluirConta } from "../components/ExcluirConta";
@@ -22,6 +24,7 @@ import { estaEmModoDemo } from "../lib/demo";
 import { baixarCsv } from "../lib/exportar";
 import { listarDispositivos } from "../lib/dispositivos";
 import { noiteNativaDisponivel } from "../lib/noiteNativa";
+import { LINHA_DE_CONFIGURACAO } from "../lib/ui";
 import { useAuth } from "../contexts/AuthContext";
 
 /**
@@ -33,18 +36,18 @@ import { useAuth } from "../contexts/AuthContext";
  * blocos foram removidos, nao desabilitados. A notificacao que voltou, o
  * lembrete de dormir (APP-20), so aparece no app, onde de fato funciona.
  *
- * O que depende de sessao aparece DESABILITADO com o motivo dito na tela. Um
- * controle desabilitado e explicado nao engana ninguem; um interruptor que
- * acende e nao faz nada, sim.
+ * Os controles ilustrativos de sensibilidade e avisos da landing ficam fora.
+ * Na demonstração, as ações da conta dão lugar ao convite para entrar.
  */
 export function Settings() {
   const { search } = useLocation();
   return (
-    <div className="max-w-2xl space-y-5">
-      <div className="mb-8">
-        <h1 className="text-xl sm:text-2xl font-semibold text-foreground">Configurações</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">Conta, dispositivos e seus dados</p>
-      </div>
+    <div className="max-w-2xl space-y-4">
+      <header className="mb-5">
+        <EtiquetaDeRegistro>Preferências</EtiquetaDeRegistro>
+        <h1 className="mt-1 text-2xl font-extrabold tracking-tight text-foreground sm:text-[27px]">Configurações</h1>
+        <p className="mt-1 text-xs text-muted-foreground">Conta, dispositivos e seus dados</p>
+      </header>
 
       <SecaoAparencia />
       {estaEmModoDemo(search) ? <SecaoAcessoDemonstrativo /> : (
@@ -65,21 +68,28 @@ function Secao({
   titulo,
   icone: Icone,
   aviso,
+  destrutiva = false,
   children,
 }: {
   titulo: string;
   icone: typeof User;
   aviso?: string;
-  children: React.ReactNode;
+  destrutiva?: boolean;
+  children: ReactNode;
 }) {
+  const id = useId();
+
   return (
-    <section className="bg-card border border-border rounded-2xl p-4 sm:p-6">
-      <div className="flex items-center gap-2 mb-1">
-        <Icone className="w-4 h-4 text-primary" />
-        <h2 className="text-sm font-semibold text-foreground">{titulo}</h2>
-      </div>
-      {aviso ? <p className="text-xs text-muted-foreground mb-5 mt-1">{aviso}</p> : <div className="mb-5" />}
-      {children}
+    <section aria-labelledby={id}
+      className={`${SUPERFICIE_DO_CARTAO_DE_REGISTRO} px-4 sm:px-5 ${destrutiva ? "ring-1 ring-destructive/20" : ""}`}>
+      <header className="pb-3 pt-4">
+        <div className="flex items-center gap-2">
+          <Icone className={`size-4 shrink-0 ${destrutiva ? "text-destructive" : "text-primary"}`} aria-hidden />
+          <h2 id={id} className="text-sm font-semibold text-foreground">{titulo}</h2>
+        </div>
+        {aviso && <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{aviso}</p>}
+      </header>
+      <div className="border-t border-border">{children}</div>
     </section>
   );
 }
@@ -96,9 +106,10 @@ function SecaoAcessoDemonstrativo() {
       <Link
         to={sessao ? "/configuracoes" : "/login"}
         state={sessao ? undefined : { de: "/configuracoes" }}
-        className="text-sm font-semibold text-primary hover:underline"
+        className={`${LINHA_DE_CONFIGURACAO} text-sm font-semibold text-primary hover:underline`}
       >
         {sessao ? "Abrir configurações da conta" : "Entrar"}
+        <ChevronRight className="size-4 shrink-0" aria-hidden />
       </Link>
     </Secao>
   );
@@ -176,7 +187,7 @@ function SecaoDispositivos() {
       icone={Cpu}
       aviso="Cada aparelho que envia registros aparece aqui. Você pode renomear ou remover a qualquer momento."
     >
-      <MeusDispositivos />
+      <div className="py-3"><MeusDispositivos /></div>
     </Secao>
   );
 }
@@ -217,18 +228,17 @@ function SecaoDados() {
       aviso="Exporta seus registros em CSV — horário, valor do sensor, intensidade do movimento, temperatura, origem da temperatura e estado."
     >
       <button
+        type="button"
         onClick={exportar}
         disabled={exportando}
-        className="w-full flex items-center justify-between px-4 py-3 rounded-xl bg-secondary hover:bg-secondary/70 transition text-left disabled:opacity-60 disabled:cursor-wait"
+        className={`${LINHA_DE_CONFIGURACAO} w-full text-left text-sm font-medium text-foreground hover:text-primary disabled:cursor-wait disabled:opacity-60`}
       >
-        <span className="flex items-center gap-2.5 text-sm text-foreground">
-          {exportando ? (
-            <Loader2 className="w-4 h-4 animate-spin text-primary" />
-          ) : (
-            <Download className="w-4 h-4 text-primary" />
-          )}
-          {exportando ? "Preparando arquivo..." : "Exportar meus dados (CSV)"}
-        </span>
+        {exportando ? "Preparando arquivo..." : "Exportar meus dados (CSV)"}
+        {exportando ? (
+          <Loader2 className="size-4 shrink-0 animate-spin text-primary" aria-hidden />
+        ) : (
+          <Download className="size-4 shrink-0 text-primary" aria-hidden />
+        )}
       </button>
 
       {vazio ? (
@@ -241,13 +251,15 @@ function SecaoDados() {
       {/* LGPD-01 (b), 03/11: o link volta porque agora há a página que o
           serve (`/privacidade`). Antes ele tinha saído daqui por anunciar um
           link que não abria. */}
-      <p className="text-xs text-muted-foreground mt-3">
-        Como seus dados são tratados, e seus direitos:{" "}
-        <Link to="/privacidade" className="text-primary hover:text-accent transition font-semibold">
-          Política de Privacidade
-        </Link>
-        .
-      </p>
+      <div className={`${LINHA_DE_CONFIGURACAO} border-t border-border text-xs`}>
+        <p className="text-muted-foreground">Como seus dados são tratados, e seus direitos:</p>
+        <p className="shrink-0 text-right">
+          <Link to="/privacidade" className="font-semibold text-primary transition hover:text-accent">
+            Política de Privacidade
+          </Link>
+          .
+        </p>
+      </div>
     </Secao>
   );
 }
@@ -269,6 +281,7 @@ function SecaoExclusao() {
     <Secao
       titulo="Excluir conta"
       icone={Trash2}
+      destrutiva
       aviso="Encerra sua conta e apaga seus dados deste serviço. Se quiser guardar seu histórico, exporte o CSV acima antes."
     >
       <ExcluirConta />
@@ -290,18 +303,20 @@ function SecaoSair() {
   const [saindo, setSaindo] = useState(false);
 
   return (
-    <button
-      onClick={async () => {
-        setSaindo(true);
-        await sair();
-        navigate("/login");
-      }}
-      disabled={saindo}
-      className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-border text-sm font-medium text-muted-foreground hover:text-destructive hover:border-destructive/40 transition disabled:opacity-60"
-    >
-      <LogOut className="w-4 h-4" />
-      {saindo ? "Saindo..." : "Sair da conta"}
-    </button>
+    <Secao titulo="Sair" icone={LogOut}>
+      <button
+        type="button"
+        onClick={async () => {
+          setSaindo(true);
+          await sair();
+          navigate("/login");
+        }}
+        disabled={saindo}
+        className={`${LINHA_DE_CONFIGURACAO} w-full text-left text-sm font-medium text-foreground transition hover:text-primary disabled:opacity-60`}
+      >
+        {saindo ? "Saindo..." : "Sair da conta"}
+        <LogOut className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+      </button>
+    </Secao>
   );
 }
-

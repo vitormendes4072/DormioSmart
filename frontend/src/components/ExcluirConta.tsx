@@ -38,6 +38,7 @@ import { useNavigate } from "react-router";
 
 import { useAuth } from "../contexts/AuthContext";
 import { ErroApi } from "../lib/api";
+import { LINHA_DE_CONFIGURACAO } from "../lib/ui";
 import {
   FRASE_DE_CONFIRMACAO,
   type ResultadoDeExclusao,
@@ -81,17 +82,18 @@ export function ExcluirConta() {
     return (
       <div>
         <button
+          type="button"
           onClick={() => {
             setEstado("confirmando");
             setTexto("");
             setErro(null);
           }}
-          className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-destructive/30 text-sm font-medium text-destructive hover:bg-destructive/5 transition"
+          className={`${LINHA_DE_CONFIGURACAO} w-full text-left text-sm font-semibold text-destructive transition hover:underline`}
         >
-          <Trash2 className="w-4 h-4" />
           Excluir minha conta
+          <Trash2 className="size-4 shrink-0" aria-hidden />
         </button>
-        <p className="text-xs text-muted-foreground mt-3">
+        <p className="pb-3 text-xs text-muted-foreground">
           Remove permanentemente seus dados deste serviço. Você poderá revisar o
           que será apagado antes de confirmar.
         </p>
@@ -102,7 +104,7 @@ export function ExcluirConta() {
   const podeConfirmar = confirmacaoValida(texto) && estado !== "apagando";
 
   return (
-    <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 space-y-4">
+    <div className="my-3 space-y-4 rounded-xl border border-destructive/30 bg-destructive/5 p-4">
       <div className="flex items-start gap-2.5">
         <AlertTriangle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
         <div className="space-y-2">

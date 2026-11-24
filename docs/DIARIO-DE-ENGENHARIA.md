@@ -13210,3 +13210,54 @@ Os dois controles originais da etapa também voltaram a falhar sob sabotagem. No
 **Risco em aberto.** A inspeção visual foi no navegador com registros simulados. O build do app sincronizou os arquivos.
 
 **Procedência.** Branch feature/UI-43-dispositivos sobre develop 3709f34, 24/11/2026. Windows 11, Node 24.11.0, Edge com Playwright e captura de janela do Windows. Capturas em .playwright-mcp/ui43-dispositivos, fora dos commits.
+
+---
+
+# 2026-11-24 (vi) — UI-43, etapa 6: a tela Configurações
+
+**O problema, como foi entendido no início.** Configurações já agrupava a maioria dos controles, mas os cartões e as ações não seguiam as linhas da aba Ajustes da landing. O botão Sair não tinha teste de tela.
+
+**Hipótese de trabalho.** O teste pela montagem real protege o encerramento de sessão e o retorno ao login antes de mudar a apresentação. Os cartões do app podem organizar os valores e controles à direita com as funções que já existem.
+
+**O que foi testado, e como.** O teste de Sair passou em develop e falhou ao retirar a chamada de saída. Os sete testes de cartão falharam em develop por falta de regiões identificadas pelos títulos. Cada cartão também teve a superfície retirada em uma execução separada. Rodados a suíte completa, lint, TypeScript, Knip, Knip de tipos, builds web e app, CSP e orçamento, com a checagem do pacote da demo da Noite. No Edge com Playwright, 24 capturas antes e depois a 360 e 390 px nos dois temas, na demonstração, na conta simulada e na segunda etapa de exclusão. A sessão, o perfil, os dispositivos e o lembrete são registros locais da captura, com as requisições de alteração e os destinos externos bloqueados.
+
+| Sabotagem temporária | Teste que falhou |
+|---|---|
+| Retirar a chamada de saída | sair encerra a sessão com signOut e leva ao login |
+| Retirar a superfície de Aparência | agrupa a seção Aparência num cartão com seu controle |
+| Retirar a superfície de Conta | agrupa a seção Conta num cartão com seu controle |
+| Retirar a superfície de Lembrete de dormir | agrupa a seção Lembrete de dormir num cartão com seu controle |
+| Retirar a superfície de Meus dispositivos | agrupa a seção Meus dispositivos num cartão com seu controle |
+| Retirar a superfície de Seus dados | agrupa a seção Seus dados num cartão com seu controle |
+| Retirar a superfície de Sair | agrupa a seção Sair num cartão com seu controle |
+| Retirar a superfície de Excluir conta | agrupa a seção Excluir conta num cartão com seu controle |
+
+**Resultado medido.** 1013 testes em 67 arquivos. Painel 157 712 B gzip de 260 000 B, login 147 224 B gzip de 155 000 B, landing 279 253 B transferidos estimados de 289 800 B. “Configurações” mediu 65,2 px em uma célula de 72 px a 360 px, em uma linha e sem rolagem horizontal. O teste de Sair não encontrou defeito na base.
+
+**Adaptação.** Aparência usa os mesmos três rádios em linhas. Conta, lembrete, exportação, política, saída e exclusão usam a mesma apresentação de linha, e os dispositivos mantêm os cartões da etapa 5. A exclusão ganhou destaque e continua em um cartão próprio com a confirmação digitada. A demonstração manteve seus dados e o convite para entrar.
+
+**O que deu errado no caminho.** A primeira tentativa de preparar a sabotagem de Sair tinha um comentário acentuado em um literal de bytes do Python. A mutação foi refeita com um literal ASCII antes de executar o teste.
+
+**Risco em aberto.** A evidência visual de conta e lembrete usa sessão e plugin simulados no navegador. O build Android sincronizou os arquivos.
+
+**Procedência.** Branch feature/UI-43-configuracoes sobre develop d81f4f9, 24/11/2026. Windows 11, Node 24.11.0 e Edge com Playwright. Capturas em .playwright-mcp/ui43-configuracoes, fora dos commits.
+
+---
+
+# 2026-11-24 (vii) — UI-43, etapa 6: controle da confirmação de exclusão na PR #279
+
+**O problema, como foi entendido no início.** O teste de montagem abria a segunda etapa de exclusão, mas deixava passar a remoção da validação que desabilita o botão enquanto a frase estiver errada.
+
+**Hipótese de trabalho.** Exercitar o botão com confirmações inválidas e com a frase exata protege tanto a barreira da tela quanto a requisição de exclusão.
+
+**O que foi testado, e como.** Em Configurações, o campo vazio, uma palavra trocada, a frase em minúsculas e um espaço a mais mantiveram o botão desabilitado e o dublê sem chamada. A frase exata habilitou o botão e produziu um único DELETE /api/me com a confirmação no corpo. Ao trocar podeConfirmar por estado !== "apagando", caiu “só envia a exclusão da conta depois da frase exata”, na asserção do campo vazio. O teste passou com o componente equivalente de develop d81f4f9 e voltou a passar após restaurar o da PR.
+
+**Resultado medido.** 1014 testes em 67 arquivos, lint e TypeScript passaram na worktree.
+
+**Adaptação.** O teste acrescenta a verificação da segunda etapa à montagem real, com o pedido interceptado pelo mesmo dublê de fetch da suíte.
+
+**O que deu errado no caminho.** O lint apontou o parâmetro sem uso da primeira versão do dublê. A assinatura ficou no tipo do dublê e o teste seguiu conferindo as opções do pedido.
+
+**Risco em aberto.** A simulação verifica os dados enviados pelo frontend. A execução da exclusão no servidor é coberta em outra suíte.
+
+**Procedência.** PR #279, feature/UI-43-configuracoes sobre develop d81f4f9, 24/11/2026. Windows 11, Node 24.11.0.
