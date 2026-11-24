@@ -1,8 +1,13 @@
 import { useId, type ReactNode } from "react";
 
-export function EtiquetaDeRegistro({ children }: { children: ReactNode }) {
+export const SUPERFICIE_DO_CARTAO_DE_REGISTRO = "rounded-2xl border border-border bg-card";
+
+export function EtiquetaDeRegistro({ children, cor = "text-primary" }: {
+  children: ReactNode;
+  cor?: string;
+}) {
   return (
-    <span className="wrap-anywhere text-[11px] font-extrabold uppercase tracking-wider text-primary">
+    <span className={`wrap-anywhere text-[11px] font-extrabold uppercase tracking-wider ${cor}`}>
       {children}
     </span>
   );
@@ -40,7 +45,7 @@ export function CartaoEmDestaque({ rotulo, valor, children }: {
 
 export function CartaoDeMetrica({ valor, children }: { valor: string | number; children: ReactNode }) {
   return (
-    <li className="min-w-0 space-y-1.5 rounded-2xl border border-border bg-card p-2.5 text-xs leading-snug text-muted-foreground sm:p-4 sm:text-sm">
+    <li className={`${SUPERFICIE_DO_CARTAO_DE_REGISTRO} min-w-0 space-y-1.5 p-2.5 text-xs leading-snug text-muted-foreground sm:p-4 sm:text-sm`}>
       <strong className="block text-xl leading-tight font-extrabold tracking-tight text-foreground sm:text-2xl">
         {valor}
       </strong>

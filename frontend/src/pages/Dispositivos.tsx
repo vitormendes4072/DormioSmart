@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useLocation } from "react-router";
 
 import { BarraDoWorkspace } from "../components/BarraDoWorkspace";
+import { EtiquetaDeRegistro, SUPERFICIE_DO_CARTAO_DE_REGISTRO } from "../components/CartoesDeRegistro";
 import { CartaoDeDispositivo, EstadoDoDispositivo, MeusDispositivos } from "../components/MeusDispositivos";
 import { estaEmModoDemo } from "../lib/demo";
 import type { TipoDeDispositivo } from "../lib/dispositivos";
@@ -18,7 +19,8 @@ export function Dispositivos() {
         <BarraDoWorkspace secao="Dispositivos" />
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-extrabold tracking-tight text-foreground sm:text-[27px]">Dispositivos</h1>
+            <EtiquetaDeRegistro>Sua conta</EtiquetaDeRegistro>
+            <h1 className="mt-1 text-2xl font-extrabold tracking-tight text-foreground sm:text-[27px]">Dispositivos</h1>
             <p className="mt-0.5 text-xs text-muted-foreground">Gerencie os aparelhos vinculados à sua conta.</p>
           </div>
           <button
@@ -39,7 +41,7 @@ export function Dispositivos() {
         <MeusDispositivos mostrarPareamento={pareamentoAberto} />
       )}
 
-      <section className="rounded-[14px] border border-border bg-card p-4 shadow-sm">
+      <section className={`${SUPERFICIE_DO_CARTAO_DE_REGISTRO} p-4`}>
         <h2 className="text-sm font-bold text-foreground">Sobre o pareamento</h2>
         <p className="mt-2 text-xs text-muted-foreground">
           O travesseiro usa um código de conexão próprio. O celular é vinculado à sua conta ao usar {noiteNativaDisponivel() ? "Noite" : "Coletar"}.
@@ -63,9 +65,11 @@ function DispositivosDemonstrativos({ mostrarPareamento }: { mostrarPareamento: 
         {EXEMPLOS.map(({ nome, tipo, detalhe }, indice) => (
           <CartaoDeDispositivo key={tipo} tipo={tipo}>
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold text-foreground">{nome}</p>
-              <p className="mt-0.5 text-xs text-muted-foreground">{detalhe}</p>
-              <EstadoDoDispositivo ativo={ativos[indice]}>{ativos[indice] ? "Conectado" : "Inativo"}</EstadoDoDispositivo>
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                <p className="text-sm font-semibold text-foreground">{nome}</p>
+                <EstadoDoDispositivo estado={ativos[indice] ? "Conectado" : "Inativo"} />
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">{detalhe}</p>
             </div>
             <button
               type="button"
@@ -82,9 +86,10 @@ function DispositivosDemonstrativos({ mostrarPareamento }: { mostrarPareamento: 
           </CartaoDeDispositivo>
         ))}
       </ul>
-      <section id="pareamento-dispositivo" hidden={!mostrarPareamento} className="rounded-xl border border-border bg-card p-4">
+      <section id="pareamento-dispositivo" hidden={!mostrarPareamento} className={`${SUPERFICIE_DO_CARTAO_DE_REGISTRO} p-4`}>
         <h2 className="text-sm font-semibold text-foreground">Parear um travesseiro</h2>
         <p className="mt-2 text-xs text-muted-foreground">Entre na sua conta para parear um aparelho real.</p>
+        <p className="mt-2 text-xs text-muted-foreground">O celular não precisa de pareamento.</p>
       </section>
     </div>
   );
