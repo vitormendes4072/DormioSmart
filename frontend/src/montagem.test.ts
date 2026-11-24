@@ -588,6 +588,31 @@ describe("montagem real das telas (UI-17)", PRAZO, () => {
     }
   });
 
+  it.each([
+    ["Conectado", 2, true],
+    ["Pausado", 2, false],
+    ["Inativo", 48 * 60, true],
+  ] as const)("mostra ícone, último envio e etiqueta %s no cartão do dispositivo", async (estado, minutos, receber) => {
+    const original = vi.mocked(fetch).getMockImplementation()!;
+    const dispositivo = {
+      id: "travesseiro-estado",
+      nome: "Travesseiro de teste",
+      tipo: "travesseiro",
+      revoked_at: null,
+      last_seen_at: new Date(Date.now() - minutos * 60_000).toISOString(),
+      receber_leituras: receber,
+    };
+    vi.mocked(fetch).mockImplementation(async (entrada, opcoes) =>
+      String(entrada) === "/api/devices" ? respostaJson([dispositivo]) : original(entrada, opcoes));
+    await montar("/dispositivos");
+    const lista = await screen.findByRole("list", { name: "Dispositivos da conta" });
+    const cartao = within(lista).getByRole("listitem");
+    expect(within(cartao).getByText(dispositivo.nome)).toBeTruthy();
+    expect(within(cartao).getByText(/Travesseiro · Último envio/)).toBeTruthy();
+    expect(within(cartao).getByText(estado, { exact: true })).toBeTruthy();
+    expect(cartao.querySelector('svg[aria-hidden="true"]')).toBeTruthy();
+  });
+
   function simularGerenciamentoDeDispositivo() {
     const original = vi.mocked(fetch).getMockImplementation()!;
     const aparelho = {

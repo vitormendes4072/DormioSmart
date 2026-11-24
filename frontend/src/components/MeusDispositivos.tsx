@@ -1,6 +1,7 @@
+import { EtiquetaDeRegistro, SUPERFICIE_DO_CARTAO_DE_REGISTRO } from "./CartoesDeRegistro";
 import { MensagemDeFalha } from "./MensagemDeFalha";
 import { AlertTriangle, Check, Copy, Cpu, Loader2, Pencil, Plus, Radio, Smartphone, X } from "lucide-react";
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from "react";
 
 import { Link } from "react-router";
 
@@ -8,6 +9,7 @@ import { ErroApi } from "../lib/api";
 import { noiteNativaDisponivel } from "../lib/noiteNativa";
 import {
   NOME_MAXIMO,
+  classificarUltimoEnvio,
   descreverUltimoContato,
   estaAtivo,
   listarDispositivos,
@@ -114,7 +116,7 @@ export function MeusDispositivos({ mostrarPareamento = true }: { mostrarPareamen
           <p className="text-sm text-muted-foreground">Nenhum dispositivo pareado</p>
         </div>
       )) : (
-        <ul className="space-y-2">
+        <ul className="space-y-3" aria-label="Dispositivos da conta">
           {lista.map((dispositivo) => (
             <LinhaDoDispositivo
               key={dispositivo.id}
@@ -169,8 +171,8 @@ function GuiaPareamento({ aoParear }: { aoParear: (aparelho: Dispositivo) => voi
 
   if (novoToken) return <TokenRecemCriado pareamento={novoToken} aoFechar={() => setNovoToken(null)} />;
   return (
-      <div className="space-y-3 rounded-xl border border-border bg-card p-4">
-        <p className="text-sm font-semibold text-foreground">Parear um travesseiro</p>
+      <section className={`${SUPERFICIE_DO_CARTAO_DE_REGISTRO} space-y-3 p-4`}>
+        <h2 className="text-base font-semibold text-foreground">Parear um travesseiro</h2>
         <p className="text-xs text-muted-foreground">O travesseiro recebe um código de conexão próprio, mostrado uma vez só.</p>
 
         {falha && <div role="alert" className="text-sm text-destructive"><MensagemDeFalha erro={falha} /></div>}
@@ -190,7 +192,7 @@ function GuiaPareamento({ aoParear }: { aoParear: (aparelho: Dispositivo) => voi
           </Link>
           .
         </p>
-      </div>
+      </section>
   );
 }
 
@@ -222,7 +224,7 @@ function TokenRecemCriado({
   }
 
   return (
-    <div className="rounded-xl border border-primary/40 bg-primary/5 p-4 space-y-3">
+    <div className="space-y-3 rounded-2xl border border-primary/40 bg-primary/5 p-4">
       <div className="flex items-start gap-2">
         <AlertTriangle className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
         <div className="min-w-0">
@@ -301,8 +303,12 @@ function LinhaDoDispositivo({
   const [editando, setEditando] = useState(false);
   const [nome, setNome] = useState(dispositivo.nome);
   const [salvando, setSalvando] = useState(false);
+  const [erroNome, setErroNome] = useState<string | null>(null);
+  const idErroNome = useId();
   const ativo = estaAtivo(dispositivo);
   const pausado = dispositivo.receber_leituras === false;
+  const estado = !ativo ? "Revogado" : pausado ? "Pausado"
+    : classificarUltimoEnvio(dispositivo) === "Enviou recentemente" ? "Conectado" : "Inativo";
   const [alterandoRecebimento, setAlterandoRecebimento] = useState(false);
 
   async function alternarRecebimento() {
@@ -319,15 +325,30 @@ function LinhaDoDispositivo({
     }
   }
 
+  function fecharEdicao() {
+    setEditando(false);
+    setNome(dispositivo.nome);
+    setErroNome(null);
+  }
+
   async function salvar() {
-    if (!nome.trim() || nome === dispositivo.nome) {
-      setEditando(false);
-      setNome(dispositivo.nome);
+    if (salvando) return;
+    const novoNome = nome.trim();
+    if (!novoNome) {
+      setErroNome("Informe um nome para o dispositivo.");
+      return;
+    }
+    if (Array.from(novoNome).length > NOME_MAXIMO) {
+      setErroNome("O nome tem mais caracteres do que o permitido.");
+      return;
+    }
+    if (novoNome === dispositivo.nome) {
+      fecharEdicao();
       return;
     }
     setSalvando(true);
     try {
-      await renomearDispositivo(dispositivo.id, nome);
+      await renomearDispositivo(dispositivo.id, novoNome);
       await aoAtualizar();
       setEditando(false);
     } catch (e) {
@@ -340,92 +361,86 @@ function LinhaDoDispositivo({
 
   return (
     <CartaoDeDispositivo tipo={dispositivo.tipo}>
-      <div className="flex-1 min-w-0">
+      <div className="min-w-0 flex-1">
         {editando ? (
-          <div className="flex items-center gap-2">
-            <input
-              autoFocus
-              value={nome}
-              maxLength={NOME_MAXIMO}
-              onChange={(e) => setNome(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") void salvar();
-                if (e.key === "Escape") {
-                  setNome(dispositivo.nome);
-                  setEditando(false);
-                }
-              }}
-              className={INPUT_CLS + " py-1.5"}
-              aria-label="Nome do dispositivo"
-            />
-            <button onClick={salvar} disabled={salvando} aria-label="Salvar nome">
-              {salvando ? (
-                <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
-              ) : (
-                <Check className="w-4 h-4 text-primary" />
-              )}
-            </button>
-            <button
-              onClick={() => {
-                setNome(dispositivo.nome);
-                setEditando(false);
-              }}
-              aria-label="Cancelar"
-            >
-              <X className="w-4 h-4 text-muted-foreground" />
-            </button>
+          <div className="space-y-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <input
+                autoFocus
+                value={nome}
+                onChange={(e) => {
+                  setNome(e.target.value);
+                  setErroNome(null);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") void salvar();
+                  if (e.key === "Escape") fecharEdicao();
+                }}
+                className={INPUT_CLS + " min-w-0 basis-36 flex-1 py-1.5"}
+                aria-label="Nome do dispositivo"
+                aria-invalid={erroNome !== null}
+                aria-describedby={erroNome ? idErroNome : undefined}
+              />
+              <button type="button" onClick={salvar} disabled={salvando} aria-label="Salvar nome"
+                className="grid size-9 place-items-center rounded-lg hover:bg-secondary">
+                {salvando ? (
+                  <Loader2 className="size-4 animate-spin text-muted-foreground" aria-hidden />
+                ) : (
+                  <Check className="size-4 text-primary" aria-hidden />
+                )}
+              </button>
+              <button type="button" onClick={fecharEdicao} aria-label="Cancelar"
+                className="grid size-9 place-items-center rounded-lg hover:bg-secondary">
+                <X className="size-4 text-muted-foreground" aria-hidden />
+              </button>
+            </div>
+            {erroNome && <p id={idErroNome} role="alert" className="text-xs text-destructive">{erroNome}</p>}
           </div>
         ) : (
-          <>
-            <p className="text-sm font-medium text-foreground truncate">{dispositivo.nome}</p>
-            <p className="text-xs text-muted-foreground">
-              {/* O TIPO na propria linha. Sem ele, nada distinguia um
-                  travesseiro de um celular a nao ser o nome — que e escolha
-                  livre do usuario e nao classifica nada. */}
-              {rotuloDoTipo(dispositivo.tipo)}
-              {" · "}
-              {dispositivo.last_seen_at ? `Último envio ${descreverUltimoContato(dispositivo)}` : "Aguardando primeiro envio"}
-            </p>
-            <EstadoDoDispositivo ativo={ativo}>{ativo ? "Vinculado" : "Revogado"}</EstadoDoDispositivo>
-            {ativo && !dispositivo.last_seen_at && (
-              <button type="button" onClick={verificarEnvio} disabled={verificando} className="text-xs font-semibold text-primary">
-                Verificar agora
-              </button>
+          <div className="grid gap-2 sm:flex sm:items-center sm:justify-between">
+            <div className="min-w-0 space-y-1">
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                <p className="max-w-full truncate text-sm font-semibold text-foreground">{dispositivo.nome}</p>
+                <EstadoDoDispositivo estado={estado} />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {rotuloDoTipo(dispositivo.tipo)}
+                {" · "}
+                {dispositivo.last_seen_at ? `Último envio ${descreverUltimoContato(dispositivo)}` : "Aguardando primeiro envio"}
+              </p>
+              {ativo && !dispositivo.last_seen_at && (
+                <button type="button" onClick={verificarEnvio} disabled={verificando} className="text-xs font-semibold text-primary">
+                  Verificar agora
+                </button>
+              )}
+            </div>
+
+            {ativo && (
+              <div className="flex flex-wrap items-center justify-end gap-1">
+                {dispositivo.tipo === "travesseiro" && (
+                  <button
+                    type="button"
+                    onClick={alternarRecebimento}
+                    disabled={alterandoRecebimento}
+                    className="min-h-9 rounded-lg border border-border px-2 text-xs font-semibold text-primary hover:bg-secondary disabled:opacity-50"
+                    aria-label={`${pausado ? "Retomar" : "Pausar"} recebimento de ${dispositivo.nome}`}
+                  >
+                    {pausado ? "Retomar" : "Pausar"}
+                  </button>
+                )}
+                <button type="button" onClick={() => setEditando(true)} aria-label={`Renomear ${dispositivo.nome}`}
+                  className="grid size-9 place-items-center rounded-lg hover:bg-secondary">
+                  <Pencil className="size-4 text-muted-foreground" aria-hidden />
+                </button>
+                <button type="button" onClick={aoRevogar} aria-label={`Revogar ${dispositivo.nome}`}
+                  className="grid size-9 place-items-center rounded-lg hover:bg-destructive/10">
+                  <X className="size-4 text-destructive" aria-hidden />
+                </button>
+              </div>
             )}
-            {ativo && pausado && <p className="text-sm font-semibold text-destructive">Pausado</p>}
-          </>
+          </div>
         )}
       </div>
-
-      {ativo && !editando ? (
-        <div className="flex flex-wrap items-center justify-end gap-1">
-          {dispositivo.tipo === "travesseiro" && (
-            <button
-              type="button"
-              onClick={alternarRecebimento}
-              disabled={alterandoRecebimento}
-              className="rounded-lg px-2 py-1 text-xs font-semibold text-primary hover:bg-secondary disabled:opacity-50"
-              aria-label={`${pausado ? "Retomar" : "Pausar"} recebimento de ${dispositivo.nome}`}
-            >
-              {pausado ? "Retomar" : "Pausar"}
-            </button>
-          )}
-          <button
-            onClick={() => setEditando(true)}
-            aria-label={`Renomear ${dispositivo.nome}`}
-            className="p-2 rounded-lg hover:bg-secondary transition"
-          >
-            <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
-          </button>
-          <button
-            onClick={aoRevogar}
-            aria-label={`Revogar ${dispositivo.nome}`}
-            className="p-2 rounded-lg hover:bg-destructive/10 transition"
-          >
-            <X className="w-3.5 h-3.5 text-destructive" />
-          </button>
-        </div>
-      ) : null}
     </CartaoDeDispositivo>
   );
 }
@@ -433,7 +448,7 @@ function LinhaDoDispositivo({
 export function CartaoDeDispositivo({ tipo, children }: { tipo?: TipoDeDispositivo; children: ReactNode }) {
   const Icone = tipo === "celular" ? Smartphone : tipo === "travesseiro" ? Radio : Cpu;
   return (
-    <li className="flex min-h-24 items-center gap-3 rounded-[14px] border border-border bg-card p-4 shadow-sm">
+    <li className={`${SUPERFICIE_DO_CARTAO_DE_REGISTRO} flex min-w-0 items-start gap-3 p-4 sm:items-center`}>
       <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
         <Icone className="size-4" aria-hidden />
       </span>
@@ -442,13 +457,18 @@ export function CartaoDeDispositivo({ tipo, children }: { tipo?: TipoDeDispositi
   );
 }
 
-export function EstadoDoDispositivo({ ativo, children }: { ativo: boolean; children: ReactNode }) {
+const TONS_DO_ESTADO = {
+  Conectado: "bg-emerald-500/10 text-emerald-800 dark:text-emerald-300",
+  Pausado: "bg-amber-500/10 text-amber-800 dark:text-amber-300",
+  Inativo: "bg-secondary text-muted-foreground",
+  Revogado: "bg-secondary text-muted-foreground",
+};
+
+export function EstadoDoDispositivo({ estado }: { estado: keyof typeof TONS_DO_ESTADO }) {
   return (
-    <span className={`mt-2 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold ${ativo
-      ? "bg-emerald-500/10 text-emerald-800 dark:text-emerald-300"
-      : "bg-amber-500/10 text-amber-800 dark:text-amber-300"}`}>
-      <span className="size-1.5 rounded-full bg-current" aria-hidden />
-      {children}
+    <span className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 ${TONS_DO_ESTADO[estado]}`}>
+      <span className="size-1.5 shrink-0 rounded-full bg-current" aria-hidden />
+      <EtiquetaDeRegistro cor="text-inherit">{estado}</EtiquetaDeRegistro>
     </span>
   );
 }

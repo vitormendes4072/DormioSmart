@@ -13175,8 +13175,38 @@ Os dois controles originais da etapa também voltaram a falhar sob sabotagem. No
 
 **Adaptação.** Os cartões de sessão ficam no celular, com a tabela preservada no desktop. O autor aprovou os botões segmentados em todas as larguras. Na montagem, somente a interação mudou de selecionar “Últimos 30 dias” na lista para clicar no botão de mesmo nome. As verificações de cancelamento, carregamento e erro continuam iguais. “Excluir…” mantém a confirmação existente. Marcar e desmarcar como bancada continuam diretos, por serem reversíveis.
 
-**O que deu errado no caminho.** O sandbox negou o status do checkout principal. A confirmação da base foi feita pela referência remota, e os testes e as capturas rodaram na worktree isolada.
+**O que deu errado no caminho.** O sandbox negou o status do checkout principal. A confirmação da base foi feita pela referência remota, e os testes e as capturas rodaram na worktree isolada. Na PR #277, faltou declarar que duas sessões de demonstração do Histórico passaram de 96% e 99% para 100% de cobertura. A lógica das sessões reais permaneceu igual.
 
 **Risco em aberto.** A comparação visual foi feita com dados simulados no navegador. O build Android sincronizou os arquivos.
 
 **Procedência.** Branch feature/UI-43-historico sobre develop eaddd6b, 24/11/2026. Windows 11, Node 24.11.0, Edge com Playwright. Capturas locais em .playwright-mcp/ui43-historico, fora dos commits.
+
+---
+
+# 2026-11-24 (v) — UI-43, etapa 5: a tela Dispositivos
+
+**O problema, como foi entendido no início.** A lista apertava o nome e o último envio entre o ícone e as ações em larguras de celular. Renomear e revogar ainda estavam sem teste de tela. Salvar um nome vazio fechava a edição em silêncio.
+
+**Hipótese de trabalho.** O teste pela montagem real consegue proteger o pedido de mudança do nome, a validação e a decisão de revogar. Uma linha de cartão com espaço próprio para as ações mantém legível o nome e separa o estado do último envio.
+
+**O que foi testado, e como.** O primeiro commit passou com renomeação válida e revogação em develop. Os dois casos de validação falharam antes da correção. Os três testes de cartão também falharam contra develop, onde a lista ainda não tinha o rótulo acessível esperado. Rodadas a suíte completa, lint, TypeScript, Knip, Knip de tipos, builds web e app, CSP e orçamento, incluindo a conferência da demonstração da Noite. No Edge com Playwright, 24 capturas antes e depois em /dispositivos?demo=1, no claro e no escuro, a 360 e 390 px. O pareamento e a confirmação usam a árvore real com registros simulados e a revogação foi cancelada. A confirmação nativa foi capturada pela janela do Edge com a largura da página emulada.
+
+| Sabotagem temporária | Teste que falhou |
+|---|---|
+| Enviar o nome anterior | envia o novo nome do dispositivo e o mostra na lista |
+| Revogar mesmo após cancelar | só revoga após confirmação e remove as ações do aparelho ativo |
+| Pular a validação do vazio | recusa nome vazio com a mensagem certa |
+| Pular a validação do comprimento | recusa nome longo demais com a mensagem certa |
+| Trocar Conectado por Inativo | mostra ícone, último envio e etiqueta Conectado no cartão do dispositivo |
+| Trocar Pausado por Conectado | mostra ícone, último envio e etiqueta Pausado no cartão do dispositivo |
+| Trocar Inativo por Conectado | mostra ícone, último envio e etiqueta Inativo no cartão do dispositivo |
+
+**Resultado medido.** 1005 testes em 67 arquivos. Painel 157 515 B gzip de 260 000 B, login 146 989 B gzip de 155 000 B, landing 279 018 B transferidos estimados de 289 800 B. “Configurações” mediu 65,2 px em uma célula de 72 px a 360 px, em uma linha e sem rolagem horizontal nos dois temas.
+
+**Adaptação.** O autor confirmou a mensagem “Informe um nome para o dispositivo.” e a tela sem filtro novo. O formulário mantém o campo editável quando o nome é recusado. A lista usa a janela de envio recente já definida no domínio para Conectado e Inativo, dá prioridade a Pausado e mantém Revogado para o aparelho que perdeu a vinculação ativa. Os aparelhos de demonstração mantêm seus nomes, datas e estados iniciais. O cartão de pareamento da demo ganhou a explicação sobre o celular.
+
+**O que deu errado no caminho.** O nome vazio fechava a edição sem mensagem. No teste de comprimento, injetar um nome acima do limite levava à recusa do servidor e restaurava o nome anterior. O primeiro recorte da confirmação pegou a barra de tarefas na borda. A captura foi refeita com o recorte limitado à janela visível do Edge.
+
+**Risco em aberto.** A inspeção visual foi no navegador com registros simulados. O build do app sincronizou os arquivos.
+
+**Procedência.** Branch feature/UI-43-dispositivos sobre develop 3709f34, 24/11/2026. Windows 11, Node 24.11.0, Edge com Playwright e captura de janela do Windows. Capturas em .playwright-mcp/ui43-dispositivos, fora dos commits.
