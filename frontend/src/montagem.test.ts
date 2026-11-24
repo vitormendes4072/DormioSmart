@@ -588,6 +588,89 @@ describe("montagem real das telas (UI-17)", PRAZO, () => {
     }
   });
 
+  function simularGerenciamentoDeDispositivo() {
+    const original = vi.mocked(fetch).getMockImplementation()!;
+    const aparelho = {
+      id: "quarto",
+      nome: "Travesseiro do quarto",
+      tipo: "travesseiro",
+      last_seen_at: new Date().toISOString(),
+      revoked_at: null as string | null,
+    };
+    const renomear = vi.fn((opcoes?: RequestInit) => {
+      const { nome } = JSON.parse(String(opcoes?.body)) as { nome: string };
+      if (nome.trim().length > 60) {
+        return new Response(JSON.stringify({ error: "nome deve ter no maximo 60 caracteres" }), { status: 400 });
+      }
+      aparelho.nome = nome.trim();
+      return respostaJson(aparelho);
+    });
+    const revogar = vi.fn((opcoes?: RequestInit) => {
+      aparelho.revoked_at = new Date().toISOString();
+      expect(opcoes?.method).toBe("POST");
+      return respostaJson(aparelho);
+    });
+    vi.mocked(fetch).mockImplementation(async (entrada, opcoes) => {
+      if (String(entrada) === "/api/devices/quarto") return renomear(opcoes);
+      if (String(entrada) === "/api/devices/quarto/revogar") return revogar(opcoes);
+      if (String(entrada) === "/api/devices") return respostaJson([aparelho]);
+      return original(entrada, opcoes);
+    });
+    return { renomear, revogar };
+  }
+
+  it("envia o novo nome do dispositivo e o mostra na lista", async () => {
+    const { renomear } = simularGerenciamentoDeDispositivo();
+    await montar("/dispositivos");
+    fireEvent.click(await screen.findByRole("button", { name: "Renomear Travesseiro do quarto" }));
+    fireEvent.change(screen.getByRole("textbox", { name: "Nome do dispositivo" }), {
+      target: { value: "Travesseiro da cabeceira" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Salvar nome" }));
+    expect(await screen.findByText("Travesseiro da cabeceira")).toBeTruthy();
+    expect(screen.queryByText("Travesseiro do quarto")).toBeNull();
+    expect(renomear).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({
+      method: "PATCH", body: JSON.stringify({ nome: "Travesseiro da cabeceira" }),
+    }));
+  });
+
+  it.each([
+    ["vazio", "   ", "Informe um nome para o dispositivo."],
+    ["longo demais", "a".repeat(61), "O nome tem mais caracteres do que o permitido."],
+  ])("recusa nome %s com a mensagem certa", async (_, nome, mensagem) => {
+    const { renomear } = simularGerenciamentoDeDispositivo();
+    await montar("/dispositivos");
+    fireEvent.click(await screen.findByRole("button", { name: "Renomear Travesseiro do quarto" }));
+    const campo = screen.getByRole("textbox", { name: "Nome do dispositivo" }) as HTMLInputElement;
+    fireEvent.change(campo, { target: { value: nome } });
+    fireEvent.click(screen.getByRole("button", { name: "Salvar nome" }));
+    expect((await screen.findByRole("alert")).textContent).toBe(mensagem);
+    expect(campo.value).toBe(nome);
+    expect(renomear).not.toHaveBeenCalled();
+  });
+
+  it("só revoga após confirmação e remove as ações do aparelho ativo", async () => {
+    const { revogar } = simularGerenciamentoDeDispositivo();
+    const confirmar = vi.spyOn(window, "confirm").mockReturnValueOnce(false).mockReturnValueOnce(true);
+    try {
+      await montar("/dispositivos");
+      const acao = await screen.findByRole("button", { name: "Revogar Travesseiro do quarto" });
+      await act(async () => { fireEvent.click(acao); });
+      expect(confirmar).toHaveBeenCalledWith(expect.stringContaining('Revogar "Travesseiro do quarto"?'));
+      expect(revogar).not.toHaveBeenCalled();
+      expect(screen.getByRole("button", { name: "Revogar Travesseiro do quarto" })).toBe(acao);
+
+      fireEvent.click(acao);
+      expect(await screen.findByText("Revogado")).toBeTruthy();
+      expect(confirmar).toHaveBeenCalledTimes(2);
+      expect(revogar).toHaveBeenCalledTimes(1);
+      expect(screen.queryByRole("button", { name: "Revogar Travesseiro do quarto" })).toBeNull();
+      expect(screen.queryByRole("button", { name: "Renomear Travesseiro do quarto" })).toBeNull();
+    } finally {
+      confirmar.mockRestore();
+    }
+  });
+
   it("avisa no painel vazio que o travesseiro está pausado", async () => {
     const original = vi.mocked(fetch).getMockImplementation()!;
     vi.mocked(fetch).mockImplementation((entrada, opcoes) =>
