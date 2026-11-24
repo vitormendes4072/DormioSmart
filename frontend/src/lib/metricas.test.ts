@@ -271,6 +271,25 @@ describe("intensidadeMedia considera apenas o repouso", () => {
 // mostrar que a coleta tinha caido.
 
 describe("prepararSerie marca onde faltou medicao", () => {
+  it("mede em cada metade apenas a duração da lacuna contida nela", () => {
+    const leituras = [0, .5, 4, 4.5].map((t) => ({ ...leitura(t), epoca_segundos: 30 }));
+    const { cobertura } = calcularMetricas(leituras);
+    const meio = Date.parse(leitura(2.25).created_at!);
+    const primeira = prepararSerie(leituras, cobertura, { fim: meio });
+    const segunda = prepararSerie(leituras, cobertura, { inicio: meio });
+    expect(primeira.filter((p) => p.lacuna).map((p) => p.duracaoDaLacunaMs)).toEqual([105_000]);
+    expect(segunda.filter((p) => p.lacuna).map((p) => p.duracaoDaLacunaMs)).toEqual([75_000]);
+  });
+
+  it("inclui o ponto exatamente no meio só na segunda metade", () => {
+    const leituras = [leitura(0), movimento(1), leitura(2)];
+    const meio = Date.parse(leituras[1].created_at!);
+    const primeira = prepararSerie(leituras, undefined, { fim: meio });
+    const segunda = prepararSerie(leituras, undefined, { inicio: meio });
+    expect(primeira.map((p) => p.movimento)).toEqual([false]);
+    expect(segunda.map((p) => p.movimento)).toEqual([true, false]);
+  });
+
   it("sem cobertura, comporta-se como antes", () => {
     // A demo gera serie continua e nao passa cobertura.
     const s = prepararSerie([leitura(0), leitura(1), leitura(2)]);

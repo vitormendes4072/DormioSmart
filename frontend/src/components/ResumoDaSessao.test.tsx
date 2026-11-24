@@ -3,7 +3,7 @@
  * UI-40: o resumo no topo do Início. O que se confere aqui é que cada frase diz
  * o que a conta diz, inclusive nas bordas (zero, um, todas as sessões).
  */
-import { cleanup, render } from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { agruparEmSessoes } from "../lib/cobertura";
@@ -77,7 +77,10 @@ describe("ResumoDaSessao (UI-40)", () => {
   });
 
   it("o maior período sem movimento registrado não atravessa a parada", () => {
-    expect(texto(serie([[20], [30, 150_000]]))).toContain("Maior período sem movimento registrado: 15m 0s");
+    texto(serie([[20], [30, 150_000]]));
+    const cartao = within(screen.getByRole("list", { name: "Métricas da sessão" })).getAllByRole("listitem")[1];
+    expect(within(cartao).getByRole("strong").textContent).toBe("15m 0s");
+    expect(cartao.textContent).toContain("Maior período sem movimento registrado");
   });
 
   it("a sessão que cruza a meia-noite diz os dois dias", () => {
@@ -103,4 +106,19 @@ describe("ResumoDaSessao (UI-40)", () => {
     expect(texto(serie([[100]], { movimentoACada: 10 })))
       .not.toMatch(/dormi|sono|qualidade|eficiência|agitad|tranquil|você se mexeu|nota|\bbom\b|\bruim\b/i);
   });
+});
+
+it("destaca o tempo registrado e distribui as frases em três cartões (UI-43)", () => {
+  texto(serie([[4], [4, 150_000]], { movimentoACada: 4 }));
+  const registrado = screen.getByRole("group", { name: "Registrado" });
+  expect(registrado.textContent).toContain("4m 0s de 6m 30s · 17/11,");
+
+  const metricas = within(screen.getByRole("list", { name: "Métricas da sessão" }));
+  const cartoes = metricas.getAllByRole("listitem");
+  expect(cartoes.map((cartao) => within(cartao).getByRole("strong").textContent)).toEqual(["25%", "1m 30s", "Parou 1 vez"]);
+  expect(metricas.queryByRole("heading")).toBeNull();
+  expect(cartoes[0].textContent).toContain("Movimento em 25% do tempo registrado");
+  // UI-43: o valor fica só no destaque, e a frase embaixo não o repete.
+  expect(cartoes[1].textContent).toBe("1m 30sMaior período sem movimento registrado");
+  expect(cartoes[2].textContent).toContain("O registro parou 1 vez, por 2m 30s");
 });

@@ -18,8 +18,9 @@ e o resultado divergia:
 - **A home nunca baixou a Inter.** Sem `@font-face` nem link de fonte, o navegador caía na
   fonte do sistema. No Windows, a Segoe UI: a largura medida do texto é a da Segoe (1 030 px),
   e não a da Inter (931 px).
-- **O app baixa a Inter do Google Fonts** (`src/styles/fonts.css`), só nos pesos 400 e 500.
-  A lista de espera saía em Inter, e o título de peso 850, com negrito sintetizado.
+- **O app baixava a Inter do Google Fonts** (`src/styles/fonts.css`), só nos pesos 400 e 500.
+  A lista de espera saía em Inter, e o título de peso 850, com negrito sintetizado. ✏️ *23/11
+  (`UI-43`): o `fonts.css` saiu; o app inteiro usa a fonte do sistema.*
 
 A mesma declaração dava fontes diferentes conforme a página e o aparelho. Também havia dois
 defeitos de peso na lista: os botões do formulário saíam em 400, e as caixas de confirmação
@@ -197,7 +198,7 @@ Um número técnico que passe a significar falha vira aviso fora dos detalhes.
 
 | Lacuna | Por quê |
 |---|---|
-| **O visual do app depois do login** (a linguagem está na seção 10) | Usa a fonte Outfit (`theme.css`, baixada pelo `fonts.css`) e outra paleta. Alinhar o app a este padrão, ou decidir que ele tem o seu, é o `UI-36`. |
+| **O visual do app depois do login** (a linguagem está na seção 10) | ✏️ *23/11, `UI-36` decidido e `UI-43` etapa 1 feita: o app usa a **fonte do sistema** deste documento (`theme.css`, conferido pelo `padraoVisual.test.ts`), sem fonte baixada, e a CSP não abre mais o Google Fonts. Os cartões do celular de exemplo da landing entram tela a tela (`docs/REDESENHO-DO-APP.md`).* |
 | **A versão leve da landing** (`/?apresentacao=leve`) | É componente do app e herda a fonte e a paleta dele. Entra no `UI-36`. |
 | **O celular desenhado na landing** | Imita a interface do aparelho, de propósito. |
 | **Outros tamanhos de tela** | A escala foi medida a 1280 px. No celular, as regras `@media` da landing e da lista são as que valem. |

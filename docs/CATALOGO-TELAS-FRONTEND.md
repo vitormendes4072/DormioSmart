@@ -77,7 +77,7 @@ A barra de destinos fica fixa na borda inferior, com ícone e nome e uso da áre
 
 - Cores semânticas em `frontend/src/styles/theme.css`: fundo, cartão, texto principal/secundário, primário, erro, borda e gráficos; os mesmos nomes são resolvidos para claro ou escuro.
 - A identidade usa azul `#35a2ef`. No tema claro, o azul de ação é `#0b6db5`; no escuro, `#4fb3f5`. Fundo claro `#f4f7fb`; escuro `#070d18`.
-- A fonte principal declarada é Outfit; há reservas do sistema e importação de fontes externas. Hierarquia frequente: rótulo pequeno, título, subtítulo, seção em cartão, detalhe secundário.
+- A fonte é a do sistema, sem fonte externa (desde 23/11, `UI-43`; até ali, a Outfit importada). Hierarquia frequente: rótulo pequeno, título, subtítulo, seção em cartão, detalhe secundário.
 - Formas arredondadas, bordas discretas, ícones Lucide e espaçamento entre blocos são recorrentes. O estilo “blueprint” da landing usa molduras, cotas e traçado de sinal.
 - Existem respostas de carregamento, erro e estados vazios, mas não necessariamente uniformes em todos os componentes. Há implementação específica para preferência por redução de movimento; cobertura integral deve ser testada.
 

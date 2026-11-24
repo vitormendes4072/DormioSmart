@@ -92,7 +92,7 @@ Configurações reúne tema claro/escuro/sistema, edição do perfil, dispositiv
 | Superfícies | Claro `#f4f7fb` / cartão `#ffffff`; escuro `#070d18` / cartão `#0e1726` | Hierarquia entre fundo e conteúdo |
 | Risco | Vermelho de destruição e alertas; texto acompanha cor em diversos estados | Diferenciar exclusão/erro |
 | Gráficos | Azul para repouso e âmbar para movimento | Separação visual complementada por texto e tabela |
-| Tipografia | Outfit como fonte principal, com fontes de sistema de reserva; CSS importa Outfit e Inter | Legibilidade e identidade |
+| Tipografia | Fonte do sistema, sem fonte baixada (desde 23/11, `UI-43`; até ali, Outfit e Inter importadas do Google Fonts) | Legibilidade e identidade |
 | Formas | Raio base `0.875rem`, cartões e botões arredondados | Continuidade visual |
 | Ícones | Lucide React | Reforço visual de destinos, estados e ações |
 | Movimento | Revelação e traçado animado, com tratamento de `prefers-reduced-motion` para as animações declaradas | Feedback e apresentação sem depender do movimento |
@@ -136,7 +136,7 @@ Prioridades são uma proposta desta análise, não itens oficialmente criados ou
 
 ## 8. Arquitetura técnica para manutenção
 
-- **Interface:** React 18, TypeScript, Vite, Tailwind CSS, React Router, Lucide e Recharts; versões em `frontend/package.json`.
+- **Interface:** React 18, TypeScript, Vite, Tailwind CSS, React Router e Lucide (o gráfico do painel é SVG próprio desde 23/11, `UI-43`); versões em `frontend/package.json`.
 - **Estado e dados:** `AuthProvider` envolve `PerfilProvider`; hooks específicos coordenam histórico, coleta, dispositivos, tema, consentimento e envio; `lib/api.ts` e módulos adjacentes encapsulam comunicação.
 - **Android:** Capacitor envolve o mesmo frontend; o plugin nativo de noite e seu serviço suportam funções indisponíveis no navegador. `vite.config.ts` define o endereço de backend para build `app`.
 - **Privacidade:** política é carregada sob demanda; controle de consentimento também depende de backend/banco, não apenas da caixa na interface.

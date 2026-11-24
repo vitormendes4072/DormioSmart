@@ -73,6 +73,7 @@ const SESSAO = {
 };
 
 let sessaoDoServidor: typeof SESSAO | null = SESSAO;
+const encerrarSessao = vi.fn(async () => ({ error: null }));
 
 vi.mock("@supabase/supabase-js", () => ({
   createClient: () => ({
@@ -81,7 +82,7 @@ vi.mock("@supabase/supabase-js", () => ({
       // O `AuthContext` chama o `unsubscribe` ao desmontar; sem ele o teste
       // quebraria na limpeza e não no que está sob teste.
       onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
-      signOut: async () => ({ error: null }),
+      signOut: () => encerrarSessao(),
       updateUser: async () => ({ data: { user: SESSAO.user }, error: null }),
     },
   }),
@@ -103,6 +104,7 @@ function respostaJson(corpo: unknown): Response {
 
 beforeEach(() => {
   sessaoDoServidor = SESSAO;
+  encerrarSessao.mockClear();
   // Lidos no topo de `lib/supabase.ts`, então têm de valer antes do import
   // dinâmico. Valores de teste: a suíte não depende do `.env` de ninguém.
   vi.stubEnv("VITE_SUPABASE_URL", "https://projeto-de-teste.supabase.co");
@@ -132,7 +134,7 @@ beforeEach(() => {
     }),
   );
 
-  // Idem `ResizeObserver`, que o recharts usa no painel.
+  // Idem `ResizeObserver`, que o painel usava com o recharts; o stub fica, inofensivo, para o próximo componente que o use.
   vi.stubGlobal(
     "ResizeObserver",
     class {
@@ -285,6 +287,51 @@ describe("montagem real das telas (UI-17)", PRAZO, () => {
     expect(screen.getByText("não informada")).toBeTruthy();
   });
 
+  it("sair encerra a sessão com signOut e leva ao login", async () => {
+    await montar("/configuracoes");
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Sair da conta" }));
+    });
+
+    expect(encerrarSessao).toHaveBeenCalledTimes(1);
+    expect(window.location.pathname).toBe("/login");
+    expect(await screen.findByRole("button", { name: "Entrar" })).toBeTruthy();
+  });
+
+  it.each([
+    ["Aparência", "radio", "Claro"],
+    ["Conta", "button", "Editar dados"],
+    ["Lembrete de dormir", "checkbox", "Lembrar todo dia"],
+    ["Meus dispositivos", "button", "Parear"],
+    ["Seus dados", "button", "Exportar meus dados (CSV)"],
+    ["Sair", "button", "Sair da conta"],
+    ["Excluir conta", "button", "Excluir minha conta"],
+  ] as const)("agrupa a seção %s num cartão com seu controle", async (titulo, papel, nome) => {
+    const lembrete = titulo === "Lembrete de dormir";
+    if (lembrete) {
+      vi.doMock("./lib/noiteNativa", async (original) => ({
+        ...await original<typeof import("./lib/noiteNativa")>(),
+        noiteNativaDisponivel: () => true,
+        Noite: { lembrete: async () => ({ ativo: true, hora: 22, minuto: 30, notificacoes: true }) },
+      }));
+    }
+
+    try {
+      await montar(titulo === "Aparência" ? "/configuracoes?demo=1" : "/configuracoes");
+      const cartao = await screen.findByRole("region", { name: titulo });
+      expect(cartao.classList.contains("rounded-2xl")).toBe(true);
+      expect(cartao.classList.contains("border")).toBe(true);
+      expect(cartao.classList.contains("bg-card")).toBe(true);
+      expect(await within(cartao).findByRole(papel, { name: nome })).toBeTruthy();
+      if (titulo === "Excluir conta") {
+        expect(screen.getByRole("region", { name: "Seus dados" }).contains(cartao)).toBe(false);
+      }
+    } finally {
+      if (lembrete) vi.doUnmock("./lib/noiteNativa");
+    }
+  });
+
   it("o ExcluirConta está renderizado, e a barreira de duas etapas funciona na tela", async () => {
     await montar("/configuracoes");
 
@@ -303,6 +350,39 @@ describe("montagem real das telas (UI-17)", PRAZO, () => {
 
     expect(document.getElementById("confirmacao-exclusao")).not.toBeNull();
     expect(screen.getByText(/Isto é irreversível/i)).toBeTruthy();
+  });
+
+  it("só envia a exclusão da conta depois da frase exata", async () => {
+    const original = vi.mocked(fetch).getMockImplementation()!;
+    const excluir = vi.fn<(opcoes?: RequestInit) => Promise<Response>>().mockResolvedValue(respostaJson({
+      leituras_apagadas: 1,
+      dispositivos_apagados: 1,
+      perfil_apagado: true,
+      conta_de_acesso_removida: true,
+    }));
+    vi.mocked(fetch).mockImplementation((entrada, opcoes) =>
+      String(entrada) === "/api/me" ? excluir(opcoes) : original(entrada, opcoes));
+
+    await montar("/configuracoes");
+    fireEvent.click(screen.getByRole("button", { name: "Excluir minha conta" }));
+    const campo = screen.getByRole("textbox", { name: /para confirmar, digite/i });
+    const botao = screen.getByRole("button", { name: "Excluir definitivamente" }) as HTMLButtonElement;
+
+    for (const texto of ["", "APAGAR MINHA NOITE", "apagar minha conta", "APAGAR MINHA CONTA "]) {
+      fireEvent.change(campo, { target: { value: texto } });
+      expect(botao.disabled, JSON.stringify(texto)).toBe(true);
+      await act(async () => { fireEvent.click(botao); });
+      expect(excluir).not.toHaveBeenCalled();
+    }
+
+    fireEvent.change(campo, { target: { value: "APAGAR MINHA CONTA" } });
+    expect(botao.disabled).toBe(false);
+    await act(async () => { fireEvent.click(botao); });
+    expect(excluir).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({
+      method: "DELETE",
+      body: JSON.stringify({ confirmacao: "APAGAR MINHA CONTA" }),
+    }));
+    expect(await screen.findByText("Conta excluída.")).toBeTruthy();
   });
 
   it("Configurações leva à Política de Privacidade (LGPD-01 (b))", async () => {
@@ -536,7 +616,8 @@ describe("montagem real das telas (UI-17)", PRAZO, () => {
     await act(async () => responder!(respostaJson([])));
     expect(await screen.findByText("Nenhuma sessão no período selecionado.")).toBeTruthy();
 
-    fireEvent.change(screen.getByRole("combobox", { name: "Período do histórico" }), { target: { value: "30" } });
+    fireEvent.click(within(screen.getByRole("group", { name: "Período do histórico" }))
+      .getByRole("button", { name: "Últimos 30 dias" }));
     expect(await screen.findByText(/Carregando sessões/)).toBeTruthy();
     expect(sinais[0].aborted).toBe(true);
     await act(async () => responder!(new Response(JSON.stringify({ error: "Serviço indisponível" }), { status: 503 })));
@@ -587,6 +668,114 @@ describe("montagem real das telas (UI-17)", PRAZO, () => {
     }
   });
 
+  it.each([
+    ["Conectado", 2, true],
+    ["Pausado", 2, false],
+    ["Inativo", 48 * 60, true],
+  ] as const)("mostra ícone, último envio e etiqueta %s no cartão do dispositivo", async (estado, minutos, receber) => {
+    const original = vi.mocked(fetch).getMockImplementation()!;
+    const dispositivo = {
+      id: "travesseiro-estado",
+      nome: "Travesseiro de teste",
+      tipo: "travesseiro",
+      revoked_at: null,
+      last_seen_at: new Date(Date.now() - minutos * 60_000).toISOString(),
+      receber_leituras: receber,
+    };
+    vi.mocked(fetch).mockImplementation(async (entrada, opcoes) =>
+      String(entrada) === "/api/devices" ? respostaJson([dispositivo]) : original(entrada, opcoes));
+    await montar("/dispositivos");
+    const lista = await screen.findByRole("list", { name: "Dispositivos da conta" });
+    const cartao = within(lista).getByRole("listitem");
+    expect(within(cartao).getByText(dispositivo.nome)).toBeTruthy();
+    expect(within(cartao).getByText(/Travesseiro · Último envio/)).toBeTruthy();
+    expect(within(cartao).getByText(estado, { exact: true })).toBeTruthy();
+    expect(cartao.querySelector('svg[aria-hidden="true"]')).toBeTruthy();
+  });
+
+  function simularGerenciamentoDeDispositivo() {
+    const original = vi.mocked(fetch).getMockImplementation()!;
+    const aparelho = {
+      id: "quarto",
+      nome: "Travesseiro do quarto",
+      tipo: "travesseiro",
+      last_seen_at: new Date().toISOString(),
+      revoked_at: null as string | null,
+    };
+    const renomear = vi.fn((opcoes?: RequestInit) => {
+      const { nome } = JSON.parse(String(opcoes?.body)) as { nome: string };
+      if (nome.trim().length > 60) {
+        return new Response(JSON.stringify({ error: "nome deve ter no maximo 60 caracteres" }), { status: 400 });
+      }
+      aparelho.nome = nome.trim();
+      return respostaJson(aparelho);
+    });
+    const revogar = vi.fn((opcoes?: RequestInit) => {
+      aparelho.revoked_at = new Date().toISOString();
+      expect(opcoes?.method).toBe("POST");
+      return respostaJson(aparelho);
+    });
+    vi.mocked(fetch).mockImplementation(async (entrada, opcoes) => {
+      if (String(entrada) === "/api/devices/quarto") return renomear(opcoes);
+      if (String(entrada) === "/api/devices/quarto/revogar") return revogar(opcoes);
+      if (String(entrada) === "/api/devices") return respostaJson([aparelho]);
+      return original(entrada, opcoes);
+    });
+    return { renomear, revogar };
+  }
+
+  it("envia o novo nome do dispositivo e o mostra na lista", async () => {
+    const { renomear } = simularGerenciamentoDeDispositivo();
+    await montar("/dispositivos");
+    fireEvent.click(await screen.findByRole("button", { name: "Renomear Travesseiro do quarto" }));
+    fireEvent.change(screen.getByRole("textbox", { name: "Nome do dispositivo" }), {
+      target: { value: "Travesseiro da cabeceira" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Salvar nome" }));
+    expect(await screen.findByText("Travesseiro da cabeceira")).toBeTruthy();
+    expect(screen.queryByText("Travesseiro do quarto")).toBeNull();
+    expect(renomear).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({
+      method: "PATCH", body: JSON.stringify({ nome: "Travesseiro da cabeceira" }),
+    }));
+  });
+
+  it.each([
+    ["vazio", "   ", "Informe um nome para o dispositivo."],
+    ["longo demais", "a".repeat(61), "O nome tem mais caracteres do que o permitido."],
+  ])("recusa nome %s com a mensagem certa", async (_, nome, mensagem) => {
+    const { renomear } = simularGerenciamentoDeDispositivo();
+    await montar("/dispositivos");
+    fireEvent.click(await screen.findByRole("button", { name: "Renomear Travesseiro do quarto" }));
+    const campo = screen.getByRole("textbox", { name: "Nome do dispositivo" }) as HTMLInputElement;
+    fireEvent.change(campo, { target: { value: nome } });
+    fireEvent.click(screen.getByRole("button", { name: "Salvar nome" }));
+    expect((await screen.findByRole("alert")).textContent).toBe(mensagem);
+    expect(campo.value).toBe(nome);
+    expect(renomear).not.toHaveBeenCalled();
+  });
+
+  it("só revoga após confirmação e remove as ações do aparelho ativo", async () => {
+    const { revogar } = simularGerenciamentoDeDispositivo();
+    const confirmar = vi.spyOn(window, "confirm").mockReturnValueOnce(false).mockReturnValueOnce(true);
+    try {
+      await montar("/dispositivos");
+      const acao = await screen.findByRole("button", { name: "Revogar Travesseiro do quarto" });
+      await act(async () => { fireEvent.click(acao); });
+      expect(confirmar).toHaveBeenCalledWith(expect.stringContaining('Revogar "Travesseiro do quarto"?'));
+      expect(revogar).not.toHaveBeenCalled();
+      expect(screen.getByRole("button", { name: "Revogar Travesseiro do quarto" })).toBe(acao);
+
+      fireEvent.click(acao);
+      expect(await screen.findByText("Revogado")).toBeTruthy();
+      expect(confirmar).toHaveBeenCalledTimes(2);
+      expect(revogar).toHaveBeenCalledTimes(1);
+      expect(screen.queryByRole("button", { name: "Revogar Travesseiro do quarto" })).toBeNull();
+      expect(screen.queryByRole("button", { name: "Renomear Travesseiro do quarto" })).toBeNull();
+    } finally {
+      confirmar.mockRestore();
+    }
+  });
+
   it("avisa no painel vazio que o travesseiro está pausado", async () => {
     const original = vi.mocked(fetch).getMockImplementation()!;
     vi.mocked(fetch).mockImplementation((entrada, opcoes) =>
@@ -617,11 +806,23 @@ describe("montagem real das telas (UI-17)", PRAZO, () => {
     return await screen.findByRole("button", { name: "Parear" });
   }
 
-  it("leva o celular a Coletar sem gerar token manual", async () => {
+  it("pareia só o travesseiro, sem escolha de tipo (UI-42)", async () => {
     const { criar } = simularPareamento();
     await abrirPareamento();
-    fireEvent.click(screen.getByRole("radio", { name: /celular/i }));
-    fireEvent.click(screen.getByRole("link", { name: "Ir para Coletar" }));
+    expect(screen.getByText("Parear um travesseiro")).toBeTruthy();
+    expect(screen.queryAllByRole("radio")).toHaveLength(0);
+    expect(screen.queryByText(/O novo dispositivo será um/i)).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Parear" }));
+    await waitFor(() => expect(criar).toHaveBeenCalledTimes(1));
+    const corpo = JSON.parse(String((vi.mocked(fetch).mock.calls.find(([u, o]) => String(u) === "/api/devices" && o?.method === "POST")?.[1] as RequestInit).body));
+    expect(corpo.tipo).toBe("travesseiro");
+  });
+
+  it("no site, explica que o celular entra pela Coletar, sem gerar token manual", async () => {
+    const { criar } = simularPareamento();
+    await abrirPareamento();
+    const explicacao = screen.getByText(/O celular não precisa de pareamento/);
+    fireEvent.click(within(explicacao).getByRole("link", { name: "Coletar" }));
     expect(await screen.findByRole("heading", { name: /nova coleta/i })).toBeTruthy();
     expect(criar).not.toHaveBeenCalled();
   });
@@ -642,14 +843,13 @@ describe("montagem real das telas (UI-17)", PRAZO, () => {
     }
   });
 
-  it("abre Noite ao escolher o celular no app", async () => {
+  it("no app, a explicação leva à Noite", async () => {
     const plataforma = vi.spyOn(Capacitor, "isNativePlatform").mockReturnValue(true);
     const plugin = vi.spyOn(Capacitor, "isPluginAvailable").mockImplementation((nome) => nome === "Noite");
     const { criar } = simularPareamento();
     try {
       await abrirPareamento();
-      fireEvent.click(screen.getByRole("radio", { name: /celular/i }));
-      const irParaNoite = screen.getByRole("link", { name: "Ir para Noite" });
+      const irParaNoite = within(screen.getByText(/O celular não precisa de pareamento/)).getByRole("link", { name: "Noite" });
       expect(irParaNoite.getAttribute("href")).toBe("/noite");
       expect(criar).not.toHaveBeenCalled();
     } finally {
@@ -770,7 +970,7 @@ describe("rotas esperadas (UI-18)", PRAZO, () => {
     ["/login", /bem-vindo de volta/i],
     ["/cadastro", /^criar conta$/i],
     ["/nova-senha", /^nova senha$/i],
-    ["/dashboard", /^olá, titular$|^visão geral$/i],
+    ["/dashboard", /^seus registros$/i],
     ["/coletar", /^nova coleta$/i],
     ["/historico", /^histórico de sessões$/i],
     ["/dispositivos", /^dispositivos$/i],
@@ -919,12 +1119,15 @@ describe("toda rota do App.tsx monta (UI-17)", PRAZO, () => {
 });
 
 describe("o painel em camadas (UI-40)", PRAZO, () => {
-  function responder({ dispositivos, leituras }: { dispositivos: unknown[]; leituras: unknown[] }) {
+  function responder({ dispositivos, leituras }: { dispositivos: unknown[]; leituras: ReturnType<typeof leitura>[] }) {
     const original = vi.mocked(fetch).getMockImplementation()!;
     vi.mocked(fetch).mockImplementation((entrada, opcoes) => {
       const caminho = String(entrada);
       if (caminho.startsWith("/api/devices")) return Promise.resolve(respostaJson(dispositivos));
-      if (caminho.startsWith("/api/sleep-history")) return Promise.resolve(respostaJson(leituras));
+      if (caminho.startsWith("/api/sleep-history")) {
+        const device = new URL(caminho, "http://localhost").searchParams.get("device");
+        return Promise.resolve(respostaJson(device ? leituras.filter((l) => l.device_id === device) : leituras));
+      }
       return original(entrada, opcoes);
     });
   }
@@ -981,6 +1184,74 @@ describe("o painel em camadas (UI-40)", PRAZO, () => {
     responder({ dispositivos: [travesseiro, celular], leituras: [0, 30, 60].map((s) => leitura(s)) });
     await abrir();
     expect(screen.getByRole("heading", { name: "Última sessão · Meu travesseiro" })).toBeTruthy();
+  });
+
+  it("recorta o gráfico pelo horário da metade, preservando a lacuna e o resumo", async () => {
+    const inicio = new Date(2026, 10, 17, 22).getTime();
+    responder({
+      dispositivos: [travesseiro],
+      leituras: [300, 240, 60, 30, 0].map((s) => leitura(s, {
+        captured_at: new Date(inicio + s * 1000).toISOString(),
+        status: s >= 240 ? "Movimento" : "Repouso",
+      })),
+    });
+    await abrir();
+    const resumo = screen.getByRole("region", { name: /^Última sessão/ });
+    const textoOriginal = resumo.textContent;
+    const grafico = screen.getByRole("figure", { name: "Movimento ao longo do tempo" });
+    const dentro = within(grafico);
+    const opcao = (name: string) => dentro.getByRole("button", { name });
+
+    expect(opcao("Noite toda").getAttribute("aria-pressed")).toBe("true");
+    expect(dentro.getByRole("img", { name: /6 pontos, 2 com movimento/ })).toBeTruthy();
+    fireEvent.click(opcao("1ª metade"));
+    expect(opcao("1ª metade").getAttribute("aria-pressed")).toBe("true");
+    expect(dentro.getByRole("img", { name: /4 pontos, 0 com movimento/ })).toBeTruthy();
+    expect(grafico.querySelectorAll("[data-lacuna]")).toHaveLength(1);
+    fireEvent.click(opcao("2ª metade"));
+    expect(opcao("2ª metade").getAttribute("aria-pressed")).toBe("true");
+    expect(dentro.getByRole("img", { name: /3 pontos, 2 com movimento/ })).toBeTruthy();
+    expect(grafico.querySelectorAll("[data-lacuna]")).toHaveLength(1);
+    fireEvent.click(opcao("Noite toda"));
+    expect(dentro.getByRole("img", { name: /6 pontos, 2 com movimento/ })).toBeTruthy();
+    expect(resumo.textContent).toBe(textoOriginal);
+  });
+
+  function selecionarSegundaMetade() {
+    const segunda = screen.getByRole("button", { name: "2ª metade" });
+    fireEvent.click(segunda);
+    expect(segunda.getAttribute("aria-pressed")).toBe("true");
+  }
+
+  const duasSessoes = () => [0, 30, 60, 7200, 7230, 7260].map((s) => leitura(s));
+
+  it("volta para Noite toda ao trocar de aparelho", async () => {
+    responder({
+      dispositivos: [travesseiro, celular],
+      leituras: [0, 30, 60, 7200, 7230, 7260].map((s) => leitura(s, { device_id: s < 100 ? "p" : "c" })),
+    });
+    await abrir();
+    selecionarSegundaMetade();
+    fireEvent.change(screen.getByRole("combobox", { name: "Dispositivo exibido" }), { target: { value: "c" } });
+    await screen.findByRole("heading", { name: "Última sessão · Meu celular" });
+    expect(screen.getByRole("button", { name: "Noite toda", pressed: true })).toBeTruthy();
+  });
+
+  it("volta para Noite toda ao alternar entre todas e a última sessão", async () => {
+    responder({ dispositivos: [travesseiro], leituras: duasSessoes() });
+    await abrir();
+    selecionarSegundaMetade();
+    fireEvent.click(screen.getByRole("button", { name: /ver todas/i }));
+    fireEvent.click(screen.getByRole("button", { name: "Ver só a última" }));
+    expect(screen.getByRole("button", { name: "Noite toda", pressed: true })).toBeTruthy();
+  });
+
+  it("esconde o seletor de período quando mostra todas as sessões", async () => {
+    responder({ dispositivos: [travesseiro], leituras: duasSessoes() });
+    await abrir();
+    expect(screen.getByRole("group", { name: "Período do gráfico" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /ver todas/i }));
+    expect(screen.queryByRole("group", { name: "Período do gráfico" })).toBeNull();
   });
 
   it("sem sessão anterior, diz isso em vez de repetir a atual", async () => {

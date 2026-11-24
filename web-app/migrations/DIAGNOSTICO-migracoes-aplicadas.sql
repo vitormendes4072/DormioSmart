@@ -215,7 +215,13 @@ marcas (migracao, item, marca, presente) as (values
         and to_regprocedure('public.apagar_trecho(uuid,timestamptz,timestamptz,bigint,boolean,text)') is not null
         and to_regprocedure('public.marcar_trecho(uuid,timestamptz,timestamptz,boolean,bigint,boolean,text)') is not null
         and coalesce(not has_function_privilege('anon', to_regprocedure('public.apagar_trecho(uuid,timestamptz,timestamptz,bigint,boolean,text)'), 'execute'), false)
-        and coalesce(not has_function_privilege('anon', to_regprocedure('public.marcar_trecho(uuid,timestamptz,timestamptz,boolean,bigint,boolean,text)'), 'execute'), false))
+        and coalesce(not has_function_privilege('anon', to_regprocedure('public.marcar_trecho(uuid,timestamptz,timestamptz,boolean,bigint,boolean,text)'), 'execute'), false)),
+    -- 026: a versao do app informada pelo celular (APP-19).
+    ('026', 'APP-19', 'colunas devices.versao_app e versao_vista_em',
+        exists (select 1 from col where nome = 'devices.versao_app')
+        and exists (select 1 from col where nome = 'devices.versao_vista_em')),
+    ('026', 'APP-19', 'restrição devices_versao_app_formato',
+        exists (select 1 from pg_constraint where conname = 'devices_versao_app_formato'))
 ),
 esquema as (
     select migracao, min(item) as item,

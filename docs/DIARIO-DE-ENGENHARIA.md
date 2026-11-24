@@ -11771,6 +11771,61 @@ Vitest e build no Windows; servidor local com autenticação fictícia; 19/11/20
 
 **Procedência.** Branch `docs/BRAND-05-grafia-do-nome` sobre `develop` `67bc830`; Windows 11; 19/11.
 
+---
+
+# 2026-11-24 (ii) — UI-43, etapa 3: a tela Noite
+
+**O problema, como foi entendido no início.** A Noite ainda usava os cartões do painel antigo e dependia do serviço nativo para aparecer. Isso também impedia conferir a tela no navegador sem aparelho e sem conta.
+
+**Hipótese de trabalho.** Os componentes visuais do Início servem para hierarquizar a Noite. Um plugin de desenvolvimento permite conferir o mesmo conteúdo que o Android monta.
+
+**O que foi testado, e como.** Suíte completa, lint, TypeScript, Knip, Knip de tipos, builds web e Android, sincronização do Capacitor, CSP e orçamento. Em Edge com Playwright, 48 capturas a 360 e 390 px, nos dois temas, nos seis cenários, antes e depois. A comparação anterior usou os cartões de develop com a mesma demonstração e a mesma barra do app. Os 12 testes de cartão e botão falharam nessa versão. O preview de produção mandou /noite?demo=1 ao login, e os pacotes web e Android ficaram sem o módulo de demonstração. Cada sabotagem derrubou os testes abaixo em Noite.test.tsx.
+
+| Sabotagem temporária | Teste que falhou |
+|---|---|
+| Aceitar o parâmetro sem verificar desenvolvimento | em produção, ?demo=1 mostra a Noite do site sem montar o plugin falso |
+| Tirar o nome acessível do cartão de preparo | mostra o cartão certo no cenário parada |
+| Trocar a etiqueta com o horário de início | mostra o cartão certo no cenário gravando |
+| Retirar o papel de alerta da interrupção | mostra o cartão certo no cenário interrompida |
+| Trocar a etiqueta Última noite | mostra o cartão certo no cenário encerrada |
+| Tirar o nome acessível do cartão de bateria | mostra o cartão certo no cenário bateria |
+| Trocar os artigos da lista por contêineres genéricos | mostra o cartão certo no cenário lista |
+| Retirar o destaque de Iniciar a noite | destaca o botão principal certo no cenário parada, encerrada, bateria e lista (quatro testes) |
+| Retirar o destaque de Encerrar a noite | destaca o botão principal certo no cenário gravando |
+| Retirar o destaque de Retomar | destaca o botão principal certo no cenário interrompida |
+
+**Resultado medido.** 994 testes em 67 arquivos, com 47 testes anteriores de Noite, lista e consentimento passando. Painel 157 163 B gzip de 260 000 B, login 146 832 B gzip de 155 000 B, landing 278 860 B transferidos estimados de 289 800 B. “Configurações” mediu 65,2 px numa célula de 72 px a 360 px, em uma linha e sem rolagem horizontal nos dois temas. A aba Noite apareceu ativa na barra de cinco destinos.
+
+**Adaptação.** A ação da noite interrompida passou de “Iniciar a noite” a “Retomar”, inclusive no alerta. Os alertas de descarte permaneceram à vista com texto corrido. A faixa de 40 a 60 Hz e a contagem de descartes ficam nos Detalhes técnicos, recolhidos. Três expectativas em CartaoDaNoite.test.tsx acompanharam essas mudanças intencionais. A métrica percentual usa “Do período foi registrado”, conforme o vocabulário do UI-39. Para uma noite encerrada, o cálculo usa o horário da última época gravada quando disponível, para o denominador parar de crescer após o fim.
+
+**O que deu errado no caminho.** A primeira medição da barra encontrou dois rótulos “Configurações” no DOM e passou a usar o link móvel. A primeira leitura do tema procurava uma classe em vez do atributo data-theme. As capturas iniciais também revelaram a barra do site na demonstração. Uma rodada de sabotagem precisou normalizar as quebras de linha dos arquivos e ajustar o filtro aos títulos parametrizados do Vitest. O TypeScript reprovou a opção exact na busca por papel. A busca passou a usar o nome literal, que já faz a correspondência exata.
+
+**Risco em aberto.** A conferência visual usou o navegador e o plugin de demonstração. O build Android sincronizou os arquivos, sem um percurso com o serviço nativo em aparelho.
+
+**Procedência.** Branch feature/UI-43-noite sobre develop 5284345. Windows 11, Node 24.11.0 e Edge com Playwright, 24/11/2026. Capturas locais em output/playwright, fora dos commits.
+
+---
+
+# 2026-11-24 (iii) — UI-43, etapa 3: controles da revisão da PR #276
+
+**O problema, como foi entendido no início.** A revisão encontrou duas regressões que passavam pela suíte. O chunk da demo podia ser publicado mesmo com sua rota bloqueada. O alerta de ritmo podia voltar a mostrar números técnicos.
+
+**Hipótese de trabalho.** Conferir todo o diretório de assets do build protege o pacote publicado. Conferir o conteúdo de role=alert com zero e com alguns registros protege os dois textos de descarte.
+
+**O que foi testado, e como.** A condição de importação da demo foi trocada por true e o build web recompilado. A conferência de produção em conferir_pacote_frontend.py falhou ao localizar “Cenário da demonstração” no chunk NoiteDemo. Inserir “40 a 60 Hz” no alerta sem registros derrubou “alertas de ritmo não exibem Hz nem contagens de descarte”, em CartaoDaNoite.test.tsx. Repetir com “3 registros descartados” no alerta da noite com registros derrubou o mesmo teste. O teste também falhou com o cartão de origin/develop, que ainda mostrava “40 a 60 Hz” no alerta. Os arquivos foram restaurados após cada controle.
+
+**Resultado medido.** 995 testes em 67 arquivos. Build web, verificação do pacote, CSP, lint e conferências de documentação passaram com o código restaurado. O Dashboard ficou em 157 163 B gzip de 260 000 B.
+
+**Adaptação.** A conferência dos assets ficou no mesmo script de orçamento já executado depois do build no CI. O teste da tela usa o plugin falso existente e inspeciona o alerta nos dois estados.
+
+**O que deu errado no caminho.** A verificação anterior da rota cobria o acesso à demonstração, mas esse resultado também passava com o chunk presente no pacote. Nesta revisão, a primeira busca dos arquivos usou um glob aceito pelo rg no Unix e rejeitado pelo PowerShell. A busca foi repetida com os caminhos explícitos.
+
+**Risco em aberto.** A inspeção do pacote procura o rótulo exclusivo atual do seletor. Uma alteração desse rótulo precisa atualizar o marcador usado pelo script.
+
+**Procedência.** PR #276, feature/UI-43-noite sobre develop 5284345. Windows 11, Node 24.11.0, 24/11/2026.
+
+---
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
@@ -12775,3 +12830,434 @@ existe ali. As mutações individuais verificam as falhas com o executor present
 **Risco em aberto.** Identidades anônimas de estudos distintos não têm chave comum demonstrável. Os resultados noturnos cobrem as épocas avaliáveis, e as bases já eram conhecidas no projeto. O ganho de uma base não sustenta afirmar robustez geral, medir vigília de uma pessoa ou trocar o modelo servido. A AUC subiu nas três bases externas (+0,036 na Walch, +0,049 na DREAMT e +0,017 na Newcastle), então o corte fixo de 0,5 pode explicar parte da perda de sensibilidade. Essa hipótese não foi testada. Escolher o corte usando apenas as bases de treino seria outro experimento, a decidir pelo autor.
 
 **Procedência.** Windows e Python 3.11.9 do ambiente ML local. Protocolo `74f675c`, executor e rodada `80a51f8` sobre `develop` `b6d779a`. A suíte local passou com 325 testes na rodada original e 332 na revisão sobre `develop` `c70c6ed`. Dados locais usados pela junction ignorada `ml/dados/bruto/ml18-local`, apontada a `dados-locais/`. A junction foi removida no fim da execução, e os dados continuam no diretório local. Nenhum vetor individual exportado. 23/11/2026.
+
+# 2026-11-23 (viii) — release R18: DATA-17, UI-41, CAL-03 etapa 3 e o APK 1.1.3
+
+**O problema, como foi entendido no início.** O `develop` tinha, sem estar na produção, o `DATA-17` (excluir e marcar conferem a sessão), o `UI-41` completo, a exportação do `CAL-03` (contrato 2.12.0) e, sem efeito no site, o `VIA-02` e o `ML-18`. A migração 025 troca as assinaturas de `apagar_trecho` e `marcar_trecho`: entre o deploy e a migração, as duas ações respondem 503. O APK 1.1.3 estava em rascunho desde a preparação do release, mais cedo no mesmo dia.
+
+**Hipótese de trabalho.** Com o CI verde, o merge, a release publicada, o deploy e a 025 logo em seguida bastam. O APK do rascunho continua válido se nada de `frontend/` e de `firmware/` mudou depois dele.
+
+**O que foi testado, e como.**
+- **O APK do rascunho:** `git diff b6d779a origin/develop -- frontend firmware` vazio; o arquivo baixado do rascunho com o SHA-256 da geração.
+- **O SQL da 025 para o autor** (`dados-locais/R18-migracao-025.sql`, fora do repositório): a migração e uma conferência de cinco colunas, testados num Postgres 17 local com a base e as migrações até a 024. Controle positivo: a conferência rodada antes da migração.
+- **O merge:** a PR #264 com o CI 11 de 11 (depois de entrar o `ML-18`), mesclada em `main` como `d33330c`.
+- **A release:** a tag `app-v1.1.3` no `d33330c` e o rascunho publicado como a mais recente, antes de o deploy terminar.
+- **A produção, depois do deploy** `8009393815`: `/health`, as rotas sem credencial, a CSP das cinco páginas, a versão na landing, o link `latest` e o `conferir_producao.py`.
+- **A 025 na produção:** aplicada pelo autor no SQL Editor, com a conferência do mesmo arquivo.
+
+**Resultado medido.**
+- **O APK:** nada mudou em `frontend/` nem `firmware/`; o rascunho e o link `latest` dão o SHA-256 `f289157e…aa22`, com 5 366 172 B e `200`.
+- **O SQL no Postgres local:** sem a 025 a conferência dá `f f f t t`; com ela, `t t t t t`; rodado de novo, `t t t t t`.
+- **A produção:**
+  - `/health` `200`, banco ok, contrato **2.12.0**, modelo `ml-inf-cabeca-v2`;
+  - `401` sem token em dispositivos, features, apagar e marcar, e com `Bearer` inválido em apagar;
+  - a CSP igual nas cinco páginas;
+  - a landing com "Versão 1.1.3 (beta)".
+- **A 025 na produção:** cinco de cinco `true`, segundo o autor. **Produção com 001–019 e 022–025.**
+
+**Adaptação.** A primeira tentativa de publicar a release falhou com `422`: o rascunho apontava para uma tag que ainda não existia. A tag foi criada no `d33330c`, enviada e a release publicada em seguida.
+
+**O que deu errado no caminho.**
+- **A conferência da primeira versão do SQL dava erro em vez de `false`** quando rodada sem a 025, porque procurava a função nova pelo nome. Acusava a falha, mas de um jeito confuso para quem lê. Passou a responder `false`, e o teste foi refeito.
+- **A publicação da release** recusada pela tag inexistente, como descrito acima.
+
+**Risco em aberto.**
+- **Não conferido com a conta do autor:** o Histórico em cartões, a barra com "Noite" e o excluir e marcar com a 025 (`UI-41`, `DATA-17`).
+- **O APK 1.1.3 instalado no celular do autor:** a 1.1.2 deixa de conseguir excluir e marcar, como as notas da release avisam.
+- **A análise do `CAL-03`** depende das noites, ainda não gravadas.
+
+**Procedência.** PR #264 mesclada em `main` `d33330c`; deploy `8009393815`; release `app-v1.1.3`; conferências desta máquina (Windows 11) e do autor no SQL Editor; 23/11.
+
+# 2026-11-23 (ix) — APP-19: quem tem cada versão do app, e o aviso de versão nova
+
+**O problema, como foi entendido no início.** O autor perguntou quantas pessoas baixaram o app, qual versão, quantas têm cada versão instalada e se dá para avisar quem ficou numa versão antiga. O GitHub conta os downloads de cada APK. Mas download não é instalação, e o app não informava a própria versão a ninguém.
+
+**Hipótese de trabalho.** Sem a Play Store, só o app pode contar. A chamada que ele já faz a cada envio de noite (`POST /api/devices/celular`) pode levar a versão, e o servidor a guarda no aparelho. Para o aviso, o app lê a versão publicada num arquivo do site, que vai ao ar no mesmo deploy do APK novo. Uma notificação com o app fechado (Firebase) ficou de fora.
+
+**O que foi testado, e como.**
+- **Os downloads no GitHub** (`gh api .../releases`), antes de qualquer código.
+- **Banco:** migração 026 (`devices.versao_app` e `versao_vista_em`, com uma restrição de formato igual à régua do Flask); a marca no diagnóstico; o verificador de migrações; 14 testes de RLS (`test_rls_versao_do_app.py`); 4 sabotagens no verificador por mutação.
+- **Backend:** a rota grava a versão válida no aparelho existente ou recém-criado; o site (sem versão) e a versão fora do formato não gravam nada nem mudam a resposta; uma falha ao gravar não trava o envio. 15 testes (`test_versao_do_app.py`).
+- **Frontend:** `atualizacaoDoApp.ts` (comparação número a número, busca sem cache e sem lançar); a faixa `AvisoDeAtualizacao` no `Layout`, só no app e carregada à parte do pacote; a Noite manda `VERSAO_DO_APP_ANDROID`; `public/versao-do-app.json` conferido contra a versão da landing e do `build.gradle`. 18 testes.
+- **A consulta de contagem** (`CONSULTA-versoes-do-app.sql`), num Postgres 17 com aparelhos de exemplo.
+- **Política:** §2.2 (o dado) e finalidade 7 da §3 (contagem agregada e o aviso), sem novo aceite, como no plano aprovado.
+- **Controle positivo:** 17 sabotagens no backend e no frontend e 4 no banco.
+
+**Resultado medido.**
+- **Downloads em 23/11:** 1.1.0, 3; 1.1.1, 2; 1.1.2, 4; 1.1.3, 1. Cada conferência de release do Claude baixa uma vez: o da 1.1.3 é o meu, e os outros têm um meu cada.
+- **Suítes:** backend 730 passam, 1 pula (eram 715); frontend 943 em 63 arquivos (eram 925); RLS 351 (eram 337); o verificador de migrações acerta os 24 estados; build, build do app, lint, Knip e CSP passam.
+- **Sabotagens:** 17 de 17 no backend e no frontend; 70 de 70 no banco.
+- **O orçamento do painel:** 259 754 B comprimidos, com teto de 260 000 B.
+- **A consulta:** ordena as versões como números (1.1.10 antes de 1.1.4), separa os ativos dos últimos 30 dias e não conta o travesseiro.
+
+**Adaptação.**
+- **A faixa tem duas travas:** a busca não roda fora do app, e a faixa não aparece fora do app. A primeira sabotagem, na segunda trava, escapou, porque a primeira já segura. A sabotagem passou a mirar a busca, que é a trava que decide.
+- **A sabotagem das policies de `devices`:** abrir só a de `update` não deixou alterar o aparelho alheio. O `where` do `update` também passa pela policy de `select`, que seguiu fechada. É defesa em profundidade, e a sabotagem passou a abrir as duas.
+
+**O que deu errado no caminho.**
+- **O CI reprovou a primeira versão da PR pelo orçamento do painel:** 260 209 B comprimidos, 209 B acima do teto. Eu não tinha rodado o `conferir_pacote_frontend.py` localmente. A faixa passou a ser carregada à parte (`lazy`), só no app, em vez de subir o teto; o painel voltou a 259 754 B, e uma sabotagem nova confere o carregamento à parte.
+- **A primeira rodada das sabotagens do banco deu "sabotador quebrado" em todas,** inclusive nas antigas. Eu tinha criado mais dois bancos no mesmo servidor (o do verificador de migrações e o da consulta), e os papéis do Supabase são do servidor inteiro, como o `CI-11` já registra. Refeita num servidor só para ela.
+- **O teste da faixa** achou dois botões "Agora não": o arquivo não limpava a tela entre os testes. Entrou o `cleanup`.
+- **Um script de edição em várias etapas** se embaralhou ao trocar a ordem das migrações no verificador; as três trocas foram refeitas uma a uma e conferidas.
+- **O `build:app`** tocou dois arquivos do Gradle (fim de linha), restaurados com `git checkout`.
+
+**Risco em aberto.**
+- **O app até a 1.1.3** não informa a versão nem vê o aviso; a quem tem essas versões, só o autor avisa, por mensagem (`APP-19`).
+- **"Sem versão" mistura** o app antigo com o celular usado só pelo site.
+- **A política mudou sem novo aceite;** a confirmar com o orientador, junto do `LGPD-03`.
+- **Na produção, só com o R19:** a 026 antes ou junto do deploy (sem ela, a gravação da versão falha e é só registrada no log), e o APK 1.1.4.
+
+**Procedência.** Branch `feature/APP-19-versao-do-app`, sobre `develop` `282fde0`; Windows 11, Python 3.13, Node 22, Postgres 17 em Docker; 23/11.
+
+# 2026-11-23 (x) — UI-42: o pareamento só do travesseiro
+
+**O problema, como foi entendido no início.** O autor estranhou a opção "Celular" em "Parear novo dispositivo": quem tem o app já grava com o celular, sem parear nada. Lido o código, a opção nem pareava: escolher "Celular" trocava o botão "Parear" por um link para Coletar (site) ou Noite (app). O celular entra na conta sozinho, na primeira noite gravada, pelo create-or-get do `APP-08`. A opção parecia um tipo de aparelho a parear e era um atalho disfarçado, com um texto de ajuda que ainda citava a Coletar no app.
+
+**Hipótese de trabalho.** Basta tirar a escolha de tipo: o quadro pareia o travesseiro, e uma linha explica que o celular não precisa de pareamento, com o link para a tela certa. O backend não muda.
+
+**O que foi testado, e como.**
+- **O quadro** (`montagem.test.ts`, a montagem real das telas): o título "Parear um travesseiro", nenhum botão de escolha, o "Parear" pedindo `tipo: "travesseiro"`; a explicação levando à Coletar no site e à Noite no app.
+- **O texto de ajuda** de cada tipo, que só o quadro usava, saiu, e a lista de tipos deixou de ser exportada (o Knip apontou o export sem uso).
+- **No navegador**, o quadro do modo demonstração, que também ganhou o título novo.
+- **Controle positivo:** 5 sabotagens (o título antigo, sem a explicação, o link trocado entre app e site, parear como celular e a escolha de tipo de volta).
+
+**Resultado medido.**
+- **Frontend:** 944 em 63 arquivos, sobre o `develop` com o `APP-19`; lint, tipos, Knip, build e CSP passam; o painel fica em 259 637 B comprimidos, com teto de 260 000 B.
+- **Sabotagens:** 5 de 5.
+
+**Adaptação.** O plano não citava o quadro do modo demonstração; ele mudou de título para os dois dizerem o mesmo.
+
+**O que deu errado no caminho.**
+- **Os testes do link acharam dois "Coletar" e dois "Noite":** a barra de navegação também os tem. A busca passou a ser dentro do parágrafo da explicação.
+- **O Knip reprovou** a lista de tipos exportada sem uso, depois que o quadro deixou de usá-la.
+
+**Risco em aberto.**
+- **Não visto com a conta do autor:** o quadro real só aparece com login; foi visto o do modo demonstração, e o real pelos testes.
+- **Dois celulares na mesma conta** gravam no mesmo dispositivo "celular", e as noites se misturam. Caso raro hoje; anotado na linha do `UI-42`.
+
+**Procedência.** Branch `feature/UI-42-parear-so-travesseiro`, sobre `develop` `1c07d76`; Windows 11, Node 22, navegador do app de desktop; 23/11.
+
+# 2026-11-23 (xi) — APP-20, etapa 1: o lembrete de dormir
+
+**O problema, como foi entendido no início.** O autor notou que o app é passivo: só notifica enquanto grava a noite, e nunca chama a pessoa. A ideia é um app que acompanhe o dia a dia (lembrar de dormir, devolver algo de manhã). A etapa 1 é o lembrete de dormir; a da manhã espera a escolha do autor (`APP-20`).
+
+**Hipótese de trabalho.** Tudo pode ser local: o próprio celular agenda e mostra, sem Firebase e sem servidor. Um alarme inexato (`setAndAllowWhileIdle`) basta, porque alguns minutos de atraso não importam, e não pede a permissão de alarme exato. O app já pede a permissão de notificar (para a notificação da noite).
+
+**O que foi testado, e como.**
+- **As contas, na JVM** (`LembreteDeDormirTest`, 8 testes): o próximo disparo hoje ou amanhã; o próprio minuto vai para amanhã (o alarme que dispara não se repete); a virada do dia, do mês e do ano; o dia da mudança de horário (Nova York, 08/03/2026), em que o intervalo é de 23 h e o lembrete segue o relógio de parede; não lembrar desligado nem com a noite gravando; o horário válido.
+- **No emulador Pixel 6, Android 37** (`LembreteDeDormirNativoTest`): o alarme agendado no Android e cancelado ao desligar; a notificação no canal "Lembretes"; nada com a noite gravando (pelo estado em arquivo); nada desligado; e um roteiro, só quando pedido, que agenda para o minuto seguinte e espera o alarme de verdade disparar o receptor do manifesto.
+- **A tela** (`LembreteDeDormir.test.tsx`, 8 testes): ler e gravar o horário; ligar; o aviso de permissão desligada; a falha que não finge ter ligado; a seção só no app.
+- **Controle positivo:** 4 sabotagens na JVM, 6 na tela, 2 só no emulador (a noite em arquivo ignorada; desligar sem desfazer a intenção do alarme), e o roteiro sem o receptor no manifesto.
+
+**Resultado medido.**
+- **JVM:** 42 passam (+8). **Emulador:** 11 passam, 4 pulados (+4). **O roteiro:** o lembrete apareceu 57 s depois de agendado; sem o receptor no manifesto, não aparece.
+- **Frontend:** 951 em 64 arquivos, sobre o `develop` com o `APP-19`; lint, Knip, tipos, build e CSP passam; o painel fica em 259 763 B comprimidos, com teto de 260 000 B.
+- **Sabotagens:** 10 de 10 (JVM e tela), 2 de 2 no emulador, e o controle do roteiro.
+
+**Adaptação.**
+- **O cancelamento:** o `dumpsys alarm` guarda histórico, e a ação do lembrete continuava lá depois de cancelada. Desligar passou a desfazer também a intenção pendente do alarme, e o teste confere que ela deixou de existir.
+- **O toque na notificação** abre o app, que começa na Noite. Com o app já aberto em outra tela, ele fica onde estava; uma navegação forçada não entrou.
+- **O roteiro do alarme de verdade** não estava no plano; entrou porque nenhum outro teste exercitava o receptor declarado no manifesto.
+
+**O que deu errado no caminho.**
+- **As 4 primeiras sabotagens da JVM "caíram" sem rodar teste nenhum:** o script chamava `gradlew.bat` sem o caminho, e o `cmd` não o achava. Percebido ao procurar o teste derrubado no relatório e não achar falha nenhuma. Refeitas com o caminho certo e com uma rodada de controle sem sabotagem, que tem de passar; uma delas foi conferida no relatório (`naoLembraComANoiteEmAndamentoNemDesligado`).
+- **O `tsc` reprovou** três testes antigos, cujos plugins falsos não tinham os dois métodos novos; o build parou por isso, e a conferência do pacote quebrou sem a pasta gerada.
+- **O emulador matou o app por falta de memória** duas vezes (o `lowmemorykiller` derrubou o renderizador do WebView), e o `ServicoDaNoiteTest` caiu junto. Não é deste item: passou na rodada limpa.
+- **Este branch saiu do `develop` antes do `APP-19`;** o orçamento do painel foi medido de novo depois de trazer o `develop`.
+
+**Risco em aberto.**
+- **A folga do painel é de 237 B:** a próxima tela no pacote principal provavelmente estoura o teto (`UI-15`).
+- **Só visto no emulador:** a seção de Configurações não foi vista num celular com a conta do autor.
+- **A etapa 2** espera a escolha do autor (`APP-20`).
+- **Só chega com o APK 1.1.4** (R19).
+
+**Procedência.** Branch `feature/APP-20-lembrete-de-dormir`, sobre `develop` `1c07d76`; Windows 11, JDK do Android Studio, emulador Pixel 6 (Android 37), Node 22; 23/11.
+
+# 2026-11-23 (xii) — UI-43, etapa 0: o inventário antes do redesenho
+
+**O problema, como foi entendido no início.** O autor notou que o celular de exemplo da landing mostra um app diferente do real, e quer levar o visual mais moderno da landing para o app, sem perder função nem dado, e com a landing mostrando o app de verdade. Antes de qualquer tela mudar, era preciso saber exatamente o que cada versão tem e o que protege cada função do app.
+
+**Hipótese de trabalho.** A divergência é só de visual. Os testes existentes protegem as funções, e o redesenho pode ir tela por tela apoiado neles.
+
+**O que foi testado, e como.**
+- **As quatro abas da landing**, lidas pelo texto e capturadas em imagem: uma cópia da `public/` servida localmente, com uma página que abre a landing, troca a aba e fixa o celular no canto; capturas pelo Edge sem interface.
+- **As telas do app**, em modo demonstração (`?demo=1`), na largura de celular, pelo mesmo Edge.
+- **O inventário:** os títulos de todos os testes das telas, ligados a cada função; e uma busca nos testes por função, para achar as que nenhum teste exercita.
+
+**Resultado medido.**
+- **A divergência não é só de visual.** A landing tem Relatório e Eventos, que o app não tem; o app tem Noite, Histórico e Dispositivos, que a landing não mostra. A landing ainda promete o que o sensor não mede: nomes de gesto ("Giro corporal", "Ajuste de posição") e uma "sensibilidade" ajustável.
+- **O que vale levar:** o número em destaque num cartão escuro, os cartões de métrica, a etiqueta em maiúsculas com título curto, o cabeçalho com a marca, a barra de abas com ícone e o gráfico com período e valor ao tocar.
+- **Quatro funções sem teste de tela:** a escolha da janela do Histórico (24 h, 7 dias, 30 dias), renomear, revogar e sair. Ganham teste antes de a tela delas mudar.
+- **O documento:** `docs/REDESENHO-DO-APP.md`, com a comparação, o inventário, as decisões do autor e as etapas. A comparação em imagem foi entregue ao autor, fora do repositório.
+
+**Adaptação.** A hipótese de que só o visual divergia caiu: a landing mostra funções que o app não tem, e duas delas não poderiam existir como estão. Por isso há a etapa 7 (a landing honesta) e a decisão sobre "períodos com movimento".
+
+**O que deu errado no caminho.**
+- **A primeira captura do celular saiu deslocada:** a landing anima o aparelho. O celular passou a ser fixado no canto antes da captura.
+- **As primeiras capturas do app saíram cortadas à direita:** o Edge sem interface não abre uma janela de 390 px. Refeitas a 500 px, ainda no layout de celular.
+- **O Edge devolveu o controle antes de gravar a imagem,** e a listagem logo depois parecia ter perdido arquivos.
+- **A primeira versão do inventário citava testes que não existem** (`TracadoDeMovimento.test.tsx`, e renomear e revogar como cobertos por `dispositivos.test.ts`). Conferido arquivo a arquivo antes de versionar, e corrigido.
+
+**Risco em aberto.**
+- **O orçamento do painel tem 237 B de folga:** a base visual provavelmente precisa tirar algo do pacote principal (`UI-43`, `UI-15`).
+- **A tela Noite só aparece no app;** não entrou na comparação em imagem (`UI-43`).
+- **As decisões do autor**, tomadas no mesmo dia, depois do inventário: as cinco abas do app, com o visual da barra da landing; os "períodos com movimento" depois do redesenho, no `UI-44`; a fonte do sistema, o que fecha o `UI-36`. A etapa 1 (a base visual) espera o plano aprovado (`UI-43`).
+
+**Procedência.** Branch `docs/UI-43-inventario-do-redesenho`, sobre `develop` `1c07d76`; Windows 11, Edge sem interface, servidor de desenvolvimento do Vite; 23/11.
+
+# 2026-11-23 (xiii) — UI-43, etapa 1 (a): o gráfico do Início em SVG próprio
+
+**O problema, como foi entendido no início.** O redesenho precisa de espaço no pacote do painel, que estava a 350 B do teto de 260 000 B comprimidos. Medido o pacote, o recharts sozinho pesava ~111 KB comprimidos, quase metade dele, para desenhar um gráfico só. O gráfico do celular de exemplo da landing é SVG feito à mão.
+
+**Hipótese de trabalho.** O gráfico pode ser desenhado à mão com o mesmo comportamento, e a conta separada do desenho deixa testar cada regra sem DOM.
+
+**O que foi testado, e como.**
+- **A geometria** (`lib/geometriaDoGrafico.ts`): o eixo categórico (cada ponto no centro da sua faixa, como o recharts); a linha e a área que quebram na lacuna; o limite sempre visível (DASH-07), com folga no topo; marcador só no ponto com movimento; coluna só na lacuna (DASH-09); as horas do eixo só de pontos com hora, uma por minuto, no máximo seis; a posição do dedo virando a faixa, sem sair da série.
+- **O componente** (`GraficoDeMovimento.tsx`): o desenho, a dica ao passar o dedo (o horário e "Movimento" ou "Repouso", por escrito; na lacuna, "Sem registro" e a duração), e as setas do teclado, que o gráfico anterior não tinha.
+- **O painel** com o gráfico novo, e o recharts removido do `package.json`.
+- **No navegador:** o Início antes e depois, no claro e no escuro, a 500 px; a dica pelas setas na prévia.
+- **Controle positivo:** 12 sabotagens.
+
+**Resultado medido.**
+- **O pacote do painel:** de 259 650 para **156 131 B** comprimidos, com teto de 260 000 B (o login e a landing não mudam).
+- **Frontend:** 965 em 65 arquivos (+13); lint, tipos, Knip, build e CSP passam; os testes do painel que já existiam ("Limite de movimento", a ordem das camadas, os avisos) passam sem mudança.
+- **Sabotagens:** 12 de 12, depois de reforçar um teste (abaixo).
+- **Na tela:** o gráfico novo é praticamente igual ao anterior; o eixo mostra 5 horas espaçadas em vez de 7.
+
+**Adaptação.**
+- **Uma marca por minuto no eixo:** o primeiro teste achou "23:00" duas vezes, de dois pontos no mesmo minuto. O recharts escondia a repetição pela distância mínima entre marcas; aqui ela é tirada na conta.
+- **As setas do teclado** não estavam no plano; entraram porque o gráfico ganhou um foco próprio para a dica.
+
+**O que deu errado no caminho.**
+- **A sabotagem do rótulo "sem dados" no eixo escapou:** o rótulo sai cortado ("sem d"), e o teste procurava o texto inteiro. O teste passou a conferir que todo rótulo é um horário.
+- **O jsdom não tem `PointerEvent`:** a dica não aparecia no teste porque o evento chegava sem a posição. O teste ganhou um substituto.
+- **Uma expectativa minha estava errada:** a duração da lacuna sai "2h 0m", no formato que o app já usa, e não "2h".
+- **O Knip reprovou** três exportações que só a geometria usava.
+- **As capturas do Edge sem interface** só gravavam a imagem quando a saída era lida até o fim; em laço, saíam vazias.
+- **A pasta da worktree do `APP-20` ficou presa** por um processo, mesmo depois de parar o Gradle; o registro da worktree saiu do git, e a pasta entra na lista das que o autor apaga à mão.
+
+**Risco em aberto.**
+- **O gráfico só foi visto com os dados de demonstração;** uma noite real com lacuna não foi vista no navegador, só nos testes (`UI-43`).
+- **A escolha do período e o valor ao tocar,** no estilo da landing, ficam para a etapa 2 (o Início).
+
+**Procedência.** Branch `feature/UI-43-grafico-proprio`, sobre `develop` `a56d9b2`; Windows 11, Node 22, Edge sem interface e o navegador do app de desktop; 23/11.
+
+# 2026-11-23 (xiv) — o lockfile do UI-43 e um merge com o CI vermelho
+
+**O problema, como foi entendido no início.** A PR #272 (o gráfico próprio) foi mesclada em `develop` com 3 checks do CI falhando. O `npm ci` do CI recusou o `package-lock.json`: faltavam pacotes opcionais (`@emnapi/*`) que o Linux exige e que o `npm uninstall recharts` do Windows (npm 11.6.1) tinha tirado. O frontend e o app Android pararam de instalar no CI, no `develop`.
+
+**Hipótese de trabalho.** O lockfile tem de ser gerado pelo npm do CI (Node 22, npm 10): partir do lockfile anterior à remoção e deixar o npm do Linux sincronizar com o `package.json` sem o recharts.
+
+**O que foi testado, e como.**
+- O lockfile de `a56d9b2` (com o recharts), e `npm install --package-lock-only` no contêiner `node:22` (npm 10.9.9).
+- `npm ci` no contêiner, numa cópia limpa, e no Windows.
+- Suíte do frontend, build e orçamento do painel.
+
+**Resultado medido.**
+- **O lockfile novo:** sem o recharts, com os 23 registros `@emnapi` (o quebrado tinha 18); `npm ci` instala 478 pacotes no Linux e passa no Windows.
+- **Frontend:** 965 em 65 arquivos; build passa; painel 156 131 B comprimidos.
+
+**Adaptação.** Nenhuma no gráfico; só o lockfile.
+
+**O que deu errado no caminho.**
+- **Mesclei a #272 sem ler o resultado do CI.** O comando que esperava o CI e o merge iam na mesma linha, e o merge rodou mesmo com "3 fail" na saída. Daqui em diante, o resultado do CI é lido antes, num passo separado, e só um verde total libera o merge.
+- **Gerar lockfile com o npm do Windows:** o `npm uninstall` local reescreveu o lockfile do jeito do Windows. Mudança de dependência passa a ser feita no contêiner com o npm do CI, e conferida com `npm ci` lá antes do push.
+
+**Risco em aberto.** Nenhum novo: o `develop` volta a instalar quando esta correção entrar.
+
+**Procedência.** Branch `bugfix/UI-43-lockfile`, sobre `develop` `5f2170c`; contêiner `node:22` (npm 10.9.9) e Windows 11 (npm 11.6.1); 23/11.
+
+# 2026-11-23 (xv) — UI-43, etapa 1 (b): a fonte do sistema, o cabeçalho e a barra
+
+**O problema, como foi entendido no início.** Com o espaço liberado pelo gráfico próprio, faltava a base visual comum a todas as telas: a fonte decidida pelo autor (a do sistema, `UI-36`), os cantos do celular de exemplo da landing, um cabeçalho de app no celular e a aba ativa destacada.
+
+**Hipótese de trabalho.** A paleta já é quase a da landing; a diferença está na fonte, nos cantos, no cabeçalho e na barra. Os cartões em destaque e de métrica entram com as telas, porque componente sem uso é reprovado pelo Knip.
+
+**O que foi testado, e como.**
+- **A fonte:** o `fonts.css` (Outfit e Inter do Google Fonts) saiu; o `theme.css` declara a pilha das páginas públicas, e o `body` a usa; a CSP do `vercel.json` deixou de abrir `fonts.googleapis.com` e `fonts.gstatic.com`. O `padraoVisual.test.ts` passou a conferir o app também.
+- **Os cantos:** `--radius` de 14 para 16 px.
+- **O cabeçalho** (`CabecalhoDoApp`, só abaixo de `md`): a marca e o nome da tela, pela rota, entre os destinos da barra; no celular, o caminho "Smart Dormio / tela" da `BarraDoWorkspace` se esconde para não repetir.
+- **A barra de abas:** a pílula atrás do ícone da aba ativa, e o rótulo dela em negrito.
+- **No navegador:** a 360 px, a largura de cada rótulo, a pílula, o cabeçalho e a fonte calculada; antes e depois do Histórico (claro e escuro) e do Início, a 500 px.
+- **No emulador** (Pixel 6, Android 37): o APK de depuração com a base nova, na tela de login.
+- **Controle positivo:** 10 sabotagens.
+
+**Resultado medido.**
+- **Frontend:** 974 em 66 arquivos (+9); lint, tipos, Knip, build e CSP passam; o painel fica em 156 378 B comprimidos.
+- **A 360 px:** "Configurações" ocupa 65,2 px de 72 px, numa linha; a pílula só na aba ativa; o cabeçalho com "Smart Dormio | HISTÓRICO"; o caminho escondido; a fonte calculada é `ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif`.
+- **No Android,** o texto sai em Roboto, e o app não pede fonte a ninguém.
+- **Sabotagens:** 10 de 10.
+
+**Adaptação.**
+- **A pílula atrás só do ícone,** e não do ícone e do rótulo como na landing: com cinco abas, o rótulo "Configurações" não caberia a 360 px com a pílula em volta.
+- **As cores não mudaram:** a paleta do app já é quase a do celular da landing (fundo `#f4f7fb` contra `#f3f7fc`), e mexer nela mudaria o contraste já medido sem ganho visível.
+
+**O que deu errado no caminho.**
+- **No celular, o selo de demonstração e o botão do tema encostaram à esquerda** quando o caminho sumiu: a linha usava `justify-between` com um item só. Visto na captura; passou a `justify-end` no celular, com um teste.
+- **Um teste falhou uma vez na suíte inteira** e não se repetiu em duas rodadas seguidas: o `raw.test.ts`, sensível a carga, que já está no diário.
+- **O emulador travou** ("System UI isn't responding"), depois de horas ligado e com pouca memória; foi preciso dispensar o aviso e abrir o app de novo.
+- **As capturas do Edge sem interface** voltaram a falhar em parte; refeitas uma a uma.
+- **Um script de registro embutido no shell quebrou** com as aspas do texto; foi gravado em arquivo.
+
+**Risco em aberto.**
+- **A linha do selo e do tema ainda ocupa espaço** abaixo do cabeçalho no celular; juntar os dois é da etapa 2 (`UI-43`).
+- **As telas depois do login não foram vistas no emulador:** sem conta, só a de login (`UI-43`).
+
+**Procedência.** Branch `feature/UI-43-base-visual`, sobre `develop` `98f4dc0`; Windows 11, Node 22, Edge sem interface, o navegador do app de desktop e o emulador Pixel 6 (Android 37); 23/11.
+
+---
+
+# 2026-11-23 (xvi) — UI-43, etapa 2: a tela Início
+
+**O problema, como foi entendido no início.** O Início tinha o conteúdo certo, mas ainda usava a apresentação do painel antigo. No celular, o selo e o botão do tema ocupavam uma segunda linha abaixo do cabeçalho.
+
+**Hipótese de trabalho.** O cartão escuro e os cartões de métrica do celular da landing dão hierarquia ao registro. Um recorte no gráfico pode mostrar cada metade da sessão mantendo o resumo, os avisos e as demais camadas da tela.
+
+**O que foi testado, e como.** Suíte completa do frontend, lint, TypeScript, Knip e Knip de tipos, build, CSP e orçamento. No Edge com Playwright, oito capturas da demonstração antes e depois a 360 e 390 px e nos dois temas. Conferidos o rótulo da barra, a posição dos controles, o recorte da série e a troca de tema também a 1280 px. Os dois testes novos falharam contra `develop`: faltavam o cartão de destaque acessível e o seletor de período. Com a implementação, retirar o cartão Paradas derrubou “destaca o tempo registrado e distribui as frases em três cartões”. Manter o seletor mas ignorar o recorte ao preparar a série derrubou “recorta o gráfico pelo horário da metade, preservando a lacuna e o resumo”.
+
+**Resultado medido.** 976 testes em 66 arquivos. Os nove testes anteriores do resumo passaram com as mesmas frases, assim como as verificações da ordem das camadas e dos avisos. O painel ficou em 156 630 B gzip de 260 000 B. Login em 146 721 B gzip de 155 000 B e landing em 279 164 B transferidos estimados de 289 800 B. O rótulo “Configurações” mediu 65,2 px em 68 px úteis a 360 px, em uma linha, sem rolagem lateral. Na demonstração, a série passou de 20 para 11 pontos ao escolher a segunda metade. Os demais resultados ficaram estáveis.
+
+**Adaptação.** “Seus registros” virou o título curto, com a etiqueta da sessão acima. Atualizados o teste de rota e o teste que espera a barra inteira escondida no celular. A seleção de período aparece para uma sessão com ao menos dois registros e usa o meio da janela de tempo, com a duração da lacuna recortada em cada metade. Na visão de todas as sessões, o gráfico continua exibindo a série inteira. O desktop e o celular compartilham o estado do botão de tema.
+
+**O que deu errado no caminho.** As primeiras tentativas de rodar o Vitest e gravar o registro foram bloqueadas pelas permissões da worktree e refeitas com escopo autorizado. A primeira chamada de captura perdeu aspas no shell. O roteiro em arquivo resolveu. A suíte reprovou cores literais no componente, então foram movidas para `theme.css`. Ao repetir as capturas em paralelo com a suíte e o build, o Edge acusou falta de recursos. As capturas finais foram refeitas com o navegador livre.
+
+**Risco em aberto.** A inspeção visual foi no navegador com dados de demonstração. O WebView Android e dados de uma conta real não foram usados. O caso de lacuna que atravessa o meio da janela foi exercitado pelo teste de montagem.
+
+**Procedência.** `feature/UI-43-inicio` sobre `develop` `7eadfb5`; Windows 11, Node 24.11.0 e Edge com Playwright; 23/11/2026. Imagens locais em `output/playwright/`, fora dos commits.
+
+---
+
+# 2026-11-24 — UI-43, etapa 2: revisão dos cartões, do selo e dos períodos
+
+**O problema, como foi entendido no início.** Os cartões repetiam títulos já descritos nas frases. O selo podia quebrar no celular, e cinco sabotagens do recorte do gráfico passavam pela suíte.
+
+**Hipótese de trabalho.** O valor grande e a frase completa abaixo bastam para ler cada cartão. Um rótulo curto preserva a identificação da demonstração a 360 px. Exercitar a troca de recorte e as fronteiras de tempo detecta as cinco regressões.
+
+**O que foi testado, e como.** Na montagem real, trocar de aparelho, voltar de todas as sessões para a última e conferir que o seletor fica oculto na visão de todas. Em `prepararSerie`, medir os 105 s e 75 s da lacuna em lados diferentes e conferir que o ponto do meio aparece só na segunda metade. Os cinco testes falharam com o Dashboard e as métricas de `develop` e, na branch, cada sabotagem derrubou o teste correspondente:
+
+| Sabotagem | Teste que falhou |
+|---|---|
+| Trocar aparelho sem redefinir o período | volta para Noite toda ao trocar de aparelho |
+| Alternar a visão sem redefinir o período | volta para Noite toda ao alternar entre todas e a última sessão |
+| Permitir recorte em todas as sessões | esconde o seletor de período quando mostra todas as sessões |
+| Usar a duração inteira da lacuna | mede em cada metade apenas a duração da lacuna contida nela |
+| Incluir o ponto do meio nas duas metades | inclui o ponto exatamente no meio só na segunda metade |
+
+Os dois controles originais da etapa também voltaram a falhar sob sabotagem. No Edge, foram refeitas as capturas a 360 px no claro e no escuro, com confirmação do selo longo a 1280 px.
+
+**Resultado medido.** 981 testes em 66 arquivos. Lint, tipos, Knip, build, CSP e orçamento passaram. O painel ficou em 156 705 B gzip de 260 000 B. O selo “Demonstração” ocupou 78,0 px numa linha, e “Configurações” continuou com 65,2 px sem rolagem lateral a 360 px. Na demonstração, os cartões destacaram 30%, 2h 18m e “Não parou”.
+
+**Adaptação.** Os cartões passaram a destacar o valor acima da frase menor. O selo usa “Demonstração” abaixo de `md` e “Dados de demonstração” no desktop.
+
+**O que deu errado no caminho.** Na primeira rodada da suíte, o sandbox negou a conexão do `raw.test.ts` ao servidor Vite em localhost. A suíte foi repetida com acesso autorizado.
+
+**Risco em aberto.** A conferência visual desta revisão usou o navegador em modo demonstração. O WebView e uma conta real ficaram fora dessa conferência.
+
+**Procedência.** PR #275, `feature/UI-43-inicio` sobre `develop` `7eadfb5`, Windows 11, Node 24.11.0, Edge com Playwright, 24/11/2026. Capturas em `output/playwright/`, fora dos commits.
+
+---
+
+# 2026-11-24 (iv) — UI-43, etapa 4: a tela Histórico
+
+**O problema, como foi entendido no início.** O Histórico ainda mostrava uma lista dividida por linhas no celular. A escolha de janela tinha uma verificação de carregamento e cancelamento, mas nenhum teste conferia os limites do pedido e as sessões exibidas nas três janelas.
+
+**Hipótese de trabalho.** Proteger primeiro a troca de janela permite reaproveitar o seletor e os cartões do Início e da Noite, preservando a paginação, o alcance de cada ação e a separação das sessões de bancada.
+
+**O que foi testado, e como.** No primeiro commit, o teste da janela passou no Histórico de develop e falhou com sete dias fixos no pedido. Os dois testes visuais falharam com a tela de develop e voltaram a falhar nas sabotagens abaixo. Rodados suíte completa, lint, TypeScript, Knip, Knip de tipos, build web, CSP, orçamento com a guarda da demo da Noite e build do app. No Edge com Playwright, 16 capturas pelo endereço /historico?demo=1, antes e depois, em 360 e 390 px nos dois temas. Para abrir a confirmação, a captura forneceu registros locais ao componente real, sem usar conta, dados reais ou enviar exclusão. Conferido o foco inicial em Cancelar. A 1280 px, escolher 24 horas e 30 dias atualizou o botão selecionado e as sessões da tabela.
+
+| Sabotagem temporária | Teste que falhou |
+|---|---|
+| Pedir sete dias para todas as janelas | pede cada janela selecionada e mostra as sessões que ela devolve |
+| Retirar a etiqueta de situação dos cartões | mostra cartões com situação, duração registrada e total de registros no celular |
+| Manter sete dias visualmente selecionados após clicar em outra janela | mostra as três janelas e destaca a selecionada nos botões do celular |
+
+**Resultado medido.** 998 testes em 67 arquivos. Painel 157 440 B gzip de 260 000 B, login 146 954 B gzip de 155 000 B, landing 278 982 B transferidos estimados de 289 800 B. “Configurações” mediu 65,2 px em uma célula de 72 px a 360 px, em uma linha e sem rolagem horizontal nos dois temas.
+
+**Adaptação.** Os cartões de sessão ficam no celular, com a tabela preservada no desktop. O autor aprovou os botões segmentados em todas as larguras. Na montagem, somente a interação mudou de selecionar “Últimos 30 dias” na lista para clicar no botão de mesmo nome. As verificações de cancelamento, carregamento e erro continuam iguais. “Excluir…” mantém a confirmação existente. Marcar e desmarcar como bancada continuam diretos, por serem reversíveis.
+
+**O que deu errado no caminho.** O sandbox negou o status do checkout principal. A confirmação da base foi feita pela referência remota, e os testes e as capturas rodaram na worktree isolada. Na PR #277, faltou declarar que duas sessões de demonstração do Histórico passaram de 96% e 99% para 100% de cobertura. A lógica das sessões reais permaneceu igual.
+
+**Risco em aberto.** A comparação visual foi feita com dados simulados no navegador. O build Android sincronizou os arquivos.
+
+**Procedência.** Branch feature/UI-43-historico sobre develop eaddd6b, 24/11/2026. Windows 11, Node 24.11.0, Edge com Playwright. Capturas locais em .playwright-mcp/ui43-historico, fora dos commits.
+
+---
+
+# 2026-11-24 (v) — UI-43, etapa 5: a tela Dispositivos
+
+**O problema, como foi entendido no início.** A lista apertava o nome e o último envio entre o ícone e as ações em larguras de celular. Renomear e revogar ainda estavam sem teste de tela. Salvar um nome vazio fechava a edição em silêncio.
+
+**Hipótese de trabalho.** O teste pela montagem real consegue proteger o pedido de mudança do nome, a validação e a decisão de revogar. Uma linha de cartão com espaço próprio para as ações mantém legível o nome e separa o estado do último envio.
+
+**O que foi testado, e como.** O primeiro commit passou com renomeação válida e revogação em develop. Os dois casos de validação falharam antes da correção. Os três testes de cartão também falharam contra develop, onde a lista ainda não tinha o rótulo acessível esperado. Rodadas a suíte completa, lint, TypeScript, Knip, Knip de tipos, builds web e app, CSP e orçamento, incluindo a conferência da demonstração da Noite. No Edge com Playwright, 24 capturas antes e depois em /dispositivos?demo=1, no claro e no escuro, a 360 e 390 px. O pareamento e a confirmação usam a árvore real com registros simulados e a revogação foi cancelada. A confirmação nativa foi capturada pela janela do Edge com a largura da página emulada.
+
+| Sabotagem temporária | Teste que falhou |
+|---|---|
+| Enviar o nome anterior | envia o novo nome do dispositivo e o mostra na lista |
+| Revogar mesmo após cancelar | só revoga após confirmação e remove as ações do aparelho ativo |
+| Pular a validação do vazio | recusa nome vazio com a mensagem certa |
+| Pular a validação do comprimento | recusa nome longo demais com a mensagem certa |
+| Trocar Conectado por Inativo | mostra ícone, último envio e etiqueta Conectado no cartão do dispositivo |
+| Trocar Pausado por Conectado | mostra ícone, último envio e etiqueta Pausado no cartão do dispositivo |
+| Trocar Inativo por Conectado | mostra ícone, último envio e etiqueta Inativo no cartão do dispositivo |
+
+**Resultado medido.** 1005 testes em 67 arquivos. Painel 157 515 B gzip de 260 000 B, login 146 989 B gzip de 155 000 B, landing 279 018 B transferidos estimados de 289 800 B. “Configurações” mediu 65,2 px em uma célula de 72 px a 360 px, em uma linha e sem rolagem horizontal nos dois temas.
+
+**Adaptação.** O autor confirmou a mensagem “Informe um nome para o dispositivo.” e a tela sem filtro novo. O formulário mantém o campo editável quando o nome é recusado. A lista usa a janela de envio recente já definida no domínio para Conectado e Inativo, dá prioridade a Pausado e mantém Revogado para o aparelho que perdeu a vinculação ativa. Os aparelhos de demonstração mantêm seus nomes, datas e estados iniciais. O cartão de pareamento da demo ganhou a explicação sobre o celular.
+
+**O que deu errado no caminho.** O nome vazio fechava a edição sem mensagem. No teste de comprimento, injetar um nome acima do limite levava à recusa do servidor e restaurava o nome anterior. O primeiro recorte da confirmação pegou a barra de tarefas na borda. A captura foi refeita com o recorte limitado à janela visível do Edge.
+
+**Risco em aberto.** A inspeção visual foi no navegador com registros simulados. O build do app sincronizou os arquivos.
+
+**Procedência.** Branch feature/UI-43-dispositivos sobre develop 3709f34, 24/11/2026. Windows 11, Node 24.11.0, Edge com Playwright e captura de janela do Windows. Capturas em .playwright-mcp/ui43-dispositivos, fora dos commits.
+
+---
+
+# 2026-11-24 (vi) — UI-43, etapa 6: a tela Configurações
+
+**O problema, como foi entendido no início.** Configurações já agrupava a maioria dos controles, mas os cartões e as ações não seguiam as linhas da aba Ajustes da landing. O botão Sair não tinha teste de tela.
+
+**Hipótese de trabalho.** O teste pela montagem real protege o encerramento de sessão e o retorno ao login antes de mudar a apresentação. Os cartões do app podem organizar os valores e controles à direita com as funções que já existem.
+
+**O que foi testado, e como.** O teste de Sair passou em develop e falhou ao retirar a chamada de saída. Os sete testes de cartão falharam em develop por falta de regiões identificadas pelos títulos. Cada cartão também teve a superfície retirada em uma execução separada. Rodados a suíte completa, lint, TypeScript, Knip, Knip de tipos, builds web e app, CSP e orçamento, com a checagem do pacote da demo da Noite. No Edge com Playwright, 24 capturas antes e depois a 360 e 390 px nos dois temas, na demonstração, na conta simulada e na segunda etapa de exclusão. A sessão, o perfil, os dispositivos e o lembrete são registros locais da captura, com as requisições de alteração e os destinos externos bloqueados.
+
+| Sabotagem temporária | Teste que falhou |
+|---|---|
+| Retirar a chamada de saída | sair encerra a sessão com signOut e leva ao login |
+| Retirar a superfície de Aparência | agrupa a seção Aparência num cartão com seu controle |
+| Retirar a superfície de Conta | agrupa a seção Conta num cartão com seu controle |
+| Retirar a superfície de Lembrete de dormir | agrupa a seção Lembrete de dormir num cartão com seu controle |
+| Retirar a superfície de Meus dispositivos | agrupa a seção Meus dispositivos num cartão com seu controle |
+| Retirar a superfície de Seus dados | agrupa a seção Seus dados num cartão com seu controle |
+| Retirar a superfície de Sair | agrupa a seção Sair num cartão com seu controle |
+| Retirar a superfície de Excluir conta | agrupa a seção Excluir conta num cartão com seu controle |
+
+**Resultado medido.** 1013 testes em 67 arquivos. Painel 157 712 B gzip de 260 000 B, login 147 224 B gzip de 155 000 B, landing 279 253 B transferidos estimados de 289 800 B. “Configurações” mediu 65,2 px em uma célula de 72 px a 360 px, em uma linha e sem rolagem horizontal. O teste de Sair não encontrou defeito na base.
+
+**Adaptação.** Aparência usa os mesmos três rádios em linhas. Conta, lembrete, exportação, política, saída e exclusão usam a mesma apresentação de linha, e os dispositivos mantêm os cartões da etapa 5. A exclusão ganhou destaque e continua em um cartão próprio com a confirmação digitada. A demonstração manteve seus dados e o convite para entrar.
+
+**O que deu errado no caminho.** A primeira tentativa de preparar a sabotagem de Sair tinha um comentário acentuado em um literal de bytes do Python. A mutação foi refeita com um literal ASCII antes de executar o teste.
+
+**Risco em aberto.** A evidência visual de conta e lembrete usa sessão e plugin simulados no navegador. O build Android sincronizou os arquivos.
+
+**Procedência.** Branch feature/UI-43-configuracoes sobre develop d81f4f9, 24/11/2026. Windows 11, Node 24.11.0 e Edge com Playwright. Capturas em .playwright-mcp/ui43-configuracoes, fora dos commits.
+
+---
+
+# 2026-11-24 (vii) — UI-43, etapa 6: controle da confirmação de exclusão na PR #279
+
+**O problema, como foi entendido no início.** O teste de montagem abria a segunda etapa de exclusão, mas deixava passar a remoção da validação que desabilita o botão enquanto a frase estiver errada.
+
+**Hipótese de trabalho.** Exercitar o botão com confirmações inválidas e com a frase exata protege tanto a barreira da tela quanto a requisição de exclusão.
+
+**O que foi testado, e como.** Em Configurações, o campo vazio, uma palavra trocada, a frase em minúsculas e um espaço a mais mantiveram o botão desabilitado e o dublê sem chamada. A frase exata habilitou o botão e produziu um único DELETE /api/me com a confirmação no corpo. Ao trocar podeConfirmar por estado !== "apagando", caiu “só envia a exclusão da conta depois da frase exata”, na asserção do campo vazio. O teste passou com o componente equivalente de develop d81f4f9 e voltou a passar após restaurar o da PR.
+
+**Resultado medido.** 1014 testes em 67 arquivos, lint e TypeScript passaram na worktree.
+
+**Adaptação.** O teste acrescenta a verificação da segunda etapa à montagem real, com o pedido interceptado pelo mesmo dublê de fetch da suíte.
+
+**O que deu errado no caminho.** O lint apontou o parâmetro sem uso da primeira versão do dublê. A assinatura ficou no tipo do dublê e o teste seguiu conferindo as opções do pedido.
+
+**Risco em aberto.** A simulação verifica os dados enviados pelo frontend. A execução da exclusão no servidor é coberta em outra suíte.
+
+**Procedência.** PR #279, feature/UI-43-configuracoes sobre develop d81f4f9, 24/11/2026. Windows 11, Node 24.11.0.

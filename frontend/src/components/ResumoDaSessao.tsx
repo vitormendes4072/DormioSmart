@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
 
+import { CartaoDeMetrica, CartaoEmDestaque, EtiquetaDeRegistro } from "./CartoesDeRegistro";
+
 import { calcularCobertura, type Sessao } from "../lib/cobertura";
 import {
   calcularMetricas,
@@ -40,55 +42,63 @@ export function ResumoDaSessao({
     .filter((duracao) => duracao > 0);
   // Sem quebra no meio da duração: "6m" numa linha e "30s" na outra se lê errado.
   const maisLonga = <span className="whitespace-nowrap">{formatarDuracao(Math.max(0, ...paradas))}</span>;
+  const movimento = fracaoEmMovimento == null ? null : formatarPorcentagem(fracaoEmMovimento * 100);
+  const maiorPeriodo = maiorPeriodoSemMovimentoMs == null ? null : formatarDuracao(maiorPeriodoSemMovimentoMs);
+  const totalParadas = paradas.length;
+  const valorDeParadas = totalParadas === 0
+    ? "Não parou"
+    : `Parou ${totalParadas} ${totalParadas === 1 ? "vez" : "vezes"}`;
+  const janela = verTudo
+    ? `em ${sessoes.length} sessões`
+    : cobertura.janelaMs > 0 ? `de ${formatarDuracao(cobertura.janelaMs)}` : null;
+  const quando = sessoes.length > 0
+    ? descreverQuando(sessoes[0].inicio, sessoes[sessoes.length - 1].fim)
+    : null;
 
   return (
-    <section aria-labelledby="resumo-da-sessao" className="rounded-[14px] border border-border bg-card p-4 shadow-sm sm:p-5">
-      <h2 id="resumo-da-sessao" className="break-words text-sm font-semibold text-muted-foreground">
-        {verTudo ? `${sessoes.length} sessões` : "Última sessão"} · {aparelho}
-      </h2>
-      {sessoes.length > 0 && (
-        <p className="mt-0.5 text-sm text-foreground">
-          {descreverQuando(sessoes[0].inicio, sessoes[sessoes.length - 1].fim)}
-        </p>
-      )}
+    <section aria-labelledby="resumo-da-sessao" className="space-y-3">
+      <div className="flex flex-col gap-1">
+        <h1 className="order-2 text-2xl font-extrabold tracking-tight text-foreground sm:text-[27px]">
+          Seus registros
+        </h1>
+        <h2 id="resumo-da-sessao" className="order-1 leading-none">
+          <EtiquetaDeRegistro>{verTudo ? `${sessoes.length} sessões` : "Última sessão"} · {aparelho}</EtiquetaDeRegistro>
+        </h2>
+      </div>
 
-      <p className="mt-4 text-xs text-muted-foreground">Registrado</p>
-      <p className="text-2xl font-extrabold leading-tight tracking-tight text-foreground sm:text-3xl">
-        {formatarDuracao(cobertura.tempoCobertoMs)}
-        <span className="text-base font-medium text-muted-foreground">
-          {verTudo
-            ? ` em ${sessoes.length} sessões`
-            : cobertura.janelaMs > 0 ? ` de ${formatarDuracao(cobertura.janelaMs)}` : ""}
-        </span>
-      </p>
+      <CartaoEmDestaque rotulo="Registrado" valor={formatarDuracao(cobertura.tempoCobertoMs)}>
+        {[janela, quando].filter(Boolean).join(" · ")}
+      </CartaoEmDestaque>
 
-      <ul className="mt-3 space-y-1.5 text-sm text-foreground">
-        <li>
-          {/* À vista mesmo abaixo dos 5% que abrem o aviso de lacuna. */}
-          <p className={paradas.length > 0 ? "font-semibold text-amber-800 dark:text-amber-300" : undefined}>
-            {paradas.length === 0
-              ? "O registro não parou"
-              : paradas.length === 1
-                ? <>O registro parou 1 vez, por {maisLonga}</>
-                : <>O registro parou {paradas.length} vezes, a mais longa por {maisLonga}</>}
+      <ul aria-label="Métricas da sessão" className="grid gap-2 min-[360px]:grid-cols-3">
+        <CartaoDeMetrica valor={movimento ?? "—"}>
+          <p>
+            {movimento == null
+              ? "Sem registro suficiente para calcular o movimento"
+              : `Movimento em ${movimento} do tempo registrado`}
           </p>
-        </li>
-        <li>
-          {fracaoEmMovimento == null
-            ? "Sem registro suficiente para calcular o movimento"
-            : `Movimento em ${formatarPorcentagem(fracaoEmMovimento * 100)} do tempo registrado`}
-        </li>
-        {maiorPeriodoSemMovimentoMs != null && (
-          // "registrado", e não "houve": a afirmação é sobre o registro. E a
-          // conta nunca atravessa uma parada (DASH-09).
-          <li>
-            Maior período sem movimento registrado:{" "}
-            <span className="whitespace-nowrap">{formatarDuracao(maiorPeriodoSemMovimentoMs)}</span>
-          </li>
-        )}
+        </CartaoDeMetrica>
+        <CartaoDeMetrica valor={maiorPeriodo ?? "—"}>
+          <p>
+            {maiorPeriodo == null
+              ? "Sem registro suficiente"
+              // O valor já está grande no cartão: aqui, só o rótulo, sem repetir o número.
+              : "Maior período sem movimento registrado"}
+          </p>
+        </CartaoDeMetrica>
+        <CartaoDeMetrica valor={valorDeParadas}>
+          {/* À vista mesmo abaixo dos 5% que abrem o aviso de lacuna. */}
+          <p className={totalParadas > 0 ? "font-semibold text-amber-800 dark:text-amber-300" : undefined}>
+            {totalParadas === 0
+              ? "O registro não parou"
+              : totalParadas === 1
+                ? <>O registro parou 1 vez, por {maisLonga}</>
+                : <>O registro parou {totalParadas} vezes, a mais longa por {maisLonga}</>}
+          </p>
+        </CartaoDeMetrica>
       </ul>
 
-      {children && <div className="mt-4 border-t border-border pt-3">{children}</div>}
+      {children && <div className="pt-1">{children}</div>}
     </section>
   );
 }

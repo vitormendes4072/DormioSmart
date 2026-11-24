@@ -2,7 +2,7 @@ import { CheckCircle2, Clock, NotebookPen, Thermometer } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
 
-import { Moldura } from "./Blueprint";
+import { EtiquetaDeRegistro } from "./CartoesDeRegistro";
 import { formatarDuracao } from "../lib/metricas";
 import {
   type NoiteGravada,
@@ -187,63 +187,61 @@ export function ListaDeNoites({
       {noites.map((n) => {
         const r = resumoDaNoiteGravada(n);
         return (
-          <Moldura key={n.arquivo}>
-            <div className="space-y-2" data-testid={`noite-${n.arquivo}`}>
-              <div className="flex flex-wrap items-baseline justify-between gap-2">
-                <h3 className="text-sm font-semibold text-foreground">
-                  {n.ativa
-                    ? "Noite em andamento"
-                    : r.inicio
-                      ? r.inicio.toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })
-                      : "Noite sem registros gravados"}
-                </h3>
-                <span className="text-xs text-muted-foreground">{rotuloDaPosicao(n.notas?.posicao)}</span>
+          <article key={n.arquivo} className="space-y-2 rounded-2xl border border-border bg-card p-4" data-testid={`noite-${n.arquivo}`}>
+            <EtiquetaDeRegistro>
+              {n.teste ? "Teste · só neste aparelho" : n.ativa ? "Em andamento" :
+                n.epocas === 0 ? "Sem registros" : r.enviadaPorInteiro ? "Enviada" : "Envio pendente"}
+            </EtiquetaDeRegistro>
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <h3 className="text-sm font-semibold text-foreground">
+                {n.ativa
+                  ? "Noite em andamento"
+                  : r.inicio
+                    ? r.inicio.toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })
+                    : "Noite sem registros gravados"}
+              </h3>
+              <span className="text-xs text-muted-foreground">{rotuloDaPosicao(n.notas?.posicao)}</span>
+            </div>
+            <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+              <dt className="text-muted-foreground">Duração</dt>
+              <dd className="tabular-nums">{r.duracaoMs > 0 ? formatarDuracao(r.duracaoMs) : "—"}</dd>
+              <dt className="text-muted-foreground">Registros</dt>
+              <dd className="tabular-nums">{n.epocas}</dd>
+              <dt className="text-muted-foreground">Registrado</dt>
+              <dd className="tabular-nums">
+                {r.cobertura === null ? "—" : `${formatarDuracao(Math.round(r.cobertura * r.duracaoMs))} de ${formatarDuracao(r.duracaoMs)}`}
+              </dd>
+              {!n.teste && !n.ativa && n.epocas > 0 && (
+                <>
+                  <dt className="text-muted-foreground">Envio</dt>
+                  <dd className="tabular-nums inline-flex items-center gap-1">
+                    {r.enviadaPorInteiro ? (
+                      <CheckCircle2 className="w-4 h-4 text-primary" aria-hidden />
+                    ) : (
+                      <Clock className="w-4 h-4 text-amber-500" aria-hidden />
+                    )}
+                    {n.enviadas} de {n.epocas}
+                  </dd>
+                </>
+              )}
+            </dl>
+            {n.teste && !n.ativa && (
+              <div className="flex flex-wrap gap-3 text-sm">
+                <button type="button" className="underline" onClick={() => void agirNoTeste(n, false)}>
+                  Compartilhar arquivo
+                </button>
+                <button type="button" className="underline" onClick={() => void agirNoTeste(n, true)}>
+                  Apagar gravação de teste
+                </button>
               </div>
-              <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
-                <dt className="text-muted-foreground">Duração</dt>
-                <dd className="tabular-nums">{r.duracaoMs > 0 ? formatarDuracao(r.duracaoMs) : "—"}</dd>
-                <dt className="text-muted-foreground">Registros</dt>
-                <dd className="tabular-nums">{n.epocas}</dd>
-                <dt className="text-muted-foreground">Registrado</dt>
-                <dd className="tabular-nums">
-                  {r.cobertura === null ? "—" : `${formatarDuracao(Math.round(r.cobertura * r.duracaoMs))} de ${formatarDuracao(r.duracaoMs)}`}
-                </dd>
-                {!n.teste && !n.ativa && n.epocas > 0 && (
-                  <>
-                <dt className="text-muted-foreground">Envio</dt>
-                <dd className="tabular-nums inline-flex items-center gap-1">
-                  {r.enviadaPorInteiro ? (
-                    <CheckCircle2 className="w-4 h-4 text-primary" aria-hidden />
-                  ) : (
-                    <Clock className="w-4 h-4 text-amber-500" aria-hidden />
-                  )}
-                  {n.enviadas} de {n.epocas}
-                </dd>
-                  </>
-                )}
-              </dl>
-              {n.teste && (
-                <div className="space-y-2 text-sm">
-                  <p>Teste · só neste aparelho</p>
-                  {!n.ativa && (
-                    <div className="flex flex-wrap gap-3">
-                      <button type="button" className="underline" onClick={() => void agirNoTeste(n, false)}>
-                        Compartilhar arquivo
-                      </button>
-                      <button type="button" className="underline" onClick={() => void agirNoTeste(n, true)}>
-                        Apagar gravação de teste
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )}
-              {n.notas?.fim === "temperatura" && (
-                <p className="inline-flex items-center gap-2 text-sm text-destructive" role="alert">
-                  <Thermometer className="w-4 h-4" aria-hidden />
-                  Encerrada sozinha: o aparelho chegou a 45 °C.
-                </p>
-              )}
-              {!n.ativa && (
+            )}
+            {n.notas?.fim === "temperatura" && (
+              <p className="inline-flex items-center gap-2 text-sm text-destructive" role="alert">
+                <Thermometer className="w-4 h-4" aria-hidden />
+                Encerrada sozinha: o aparelho chegou a 45 °C.
+              </p>
+            )}
+            {!n.ativa && (
               <div className="flex flex-wrap gap-3 text-sm">
                 <button
                   type="button"
@@ -258,18 +256,17 @@ export function ListaDeNoites({
                   </Link>
                 )}
               </div>
-              )}
-              {aberta === n.arquivo && (
-                <FormularioDeNotas
-                  noite={n}
-                  plugin={plugin}
-                  aoSalvar={(notas) =>
-                    setNoites((atual) => atual?.map((x) => (x.arquivo === n.arquivo ? { ...x, notas } : x)) ?? null)
-                  }
-                />
-              )}
-            </div>
-          </Moldura>
+            )}
+            {aberta === n.arquivo && (
+              <FormularioDeNotas
+                noite={n}
+                plugin={plugin}
+                aoSalvar={(notas) =>
+                  setNoites((atual) => atual?.map((x) => (x.arquivo === n.arquivo ? { ...x, notas } : x)) ?? null)
+                }
+              />
+            )}
+          </article>
         );
       })}
     </div>

@@ -6,7 +6,7 @@ import { usePerfil } from "../contexts/PerfilContext";
 import { estaEmModoDemo } from "../lib/demo";
 import { nomeDoPerfil } from "../lib/perfil";
 
-import { destinoDoWorkspace, itensDeNavegacao } from "./nav";
+import { destinoDoWorkspace, itensDeNavegacao, useNavegacaoNativa } from "./nav";
 import { MarcaDoProduto } from "./MarcaDoProduto";
 
 /** Navegação de desktop. Em telas menores que `md` dá lugar à MobileNav —
@@ -27,7 +27,8 @@ export function Sidebar({ painel = false }: { painel?: boolean }) {
   // o e-mail, que e verdadeiro e sempre disponivel.
   const nome = nomeDoPerfil(perfil);
 
-  const destinos = itensDeNavegacao();
+  const nativo = useNavegacaoNativa();
+  const destinos = itensDeNavegacao(nativo);
   const navegacao = painel
     ? destinos.filter(({ to }) => to !== "/configuracoes").map((item) => {
         if (item.to === "/dashboard") return { ...item, label: "Visão geral", icon: LayoutGrid };

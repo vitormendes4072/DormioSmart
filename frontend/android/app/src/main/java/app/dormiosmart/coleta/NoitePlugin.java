@@ -68,6 +68,48 @@ public class NoitePlugin extends Plugin {
         call.resolve(r);
     }
 
+    // ── O lembrete de dormir (APP-20) ──────────────────────────────────────
+
+    private JSObject lembreteComoJson() {
+        final LembreteDeDormir.Config cfg = LembreteDeDormir.ler(getContext());
+        final JSObject r = new JSObject();
+        r.put("ativo", cfg.ativo);
+        r.put("hora", cfg.hora);
+        r.put("minuto", cfg.minuto);
+        r.put("notificacoes", Build.VERSION.SDK_INT < 33
+                || getPermissionState("notificacoes") == PermissionState.GRANTED);
+        return r;
+    }
+
+    /** O horario guardado e se o app pode notificar. */
+    @PluginMethod
+    public void lembrete(PluginCall call) {
+        call.resolve(lembreteComoJson());
+    }
+
+    /** Liga, desliga ou muda o horario. Ligar pede a permissao de notificar, se faltar. */
+    @PluginMethod
+    public void definirLembrete(PluginCall call) {
+        final Boolean ativo = call.getBoolean("ativo");
+        final Integer hora = call.getInt("hora");
+        final Integer minuto = call.getInt("minuto");
+        if (ativo == null || hora == null || minuto == null || !LembreteDeDormir.valido(hora, minuto)) {
+            call.reject("horario invalido");
+            return;
+        }
+        LembreteDeDormir.gravar(getContext(), new LembreteDeDormir.Config(ativo, hora, minuto));
+        if (ativo && Build.VERSION.SDK_INT >= 33 && getPermissionState("notificacoes") != PermissionState.GRANTED) {
+            requestPermissionForAlias("notificacoes", call, "aposPermissaoDoLembrete");
+            return;
+        }
+        call.resolve(lembreteComoJson());
+    }
+
+    @PermissionCallback
+    private void aposPermissaoDoLembrete(PluginCall call) {
+        call.resolve(lembreteComoJson());
+    }
+
     @PluginMethod
     public void encerrar(PluginCall call) {
         final Context c = getContext();

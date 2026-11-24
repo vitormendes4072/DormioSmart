@@ -1,3 +1,4 @@
+import { LINHA_DE_CONFIGURACAO } from "../lib/ui";
 import { DetalhesDaFalha, MensagemDeFalha } from "./MensagemDeFalha";
 /**
  * Edição de perfil (UI-11 + PERFIL-01 / LGPD art. 18, III).
@@ -107,22 +108,22 @@ export function EditarPerfil() {
   if (!aberto) {
     return (
       <div>
-        <dl className="space-y-3 text-sm">
-          <div className="flex justify-between gap-4">
-            <dt className="text-muted-foreground">Nome</dt>
-            <dd className="text-foreground font-medium truncate">
+        <dl className="divide-y divide-border text-sm">
+          <div className={LINHA_DE_CONFIGURACAO}>
+            <dt className="shrink-0 text-muted-foreground">Nome</dt>
+            <dd className="min-w-0 wrap-anywhere text-right font-medium text-foreground">
               {carregando ? "..." : atual.nome || "—"}
             </dd>
           </div>
-          <div className="flex justify-between gap-4">
-            <dt className="text-muted-foreground">Idade</dt>
-            <dd className="text-foreground font-medium truncate">
+          <div className={LINHA_DE_CONFIGURACAO}>
+            <dt className="shrink-0 text-muted-foreground">Idade</dt>
+            <dd className="min-w-0 wrap-anywhere text-right font-medium text-foreground">
               {carregando ? "..." : atual.idade ? `${atual.idade} anos` : "não informada"}
             </dd>
           </div>
-          <div className="flex justify-between gap-4">
-            <dt className="text-muted-foreground">E-mail</dt>
-            <dd className="text-foreground font-medium truncate">{atual.email || "—"}</dd>
+          <div className={LINHA_DE_CONFIGURACAO}>
+            <dt className="shrink-0 text-muted-foreground">E-mail</dt>
+            <dd className="min-w-0 wrap-anywhere text-right font-medium text-foreground">{atual.email || "—"}</dd>
           </div>
         </dl>
 
@@ -147,18 +148,19 @@ export function EditarPerfil() {
         ) : null}
 
         <button
+          type="button"
           onClick={abrir}
-          className="mt-4 w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-border text-sm font-medium text-foreground hover:bg-muted/40 transition"
+          className={`${LINHA_DE_CONFIGURACAO} w-full border-t border-border text-left text-sm font-medium text-foreground transition hover:text-primary`}
         >
-          <Pencil className="w-4 h-4" />
           Editar dados
+          <Pencil className="size-4 shrink-0 text-primary" aria-hidden />
         </button>
       </div>
     );
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 py-3">
       <div className="space-y-1.5">
         <label className="text-xs text-muted-foreground" htmlFor="perfil-nome">
           Nome
