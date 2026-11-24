@@ -73,6 +73,7 @@ const SESSAO = {
 };
 
 let sessaoDoServidor: typeof SESSAO | null = SESSAO;
+const encerrarSessao = vi.fn(async () => ({ error: null }));
 
 vi.mock("@supabase/supabase-js", () => ({
   createClient: () => ({
@@ -81,7 +82,7 @@ vi.mock("@supabase/supabase-js", () => ({
       // O `AuthContext` chama o `unsubscribe` ao desmontar; sem ele o teste
       // quebraria na limpeza e não no que está sob teste.
       onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
-      signOut: async () => ({ error: null }),
+      signOut: () => encerrarSessao(),
       updateUser: async () => ({ data: { user: SESSAO.user }, error: null }),
     },
   }),
@@ -103,6 +104,7 @@ function respostaJson(corpo: unknown): Response {
 
 beforeEach(() => {
   sessaoDoServidor = SESSAO;
+  encerrarSessao.mockClear();
   // Lidos no topo de `lib/supabase.ts`, então têm de valer antes do import
   // dinâmico. Valores de teste: a suíte não depende do `.env` de ninguém.
   vi.stubEnv("VITE_SUPABASE_URL", "https://projeto-de-teste.supabase.co");
@@ -283,6 +285,18 @@ describe("montagem real das telas (UI-17)", PRAZO, () => {
     expect(aplicabilidadeDaIdade(null)).toBeNull();
     expect(screen.queryByText(/coortes de validação/i)).toBeNull();
     expect(screen.getByText("não informada")).toBeTruthy();
+  });
+
+  it("sair encerra a sessão com signOut e leva ao login", async () => {
+    await montar("/configuracoes");
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Sair da conta" }));
+    });
+
+    expect(encerrarSessao).toHaveBeenCalledTimes(1);
+    expect(window.location.pathname).toBe("/login");
+    expect(await screen.findByRole("button", { name: "Entrar" })).toBeTruthy();
   });
 
   it("o ExcluirConta está renderizado, e a barreira de duas etapas funciona na tela", async () => {
