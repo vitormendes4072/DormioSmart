@@ -13261,3 +13261,35 @@ Os dois controles originais da etapa também voltaram a falhar sob sabotagem. No
 **Risco em aberto.** A simulação verifica os dados enviados pelo frontend. A execução da exclusão no servidor é coberta em outra suíte.
 
 **Procedência.** PR #279, feature/UI-43-configuracoes sobre develop d81f4f9, 24/11/2026. Windows 11, Node 24.11.0.
+
+# 2026-11-24 (viii) — release R19: o app 1.1.4, o redesenho e a 026
+
+**O problema, como foi entendido no início.** O `develop` acumulava, fora da produção, o `APP-19`, o `UI-42`, o `APP-20` (etapa 1) e o `UI-43` (etapas 0 a 6). O `APP-19` precisa da migração 026 para gravar a versão; o lembrete, a versão e as telas novas só chegam ao celular num APK novo.
+
+**Hipótese de trabalho.** A 026 só acrescenta colunas e uma restrição, que o backend de hoje não usa; aplicada **antes** do merge, não há janela em que algo falhe. O APK sai de `develop` depois da versão subir para 1.1.4.
+
+**O que foi testado, e como.**
+- **A versão:** `versionName` 1.1.4, `versionCode` 6, a constante do app, a landing e o `versao-do-app.json` (PR #280, CI 19 de 19).
+- **O SQL da 026 para o autor** (`dados-locais/R19-migracao-026.sql`): a migração e uma conferência de três colunas, num Postgres 17 local com as migrações até a 025.
+- **O APK:** gerado de `develop` `1ce28e9` numa cópia limpa; `apksigner`, `aapt2`, as três ABIs e o SHA-256.
+- **A release:** o rascunho `app-v1.1.4` com o APK e as notas; depois do merge, a tag no `e3ccea4` e a publicação.
+- **O merge:** a PR #281 com o CI 14 de 14, lido antes do merge.
+- **A produção, depois do deploy** `8037168665`: `/health`, rotas sem credencial, a CSP das cinco páginas, a landing, o `versao-do-app.json`, o link `latest` e o `conferir_producao.py`.
+
+**Resultado medido.**
+- **O SQL no Postgres local:** `f f f` sem a 026, `t t t` com ela e de novo. **Na produção:** três de três, segundo o autor. **Produção com 001–019 e 022–026.**
+- **O APK:** certificado do autor, `versionCode` 6, não depurável, três ABIs, 5 259 861 B, SHA-256 `13a35f53…41b0`; o link `latest` baixa o mesmo arquivo.
+- **A produção:** `/health` `200`, contrato 2.12.0; `401` sem token; a CSP igual nas cinco páginas, com `font-src 'self'` e `style-src 'self' 'unsafe-inline'`, sem o Google Fonts; a landing com "Versão 1.1.4 (beta)"; o `versao-do-app.json` com 1.1.4.
+
+**Adaptação.** O APK foi gerado numa cópia limpa do `develop`, e não no checkout principal: lá, o `npm ci` não conseguiu substituir um arquivo nativo preso por outro processo, e o build do Android falhou junto.
+
+**O que deu errado no caminho.**
+- **A primeira conferência da 026 dava erro sem a migração,** em vez de `false`: uma das checagens consultava a coluna nova. Foi tirada, e o teste refeito.
+- **O build no checkout principal falhou** pelo arquivo preso (acima).
+- **A pasta da cópia do APK ficou presa** depois (caminho longo demais), como outras desta semana.
+
+**Risco em aberto.**
+- **Não visto no celular do autor:** as telas novas, o lembrete e a versão gravada (`UI-43`, `APP-20`, `APP-19`). O app até a 1.1.3 não avisa da 1.1.4: quem o tem precisa ser avisado pelo autor.
+- **A etapa 7 do `UI-43`** (a landing mostrando o app de verdade) ainda falta.
+
+**Procedência.** PRs #280 e #281; `main` `e3ccea4`; deploy `8037168665`; release `app-v1.1.4`; conferências desta máquina (Windows 11) e do autor no SQL Editor; 24/11.
