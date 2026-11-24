@@ -3,7 +3,9 @@ import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactN
 import { useLocation } from "react-router";
 
 import { BarraDoWorkspace } from "../components/BarraDoWorkspace";
+import { CartaoDeMetrica, CartaoEmDestaque, EtiquetaDeRegistro } from "../components/CartoesDeRegistro";
 import { Carregando, FalhaAoCarregar } from "../components/EstadoDaTela";
+import { SeletorSegmentado } from "../components/SeletorSegmentado";
 import { apagarSessao, buscarJanelaDoHistorico, ErroApi, marcarSessao, MAX_PAGINAS_DO_HISTORICO } from "../lib/api";
 import { calcularCobertura } from "../lib/cobertura";
 import { estaEmModoDemo } from "../lib/demo";
@@ -24,6 +26,11 @@ function telaEstreita() {
 }
 
 const DIA_MS = 24 * 60 * 60 * 1000;
+const JANELAS = [
+  { valor: 1, rotulo: "Últimas 24 horas" },
+  { valor: 7, rotulo: "Últimos 7 dias" },
+  { valor: 30, rotulo: "Últimos 30 dias" },
+];
 const DATA = new Intl.DateTimeFormat("pt-BR", {
   day: "2-digit", month: "short", year: "numeric",
 });
@@ -51,18 +58,18 @@ type Linha = {
 };
 
 const SESSOES_DO_PROTOTIPO: Array<[number, number, number, number, number, number, boolean]> = [
-  [2026, 11, 3, 434, 96, 18, false],
+  [2026, 11, 3, 434, 100, 18, false],
   [2026, 11, 2, 408, 90, 24, true],
   [2026, 11, 1, 422, 98, 15, false],
   [2026, 10, 31, 395, 87, 21, true],
-  [2026, 10, 30, 461, 99, 13, false],
+  [2026, 10, 30, 461, 100, 13, false],
 ];
 
-const EXEMPLOS = SESSOES_DO_PROTOTIPO.map(([ano, mes, dia, minutos, cobertura, leituras, lacunas]) => {
+const EXEMPLOS = SESSOES_DO_PROTOTIPO.map(([ano, mes, dia, minutos, cobertura, leituras, pausas]) => {
   const inicio = new Date(ano, mes - 1, dia, 22).getTime();
   return {
     chave: String(inicio), inicio, fim: inicio + minutos * 60_000, tempo: minutos * 60_000,
-    periodo: (minutos * 60_000 * 100) / cobertura, leituras, lacunas, pausas: lacunas,
+    periodo: (minutos * 60_000 * 100) / cobertura, leituras, lacunas: cobertura < 100, pausas,
   };
 });
 
@@ -111,23 +118,17 @@ export function Historico() {
         <BarraDoWorkspace secao="Histórico" />
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-extrabold tracking-tight text-foreground sm:text-[27px]">Histórico de sessões</h1>
+            <EtiquetaDeRegistro>Registros</EtiquetaDeRegistro>
+            <h1 className="mt-1 text-2xl font-extrabold tracking-tight text-foreground sm:text-[27px]">Histórico de sessões</h1>
             <p className="mt-0.5 text-xs text-muted-foreground">Veja cada sessão e quanto dela foi registrado.</p>
           </div>
-          <select
-            aria-label="Período do histórico"
-            value={dias}
-            onChange={(evento) => setDias(Number(evento.target.value))}
-            className="min-h-10 rounded-xl border border-border bg-card px-3 text-sm text-foreground"
-          >
-            <option value={1}>Últimas 24 horas</option>
-            <option value={7}>Últimos 7 dias</option>
-            <option value={30}>Últimos 30 dias</option>
-          </select>
+          <div className="w-full sm:max-w-sm">
+            <SeletorSegmentado rotulo="Período do histórico" opcoes={JANELAS} selecionado={dias} aoSelecionar={setDias} />
+          </div>
         </div>
       </header>
 
-      <section aria-label="Sessões do período" className="rounded-[14px] border border-border bg-card p-4 shadow-sm">
+      <section aria-label="Sessões do período" className="md:rounded-2xl md:border md:border-border md:bg-card md:p-4 md:shadow-sm">
         {demo ? (
           <>
             <ListaDeSessoes linhas={EXEMPLOS.filter((linha) => linha.inicio > EXEMPLOS[0].inicio - dias * DIA_MS)} />
@@ -316,7 +317,7 @@ function ConfirmacaoDeExclusao({ ocupado, aoCancelar, children }: {
   return (
     <dialog ref={ref} role="alertdialog" aria-label="Confirmar exclusão da sessão"
       onCancel={(evento) => { evento.preventDefault(); if (!ocupado) aoCancelar(); }}
-      className="m-auto max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-sm space-y-3 overflow-y-auto rounded-xl border border-destructive/40 bg-card p-4 text-sm text-foreground backdrop:bg-black/60">
+      className="m-auto max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-sm space-y-3 overflow-y-auto rounded-2xl border border-destructive/40 bg-card p-4 text-sm text-foreground shadow-xl backdrop:bg-black/60">
       {children}
     </dialog>
   );
@@ -332,7 +333,7 @@ function tempoDaSessao(linha: Linha) {
 
 function SituacaoDaSessao({ linha: { parcial, lacunas, periodo, pausas } }: { linha: Linha }) {
   return (
-    <span className={`inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-[11px] font-semibold ${parcial || lacunas
+    <span className={`inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-[10px] font-extrabold uppercase tracking-wider ${parcial || lacunas
       ? "bg-amber-500/10 text-amber-800 dark:text-amber-300"
       : periodo === null ? "bg-secondary text-muted-foreground" : "bg-emerald-500/10 text-emerald-800 dark:text-emerald-300"}`}>
       <span className="size-1.5 shrink-0 rounded-full bg-current" aria-hidden />
@@ -349,18 +350,28 @@ function ListaDeSessoes({ linhas, acoes, rotulo = "Tabela do histórico" }: {
   const estreita = useSyncExternalStore(observarLargura, telaEstreita);
   if (estreita) return (
     <ul aria-label={rotulo === "Tabela do histórico" ? "Sessões do histórico" : "Sessões de bancada"}
-      className="divide-y divide-border">
-      {linhas.map((linha) => (
-        <li key={linha.chave} className="min-w-0 space-y-2 py-3 text-xs text-foreground">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <strong>{dataDaSessao(linha)}</strong>
-            <SituacaoDaSessao linha={linha} />
-          </div>
-          <dl className="grid grid-cols-[1fr_auto] gap-x-3">
-            <div><dt className="text-muted-foreground">Registrado</dt><dd>{tempoDaSessao(linha)}</dd></div>
-            <div className="text-right"><dt className="text-muted-foreground">Registros</dt><dd>{linha.leituras}</dd></div>
-          </dl>
-          {acoes?.(linha)}
+      className="space-y-3">
+      {linhas.map((linha, indice) => (
+        <li key={linha.chave}>
+          <article className="space-y-3 rounded-2xl border border-border bg-card p-3 text-foreground">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h3 className="text-sm font-semibold">{dataDaSessao(linha)}</h3>
+              <SituacaoDaSessao linha={linha} />
+            </div>
+            <ul aria-label="Métricas da sessão" className="grid grid-cols-[minmax(0,2fr)_minmax(0,1fr)] gap-2">
+              {indice === 0 && !linha.bancada && linha.periodo !== null ? (
+                <li>
+                  <CartaoEmDestaque rotulo="Registrado" valor={formatarDuracao(linha.tempo)}>
+                    de {formatarDuracao(linha.periodo)}
+                  </CartaoEmDestaque>
+                </li>
+              ) : (
+                <CartaoDeMetrica valor={tempoDaSessao(linha)}>Registrado</CartaoDeMetrica>
+              )}
+              <CartaoDeMetrica valor={linha.leituras}>Registros</CartaoDeMetrica>
+            </ul>
+            {acoes?.(linha)}
+          </article>
         </li>
       ))}
     </ul>

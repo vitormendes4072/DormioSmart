@@ -85,9 +85,16 @@ it("pede cada janela selecionada e mostra as sessões que ela devolve", async ()
 
   try {
     mostrar();
-    const janela = screen.getByRole("combobox", { name: "Período do histórico" });
-    for (const [indice, dias, registros] of [[1, 7, "21"], [2, 1, "12"], [3, 30, "31"]] as const) {
-      if (indice > 1) fireEvent.change(janela, { target: { value: String(dias) } });
+    const seletor = within(screen.getByRole("group", { name: "Período do histórico" }));
+    const janelas = [
+      [1, 7, "21", "Últimos 7 dias"],
+      [2, 1, "12", "Últimas 24 horas"],
+      [3, 30, "31", "Últimos 30 dias"],
+    ] as const;
+    for (const [indice, dias, registros, rotulo] of janelas) {
+      const botao = seletor.getByRole("button", { name: rotulo });
+      if (indice > 1) fireEvent.click(botao);
+      expect(botao.getAttribute("aria-pressed")).toBe("true");
       expect(buscar).toHaveBeenNthCalledWith(indice, {
         desde: new Date(AGORA - dias * diasEmMinutos * MIN).toISOString(),
         ate,
@@ -352,4 +359,55 @@ it("UI-41: um erro desconhecido do Histórico aparece com detalhes recolhidos", 
   const detalhes = screen.getByText("Detalhes técnicos").closest("details");
   expect(detalhes?.hasAttribute("open")).toBe(false);
   expect(detalhes?.textContent).toContain("mensagem original");
+});
+
+function simularCelular() {
+  vi.stubGlobal("matchMedia", vi.fn((consulta: string) => ({
+    matches: consulta === "(max-width: 767px)", addEventListener: vi.fn(), removeEventListener: vi.fn(),
+  })));
+}
+
+it("mostra cartões com situação, duração registrada e total de registros no celular", async () => {
+  simularCelular();
+  const completa = sessao("completa", 600, 20);
+  const comPausas = sessao("com-pausas", 1200, 40).map((leitura, indice) => {
+    if (indice < 20) return leitura;
+    const instante = new Date(Date.parse(leitura.created_at) + 2 * MIN).toISOString();
+    return { ...leitura, captured_at: instante, created_at: instante };
+  });
+  const incompleta = sessao("incompleta", 1800, 20).map((leitura, indice) => {
+    const instante = new Date(Date.parse(leitura.created_at) + indice * 1000).toISOString();
+    return { ...leitura, captured_at: instante, created_at: instante };
+  });
+  buscar.mockResolvedValue({ leituras: [...completa, ...comPausas, ...incompleta], truncada: false });
+  mostrar();
+
+  const lista = await screen.findByRole("list", { name: "Sessões do histórico" });
+  const cartoes = within(lista).getAllByRole("article");
+  expect(cartoes).toHaveLength(3);
+  const [primeiro, segundo, terceiro] = cartoes.map((cartao) => within(cartao));
+  expect(primeiro.getByText("Completa")).toBeTruthy();
+  const destaque = within(primeiro.getByRole("group", { name: "Registrado" }));
+  expect(destaque.getByText("10m 0s")).toBeTruthy();
+  expect(destaque.getByText("de 10m 0s")).toBeTruthy();
+  expect(primeiro.getByText("20", { exact: true })).toBeTruthy();
+  expect(segundo.getByText("Com pausas")).toBeTruthy();
+  expect(segundo.getByText("20m 0s de 22m 0s")).toBeTruthy();
+  expect(segundo.getByText("40", { exact: true })).toBeTruthy();
+  expect(terceiro.getByText("Incompleta")).toBeTruthy();
+  expect(terceiro.getByText("10m 0s de 10m 19s")).toBeTruthy();
+  expect(terceiro.getByText("20", { exact: true })).toBeTruthy();
+});
+
+it("mostra as três janelas e destaca a selecionada nos botões do celular", async () => {
+  simularCelular();
+  mostrar();
+  const seletor = within(screen.getByRole("group", { name: "Período do histórico" }));
+  const seteDias = seletor.getByRole("button", { name: "Últimos 7 dias", pressed: true });
+  const umDia = seletor.getByRole("button", { name: "Últimas 24 horas", pressed: false });
+  expect(seletor.getByRole("button", { name: "Últimos 30 dias", pressed: false })).toBeTruthy();
+  fireEvent.click(umDia);
+  expect(seletor.getByRole("button", { name: "Últimas 24 horas", pressed: true })).toBe(umDia);
+  expect(seletor.getByRole("button", { name: "Últimos 7 dias", pressed: false })).toBe(seteDias);
+  expect(await screen.findByRole("list", { name: "Sessões do histórico" })).toBeTruthy();
 });

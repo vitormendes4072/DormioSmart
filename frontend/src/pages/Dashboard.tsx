@@ -1,3 +1,4 @@
+import { SeletorSegmentado } from "../components/SeletorSegmentado";
 import { Radio } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { Link, useLocation } from "react-router";
@@ -48,8 +49,12 @@ import { semBancada, sessoesDaMarca } from "../lib/trecho";
  */
 const COR_MOVIMENTO = "var(--chart-movimento)";
 const COR_REPOUSO = "var(--chart-repouso)";
-const PERIODOS = ["Noite toda", "1ª metade", "2ª metade"] as const;
-type Periodo = typeof PERIODOS[number];
+const PERIODOS = [
+  { valor: "Noite toda", rotulo: "Noite toda" },
+  { valor: "1ª metade", rotulo: "1ª metade" },
+  { valor: "2ª metade", rotulo: "2ª metade" },
+] as const;
+type Periodo = typeof PERIODOS[number]["valor"];
 const CARTAO = "rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5";
 const LINK_DO_CARTAO = "inline-flex min-h-9 items-center justify-center rounded-lg border border-border px-3 py-2 text-center text-sm font-semibold text-primary hover:bg-secondary focus-visible:outline-2 focus-visible:outline-ring";
 
@@ -281,18 +286,8 @@ export function Dashboard() {
             </div>
           </div>
           {podeRecortar && (
-            <div role="group" aria-label="Período do gráfico" className="mb-4 grid grid-cols-3 gap-1 rounded-xl bg-secondary p-1">
-              {PERIODOS.map((opcao) => (
-                <button
-                  key={opcao}
-                  type="button"
-                  aria-pressed={periodo === opcao}
-                  onClick={() => setPeriodo(opcao)}
-                  className="min-h-9 rounded-lg px-1 text-xs font-semibold text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring aria-pressed:bg-card aria-pressed:text-primary aria-pressed:shadow-sm"
-                >
-                  {opcao}
-                </button>
-              ))}
+            <div className="mb-4">
+              <SeletorSegmentado rotulo="Período do gráfico" opcoes={PERIODOS} selecionado={periodo} aoSelecionar={setPeriodo} />
             </div>
           )}
           <div className="h-40 sm:h-64">
