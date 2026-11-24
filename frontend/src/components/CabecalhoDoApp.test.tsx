@@ -42,13 +42,12 @@ describe("o cabeçalho", () => {
   it("está na casca, antes do conteúdo da tela", () => {
     const layout = readFileSync(resolve("src/components/Layout.tsx"), "utf8");
     expect(layout).toMatch(/<CabecalhoDoApp \/>[\s\S]*<Outlet \/>/);
+    expect(layout).toMatch(/<CabecalhoDoApp acoes=\{<ControlesDoWorkspace[^>]+\/>\} \/>[\s\S]*<Outlet context=\{tema\} \/>/);
   });
 
-  it("no celular, o caminho da BarraDoWorkspace se esconde para não repetir", () => {
+  it("no celular, a BarraDoWorkspace inteira se esconde", () => {
     const barra = readFileSync(resolve("src/components/BarraDoWorkspace.tsx"), "utf8");
-    expect(barra).toMatch(/className="hidden text-\[10px\] text-muted-foreground md:block"/);
-    // Sem o caminho, o selo e o tema ficam à direita, e não encostados à esquerda.
-    expect(barra).toContain('className="mb-6 flex items-center justify-end gap-3 md:justify-between"');
+    expect(barra).toContain('className="mb-6 hidden items-center justify-between gap-3 md:flex"');
   });
 });
 
