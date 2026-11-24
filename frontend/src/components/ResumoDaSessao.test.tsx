@@ -77,7 +77,10 @@ describe("ResumoDaSessao (UI-40)", () => {
   });
 
   it("o maior período sem movimento registrado não atravessa a parada", () => {
-    expect(texto(serie([[20], [30, 150_000]]))).toContain("Maior período sem movimento registrado: 15m 0s");
+    texto(serie([[20], [30, 150_000]]));
+    const cartao = within(screen.getByRole("list", { name: "Métricas da sessão" })).getAllByRole("listitem")[1];
+    expect(within(cartao).getByRole("strong").textContent).toBe("15m 0s");
+    expect(cartao.textContent).toContain("Maior período sem movimento registrado");
   });
 
   it("a sessão que cruza a meia-noite diz os dois dias", () => {
@@ -115,6 +118,7 @@ it("destaca o tempo registrado e distribui as frases em três cartões (UI-43)",
   expect(cartoes.map((cartao) => within(cartao).getByRole("strong").textContent)).toEqual(["25%", "1m 30s", "Parou 1 vez"]);
   expect(metricas.queryByRole("heading")).toBeNull();
   expect(cartoes[0].textContent).toContain("Movimento em 25% do tempo registrado");
-  expect(cartoes[1].textContent).toContain("Maior período sem movimento registrado: 1m 30s");
+  // UI-43: o valor fica só no destaque, e a frase embaixo não o repete.
+  expect(cartoes[1].textContent).toBe("1m 30sMaior período sem movimento registrado");
   expect(cartoes[2].textContent).toContain("O registro parou 1 vez, por 2m 30s");
 });

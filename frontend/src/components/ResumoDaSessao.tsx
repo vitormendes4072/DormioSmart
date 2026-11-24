@@ -95,8 +95,8 @@ export function ResumoDaSessao({
           <p>
             {maiorPeriodo == null
               ? "Sem registro suficiente"
-              : <>Maior período sem movimento registrado:{" "}
-                <span className="whitespace-nowrap">{maiorPeriodo}</span></>}
+              // O valor já está grande no cartão: aqui, só o rótulo, sem repetir o número.
+              : "Maior período sem movimento registrado"}
           </p>
         </CartaoDeMetrica>
         <CartaoDeMetrica valor={valorDeParadas}>
