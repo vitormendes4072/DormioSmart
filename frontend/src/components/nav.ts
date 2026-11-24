@@ -1,3 +1,4 @@
+import { useLocation } from "react-router";
 import { estaEmModoDemo, PARAMETRO_DEMO } from "../lib/demo";
 import { Clock3, Home, Moon, Radio, Settings, Smartphone, type LucideIcon } from "lucide-react";
 
@@ -26,6 +27,12 @@ const ITEM_NOITE: ItemNav = { to: "/noite", label: "Noite", icon: Moon };
 
 const ITENS_NAV_APP = [ITEM_NOITE, ...ITENS_NAV.filter(({ to }) => to !== "/coletar")];
 
+/** A demo da Noite usa as mesmas cinco abas do app Android. */
+export function useNavegacaoNativa(): boolean {
+  const { pathname, search } = useLocation();
+  return noiteNativaDisponivel() || (pathname === "/noite" && estaEmModoDemo(search));
+}
+
 export function itensDeNavegacao(nativo: boolean = noiteNativaDisponivel()): ItemNav[] {
   return nativo ? ITENS_NAV_APP : ITENS_NAV;
 }
@@ -33,7 +40,7 @@ export function itensDeNavegacao(nativo: boolean = noiteNativaDisponivel()): Ite
 /** As telas com demonstração própria compartilham a navegação local. */
 export function destinoDoWorkspace(to: string, busca: string): string {
   const rota = to.split("#", 1)[0];
-  if ((rota !== "/dashboard" && rota !== "/coletar" && rota !== "/dispositivos" && rota !== "/historico" && rota !== "/configuracoes") || !estaEmModoDemo(busca)) return to;
+  if ((rota !== "/dashboard" && rota !== "/coletar" && rota !== "/dispositivos" && rota !== "/historico" && rota !== "/configuracoes" && rota !== "/noite") || !estaEmModoDemo(busca)) return to;
 
   const fragmento = to.slice(rota.length);
   return `${rota}?${PARAMETRO_DEMO}=1${fragmento}`;

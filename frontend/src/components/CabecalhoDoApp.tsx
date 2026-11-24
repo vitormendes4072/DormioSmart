@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { useLocation } from "react-router";
 
-import { itensDeNavegacao } from "./nav";
+import { itensDeNavegacao, useNavegacaoNativa } from "./nav";
 
 /** O nome da tela, pela rota, entre os destinos da barra; null fora deles. */
 export function secaoDaRota(caminho: string, nativo?: boolean): string | null {
@@ -16,7 +16,8 @@ export function secaoDaRota(caminho: string, nativo?: boolean): string | null {
  */
 export function CabecalhoDoApp({ nativo, acoes }: { nativo?: boolean; acoes?: ReactNode }) {
   const { pathname } = useLocation();
-  const secao = secaoDaRota(pathname, nativo);
+  const navegacaoNativa = useNavegacaoNativa();
+  const secao = secaoDaRota(pathname, nativo ?? navegacaoNativa);
   return (
     <header className="-mx-4 mb-5 flex items-center gap-2 border-b border-border px-4 pb-3 min-[390px]:gap-3 md:hidden">
       <img src="/icone-192.png" alt="" width={36} height={36} className="size-9 shrink-0 rounded-xl" />
