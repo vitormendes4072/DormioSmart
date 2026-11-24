@@ -112,9 +112,8 @@ it("destaca o tempo registrado e distribui as frases em três cartões (UI-43)",
 
   const metricas = within(screen.getByRole("list", { name: "Métricas da sessão" }));
   const cartoes = metricas.getAllByRole("listitem");
-  expect(cartoes.map((cartao) => within(cartao).getByRole("heading").textContent)).toEqual([
-    "Movimento", "Maior período sem movimento", "Paradas",
-  ]);
+  expect(cartoes.map((cartao) => within(cartao).getByRole("strong").textContent)).toEqual(["25%", "1m 30s", "Parou 1 vez"]);
+  expect(metricas.queryByRole("heading")).toBeNull();
   expect(cartoes[0].textContent).toContain("Movimento em 25% do tempo registrado");
   expect(cartoes[1].textContent).toContain("Maior período sem movimento registrado: 1m 30s");
   expect(cartoes[2].textContent).toContain("O registro parou 1 vez, por 2m 30s");

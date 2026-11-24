@@ -25,8 +25,10 @@ export function ControlesDoWorkspace({
   return (
     <div className="flex items-center justify-end gap-2">
       {estaEmModoDemo() && (
-        <span className="rounded-full bg-amber-500/15 px-2.5 py-1.5 text-[9px] font-bold uppercase tracking-wide text-amber-800 dark:text-amber-300">
-          <span aria-hidden="true">● </span> Dados de demonstração
+        <span className="rounded-full bg-amber-500/15 px-2.5 py-1.5 text-[9px] font-bold whitespace-nowrap uppercase tracking-wide text-amber-800 dark:text-amber-300">
+          <span aria-hidden="true">● </span>
+          <span className="md:hidden">Demonstração</span>
+          <span className="hidden md:inline">Dados de demonstração</span>
         </span>
       )}
       <button

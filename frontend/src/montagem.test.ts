@@ -930,12 +930,15 @@ describe("toda rota do App.tsx monta (UI-17)", PRAZO, () => {
 });
 
 describe("o painel em camadas (UI-40)", PRAZO, () => {
-  function responder({ dispositivos, leituras }: { dispositivos: unknown[]; leituras: unknown[] }) {
+  function responder({ dispositivos, leituras }: { dispositivos: unknown[]; leituras: ReturnType<typeof leitura>[] }) {
     const original = vi.mocked(fetch).getMockImplementation()!;
     vi.mocked(fetch).mockImplementation((entrada, opcoes) => {
       const caminho = String(entrada);
       if (caminho.startsWith("/api/devices")) return Promise.resolve(respostaJson(dispositivos));
-      if (caminho.startsWith("/api/sleep-history")) return Promise.resolve(respostaJson(leituras));
+      if (caminho.startsWith("/api/sleep-history")) {
+        const device = new URL(caminho, "http://localhost").searchParams.get("device");
+        return Promise.resolve(respostaJson(device ? leituras.filter((l) => l.device_id === device) : leituras));
+      }
       return original(entrada, opcoes);
     });
   }
@@ -1023,6 +1026,43 @@ describe("o painel em camadas (UI-40)", PRAZO, () => {
     fireEvent.click(opcao("Noite toda"));
     expect(dentro.getByRole("img", { name: /6 pontos, 2 com movimento/ })).toBeTruthy();
     expect(resumo.textContent).toBe(textoOriginal);
+  });
+
+  function selecionarSegundaMetade() {
+    const segunda = screen.getByRole("button", { name: "2ª metade" });
+    fireEvent.click(segunda);
+    expect(segunda.getAttribute("aria-pressed")).toBe("true");
+  }
+
+  const duasSessoes = () => [0, 30, 60, 7200, 7230, 7260].map((s) => leitura(s));
+
+  it("volta para Noite toda ao trocar de aparelho", async () => {
+    responder({
+      dispositivos: [travesseiro, celular],
+      leituras: [0, 30, 60, 7200, 7230, 7260].map((s) => leitura(s, { device_id: s < 100 ? "p" : "c" })),
+    });
+    await abrir();
+    selecionarSegundaMetade();
+    fireEvent.change(screen.getByRole("combobox", { name: "Dispositivo exibido" }), { target: { value: "c" } });
+    await screen.findByRole("heading", { name: "Última sessão · Meu celular" });
+    expect(screen.getByRole("button", { name: "Noite toda", pressed: true })).toBeTruthy();
+  });
+
+  it("volta para Noite toda ao alternar entre todas e a última sessão", async () => {
+    responder({ dispositivos: [travesseiro], leituras: duasSessoes() });
+    await abrir();
+    selecionarSegundaMetade();
+    fireEvent.click(screen.getByRole("button", { name: /ver todas/i }));
+    fireEvent.click(screen.getByRole("button", { name: "Ver só a última" }));
+    expect(screen.getByRole("button", { name: "Noite toda", pressed: true })).toBeTruthy();
+  });
+
+  it("esconde o seletor de período quando mostra todas as sessões", async () => {
+    responder({ dispositivos: [travesseiro], leituras: duasSessoes() });
+    await abrir();
+    expect(screen.getByRole("group", { name: "Período do gráfico" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /ver todas/i }));
+    expect(screen.queryByRole("group", { name: "Período do gráfico" })).toBeNull();
   });
 
   it("sem sessão anterior, diz isso em vez de repetir a atual", async () => {

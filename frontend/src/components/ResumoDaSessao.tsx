@@ -40,6 +40,12 @@ export function ResumoDaSessao({
     .filter((duracao) => duracao > 0);
   // Sem quebra no meio da duração: "6m" numa linha e "30s" na outra se lê errado.
   const maisLonga = <span className="whitespace-nowrap">{formatarDuracao(Math.max(0, ...paradas))}</span>;
+  const movimento = fracaoEmMovimento == null ? null : formatarPorcentagem(fracaoEmMovimento * 100);
+  const maiorPeriodo = maiorPeriodoSemMovimentoMs == null ? null : formatarDuracao(maiorPeriodoSemMovimentoMs);
+  const totalParadas = paradas.length;
+  const valorDeParadas = totalParadas === 0
+    ? "Não parou"
+    : `Parou ${totalParadas} ${totalParadas === 1 ? "vez" : "vezes"}`;
   const janela = verTudo
     ? `em ${sessoes.length} sessões`
     : cobertura.janelaMs > 0 ? `de ${formatarDuracao(cobertura.janelaMs)}` : null;
@@ -78,29 +84,29 @@ export function ResumoDaSessao({
       </div>
 
       <ul aria-label="Métricas da sessão" className="grid gap-2 min-[360px]:grid-cols-3">
-        <CartaoDeMetrica titulo="Movimento">
+        <CartaoDeMetrica valor={movimento ?? "—"}>
           <p>
-            {fracaoEmMovimento == null
+            {movimento == null
               ? "Sem registro suficiente para calcular o movimento"
-              : <>Movimento em <strong>{formatarPorcentagem(fracaoEmMovimento * 100)}</strong> do tempo registrado</>}
+              : `Movimento em ${movimento} do tempo registrado`}
           </p>
         </CartaoDeMetrica>
-        <CartaoDeMetrica titulo="Maior período sem movimento">
+        <CartaoDeMetrica valor={maiorPeriodo ?? "—"}>
           <p>
-            {maiorPeriodoSemMovimentoMs == null
+            {maiorPeriodo == null
               ? "Sem registro suficiente"
               : <>Maior período sem movimento registrado:{" "}
-                <strong className="whitespace-nowrap">{formatarDuracao(maiorPeriodoSemMovimentoMs)}</strong></>}
+                <span className="whitespace-nowrap">{maiorPeriodo}</span></>}
           </p>
         </CartaoDeMetrica>
-        <CartaoDeMetrica titulo="Paradas">
+        <CartaoDeMetrica valor={valorDeParadas}>
           {/* À vista mesmo abaixo dos 5% que abrem o aviso de lacuna. */}
-          <p className={paradas.length > 0 ? "font-semibold text-amber-800 dark:text-amber-300" : undefined}>
-            {paradas.length === 0
+          <p className={totalParadas > 0 ? "font-semibold text-amber-800 dark:text-amber-300" : undefined}>
+            {totalParadas === 0
               ? "O registro não parou"
-              : paradas.length === 1
+              : totalParadas === 1
                 ? <>O registro parou 1 vez, por {maisLonga}</>
-                : <>O registro parou {paradas.length} vezes, a mais longa por {maisLonga}</>}
+                : <>O registro parou {totalParadas} vezes, a mais longa por {maisLonga}</>}
           </p>
         </CartaoDeMetrica>
       </ul>
@@ -110,12 +116,12 @@ export function ResumoDaSessao({
   );
 }
 
-function CartaoDeMetrica({ titulo, children }: { titulo: string; children: ReactNode }) {
+function CartaoDeMetrica({ valor, children }: { valor: string; children: ReactNode }) {
   return (
-    <li className="min-w-0 space-y-1.5 rounded-2xl border border-border bg-card p-2.5 text-xs leading-snug text-foreground sm:p-4 sm:text-sm">
-      <h3 className="text-[10px] font-extrabold uppercase tracking-wide text-muted-foreground sm:text-xs">
-        {titulo}
-      </h3>
+    <li className="min-w-0 space-y-1.5 rounded-2xl border border-border bg-card p-2.5 text-xs leading-snug text-muted-foreground sm:p-4 sm:text-sm">
+      <strong className="block text-xl leading-tight font-extrabold tracking-tight text-foreground sm:text-2xl">
+        {valor}
+      </strong>
       {children}
     </li>
   );
