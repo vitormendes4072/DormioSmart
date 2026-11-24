@@ -352,6 +352,39 @@ describe("montagem real das telas (UI-17)", PRAZO, () => {
     expect(screen.getByText(/Isto é irreversível/i)).toBeTruthy();
   });
 
+  it("só envia a exclusão da conta depois da frase exata", async () => {
+    const original = vi.mocked(fetch).getMockImplementation()!;
+    const excluir = vi.fn<(opcoes?: RequestInit) => Promise<Response>>().mockResolvedValue(respostaJson({
+      leituras_apagadas: 1,
+      dispositivos_apagados: 1,
+      perfil_apagado: true,
+      conta_de_acesso_removida: true,
+    }));
+    vi.mocked(fetch).mockImplementation((entrada, opcoes) =>
+      String(entrada) === "/api/me" ? excluir(opcoes) : original(entrada, opcoes));
+
+    await montar("/configuracoes");
+    fireEvent.click(screen.getByRole("button", { name: "Excluir minha conta" }));
+    const campo = screen.getByRole("textbox", { name: /para confirmar, digite/i });
+    const botao = screen.getByRole("button", { name: "Excluir definitivamente" }) as HTMLButtonElement;
+
+    for (const texto of ["", "APAGAR MINHA NOITE", "apagar minha conta", "APAGAR MINHA CONTA "]) {
+      fireEvent.change(campo, { target: { value: texto } });
+      expect(botao.disabled, JSON.stringify(texto)).toBe(true);
+      await act(async () => { fireEvent.click(botao); });
+      expect(excluir).not.toHaveBeenCalled();
+    }
+
+    fireEvent.change(campo, { target: { value: "APAGAR MINHA CONTA" } });
+    expect(botao.disabled).toBe(false);
+    await act(async () => { fireEvent.click(botao); });
+    expect(excluir).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({
+      method: "DELETE",
+      body: JSON.stringify({ confirmacao: "APAGAR MINHA CONTA" }),
+    }));
+    expect(await screen.findByText("Conta excluída.")).toBeTruthy();
+  });
+
   it("Configurações leva à Política de Privacidade (LGPD-01 (b))", async () => {
     await montar("/configuracoes");
     const links = screen.getAllByRole("link", { name: "Política de Privacidade" });

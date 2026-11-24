@@ -13241,3 +13241,23 @@ Os dois controles originais da etapa também voltaram a falhar sob sabotagem. No
 **Risco em aberto.** A evidência visual de conta e lembrete usa sessão e plugin simulados no navegador. O build Android sincronizou os arquivos.
 
 **Procedência.** Branch feature/UI-43-configuracoes sobre develop d81f4f9, 24/11/2026. Windows 11, Node 24.11.0 e Edge com Playwright. Capturas em .playwright-mcp/ui43-configuracoes, fora dos commits.
+
+---
+
+# 2026-11-24 (vii) — UI-43, etapa 6: controle da confirmação de exclusão na PR #279
+
+**O problema, como foi entendido no início.** O teste de montagem abria a segunda etapa de exclusão, mas deixava passar a remoção da validação que desabilita o botão enquanto a frase estiver errada.
+
+**Hipótese de trabalho.** Exercitar o botão com confirmações inválidas e com a frase exata protege tanto a barreira da tela quanto a requisição de exclusão.
+
+**O que foi testado, e como.** Em Configurações, o campo vazio, uma palavra trocada, a frase em minúsculas e um espaço a mais mantiveram o botão desabilitado e o dublê sem chamada. A frase exata habilitou o botão e produziu um único DELETE /api/me com a confirmação no corpo. Ao trocar podeConfirmar por estado !== "apagando", caiu “só envia a exclusão da conta depois da frase exata”, na asserção do campo vazio. O teste passou com o componente equivalente de develop d81f4f9 e voltou a passar após restaurar o da PR.
+
+**Resultado medido.** 1014 testes em 67 arquivos, lint e TypeScript passaram na worktree.
+
+**Adaptação.** O teste acrescenta a verificação da segunda etapa à montagem real, com o pedido interceptado pelo mesmo dublê de fetch da suíte.
+
+**O que deu errado no caminho.** O lint apontou o parâmetro sem uso da primeira versão do dublê. A assinatura ficou no tipo do dublê e o teste seguiu conferindo as opções do pedido.
+
+**Risco em aberto.** A simulação verifica os dados enviados pelo frontend. A execução da exclusão no servidor é coberta em outra suíte.
+
+**Procedência.** PR #279, feature/UI-43-configuracoes sobre develop d81f4f9, 24/11/2026. Windows 11, Node 24.11.0.
