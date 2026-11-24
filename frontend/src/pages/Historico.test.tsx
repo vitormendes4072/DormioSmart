@@ -72,6 +72,36 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+it("pede cada janela selecionada e mostra as sessões que ela devolve", async () => {
+  const agora = vi.spyOn(Date, "now").mockReturnValue(AGORA);
+  const ate = new Date(AGORA).toISOString();
+  const diasEmMinutos = 24 * 60;
+  const secao = () => screen.findByRole("region", { name: "Tabela do histórico" });
+
+  buscar
+    .mockResolvedValueOnce({ leituras: sessao("travesseiro", 4 * diasEmMinutos, 21), truncada: false })
+    .mockResolvedValueOnce({ leituras: sessao("travesseiro", 600, 12), truncada: false })
+    .mockResolvedValueOnce({ leituras: sessao("travesseiro", 20 * diasEmMinutos, 31), truncada: false });
+
+  try {
+    mostrar();
+    const janela = screen.getByRole("combobox", { name: "Período do histórico" });
+    for (const [indice, dias, registros] of [[1, 7, "21"], [2, 1, "12"], [3, 30, "31"]] as const) {
+      if (indice > 1) fireEvent.change(janela, { target: { value: String(dias) } });
+      expect(buscar).toHaveBeenNthCalledWith(indice, {
+        desde: new Date(AGORA - dias * diasEmMinutos * MIN).toISOString(),
+        ate,
+      }, expect.any(AbortSignal), expect.any(Function));
+
+      const tabela = within(await secao());
+      expect(tabela.getAllByRole("row")).toHaveLength(2);
+      expect(tabela.getByRole("cell", { name: registros })).toBeTruthy();
+    }
+  } finally {
+    agora.mockRestore();
+  }
+});
+
 describe("Histórico: excluir e marcar uma sessão (DATA-16)", () => {
   it("separa as sessões marcadas como bancada numa seção própria", async () => {
     mostrar();
