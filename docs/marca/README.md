@@ -155,6 +155,6 @@ Resumo; o detalhe, medido, está em [`PADRAO-VISUAL.md`](../PADRAO-VISUAL.md):
 | Lacuna | Por quê |
 |---|---|
 | **O ícone do app Android (APK)** | Ainda o antigo; é o `APP-17`. |
-| **A fonte e a paleta do app depois do login** | Outfit e cores próprias; alinhar ou declarar a diferença é o `UI-36`. |
+| **A fonte e a paleta do app depois do login** | ✏️ *23/11: o app usa a fonte do sistema, como as páginas públicas (`UI-36` decidido, `UI-43` etapa 1). A paleta segue a do app, que é quase a do celular de exemplo da landing.* |
 | **Modelos de post, slide e capa** | Não existem ainda; quando existirem, entram numa subpasta `modelos/`. |
 | **Impressão** | Os tamanhos mínimos em milímetros são estimativa, não teste em papel. |

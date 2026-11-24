@@ -4,6 +4,7 @@ import { Outlet, useLocation } from "react-router";
 import { estaEmModoDemo } from "../lib/demo";
 import { noiteNativaDisponivel } from "../lib/noiteNativa";
 
+import { CabecalhoDoApp } from "./CabecalhoDoApp";
 import { FaixaDemo } from "./FaixaDemo";
 import { MobileNav } from "./MobileNav";
 import { Sidebar } from "./Sidebar";
@@ -26,6 +27,7 @@ export function Layout() {
         <Sidebar painel={painel} />
         {/* pb-20 no celular abre espaço para a barra inferior não cobrir conteúdo */}
         <main className={painel ? "min-w-0 flex-1 px-4 pb-20 pt-5 md:px-[30px] md:pt-[26px]" : "min-w-0 flex-1 overflow-y-auto p-4 pb-20 md:p-8"}>
+          <CabecalhoDoApp />
           {noiteNativaDisponivel() ? (
             <Suspense fallback={null}>
               <AvisoDeAtualizacao />

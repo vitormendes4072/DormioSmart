@@ -221,3 +221,22 @@ describe("a grafia do nome (BRAND-05)", () => {
     },
   );
 });
+
+describe("o app usa a mesma fonte (UI-36, UI-43)", () => {
+  const tema = readFileSync(new URL("./styles/theme.css", import.meta.url), "utf8");
+  const estilos = readFileSync(new URL("./styles/index.css", import.meta.url), "utf8");
+  const vercel = readFileSync(new URL("../../vercel.json", import.meta.url), "utf8");
+
+  it("a família do app é a das páginas públicas", () => {
+    const familia = tema.match(/--font-family:\s*([^;]+);/);
+    expect(familia, "--font-family não achado no theme.css").not.toBeNull();
+    expect(normalizar(familia![1])).toBe(familiaDaLanding());
+    expect(tema).toMatch(/body\s*\{[^}]*font-family:\s*var\(--font-family\)/);
+  });
+
+  it("nenhuma fonte é baixada, e a CSP não abre o Google Fonts", () => {
+    expect(estilos).not.toMatch(/fonts\.css|googleapis/);
+    expect(tema).not.toMatch(/googleapis|@import url/);
+    expect(vercel).not.toMatch(/fonts\.googleapis\.com|fonts\.gstatic\.com/);
+  });
+});

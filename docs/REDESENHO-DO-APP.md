@@ -138,7 +138,7 @@ de hoje, para que o redesenho não as perca em silêncio.
 | Etapa | O quê | Como se confere |
 |---|---|---|
 | 0 | Este inventário e a comparação em imagem | — |
-| 1 | A base visual: cores, cantos, escala de texto e estilos de cartão da landing, no claro e no escuro; a fonte | Contraste, as duas cores, o orçamento do pacote |
+| 1 ✅ | A base visual: o gráfico próprio (sem o recharts), a fonte do sistema, os cantos, o cabeçalho e a barra de abas (23/11). Os cartões da landing entram com as telas | Contraste, as duas cores, o orçamento do pacote |
 | 2–6 | Uma tela por vez: Início, Noite, Histórico, Dispositivos, Configurações | Os testes da seção 2 passando; imagens antes e depois a 360 e 390 px; a Noite no emulador |
 | 7 | A landing mostra as telas novas, com as mesmas abas e textos | Um teste que compara as abas e os rótulos da landing com os do app |
 
