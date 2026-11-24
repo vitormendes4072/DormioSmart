@@ -10,6 +10,7 @@ DIST = Path(__file__).resolve().parents[1] / "frontend" / "dist"
 LIMITES = {"Dashboard": 260_000, "Login": 155_000, "Landing": 289_800}
 PROTOTIPO = "landing-prototipo.html"
 IMAGEM_INLINE_GRANDE = re.compile(r"data:image/[^\s\"'<>]{4096,}", re.IGNORECASE)
+TEXTO_DA_DEMO_DA_NOITE = "Cenário da demonstração".encode("utf-8")
 
 
 def arquivos_da_rota(manifesto, pagina):
@@ -97,7 +98,18 @@ def main():
         ok = gzip <= limite
         print(f"{pagina}: {bruto} B, {gzip} {unidade}, teto {limite} B ({'OK' if ok else 'EXCEDIDO'})")
         falhou |= not ok
-    return int(falhou)
+    # A guarda da rota pode bloquear a demo mesmo quando seu chunk foi empacotado.
+    # Examine também os assets que a página de produção nunca carrega.
+    assets_com_demo = [
+        arquivo.relative_to(DIST).as_posix()
+        for arquivo in sorted((DIST / "assets").rglob("*"))
+        if arquivo.is_file() and TEXTO_DA_DEMO_DA_NOITE in arquivo.read_bytes()
+    ]
+    if assets_com_demo:
+        print(f"Produção contém a demonstração da Noite: {', '.join(assets_com_demo)}", file=sys.stderr)
+    else:
+        print("Produção sem texto exclusivo da demonstração da Noite (OK)")
+    return int(falhou or bool(assets_com_demo))
 
 
 if __name__ == "__main__":

@@ -340,6 +340,17 @@ describe("os números do sensor em Detalhes técnicos (UI-40)", () => {
     expect(aVista(await screen.findByText(/fora do ritmo que o Smart Dormio aceita/))).toBe(true);
     expect(screen.getAllByRole("alert")).toHaveLength(1);
   });
+
+  it("alertas de ritmo não exibem Hz nem contagens de descarte", async () => {
+    for (const epocasGravadas of [0, 9]) {
+      const { unmount } = render(
+        <CartaoDaNoite plugin={gravando({ epocasGravadas, recusadasPorTaxa: 3 })} agora={agora} />,
+      );
+      const alerta = await screen.findByRole("alert");
+      expect(alerta.textContent).not.toMatch(/\bHz\b|\p{Nd}/iu);
+      unmount();
+    }
+  });
 });
 
 it.each([

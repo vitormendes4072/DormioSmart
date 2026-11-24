@@ -11806,6 +11806,26 @@ Vitest e build no Windows; servidor local com autenticação fictícia; 19/11/20
 
 ---
 
+# 2026-11-24 (iii) — UI-43, etapa 3: controles da revisão da PR #276
+
+**O problema, como foi entendido no início.** A revisão encontrou duas regressões que passavam pela suíte. O chunk da demo podia ser publicado mesmo com sua rota bloqueada. O alerta de ritmo podia voltar a mostrar números técnicos.
+
+**Hipótese de trabalho.** Conferir todo o diretório de assets do build protege o pacote publicado. Conferir o conteúdo de role=alert com zero e com alguns registros protege os dois textos de descarte.
+
+**O que foi testado, e como.** A condição de importação da demo foi trocada por true e o build web recompilado. A conferência de produção em conferir_pacote_frontend.py falhou ao localizar “Cenário da demonstração” no chunk NoiteDemo. Inserir “40 a 60 Hz” no alerta sem registros derrubou “alertas de ritmo não exibem Hz nem contagens de descarte”, em CartaoDaNoite.test.tsx. Repetir com “3 registros descartados” no alerta da noite com registros derrubou o mesmo teste. O teste também falhou com o cartão de origin/develop, que ainda mostrava “40 a 60 Hz” no alerta. Os arquivos foram restaurados após cada controle.
+
+**Resultado medido.** 995 testes em 67 arquivos. Build web, verificação do pacote, CSP, lint e conferências de documentação passaram com o código restaurado. O Dashboard ficou em 157 163 B gzip de 260 000 B.
+
+**Adaptação.** A conferência dos assets ficou no mesmo script de orçamento já executado depois do build no CI. O teste da tela usa o plugin falso existente e inspeciona o alerta nos dois estados.
+
+**O que deu errado no caminho.** A verificação anterior da rota cobria o acesso à demonstração, mas esse resultado também passava com o chunk presente no pacote. Nesta revisão, a primeira busca dos arquivos usou um glob aceito pelo rg no Unix e rejeitado pelo PowerShell. A busca foi repetida com os caminhos explícitos.
+
+**Risco em aberto.** A inspeção do pacote procura o rótulo exclusivo atual do seletor. Uma alteração desse rótulo precisa atualizar o marcador usado pelo script.
+
+**Procedência.** PR #276, feature/UI-43-noite sobre develop 5284345. Windows 11, Node 24.11.0, 24/11/2026.
+
+---
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
