@@ -13210,3 +13210,34 @@ Os dois controles originais da etapa também voltaram a falhar sob sabotagem. No
 **Risco em aberto.** A inspeção visual foi no navegador com registros simulados. O build do app sincronizou os arquivos.
 
 **Procedência.** Branch feature/UI-43-dispositivos sobre develop 3709f34, 24/11/2026. Windows 11, Node 24.11.0, Edge com Playwright e captura de janela do Windows. Capturas em .playwright-mcp/ui43-dispositivos, fora dos commits.
+
+---
+
+# 2026-11-24 (vi) — UI-43, etapa 6: a tela Configurações
+
+**O problema, como foi entendido no início.** Configurações já agrupava a maioria dos controles, mas os cartões e as ações não seguiam as linhas da aba Ajustes da landing. O botão Sair não tinha teste de tela.
+
+**Hipótese de trabalho.** O teste pela montagem real protege o encerramento de sessão e o retorno ao login antes de mudar a apresentação. Os cartões do app podem organizar os valores e controles à direita com as funções que já existem.
+
+**O que foi testado, e como.** O teste de Sair passou em develop e falhou ao retirar a chamada de saída. Os sete testes de cartão falharam em develop por falta de regiões identificadas pelos títulos. Cada cartão também teve a superfície retirada em uma execução separada. Rodados a suíte completa, lint, TypeScript, Knip, Knip de tipos, builds web e app, CSP e orçamento, com a checagem do pacote da demo da Noite. No Edge com Playwright, 24 capturas antes e depois a 360 e 390 px nos dois temas, na demonstração, na conta simulada e na segunda etapa de exclusão. A sessão, o perfil, os dispositivos e o lembrete são registros locais da captura, com as requisições de alteração e os destinos externos bloqueados.
+
+| Sabotagem temporária | Teste que falhou |
+|---|---|
+| Retirar a chamada de saída | sair encerra a sessão com signOut e leva ao login |
+| Retirar a superfície de Aparência | agrupa a seção Aparência num cartão com seu controle |
+| Retirar a superfície de Conta | agrupa a seção Conta num cartão com seu controle |
+| Retirar a superfície de Lembrete de dormir | agrupa a seção Lembrete de dormir num cartão com seu controle |
+| Retirar a superfície de Meus dispositivos | agrupa a seção Meus dispositivos num cartão com seu controle |
+| Retirar a superfície de Seus dados | agrupa a seção Seus dados num cartão com seu controle |
+| Retirar a superfície de Sair | agrupa a seção Sair num cartão com seu controle |
+| Retirar a superfície de Excluir conta | agrupa a seção Excluir conta num cartão com seu controle |
+
+**Resultado medido.** 1013 testes em 67 arquivos. Painel 157 712 B gzip de 260 000 B, login 147 224 B gzip de 155 000 B, landing 279 253 B transferidos estimados de 289 800 B. “Configurações” mediu 65,2 px em uma célula de 72 px a 360 px, em uma linha e sem rolagem horizontal. O teste de Sair não encontrou defeito na base.
+
+**Adaptação.** Aparência usa os mesmos três rádios em linhas. Conta, lembrete, exportação, política, saída e exclusão usam a mesma apresentação de linha, e os dispositivos mantêm os cartões da etapa 5. A exclusão ganhou destaque e continua em um cartão próprio com a confirmação digitada. A demonstração manteve seus dados e o convite para entrar.
+
+**O que deu errado no caminho.** A primeira tentativa de preparar a sabotagem de Sair tinha um comentário acentuado em um literal de bytes do Python. A mutação foi refeita com um literal ASCII antes de executar o teste.
+
+**Risco em aberto.** A evidência visual de conta e lembrete usa sessão e plugin simulados no navegador. O build Android sincronizou os arquivos.
+
+**Procedência.** Branch feature/UI-43-configuracoes sobre develop d81f4f9, 24/11/2026. Windows 11, Node 24.11.0 e Edge com Playwright. Capturas em .playwright-mcp/ui43-configuracoes, fora dos commits.

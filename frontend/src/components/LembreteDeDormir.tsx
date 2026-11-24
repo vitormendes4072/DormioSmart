@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 
 import { Noite, type EstadoDoLembrete } from "../lib/noiteNativa";
+import { LINHA_DE_CONFIGURACAO } from "../lib/ui";
 
 type Plugin = Pick<typeof Noite, "lembrete" | "definirLembrete">;
 
@@ -59,18 +60,19 @@ export function LembreteDeDormir({ plugin = Noite }: { plugin?: Plugin }) {
   }
   const horario = horarioComoTexto(estado.hora, estado.minuto);
   return (
-    <div className="space-y-3">
-      <label className="flex items-center justify-between gap-3">
+    <div className="divide-y divide-border">
+      <label className={LINHA_DE_CONFIGURACAO}>
         <span className="text-sm text-foreground">Lembrar todo dia</span>
         <input
           type="checkbox"
           checked={estado.ativo}
           disabled={salvando}
           onChange={(e) => void definir(e.target.checked, estado.hora, estado.minuto)}
-          className="h-5 w-5 accent-[var(--primary)]"
+          className="peer sr-only"
         />
+        <span aria-hidden className="relative h-6 w-11 shrink-0 rounded-full bg-muted-foreground/35 transition peer-checked:bg-primary peer-disabled:opacity-50 peer-focus-visible:ring-2 peer-focus-visible:ring-ring after:absolute after:left-1 after:top-1 after:size-4 after:rounded-full after:bg-white after:transition-transform peer-checked:after:translate-x-5" />
       </label>
-      <label className="flex items-center justify-between gap-3">
+      <label className={LINHA_DE_CONFIGURACAO}>
         <span className="text-sm text-foreground">Horário</span>
         <input
           type="time"
@@ -84,12 +86,12 @@ export function LembreteDeDormir({ plugin = Noite }: { plugin?: Plugin }) {
         />
       </label>
       {estado.ativo && !estado.notificacoes ? (
-        <p role="alert" className="text-xs text-destructive">
+        <p role="alert" className="py-3 text-xs text-destructive">
           As notificações do app estão desligadas. Para receber o lembrete, ative-as nas configurações do Android.
         </p>
       ) : null}
       {estado.ativo && estado.notificacoes ? (
-        <p className="text-xs text-muted-foreground">Você vai receber o lembrete todo dia às {horario}.</p>
+        <p className="py-3 text-xs text-muted-foreground">Você vai receber o lembrete todo dia às {horario}.</p>
       ) : null}
       {falha ? <p className="text-sm text-destructive">Não foi possível salvar o lembrete. Tente de novo.</p> : null}
     </div>

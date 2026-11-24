@@ -299,6 +299,39 @@ describe("montagem real das telas (UI-17)", PRAZO, () => {
     expect(await screen.findByRole("button", { name: "Entrar" })).toBeTruthy();
   });
 
+  it.each([
+    ["Aparência", "radio", "Claro"],
+    ["Conta", "button", "Editar dados"],
+    ["Lembrete de dormir", "checkbox", "Lembrar todo dia"],
+    ["Meus dispositivos", "button", "Parear"],
+    ["Seus dados", "button", "Exportar meus dados (CSV)"],
+    ["Sair", "button", "Sair da conta"],
+    ["Excluir conta", "button", "Excluir minha conta"],
+  ] as const)("agrupa a seção %s num cartão com seu controle", async (titulo, papel, nome) => {
+    const lembrete = titulo === "Lembrete de dormir";
+    if (lembrete) {
+      vi.doMock("./lib/noiteNativa", async (original) => ({
+        ...await original<typeof import("./lib/noiteNativa")>(),
+        noiteNativaDisponivel: () => true,
+        Noite: { lembrete: async () => ({ ativo: true, hora: 22, minuto: 30, notificacoes: true }) },
+      }));
+    }
+
+    try {
+      await montar(titulo === "Aparência" ? "/configuracoes?demo=1" : "/configuracoes");
+      const cartao = await screen.findByRole("region", { name: titulo });
+      expect(cartao.classList.contains("rounded-2xl")).toBe(true);
+      expect(cartao.classList.contains("border")).toBe(true);
+      expect(cartao.classList.contains("bg-card")).toBe(true);
+      expect(await within(cartao).findByRole(papel, { name: nome })).toBeTruthy();
+      if (titulo === "Excluir conta") {
+        expect(screen.getByRole("region", { name: "Seus dados" }).contains(cartao)).toBe(false);
+      }
+    } finally {
+      if (lembrete) vi.doUnmock("./lib/noiteNativa");
+    }
+  });
+
   it("o ExcluirConta está renderizado, e a barreira de duas etapas funciona na tela", async () => {
     await montar("/configuracoes");
 
