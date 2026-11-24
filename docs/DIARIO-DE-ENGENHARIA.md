@@ -13154,3 +13154,29 @@ Os dois controles originais da etapa também voltaram a falhar sob sabotagem. No
 **Risco em aberto.** A conferência visual desta revisão usou o navegador em modo demonstração. O WebView e uma conta real ficaram fora dessa conferência.
 
 **Procedência.** PR #275, `feature/UI-43-inicio` sobre `develop` `7eadfb5`, Windows 11, Node 24.11.0, Edge com Playwright, 24/11/2026. Capturas em `output/playwright/`, fora dos commits.
+
+---
+
+# 2026-11-24 (iv) — UI-43, etapa 4: a tela Histórico
+
+**O problema, como foi entendido no início.** O Histórico ainda mostrava uma lista dividida por linhas no celular. A escolha de janela tinha uma verificação de carregamento e cancelamento, mas nenhum teste conferia os limites do pedido e as sessões exibidas nas três janelas.
+
+**Hipótese de trabalho.** Proteger primeiro a troca de janela permite reaproveitar o seletor e os cartões do Início e da Noite, preservando a paginação, o alcance de cada ação e a separação das sessões de bancada.
+
+**O que foi testado, e como.** No primeiro commit, o teste da janela passou no Histórico de develop e falhou com sete dias fixos no pedido. Os dois testes visuais falharam com a tela de develop e voltaram a falhar nas sabotagens abaixo. Rodados suíte completa, lint, TypeScript, Knip, Knip de tipos, build web, CSP, orçamento com a guarda da demo da Noite e build do app. No Edge com Playwright, 16 capturas pelo endereço /historico?demo=1, antes e depois, em 360 e 390 px nos dois temas. Para abrir a confirmação, a captura forneceu registros locais ao componente real, sem usar conta, dados reais ou enviar exclusão. Conferido o foco inicial em Cancelar. A 1280 px, escolher 24 horas e 30 dias atualizou o botão selecionado e as sessões da tabela.
+
+| Sabotagem temporária | Teste que falhou |
+|---|---|
+| Pedir sete dias para todas as janelas | pede cada janela selecionada e mostra as sessões que ela devolve |
+| Retirar a etiqueta de situação dos cartões | mostra cartões com situação, duração registrada e total de registros no celular |
+| Manter sete dias visualmente selecionados após clicar em outra janela | mostra as três janelas e destaca a selecionada nos botões do celular |
+
+**Resultado medido.** 998 testes em 67 arquivos. Painel 157 440 B gzip de 260 000 B, login 146 954 B gzip de 155 000 B, landing 278 982 B transferidos estimados de 289 800 B. “Configurações” mediu 65,2 px em uma célula de 72 px a 360 px, em uma linha e sem rolagem horizontal nos dois temas.
+
+**Adaptação.** Os cartões de sessão ficam no celular, com a tabela preservada no desktop. O autor aprovou os botões segmentados em todas as larguras. Na montagem, somente a interação mudou de selecionar “Últimos 30 dias” na lista para clicar no botão de mesmo nome. As verificações de cancelamento, carregamento e erro continuam iguais. “Excluir…” mantém a confirmação existente. Marcar e desmarcar como bancada continuam diretos, por serem reversíveis.
+
+**O que deu errado no caminho.** O sandbox negou o status do checkout principal. A confirmação da base foi feita pela referência remota, e os testes e as capturas rodaram na worktree isolada.
+
+**Risco em aberto.** A comparação visual foi feita com dados simulados no navegador. O build Android sincronizou os arquivos.
+
+**Procedência.** Branch feature/UI-43-historico sobre develop eaddd6b, 24/11/2026. Windows 11, Node 24.11.0, Edge com Playwright. Capturas locais em .playwright-mcp/ui43-historico, fora dos commits.

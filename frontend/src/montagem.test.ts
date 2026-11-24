@@ -536,7 +536,8 @@ describe("montagem real das telas (UI-17)", PRAZO, () => {
     await act(async () => responder!(respostaJson([])));
     expect(await screen.findByText("Nenhuma sessão no período selecionado.")).toBeTruthy();
 
-    fireEvent.change(screen.getByRole("combobox", { name: "Período do histórico" }), { target: { value: "30" } });
+    fireEvent.click(within(screen.getByRole("group", { name: "Período do histórico" }))
+      .getByRole("button", { name: "Últimos 30 dias" }));
     expect(await screen.findByText(/Carregando sessões/)).toBeTruthy();
     expect(sinais[0].aborted).toBe(true);
     await act(async () => responder!(new Response(JSON.stringify({ error: "Serviço indisponível" }), { status: 503 })));
