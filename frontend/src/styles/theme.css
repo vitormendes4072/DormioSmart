@@ -50,6 +50,13 @@
   --font-weight-medium: 500;
   --radius: 1rem; /* UI-43: os cantos de 15 a 17 px do celular de exemplo da landing */
 
+  /* Cartão de tempo registrado, escuro nos dois temas como no celular da landing. */
+  --sessao-destaque-fundo: linear-gradient(128deg, #12456d, #12304e 75%);
+  --sessao-destaque-borda: #265d85;
+  --sessao-destaque-brilho: radial-gradient(circle, #3bb5f255, transparent 65%);
+  --sessao-destaque-rotulo: #b7dafa;
+  --sessao-destaque-legenda: #c2dff4;
+
   /* Identidade — apenas logo e ornamento (ver nota acima).
      Valor extraído do arquivo da logo, não estimado (BRAND-02). */
   --brand: #35a2ef;

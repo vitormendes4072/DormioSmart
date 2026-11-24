@@ -3,7 +3,7 @@
  * UI-40: o resumo no topo do Início. O que se confere aqui é que cada frase diz
  * o que a conta diz, inclusive nas bordas (zero, um, todas as sessões).
  */
-import { cleanup, render } from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { agruparEmSessoes } from "../lib/cobertura";
@@ -103,4 +103,19 @@ describe("ResumoDaSessao (UI-40)", () => {
     expect(texto(serie([[100]], { movimentoACada: 10 })))
       .not.toMatch(/dormi|sono|qualidade|eficiência|agitad|tranquil|você se mexeu|nota|\bbom\b|\bruim\b/i);
   });
+});
+
+it("destaca o tempo registrado e distribui as frases em três cartões (UI-43)", () => {
+  texto(serie([[4], [4, 150_000]], { movimentoACada: 4 }));
+  const registrado = screen.getByRole("group", { name: "Registrado" });
+  expect(registrado.textContent).toContain("4m 0s de 6m 30s · 17/11,");
+
+  const metricas = within(screen.getByRole("list", { name: "Métricas da sessão" }));
+  const cartoes = metricas.getAllByRole("listitem");
+  expect(cartoes.map((cartao) => within(cartao).getByRole("heading").textContent)).toEqual([
+    "Movimento", "Maior período sem movimento", "Paradas",
+  ]);
+  expect(cartoes[0].textContent).toContain("Movimento em 25% do tempo registrado");
+  expect(cartoes[1].textContent).toContain("Maior período sem movimento registrado: 1m 30s");
+  expect(cartoes[2].textContent).toContain("O registro parou 1 vez, por 2m 30s");
 });

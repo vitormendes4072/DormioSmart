@@ -224,17 +224,20 @@ export type PontoDaSerie = {
 export function prepararSerie(
   leituras: LeituraSono[],
   cobertura?: Cobertura,
+  recorte?: { inicio?: number; fim?: number },
 ): PontoDaSerie[] {
   const pontos = comInstanteValido(leituras);
   const serie: PontoDaSerie[] = [];
+  const inicio = recorte?.inicio ?? -Infinity;
+  const fim = recorte?.fim ?? Infinity;
 
   for (let i = 0; i < pontos.length; i++) {
     const { leitura, instante } = pontos[i];
+    const atual = instante.getTime();
 
     // Antes de desenhar este ponto: houve lacuna entre o anterior e ele?
     if (i > 0 && cobertura) {
       const anterior = pontos[i - 1].instante.getTime();
-      const atual = instante.getTime();
       // So INTERRUPCAO — o aparelho ter parado de mandar. Jitter de rede de
       // decimos de segundo nao e buraco de coleta, e desenhar uma coluna cinza
       // para cada um picotava o grafico de uma captacao inteira em centenas de
@@ -243,16 +246,21 @@ export function prepararSerie(
         (l) => l.inicio >= anterior && l.fim <= atual && l.fim > l.inicio,
       );
       if (dentro) {
-        serie.push({
-          hora: "sem dados",
-          intensidade: null,
-          movimento: false,
-          lacuna: true,
-          duracaoDaLacunaMs: dentro.fim - dentro.inicio,
-        });
+        const duracaoDaLacunaMs = Math.min(fim, dentro.fim) - Math.max(inicio, dentro.inicio);
+        if (duracaoDaLacunaMs > 0) {
+          serie.push({
+            hora: "sem dados",
+            intensidade: null,
+            movimento: false,
+            lacuna: true,
+            duracaoDaLacunaMs,
+          });
+        }
       }
     }
 
+    // O ponto exatamente no meio pertence só à segunda metade.
+    if (atual < inicio || atual >= fim) continue;
     serie.push({
       hora: formatarHora(instante),
       intensidade: intensidade(leitura),

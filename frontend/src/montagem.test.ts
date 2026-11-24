@@ -781,7 +781,7 @@ describe("rotas esperadas (UI-18)", PRAZO, () => {
     ["/login", /bem-vindo de volta/i],
     ["/cadastro", /^criar conta$/i],
     ["/nova-senha", /^nova senha$/i],
-    ["/dashboard", /^olá, titular$|^visão geral$/i],
+    ["/dashboard", /^seus registros$/i],
     ["/coletar", /^nova coleta$/i],
     ["/historico", /^histórico de sessões$/i],
     ["/dispositivos", /^dispositivos$/i],
@@ -992,6 +992,37 @@ describe("o painel em camadas (UI-40)", PRAZO, () => {
     responder({ dispositivos: [travesseiro, celular], leituras: [0, 30, 60].map((s) => leitura(s)) });
     await abrir();
     expect(screen.getByRole("heading", { name: "Última sessão · Meu travesseiro" })).toBeTruthy();
+  });
+
+  it("recorta o gráfico pelo horário da metade, preservando a lacuna e o resumo", async () => {
+    const inicio = new Date(2026, 10, 17, 22).getTime();
+    responder({
+      dispositivos: [travesseiro],
+      leituras: [300, 240, 60, 30, 0].map((s) => leitura(s, {
+        captured_at: new Date(inicio + s * 1000).toISOString(),
+        status: s >= 240 ? "Movimento" : "Repouso",
+      })),
+    });
+    await abrir();
+    const resumo = screen.getByRole("region", { name: /^Última sessão/ });
+    const textoOriginal = resumo.textContent;
+    const grafico = screen.getByRole("figure", { name: "Movimento ao longo do tempo" });
+    const dentro = within(grafico);
+    const opcao = (name: string) => dentro.getByRole("button", { name });
+
+    expect(opcao("Noite toda").getAttribute("aria-pressed")).toBe("true");
+    expect(dentro.getByRole("img", { name: /6 pontos, 2 com movimento/ })).toBeTruthy();
+    fireEvent.click(opcao("1ª metade"));
+    expect(opcao("1ª metade").getAttribute("aria-pressed")).toBe("true");
+    expect(dentro.getByRole("img", { name: /4 pontos, 0 com movimento/ })).toBeTruthy();
+    expect(grafico.querySelectorAll("[data-lacuna]")).toHaveLength(1);
+    fireEvent.click(opcao("2ª metade"));
+    expect(opcao("2ª metade").getAttribute("aria-pressed")).toBe("true");
+    expect(dentro.getByRole("img", { name: /3 pontos, 2 com movimento/ })).toBeTruthy();
+    expect(grafico.querySelectorAll("[data-lacuna]")).toHaveLength(1);
+    fireEvent.click(opcao("Noite toda"));
+    expect(dentro.getByRole("img", { name: /6 pontos, 2 com movimento/ })).toBeTruthy();
+    expect(resumo.textContent).toBe(textoOriginal);
   });
 
   it("sem sessão anterior, diz isso em vez de repetir a atual", async () => {

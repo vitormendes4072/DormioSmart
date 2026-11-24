@@ -13049,3 +13049,23 @@ existe ali. As mutações individuais verificam as falhas com o executor present
 - **As telas depois do login não foram vistas no emulador:** sem conta, só a de login (`UI-43`).
 
 **Procedência.** Branch `feature/UI-43-base-visual`, sobre `develop` `98f4dc0`; Windows 11, Node 22, Edge sem interface, o navegador do app de desktop e o emulador Pixel 6 (Android 37); 23/11.
+
+---
+
+# 2026-11-23 (xvi) — UI-43, etapa 2: a tela Início
+
+**O problema, como foi entendido no início.** O Início tinha o conteúdo certo, mas ainda usava a apresentação do painel antigo. No celular, o selo e o botão do tema ocupavam uma segunda linha abaixo do cabeçalho.
+
+**Hipótese de trabalho.** O cartão escuro e os cartões de métrica do celular da landing dão hierarquia ao registro. Um recorte no gráfico pode mostrar cada metade da sessão mantendo o resumo, os avisos e as demais camadas da tela.
+
+**O que foi testado, e como.** Suíte completa do frontend, lint, TypeScript, Knip e Knip de tipos, build, CSP e orçamento. No Edge com Playwright, oito capturas da demonstração antes e depois a 360 e 390 px e nos dois temas. Conferidos o rótulo da barra, a posição dos controles, o recorte da série e a troca de tema também a 1280 px. Os dois testes novos falharam contra `develop`: faltavam o cartão de destaque acessível e o seletor de período. Com a implementação, retirar o cartão Paradas derrubou “destaca o tempo registrado e distribui as frases em três cartões”. Manter o seletor mas ignorar o recorte ao preparar a série derrubou “recorta o gráfico pelo horário da metade, preservando a lacuna e o resumo”.
+
+**Resultado medido.** 976 testes em 66 arquivos. Os nove testes anteriores do resumo passaram com as mesmas frases, assim como as verificações da ordem das camadas e dos avisos. O painel ficou em 156 630 B gzip de 260 000 B. Login em 146 721 B gzip de 155 000 B e landing em 279 164 B transferidos estimados de 289 800 B. O rótulo “Configurações” mediu 65,2 px em 68 px úteis a 360 px, em uma linha, sem rolagem lateral. Na demonstração, a série passou de 20 para 11 pontos ao escolher a segunda metade. Os demais resultados ficaram estáveis.
+
+**Adaptação.** “Seus registros” virou o título curto, com a etiqueta da sessão acima. Atualizados o teste de rota e o teste que espera a barra inteira escondida no celular. A seleção de período aparece para uma sessão com ao menos dois registros e usa o meio da janela de tempo, com a duração da lacuna recortada em cada metade. Na visão de todas as sessões, o gráfico continua exibindo a série inteira. O desktop e o celular compartilham o estado do botão de tema.
+
+**O que deu errado no caminho.** As primeiras tentativas de rodar o Vitest e gravar o registro foram bloqueadas pelas permissões da worktree e refeitas com escopo autorizado. A primeira chamada de captura perdeu aspas no shell. O roteiro em arquivo resolveu. A suíte reprovou cores literais no componente, então foram movidas para `theme.css`. Ao repetir as capturas em paralelo com a suíte e o build, o Edge acusou falta de recursos. As capturas finais foram refeitas com o navegador livre.
+
+**Risco em aberto.** A inspeção visual foi no navegador com dados de demonstração. O WebView Android e dados de uma conta real não foram usados. O caso de lacuna que atravessa o meio da janela foi exercitado pelo teste de montagem.
+
+**Procedência.** `feature/UI-43-inicio` sobre `develop` `7eadfb5`; Windows 11, Node 24.11.0 e Edge com Playwright; 23/11/2026. Imagens locais em `output/playwright/`, fora dos commits.
