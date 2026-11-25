@@ -31,7 +31,7 @@ export function Layout() {
     <div className="bg-background min-h-screen">
       {estaEmModoDemo() && !painel ? <FaixaDemo /> : null}
       <div className="flex min-h-screen">
-        <Sidebar painel={painel} />
+        <Sidebar />
         {/* pb-20 no celular abre espaço para a barra inferior não cobrir conteúdo */}
         <main className={painel ? "min-w-0 flex-1 px-4 pb-20 pt-5 md:px-[30px] md:pt-[26px]" : "min-w-0 flex-1 overflow-y-auto p-4 pb-20 md:p-8"}>
           {painel ? (
