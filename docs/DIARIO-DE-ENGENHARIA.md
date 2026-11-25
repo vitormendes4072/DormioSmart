@@ -13296,6 +13296,24 @@ Os dois controles originais da etapa também voltaram a falhar sob sabotagem. No
 
 ---
 
+# 2026-11-24 (ix) — UI-43: barra lateral comum às telas autenticadas
+
+**O problema, como foi entendido no início.** Configurações e Noite caíam na barra antiga. A lista de rotas usada para definir o conteúdo do painel também escolhia o modo da barra lateral.
+
+**Hipótese de trabalho.** Usar a barra de workspace em todo Layout corrige a navegação sem mexer na apresentação do conteúdo de cada rota. Os destinos do app continuam vindo de nav.ts.
+
+**O que foi testado, e como.** Nove casos de montagem com os rótulos, ícones, destinos e ordem dos grupos no site e no app. Contra develop e na sabotagem que restaurou o modo baseado na lista de rotas, falharam “mantém a barra lateral workspace no site em /configuracoes”, “mantém a barra lateral workspace no app em /configuracoes” e “mantém a barra lateral workspace no app em /noite”. Os outros seis casos passaram. Rodados suíte completa, lint, TypeScript, Knip, Knip de tipos, build web, CSP e orçamento. O Edge capturou Configurações e Início a 1280 px antes e depois, no claro e no escuro, com conta simulada. O espaçamento computado e o overflow do main ficaram iguais na comparação.
+
+**Resultado medido.** 1023 testes em 67 arquivos. Painel 157 694 B gzip de 260 000 B, login 147 212 B gzip de 155 000 B, landing 279 244 B transferidos estimados de 289 800 B. As oito capturas confirmaram a mesma barra nas duas rotas após a correção.
+
+**Adaptação.** A barra usa sempre o workspace. Configurações mantém o destaque ao ser selecionada. A condição do painel continua cuidando do conteúdo, do espaçamento e da faixa de demonstração.
+
+**O que deu errado no caminho.** A primeira tentativa de rodar Vitest e Vite encontrou a instalação compartilhada sem os executáveis. A worktree usou uma instalação local feita com npm ci a partir do lockfile.
+
+**Risco em aberto.** A conferência visual usou uma conta simulada no navegador. Os destinos do Android foram exercitados pela montagem com plataforma simulada.
+
+**Procedência.** Branch bugfix/UI-43-barra-lateral sobre develop 518ed8a, 24/11/2026. Windows 11, Node 24.11.0 e Edge com Playwright. Capturas em .playwright-mcp/ui43-barra-lateral, fora dos commits.
+
 # 2026-11-25 — UI-43: seleção de aparelhos no cartão do Início
 
 **O problema, como foi entendido no início.** O cartão Seu dispositivo pedia uma seleção sem listar os aparelhos. A lista do topo inclui revogados para acesso ao histórico, então contá-los também escondia o último envio quando sobrava um aparelho disponível.

@@ -955,6 +955,43 @@ describe("montagem real das telas (UI-17)", PRAZO, () => {
     expect(await screen.findByText("Nenhum dispositivo pareado")).toBeTruthy();
   });
 
+  it.each([
+    ["site", "/dashboard"],
+    ["site", "/historico"],
+    ["site", "/dispositivos"],
+    ["site", "/configuracoes"],
+    ["app", "/dashboard"],
+    ["app", "/historico"],
+    ["app", "/dispositivos"],
+    ["app", "/configuracoes"],
+    ["app", "/noite"],
+  ] as const)("mantém a barra lateral workspace no %s em %s", async (plataforma, rota) => {
+    const app = plataforma === "app";
+    const nativo = vi.spyOn(Capacitor, "isNativePlatform").mockReturnValue(app);
+    const plugin = vi.spyOn(Capacitor, "isPluginAvailable").mockImplementation((nome) => nome === "Noite");
+    try {
+      await montar(rota);
+      const barra = await screen.findByRole("navigation", { name: "Navegação principal" });
+      const visaoGeral = ["Visão geral", "/dashboard", "layout-grid"];
+      const historico = ["Histórico", "/historico", "clock-3"];
+      const dispositivos = ["Dispositivos", "/dispositivos", "radio"];
+      const trabalho = app
+        ? [["Noite", "/noite", "moon"], visaoGeral, historico, dispositivos]
+        : [visaoGeral, ["Nova coleta", "/coletar", "activity"], historico, dispositivos];
+      expect(Array.from(barra.children, (item) => item.textContent?.trim())).toEqual([
+        "Workspace", ...trabalho.map(([nome]) => nome), "Preferências", "Configurações",
+      ]);
+      for (const [nome, href, icone] of [...trabalho, ["Configurações", "/configuracoes", "settings"]]) {
+        const link = within(barra).getByRole("link", { name: nome });
+        expect(link.getAttribute("href")).toBe(href);
+        expect(link.querySelector(`svg.lucide-${icone}`)).toBeTruthy();
+      }
+    } finally {
+      nativo.mockRestore();
+      plugin.mockRestore();
+    }
+  });
+
   it("a rota /configuracoes existe e passa pelos guardas até o Layout", async () => {
     await montar("/configuracoes");
 
