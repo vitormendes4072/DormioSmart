@@ -26,6 +26,6 @@ describe("landing leve, app Android", () => {
     render(<MemoryRouter initialEntries={["/?apresentacao=leve"]}><Landing /></MemoryRouter>);
     const link = screen.getByRole("link", { name: "Baixar para Android" });
     expect(link.getAttribute("href")).toBe(URL_DO_APK);
-    expect(document.querySelector("#app-android")?.textContent).toContain(`Versão ${VERSAO_DO_APP_ANDROID}`);
+    expect(document.querySelector("#app-android")?.textContent).toContain(`Versão ${VERSAO_DO_APP_ANDROID} (beta)`);
   });
 });
