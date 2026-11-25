@@ -82,13 +82,22 @@ export function classificarUltimoEnvio(dispositivo: Dispositivo, agora = Date.no
   return idadeMs < JANELA_DE_ENVIO_RECENTE_MS ? "Enviou recentemente" : "Sem envio recente";
 }
 
+export function estadoDoDispositivo(dispositivo: Dispositivo) {
+  if (!estaAtivo(dispositivo)) return "Revogado";
+  if (dispositivo.receber_leituras === false) return "Pausado";
+  return classificarUltimoEnvio(dispositivo) === "Enviou recentemente" ? "Conectado" : "Inativo";
+}
+
 /**
  * "nunca" quando o dispositivo ainda não enviou nada.
  *
  * Distinguir "nunca enviou" de "enviou faz tempo" é o que responde a pergunta
  * real do usuário: o pareamento funcionou?
  */
-export function descreverUltimoContato(dispositivo: Dispositivo): string {
+export function descreverUltimoContato(
+  dispositivo: Dispositivo,
+  estilo: "curto" | "longo" = "curto",
+): string {
   if (!dispositivo.last_seen_at) return "nunca enviou dados";
 
   const quando = new Date(dispositivo.last_seen_at);
@@ -96,10 +105,14 @@ export function descreverUltimoContato(dispositivo: Dispositivo): string {
 
   const minutos = Math.floor((Date.now() - quando.getTime()) / 60_000);
   if (minutos < 1) return "agora mesmo";
-  if (minutos < 60) return `há ${minutos} min`;
+  if (minutos < 60) {
+    return estilo === "longo" ? `há ${minutos} ${minutos === 1 ? "minuto" : "minutos"}` : `há ${minutos} min`;
+  }
 
   const horas = Math.floor(minutos / 60);
-  if (horas < 24) return `há ${horas}h`;
+  if (horas < 24) {
+    return estilo === "longo" ? `há ${horas} ${horas === 1 ? "hora" : "horas"}` : `há ${horas}h`;
+  }
 
   const dias = Math.floor(horas / 24);
   return dias === 1 ? "ontem" : `há ${dias} dias`;

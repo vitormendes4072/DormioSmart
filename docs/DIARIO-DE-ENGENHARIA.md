@@ -13293,3 +13293,23 @@ Os dois controles originais da etapa também voltaram a falhar sob sabotagem. No
 - **A etapa 7 do `UI-43`** (a landing mostrando o app de verdade) ainda falta.
 
 **Procedência.** PRs #280 e #281; `main` `e3ccea4`; deploy `8037168665`; release `app-v1.1.4`; conferências desta máquina (Windows 11) e do autor no SQL Editor; 24/11.
+
+---
+
+# 2026-11-25 — UI-43: seleção de aparelhos no cartão do Início
+
+**O problema, como foi entendido no início.** O cartão Seu dispositivo pedia uma seleção sem listar os aparelhos. A lista do topo inclui revogados para acesso ao histórico, então contá-los também escondia o último envio quando sobrava um aparelho disponível.
+
+**Hipótese de trabalho.** Compartilhar a seleção do topo com o cartão reaproveita o recorte do gráfico e do resumo. A etiqueta e o ícone podem ser usados nas duas telas a partir do mesmo componente.
+
+**O que foi testado, e como.** Os quatro testes de montagem falharam sobre develop 518ed8a e passaram com a correção. Sabotar o clique da linha para escolher o ID errado derrubou “selecionar no cartão sincroniza o topo, o gráfico e o resumo”. Manter o ID ao clicar em Todos derrubou “Todos os dispositivos no cartão restaura o resumo e o gráfico gerais”. Retirar o detalhe do caso de um só disponível derrubou “exibe o último envio direto quando só há um aparelho disponível”. Exibir Inativo no lugar de Pausado derrubou “cada aparelho disponível recebe o ícone, o último envio e a etiqueta de estado”. O Edge verificou o filtro na demonstração sem chamadas à API e capturou os três estados a 360 e 1280 px no claro e no escuro.
+
+**Resultado medido.** 1018 testes em 67 arquivos. Lint, TypeScript, ambos os Knip, build web, CSP, orçamento e build do app passaram. Painel 159 268 B gzip de 260 000 B, login 147 359 B gzip de 155 000 B, landing 279 620 B transferidos estimados de 289 800 B. O pacote manteve fora a demonstração da Noite. O ZIP contém 24 capturas.
+
+**Adaptação.** O cartão lista os aparelhos não revogados, e o topo preserva a consulta de registros antigos. A demonstração do painel ganhou um celular e um travesseiro fictícios. As leituras da noite de exemplo passaram a carregar os IDs desses aparelhos para permitir o recorte local.
+
+**O que deu errado no caminho.** A worktree nova precisou de permissão para instalar o lockfile. A primeira extração da etiqueta removeu também o import da superfície que o pareamento ainda usava. A primeira captura dos detalhes no estado único encontrou dois textos iguais, e passou a localizar o termo acessível do detalhe. O primeiro build ainda continha os nomes fictícios, retirados com a guarda de desenvolvimento na constante. A primeira suíte em paralelo com os builds encontrou a expectativa antiga de lista vazia e um timeout em Sair, que passou isolado sem alteração no teste.
+
+**Risco em aberto.** As capturas usaram conta e API simuladas no navegador. O Android foi verificado pelo build e pela sincronização.
+
+**Procedência.** Branch feature/UI-43-cartao-dispositivos sobre develop 518ed8a, 25/11/2026. Windows 11, Node 24.11.0 e Edge com Playwright. Capturas fora dos commits.
