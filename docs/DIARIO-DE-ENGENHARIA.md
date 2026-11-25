@@ -13346,6 +13346,10 @@ Os dois controles originais da etapa também voltaram a falhar sob sabotagem. No
 
 **Adaptação.** A conferência lê todos os arquivos de `dist` e identifica qual demonstração e qual arquivo provocaram a reprovação. Os testes do gerador conferem os dois IDs no geral e somente o ID do celular no recorte.
 
+**Complemento da revisão da PR #285 (25/11).** O teste “em produção com ?demo=1, busca e devolve os aparelhos da API” substituiu “no build de produção, ?demo=1 não desliga a busca”. Além de verificar a chamada à API, ele confere que a lista devolvida pelo hook vem da resposta. A busca pelos textos da demonstração passou a percorrer todo o `dist/` porque arquivos de `public/`, como a landing, também são publicados fora de `assets/`.
+
+**Verificação do complemento.** Sobre develop 59e7bae, os 11 testes da conferência passaram no Windows 11 com Python 3.13.5, ante 9 na base. Ao limitar a busca a `dist/assets/`, falhou `test_pacote_reprova_texto_da_demonstracao_no_html_da_raiz_do_dist`. O caso com o mesmo texto fora de `dist/` continuou passando. O build com Node 24.11.0 e a conferência no `dist` real passaram.
+
 **O que deu errado no caminho.** O sandbox bloqueou o acesso ao localhost em um teste existente, então a suíte completa foi repetida com acesso ao loopback. O pyreadline emitiu um aviso ao encerrar o pytest no Windows, após a suíte concluir com código zero.
 
 **Risco em aberto.** A guarda de produção dos hooks foi exercitada com a flag do Vite simulada e a API controlada. A presença de conteúdo foi medida no build web real.
