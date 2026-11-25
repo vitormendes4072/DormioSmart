@@ -21,6 +21,7 @@
  * Uso:  http://localhost:5173/dashboard?demo=1
  */
 import { GRAVIDADE, type LeituraSono } from "../types/sleep";
+import type { Dispositivo } from "./dispositivos";
 import { geradorPseudoAleatorio } from "./pseudoAleatorio";
 
 export const PARAMETRO_DEMO = "demo";
@@ -114,4 +115,27 @@ export function estaEmModoDemo(
   if (!ehDesenvolvimento) return false;
   const valor = new URLSearchParams(busca).get(PARAMETRO_DEMO);
   return valor !== null && valor !== "0" && valor !== "false";
+}
+
+const APARELHOS_DEMO = import.meta.env.DEV ? [
+  { id: "demo-travesseiro", nome: "Travesseiro de exemplo", tipo: "travesseiro" },
+  { id: "demo-celular", nome: "Celular de exemplo", tipo: "celular" },
+] as const : [];
+
+export function listarAparelhosDemo(agora = Date.now()): Dispositivo[] {
+  return APARELHOS_DEMO.map((aparelho, indice) => ({
+    ...aparelho,
+    created_at: new Date(agora - 86_400_000).toISOString(),
+    last_seen_at: new Date(agora - (2 + indice) * 60_000).toISOString(),
+    revoked_at: null,
+  }));
+}
+
+export function gerarHistoricoDemo(dispositivo: string | null): LeituraSono[] {
+  return gerarNoiteDemo()
+    .map((leitura, indice) => ({
+      ...leitura,
+      device_id: APARELHOS_DEMO[indice % APARELHOS_DEMO.length]?.id,
+    }))
+    .filter((leitura) => dispositivo === null || leitura.device_id === dispositivo);
 }

@@ -1,7 +1,5 @@
-import { EtiquetaDeRegistro, SUPERFICIE_DO_CARTAO_DE_REGISTRO } from "./CartoesDeRegistro";
-import { MensagemDeFalha } from "./MensagemDeFalha";
-import { AlertTriangle, Check, Copy, Cpu, Loader2, Pencil, Plus, Radio, Smartphone, X } from "lucide-react";
-import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { AlertTriangle, Check, Copy, Loader2, Pencil, Plus, X } from "lucide-react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 
 import { Link } from "react-router";
 
@@ -9,12 +7,11 @@ import { ErroApi } from "../lib/api";
 import { noiteNativaDisponivel } from "../lib/noiteNativa";
 import {
   NOME_MAXIMO,
-  classificarUltimoEnvio,
+  estadoDoDispositivo,
   descreverUltimoContato,
   estaAtivo,
   listarDispositivos,
   rotuloDoTipo,
-  type TipoDeDispositivo,
   parearDispositivo,
   alterarRecebimento,
   renomearDispositivo,
@@ -23,6 +20,9 @@ import {
   type Pareamento,
 } from "../lib/dispositivos";
 import { INPUT_CLS } from "../lib/ui";
+import { CartaoDeDispositivo, EstadoDoDispositivo } from "./CartaoDeDispositivo";
+import { SUPERFICIE_DO_CARTAO_DE_REGISTRO } from "./CartoesDeRegistro";
+import { MensagemDeFalha } from "./MensagemDeFalha";
 
 export function MeusDispositivos({ mostrarPareamento = true }: { mostrarPareamento?: boolean }) {
   const [lista, setLista] = useState<Dispositivo[]>([]);
@@ -307,8 +307,6 @@ function LinhaDoDispositivo({
   const idErroNome = useId();
   const ativo = estaAtivo(dispositivo);
   const pausado = dispositivo.receber_leituras === false;
-  const estado = !ativo ? "Revogado" : pausado ? "Pausado"
-    : classificarUltimoEnvio(dispositivo) === "Enviou recentemente" ? "Conectado" : "Inativo";
   const [alterandoRecebimento, setAlterandoRecebimento] = useState(false);
 
   async function alternarRecebimento() {
@@ -401,7 +399,7 @@ function LinhaDoDispositivo({
             <div className="min-w-0 space-y-1">
               <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                 <p className="max-w-full truncate text-sm font-semibold text-foreground">{dispositivo.nome}</p>
-                <EstadoDoDispositivo estado={estado} />
+                <EstadoDoDispositivo estado={estadoDoDispositivo(dispositivo)} />
               </div>
               <p className="text-xs text-muted-foreground">
                 {rotuloDoTipo(dispositivo.tipo)}
@@ -442,33 +440,5 @@ function LinhaDoDispositivo({
         )}
       </div>
     </CartaoDeDispositivo>
-  );
-}
-
-export function CartaoDeDispositivo({ tipo, children }: { tipo?: TipoDeDispositivo; children: ReactNode }) {
-  const Icone = tipo === "celular" ? Smartphone : tipo === "travesseiro" ? Radio : Cpu;
-  return (
-    <li className={`${SUPERFICIE_DO_CARTAO_DE_REGISTRO} flex min-w-0 items-start gap-3 p-4 sm:items-center`}>
-      <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
-        <Icone className="size-4" aria-hidden />
-      </span>
-      {children}
-    </li>
-  );
-}
-
-const TONS_DO_ESTADO = {
-  Conectado: "bg-emerald-500/10 text-emerald-800 dark:text-emerald-300",
-  Pausado: "bg-amber-500/10 text-amber-800 dark:text-amber-300",
-  Inativo: "bg-secondary text-muted-foreground",
-  Revogado: "bg-secondary text-muted-foreground",
-};
-
-export function EstadoDoDispositivo({ estado }: { estado: keyof typeof TONS_DO_ESTADO }) {
-  return (
-    <span className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 ${TONS_DO_ESTADO[estado]}`}>
-      <span className="size-1.5 shrink-0 rounded-full bg-current" aria-hidden />
-      <EtiquetaDeRegistro cor="text-inherit">{estado}</EtiquetaDeRegistro>
-    </span>
   );
 }
