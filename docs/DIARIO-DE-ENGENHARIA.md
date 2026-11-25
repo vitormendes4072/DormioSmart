@@ -13428,3 +13428,24 @@ Os dois controles originais da etapa também voltaram a falhar sob sabotagem. No
 - **A instabilidade dos testes da Noite** logo depois do `npm ci`, sem item ainda.
 
 **Procedência.** PRs #287 e #289; `main` `65f0ad4`; deploy `8065762574`; release `app-v1.1.5`; conferências desta máquina (Windows 11, emulador Pixel 6); 25/11.
+
+# 2026-11-25 (v) — APP-22 mesclado e o APP-23 aberto: dois celulares na mesma conta
+
+**O problema, como foi entendido no início.** Na revisão da PR #291 (`APP-22`, o nome do celular pelo modelo), o Codex e o Claude apontaram que a rota `POST /api/devices/celular` devolve sempre o celular ativo mais antigo da conta. Com dois aparelhos na mesma conta, as noites dos dois vão para um registro só, e o nome passa a ser o modelo do primeiro.
+
+**Hipótese de trabalho.** O defeito é anterior ao `APP-22` (as noites já se misturavam) e só fica visível agora, porque o nome deixou de ser genérico. Corrigir exige um identificador estável por aparelho, que é dado pessoal novo: vira item próprio, e o `APP-22` entra como está.
+
+**O que foi testado, e como.**
+- **A PR #291**, com dois ajustes do Claude no commit `920b8c9`: a frase do modelo foi para a linha "Nome do dispositivo" da tabela da seção 2.1 da política, e o método `modeloDoAparelho` entrou na interface `PluginNoite` (com os três objetos falsos do plugin completados). `tsc`, `vitest` (1 044), lint, os dois Knip, o build e a conferência do pacote; no backend, os testes do modelo e da política (21). O CI 19 de 19, lido antes do merge.
+- **Antes dos ajustes, na revisão:** backend 751 passam e 1 pula; frontend 1 044; JVM 48; 7 de 7 sabotagens pegas (renomear sempre, pela rota e pelo filtro; sem validação; a falha derrubando a rota; o Java repetindo o fabricante e aceitando "unknown"; o app sem mandar o modelo).
+- **O item novo:** `conferir_backlog.py --conferir` com a contagem 41 e o `APP-23` no quadro.
+
+**Resultado medido.** A #291 mesclada em `develop` (`22eb20a`). O `APP-23` aberto em L0, com a contagem 41 (L0 10) conferida pelo script.
+
+**Adaptação.** O Codex tinha tipado o método à parte porque, na interface, os três objetos falsos do plugin deixam de compilar; o ajuste completou os três em vez de manter o tipo separado.
+
+**O que deu errado no caminho.** A primeira tentativa do ajuste do tipo reprovou no `tsc` pelos três objetos falsos, e só passou depois de completá-los.
+
+**Risco em aberto.** O nome errado para quem usar dois celulares na mesma conta, até o `APP-23`. O `APP-22` só chega ao celular com o APK 1.1.6.
+
+**Procedência.** PR #291 (`920b8c9`), merge `22eb20a`; conferências nesta máquina (Windows 11, Node 24.11.0, Python 3.13); 25/11.
