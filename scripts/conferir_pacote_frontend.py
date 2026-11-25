@@ -10,7 +10,10 @@ DIST = Path(__file__).resolve().parents[1] / "frontend" / "dist"
 LIMITES = {"Dashboard": 260_000, "Login": 155_000, "Landing": 289_800}
 PROTOTIPO = "landing-prototipo.html"
 IMAGEM_INLINE_GRANDE = re.compile(r"data:image/[^\s\"'<>]{4096,}", re.IGNORECASE)
-TEXTO_DA_DEMO_DA_NOITE = "Cenário da demonstração".encode("utf-8")
+TEXTOS_DE_DEMONSTRACAO = {
+    "da Noite": "Cenário da demonstração".encode("utf-8"),
+    "de aparelhos do painel": b"Travesseiro de exemplo",
+}
 
 
 def arquivos_da_rota(manifesto, pagina):
@@ -100,16 +103,21 @@ def main():
         falhou |= not ok
     # A guarda da rota pode bloquear a demo mesmo quando seu chunk foi empacotado.
     # Examine também os assets que a página de produção nunca carrega.
-    assets_com_demo = [
-        arquivo.relative_to(DIST).as_posix()
-        for arquivo in sorted((DIST / "assets").rglob("*"))
-        if arquivo.is_file() and TEXTO_DA_DEMO_DA_NOITE in arquivo.read_bytes()
-    ]
-    if assets_com_demo:
-        print(f"Produção contém a demonstração da Noite: {', '.join(assets_com_demo)}", file=sys.stderr)
-    else:
-        print("Produção sem texto exclusivo da demonstração da Noite (OK)")
-    return int(falhou or bool(assets_com_demo))
+    arquivos_com_demo = {demo: [] for demo in TEXTOS_DE_DEMONSTRACAO}
+    for arquivo in sorted(DIST.rglob("*")):
+        if not arquivo.is_file():
+            continue
+        conteudo = arquivo.read_bytes()
+        for demo, texto in TEXTOS_DE_DEMONSTRACAO.items():
+            if texto in conteudo:
+                arquivos_com_demo[demo].append(arquivo.relative_to(DIST).as_posix())
+    for demo, arquivos in arquivos_com_demo.items():
+        if arquivos:
+            print(f"Produção contém a demonstração {demo}: {', '.join(arquivos)}", file=sys.stderr)
+            falhou = True
+        else:
+            print(f"Produção sem texto exclusivo da demonstração {demo} (OK)")
+    return int(falhou)
 
 
 if __name__ == "__main__":

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { ehMovimento, intensidade } from "../types/sleep";
-import { LEITURAS_POR_PADRAO, estaEmModoDemo, gerarNoiteDemo } from "./demo";
+import { LEITURAS_POR_PADRAO, estaEmModoDemo, gerarHistoricoDemo, gerarNoiteDemo } from "./demo";
 import { calcularMetricas } from "./metricas";
 
 describe("estaEmModoDemo — salvaguarda de producao", () => {
@@ -23,6 +23,18 @@ describe("estaEmModoDemo — salvaguarda de producao", () => {
   it("aceita desligar explicitamente", () => {
     expect(estaEmModoDemo("?demo=0", true)).toBe(false);
     expect(estaEmModoDemo("?demo=false", true)).toBe(false);
+  });
+});
+
+describe("gerarHistoricoDemo", () => {
+  it("inclui leituras dos dois aparelhos na visão geral", () => {
+    const aparelhos = gerarHistoricoDemo(null).map((leitura) => leitura.device_id);
+    expect(new Set(aparelhos)).toEqual(new Set(["demo-travesseiro", "demo-celular"]));
+  });
+
+  it("gera leituras do celular quando o histórico é filtrado para ele", () => {
+    const aparelhos = gerarHistoricoDemo("demo-celular").map((leitura) => leitura.device_id);
+    expect(new Set(aparelhos)).toEqual(new Set(["demo-celular"]));
   });
 });
 

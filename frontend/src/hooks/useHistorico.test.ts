@@ -4,6 +4,7 @@ import { createElement, StrictMode, type ReactNode } from "react";
 import { act, cleanup, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { buscarHistorico, ErroApi } from "../lib/api";
+import * as demo from "../lib/demo";
 import { useHistorico } from "./useHistorico";
 import type { LeituraSono } from "../types/sleep";
 
@@ -46,6 +47,7 @@ beforeEach(() => {
 });
 afterEach(() => {
   cleanup();
+  vi.restoreAllMocks();
   vi.unstubAllEnvs();
   window.history.replaceState(null, "", "/");
 });
@@ -151,5 +153,30 @@ describe("useHistorico: somente o carregamento vigente pode publicar estado", ()
     expect(buscar).not.toHaveBeenCalled();
     expect(result.current.leituras.length).toBeGreaterThan(0);
     expect(result.current).toMatchObject({ carregando: false, erro: null });
+  });
+
+  it("em produção com ?demo=1, carrega o histórico da API", async () => {
+    vi.stubEnv("DEV", false);
+    window.history.replaceState(null, "", "/dashboard?demo=1");
+    // A guarda deste hook precisa funcionar mesmo se a detecção aceitar a URL.
+    vi.spyOn(demo, "estaEmModoDemo").mockReturnValue(true);
+    const gerar = vi.spyOn(demo, "gerarHistoricoDemo");
+    const pedido = pendente();
+    const { result } = renderHook(() => useHistorico({ dispositivo: "servidor" }));
+    expect(gerar).not.toHaveBeenCalled();
+    expect(buscar).toHaveBeenCalledExactlyOnceWith({
+      dispositivo: "servidor", desde: null, ate: null, limite: null,
+    });
+    await pedido.sucesso("servidor");
+    expect(result.current).toMatchObject({ leituras: dados("servidor"), carregando: false, erro: null });
+  });
+
+  it("repassa o aparelho escolhido ao histórico da demonstração", () => {
+    window.history.replaceState(null, "", "/dashboard?demo=1");
+    const gerar = vi.spyOn(demo, "gerarHistoricoDemo");
+    const { result } = renderHook(() => useHistorico({ dispositivo: "demo-celular" }));
+    expect(gerar).toHaveBeenCalledExactlyOnceWith("demo-celular");
+    expect(buscar).not.toHaveBeenCalled();
+    expect(new Set(result.current.leituras.map((leitura) => leitura.device_id))).toEqual(new Set(["demo-celular"]));
   });
 });

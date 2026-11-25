@@ -63,6 +63,23 @@ def test_pagina_ausente_reprova_com_diagnostico(monkeypatch, tmp_path, capsys):
     assert "Dashboard: página ausente do manifesto" in mensagem
     assert "Login: página ausente do manifesto" in mensagem
 
+
+def test_pacote_reprova_aparelho_da_demonstracao_fora_da_rota(monkeypatch, tmp_path, capsys):
+    pasta_manifesto = tmp_path / ".vite"
+    pasta_manifesto.mkdir()
+    (pasta_manifesto / "manifest.json").write_text("{}", encoding="utf-8")
+    monkeypatch.setattr(_orcamento, "DIST", tmp_path)
+    # Isola a inspeção dos arquivos publicados do cálculo dos orçamentos.
+    monkeypatch.setattr(_orcamento, "LIMITES", {})
+    arquivo = tmp_path / "demo-oculta.js"
+    arquivo.write_text('const nome = "Travesseiro";', encoding="utf-8")
+    assert _orcamento.main() == 0
+
+    arquivo.write_text('const nome = "Travesseiro de exemplo";', encoding="utf-8")
+    assert _orcamento.main() == 1
+    assert "Produção contém a demonstração de aparelhos do painel: demo-oculta.js" in capsys.readouterr().err
+
+
 def test_landing_conta_iframe_e_imagens_imediatas_sem_contar_lazy(manifesto, tmp_path):
     manifesto["src/pages/Landing.tsx"] = {"file": "landing.js"}
     (tmp_path / _orcamento.PROTOTIPO).write_text(
