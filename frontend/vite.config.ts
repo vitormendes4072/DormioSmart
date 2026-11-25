@@ -2,7 +2,7 @@ import path from 'path'
 
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv } from 'vite'
 
 // O bundle original do Figma trazia um `figmaAssetResolver`, que resolvia
 // imports `figma:asset/...` para src/assets. Nenhum arquivo usa esses imports
@@ -12,15 +12,26 @@ import { defineConfig } from 'vite'
 // endereço completo do backend. O site não usa este modo e segue relativo.
 const BACKEND_DO_APP = 'https://dormio-smart.vercel.app'
 
+function definirAmbienteDoApp(mode: string) {
+  const env = loadEnv(mode, __dirname)
+  if (process.env.DORMIO_APP_SEM_SUPABASE !== '1') {
+    const faltam = ['VITE_SUPABASE_URL', 'VITE_SUPABASE_ANON_KEY'].filter(
+      (variavel) => !env[variavel]?.trim(),
+    )
+    if (faltam.length > 0) {
+      throw new Error(
+        `Build do app Android: falta configuração em ${faltam.join(', ')}. Preencha essas variáveis no arquivo necessário frontend/.env.`,
+      )
+    }
+  }
+
+  return {
+    'import.meta.env.VITE_API_BASE': JSON.stringify(process.env.VITE_API_BASE ?? BACKEND_DO_APP),
+  }
+}
+
 export default defineConfig(({ mode }) => ({
-  define:
-    mode === 'app'
-      ? {
-          'import.meta.env.VITE_API_BASE': JSON.stringify(
-            process.env.VITE_API_BASE ?? BACKEND_DO_APP,
-          ),
-        }
-      : {},
+  define: mode === 'app' ? definirAmbienteDoApp(mode) : {},
   build: { manifest: mode !== 'app', minify: mode === 'app' ? 'esbuild' : 'terser' },
   plugins: [react(), tailwindcss()],
   resolve: {

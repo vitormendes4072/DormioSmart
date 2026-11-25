@@ -13355,3 +13355,23 @@ Os dois controles originais da etapa também voltaram a falhar sob sabotagem. No
 **Risco em aberto.** A guarda de produção dos hooks foi exercitada com a flag do Vite simulada e a API controlada. A presença de conteúdo foi medida no build web real.
 
 **Procedência.** Branch bugfix/UI-43-testes-cartao-dispositivos sobre develop 07cdb15, 25/11/2026. Executado no Windows 11, Node 24.11.0 e Python 3.13.5.
+
+---
+
+# 2026-11-25 (iii) — APP-21: configuração de login no APK Android
+
+**O problema, como foi entendido no início.** O APK 1.1.4 publicado exibia “Autenticação não configurada” ao tentar entrar. O 1.1.3 trazia o endereço necessário no JavaScript empacotado.
+
+**Hipótese de trabalho.** Reprovar o build Android sem as duas variáveis evita gerar um pacote inválido em uma cópia limpa. Conferir o APK final detecta a falta de configuração no arquivo entregue e valida a versão pelo manifesto.
+
+**O que foi testado, e como.** Foram executados três builds Android com e sem `frontend/.env` e com a liberação do CI. Os seis testes novos do Vite carregam a configuração de build. Com o arquivo original de `develop`, os três casos de configuração ausente falharam. Os cinco testes Python exercitam ZIPs falsos e simulam a saída do `aapt2`. Ao desativar as checagens de configuração e versão separadamente, falharam três testes e um teste, respectivamente. O script também foi executado com o `aapt2` em dois APKs públicos baixados via `gh release download`.
+
+**Resultado medido.** O build Android sem `.env` reprovou com código 1 e indicou as duas variáveis. Com `.env` passou com código 0. Sem `.env` e com a liberação explícita passou com código 0. O APK 1.1.4 (SHA-256 `13a35f53…41b0`) reprovou por ausência do endereço (código 1) e o 1.1.3 passou (código 0). A versão nativa conferiu nos dois. Passaram 1.041 testes Vitest em 68 arquivos, os cinco testes Python, lint, TypeScript, ambos os Knip, o build web e a conferência do pacote.
+
+**Adaptação.** A liberação fica no passo de build do APK sem credenciais no CI. A conferência completa do APK fica no roteiro manual da release junto com o login real no emulador. A versão 1.1.5 usa `versionCode` 7.
+
+**O que deu errado no caminho.** O 1.1.4 saiu sem `VITE_SUPABASE_*` porque foi gerado numa cópia limpa sem `frontend/.env` e o Vite aceitou a falta de configuração. `/health` e as rotas sem credencial passaram sem exercitar o login do APK. Durante a correção, a primeira consulta ao GitHub e a primeira escrita direta na worktree foram bloqueadas pelo sandbox e repetidas com permissão.
+
+**Risco em aberto.** A geração e a assinatura do APK 1.1.5, o login com uma conta de teste no emulador e a publicação ficam com o autor na release do `APP-21`.
+
+**Procedência.** Branch `bugfix/APP-21-apk-sem-supabase` sobre `develop` `93bd0ea`, em 25/11/2026. Executado no Windows com Node 24.11.0, Python 3.13.5 e `aapt2` do Build-Tools 36.0.0. Os APKs históricos ficaram fora dos commits.
