@@ -13331,3 +13331,23 @@ Os dois controles originais da etapa também voltaram a falhar sob sabotagem. No
 **Risco em aberto.** As capturas usaram conta e API simuladas no navegador. O Android foi verificado pelo build e pela sincronização.
 
 **Procedência.** Branch feature/UI-43-cartao-dispositivos sobre develop 518ed8a, 25/11/2026. Windows 11, Node 24.11.0 e Edge com Playwright. Capturas fora dos commits.
+
+---
+
+# 2026-11-25 (ii) — UI-43: testes da revisão do cartão Seu dispositivo
+
+**O problema, como foi entendido no início.** Na revisão da PR #284, a remoção do texto do link, das guardas e do filtro da demonstração passou sem acusação. A checagem de produção também deixava passar os aparelhos fictícios empacotados.
+
+**Hipótese de trabalho.** A montagem pode proteger o nome acessível e o destino do link, e a inspeção de `dist` pode pegar conteúdo mesmo fora dos arquivos que a rota inicial carrega. Os testes dos hooks podem isolar as guardas redundantes com `DEV=false` e um detector de demonstração que aceita a URL.
+
+**O que foi testado, e como.** A montagem cobre o link com leituras, sem leituras e com `?demo=1`. Deixar o link sem texto derrubou os três casos “Gerenciar dispositivos no cartão … aponta para o destino do workspace”. Remover as guardas separadamente derrubou “em produção com ?demo=1, o estado inicial ignora os aparelhos de exemplo”, “em produção com ?demo=1, busca e devolve os aparelhos da API” e “em produção com ?demo=1, carrega o histórico da API”. Passar `null` ao gerador derrubou “repassa o aparelho escolhido ao histórico da demonstração”. Trocar a guarda de `APARELHOS_DEMO` por `true` produziu um build válido que a conferência reprovou ao encontrar “Travesseiro de exemplo” em um chunk. O teste Python novo falhou contra o script da base e passou com a nova checagem.
+
+**Resultado medido.** 1035 testes do frontend em 67 arquivos e 9 testes do script passaram. Lint, TypeScript, Knip, Knip de tipos, build web e conferência do pacote passaram no código restaurado.
+
+**Adaptação.** A conferência lê todos os arquivos de `dist` e identifica qual demonstração e qual arquivo provocaram a reprovação. Os testes do gerador conferem os dois IDs no geral e somente o ID do celular no recorte.
+
+**O que deu errado no caminho.** O sandbox bloqueou o acesso ao localhost em um teste existente, então a suíte completa foi repetida com acesso ao loopback. O pyreadline emitiu um aviso ao encerrar o pytest no Windows, após a suíte concluir com código zero.
+
+**Risco em aberto.** A guarda de produção dos hooks foi exercitada com a flag do Vite simulada e a API controlada. A presença de conteúdo foi medida no build web real.
+
+**Procedência.** Branch bugfix/UI-43-testes-cartao-dispositivos sobre develop 07cdb15, 25/11/2026. Executado no Windows 11, Node 24.11.0 e Python 3.13.5.

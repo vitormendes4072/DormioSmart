@@ -1263,6 +1263,22 @@ describe("o painel em camadas (UI-40)", PRAZO, () => {
   const duasSessoes = () => [0, 30, 60, 7200, 7230, 7260].map((s) => leitura(s));
 
   const cartaoDoAparelho = () => within(screen.getByRole("complementary", { name: "Resumo do dispositivo" }));
+
+  it.each([
+    ["com leituras", "/dashboard", "/dispositivos", true],
+    ["sem leituras", "/dashboard?demo=0", "/dispositivos", false],
+    ["em demonstração", "/dashboard?demo=1", "/dispositivos?demo=1", true],
+  ] as const)("Gerenciar dispositivos no cartão %s aponta para o destino do workspace", async (_, rota, destino, comLeituras) => {
+    responder({ dispositivos: [travesseiro], leituras: comLeituras ? [0, 30, 60].map((s) => leitura(s)) : [] });
+    await montar(rota);
+    if (comLeituras) {
+      await screen.findByRole("heading", { name: /^Última sessão/ });
+    } else {
+      await screen.findByText("Nenhum registro ainda");
+    }
+    expect(cartaoDoAparelho().getByRole("link", { name: "Gerenciar dispositivos" }).getAttribute("href")).toBe(destino);
+  });
+
   const seletorDeAparelho = () => screen.getByRole<HTMLSelectElement>("combobox", { name: "Dispositivo exibido" });
   const serieDeMovimento = () => within(screen.getByRole("figure", { name: "Movimento ao longo do tempo" }));
 
