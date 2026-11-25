@@ -13375,3 +13375,35 @@ Os dois controles originais da etapa também voltaram a falhar sob sabotagem. No
 **Risco em aberto.** A geração e a assinatura do APK 1.1.5, o login com uma conta de teste no emulador e a publicação ficam com o autor na release do `APP-21`.
 
 **Procedência.** Branch `bugfix/APP-21-apk-sem-supabase` sobre `develop` `93bd0ea`, em 25/11/2026. Executado no Windows com Node 24.11.0, Python 3.13.5 e `aapt2` do Build-Tools 36.0.0. Os APKs históricos ficaram fora dos commits.
+
+# 2026-11-25 (iv) — release R20: o app 1.1.5, que volta a fazer login
+
+**O problema, como foi entendido no início.** O APK 1.1.4 (release R19) não fazia login: saiu sem `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` (diário, 25/11 (iii)). Quem o instalou não entra na conta e, por isso, também não vê o aviso de versão nova. O `develop` tinha ainda, fora da produção, a barra lateral e o cartão "Seu dispositivo" do `UI-43` (PRs #283 a #286).
+
+**Hipótese de trabalho.** Um APK 1.1.5, gerado de uma cópia com o `frontend/.env` e conferido pelo `conferir_apk.py` antes de publicar, resolve o login; quem tem a 1.1.4 instala por cima sem perder as noites. Sem migração, o merge em `main` não tem janela de risco no banco.
+
+**O que foi testado, e como.**
+- **O APK:** gerado de `develop` `219aad0` numa cópia limpa com o `frontend/.env` copiado; o `build:app` com a trava nova passou. `conferir_apk.py`, `apksigner verify --print-certs`, `aapt2 dump badging` e o SHA-256.
+- **No emulador Pixel 6:** instalação do APK de release, a tela de login e um login com um e-mail inexistente (`example.com`), para ver se o pedido chega ao Supabase.
+- **A release:** o rascunho `app-v1.1.5` com o APK e as notas; depois do merge, a tag no `65f0ad4`, a publicação como `latest` e o aviso no topo das notas da `app-v1.1.4`.
+- **O merge:** a PR #289 com o CI 12 de 12, lido antes do merge.
+- **A produção, depois do deploy** `8065762574`: `/health`, rotas sem credencial, a CSP das cinco páginas, a landing, o `versao-do-app.json`, o link `latest` e o `conferir_producao.py`.
+
+**Resultado medido.**
+- **O APK:** `conferir_apk.py` com código 0 (endereço do Supabase presente, versão 1.1.5); certificado do autor, `versionCode` 7, não depurável, três ABIs, 5 261 705 B, SHA-256 `910fff57…e62f`.
+- **No emulador:** a resposta foi "E-mail ou senha incorretos", e não "Autenticação não configurada".
+- **A produção:** `/health` `200`, contrato 2.12.0; `401` sem token em dispositivos, no `POST` do celular e nas features; a CSP igual nas cinco páginas; a landing com "Versão 1.1.5 (beta)"; o `versao-do-app.json` com 1.1.5; o link `latest` com `200` e o mesmo SHA-256 do APK gerado.
+
+**Adaptação.** O emulador tinha um 1.1.3 de depuração, com outra assinatura: o Android recusou a instalação por cima (`INSTALL_FAILED_UPDATE_INCOMPATIBLE`), e o app foi desinstalado **só no emulador** antes de instalar o de release. O login de verdade, com uma conta, fica com o autor: a conferência daqui usou só um e-mail inexistente.
+
+**O que deu errado no caminho.**
+- **O System UI do emulador travou** logo depois de ligar ("System UI isn't responding"), duas vezes; fechado pelo diálogo, o app abriu.
+- **A digitação pelo `adb` cortou o e-mail** em "con"; a resposta do Supabase veio do mesmo jeito, e o teste continua valendo para o que pretendia (o pedido sair do app).
+- **Na revisão da PR #287, dois testes da Noite** (cenários "parada" e "gravando") caíram na primeira rodada depois do `npm ci` e passaram nas duas seguintes; é a segunda vez. Não investigado.
+
+**Risco em aberto.**
+- **O login com uma conta de verdade no 1.1.5** e as telas novas no celular do autor.
+- **Quem tem a 1.1.3 ou a 1.1.4 precisa ser avisado pelo autor:** nenhuma das duas mostra o aviso (a 1.1.3 não tem o recurso; a 1.1.4 não passa do login).
+- **A instabilidade dos testes da Noite** logo depois do `npm ci`, sem item ainda.
+
+**Procedência.** PRs #287 e #289; `main` `65f0ad4`; deploy `8065762574`; release `app-v1.1.5`; conferências desta máquina (Windows 11, emulador Pixel 6); 25/11.
