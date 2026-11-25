@@ -1,6 +1,7 @@
 import type { PayloadDeLeitura } from "./acelerometro";
 import { requisitarJson, urlDaApi } from "./api";
 import type { Dispositivo } from "./dispositivos";
+import { Noite, noiteNativaDisponivel } from "./noiteNativa";
 
 /**
  * Envio da leitura coletada pelo celular (APP-08).
@@ -48,10 +49,19 @@ export class ErroDeIngestao extends Error {
  * APP-19: o app manda a propria versao (`versaoApp`), para contar quantas
  * pessoas tem cada versao instalada; o site nao manda nada.
  */
-export function prepararDispositivoDoCelular(versaoApp?: string): Promise<Dispositivo> {
+export async function prepararDispositivoDoCelular(versaoApp?: string): Promise<Dispositivo> {
+  let modelo: string | undefined;
+  if (noiteNativaDisponivel()) {
+    try {
+      modelo = (await Noite.modeloDoAparelho()).modelo;
+    } catch {
+      // Plugins antigos ou indisponiveis nao devem impedir o envio.
+    }
+  }
+  const corpo = { ...(versaoApp ? { versao_app: versaoApp } : {}), ...(modelo ? { modelo } : {}) };
   return requisitarJson<Dispositivo>("/api/devices/celular", {
     method: "POST",
-    ...(versaoApp ? { body: JSON.stringify({ versao_app: versaoApp }) } : {}),
+    ...(Object.keys(corpo).length ? { body: JSON.stringify(corpo) } : {}),
   });
 }
 
