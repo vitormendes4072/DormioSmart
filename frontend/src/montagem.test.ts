@@ -955,6 +955,43 @@ describe("montagem real das telas (UI-17)", PRAZO, () => {
     expect(await screen.findByText("Nenhum dispositivo pareado")).toBeTruthy();
   });
 
+  it.each([
+    ["site", "/dashboard"],
+    ["site", "/historico"],
+    ["site", "/dispositivos"],
+    ["site", "/configuracoes"],
+    ["app", "/dashboard"],
+    ["app", "/historico"],
+    ["app", "/dispositivos"],
+    ["app", "/configuracoes"],
+    ["app", "/noite"],
+  ] as const)("mantém a barra lateral workspace no %s em %s", async (plataforma, rota) => {
+    const app = plataforma === "app";
+    const nativo = vi.spyOn(Capacitor, "isNativePlatform").mockReturnValue(app);
+    const plugin = vi.spyOn(Capacitor, "isPluginAvailable").mockImplementation((nome) => nome === "Noite");
+    try {
+      await montar(rota);
+      const barra = await screen.findByRole("navigation", { name: "Navegação principal" });
+      const visaoGeral = ["Visão geral", "/dashboard", "layout-grid"];
+      const historico = ["Histórico", "/historico", "clock-3"];
+      const dispositivos = ["Dispositivos", "/dispositivos", "radio"];
+      const trabalho = app
+        ? [["Noite", "/noite", "moon"], visaoGeral, historico, dispositivos]
+        : [visaoGeral, ["Nova coleta", "/coletar", "activity"], historico, dispositivos];
+      expect(Array.from(barra.children, (item) => item.textContent?.trim())).toEqual([
+        "Workspace", ...trabalho.map(([nome]) => nome), "Preferências", "Configurações",
+      ]);
+      for (const [nome, href, icone] of [...trabalho, ["Configurações", "/configuracoes", "settings"]]) {
+        const link = within(barra).getByRole("link", { name: nome });
+        expect(link.getAttribute("href")).toBe(href);
+        expect(link.querySelector(`svg.lucide-${icone}`)).toBeTruthy();
+      }
+    } finally {
+      nativo.mockRestore();
+      plugin.mockRestore();
+    }
+  });
+
   it("a rota /configuracoes existe e passa pelos guardas até o Layout", async () => {
     await montar("/configuracoes");
 
@@ -1224,6 +1261,101 @@ describe("o painel em camadas (UI-40)", PRAZO, () => {
   }
 
   const duasSessoes = () => [0, 30, 60, 7200, 7230, 7260].map((s) => leitura(s));
+
+  const cartaoDoAparelho = () => within(screen.getByRole("complementary", { name: "Resumo do dispositivo" }));
+
+  it.each([
+    ["com leituras", "/dashboard", "/dispositivos", true],
+    ["sem leituras", "/dashboard?demo=0", "/dispositivos", false],
+    ["em demonstração", "/dashboard?demo=1", "/dispositivos?demo=1", true],
+  ] as const)("Gerenciar dispositivos no cartão %s aponta para o destino do workspace", async (_, rota, destino, comLeituras) => {
+    responder({ dispositivos: [travesseiro], leituras: comLeituras ? [0, 30, 60].map((s) => leitura(s)) : [] });
+    await montar(rota);
+    if (comLeituras) {
+      await screen.findByRole("heading", { name: /^Última sessão/ });
+    } else {
+      await screen.findByText("Nenhum registro ainda");
+    }
+    expect(cartaoDoAparelho().getByRole("link", { name: "Gerenciar dispositivos" }).getAttribute("href")).toBe(destino);
+  });
+
+  const seletorDeAparelho = () => screen.getByRole<HTMLSelectElement>("combobox", { name: "Dispositivo exibido" });
+  const serieDeMovimento = () => within(screen.getByRole("figure", { name: "Movimento ao longo do tempo" }));
+
+  function responderComDoisAparelhos() {
+    responder({
+      dispositivos: [travesseiro, celular],
+      leituras: [0, 30, 60, 90, 120].map((s) => leitura(s, {
+        device_id: s < 90 ? "p" : "c",
+        captured_at: new Date(Date.UTC(2026, 10, 24, 6, 0, -s)).toISOString(),
+      })),
+    });
+  }
+
+  it("selecionar no cartão sincroniza o topo, o gráfico e o resumo", async () => {
+    responderComDoisAparelhos();
+    await abrir();
+    expect(serieDeMovimento().getByRole("img", { name: /5 pontos,/ })).toBeTruthy();
+    fireEvent.click(cartaoDoAparelho().getByRole("button", { name: "Meu celular", pressed: false }));
+    await screen.findByRole("heading", { name: "Última sessão · Meu celular" });
+    expect(seletorDeAparelho().value).toBe("c");
+    expect(cartaoDoAparelho().getByRole("button", { name: "Meu celular", pressed: true })).toBeTruthy();
+    expect(cartaoDoAparelho().getByRole("term").textContent).toBe("Último envio");
+    expect(serieDeMovimento().getByRole("img", { name: /2 pontos,/ })).toBeTruthy();
+  });
+
+  it("Todos os dispositivos no cartão restaura o resumo e o gráfico gerais", async () => {
+    responderComDoisAparelhos();
+    await abrir();
+    fireEvent.change(seletorDeAparelho(), { target: { value: "c" } });
+    await screen.findByRole("heading", { name: "Última sessão · Meu celular" });
+    expect(cartaoDoAparelho().getByRole("button", { name: "Meu celular", pressed: true })).toBeTruthy();
+    fireEvent.click(cartaoDoAparelho().getByRole("button", { name: "Todos os dispositivos", pressed: false }));
+    await screen.findByRole("heading", { name: "Última sessão · Todos os dispositivos" });
+    expect(seletorDeAparelho().value).toBe("");
+    expect(cartaoDoAparelho().getByRole("button", { name: "Todos os dispositivos", pressed: true })).toBeTruthy();
+    expect(serieDeMovimento().getByRole("img", { name: /5 pontos,/ })).toBeTruthy();
+  });
+
+  it("exibe o último envio direto quando só há um aparelho disponível", async () => {
+    responder({
+      dispositivos: [
+        { ...travesseiro, last_seen_at: new Date(Date.now() - 125_000).toISOString() },
+        { ...celular, revoked_at: new Date().toISOString() },
+      ],
+      leituras: [0, 30, 60].map((s) => leitura(s)),
+    });
+    await abrir();
+    expect(cartaoDoAparelho().getByRole("term").textContent).toBe("Último envio");
+    expect(cartaoDoAparelho().getByText("Enviou recentemente")).toBeTruthy();
+    expect(cartaoDoAparelho().queryByText(/nenhum dispositivo disponível/i)).toBeNull();
+  });
+
+  it("cada aparelho disponível recebe o ícone, o último envio e a etiqueta de estado", async () => {
+    const ultimoEnvio = new Date(Date.now() - 125_000).toISOString();
+    responder({
+      dispositivos: [
+        { ...travesseiro, last_seen_at: ultimoEnvio },
+        { ...celular, receber_leituras: false, last_seen_at: ultimoEnvio },
+        { ...travesseiro, id: "i", nome: "De reserva" },
+        { ...celular, id: "r", nome: "Revogado de exemplo", revoked_at: ultimoEnvio },
+      ],
+      leituras: [0, 30, 60].map((s) => leitura(s)),
+    });
+    await abrir();
+    for (const [name, estado, icone, envio] of [
+      ["Meu travesseiro", "Conectado", "radio", "há 2 minutos"],
+      ["Meu celular", "Pausado", "smartphone", "há 2 minutos"],
+      ["De reserva", "Inativo", "radio", "Nunca enviou dados"],
+    ]) {
+      const linha = cartaoDoAparelho().getByRole("button", { name });
+      expect(within(linha).getByText(estado)).toBeTruthy();
+      expect(within(linha).getByText(envio)).toBeTruthy();
+      expect(linha.querySelector(`svg.lucide-${icone}`)).toBeTruthy();
+    }
+    expect(cartaoDoAparelho().queryByText("Revogado de exemplo")).toBeNull();
+    expect(screen.getByRole("option", { name: /Revogado de exemplo/ })).toBeTruthy();
+  });
 
   it("volta para Noite toda ao trocar de aparelho", async () => {
     responder({

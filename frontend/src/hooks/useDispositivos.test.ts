@@ -9,6 +9,7 @@
  */
 import { cleanup, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import * as demo from "../lib/demo";
 
 const listarDispositivos = vi.fn();
 vi.mock("../lib/dispositivos", () => ({
@@ -20,18 +21,22 @@ import { useDispositivos } from "./useDispositivos";
 afterEach(() => {
   cleanup();
   listarDispositivos.mockReset();
+  vi.restoreAllMocks();
   vi.unstubAllEnvs();
   window.history.replaceState(null, "", "/");
 });
 
 describe("useDispositivos e o modo demonstração (DEMO-03)", () => {
-  it("em demonstração, não chama a API e devolve a lista vazia", async () => {
+  it("em demonstração, não chama a API e devolve aparelhos de exemplo", async () => {
     vi.stubEnv("DEV", true);
     window.history.replaceState(null, "", "/dashboard?demo=1");
     const { result } = renderHook(() => useDispositivos());
     await new Promise((r) => setTimeout(r, 0));
     expect(listarDispositivos).not.toHaveBeenCalled();
-    expect(result.current).toEqual([]);
+    expect(result.current.map(({ nome, tipo }) => ({ nome, tipo }))).toEqual([
+      { nome: "Travesseiro de exemplo", tipo: "travesseiro" },
+      { nome: "Celular de exemplo", tipo: "celular" },
+    ]);
   });
 
   it("fora da demonstração, busca a lista e a devolve", async () => {
@@ -42,11 +47,29 @@ describe("useDispositivos e o modo demonstração (DEMO-03)", () => {
     expect(listarDispositivos).toHaveBeenCalledTimes(1);
   });
 
-  it("no build de produção, ?demo=1 não desliga a busca", async () => {
+  it("em produção com ?demo=1, busca e devolve os aparelhos da API", async () => {
     vi.stubEnv("DEV", false);
     window.history.replaceState(null, "", "/dashboard?demo=1");
-    listarDispositivos.mockResolvedValue([]);
-    renderHook(() => useDispositivos());
-    await waitFor(() => expect(listarDispositivos).toHaveBeenCalledTimes(1));
+    // Force a detecção para isolar a guarda do efeito da guarda do helper.
+    vi.spyOn(demo, "estaEmModoDemo").mockReturnValue(true);
+    const aparelhos = [{ id: "servidor", nome: "Aparelho da conta" }];
+    listarDispositivos.mockResolvedValue(aparelhos);
+    const { result } = renderHook(() => useDispositivos());
+    expect(listarDispositivos).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(result.current).toEqual(aparelhos));
+  });
+
+  it("em produção com ?demo=1, o estado inicial ignora os aparelhos de exemplo", async () => {
+    vi.stubEnv("DEV", false);
+    window.history.replaceState(null, "", "/dashboard?demo=1");
+    // Exercita a guarda do inicializador mesmo se a detecção aceitar a URL.
+    vi.spyOn(demo, "estaEmModoDemo").mockReturnValue(true);
+    const listarAparelhosDemo = vi.spyOn(demo, "listarAparelhosDemo");
+    const aparelhos = [{ id: "servidor", nome: "Aparelho da conta" }];
+    listarDispositivos.mockResolvedValue(aparelhos);
+    const { result } = renderHook(() => useDispositivos());
+    expect(listarAparelhosDemo).not.toHaveBeenCalled();
+    expect(result.current).toEqual([]);
+    await waitFor(() => expect(result.current).toEqual(aparelhos));
   });
 });

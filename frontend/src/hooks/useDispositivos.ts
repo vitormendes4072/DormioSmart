@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-import { estaEmModoDemo } from "../lib/demo";
+import { estaEmModoDemo, listarAparelhosDemo } from "../lib/demo";
 import { listarDispositivos, type Dispositivo } from "../lib/dispositivos";
 
 /**
@@ -12,15 +12,11 @@ import { listarDispositivos, type Dispositivo } from "../lib/dispositivos";
  * carregou seria trocar um recurso acessorio pelo principal.
  */
 export function useDispositivos(): Dispositivo[] {
-  const [dispositivos, setDispositivos] = useState<Dispositivo[]>([]);
+  const [dispositivos, setDispositivos] = useState<Dispositivo[]>(() => import.meta.env.DEV && estaEmModoDemo() ? listarAparelhosDemo() : []);
 
   useEffect(() => {
-    // DEMO-03 (04/11): no modo demonstração não há conta nem dispositivo, e o
-    // `useHistorico` já gera os dados no cliente. Sem este retorno a lista era
-    // pedida à API mesmo assim, e o servidor de desenvolvimento sem backend
-    // respondia 500 no console. Lista vazia é o painel sem seletor — o mesmo
-    // que a falha silenciosa abaixo já produzia, sem o pedido.
-    if (estaEmModoDemo()) return;
+    // A demonstração tem sua própria lista local, sem consulta à API.
+    if (import.meta.env.DEV && estaEmModoDemo()) return;
     let vivo = true;
     listarDispositivos()
       .then((lista) => {

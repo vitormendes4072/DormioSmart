@@ -13261,3 +13261,117 @@ Os dois controles originais da etapa também voltaram a falhar sob sabotagem. No
 **Risco em aberto.** A simulação verifica os dados enviados pelo frontend. A execução da exclusão no servidor é coberta em outra suíte.
 
 **Procedência.** PR #279, feature/UI-43-configuracoes sobre develop d81f4f9, 24/11/2026. Windows 11, Node 24.11.0.
+
+# 2026-11-24 (viii) — release R19: o app 1.1.4, o redesenho e a 026
+
+**O problema, como foi entendido no início.** O `develop` acumulava, fora da produção, o `APP-19`, o `UI-42`, o `APP-20` (etapa 1) e o `UI-43` (etapas 0 a 6). O `APP-19` precisa da migração 026 para gravar a versão; o lembrete, a versão e as telas novas só chegam ao celular num APK novo.
+
+**Hipótese de trabalho.** A 026 só acrescenta colunas e uma restrição, que o backend de hoje não usa; aplicada **antes** do merge, não há janela em que algo falhe. O APK sai de `develop` depois da versão subir para 1.1.4.
+
+**O que foi testado, e como.**
+- **A versão:** `versionName` 1.1.4, `versionCode` 6, a constante do app, a landing e o `versao-do-app.json` (PR #280, CI 19 de 19).
+- **O SQL da 026 para o autor** (`dados-locais/R19-migracao-026.sql`): a migração e uma conferência de três colunas, num Postgres 17 local com as migrações até a 025.
+- **O APK:** gerado de `develop` `1ce28e9` numa cópia limpa; `apksigner`, `aapt2`, as três ABIs e o SHA-256.
+- **A release:** o rascunho `app-v1.1.4` com o APK e as notas; depois do merge, a tag no `e3ccea4` e a publicação.
+- **O merge:** a PR #281 com o CI 14 de 14, lido antes do merge.
+- **A produção, depois do deploy** `8037168665`: `/health`, rotas sem credencial, a CSP das cinco páginas, a landing, o `versao-do-app.json`, o link `latest` e o `conferir_producao.py`.
+
+**Resultado medido.**
+- **O SQL no Postgres local:** `f f f` sem a 026, `t t t` com ela e de novo. **Na produção:** três de três, segundo o autor. **Produção com 001–019 e 022–026.**
+- **O APK:** certificado do autor, `versionCode` 6, não depurável, três ABIs, 5 259 861 B, SHA-256 `13a35f53…41b0`; o link `latest` baixa o mesmo arquivo.
+- **A produção:** `/health` `200`, contrato 2.12.0; `401` sem token; a CSP igual nas cinco páginas, com `font-src 'self'` e `style-src 'self' 'unsafe-inline'`, sem o Google Fonts; a landing com "Versão 1.1.4 (beta)"; o `versao-do-app.json` com 1.1.4.
+
+**Adaptação.** O APK foi gerado numa cópia limpa do `develop`, e não no checkout principal: lá, o `npm ci` não conseguiu substituir um arquivo nativo preso por outro processo, e o build do Android falhou junto.
+
+**O que deu errado no caminho.**
+- **A primeira conferência da 026 dava erro sem a migração,** em vez de `false`: uma das checagens consultava a coluna nova. Foi tirada, e o teste refeito.
+- **O build no checkout principal falhou** pelo arquivo preso (acima).
+- **A pasta da cópia do APK ficou presa** depois (caminho longo demais), como outras desta semana.
+
+**Risco em aberto.**
+- **Não visto no celular do autor:** as telas novas, o lembrete e a versão gravada (`UI-43`, `APP-20`, `APP-19`). O app até a 1.1.3 não avisa da 1.1.4: quem o tem precisa ser avisado pelo autor.
+- **A etapa 7 do `UI-43`** (a landing mostrando o app de verdade) ainda falta.
+
+**Procedência.** PRs #280 e #281; `main` `e3ccea4`; deploy `8037168665`; release `app-v1.1.4`; conferências desta máquina (Windows 11) e do autor no SQL Editor; 24/11.
+
+---
+
+# 2026-11-24 (ix) — UI-43: barra lateral comum às telas autenticadas
+
+**O problema, como foi entendido no início.** Configurações e Noite caíam na barra antiga. A lista de rotas usada para definir o conteúdo do painel também escolhia o modo da barra lateral.
+
+**Hipótese de trabalho.** Usar a barra de workspace em todo Layout corrige a navegação sem mexer na apresentação do conteúdo de cada rota. Os destinos do app continuam vindo de nav.ts.
+
+**O que foi testado, e como.** Nove casos de montagem com os rótulos, ícones, destinos e ordem dos grupos no site e no app. Contra develop e na sabotagem que restaurou o modo baseado na lista de rotas, falharam “mantém a barra lateral workspace no site em /configuracoes”, “mantém a barra lateral workspace no app em /configuracoes” e “mantém a barra lateral workspace no app em /noite”. Os outros seis casos passaram. Rodados suíte completa, lint, TypeScript, Knip, Knip de tipos, build web, CSP e orçamento. O Edge capturou Configurações e Início a 1280 px antes e depois, no claro e no escuro, com conta simulada. O espaçamento computado e o overflow do main ficaram iguais na comparação.
+
+**Resultado medido.** 1023 testes em 67 arquivos. Painel 157 694 B gzip de 260 000 B, login 147 212 B gzip de 155 000 B, landing 279 244 B transferidos estimados de 289 800 B. As oito capturas confirmaram a mesma barra nas duas rotas após a correção.
+
+**Adaptação.** A barra usa sempre o workspace. Configurações mantém o destaque ao ser selecionada. A condição do painel continua cuidando do conteúdo, do espaçamento e da faixa de demonstração.
+
+**O que deu errado no caminho.** A primeira tentativa de rodar Vitest e Vite encontrou a instalação compartilhada sem os executáveis. A worktree usou uma instalação local feita com npm ci a partir do lockfile.
+
+**Risco em aberto.** A conferência visual usou uma conta simulada no navegador. Os destinos do Android foram exercitados pela montagem com plataforma simulada.
+
+**Procedência.** Branch bugfix/UI-43-barra-lateral sobre develop 518ed8a, 24/11/2026. Windows 11, Node 24.11.0 e Edge com Playwright. Capturas em .playwright-mcp/ui43-barra-lateral, fora dos commits.
+
+# 2026-11-25 — UI-43: seleção de aparelhos no cartão do Início
+
+**O problema, como foi entendido no início.** O cartão Seu dispositivo pedia uma seleção sem listar os aparelhos. A lista do topo inclui revogados para acesso ao histórico, então contá-los também escondia o último envio quando sobrava um aparelho disponível.
+
+**Hipótese de trabalho.** Compartilhar a seleção do topo com o cartão reaproveita o recorte do gráfico e do resumo. A etiqueta e o ícone podem ser usados nas duas telas a partir do mesmo componente.
+
+**O que foi testado, e como.** Os quatro testes de montagem falharam sobre develop 518ed8a e passaram com a correção. Sabotar o clique da linha para escolher o ID errado derrubou “selecionar no cartão sincroniza o topo, o gráfico e o resumo”. Manter o ID ao clicar em Todos derrubou “Todos os dispositivos no cartão restaura o resumo e o gráfico gerais”. Retirar o detalhe do caso de um só disponível derrubou “exibe o último envio direto quando só há um aparelho disponível”. Exibir Inativo no lugar de Pausado derrubou “cada aparelho disponível recebe o ícone, o último envio e a etiqueta de estado”. O Edge verificou o filtro na demonstração sem chamadas à API e capturou os três estados a 360 e 1280 px no claro e no escuro.
+
+**Resultado medido.** 1018 testes em 67 arquivos. Lint, TypeScript, ambos os Knip, build web, CSP, orçamento e build do app passaram. Painel 159 268 B gzip de 260 000 B, login 147 359 B gzip de 155 000 B, landing 279 620 B transferidos estimados de 289 800 B. O pacote manteve fora a demonstração da Noite. O ZIP contém 24 capturas.
+
+**Adaptação.** O cartão lista os aparelhos não revogados, e o topo preserva a consulta de registros antigos. A demonstração do painel ganhou um celular e um travesseiro fictícios. As leituras da noite de exemplo passaram a carregar os IDs desses aparelhos para permitir o recorte local.
+
+**O que deu errado no caminho.** A worktree nova precisou de permissão para instalar o lockfile. A primeira extração da etiqueta removeu também o import da superfície que o pareamento ainda usava. A primeira captura dos detalhes no estado único encontrou dois textos iguais, e passou a localizar o termo acessível do detalhe. O primeiro build ainda continha os nomes fictícios, retirados com a guarda de desenvolvimento na constante. A primeira suíte em paralelo com os builds encontrou a expectativa antiga de lista vazia e um timeout em Sair, que passou isolado sem alteração no teste.
+
+**Risco em aberto.** As capturas usaram conta e API simuladas no navegador. O Android foi verificado pelo build e pela sincronização.
+
+**Procedência.** Branch feature/UI-43-cartao-dispositivos sobre develop 518ed8a, 25/11/2026. Windows 11, Node 24.11.0 e Edge com Playwright. Capturas fora dos commits.
+
+---
+
+# 2026-11-25 (ii) — UI-43: testes da revisão do cartão Seu dispositivo
+
+**O problema, como foi entendido no início.** Na revisão da PR #284, a remoção do texto do link, das guardas e do filtro da demonstração passou sem acusação. A checagem de produção também deixava passar os aparelhos fictícios empacotados.
+
+**Hipótese de trabalho.** A montagem pode proteger o nome acessível e o destino do link, e a inspeção de `dist` pode pegar conteúdo mesmo fora dos arquivos que a rota inicial carrega. Os testes dos hooks podem isolar as guardas redundantes com `DEV=false` e um detector de demonstração que aceita a URL.
+
+**O que foi testado, e como.** A montagem cobre o link com leituras, sem leituras e com `?demo=1`. Deixar o link sem texto derrubou os três casos “Gerenciar dispositivos no cartão … aponta para o destino do workspace”. Remover as guardas separadamente derrubou “em produção com ?demo=1, o estado inicial ignora os aparelhos de exemplo”, “em produção com ?demo=1, busca e devolve os aparelhos da API” e “em produção com ?demo=1, carrega o histórico da API”. Passar `null` ao gerador derrubou “repassa o aparelho escolhido ao histórico da demonstração”. Trocar a guarda de `APARELHOS_DEMO` por `true` produziu um build válido que a conferência reprovou ao encontrar “Travesseiro de exemplo” em um chunk. O teste Python novo falhou contra o script da base e passou com a nova checagem.
+
+**Resultado medido.** 1035 testes do frontend em 67 arquivos e 9 testes do script passaram. Lint, TypeScript, Knip, Knip de tipos, build web e conferência do pacote passaram no código restaurado.
+
+**Adaptação.** A conferência lê todos os arquivos de `dist` e identifica qual demonstração e qual arquivo provocaram a reprovação. Os testes do gerador conferem os dois IDs no geral e somente o ID do celular no recorte.
+
+**Complemento da revisão da PR #285 (25/11).** O teste “em produção com ?demo=1, busca e devolve os aparelhos da API” substituiu “no build de produção, ?demo=1 não desliga a busca”. Além de verificar a chamada à API, ele confere que a lista devolvida pelo hook vem da resposta. A busca pelos textos da demonstração passou a percorrer todo o `dist/` porque arquivos de `public/`, como a landing, também são publicados fora de `assets/`.
+
+**Verificação do complemento.** Sobre develop 59e7bae, os 11 testes da conferência passaram no Windows 11 com Python 3.13.5, ante 9 na base. Ao limitar a busca a `dist/assets/`, falhou `test_pacote_reprova_texto_da_demonstracao_no_html_da_raiz_do_dist`. O caso com o mesmo texto fora de `dist/` continuou passando. O build com Node 24.11.0 e a conferência no `dist` real passaram.
+
+**O que deu errado no caminho.** O sandbox bloqueou o acesso ao localhost em um teste existente, então a suíte completa foi repetida com acesso ao loopback. O pyreadline emitiu um aviso ao encerrar o pytest no Windows, após a suíte concluir com código zero.
+
+**Risco em aberto.** A guarda de produção dos hooks foi exercitada com a flag do Vite simulada e a API controlada. A presença de conteúdo foi medida no build web real.
+
+**Procedência.** Branch bugfix/UI-43-testes-cartao-dispositivos sobre develop 07cdb15, 25/11/2026. Executado no Windows 11, Node 24.11.0 e Python 3.13.5.
+
+---
+
+# 2026-11-25 (iii) — APP-21: configuração de login no APK Android
+
+**O problema, como foi entendido no início.** O APK 1.1.4 publicado exibia “Autenticação não configurada” ao tentar entrar. O 1.1.3 trazia o endereço necessário no JavaScript empacotado.
+
+**Hipótese de trabalho.** Reprovar o build Android sem as duas variáveis evita gerar um pacote inválido em uma cópia limpa. Conferir o APK final detecta a falta de configuração no arquivo entregue e valida a versão pelo manifesto.
+
+**O que foi testado, e como.** Foram executados três builds Android com e sem `frontend/.env` e com a liberação do CI. Os seis testes novos do Vite carregam a configuração de build. Com o arquivo original de `develop`, os três casos de configuração ausente falharam. Os cinco testes Python exercitam ZIPs falsos e simulam a saída do `aapt2`. Ao desativar as checagens de configuração e versão separadamente, falharam três testes e um teste, respectivamente. O script também foi executado com o `aapt2` em dois APKs públicos baixados via `gh release download`.
+
+**Resultado medido.** O build Android sem `.env` reprovou com código 1 e indicou as duas variáveis. Com `.env` passou com código 0. Sem `.env` e com a liberação explícita passou com código 0. O APK 1.1.4 (SHA-256 `13a35f53…41b0`) reprovou por ausência do endereço (código 1) e o 1.1.3 passou (código 0). A versão nativa conferiu nos dois. Passaram 1.041 testes Vitest em 68 arquivos, os cinco testes Python, lint, TypeScript, ambos os Knip, o build web e a conferência do pacote.
+
+**Adaptação.** A liberação fica no passo de build do APK sem credenciais no CI. A conferência completa do APK fica no roteiro manual da release junto com o login real no emulador. A versão 1.1.5 usa `versionCode` 7.
+
+**O que deu errado no caminho.** O 1.1.4 saiu sem `VITE_SUPABASE_*` porque foi gerado numa cópia limpa sem `frontend/.env` e o Vite aceitou a falta de configuração. `/health` e as rotas sem credencial passaram sem exercitar o login do APK. Durante a correção, a primeira consulta ao GitHub e a primeira escrita direta na worktree foram bloqueadas pelo sandbox e repetidas com permissão.
+
+**Risco em aberto.** A geração e a assinatura do APK 1.1.5, o login com uma conta de teste no emulador e a publicação ficam com o autor na release do `APP-21`.
+
+**Procedência.** Branch `bugfix/APP-21-apk-sem-supabase` sobre `develop` `93bd0ea`, em 25/11/2026. Executado no Windows com Node 24.11.0, Python 3.13.5 e `aapt2` do Build-Tools 36.0.0. Os APKs históricos ficaram fora dos commits.

@@ -93,6 +93,9 @@ jobs:
       # que vai aos testadores (docs/DISTRIBUICAO-DO-APP.md).
       - name: Empacotar o frontend no app
         working-directory: frontend
+        env:
+          # O APK do CI serve para conferir a compilação e é gerado sem credenciais.
+          DORMIO_APP_SEM_SUPABASE: "1"
         run: npm run build:app
 
       - name: Testes de JVM e APK de release

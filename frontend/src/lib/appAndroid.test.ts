@@ -11,8 +11,9 @@ const ler = (caminho: string) => readFileSync(resolve(caminho), "utf8");
 const gradle = ler("android/app/build.gradle");
 
 describe("a versão do APK", () => {
-  it("é a mesma no build.gradle e no que a landing anuncia", () => {
+  it("é a mesma no build.gradle e no que o aviso de atualização consulta", () => {
     expect(gradle).toContain(`versionName "${VERSAO_DO_APP_ANDROID}"`);
+    expect(JSON.parse(ler("public/versao-do-app.json"))).toEqual({ versao: VERSAO_DO_APP_ANDROID });
   });
 
   it("subiu o versionCode acima do 1 do primeiro APK (o Android recusa instalar por cima um número igual)", () => {
@@ -33,7 +34,7 @@ describe("o download na landing completa", () => {
   });
 
   it("anuncia a versão publicada e avisa da instalação fora da Play Store", () => {
-    expect(secao?.textContent).toContain(`Versão ${VERSAO_DO_APP_ANDROID}`);
+    expect(secao?.textContent).toContain(`Versão ${VERSAO_DO_APP_ANDROID} (beta)`);
     expect(secao?.textContent).toContain("permitir a instalação desta fonte");
     expect(secao?.textContent).not.toContain("indisponível");
   });
