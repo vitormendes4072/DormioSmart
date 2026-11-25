@@ -109,9 +109,11 @@ export interface PluginNoite {
   marcarEnviadas(o: { arquivo: string; ate: number }): Promise<{ enviadas: number }>;
   /** Grava as anotações (junta com as que já havia); devolve o que ficou. */
   salvarNotas(o: { arquivo: string; notas: NotasDaNoite }): Promise<NotasDaNoite>;
+  /** APP-22: fabricante e modelo informados pelo Android, sem nome pessoal. */
+  modeloDoAparelho(): Promise<{ modelo?: string }>;
 }
 
-export const Noite = registerPlugin<PluginNoite & { modeloDoAparelho(): Promise<{ modelo?: string }> }>("Noite");
+export const Noite = registerPlugin<PluginNoite>("Noite");
 
 type Plataforma = Pick<typeof Capacitor, "isNativePlatform" | "isPluginAvailable">;
 
