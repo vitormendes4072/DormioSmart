@@ -64,20 +64,42 @@ def test_pagina_ausente_reprova_com_diagnostico(monkeypatch, tmp_path, capsys):
     assert "Login: página ausente do manifesto" in mensagem
 
 
-def test_pacote_reprova_aparelho_da_demonstracao_fora_da_rota(monkeypatch, tmp_path, capsys):
-    pasta_manifesto = tmp_path / ".vite"
-    pasta_manifesto.mkdir()
+@pytest.fixture
+def dist_para_inspecao(monkeypatch, tmp_path):
+    dist = tmp_path / "dist"
+    pasta_manifesto = dist / ".vite"
+    pasta_manifesto.mkdir(parents=True)
     (pasta_manifesto / "manifest.json").write_text("{}", encoding="utf-8")
-    monkeypatch.setattr(_orcamento, "DIST", tmp_path)
+    monkeypatch.setattr(_orcamento, "DIST", dist)
     # Isola a inspeção dos arquivos publicados do cálculo dos orçamentos.
     monkeypatch.setattr(_orcamento, "LIMITES", {})
-    arquivo = tmp_path / "demo-oculta.js"
+    return dist
+
+
+def test_pacote_reprova_aparelho_da_demonstracao_fora_da_rota(dist_para_inspecao, capsys):
+    arquivo = dist_para_inspecao / "demo-oculta.js"
     arquivo.write_text('const nome = "Travesseiro";', encoding="utf-8")
     assert _orcamento.main() == 0
 
     arquivo.write_text('const nome = "Travesseiro de exemplo";', encoding="utf-8")
     assert _orcamento.main() == 1
     assert "Produção contém a demonstração de aparelhos do painel: demo-oculta.js" in capsys.readouterr().err
+
+
+def test_pacote_reprova_texto_da_demonstracao_no_html_da_raiz_do_dist(dist_para_inspecao, capsys):
+    arquivo = dist_para_inspecao / "landing-prototipo.html"
+    arquivo.write_text("<p>Cenário da demonstração</p>", encoding="utf-8")
+
+    assert _orcamento.main() == 1
+    assert "Produção contém a demonstração da Noite: landing-prototipo.html" in capsys.readouterr().err
+
+
+def test_pacote_ignora_texto_da_demonstracao_fora_do_dist(dist_para_inspecao, capsys):
+    arquivo = dist_para_inspecao.parent / "landing-prototipo.html"
+    arquivo.write_text("<p>Cenário da demonstração</p>", encoding="utf-8")
+
+    assert _orcamento.main() == 0
+    assert capsys.readouterr().err == ""
 
 
 def test_landing_conta_iframe_e_imagens_imediatas_sem_contar_lazy(manifesto, tmp_path):

@@ -102,7 +102,7 @@ def main():
         print(f"{pagina}: {bruto} B, {gzip} {unidade}, teto {limite} B ({'OK' if ok else 'EXCEDIDO'})")
         falhou |= not ok
     # A guarda da rota pode bloquear a demo mesmo quando seu chunk foi empacotado.
-    # Examine também os assets que a página de produção nunca carrega.
+    # Arquivos de public/, como a landing, também são publicados em dist/.
     arquivos_com_demo = {demo: [] for demo in TEXTOS_DE_DEMONSTRACAO}
     for arquivo in sorted(DIST.rglob("*")):
         if not arquivo.is_file():
