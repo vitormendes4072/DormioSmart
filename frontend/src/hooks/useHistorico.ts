@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { ErroApi, buscarHistorico, type FiltroDeHistorico } from "../lib/api";
-import { estaEmModoDemo, gerarNoiteDemo } from "../lib/demo";
+import { estaEmModoDemo, gerarHistoricoDemo } from "../lib/demo";
 import type { LeituraSono } from "../types/sleep";
 
 type EstadoHistorico = {
@@ -40,8 +40,8 @@ export function useHistorico(filtro: FiltroDeHistorico = {}): EstadoHistorico {
     setErro(null);
     try {
       // A demonstracao continua local e guardada por build de desenvolvimento.
-      const dados = estaEmModoDemo()
-        ? gerarNoiteDemo()
+      const dados = import.meta.env.DEV && estaEmModoDemo()
+        ? gerarHistoricoDemo(dispositivo)
         : await buscarHistorico({ dispositivo, desde, ate, limite });
       if (vigente()) setLeituras(dados);
     } catch (e) {

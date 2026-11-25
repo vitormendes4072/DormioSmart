@@ -1,5 +1,4 @@
 import { SeletorSegmentado } from "../components/SeletorSegmentado";
-import { Radio } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { Link, useLocation } from "react-router";
 
@@ -8,12 +7,13 @@ import { GraficoDeMovimento } from "../components/GraficoDeMovimento";
 import { destinoDoWorkspace } from "../components/nav";
 import { Carregando, FalhaAoCarregar, SemLeituras } from "../components/EstadoDaTela";
 import { NotaDeEscopo } from "../components/NotaDeEscopo";
+import { ResumoDeDispositivos } from "../components/ResumoDeDispositivos";
 import { ResumoDaSessao } from "../components/ResumoDaSessao";
 import { AvisoDeMistura, SeletorDeDispositivo } from "../components/SeletorDeDispositivo";
 import { useDispositivos } from "../hooks/useDispositivos";
 import { useHistorico } from "../hooks/useHistorico";
 import { LIMITE_DO_PAINEL } from "../lib/api";
-import { origemDaTemperatura, classificarUltimoEnvio, descreverRecorte, descreverUltimoContato, serieMisturaInstrumentos, type Dispositivo } from "../lib/dispositivos";
+import { origemDaTemperatura, descreverRecorte, serieMisturaInstrumentos } from "../lib/dispositivos";
 import { calcularCobertura } from "../lib/cobertura";
 import {
   calcularMetricas,
@@ -93,18 +93,26 @@ export function Dashboard() {
     ? descreverRecorte(dispositivos, dispositivos[0].id)
     : descreverRecorte(dispositivos, dispositivo);
 
-  const dispositivoDoResumo = dispositivo === null && dispositivos.length === 1
-    ? dispositivos[0]
-    : dispositivos.find((item) => item.id === dispositivo);
+  function selecionarDispositivo(id: string | null) {
+    setDispositivo(id);
+    setPeriodo("Noite toda");
+  }
 
   const seletor = (
     <SeletorDeDispositivo
       dispositivos={dispositivos}
       selecionado={dispositivo}
-      aoSelecionar={(id) => {
-        setDispositivo(id);
-        setPeriodo("Noite toda");
-      }}
+      aoSelecionar={selecionarDispositivo}
+    />
+  );
+  const resumoDeDispositivos = (
+    <ResumoDeDispositivos
+      dispositivos={dispositivos}
+      selecionado={dispositivo}
+      aoSelecionar={selecionarDispositivo}
+      destinoGerenciar={destinoDoWorkspace("/dispositivos", search)}
+      className={CARTAO}
+      classeDoLink={LINK_DO_CARTAO}
     />
   );
 
@@ -137,15 +145,7 @@ export function Dashboard() {
         {avisoDePausa}
         <NotaDeEscopo />
         <div id="sessoes-recentes"><SemLeituras /></div>
-        <div id="resumo-dispositivo" className="space-y-3">
-          {dispositivoDoResumo && (
-            <aside aria-label="Resumo do dispositivo" className="rounded-[14px] border border-border bg-card p-4">
-              <h2 className="mb-2 text-sm font-semibold text-foreground">{instrumento}</h2>
-              <DetalhesDoEnvio dispositivo={dispositivoDoResumo} />
-            </aside>
-          )}
-          <Link to={destinoDoWorkspace("/dispositivos", search)} className="text-sm font-semibold text-primary">Gerenciar dispositivos</Link>
-        </div>
+        {resumoDeDispositivos}
       </div>
     );
   }
@@ -304,31 +304,7 @@ export function Dashboard() {
             </figcaption>
           )}
         </figure>
-        <aside id="resumo-dispositivo" aria-label="Resumo do dispositivo" className={`flex min-w-0 flex-col gap-3 ${CARTAO}`}>
-          <h2 className="text-base font-extrabold tracking-tight text-foreground">Seu dispositivo</h2>
-          <div className="flex items-start gap-3">
-            <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
-              <Radio className="size-5" aria-hidden />
-            </span>
-            <p className="min-w-0 break-words text-sm font-medium text-foreground">
-              {dispositivoDoResumo ? instrumento : "Todos os dispositivos"}
-            </p>
-          </div>
-          {dispositivoDoResumo ? (
-            <div className="border-t border-border pt-3">
-              <DetalhesDoEnvio dispositivo={dispositivoDoResumo} />
-            </div>
-          ) : (
-            <p className="border-t border-border pt-3 text-sm text-muted-foreground">
-              {dispositivos.length > 1
-                ? "Selecione um dispositivo para consultar seu último envio."
-                : "Nenhum dispositivo disponível para detalhar."}
-            </p>
-          )}
-          <Link to={destinoDoWorkspace("/dispositivos", search)} className={`mt-auto self-start ${LINK_DO_CARTAO}`}>
-            Gerenciar dispositivos
-          </Link>
-        </aside>
+        {resumoDeDispositivos}
       </div>
 
       {/* Fora do aviso de lacuna de propósito: numa captação de ESP32 com
@@ -506,26 +482,6 @@ export function Dashboard() {
           qualquer captura dela, mas não na frente. */}
       <NotaDeEscopo />
     </div>
-  );
-}
-
-function DetalhesDoEnvio({ dispositivo }: { dispositivo: Dispositivo }) {
-  const estado = classificarUltimoEnvio(dispositivo);
-
-  return (
-    <dl className="space-y-1 text-sm">
-      <dt className="text-muted-foreground">Último envio</dt>
-      <dd className="flex flex-wrap items-center gap-2">
-        {dispositivo.last_seen_at && estado !== "Horário indisponível" && (
-          <span className="font-medium text-foreground">{descreverUltimoContato(dispositivo)}</span>
-        )}
-        <span className={`rounded-full px-2 py-1 text-xs font-semibold ${estado === "Enviou recentemente"
-          ? "bg-emerald-500/10 text-emerald-800 dark:text-emerald-300"
-          : "bg-secondary text-muted-foreground"}`}>
-          {estado}
-        </span>
-      </dd>
-    </dl>
   );
 }
 

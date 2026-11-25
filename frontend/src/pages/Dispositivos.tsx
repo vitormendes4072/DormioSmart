@@ -3,7 +3,8 @@ import { useLocation } from "react-router";
 
 import { BarraDoWorkspace } from "../components/BarraDoWorkspace";
 import { EtiquetaDeRegistro, SUPERFICIE_DO_CARTAO_DE_REGISTRO } from "../components/CartoesDeRegistro";
-import { CartaoDeDispositivo, EstadoDoDispositivo, MeusDispositivos } from "../components/MeusDispositivos";
+import { CartaoDeDispositivo, EstadoDoDispositivo } from "../components/CartaoDeDispositivo";
+import { MeusDispositivos } from "../components/MeusDispositivos";
 import { estaEmModoDemo } from "../lib/demo";
 import type { TipoDeDispositivo } from "../lib/dispositivos";
 import { noiteNativaDisponivel } from "../lib/noiteNativa";

@@ -25,13 +25,16 @@ afterEach(() => {
 });
 
 describe("useDispositivos e o modo demonstração (DEMO-03)", () => {
-  it("em demonstração, não chama a API e devolve a lista vazia", async () => {
+  it("em demonstração, não chama a API e devolve aparelhos de exemplo", async () => {
     vi.stubEnv("DEV", true);
     window.history.replaceState(null, "", "/dashboard?demo=1");
     const { result } = renderHook(() => useDispositivos());
     await new Promise((r) => setTimeout(r, 0));
     expect(listarDispositivos).not.toHaveBeenCalled();
-    expect(result.current).toEqual([]);
+    expect(result.current.map(({ nome, tipo }) => ({ nome, tipo }))).toEqual([
+      { nome: "Travesseiro de exemplo", tipo: "travesseiro" },
+      { nome: "Celular de exemplo", tipo: "celular" },
+    ]);
   });
 
   it("fora da demonstração, busca a lista e a devolve", async () => {
