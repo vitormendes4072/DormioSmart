@@ -583,7 +583,7 @@ describe("montagem real das telas (UI-17)", PRAZO, () => {
     simularSessoesNaBorda(quantidade);
     await montar("/dashboard");
     const aviso = "Período incompleto: só os registros mais recentes foram carregados.";
-    const verTodas = await screen.findByRole("button", { name: /ver todas/i });
+    const verTodas = await screen.findByRole("button", { name: /ver as \d+ sessões/i });
     expect(screen.queryByText(aviso)).toBeNull();
     fireEvent.click(verTodas);
     expect(Boolean(screen.queryByText(aviso))).toBe(quantidade === 2000);
@@ -1058,13 +1058,13 @@ describe("avisos no painel (UI-18)", PRAZO, () => {
       movimento_total: 9.81, temp: null, status: "Repouso", epoca_segundos: epoca,
     }))));
     await montar("/dashboard");
-    await screen.findByRole("heading", { name: /^Última sessão/ });
+    await screen.findByRole("heading", { name: "Seus registros" });
   }
 
   it("lacuna: mostra o aviso quando há interrupção no recorte", async () => {
     await montarComLeituras([0, 30, 180, 210], 30);
     // UI-38: a pausa curta fica na sessao, e o aviso aparece sem "Ver todas".
-    expect(screen.queryByRole("button", { name: /ver todas/i })).toBeNull();
+    expect(screen.queryByRole("button", { name: /ver as \d+ sessões/i })).toBeNull();
     expect(screen.getByText(lacuna)).toBeTruthy();
   });
 
@@ -1076,15 +1076,15 @@ describe("avisos no painel (UI-18)", PRAZO, () => {
       device_id: "d1", bancada: i >= 20 && i < 30,
     }))));
     await montar("/dashboard");
-    await screen.findByRole("heading", { name: /^Última sessão/ });
+    await screen.findByRole("heading", { name: "Seus registros" });
     expect(screen.queryByText(lacuna)).toBeNull();
-    expect(screen.getByRole("button", { name: /ver todas/i })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /ver as \d+ sessões/i })).toBeTruthy();
   });
 
   it("UI-39: o resumo fala a língua do glossário", async () => {
     await montarComLeituras([0, 30, 60], 30);
-    const resumo = screen.getByRole("region", { name: /^Última sessão/ }).textContent;
-    for (const termo of ["Registrado", "do tempo registrado", "Maior período sem movimento registrado"]) {
+    const resumo = screen.getByRole("region", { name: "Seus registros" }).textContent;
+    for (const termo of ["Registrado", "no tempo registrado", "Maior período sem movimento registrado"]) {
       expect(resumo).toContain(termo);
     }
     expect(screen.getByText("Intensidade do movimento")).toBeTruthy();
@@ -1183,7 +1183,7 @@ describe("o painel em camadas (UI-40)", PRAZO, () => {
 
   async function abrir() {
     await montar("/dashboard");
-    await screen.findByRole("heading", { name: /^(Última sessão|\d+ sessões)/ });
+    await screen.findByRole("heading", { name: "Seus registros" });
   }
 
   it("os detalhes técnicos nascem recolhidos, com fórmula, limite e tabela dentro", async () => {
@@ -1206,7 +1206,7 @@ describe("o painel em camadas (UI-40)", PRAZO, () => {
     responder({ dispositivos: [travesseiro], leituras: [0, 30, 60, 7200, 7230].map((s) => leitura(s)) });
     await abrir();
     const ordem = [
-      screen.getByRole("heading", { name: /^Última sessão/ }),
+      screen.getByRole("heading", { name: "Seus registros" }),
       screen.getByRole("heading", { name: "Movimento ao longo do tempo" }),
       screen.getByRole("heading", { name: "Sessões anteriores" }),
       detalhes(),
@@ -1220,7 +1220,8 @@ describe("o painel em camadas (UI-40)", PRAZO, () => {
   it("o resumo diz o aparelho da sessão, mesmo com todos selecionados", async () => {
     responder({ dispositivos: [travesseiro, celular], leituras: [0, 30, 60].map((s) => leitura(s)) });
     await abrir();
-    expect(screen.getByRole("heading", { name: "Última sessão · Meu travesseiro" })).toBeTruthy();
+    expect(detalhes().textContent).toContain("Dispositivo no resumo: Meu travesseiro");
+    expect(screen.queryByText(/Gráfico combina/)).toBeNull();
   });
 
   it("recorta o gráfico pelo horário da metade, preservando a lacuna e o resumo", async () => {
@@ -1233,7 +1234,7 @@ describe("o painel em camadas (UI-40)", PRAZO, () => {
       })),
     });
     await abrir();
-    const resumo = screen.getByRole("region", { name: /^Última sessão/ });
+    const resumo = screen.getByRole("region", { name: "Seus registros" });
     const textoOriginal = resumo.textContent;
     const grafico = screen.getByRole("figure", { name: "Movimento ao longo do tempo" });
     const dentro = within(grafico);
@@ -1272,7 +1273,7 @@ describe("o painel em camadas (UI-40)", PRAZO, () => {
     responder({ dispositivos: [travesseiro], leituras: comLeituras ? [0, 30, 60].map((s) => leitura(s)) : [] });
     await montar(rota);
     if (comLeituras) {
-      await screen.findByRole("heading", { name: /^Última sessão/ });
+      await screen.findByRole("heading", { name: "Seus registros" });
     } else {
       await screen.findByText("Nenhum registro ainda");
     }
@@ -1297,7 +1298,7 @@ describe("o painel em camadas (UI-40)", PRAZO, () => {
     await abrir();
     expect(serieDeMovimento().getByRole("img", { name: /5 pontos,/ })).toBeTruthy();
     fireEvent.click(cartaoDoAparelho().getByRole("button", { name: "Meu celular", pressed: false }));
-    await screen.findByRole("heading", { name: "Última sessão · Meu celular" });
+    await screen.findByText("Dispositivo no resumo: Meu celular.");
     expect(seletorDeAparelho().value).toBe("c");
     expect(cartaoDoAparelho().getByRole("button", { name: "Meu celular", pressed: true })).toBeTruthy();
     expect(cartaoDoAparelho().getByRole("term").textContent).toBe("Último envio");
@@ -1308,10 +1309,10 @@ describe("o painel em camadas (UI-40)", PRAZO, () => {
     responderComDoisAparelhos();
     await abrir();
     fireEvent.change(seletorDeAparelho(), { target: { value: "c" } });
-    await screen.findByRole("heading", { name: "Última sessão · Meu celular" });
+    await screen.findByText("Dispositivo no resumo: Meu celular.");
     expect(cartaoDoAparelho().getByRole("button", { name: "Meu celular", pressed: true })).toBeTruthy();
     fireEvent.click(cartaoDoAparelho().getByRole("button", { name: "Todos os dispositivos", pressed: false }));
-    await screen.findByRole("heading", { name: "Última sessão · Todos os dispositivos" });
+    await screen.findByText("Gráfico combina Travesseiro e Celular");
     expect(seletorDeAparelho().value).toBe("");
     expect(cartaoDoAparelho().getByRole("button", { name: "Todos os dispositivos", pressed: true })).toBeTruthy();
     expect(serieDeMovimento().getByRole("img", { name: /5 pontos,/ })).toBeTruthy();
@@ -1357,6 +1358,40 @@ describe("o painel em camadas (UI-40)", PRAZO, () => {
     expect(screen.getByRole("option", { name: /Revogado de exemplo/ })).toBeTruthy();
   });
 
+  it("explica a mistura sob demanda e acompanha o recorte do gráfico", async () => {
+    responderComDoisAparelhos();
+    await abrir();
+    const aviso = screen.getByText("Gráfico combina Travesseiro e Celular");
+    const ajuda = aviso.closest("details")!;
+    expect(ajuda.open).toBe(false);
+    expect(ajuda.querySelector("summary")?.textContent).toContain("Entenda");
+    expect(ajuda.textContent).toContain("captam o mesmo movimento de formas diferentes");
+
+    selecionarSegundaMetade();
+    expect(screen.queryByText(/Gráfico combina/)).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Noite toda" }));
+    expect(screen.getByText("Gráfico combina Travesseiro e Celular")).toBeTruthy();
+    fireEvent.change(seletorDeAparelho(), { target: { value: "c" } });
+    await screen.findByText("Dispositivo no resumo: Meu celular.");
+    expect(screen.queryByText(/Gráfico combina/)).toBeNull();
+  });
+
+  it("indica a sessão exibida e deixa a contagem descartada nos detalhes", async () => {
+    responder({ dispositivos: [travesseiro], leituras: duasSessoes() });
+    await abrir();
+    const resumo = within(screen.getByRole("region", { name: "Seus registros" }));
+    const fora = screen.getByText("3 registros ficaram fora do recorte.");
+    expect(resumo.getByText("Última sessão")).toBeTruthy();
+    expect(fora.closest("details")).toBe(detalhes());
+    expect(aVista(fora)).toBe(false);
+
+    fireEvent.click(resumo.getByRole("button", { name: "Ver as 2 sessões" }));
+    expect(resumo.getByText("2 sessões")).toBeTruthy();
+    expect(screen.queryByText(/registros ficaram fora do recorte/)).toBeNull();
+    fireEvent.click(resumo.getByRole("button", { name: "Ver só a última" }));
+    expect(resumo.getByText("Última sessão")).toBeTruthy();
+  });
+
   it("volta para Noite toda ao trocar de aparelho", async () => {
     responder({
       dispositivos: [travesseiro, celular],
@@ -1365,7 +1400,7 @@ describe("o painel em camadas (UI-40)", PRAZO, () => {
     await abrir();
     selecionarSegundaMetade();
     fireEvent.change(screen.getByRole("combobox", { name: "Dispositivo exibido" }), { target: { value: "c" } });
-    await screen.findByRole("heading", { name: "Última sessão · Meu celular" });
+    await screen.findByText("Dispositivo no resumo: Meu celular.");
     expect(screen.getByRole("button", { name: "Noite toda", pressed: true })).toBeTruthy();
   });
 
@@ -1373,7 +1408,7 @@ describe("o painel em camadas (UI-40)", PRAZO, () => {
     responder({ dispositivos: [travesseiro], leituras: duasSessoes() });
     await abrir();
     selecionarSegundaMetade();
-    fireEvent.click(screen.getByRole("button", { name: /ver todas/i }));
+    fireEvent.click(screen.getByRole("button", { name: /ver as \d+ sessões/i }));
     fireEvent.click(screen.getByRole("button", { name: "Ver só a última" }));
     expect(screen.getByRole("button", { name: "Noite toda", pressed: true })).toBeTruthy();
   });
@@ -1382,7 +1417,7 @@ describe("o painel em camadas (UI-40)", PRAZO, () => {
     responder({ dispositivos: [travesseiro], leituras: duasSessoes() });
     await abrir();
     expect(screen.getByRole("group", { name: "Período do gráfico" })).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: /ver todas/i }));
+    fireEvent.click(screen.getByRole("button", { name: /ver as \d+ sessões/i }));
     expect(screen.queryByRole("group", { name: "Período do gráfico" })).toBeNull();
   });
 
@@ -1403,9 +1438,8 @@ describe("o painel em camadas (UI-40)", PRAZO, () => {
     for (const aviso of [
       /leituras? recebidas|registros recebidos durante a pausa/i,
       /faltou registro em/i,
-      /o registro parou 1 vez/i,
+      /duração:/i,
       /foi estimada pelo intervalo entre eles/i,
-      /medem o mesmo movimento de formas diferentes/i,
       /não é diagnóstico nem mede fases do sono/i,
     ]) {
       const achados = screen.getAllByText((_, elemento) =>
@@ -1419,7 +1453,7 @@ describe("o painel em camadas (UI-40)", PRAZO, () => {
     responder({ dispositivos: [travesseiro], leituras: [0, 30, 60, 7200, 7230].map((s) => leitura(s)) });
     await abrir();
     expect(detalhes().textContent).toContain("do período.");
-    fireEvent.click(screen.getByRole("button", { name: /ver todas/i }));
+    fireEvent.click(screen.getByRole("button", { name: /ver as \d+ sessões/i }));
     expect(detalhes().textContent).not.toContain("do período.");
   });
 

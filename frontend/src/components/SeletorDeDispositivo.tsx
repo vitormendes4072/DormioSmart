@@ -1,11 +1,10 @@
-import { Layers } from "lucide-react";
+import { ChevronDown, Layers } from "lucide-react";
 
 import {
   TODOS_OS_DISPOSITIVOS,
   type Dispositivo,
   descreverDispositivo,
   precisaEscolherDispositivo,
-  serieMisturaTipos,
   tiposPresentes,
 } from "../lib/dispositivos";
 
@@ -54,52 +53,26 @@ export function SeletorDeDispositivo({
   );
 }
 
-/**
- * Aviso de que a serie empilha instrumentos diferentes.
- *
- * Travesseiro e celular medem o mesmo fenomeno por acoplamentos mecanicos
- * diferentes. Somar os dois numa linha sem dizer seria o mesmo defeito de
- * honestidade que o tracado sintetico da landing evita com a legenda fixa.
- */
-export function AvisoDeMistura({
-  dispositivos = [],
-  selecionado = null,
-}: {
-  dispositivos?: Dispositivo[];
-  selecionado?: string | null;
-}) {
-  // DASH-08: quando os instrumentos sao de CLASSES diferentes, nomeie-as. Um
-  // travesseiro e um celular nao sao "dois dispositivos": sao acoplamentos
-  // mecanicos diferentes classificados pela mesma regua de 1,2 m/s2, que
-  // nasceu do travesseiro (DATA-06, aberto).
-  //
-  // ── POR QUE DUAS PERGUNTAS, E NAO UMA ─────────────────────────────────
-  //
-  // Quem decide se este aviso APARECE e `serieMisturaInstrumentos` (ha mais
-  // de um aparelho na serie). Quem decide se ele NOMEIA AS CLASSES e
-  // `serieMisturaTipos` (ha mais de uma classe). Sao perguntas diferentes e
-  // as duas tem resposta propria: dois travesseiros empilhados ainda somam
-  // series de aparelhos distintos — o leitor precisa saber —, mas somam
-  // coisas comparaveis entre si, e dizer "travesseiro e travesseiro, que sao
-  // instrumentos diferentes" seria falso.
-  //
-  // O predicado vem de `lib/dispositivos` em vez de ser reescrito aqui porque
-  // ele carrega a ordem fixa dos rotulos e a regra do recorte ativo; duplicar
-  // a condicao no componente foi como ela ficou sem dono.
+/** Informa quais instrumentos compõem o gráfico e oferece contexto sob demanda. */
+export function AvisoDeMistura({ dispositivos }: { dispositivos: Dispositivo[] }) {
   const tipos = tiposPresentes(dispositivos);
+  const origem = tipos.length > 1 && !tipos.includes("Dispositivo")
+    ? tipos.join(" e ")
+    : "vários dispositivos";
 
   return (
-    <p className="text-xs text-muted-foreground">
-      O gráfico reúne <strong className="font-semibold">todos os dispositivos</strong>
-      {serieMisturaTipos(dispositivos, selecionado) ? (
-        <>
-          {" "}
-          — <strong className="font-semibold">{tipos.join(" e ")}</strong>, que são aparelhos
-          diferentes
-        </>
-      ) : null}
-      . Aparelhos em posições diferentes medem o mesmo movimento de formas diferentes — escolha
-      um dispositivo acima para ver cada um separado.
-    </p>
+    <details className="group text-xs text-muted-foreground">
+      <summary className="flex min-h-8 w-fit cursor-pointer list-none flex-wrap items-center gap-x-2 rounded-sm focus-visible:outline-2 focus-visible:outline-ring [&::-webkit-details-marker]:hidden">
+        <span>Gráfico combina {origem}</span>
+        <span className="inline-flex items-center gap-0.5 font-semibold text-primary">
+          Entenda
+          <ChevronDown aria-hidden="true" className="size-3 group-open:rotate-180" />
+        </span>
+      </summary>
+      <p className="mt-1 max-w-prose">
+        Aparelhos em posições diferentes captam o mesmo movimento de formas diferentes.
+        Escolha um dispositivo no filtro para ver seus registros separadamente.
+      </p>
+    </details>
   );
 }

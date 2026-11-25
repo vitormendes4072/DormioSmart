@@ -11847,6 +11847,28 @@ Vitest e build no Windows; servidor local com autenticação fictícia; 19/11/20
 
 **Procedência.** Branch `feature/APP-22-nome-pelo-modelo`, base `develop` `395f84c`, 25/11/2026. Executado no Windows 11, Python 3.13.5, Node 24.11.0 e JDK 21; sem dados de aparelho real.
 
+---
+
+# 2026-11-25 (v) — UI-43: menos texto no Início
+
+**O problema, como foi entendido no início.** Na captura móvel enviada pelo autor, o aviso de mistura e o recorte das sessões ocupavam várias linhas na tela. O selo e as legendas dos cartões repetiam a marca, a porcentagem e a contagem de pausas.
+
+**Hipótese de trabalho.** Uma linha por controle e legendas sem números repetidos deixam o resumo mais fácil de ler. A explicação continua acessível sob demanda e o recorte ativo permanece explícito.
+
+**O que foi testado, e como.** A montagem verificou a ajuda recolhida, o aviso acompanhando o trecho do gráfico, o seletor de sessões e o local da contagem. Os dois testes novos falharam com os componentes de develop 22eb20a e passaram com o ajuste. No Edge, com três sessões e dois aparelhos fictícios, a ajuda abriu e fechou por teclado, a troca de sessão funcionou e a contagem ficou nos detalhes. O aviso de mistura sumiu ao filtrar pelo celular. Os testes de montagem também mantiveram à vista os avisos de pausa, lacuna e período incompleto.
+
+**Resultado medido.** 1.046 testes em 69 arquivos. Lint, TypeScript, os dois Knip, build, CSP e orçamento passaram. O painel ficou em 159 452 B gzip de 260 000 B. Foram conferidos 360 e 390 px, no claro e no escuro, sem rolagem horizontal.
+
+**Adaptação.** O aviso usa os aparelhos com pontos no trecho selecionado do gráfico. O nome do aparelho no resumo e o número de registros fora do recorte são consultáveis nos detalhes técnicos.
+
+**O que deu errado no caminho.** O primeiro fetch precisou ser repetido com acesso de rede. O primeiro type-check apontou que a configuração do TypeScript não declara Intl.ListFormat. A união dos nomes voltou à forma usada pelo projeto. A primeira tentativa de injetar dados fictícios no navegador esbarrou na passagem do código pela CLI. Carregar a função por arquivo resolveu. A prévia de desenvolvimento registrou a ausência da configuração Supabase, esperada nessa worktree de demonstração.
+
+**Risco em aberto.** A verificação visual usou dados fictícios no Edge. Safari no iPhone e o APK não foram executados nesta rodada.
+
+**Procedência.** Branch feature/UI-43-inicio-mais-enxuto sobre develop 22eb20a, 25/11/2026. Windows 11, Node 24.11.0 e Edge com Playwright.
+
+---
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

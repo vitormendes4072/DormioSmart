@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-import { CartaoDeMetrica, CartaoEmDestaque, EtiquetaDeRegistro } from "./CartoesDeRegistro";
+import { CartaoDeMetrica, CartaoEmDestaque } from "./CartoesDeRegistro";
 
 import { calcularCobertura, type Sessao } from "../lib/cobertura";
 import {
@@ -23,14 +23,12 @@ import {
 export function ResumoDaSessao({
   sessoes,
   verTudo,
-  aparelho,
   metricas,
   children,
 }: {
   /** As exibidas: a última, ou todas. Em ordem crescente. */
   sessoes: Sessao[];
   verTudo: boolean;
-  aparelho: string;
   metricas: ReturnType<typeof calcularMetricas>;
   /** O seletor de sessão, quando há mais de uma. */
   children?: ReactNode;
@@ -46,8 +44,8 @@ export function ResumoDaSessao({
   const maiorPeriodo = maiorPeriodoSemMovimentoMs == null ? null : formatarDuracao(maiorPeriodoSemMovimentoMs);
   const totalParadas = paradas.length;
   const valorDeParadas = totalParadas === 0
-    ? "Não parou"
-    : `Parou ${totalParadas} ${totalParadas === 1 ? "vez" : "vezes"}`;
+    ? "Sem pausas"
+    : `${totalParadas} ${totalParadas === 1 ? "pausa" : "pausas"}`;
   const janela = verTudo
     ? `em ${sessoes.length} sessões`
     : cobertura.janelaMs > 0 ? `de ${formatarDuracao(cobertura.janelaMs)}` : null;
@@ -57,14 +55,9 @@ export function ResumoDaSessao({
 
   return (
     <section aria-labelledby="resumo-da-sessao" className="space-y-3">
-      <div className="flex flex-col gap-1">
-        <h1 className="order-2 text-2xl font-extrabold tracking-tight text-foreground sm:text-[27px]">
-          Seus registros
-        </h1>
-        <h2 id="resumo-da-sessao" className="order-1 leading-none">
-          <EtiquetaDeRegistro>{verTudo ? `${sessoes.length} sessões` : "Última sessão"} · {aparelho}</EtiquetaDeRegistro>
-        </h2>
-      </div>
+      <h1 id="resumo-da-sessao" className="text-2xl font-extrabold tracking-tight text-foreground sm:text-[27px]">
+        Seus registros
+      </h1>
 
       <CartaoEmDestaque rotulo="Registrado" valor={formatarDuracao(cobertura.tempoCobertoMs)}>
         {[janela, quando].filter(Boolean).join(" · ")}
@@ -75,7 +68,7 @@ export function ResumoDaSessao({
           <p>
             {movimento == null
               ? "Sem registro suficiente para calcular o movimento"
-              : `Movimento em ${movimento} do tempo registrado`}
+              : "Com movimento no tempo registrado"}
           </p>
         </CartaoDeMetrica>
         <CartaoDeMetrica valor={maiorPeriodo ?? "—"}>
@@ -87,14 +80,11 @@ export function ResumoDaSessao({
           </p>
         </CartaoDeMetrica>
         <CartaoDeMetrica valor={valorDeParadas}>
-          {/* À vista mesmo abaixo dos 5% que abrem o aviso de lacuna. */}
-          <p className={totalParadas > 0 ? "font-semibold text-amber-800 dark:text-amber-300" : undefined}>
-            {totalParadas === 0
-              ? "O registro não parou"
-              : totalParadas === 1
-                ? <>O registro parou 1 vez, por {maisLonga}</>
-                : <>O registro parou {totalParadas} vezes, a mais longa por {maisLonga}</>}
-          </p>
+          {totalParadas > 0 && (
+            <p className="font-semibold text-amber-800 dark:text-amber-300">
+              {totalParadas === 1 ? "Duração:" : "Maior pausa:"} {maisLonga}
+            </p>
+          )}
         </CartaoDeMetrica>
       </ul>
 
