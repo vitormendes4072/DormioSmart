@@ -11826,6 +11826,27 @@ Vitest e build no Windows; servidor local com autenticação fictícia; 19/11/20
 
 ---
 
+
+---
+
+# 2026-11-25 (v) — APP-22: nome inicial do celular pelo modelo
+
+**O problema, como foi entendido no início.** O pareamento automático criava o celular com nome fixo, sem identificar o aparelho.
+
+**Hipótese de trabalho.** O fabricante e o modelo fornecidos pelo Android podem nomear o dispositivo sem consultar o nome personalizado do sistema. O servidor deve validar o texto e preservar os nomes escolhidos.
+
+**O que foi testado, e como.** Pytest sem RLS, incluindo a cobertura da política; Vitest, lint, TypeScript no build, dois Knip, build e conferência do pacote; `testDebugUnitTest` com JDK 21; Ruff. As seis sabotagens foram executadas e restauradas: renomear sempre derrubou `test_preserva_nome_alterado`; aceitar quebra de linha, `test_cria_com_padrao_quando_modelo_invalido`; tornar a troca obrigatória, `test_falha_na_troca_nao_derruba_rota`; repetir fabricante, `naoRepete`; aceitar unknown, `desconhecido`; omitir o modelo do corpo, `manda modelo com versao`. Contra os arquivos da base, os 13 testes novos do backend falharam por ausência da função nova usada no mock; no frontend falhou o teste de envio do modelo. As sabotagens verificam os comportamentos separadamente.
+
+**Resultado medido.** Backend: 751 passaram e 1 pulou. Frontend: 1044 passaram em 69 arquivos; lint, TypeScript, Knip, Knip de tipos, build e conferência do pacote passaram. Android: 48 testes passaram; Ruff passou. Os seis controles positivos falharam como esperado.
+
+**Adaptação.** O update automático filtra também pelo nome padrão no banco, protegendo contra edição concorrente. A interface da demonstração continua independente do método novo da ponte nativa. Sem migração ou alteração de RLS e funções do banco; versão do app mantida para a release.
+
+**O que deu errado no caminho.** A consulta remota inicial foi bloqueada pela rede do sandbox e repetida com permissão. A primeira compilação Android precisou da sincronização do Capacitor e de JDK 21, pois o padrão era 17. A primeira tipagem exigia o método novo nas simulações; foi corrigida. Uma execução Vitest foi interrompida após mostrar os testes verdes e repetida até saída zero. A saída de uma sabotagem falhou por codificação do terminal; foi repetida em UTF-8.
+
+**Risco em aberto.** Assim como no `APP-19`, a decisão sobre a mudança da política sem novo consentimento fica para o orientador (`LGPD-03`). A rota continua reutilizando o celular ativo mais antigo; o modelo não identifica nem separa automaticamente aparelhos físicos diferentes. Não foi testado em aparelho real.
+
+**Procedência.** Branch `feature/APP-22-nome-pelo-modelo`, base `develop` `395f84c`, 25/11/2026. Executado no Windows 11, Python 3.13.5, Node 24.11.0 e JDK 21; sem dados de aparelho real.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

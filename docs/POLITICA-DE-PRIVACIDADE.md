@@ -153,6 +153,8 @@ O controlador dos dados é **[CONTROLADOR]**, que pode ser contatado em
 
 ### 2.2 Dados gerados pelo uso
 
+No app Android, o nome inicial do celular é o fabricante e o modelo informados pelo sistema, por exemplo "Motorola moto g54 5G", e pode ser trocado em Dispositivos.
+
 O objeto do serviço é a **medição de movimento**. O aparelho mede o movimento
 continuamente e o resume em **épocas** de 30 segundos. Cada época enviada registra:
 

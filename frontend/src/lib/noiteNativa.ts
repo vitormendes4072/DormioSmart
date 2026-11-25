@@ -111,7 +111,7 @@ export interface PluginNoite {
   salvarNotas(o: { arquivo: string; notas: NotasDaNoite }): Promise<NotasDaNoite>;
 }
 
-export const Noite = registerPlugin<PluginNoite>("Noite");
+export const Noite = registerPlugin<PluginNoite & { modeloDoAparelho(): Promise<{ modelo?: string }> }>("Noite");
 
 type Plataforma = Pick<typeof Capacitor, "isNativePlatform" | "isPluginAvailable">;
 

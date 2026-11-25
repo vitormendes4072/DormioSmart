@@ -64,6 +64,26 @@ def validar_nome(valor):
     return nome, None
 
 
+def validar_modelo(valor):
+    """Modelo opcional, ignorado se nao for texto imprimivel valido."""
+    if not isinstance(valor, str) or not valor.isprintable():
+        return None
+    nome = valor.strip()
+    return nome if 1 <= len(nome) <= NOME_MAXIMO else None
+
+
+def registrar_modelo(client, usuario_id, device_id, modelo):
+    """Atualiza somente o nome padrao, inclusive sob edicao concorrente."""
+    try:
+        resposta = (client.table("devices").update({"nome": modelo})
+                    .eq("id", device_id).eq("user_id", usuario_id)
+                    .eq("nome", NOME_CELULAR).execute())
+        return (resposta.data or [None])[0]
+    except Exception:
+        logger.exception("Falha ao registrar modelo do celular.")
+        return None
+
+
 def listar(client, usuario_id):
     """Dispositivos do usuário, mais recentes primeiro."""
     try:
