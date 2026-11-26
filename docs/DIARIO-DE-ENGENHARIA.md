@@ -13663,6 +13663,26 @@ Os dois controles originais da etapa também voltaram a falhar sob sabotagem. No
 
 ---
 
+# 2026-11-26 (v) — UI-46: dia do calendário comanda o Início
+
+**O problema, como foi entendido no início.** O clique em um dia da semana compacta expandia o calendário. A data selecionada também não chegava a “Seus registros”, que continuava exibindo a última sessão geral.
+
+**Hipótese de trabalho.** Controlar o dia no Dashboard e consultar o histórico paginado na janela dessa data permite reaproveitar as métricas e o seletor existentes. A data local do início mantém a atribuição da sessão igual à do calendário.
+
+**O que foi testado, e como.** Quatro testes de agrupamento em `calendarioDoSono.test.ts`, um de seleção controlada em `CalendarioDoSono.test.tsx` e seis na rota real em `montagem.test.ts`, com respostas de API simuladas. No Edge, a demonstração foi verificada nos estados sem seleção, com sessão e dia vazio, nos dois temas, em 1440 × 960.
+
+**Resultado medido.** 11 de 11 testes novos falharam com o código original de `develop` em `8bcc652`. O controle do calendário pegou a reintrodução de `setAberto(true)` no clique de data. O teste da sessão que atravessa a meia-noite pegou o recorte pela data de fim. O teste que abre na última sessão do dia pegou o Dashboard que ignora a seleção. Os três controles foram executados em separado e o código foi restaurado após cada um. Na suíte completa do frontend, 1.072 testes passaram em 71 arquivos com dois workers.
+
+**Adaptação.** A data abre na última sessão daquele dia e permite alternar para todas. A navegação no calendário expandido e o dia do Dashboard têm estados independentes. Ao recolher, a semana do dia selecionado fica visível. O controle de período passou a dizer “Sessão toda”. A consulta reaproveita a paginação do calendário e as margens da véspera e do dia seguinte.
+
+**O que deu errado no caminho.** A sessão ainda tinha permissão de escrita apenas na worktree anterior e usou comandos aprovados para gravar na nova. O `npm.cmd` interpretou o primeiro filtro com barras verticais como pipeline, e a execução focada usou Vitest diretamente. O teste do gráfico contou inicialmente apenas registros reais, mas a figura também inclui dois separadores de lacuna. A asserção passou a conferir a contagem de registros nos detalhes técnicos.
+
+**Risco em aberto.** A consulta continua sujeita ao limite de páginas e mostra “Histórico parcial” quando há dados além dele. A verificação local usou dados de demonstração no navegador e respostas simuladas na suíte.
+
+**Procedência.** Plano aprovado do UI-46, implementação sobre `origin/develop` `8bcc652`. Windows, Node 24.11.0 e Edge em 26/11. As seis capturas de demonstração estão em `docs/evidencias/ui-46/`.
+
+---
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

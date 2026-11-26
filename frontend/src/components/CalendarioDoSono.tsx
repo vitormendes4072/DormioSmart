@@ -1,8 +1,8 @@
 import { ChevronDown, ChevronLeft, ChevronRight, Moon } from "lucide-react";
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { useId, useMemo, useRef, useState } from "react";
 
 import { SeletorSegmentado } from "./SeletorSegmentado";
-import { buscarJanelaDoHistorico } from "../lib/api";
+import { useHistoricoPaginado } from "../hooks/useHistoricoPaginado";
 import {
   janelaDoCalendario,
   limitesDaConsulta,
@@ -11,7 +11,6 @@ import {
   sequenciasDoCalendario,
   somarDias,
 } from "../lib/calendarioDoSono";
-import { gerarHistoricoDemo } from "../lib/demo";
 import { formatarDuracao } from "../lib/metricas";
 
 const VISOES = [
@@ -27,8 +26,6 @@ const CURTA = new Intl.DateTimeFormat("pt-BR", { day: "numeric", month: "short" 
 const MES = new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric" });
 const BOTAO = "inline-flex min-h-9 items-center justify-center gap-1 rounded-lg border border-border px-2.5 text-xs font-semibold text-primary hover:bg-secondary focus-visible:outline-2 focus-visible:outline-ring disabled:opacity-40";
 
-type Resultado = { consulta: string; dados: Awaited<ReturnType<typeof buscarJanelaDoHistorico>> | null };
-
 function intervalo(inicio: Date, fim: Date) {
   return inicio.getTime() === fim.getTime()
     ? CURTA.format(inicio)
@@ -41,18 +38,21 @@ function diasEmSequencia(total: number, podeSerMaior = false) {
   return total === 1 ? "1 dia consecutivo" : `${total} dias consecutivos`;
 }
 
-export function CalendarioDoSono({ dispositivo, demo }: { dispositivo: string | null; demo: boolean }) {
+export function CalendarioDoSono({ dispositivo, demo, selecionado, aoSelecionarDia }: {
+  dispositivo: string | null;
+  demo: boolean;
+  selecionado: Date | null;
+  aoSelecionarDia: (dia: Date | null) => void;
+}) {
   const hoje = somarDias(new Date(), 0);
   const [aberto, setAberto] = useState(false);
   const [visao, setVisao] = useState<Visao>("semana");
-  const [selecionado, setSelecionado] = useState(hoje);
+  const [ancora, setAncora] = useState(hoje);
   const [inicioDaSequencia, setInicioDaSequencia] = useState<number | null>(null);
-  const [tentativa, setTentativa] = useState(0);
-  const [resultado, setResultado] = useState<Resultado>();
   const titulo = useId();
   const painel = useId();
   const alternador = useRef<HTMLButtonElement>(null);
-  const data = aberto ? selecionado : hoje;
+  const data = aberto ? ancora : selecionado ?? hoje;
   const janela = janelaDoCalendario(data);
   const semana = segundaDaSemana(data);
   const fimDaSemana = somarDias(semana, 6);
@@ -61,23 +61,9 @@ export function CalendarioDoSono({ dispositivo, demo }: { dispositivo: string | 
   const inicioMs = janela.inicio.getTime();
   const fimMs = janela.fim.getTime();
   const ultimoDiaRegistrado = Math.min(hoje.getTime(), fimMs);
-  const { desde, ate } = limitesDaConsulta(janela.inicio, janela.fim);
-  const consulta = JSON.stringify([dispositivo, demo, desde, ate, tentativa]);
-
-  useEffect(() => {
-    const controle = new AbortController();
-    const pedido = demo
-      ? Promise.resolve({ leituras: gerarHistoricoDemo(dispositivo), truncada: false })
-      : buscarJanelaDoHistorico({ dispositivo, desde, ate }, controle.signal, () => {});
-    void pedido.then(
-      (dados) => { if (!controle.signal.aborted) setResultado({ consulta, dados }); },
-      () => { if (!controle.signal.aborted) setResultado({ consulta, dados: null }); },
-    );
-    return () => controle.abort();
-  }, [ate, consulta, demo, desde, dispositivo]);
-
-  const carregado = resultado?.consulta === consulta ? resultado : undefined;
-  const dados = carregado?.dados;
+  const { dados, carregando, recarregar } = useHistoricoPaginado(
+    limitesDaConsulta(janela.inicio, janela.fim), dispositivo, demo,
+  );
   const registros = useMemo(() => dados
     ? registrosDoCalendario(dados.leituras, new Date(inicioMs), new Date(ultimoDiaRegistrado))
     : new Map<number, number>(), [dados, inicioMs, ultimoDiaRegistrado]);
@@ -105,26 +91,22 @@ export function CalendarioDoSono({ dispositivo, demo }: { dispositivo: string | 
   const recorteAtual = hoje.getTime() >= inicioMs && hoje.getTime() <= fimMs;
 
   function navegar(direcao: number) {
-    setSelecionado(ehSemana
+    setAncora(ehSemana
       ? somarDias(data, direcao * 7)
       : new Date(data.getFullYear(), data.getMonth() + direcao, 1, 12));
   }
 
   function alternar() {
     if (!aberto) {
-      setSelecionado(hoje);
+      setAncora(selecionado ?? hoje);
       setVisao("semana");
     }
     setAberto(!aberto);
   }
 
   function selecionarDia(dia: Date) {
-    if (!aberto) {
-      setVisao("semana");
-      setAberto(true);
-      alternador.current?.focus();
-    }
-    setSelecionado(dia);
+    setAncora(dia);
+    aoSelecionarDia(selecionado?.getTime() === dia.getTime() ? null : dia);
   }
 
   const grade = (
@@ -152,7 +134,7 @@ export function CalendarioDoSono({ dispositivo, demo }: { dispositivo: string | 
               type="button"
               aria-label={`${DATA.format(dia)}${temRegistro ? ", com registro" : ""}${atual ? ", sequência atual" : passada ? ", sequência encerrada" : ""}`}
               aria-current={eHoje ? "date" : undefined}
-              aria-pressed={aberto ? instante === data.getTime() : undefined}
+              aria-pressed={instante === selecionado?.getTime()}
               onClick={() => selecionarDia(dia)}
               className={`group relative grid min-h-9 min-w-0 place-content-center justify-items-center text-xs font-semibold focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-ring aria-pressed:underline sm:text-sm ${aberto ? "min-h-12" : ""} ${atual ? "border-(color:--sessao-destaque-borda) bg-(color:--sessao-destaque-borda) text-white" : passada ? "bg-accent text-accent-foreground" : "rounded-xl text-foreground hover:bg-secondary"} ${emFaixa && inicioFaixa ? "rounded-s-2xl" : ""} ${emFaixa && fimFaixa ? "rounded-e-2xl" : ""}`}
             >
@@ -174,11 +156,11 @@ export function CalendarioDoSono({ dispositivo, demo }: { dispositivo: string | 
           <h2 id={titulo} className="text-sm font-extrabold tracking-tight sm:text-base">Calendário do sono</h2>
           {!aberto && (
             <p role="status" className="mt-0.5 text-xs text-muted-foreground">
-              {carregado === undefined ? "Carregando registros…" : dados === null ? "Falha ao carregar registros" : dados?.truncada ? "Histórico parcial" : atual ? textoAtual : "Sem sequência ativa no período"}
+              {carregando ? "Carregando registros…" : dados === null ? "Falha ao carregar registros" : dados?.truncada ? "Histórico parcial" : atual ? textoAtual : "Sem sequência ativa no período"}
             </p>
           )}
         </div>
-        {!aberto && <div aria-label="Semana atual" role="group" className="col-span-2 row-start-2 min-w-0 @[450px]:col-span-1 @[450px]:col-start-2 @[450px]:row-start-1">{grade}</div>}
+        {!aberto && <div aria-label={selecionado ? "Semana selecionada" : "Semana atual"} role="group" className="col-span-2 row-start-2 min-w-0 @[450px]:col-span-1 @[450px]:col-start-2 @[450px]:row-start-1">{grade}</div>}
         <button ref={alternador} type="button" aria-expanded={aberto} aria-controls={painel} onClick={alternar} className={`${BOTAO} col-start-2 row-start-1 justify-self-end @[450px]:col-start-3`}>
           {aberto ? "Recolher" : "Expandir"}
           <ChevronDown size={14} className={aberto ? "rotate-180" : undefined} aria-hidden="true" />
@@ -201,15 +183,18 @@ export function CalendarioDoSono({ dispositivo, demo }: { dispositivo: string | 
                 <h3 aria-live="polite" className="text-sm font-bold first-letter:uppercase sm:text-base">{ehSemana ? intervalo(semana, fimDaSemana) : MES.format(data)}</h3>
                 <div className="flex gap-1">
                   <button type="button" className={BOTAO} onClick={() => navegar(-1)} aria-label="Período anterior"><ChevronLeft size={16} aria-hidden="true" /></button>
-                  <button type="button" className={BOTAO} onClick={() => setSelecionado(hoje)}>Hoje</button>
+                  <button type="button" className={BOTAO} onClick={() => {
+                    setAncora(hoje);
+                    aoSelecionarDia(null);
+                  }}>Hoje</button>
                   <button type="button" className={BOTAO} onClick={() => navegar(1)} aria-label="Próximo período" disabled={ehSemana ? fimDaSemana >= hoje : data.getFullYear() * 12 + data.getMonth() >= hoje.getFullYear() * 12 + hoje.getMonth()}><ChevronRight size={16} aria-hidden="true" /></button>
                 </div>
               </div>
-              {carregado === undefined && <p role="status" className="mb-2 text-sm text-muted-foreground">Carregando registros…</p>}
+              {carregando && <p role="status" className="mb-2 text-sm text-muted-foreground">Carregando registros…</p>}
               {dados === null && (
                 <div className="mb-2 flex flex-wrap items-center gap-2 text-sm">
                   <p role="alert">Falha ao carregar registros.</p>
-                  <button type="button" className={BOTAO} onClick={() => setTentativa((valor) => valor + 1)}>Tentar novamente</button>
+                  <button type="button" className={BOTAO} onClick={recarregar}>Tentar novamente</button>
                 </div>
               )}
               {dados?.truncada && <p role="status" className="mb-2 text-sm text-muted-foreground">Histórico parcial. Parte dos registros do período ficou fora da consulta.</p>}
