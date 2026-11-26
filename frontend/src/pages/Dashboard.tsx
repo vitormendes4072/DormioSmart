@@ -1,5 +1,5 @@
 import { SeletorSegmentado } from "../components/SeletorSegmentado";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
 import { Link, useLocation } from "react-router";
 
 import { BarraDoWorkspace } from "../components/BarraDoWorkspace";
@@ -63,6 +63,20 @@ const DATA_DO_DIA = new Intl.DateTimeFormat("pt-BR", { weekday: "long", day: "nu
 const CARTAO = "rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5";
 const LINK_DO_CARTAO = "inline-flex min-h-9 items-center justify-center rounded-lg border border-border px-3 py-2 text-center text-sm font-semibold text-primary hover:bg-secondary focus-visible:outline-2 focus-visible:outline-ring";
 
+// UI-48: a partir desta largura o Início tem duas colunas, e o gráfico de tempo por dia vai para a
+// coluna da direita, logo abaixo do calendário. Abaixo dela, fica dentro do cartão do calendário.
+const TELA_LARGA = "(min-width: 1050px)";
+
+function observarTelaLarga(atualizar: () => void) {
+  const midia = window.matchMedia?.(TELA_LARGA);
+  midia?.addEventListener("change", atualizar);
+  return () => midia?.removeEventListener("change", atualizar);
+}
+
+function ehTelaLarga() {
+  return window.matchMedia?.(TELA_LARGA).matches ?? false;
+}
+
 export function Dashboard() {
   const { hash, key, search } = useLocation();
   // `null` = todos os dispositivos. O recorte por instrumento (DASH-05) e
@@ -70,6 +84,8 @@ export function Dashboard() {
   const [dispositivo, setDispositivo] = useState<string | null>(null);
   const [diaSelecionado, setDiaSelecionado] = useState<Date | null>(null);
   const [ancoraDoCalendario, setAncoraDoCalendario] = useState(() => somarDias(new Date(), 0));
+  const telaLarga = useSyncExternalStore(observarTelaLarga, ehTelaLarga, () => false);
+  const [vagaDoGrafico, setVagaDoGrafico] = useState<HTMLElement | null>(null);
   const [verTudo, setVerTudo] = useState(false);
   const [periodo, setPeriodo] = useState<Periodo>("Sessão toda");
   const dispositivos = useDispositivos();
@@ -136,8 +152,16 @@ export function Dashboard() {
   );
   const calendario = (
     <CalendarioDoSono dispositivo={dispositivo} demo={demo} selecionado={diaSelecionado} aoSelecionarDia={selecionarDia}
-      ancora={ancoraDoCalendario} aoNavegar={setAncoraDoCalendario} />
+      ancora={ancoraDoCalendario} aoNavegar={setAncoraDoCalendario} destinoDoGrafico={telaLarga ? vagaDoGrafico : null} />
   );
+  // Em todos os estados da tela (carregando, erro, dia vazio, com dados) a coluna da direita começa
+  // pelo gráfico, para ele não pular de lugar quando um dia é escolhido.
+  const comColunaDoGrafico = (conteudo: ReactNode) => telaLarga ? (
+    <div className="grid grid-cols-[minmax(0,1.8fr)_minmax(220px,0.9fr)] items-start gap-3.5">
+      <div className="min-w-0 space-y-3.5">{conteudo}</div>
+      <div ref={setVagaDoGrafico} data-vaga-do-grafico className="min-w-0" />
+    </div>
+  ) : conteudo;
   const linkHistorico = (
     <Link to={destinoDoWorkspace("/historico", search)} className={LINK_DO_CARTAO}>Ver histórico</Link>
   );
@@ -153,9 +177,11 @@ export function Dashboard() {
     return (
       <div className="space-y-6">
         <Cabecalho acao={seletor} calendario={calendario} instrumento={instrumento} titulo={tituloDoDia} />
-        {avisoDePausa}
-        <Carregando mensagem={diaSelecionado ? "Carregando registros do dia..." : undefined} />
-        {diaSelecionado && linkHistorico}
+        {comColunaDoGrafico(<>
+          {avisoDePausa}
+          <Carregando mensagem={diaSelecionado ? "Carregando registros do dia..." : undefined} />
+          {diaSelecionado && linkHistorico}
+        </>)}
       </div>
     );
   }
@@ -164,9 +190,11 @@ export function Dashboard() {
     return (
       <div className="space-y-6">
         <Cabecalho acao={seletor} calendario={calendario} instrumento={instrumento} titulo={tituloDoDia} />
-        {avisoDePausa}
-        <FalhaAoCarregar mensagem={erro} aoTentarNovamente={recarregar} />
-        {diaSelecionado && linkHistorico}
+        {comColunaDoGrafico(<>
+          {avisoDePausa}
+          <FalhaAoCarregar mensagem={erro} aoTentarNovamente={recarregar} />
+          {diaSelecionado && linkHistorico}
+        </>)}
       </div>
     );
   }
@@ -175,19 +203,21 @@ export function Dashboard() {
     return (
       <div className="space-y-6">
         <Cabecalho acao={seletor} calendario={calendario} instrumento={instrumento} titulo={tituloDoDia} />
-        {avisoDePausa}
-        <NotaDeEscopo />
-        <div id="sessoes-recentes">
-          {diaSelecionado ? (
-            <div className={CARTAO}>
-              {avisoHistoricoParcial}
-              <p className="py-5 text-sm font-medium" role="status">
-                {historicoParcial ? "Sem registros do dia entre os dados carregados" : "Sem registros neste dia"}
-              </p>
-              {linkHistorico}
-            </div>
-          ) : <SemLeituras />}
-        </div>
+        {comColunaDoGrafico(<>
+          {avisoDePausa}
+          <NotaDeEscopo />
+          <div id="sessoes-recentes">
+            {diaSelecionado ? (
+              <div className={CARTAO}>
+                {avisoHistoricoParcial}
+                <p className="py-5 text-sm font-medium" role="status">
+                  {historicoParcial ? "Sem registros do dia entre os dados carregados" : "Sem registros neste dia"}
+                </p>
+                {linkHistorico}
+              </div>
+            ) : <SemLeituras />}
+          </div>
+        </>)}
         {resumoDeDispositivos}
       </div>
     );
@@ -272,40 +302,42 @@ export function Dashboard() {
         calendario={calendario}
         mostrarTitulo={false}
       />
-      {avisoDePausa}
+      {comColunaDoGrafico(<>
+        {avisoDePausa}
 
-      {aparelhosDoGrafico.size > 1 && (
-        <AvisoDeMistura dispositivos={dispositivosDoGrafico} />
-      )}
-
-      {/* A coleta teve buracos? Isso precisa aparecer ANTES dos números, e
-          não depois — porque é o que decide se eles significam algo. */}
-      {recorteParcial && (
-        <p role="status" className="rounded-xl border border-border px-3 py-3 text-sm text-muted-foreground">
-          Período incompleto: só os registros mais recentes foram carregados.
-        </p>
-      )}
-      {avisoHistoricoParcial}
-      <AvisoDeLacuna cobertura={cob} />
-
-      <ResumoDaSessao
-        sessoes={verTudo || ultima === null ? sessoes : [ultima]}
-        verTudo={verTudo}
-        metricas={m}
-        titulo={tituloDoDia}
-      >
-        {/* O recorte, e como sair dele. */}
-        {sessoes.length > 1 && (
-          <SeletorDeSessao
-            total={sessoes.length}
-            verTudo={verTudo}
-            aoAlternar={() => {
-              setVerTudo((v) => !v);
-              setPeriodo("Sessão toda");
-            }}
-          />
+        {aparelhosDoGrafico.size > 1 && (
+          <AvisoDeMistura dispositivos={dispositivosDoGrafico} />
         )}
-      </ResumoDaSessao>
+
+        {/* A coleta teve buracos? Isso precisa aparecer ANTES dos números, e
+            não depois — porque é o que decide se eles significam algo. */}
+        {recorteParcial && (
+          <p role="status" className="rounded-xl border border-border px-3 py-3 text-sm text-muted-foreground">
+            Período incompleto: só os registros mais recentes foram carregados.
+          </p>
+        )}
+        {avisoHistoricoParcial}
+        <AvisoDeLacuna cobertura={cob} />
+
+        <ResumoDaSessao
+          sessoes={verTudo || ultima === null ? sessoes : [ultima]}
+          verTudo={verTudo}
+          metricas={m}
+          titulo={tituloDoDia}
+        >
+          {/* O recorte, e como sair dele. */}
+          {sessoes.length > 1 && (
+            <SeletorDeSessao
+              total={sessoes.length}
+              verTudo={verTudo}
+              aoAlternar={() => {
+                setVerTudo((v) => !v);
+                setPeriodo("Sessão toda");
+              }}
+            />
+          )}
+        </ResumoDaSessao>
+      </>)}
 
       <div className="grid gap-3.5 min-[1050px]:grid-cols-[minmax(0,1.8fr)_minmax(220px,0.9fr)]">
         <figure aria-labelledby="titulo-linha-do-tempo" className={`min-w-0 ${CARTAO}`}>
@@ -566,7 +598,7 @@ function Cabecalho({
   return (
     <header>
       <BarraDoWorkspace secao="Visão geral" />
-      <div className="flex flex-wrap items-start gap-x-4 gap-y-2">
+      <div className="flex flex-wrap items-start gap-x-4 gap-y-2 min-[1050px]:items-center">
         {acao}
         {calendario}
       </div>
