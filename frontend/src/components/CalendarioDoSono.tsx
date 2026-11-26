@@ -36,8 +36,9 @@ function intervalo(inicio: Date, fim: Date) {
 }
 
 function diasEmSequencia(total: number, podeSerMaior = false) {
-  const dias = total === 1 ? "1 dia consecutivo" : `${total} dias consecutivos`;
-  return podeSerMaior ? `Pelo menos ${dias}` : dias;
+  // "Pelo menos 1 dia consecutivo" soa estranho: um dia só não é sequência.
+  if (podeSerMaior) return total === 1 ? "Pelo menos 1 dia" : `Pelo menos ${total} dias consecutivos`;
+  return total === 1 ? "1 dia consecutivo" : `${total} dias consecutivos`;
 }
 
 export function CalendarioDoSono({ dispositivo, demo }: { dispositivo: string | null; demo: boolean }) {

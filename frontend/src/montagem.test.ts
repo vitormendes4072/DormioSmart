@@ -1413,6 +1413,20 @@ describe("o painel em camadas (UI-40)", PRAZO, () => {
       expect(resumo.getByText("Pelo menos 8 dias consecutivos")).toBeTruthy();
       expect(resumo.getByText("Melhor sequência no período · Pelo menos 8 dias consecutivos")).toBeTruthy();
     });
+
+    it("mostra pelo menos 1 dia, sem 'consecutivo', quando o único registro está na borda", async () => {
+      vi.setSystemTime(new Date(2026, 10, 3, 12));
+      // 26/10 é o primeiro dia da grade de novembro; 25/10, a margem, fica vazio.
+      const leituras = [0, 30, 60].map((segundos) =>
+        leitura(0, { created_at: new Date(2026, 9, 26, 3, 1, segundos).toISOString() }));
+      responder({ dispositivos: [travesseiro], leituras });
+
+      await abrir();
+      fireEvent.click(await calendario().findByRole("button", { name: "Expandir" }));
+      const resumo = within(calendario().getByRole("complementary", { name: "Resumo das sequências" }));
+      expect(await resumo.findByText("Melhor sequência no período · Pelo menos 1 dia")).toBeTruthy();
+      expect(calendario().queryByText(/Pelo menos 1 dia consecutivo/)).toBeNull();
+    });
   });
 
   function responderComDoisAparelhos() {

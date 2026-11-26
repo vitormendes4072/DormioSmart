@@ -13576,6 +13576,8 @@ Os dois controles originais da etapa também voltaram a falhar sob sabotagem. No
 
 **Procedência.** Revisão da PR #295 em `feature/calendario-do-sono`, sobre `12992da`. Execução local no Windows, Node 24.11.0, em 26/11.
 
+✏️ *26/11, segunda revisão:* com um dia só na borda, o texto saía "Pelo menos 1 dia consecutivo". Passou a ser "Pelo menos 1 dia", porque um dia só não é sequência. Um teste de tela novo cobre o caso, e volta a falhar com o texto antigo. A suíte do frontend passa a 1061 testes.
+
 ---
 
 # O que este diário não cobre
