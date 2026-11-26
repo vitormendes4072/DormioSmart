@@ -583,7 +583,7 @@ describe("montagem real das telas (UI-17)", PRAZO, () => {
     simularSessoesNaBorda(quantidade);
     await montar("/dashboard");
     const aviso = "Período incompleto: só os registros mais recentes foram carregados.";
-    const verTodas = await screen.findByRole("button", { name: /ver todas/i });
+    const verTodas = await screen.findByRole("button", { name: /ver as \d+ sessões/i });
     expect(screen.queryByText(aviso)).toBeNull();
     fireEvent.click(verTodas);
     expect(Boolean(screen.queryByText(aviso))).toBe(quantidade === 2000);
@@ -1058,13 +1058,13 @@ describe("avisos no painel (UI-18)", PRAZO, () => {
       movimento_total: 9.81, temp: null, status: "Repouso", epoca_segundos: epoca,
     }))));
     await montar("/dashboard");
-    await screen.findByRole("heading", { name: /^Última sessão/ });
+    await screen.findByRole("heading", { name: "Seus registros" });
   }
 
   it("lacuna: mostra o aviso quando há interrupção no recorte", async () => {
     await montarComLeituras([0, 30, 180, 210], 30);
     // UI-38: a pausa curta fica na sessao, e o aviso aparece sem "Ver todas".
-    expect(screen.queryByRole("button", { name: /ver todas/i })).toBeNull();
+    expect(screen.queryByRole("button", { name: /ver as \d+ sessões/i })).toBeNull();
     expect(screen.getByText(lacuna)).toBeTruthy();
   });
 
@@ -1076,15 +1076,15 @@ describe("avisos no painel (UI-18)", PRAZO, () => {
       device_id: "d1", bancada: i >= 20 && i < 30,
     }))));
     await montar("/dashboard");
-    await screen.findByRole("heading", { name: /^Última sessão/ });
+    await screen.findByRole("heading", { name: "Seus registros" });
     expect(screen.queryByText(lacuna)).toBeNull();
-    expect(screen.getByRole("button", { name: /ver todas/i })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /ver as \d+ sessões/i })).toBeTruthy();
   });
 
   it("UI-39: o resumo fala a língua do glossário", async () => {
     await montarComLeituras([0, 30, 60], 30);
-    const resumo = screen.getByRole("region", { name: /^Última sessão/ }).textContent;
-    for (const termo of ["Registrado", "do tempo registrado", "Maior período sem movimento registrado"]) {
+    const resumo = screen.getByRole("region", { name: "Seus registros" }).textContent;
+    for (const termo of ["Registrado", "no tempo registrado", "Maior período sem movimento registrado"]) {
       expect(resumo).toContain(termo);
     }
     expect(screen.getByText("Intensidade do movimento")).toBeTruthy();
@@ -1183,7 +1183,7 @@ describe("o painel em camadas (UI-40)", PRAZO, () => {
 
   async function abrir() {
     await montar("/dashboard");
-    await screen.findByRole("heading", { name: /^(Última sessão|\d+ sessões)/ });
+    await screen.findByRole("heading", { name: "Seus registros" });
   }
 
   it("os detalhes técnicos nascem recolhidos, com fórmula, limite e tabela dentro", async () => {
@@ -1206,7 +1206,7 @@ describe("o painel em camadas (UI-40)", PRAZO, () => {
     responder({ dispositivos: [travesseiro], leituras: [0, 30, 60, 7200, 7230].map((s) => leitura(s)) });
     await abrir();
     const ordem = [
-      screen.getByRole("heading", { name: /^Última sessão/ }),
+      screen.getByRole("heading", { name: "Seus registros" }),
       screen.getByRole("heading", { name: "Movimento ao longo do tempo" }),
       screen.getByRole("heading", { name: "Sessões anteriores" }),
       detalhes(),
@@ -1220,7 +1220,8 @@ describe("o painel em camadas (UI-40)", PRAZO, () => {
   it("o resumo diz o aparelho da sessão, mesmo com todos selecionados", async () => {
     responder({ dispositivos: [travesseiro, celular], leituras: [0, 30, 60].map((s) => leitura(s)) });
     await abrir();
-    expect(screen.getByRole("heading", { name: "Última sessão · Meu travesseiro" })).toBeTruthy();
+    expect(detalhes().textContent).toContain("Dispositivo no resumo: Meu travesseiro");
+    expect(screen.queryByText(/Gráfico combina/)).toBeNull();
   });
 
   it("recorta o gráfico pelo horário da metade, preservando a lacuna e o resumo", async () => {
@@ -1233,7 +1234,7 @@ describe("o painel em camadas (UI-40)", PRAZO, () => {
       })),
     });
     await abrir();
-    const resumo = screen.getByRole("region", { name: /^Última sessão/ });
+    const resumo = screen.getByRole("region", { name: "Seus registros" });
     const textoOriginal = resumo.textContent;
     const grafico = screen.getByRole("figure", { name: "Movimento ao longo do tempo" });
     const dentro = within(grafico);
@@ -1272,7 +1273,7 @@ describe("o painel em camadas (UI-40)", PRAZO, () => {
     responder({ dispositivos: [travesseiro], leituras: comLeituras ? [0, 30, 60].map((s) => leitura(s)) : [] });
     await montar(rota);
     if (comLeituras) {
-      await screen.findByRole("heading", { name: /^Última sessão/ });
+      await screen.findByRole("heading", { name: "Seus registros" });
     } else {
       await screen.findByText("Nenhum registro ainda");
     }
@@ -1281,6 +1282,152 @@ describe("o painel em camadas (UI-40)", PRAZO, () => {
 
   const seletorDeAparelho = () => screen.getByRole<HTMLSelectElement>("combobox", { name: "Dispositivo exibido" });
   const serieDeMovimento = () => within(screen.getByRole("figure", { name: "Movimento ao longo do tempo" }));
+
+  describe("Calendário do sono (UI-45)", () => {
+    beforeEach(() => {
+      vi.useFakeTimers({ toFake: ["Date"] });
+      vi.setSystemTime(new Date(2026, 10, 25, 12));
+      const epoca = (dia: number, horas: number, minutos: number, segundos: number, extra = {}) =>
+        leitura(0, { created_at: new Date(2026, 10, dia, horas, minutos, segundos).toISOString(), ...extra });
+      responder({ dispositivos: [travesseiro, celular], leituras: [
+        epoca(25, 3, 1, 0, { bancada: true }),
+        epoca(24, 3, 1, 0, { device_id: "c" }),
+        epoca(24, 0, 0, 30),
+        epoca(24, 0, 0, 0),
+        epoca(23, 23, 59, 30),
+      ] });
+    });
+
+    afterEach(() => vi.useRealTimers());
+
+    const calendario = () => within(screen.getByRole("region", { name: "Calendário do sono" }));
+
+    it("fica entre o seletor e Seus registros, com a semana recolhida", async () => {
+      await abrir();
+      const regiao = screen.getByRole("region", { name: "Calendário do sono" });
+      const registros = screen.getByRole("heading", { name: "Seus registros" });
+      expect(seletorDeAparelho().compareDocumentPosition(regiao) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      expect(regiao.compareDocumentPosition(registros) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      expect(calendario().getByRole("button", { name: "Expandir", expanded: false })).toBeTruthy();
+      const semana = within(calendario().getByRole("group", { name: "Semana atual" }));
+      expect(semana.getAllByRole("button")).toHaveLength(7);
+      await semana.findByRole("button", { name: /^segunda-feira, 23 de novembro, com registro/ });
+      expect(semana.getByRole("button", { name: /^quarta-feira, 25 de novembro$/ })).toBeTruthy();
+    });
+
+    it("detalha a duração no dia em que a sessão anterior à meia-noite começou", async () => {
+      await abrir();
+      fireEvent.click(await calendario().findByRole("button", { name: /^segunda-feira, 23 de novembro, com registro/ }));
+      expect(calendario().getByText("Tempo registrado · 1m 30s")).toBeTruthy();
+      expect(calendario().getByRole("button", { name: "Recolher", expanded: true })).toBeTruthy();
+      fireEvent.click(calendario().getByRole("button", { name: "Sequências" }));
+      expect(calendario().getByText("Dias com registro em sequência:", { exact: false }).textContent).toMatch(/23.*24/);
+    });
+
+    it("consulta outro mês e o histórico do dispositivo selecionado", async () => {
+      await abrir();
+      fireEvent.click(calendario().getByRole("button", { name: "Expandir" }));
+      fireEvent.click(calendario().getByRole("button", { name: "Mês" }));
+      fireEvent.click(calendario().getByRole("button", { name: "Período anterior" }));
+      expect(calendario().getByRole("heading", { name: "outubro de 2026" })).toBeTruthy();
+      fireEvent.click(calendario().getByRole("button", { name: "Hoje" }));
+      expect(calendario().getByRole("heading", { name: "novembro de 2026" })).toBeTruthy();
+      fireEvent.change(seletorDeAparelho(), { target: { value: "c" } });
+      await calendario().findByRole("button", { name: /^terça-feira, 24 de novembro, com registro/ });
+      expect(calendario().getByRole("button", { name: /^segunda-feira, 23 de novembro$/ })).toBeTruthy();
+      const consultas = vi.mocked(fetch).mock.calls
+        .map(([caminho]) => new URL(String(caminho), "http://localhost"))
+        .filter((url) => url.pathname === "/api/sleep-history" && url.searchParams.has("desde"));
+      expect(consultas.some((url) =>
+        url.searchParams.get("desde") === new Date(2026, 8, 27).toISOString()
+        && url.searchParams.get("ate") === new Date(2026, 10, 2, 23, 59, 59, 999).toISOString(),
+      )).toBe(true);
+      expect(consultas.some((url) => url.searchParams.get("device") === "c")).toBe(true);
+    });
+
+    it("mantém como atual a sequência cujo último registro foi ontem", async () => {
+      await abrir();
+      expect(await calendario().findByText("2 dias consecutivos")).toBeTruthy();
+      fireEvent.click(calendario().getByRole("button", { name: "Expandir" }));
+      const resumo = within(calendario().getByRole("complementary", { name: "Resumo das sequências" }));
+      expect(resumo.getByText("Sequência atual")).toBeTruthy();
+      expect(resumo.getByText("2 dias consecutivos")).toBeTruthy();
+    });
+
+    it("mostra Histórico parcial quando ainda há registros após o limite de páginas", async () => {
+      const { LIMITE_DO_PAINEL, MAX_PAGINAS_DO_HISTORICO } = await import("./lib/api");
+      const responderPainel = vi.mocked(fetch).getMockImplementation()!;
+      vi.mocked(fetch).mockImplementation((entrada, opcoes) => {
+        const url = new URL(String(entrada), "http://localhost");
+        if (url.pathname !== "/api/sleep-history" || !url.searchParams.has("desde")) {
+          return responderPainel(entrada, opcoes);
+        }
+        const posicao = Number(url.searchParams.get("cursor_id") ?? 0);
+        const total = LIMITE_DO_PAINEL * MAX_PAGINAS_DO_HISTORICO + 1;
+        const quantidade = Math.min(Number(url.searchParams.get("limite")), total - posicao);
+        const pagina = Array.from({ length: quantidade }, (_, i) => {
+          const id = posicao + i + 1;
+          return leitura(id * 30, { id: String(id) });
+        });
+        return Promise.resolve(respostaJson(pagina));
+      });
+
+      await abrir();
+      expect(await calendario().findByText("Histórico parcial")).toBeTruthy();
+      fireEvent.click(calendario().getByRole("button", { name: "Expandir" }));
+      expect(calendario().getByText(/^Histórico parcial\./)).toBeTruthy();
+    });
+
+    it.each([
+      ["Semana", /23 de nov.*29 de nov/, /16 de nov.*22 de nov/],
+      ["Mês", /novembro de 2026/, /outubro de 2026/],
+    ])("navega pelas setas em %s e bloqueia o próximo período ao voltar ao atual", async (visao, atual, anterior) => {
+      await abrir();
+      fireEvent.click(calendario().getByRole("button", { name: "Expandir" }));
+      fireEvent.click(calendario().getByRole("button", { name: visao }));
+      const proximo = () => calendario().getByRole<HTMLButtonElement>("button", { name: "Próximo período" });
+      expect(calendario().getByRole("heading", { name: atual })).toBeTruthy();
+      expect(proximo().disabled).toBe(true);
+      fireEvent.click(calendario().getByRole("button", { name: "Período anterior" }));
+      expect(calendario().getByRole("heading", { name: anterior })).toBeTruthy();
+      expect(proximo().disabled).toBe(false);
+      fireEvent.click(proximo());
+      expect(calendario().getByRole("heading", { name: atual })).toBeTruthy();
+      expect(proximo().disabled).toBe(true);
+    });
+
+    it("mostra pelo menos N dias quando a sequência vem do mês anterior e toca a borda", async () => {
+      vi.setSystemTime(new Date(2026, 10, 3, 12));
+      // Novembro começa no domingo. A grade consulta a partir de 26/10 e
+      // 25/10 é a margem. A sequência real já começou em 24/10.
+      const leituras = Array.from({ length: 10 }, (_, i) =>
+        [0, 30, 60].map((segundos) =>
+          leitura(0, { created_at: new Date(2026, 9, 24 + i, 3, 1, segundos).toISOString() }),
+        )).flat();
+      responder({ dispositivos: [travesseiro], leituras });
+
+      await abrir();
+      expect(await calendario().findByText("Pelo menos 8 dias consecutivos")).toBeTruthy();
+      fireEvent.click(calendario().getByRole("button", { name: "Expandir" }));
+      const resumo = within(calendario().getByRole("complementary", { name: "Resumo das sequências" }));
+      expect(resumo.getByText("Pelo menos 8 dias consecutivos")).toBeTruthy();
+      expect(resumo.getByText("Melhor sequência no período · Pelo menos 8 dias consecutivos")).toBeTruthy();
+    });
+
+    it("mostra pelo menos 1 dia, sem 'consecutivo', quando o único registro está na borda", async () => {
+      vi.setSystemTime(new Date(2026, 10, 3, 12));
+      // 26/10 é o primeiro dia da grade de novembro; 25/10, a margem, fica vazio.
+      const leituras = [0, 30, 60].map((segundos) =>
+        leitura(0, { created_at: new Date(2026, 9, 26, 3, 1, segundos).toISOString() }));
+      responder({ dispositivos: [travesseiro], leituras });
+
+      await abrir();
+      fireEvent.click(await calendario().findByRole("button", { name: "Expandir" }));
+      const resumo = within(calendario().getByRole("complementary", { name: "Resumo das sequências" }));
+      expect(await resumo.findByText("Melhor sequência no período · Pelo menos 1 dia")).toBeTruthy();
+      expect(calendario().queryByText(/Pelo menos 1 dia consecutivo/)).toBeNull();
+    });
+  });
 
   function responderComDoisAparelhos() {
     responder({
@@ -1297,7 +1444,7 @@ describe("o painel em camadas (UI-40)", PRAZO, () => {
     await abrir();
     expect(serieDeMovimento().getByRole("img", { name: /5 pontos,/ })).toBeTruthy();
     fireEvent.click(cartaoDoAparelho().getByRole("button", { name: "Meu celular", pressed: false }));
-    await screen.findByRole("heading", { name: "Última sessão · Meu celular" });
+    await screen.findByText("Dispositivo no resumo: Meu celular.");
     expect(seletorDeAparelho().value).toBe("c");
     expect(cartaoDoAparelho().getByRole("button", { name: "Meu celular", pressed: true })).toBeTruthy();
     expect(cartaoDoAparelho().getByRole("term").textContent).toBe("Último envio");
@@ -1308,10 +1455,10 @@ describe("o painel em camadas (UI-40)", PRAZO, () => {
     responderComDoisAparelhos();
     await abrir();
     fireEvent.change(seletorDeAparelho(), { target: { value: "c" } });
-    await screen.findByRole("heading", { name: "Última sessão · Meu celular" });
+    await screen.findByText("Dispositivo no resumo: Meu celular.");
     expect(cartaoDoAparelho().getByRole("button", { name: "Meu celular", pressed: true })).toBeTruthy();
     fireEvent.click(cartaoDoAparelho().getByRole("button", { name: "Todos os dispositivos", pressed: false }));
-    await screen.findByRole("heading", { name: "Última sessão · Todos os dispositivos" });
+    await screen.findByText("Gráfico combina Travesseiro e Celular");
     expect(seletorDeAparelho().value).toBe("");
     expect(cartaoDoAparelho().getByRole("button", { name: "Todos os dispositivos", pressed: true })).toBeTruthy();
     expect(serieDeMovimento().getByRole("img", { name: /5 pontos,/ })).toBeTruthy();
@@ -1357,6 +1504,40 @@ describe("o painel em camadas (UI-40)", PRAZO, () => {
     expect(screen.getByRole("option", { name: /Revogado de exemplo/ })).toBeTruthy();
   });
 
+  it("explica a mistura sob demanda e acompanha o recorte do gráfico", async () => {
+    responderComDoisAparelhos();
+    await abrir();
+    const aviso = screen.getByText("Gráfico combina Travesseiro e Celular");
+    const ajuda = aviso.closest("details")!;
+    expect(ajuda.open).toBe(false);
+    expect(ajuda.querySelector("summary")?.textContent).toContain("Entenda");
+    expect(ajuda.textContent).toContain("captam o mesmo movimento de formas diferentes");
+
+    selecionarSegundaMetade();
+    expect(screen.queryByText(/Gráfico combina/)).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Noite toda" }));
+    expect(screen.getByText("Gráfico combina Travesseiro e Celular")).toBeTruthy();
+    fireEvent.change(seletorDeAparelho(), { target: { value: "c" } });
+    await screen.findByText("Dispositivo no resumo: Meu celular.");
+    expect(screen.queryByText(/Gráfico combina/)).toBeNull();
+  });
+
+  it("indica a sessão exibida e deixa a contagem descartada nos detalhes", async () => {
+    responder({ dispositivos: [travesseiro], leituras: duasSessoes() });
+    await abrir();
+    const resumo = within(screen.getByRole("region", { name: "Seus registros" }));
+    const fora = screen.getByText("3 registros ficaram fora do recorte.");
+    expect(resumo.getByText("Última sessão")).toBeTruthy();
+    expect(fora.closest("details")).toBe(detalhes());
+    expect(aVista(fora)).toBe(false);
+
+    fireEvent.click(resumo.getByRole("button", { name: "Ver as 2 sessões" }));
+    expect(resumo.getByText("2 sessões")).toBeTruthy();
+    expect(screen.queryByText(/registros ficaram fora do recorte/)).toBeNull();
+    fireEvent.click(resumo.getByRole("button", { name: "Ver só a última" }));
+    expect(resumo.getByText("Última sessão")).toBeTruthy();
+  });
+
   it("volta para Noite toda ao trocar de aparelho", async () => {
     responder({
       dispositivos: [travesseiro, celular],
@@ -1365,7 +1546,7 @@ describe("o painel em camadas (UI-40)", PRAZO, () => {
     await abrir();
     selecionarSegundaMetade();
     fireEvent.change(screen.getByRole("combobox", { name: "Dispositivo exibido" }), { target: { value: "c" } });
-    await screen.findByRole("heading", { name: "Última sessão · Meu celular" });
+    await screen.findByText("Dispositivo no resumo: Meu celular.");
     expect(screen.getByRole("button", { name: "Noite toda", pressed: true })).toBeTruthy();
   });
 
@@ -1373,7 +1554,7 @@ describe("o painel em camadas (UI-40)", PRAZO, () => {
     responder({ dispositivos: [travesseiro], leituras: duasSessoes() });
     await abrir();
     selecionarSegundaMetade();
-    fireEvent.click(screen.getByRole("button", { name: /ver todas/i }));
+    fireEvent.click(screen.getByRole("button", { name: /ver as \d+ sessões/i }));
     fireEvent.click(screen.getByRole("button", { name: "Ver só a última" }));
     expect(screen.getByRole("button", { name: "Noite toda", pressed: true })).toBeTruthy();
   });
@@ -1382,7 +1563,7 @@ describe("o painel em camadas (UI-40)", PRAZO, () => {
     responder({ dispositivos: [travesseiro], leituras: duasSessoes() });
     await abrir();
     expect(screen.getByRole("group", { name: "Período do gráfico" })).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: /ver todas/i }));
+    fireEvent.click(screen.getByRole("button", { name: /ver as \d+ sessões/i }));
     expect(screen.queryByRole("group", { name: "Período do gráfico" })).toBeNull();
   });
 
@@ -1403,9 +1584,8 @@ describe("o painel em camadas (UI-40)", PRAZO, () => {
     for (const aviso of [
       /leituras? recebidas|registros recebidos durante a pausa/i,
       /faltou registro em/i,
-      /o registro parou 1 vez/i,
+      /duração:/i,
       /foi estimada pelo intervalo entre eles/i,
-      /medem o mesmo movimento de formas diferentes/i,
       /não é diagnóstico nem mede fases do sono/i,
     ]) {
       const achados = screen.getAllByText((_, elemento) =>
@@ -1419,7 +1599,7 @@ describe("o painel em camadas (UI-40)", PRAZO, () => {
     responder({ dispositivos: [travesseiro], leituras: [0, 30, 60, 7200, 7230].map((s) => leitura(s)) });
     await abrir();
     expect(detalhes().textContent).toContain("do período.");
-    fireEvent.click(screen.getByRole("button", { name: /ver todas/i }));
+    fireEvent.click(screen.getByRole("button", { name: /ver as \d+ sessões/i }));
     expect(detalhes().textContent).not.toContain("do período.");
   });
 

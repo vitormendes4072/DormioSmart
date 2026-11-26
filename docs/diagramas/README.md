@@ -33,7 +33,7 @@ uma proposta de ferramenta. O conjunto entregue cobre as quatro frentes exigidas
 | [`DIAG-03-firmware-e-fluxo-do-dado.md`](DIAG-03-firmware-e-fluxo-do-dado.md) | Fluxo do dado e os pontos onde ele é transformado (amostra → época de 30 s → features → classificação), mais o laço e a máquina de estados do firmware | `DIAG-03`, escopo ampliado |
 | [`DIAG-04-modelo-de-dados-e-seguranca.md`](DIAG-04-modelo-de-dados-e-seguranca.md) | Modelo de dados, RLS e quem acessa o quê com qual privilégio; sequência do fluxo autenticado | `DIAG-04`, escopo ampliado; fecha o resíduo do `DOC-05` |
 | [`DIAG-05-pipeline-de-ml.md`](DIAG-05-pipeline-de-ml.md) | Pipeline experimental de ML: datasets, divisão por sujeito, três braços, validação externa | **novo** — sem item no backlog |
-| [`DIAG-02-esquematico.py`](DIAG-02-esquematico.py) | Esquemático do circuito: v1 (um sensor) e v2 (dois, **projeto**) | `DIAG-02` — ✏️ entregue em 31/10, com `schemdraw` em vez de KiCad (ver abaixo) |
+| [`DIAG-02-esquematico.py`](DIAG-02-esquematico.py) | Esquemático do circuito: v1 (um sensor) e v2 (dois, **projeto**); ✏️ v3 (célula LiFePO4, 17/11) e **v4** (a v3 com a placa de proteção e o terra no P−, 25/11), as duas **projeto** | `DIAG-02` — ✏️ entregue em 31/10, com `schemdraw` em vez de KiCad (ver abaixo) |
 
 ---
 

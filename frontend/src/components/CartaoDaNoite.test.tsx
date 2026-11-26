@@ -60,6 +60,7 @@ function plugin(
     definirLembrete: vi.fn(async (o: { ativo: boolean; hora: number; minuto: number }) => ({ ...o, notificacoes: true })),
     pedirIsencaoDeBateria: vi.fn(async () => ({ isentoDeBateria: false })),
     salvarNotas: vi.fn(async ({ notas }: { arquivo: string; notas: object }) => notas),
+    modeloDoAparelho: vi.fn(async () => ({})),
   };
   return p;
 }

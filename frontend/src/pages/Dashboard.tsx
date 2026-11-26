@@ -3,6 +3,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { Link, useLocation } from "react-router";
 
 import { BarraDoWorkspace } from "../components/BarraDoWorkspace";
+import { CalendarioDoSono } from "../components/CalendarioDoSono";
 import { GraficoDeMovimento } from "../components/GraficoDeMovimento";
 import { destinoDoWorkspace } from "../components/nav";
 import { Carregando, FalhaAoCarregar, SemLeituras } from "../components/EstadoDaTela";
@@ -13,8 +14,9 @@ import { AvisoDeMistura, SeletorDeDispositivo } from "../components/SeletorDeDis
 import { useDispositivos } from "../hooks/useDispositivos";
 import { useHistorico } from "../hooks/useHistorico";
 import { LIMITE_DO_PAINEL } from "../lib/api";
-import { origemDaTemperatura, descreverRecorte, serieMisturaInstrumentos } from "../lib/dispositivos";
+import { origemDaTemperatura, descreverRecorte } from "../lib/dispositivos";
 import { calcularCobertura } from "../lib/cobertura";
+import { estaEmModoDemo } from "../lib/demo";
 import {
   calcularMetricas,
   descreverQuando,
@@ -115,13 +117,16 @@ export function Dashboard() {
       classeDoLink={LINK_DO_CARTAO}
     />
   );
+  const calendario = (
+    <CalendarioDoSono dispositivo={dispositivo} demo={import.meta.env.DEV && estaEmModoDemo(search)} />
+  );
 
   // O seletor aparece tambem nos tres estados iniciais: se o dispositivo
   // escolhido nao tem leitura, e preciso poder trocar sem sair da tela.
   if (carregando) {
     return (
       <div className="space-y-6">
-        <Cabecalho acao={seletor} instrumento={instrumento} />
+        <Cabecalho acao={seletor} calendario={calendario} instrumento={instrumento} />
         {avisoDePausa}
         <Carregando />
       </div>
@@ -131,7 +136,7 @@ export function Dashboard() {
   if (erro) {
     return (
       <div className="space-y-6">
-        <Cabecalho acao={seletor} instrumento={instrumento} />
+        <Cabecalho acao={seletor} calendario={calendario} instrumento={instrumento} />
         {avisoDePausa}
         <FalhaAoCarregar mensagem={erro} aoTentarNovamente={recarregar} />
       </div>
@@ -141,7 +146,7 @@ export function Dashboard() {
   if (leituras.length === 0) {
     return (
       <div className="space-y-6">
-        <Cabecalho acao={seletor} instrumento={instrumento} />
+        <Cabecalho acao={seletor} calendario={calendario} instrumento={instrumento} />
         {avisoDePausa}
         <NotaDeEscopo />
         <div id="sessoes-recentes"><SemLeituras /></div>
@@ -184,7 +189,20 @@ export function Dashboard() {
   const cob = m.cobertura;
   const pctCoberto =
     cob.janelaMs > 0 ? (cob.tempoCobertoMs / cob.janelaMs) * 100 : null;
-  // O aparelho DA sessão exibida, mesmo com "todos" no seletor.
+  // O aviso acompanha os pontos do gráfico, inclusive ao mostrar uma metade da sessão.
+  const aparelhosDoGrafico = new Set<string>();
+  for (const leitura of leiturasVisiveis) {
+    const instante = Date.parse(instanteDaLeitura(leitura));
+    if (
+      leitura.device_id && Number.isFinite(instante)
+      && instante >= (recorteDoGrafico?.inicio ?? -Infinity)
+      && instante < (recorteDoGrafico?.fim ?? Infinity)
+    ) {
+      aparelhosDoGrafico.add(leitura.device_id);
+    }
+  }
+  const dispositivosDoGrafico = dispositivos.filter(({ id }) => aparelhosDoGrafico.has(id));
+  const leiturasFora = leituras.length - leiturasVisiveis.length;
   const aparelhosVisiveis = new Set(leiturasVisiveis.map((l) => l.device_id));
   const aparelhoDaSessao = aparelhosVisiveis.size === 1
     ? dispositivos.find((item) => aparelhosVisiveis.has(item.id))
@@ -213,12 +231,13 @@ export function Dashboard() {
       <Cabecalho
         instrumento={instrumento}
         acao={seletor}
+        calendario={calendario}
         mostrarTitulo={false}
       />
       {avisoDePausa}
 
-      {serieMisturaInstrumentos(dispositivos, dispositivo) && (
-        <AvisoDeMistura dispositivos={dispositivos} selecionado={dispositivo} />
+      {aparelhosDoGrafico.size > 1 && (
+        <AvisoDeMistura dispositivos={dispositivosDoGrafico} />
       )}
 
       {/* A coleta teve buracos? Isso precisa aparecer ANTES dos números, e
@@ -233,7 +252,6 @@ export function Dashboard() {
       <ResumoDaSessao
         sessoes={verTudo || ultima === null ? sessoes : [ultima]}
         verTudo={verTudo}
-        aparelho={aparelhoDoResumo}
         metricas={m}
       >
         {/* O recorte, e como sair dele. */}
@@ -241,7 +259,6 @@ export function Dashboard() {
           <SeletorDeSessao
             total={sessoes.length}
             verTudo={verTudo}
-            leiturasFora={leituras.length - leiturasVisiveis.length}
             aoAlternar={() => {
               setVerTudo((v) => !v);
               setPeriodo("Noite toda");
@@ -357,6 +374,12 @@ export function Dashboard() {
         </summary>
         <div className="space-y-4 border-t border-border p-4">
           <ul className="space-y-1 text-xs text-muted-foreground">
+            <li>Dispositivo no resumo: {aparelhoDoResumo}.</li>
+            {leiturasFora > 0 && (
+              <li>
+                {leiturasFora.toLocaleString("pt-BR")} {leiturasFora === 1 ? "registro ficou" : "registros ficaram"} fora do recorte.
+              </li>
+            )}
             <li>
               Intensidade: |magnitude − {GRAVIDADE.toFixed(2).replace(".", ",")} m/s²|, o desvio do repouso.
             </li>
@@ -488,24 +511,29 @@ export function Dashboard() {
 function Cabecalho({
   instrumento,
   acao,
+  calendario,
   mostrarTitulo = true,
 }: {
   instrumento: string;
   acao?: ReactNode;
+  calendario: ReactNode;
   mostrarTitulo?: boolean;
 }) {
   return (
     <header>
       <BarraDoWorkspace secao="Visão geral" />
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        {mostrarTitulo && <div className="min-w-0">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+        {acao}
+        {calendario}
+      </div>
+      {mostrarTitulo && (
+        <div className="mt-3 min-w-0">
           <h1 className="text-2xl font-extrabold tracking-tight text-foreground sm:text-[27px]">
             Seus registros
           </h1>
           <p className="sr-only">{instrumento}</p>
-        </div>}
-        {acao}
-      </div>
+        </div>
+      )}
     </header>
   );
 }

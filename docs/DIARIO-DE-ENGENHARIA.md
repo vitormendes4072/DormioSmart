@@ -10,6 +10,8 @@ traz número e procedência: o que está escrito aqui ou sai de um JSON versiona
 que roda, ou de uma linha de código que dá para abrir. Onde a fonte não bastou, a entrada está
 marcada **PARCIAL** e diz o que falta.
 
+**Onde escrever:** toda entrada nova vai **logo antes** do rodapé "O que este diário não cobre", que fica sempre no fim do arquivo, em ordem de data e com o número da data sem repetir.
+
 ## Como ler
 
 Cada entrada tem sete campos fixos, sempre na mesma ordem:
@@ -11773,72 +11775,6 @@ Vitest e build no Windows; servidor local com autenticação fictícia; 19/11/20
 
 ---
 
-# 2026-11-24 (ii) — UI-43, etapa 3: a tela Noite
-
-**O problema, como foi entendido no início.** A Noite ainda usava os cartões do painel antigo e dependia do serviço nativo para aparecer. Isso também impedia conferir a tela no navegador sem aparelho e sem conta.
-
-**Hipótese de trabalho.** Os componentes visuais do Início servem para hierarquizar a Noite. Um plugin de desenvolvimento permite conferir o mesmo conteúdo que o Android monta.
-
-**O que foi testado, e como.** Suíte completa, lint, TypeScript, Knip, Knip de tipos, builds web e Android, sincronização do Capacitor, CSP e orçamento. Em Edge com Playwright, 48 capturas a 360 e 390 px, nos dois temas, nos seis cenários, antes e depois. A comparação anterior usou os cartões de develop com a mesma demonstração e a mesma barra do app. Os 12 testes de cartão e botão falharam nessa versão. O preview de produção mandou /noite?demo=1 ao login, e os pacotes web e Android ficaram sem o módulo de demonstração. Cada sabotagem derrubou os testes abaixo em Noite.test.tsx.
-
-| Sabotagem temporária | Teste que falhou |
-|---|---|
-| Aceitar o parâmetro sem verificar desenvolvimento | em produção, ?demo=1 mostra a Noite do site sem montar o plugin falso |
-| Tirar o nome acessível do cartão de preparo | mostra o cartão certo no cenário parada |
-| Trocar a etiqueta com o horário de início | mostra o cartão certo no cenário gravando |
-| Retirar o papel de alerta da interrupção | mostra o cartão certo no cenário interrompida |
-| Trocar a etiqueta Última noite | mostra o cartão certo no cenário encerrada |
-| Tirar o nome acessível do cartão de bateria | mostra o cartão certo no cenário bateria |
-| Trocar os artigos da lista por contêineres genéricos | mostra o cartão certo no cenário lista |
-| Retirar o destaque de Iniciar a noite | destaca o botão principal certo no cenário parada, encerrada, bateria e lista (quatro testes) |
-| Retirar o destaque de Encerrar a noite | destaca o botão principal certo no cenário gravando |
-| Retirar o destaque de Retomar | destaca o botão principal certo no cenário interrompida |
-
-**Resultado medido.** 994 testes em 67 arquivos, com 47 testes anteriores de Noite, lista e consentimento passando. Painel 157 163 B gzip de 260 000 B, login 146 832 B gzip de 155 000 B, landing 278 860 B transferidos estimados de 289 800 B. “Configurações” mediu 65,2 px numa célula de 72 px a 360 px, em uma linha e sem rolagem horizontal nos dois temas. A aba Noite apareceu ativa na barra de cinco destinos.
-
-**Adaptação.** A ação da noite interrompida passou de “Iniciar a noite” a “Retomar”, inclusive no alerta. Os alertas de descarte permaneceram à vista com texto corrido. A faixa de 40 a 60 Hz e a contagem de descartes ficam nos Detalhes técnicos, recolhidos. Três expectativas em CartaoDaNoite.test.tsx acompanharam essas mudanças intencionais. A métrica percentual usa “Do período foi registrado”, conforme o vocabulário do UI-39. Para uma noite encerrada, o cálculo usa o horário da última época gravada quando disponível, para o denominador parar de crescer após o fim.
-
-**O que deu errado no caminho.** A primeira medição da barra encontrou dois rótulos “Configurações” no DOM e passou a usar o link móvel. A primeira leitura do tema procurava uma classe em vez do atributo data-theme. As capturas iniciais também revelaram a barra do site na demonstração. Uma rodada de sabotagem precisou normalizar as quebras de linha dos arquivos e ajustar o filtro aos títulos parametrizados do Vitest. O TypeScript reprovou a opção exact na busca por papel. A busca passou a usar o nome literal, que já faz a correspondência exata.
-
-**Risco em aberto.** A conferência visual usou o navegador e o plugin de demonstração. O build Android sincronizou os arquivos, sem um percurso com o serviço nativo em aparelho.
-
-**Procedência.** Branch feature/UI-43-noite sobre develop 5284345. Windows 11, Node 24.11.0 e Edge com Playwright, 24/11/2026. Capturas locais em output/playwright, fora dos commits.
-
----
-
-# 2026-11-24 (iii) — UI-43, etapa 3: controles da revisão da PR #276
-
-**O problema, como foi entendido no início.** A revisão encontrou duas regressões que passavam pela suíte. O chunk da demo podia ser publicado mesmo com sua rota bloqueada. O alerta de ritmo podia voltar a mostrar números técnicos.
-
-**Hipótese de trabalho.** Conferir todo o diretório de assets do build protege o pacote publicado. Conferir o conteúdo de role=alert com zero e com alguns registros protege os dois textos de descarte.
-
-**O que foi testado, e como.** A condição de importação da demo foi trocada por true e o build web recompilado. A conferência de produção em conferir_pacote_frontend.py falhou ao localizar “Cenário da demonstração” no chunk NoiteDemo. Inserir “40 a 60 Hz” no alerta sem registros derrubou “alertas de ritmo não exibem Hz nem contagens de descarte”, em CartaoDaNoite.test.tsx. Repetir com “3 registros descartados” no alerta da noite com registros derrubou o mesmo teste. O teste também falhou com o cartão de origin/develop, que ainda mostrava “40 a 60 Hz” no alerta. Os arquivos foram restaurados após cada controle.
-
-**Resultado medido.** 995 testes em 67 arquivos. Build web, verificação do pacote, CSP, lint e conferências de documentação passaram com o código restaurado. O Dashboard ficou em 157 163 B gzip de 260 000 B.
-
-**Adaptação.** A conferência dos assets ficou no mesmo script de orçamento já executado depois do build no CI. O teste da tela usa o plugin falso existente e inspeciona o alerta nos dois estados.
-
-**O que deu errado no caminho.** A verificação anterior da rota cobria o acesso à demonstração, mas esse resultado também passava com o chunk presente no pacote. Nesta revisão, a primeira busca dos arquivos usou um glob aceito pelo rg no Unix e rejeitado pelo PowerShell. A busca foi repetida com os caminhos explícitos.
-
-**Risco em aberto.** A inspeção do pacote procura o rótulo exclusivo atual do seletor. Uma alteração desse rótulo precisa atualizar o marcador usado pelo script.
-
-**Procedência.** PR #276, feature/UI-43-noite sobre develop 5284345. Windows 11, Node 24.11.0, 24/11/2026.
-
----
-
-# O que este diário não cobre
-
-Registrado para que a ausência não passe por completude.
-
-| Lacuna | Por quê |
-|---|---|
-| Tudo antes de 2026-02-18 — e de 20/02 a 30/05, sem commit nenhum | ✏️ *Corrigido em 28/10 (`DOC-12`): dizia "antes de 2026-04-29", que é a data do clone, não do primeiro commit.* Anterior ao versionamento, ou fora dele. A escolha do ESP32 + MPU6050 aparece **feita** no README de 18/02, sem justificativa; a do travesseiro em vez do punho, e o enunciado inicial do problema não estão no git. |
-| Grande parte de junho a agosto | O `HISTORICO.md` cobre o período, mas **não é versionado** (está no `.gitignore`), então não pode ser citado como procedência num capítulo de TCC. As entradas desse intervalo aqui saem de reflog e de código, e por isso são poucas. |
-| ~~As suítes do backend e do frontend~~ | **Coberto em 16/10:** backend 240 passam, frontend 338 passam em 22 arquivos, `tsc --noEmit` e `vite build` limpos. Substitui os números de 10/09 (221 pytest, 315 vitest). Com duas ressalvas: `web-app/tests/rls/` **não rodou** (125 pulados — exige Postgres de verdade), e os 338 do frontend foram medidos **sobre a árvore de trabalho**, não sobre o estado commitado — ver a linha abaixo. ✏️ **17/10:** a segunda ressalva caiu com os 15 arquivos commitados — o frontend passa a 376 testes em 24 arquivos, medidos sobre a árvore versionada, e os dois números coincidem porque não há mais pendência. A ressalva do `rls` continua valendo. O backend **não foi reexecutado em 17/10**: os 240 seguem sendo de 16/10, e nada do trabalho de 17/10 toca `web-app/` fora de documentação. |
-| ~~O frontend de 29/09~~ | ✏️ **Lacuna fechada em 17/10 — ver a entrada (iii) daquela data.** Os 15 arquivos foram lidos e commitados em quatro commits (`a586b0b`, `fea1c48`, `22a9268`, `f58f52c`). Eram a metade de cliente do `DASH-12`/`DASH-13`, trabalho não catalogado do `DASH-08`, a montagem do `UI-10` e uma correção de cabeçalho do `FW-06` — **14 de trabalho e 1 que não era mudança nenhuma**, só entrada de índice desatualizada. Os números do frontend passam a medir a árvore versionada: **376 testes**, `tsc` limpo. |
-| Execução em runner de verdade | Os jobs de CI validados em 16/10 rodaram **localmente**. Nenhum rodou num runner do GitHub, e o `chore/GIT-01-normalizar-fim-de-linha` não foi enviado. A diferença não é cosmética: o `actions/checkout` é o ponto central da análise do `CI-05`. |
-| Toda a camada L1 e L2 | Nada foi medido no dispositivo físico. Os 8 pinos do MPU6050 não estão soldados. Todo número de hardware neste arquivo é **calculado ou simulado**, com uma exceção — a leitura de 25/08, que é medição de um sensor mal conectado e serve só para dizer que não serve. |
-
 # 2026-11-19 (xiv) — APP-17: o APK 1.1.0 com a marca, e o download na landing
 
 **O problema, como foi entendido no início.** O autor pediu o APK novo e o link para baixar. O único APK de release era o 1.0.0, de 11/11 (`develop` `4811f57`). De lá para cá entraram cerca de 60 commits no app e no núcleo: o envio da noite sem repetição (`APP-16`), a sessão (`AUTH-10`), a temperatura por aparelho (`DATA-14`), entre outros. O APK ainda tinha o ícone padrão do Capacitor (`APP-17`) e se chamava "Dormio" na tela inicial. Na landing, o botão "Download para Android" estava desativado (`UI-37`).
@@ -13157,6 +13093,62 @@ Os dois controles originais da etapa também voltaram a falhar sob sabotagem. No
 
 ---
 
+# 2026-11-24 (ii) — UI-43, etapa 3: a tela Noite
+
+**O problema, como foi entendido no início.** A Noite ainda usava os cartões do painel antigo e dependia do serviço nativo para aparecer. Isso também impedia conferir a tela no navegador sem aparelho e sem conta.
+
+**Hipótese de trabalho.** Os componentes visuais do Início servem para hierarquizar a Noite. Um plugin de desenvolvimento permite conferir o mesmo conteúdo que o Android monta.
+
+**O que foi testado, e como.** Suíte completa, lint, TypeScript, Knip, Knip de tipos, builds web e Android, sincronização do Capacitor, CSP e orçamento. Em Edge com Playwright, 48 capturas a 360 e 390 px, nos dois temas, nos seis cenários, antes e depois. A comparação anterior usou os cartões de develop com a mesma demonstração e a mesma barra do app. Os 12 testes de cartão e botão falharam nessa versão. O preview de produção mandou /noite?demo=1 ao login, e os pacotes web e Android ficaram sem o módulo de demonstração. Cada sabotagem derrubou os testes abaixo em Noite.test.tsx.
+
+| Sabotagem temporária | Teste que falhou |
+|---|---|
+| Aceitar o parâmetro sem verificar desenvolvimento | em produção, ?demo=1 mostra a Noite do site sem montar o plugin falso |
+| Tirar o nome acessível do cartão de preparo | mostra o cartão certo no cenário parada |
+| Trocar a etiqueta com o horário de início | mostra o cartão certo no cenário gravando |
+| Retirar o papel de alerta da interrupção | mostra o cartão certo no cenário interrompida |
+| Trocar a etiqueta Última noite | mostra o cartão certo no cenário encerrada |
+| Tirar o nome acessível do cartão de bateria | mostra o cartão certo no cenário bateria |
+| Trocar os artigos da lista por contêineres genéricos | mostra o cartão certo no cenário lista |
+| Retirar o destaque de Iniciar a noite | destaca o botão principal certo no cenário parada, encerrada, bateria e lista (quatro testes) |
+| Retirar o destaque de Encerrar a noite | destaca o botão principal certo no cenário gravando |
+| Retirar o destaque de Retomar | destaca o botão principal certo no cenário interrompida |
+
+**Resultado medido.** 994 testes em 67 arquivos, com 47 testes anteriores de Noite, lista e consentimento passando. Painel 157 163 B gzip de 260 000 B, login 146 832 B gzip de 155 000 B, landing 278 860 B transferidos estimados de 289 800 B. “Configurações” mediu 65,2 px numa célula de 72 px a 360 px, em uma linha e sem rolagem horizontal nos dois temas. A aba Noite apareceu ativa na barra de cinco destinos.
+
+**Adaptação.** A ação da noite interrompida passou de “Iniciar a noite” a “Retomar”, inclusive no alerta. Os alertas de descarte permaneceram à vista com texto corrido. A faixa de 40 a 60 Hz e a contagem de descartes ficam nos Detalhes técnicos, recolhidos. Três expectativas em CartaoDaNoite.test.tsx acompanharam essas mudanças intencionais. A métrica percentual usa “Do período foi registrado”, conforme o vocabulário do UI-39. Para uma noite encerrada, o cálculo usa o horário da última época gravada quando disponível, para o denominador parar de crescer após o fim.
+
+**O que deu errado no caminho.** A primeira medição da barra encontrou dois rótulos “Configurações” no DOM e passou a usar o link móvel. A primeira leitura do tema procurava uma classe em vez do atributo data-theme. As capturas iniciais também revelaram a barra do site na demonstração. Uma rodada de sabotagem precisou normalizar as quebras de linha dos arquivos e ajustar o filtro aos títulos parametrizados do Vitest. O TypeScript reprovou a opção exact na busca por papel. A busca passou a usar o nome literal, que já faz a correspondência exata.
+
+**Risco em aberto.** A conferência visual usou o navegador e o plugin de demonstração. O build Android sincronizou os arquivos, sem um percurso com o serviço nativo em aparelho.
+
+**Procedência.** Branch feature/UI-43-noite sobre develop 5284345. Windows 11, Node 24.11.0 e Edge com Playwright, 24/11/2026. Capturas locais em output/playwright, fora dos commits.
+
+---
+
+# 2026-11-24 (iii) — UI-43, etapa 3: controles da revisão da PR #276
+
+**O problema, como foi entendido no início.** A revisão encontrou duas regressões que passavam pela suíte. O chunk da demo podia ser publicado mesmo com sua rota bloqueada. O alerta de ritmo podia voltar a mostrar números técnicos.
+
+**Hipótese de trabalho.** Conferir todo o diretório de assets do build protege o pacote publicado. Conferir o conteúdo de role=alert com zero e com alguns registros protege os dois textos de descarte.
+
+**O que foi testado, e como.** A condição de importação da demo foi trocada por true e o build web recompilado. A conferência de produção em conferir_pacote_frontend.py falhou ao localizar “Cenário da demonstração” no chunk NoiteDemo. Inserir “40 a 60 Hz” no alerta sem registros derrubou “alertas de ritmo não exibem Hz nem contagens de descarte”, em CartaoDaNoite.test.tsx. Repetir com “3 registros descartados” no alerta da noite com registros derrubou o mesmo teste. O teste também falhou com o cartão de origin/develop, que ainda mostrava “40 a 60 Hz” no alerta. Os arquivos foram restaurados após cada controle.
+
+**Resultado medido.** 995 testes em 67 arquivos. Build web, verificação do pacote, CSP, lint e conferências de documentação passaram com o código restaurado. O Dashboard ficou em 157 163 B gzip de 260 000 B.
+
+**Adaptação.** A conferência dos assets ficou no mesmo script de orçamento já executado depois do build no CI. O teste da tela usa o plugin falso existente e inspeciona o alerta nos dois estados.
+
+**O que deu errado no caminho.** A verificação anterior da rota cobria o acesso à demonstração, mas esse resultado também passava com o chunk presente no pacote. Nesta revisão, a primeira busca dos arquivos usou um glob aceito pelo rg no Unix e rejeitado pelo PowerShell. A busca foi repetida com os caminhos explícitos.
+
+**Risco em aberto.** A inspeção do pacote procura o rótulo exclusivo atual do seletor. Uma alteração desse rótulo precisa atualizar o marcador usado pelo script.
+
+**Procedência.** PR #276, feature/UI-43-noite sobre develop 5284345. Windows 11, Node 24.11.0, 24/11/2026.
+
+---
+
+
+---
+
 # 2026-11-24 (iv) — UI-43, etapa 4: a tela Histórico
 
 **O problema, como foi entendido no início.** O Histórico ainda mostrava uma lista dividida por linhas no celular. A escolha de janela tinha uma verificação de carregamento e cancelamento, mas nenhum teste conferia os limites do pedido e as sessões exibidas nas três janelas.
@@ -13358,6 +13350,7 @@ Os dois controles originais da etapa também voltaram a falhar sob sabotagem. No
 
 ---
 
+
 # 2026-11-25 (iii) — APP-21: configuração de login no APK Android
 
 **O problema, como foi entendido no início.** O APK 1.1.4 publicado exibia “Autenticação não configurada” ao tentar entrar. O 1.1.3 trazia o endereço necessário no JavaScript empacotado.
@@ -13375,3 +13368,229 @@ Os dois controles originais da etapa também voltaram a falhar sob sabotagem. No
 **Risco em aberto.** A geração e a assinatura do APK 1.1.5, o login com uma conta de teste no emulador e a publicação ficam com o autor na release do `APP-21`.
 
 **Procedência.** Branch `bugfix/APP-21-apk-sem-supabase` sobre `develop` `93bd0ea`, em 25/11/2026. Executado no Windows com Node 24.11.0, Python 3.13.5 e `aapt2` do Build-Tools 36.0.0. Os APKs históricos ficaram fora dos commits.
+
+# 2026-11-25 (iv) — release R20: o app 1.1.5, que volta a fazer login
+
+**O problema, como foi entendido no início.** O APK 1.1.4 (release R19) não fazia login: saiu sem `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` (diário, 25/11 (iii)). Quem o instalou não entra na conta e, por isso, também não vê o aviso de versão nova. O `develop` tinha ainda, fora da produção, a barra lateral e o cartão "Seu dispositivo" do `UI-43` (PRs #283 a #286).
+
+**Hipótese de trabalho.** Um APK 1.1.5, gerado de uma cópia com o `frontend/.env` e conferido pelo `conferir_apk.py` antes de publicar, resolve o login; quem tem a 1.1.4 instala por cima sem perder as noites. Sem migração, o merge em `main` não tem janela de risco no banco.
+
+**O que foi testado, e como.**
+- **O APK:** gerado de `develop` `219aad0` numa cópia limpa com o `frontend/.env` copiado; o `build:app` com a trava nova passou. `conferir_apk.py`, `apksigner verify --print-certs`, `aapt2 dump badging` e o SHA-256.
+- **No emulador Pixel 6:** instalação do APK de release, a tela de login e um login com um e-mail inexistente (`example.com`), para ver se o pedido chega ao Supabase.
+- **A release:** o rascunho `app-v1.1.5` com o APK e as notas; depois do merge, a tag no `65f0ad4`, a publicação como `latest` e o aviso no topo das notas da `app-v1.1.4`.
+- **O merge:** a PR #289 com o CI 12 de 12, lido antes do merge.
+- **A produção, depois do deploy** `8065762574`: `/health`, rotas sem credencial, a CSP das cinco páginas, a landing, o `versao-do-app.json`, o link `latest` e o `conferir_producao.py`.
+
+**Resultado medido.**
+- **O APK:** `conferir_apk.py` com código 0 (endereço do Supabase presente, versão 1.1.5); certificado do autor, `versionCode` 7, não depurável, três ABIs, 5 261 705 B, SHA-256 `910fff57…e62f`.
+- **No emulador:** a resposta foi "E-mail ou senha incorretos", e não "Autenticação não configurada".
+- **A produção:** `/health` `200`, contrato 2.12.0; `401` sem token em dispositivos, no `POST` do celular e nas features; a CSP igual nas cinco páginas; a landing com "Versão 1.1.5 (beta)"; o `versao-do-app.json` com 1.1.5; o link `latest` com `200` e o mesmo SHA-256 do APK gerado.
+
+**Adaptação.** O emulador tinha um 1.1.3 de depuração, com outra assinatura: o Android recusou a instalação por cima (`INSTALL_FAILED_UPDATE_INCOMPATIBLE`), e o app foi desinstalado **só no emulador** antes de instalar o de release. O login de verdade, com uma conta, fica com o autor: a conferência daqui usou só um e-mail inexistente.
+
+**O que deu errado no caminho.**
+- **O System UI do emulador travou** logo depois de ligar ("System UI isn't responding"), duas vezes; fechado pelo diálogo, o app abriu.
+- **A digitação pelo `adb` cortou o e-mail** em "con"; a resposta do Supabase veio do mesmo jeito, e o teste continua valendo para o que pretendia (o pedido sair do app).
+- **Na revisão da PR #287, dois testes da Noite** (cenários "parada" e "gravando") caíram na primeira rodada depois do `npm ci` e passaram nas duas seguintes; é a segunda vez. Não investigado.
+
+**Risco em aberto.**
+- **O login com uma conta de verdade no 1.1.5** e as telas novas no celular do autor.
+- **Quem tem a 1.1.3 ou a 1.1.4 precisa ser avisado pelo autor:** nenhuma das duas mostra o aviso (a 1.1.3 não tem o recurso; a 1.1.4 não passa do login).
+- **A instabilidade dos testes da Noite** logo depois do `npm ci`, sem item ainda.
+
+**Procedência.** PRs #287 e #289; `main` `65f0ad4`; deploy `8065762574`; release `app-v1.1.5`; conferências desta máquina (Windows 11, emulador Pixel 6); 25/11.
+
+# 2026-11-25 (v) — APP-22: nome inicial do celular pelo modelo
+
+**O problema, como foi entendido no início.** O pareamento automático criava o celular com nome fixo, sem identificar o aparelho.
+
+**Hipótese de trabalho.** O fabricante e o modelo fornecidos pelo Android podem nomear o dispositivo sem consultar o nome personalizado do sistema. O servidor deve validar o texto e preservar os nomes escolhidos.
+
+**O que foi testado, e como.** Pytest sem RLS, incluindo a cobertura da política; Vitest, lint, TypeScript no build, dois Knip, build e conferência do pacote; `testDebugUnitTest` com JDK 21; Ruff. As seis sabotagens foram executadas e restauradas: renomear sempre derrubou `test_preserva_nome_alterado`; aceitar quebra de linha, `test_cria_com_padrao_quando_modelo_invalido`; tornar a troca obrigatória, `test_falha_na_troca_nao_derruba_rota`; repetir fabricante, `naoRepete`; aceitar unknown, `desconhecido`; omitir o modelo do corpo, `manda modelo com versao`. Contra os arquivos da base, os 13 testes novos do backend falharam por ausência da função nova usada no mock; no frontend falhou o teste de envio do modelo. As sabotagens verificam os comportamentos separadamente.
+
+**Resultado medido.** Backend: 751 passaram e 1 pulou. Frontend: 1044 passaram em 69 arquivos; lint, TypeScript, Knip, Knip de tipos, build e conferência do pacote passaram. Android: 48 testes passaram; Ruff passou. Os seis controles positivos falharam como esperado.
+
+**Adaptação.** O update automático filtra também pelo nome padrão no banco, protegendo contra edição concorrente. A interface da demonstração continua independente do método novo da ponte nativa. Sem migração ou alteração de RLS e funções do banco; versão do app mantida para a release.
+
+**O que deu errado no caminho.** A consulta remota inicial foi bloqueada pela rede do sandbox e repetida com permissão. A primeira compilação Android precisou da sincronização do Capacitor e de JDK 21, pois o padrão era 17. A primeira tipagem exigia o método novo nas simulações; foi corrigida. Uma execução Vitest foi interrompida após mostrar os testes verdes e repetida até saída zero. A saída de uma sabotagem falhou por codificação do terminal; foi repetida em UTF-8.
+
+**Risco em aberto.** Assim como no `APP-19`, a decisão sobre a mudança da política sem novo consentimento fica para o orientador (`LGPD-03`). A rota continua reutilizando o celular ativo mais antigo; o modelo não identifica nem separa automaticamente aparelhos físicos diferentes. Não foi testado em aparelho real.
+
+**Procedência.** Branch `feature/APP-22-nome-pelo-modelo`, base `develop` `395f84c`, 25/11/2026. Executado no Windows 11, Python 3.13.5, Node 24.11.0 e JDK 21; sem dados de aparelho real.
+
+---
+
+# 2026-11-25 (vi) — APP-22 mesclado e o APP-23 aberto: dois celulares na mesma conta
+
+**O problema, como foi entendido no início.** Na revisão da PR #291 (`APP-22`, o nome do celular pelo modelo), o Codex e o Claude apontaram que a rota `POST /api/devices/celular` devolve sempre o celular ativo mais antigo da conta. Com dois aparelhos na mesma conta, as noites dos dois vão para um registro só, e o nome passa a ser o modelo do primeiro.
+
+**Hipótese de trabalho.** O defeito é anterior ao `APP-22` (as noites já se misturavam) e só fica visível agora, porque o nome deixou de ser genérico. Corrigir exige um identificador estável por aparelho, que é dado pessoal novo: vira item próprio, e o `APP-22` entra como está.
+
+**O que foi testado, e como.**
+- **A PR #291**, com dois ajustes do Claude no commit `920b8c9`: a frase do modelo foi para a linha "Nome do dispositivo" da tabela da seção 2.1 da política, e o método `modeloDoAparelho` entrou na interface `PluginNoite` (com os três objetos falsos do plugin completados). `tsc`, `vitest` (1 044), lint, os dois Knip, o build e a conferência do pacote; no backend, os testes do modelo e da política (21). O CI 19 de 19, lido antes do merge.
+- **Antes dos ajustes, na revisão:** backend 751 passam e 1 pula; frontend 1 044; JVM 48; 7 de 7 sabotagens pegas (renomear sempre, pela rota e pelo filtro; sem validação; a falha derrubando a rota; o Java repetindo o fabricante e aceitando "unknown"; o app sem mandar o modelo).
+- **O item novo:** `conferir_backlog.py --conferir` com a contagem 41 e o `APP-23` no quadro.
+
+**Resultado medido.** A #291 mesclada em `develop` (`22eb20a`). O `APP-23` aberto em L0, com a contagem 41 (L0 10) conferida pelo script.
+
+**Adaptação.** O Codex tinha tipado o método à parte porque, na interface, os três objetos falsos do plugin deixam de compilar; o ajuste completou os três em vez de manter o tipo separado.
+
+**O que deu errado no caminho.** A primeira tentativa do ajuste do tipo reprovou no `tsc` pelos três objetos falsos, e só passou depois de completá-los.
+
+**Risco em aberto.** O nome errado para quem usar dois celulares na mesma conta, até o `APP-23`. O `APP-22` só chega ao celular com o APK 1.1.6.
+
+**Procedência.** PR #291 (`920b8c9`), merge `22eb20a`; conferências nesta máquina (Windows 11, Node 24.11.0, Python 3.13); 25/11.
+
+# 2026-11-25 (vii) — VIA-03: o custo do protótipo, o custo em lote, o preço e a homologação na Anatel
+
+**O problema, como foi entendido no início.** O RD-17 (custo de componentes de um protótipo) estava aberto desde o `REQ-01`, à espera dos preços pagos. Com as compras do `HW-02` feitas em 25/11, o autor pediu para contabilizar o custo de uma unidade e, na sequência, quanto custaria produzir em escala, por quanto vender, que lucro sobra e o que mais é preciso para vender.
+
+**Hipótese de trabalho.** O custo de peças do protótipo seria dominado por poucos módulos (ESP32, bateria e proteção), e o custo em escala cairia bastante comprando fora do varejo. A dúvida era se o produto se pagaria, e o que entraria na conta além das peças.
+
+**O que foi testado, e como.**
+- **Uma planilha no Google Sheets do autor** (fora do repositório, por registrar compras pessoais), com oito abas e fórmulas no lugar de valores digitados: as 27 linhas das três compras, o desconto de cada loja rateado, o custo por unidade, o custo em lote, o preço e a margem, os concorrentes e a homologação. Cada aba foi relida depois de escrita, conferindo os totais contra as notas (Mamute R$ 237,10 − R$ 12,10 = R$ 225,00; Santa Ifigênia R$ 19,30 − R$ 0,30 = R$ 19,00; Mercado Livre R$ 75,80 + R$ 134,80 = R$ 210,60).
+- **Pesquisa de preços no navegador embutido do app:** AliExpress (as variantes de cada anúncio lidas uma a uma, porque a busca mostra o preço da variante mais barata, muitas vezes um acessório), Mercado Livre (com o login do autor), Mamute, Eletrogate, Amazon e Zoom.
+- **Impostos e câmbio:** busca na web (Remessa Conforme e PTAX de 25/11); a estimativa de imposto mostrada nos anúncios do AliExpress (cerca de 25% sobre o preço, ICMS de 20% por dentro) foi usada para conferir a premissa.
+- **Anatel:** busca na web e leitura de páginas de certificadoras e da Anatel por um subagente; a página da Anatel com a lista de OCDs redirecionou e não foi lida.
+- **Concorrentes:** cada preço conferido na página original, depois de uma primeira versão feita com os resumos da busca.
+- **No repositório:** `scripts/requisitos_dispositivo.py --conferir` (26 números) e `scripts/conferir_backlog.py --conferir` (contagem 42, `VIA-03` no quadro), nesta máquina.
+
+**Resultado medido.** Protótipo: **R$ 219,36** com o carregador, R$ 190,46 dentro do travesseiro; seis itens somam 93,6%. Total gasto no projeto: R$ 454,60. Lote de 100, comprando cada peça onde é mais barata: **R$ 101,69** por unidade (−53,6%), com o ESP32 e a célula do Mercado Livre e o resto do AliExpress (fator de impostos 1,88). A R$ 279,90, R$ 84,38 de lucro por unidade antes dos custos do negócio; com eles e a homologação estimada em R$ 10.000, o lote de 100 dá −R$ 4.797,34, e o lucro começa em cerca de 200 unidades (R$ 44.618 com 1 000, comprando em remessas de 100). Nenhum travesseiro com monitor de sono à venda no Brasil em 25/11. Tudo em `docs/ESTUDO-CUSTOS-E-VIABILIDADE.md`.
+
+**Adaptação.** A célula LiFePO4 ficou no Mercado Livre porque o AliExpress não a envia para o Brasil. Kits de células genéricas a R$ 6,78 foram recusados de propósito, pelo mesmo critério de procedência do `ESTUDO-ENERGIA.md`. O capital parado passou a ser calculado por remessa de compra, e entrou a renovação do certificado a cada 24 meses.
+
+**O que deu errado no caminho.**
+- **Preços de concorrentes tirados dos resumos da busca, sem abrir as páginas.** O autor não achou o preço do Persono na página da Abit e perguntou; ele estava lá, mas era de 2022. Conferidos um a um, quatro dos sete estavam errados (o Beautyrest quase dobrou, de R$ 579,99 para R$ 966,20; o EMFIT estava indisponível). Os dois travesseiros com sensor não são mais vendidos.
+- **O GY-521 da Mamute foi lido como R$ 12,80** numa foto pequena da nota; a segunda foto mostrou R$ 32,80.
+- **As quantidades do Mercado Livre foram supostas** (duas células, um GY-521) e estavam trocadas (uma célula, dois GY-521): corrigido com os prints dos pedidos.
+- **A primeira versão dos cenários comprava o lote inteiro de uma vez**, e o capital parado, que cresce com o quadrado do lote, derrubava o retorno de 1 000 unidades para 9,7%. O autor perguntou por que o ROI caía.
+- **A planilha em português do Brasil reprovou as fórmulas com vírgula** (`#ERROR!`); reescritas com ponto e vírgula.
+- **O Mercado Livre pediu login** no navegador do app, e algumas buscas não carregaram mesmo depois dele; um anúncio do AliExpress foi bloqueado.
+
+**Risco em aberto.** Os R$ 10.000 da Anatel e os R$ 3.000 de renovação são estimativas de certificadoras, com interesse comercial, e o SAR pode somar de R$ 15.000 a R$ 40.000; os preços do AliExpress são promocionais; a Rontek tem cerca de 25 células no anúncio; o encapsulamento não tem preço. Tudo carregado pelo `VIA-03` (e o encapsulamento pelo `HW-04`).
+
+**Procedência.** Notas e pedidos fotografados pelo autor em 25/11; anúncios e páginas consultados em 25/11 no navegador embutido do app (Windows 11); planilha do autor no Google Sheets; 8 rascunhos de cotação criados no Gmail do autor, não enviados; conferências do repositório nesta máquina (Windows 11, Python 3.13) sobre `develop` `a361d27`.
+
+# 2026-11-25 (viii) — HW-02: o orçamento das peças e a placa de proteção no DIAG-02 (v4)
+
+**O problema, como foi entendido no início.** O autor levantou o preço das peças do `HW-02` em duas lojas da Santa Ifigênia e no Mercado Livre. A célula que apareceu nas três frentes é a LiFePO4 18650 da Rontek, que vem **sem proteção**. O circuito de 17/11 (`DIAG-02` v3) aceitava "célula com proteção ou uma placa de proteção", mas só desenhava a primeira. Com a célula nua, entra uma placa de proteção (PCM) LiFePO4 1S, e o circuito muda.
+
+**Hipótese de trabalho.** A placa corta pelo negativo. Então o terra do circuito tem de ser o P− dela, e não o B− da célula. Como a célula é removível, a placa fica fixa, soldada aos fios do suporte, e serve às duas células. O Q1 continua no positivo, depois da placa.
+
+**O que foi testado, e como.**
+- **Os orçamentos, item por item**, contra a tabela da §8.1 do estudo: Mamute (nº 354234/1), a conversa com a Santa Ifigênia Componentes Eletrônicos e o carrinho do Mercado Livre, com os anúncios da célula e da placa.
+- **A folha v4 do `DIAG-02`**, gerada com `schemdraw` 0.19 e `matplotlib` 3.9.2 num ambiente à parte, como a v3. A imagem foi olhada três vezes e corrigida duas.
+- **A orientação do Q1**, conferida pelas âncoras do `PFet` do `schemdraw` em seis rotações antes de desenhar. Com `theta(-90)`, o dreno fica à esquerda (do lado da placa), a fonte à direita (do lado da carga) e a porta para baixo (no P−).
+- **O script recusaria desenhar** se o firmware divergisse. Ele desenhou, então a conferência de SDA, SCL e endereço passou.
+
+**Resultado medido.** Nenhuma medição elétrica. O que mudou (*especificação* dos anúncios e *cálculo*):
+- **B1:** Rontek RTLFPO 18650, 3,2 V, "2 000 mAh 3C" no rótulo. Os 2 000 mAh são o topo do que uma LFP 18650 entrega. Com 1 400 mAh, o pior caso da faixa de S1 (13,6 mA) ainda dá ~83 h, acima do mínimo de 72 h.
+- **U3, nova:** placa de proteção LiFePO4 1S da Rontek, de 6 A contínuos. O anúncio não diz o corte de descarga, e o modelo diz "2A" enquanto a descrição diz 6 A.
+- **Q1:** AO3401A, que só existe em SOT-23. Sem uma plaquinha adaptadora para DIP, não há como montá-lo nos fios. Os P-MOSFET de terminal comum da região (IRF9540) não conduzem com 3,2 V na porta.
+- **Carregador:** TP5000 USB-C "Li-ion/LiFePO4", com a seleção de 3,6 V a conferir.
+- **Divisão sugerida das compras:** na Santa Ifigênia Componentes, o MOSFET, o capacitor (105 °C, menor e no mesmo preço do da Mamute), a chave KCD11 e o termorretrátil. Na Mamute, os suportes, os fusíveis, o porta-fusível, os resistores (4, e não 1 como estava no orçamento) e o cerâmico. No Mercado Livre, a plaquinha SOT-23, o TP5000, a célula e a placa. Ficou de ~R$ 150 a 170 no total.
+
+**Veredito.** A v4 é o circuito vigente (PROJETO, não montado). Todo símbolo de terra é o P− da placa, e o B− só vai a ela. A v3 continua gerada, como registro do estudo. O `HW-02` segue aberto: comprar, confirmar o corte da placa e a seleção do TP5000, medir e montar.
+
+**Adaptação.**
+- Os números de autonomia do estudo não foram refeitos para os 2 000 mAh do rótulo, que não estão medidos. Ficou só a conta do lado conservador (1 400 mAh), que é a que decide se a célula serve.
+- A primeira avaliação da célula do Mercado Livre a tratou como suspeita de procedência. Quando o autor mostrou o anúncio, apareceu a lata impressa "RONTEK", a mesma marca da loja. A dúvida ficou só na capacidade.
+
+**O que deu errado no caminho.**
+- **Na primeira versão da v4, o Q1 saiu vertical**: a porta descia rente à borda da placa e sobre a linha do P+, e o título cobria o rótulo do Q1. A causa foi supor a orientação do `PFet` sem olhar as âncoras. Corrigido com `theta(-90)`, conferido pelas âncoras.
+- **Na segunda, os rótulos "GND = P−" e "G no P−" se sobrepunham** ao terra da porta. O segundo saiu (a nota da folha já diz isso), e o primeiro foi para baixo do símbolo.
+- **Um script de substituição falhou** porque os arquivos têm fim de linha CRLF e o texto procurado tinha LF. Nada foi gravado. As edições foram refeitas pela ferramenta de edição.
+
+**Risco em aberto.**
+- **O corte da placa de proteção não está confirmado** (`HW-02`). Abaixo de 2,0 V, ele não protegeria a célula LFP.
+- **O TP5000 pode sair de fábrica em 4,2 V** (`HW-02`): a primeira carga tem de ser medida.
+- **A placa de proteção não resiste a uma célula invertida.** O Q1 protege o ESP32, não ela, e a regra de conferir a polaridade continua.
+- **Nada foi medido nem montado** (`HW-02`, `RD-10`).
+
+**Procedência.** Branch `docs/HW-02-diag02-placa-de-protecao` sobre `develop` `93bd0ea`. `docs/diagramas/DIAG-02-esquematico.py` (folha v4, gerada fora do repositório, como as outras). Os orçamentos e os anúncios ficam com o autor, fora do repositório. Windows 11, 25/11.
+
+# 2026-11-25 (ix) — UI-43: menos texto no Início
+
+**O problema, como foi entendido no início.** Na captura móvel enviada pelo autor, o aviso de mistura e o recorte das sessões ocupavam várias linhas na tela. O selo e as legendas dos cartões repetiam a marca, a porcentagem e a contagem de pausas.
+
+**Hipótese de trabalho.** Uma linha por controle e legendas sem números repetidos deixam o resumo mais fácil de ler. A explicação continua acessível sob demanda e o recorte ativo permanece explícito.
+
+**O que foi testado, e como.** A montagem verificou a ajuda recolhida, o aviso acompanhando o trecho do gráfico, o seletor de sessões e o local da contagem. Os dois testes novos falharam com os componentes de develop 22eb20a e passaram com o ajuste. No Edge, com três sessões e dois aparelhos fictícios, a ajuda abriu e fechou por teclado, a troca de sessão funcionou e a contagem ficou nos detalhes. O aviso de mistura sumiu ao filtrar pelo celular. Os testes de montagem também mantiveram à vista os avisos de pausa, lacuna e período incompleto.
+
+**Resultado medido.** 1.046 testes em 69 arquivos. Lint, TypeScript, os dois Knip, build, CSP e orçamento passaram. O painel ficou em 159 452 B gzip de 260 000 B. Foram conferidos 360 e 390 px, no claro e no escuro, sem rolagem horizontal.
+
+**Adaptação.** O aviso usa os aparelhos com pontos no trecho selecionado do gráfico. O nome do aparelho no resumo e o número de registros fora do recorte são consultáveis nos detalhes técnicos.
+
+**O que deu errado no caminho.** O primeiro fetch precisou ser repetido com acesso de rede. O primeiro type-check apontou que a configuração do TypeScript não declara Intl.ListFormat. A união dos nomes voltou à forma usada pelo projeto. A primeira tentativa de injetar dados fictícios no navegador esbarrou na passagem do código pela CLI. Carregar a função por arquivo resolveu. A prévia de desenvolvimento registrou a ausência da configuração Supabase, esperada nessa worktree de demonstração.
+
+**Risco em aberto.** A verificação visual usou dados fictícios no Edge. Safari no iPhone e o APK não foram executados nesta rodada.
+
+**Procedência.** Branch feature/UI-43-inicio-mais-enxuto sobre develop 22eb20a, 25/11/2026. Windows 11, Node 24.11.0 e Edge com Playwright.
+
+---
+
+# 2026-11-25 (x) — UI-45: calendário do sono no Início
+
+**O problema.** O autor trouxe um protótipo HTML com uma semana compacta entre o seletor de dispositivos e “Seus registros” e pediu a integração do calendário ao Início.
+
+**Hipótese de trabalho.** A consulta paginada do Histórico e o agrupamento existente por sessão permitem mostrar os dias com captação, o tempo registrado e as sequências usando o mesmo critério das outras telas.
+
+**O que foi testado.** Três testes na rota real do painel, com respostas de API simuladas, verificam posição, expansão, sequência, sessão que atravessa meia-noite, exclusão de bancada, navegação e filtro por dispositivo. No Edge, a demonstração foi aberta em 1440 × 1000 e 390 × 844. Foram executados lint, build e a suíte completa do frontend.
+
+**Resultado medido.** Os três testes novos falharam com o Dashboard de `develop` pela ausência do calendário e passaram com a integração. A suíte completa passou com 1.047 testes em 69 arquivos. Lint e build passaram.
+
+**Adaptação.** A data representa o início local da sessão, como no Histórico. A consulta inclui margens nas bordas para as sessões que atravessam a meia-noite. A interface mostra o período consultado para as sequências e identifica o histórico parcial.
+
+**O que deu errado no caminho.** A atualização inicial do Git e o primeiro `npm ci` esbarraram no sandbox. A suíte fora do sandbox recuperou o teste do servidor Vite. Lint e TypeScript acusaram um import sobrando e o formato de intervalo incompatível com o alvo. O teste de linguagem acusou “captação” no detalhe, substituído por “Tempo registrado”. A prévia precisou de uma porta livre e de renovar o cache do Vite.
+
+**Risco em aberto.** O limite de páginas do Histórico pode omitir parte da consulta com muitos registros. A tela avisa nesse caso e omite o total de sequências. A conferência visual usou a demonstração e a suíte simulou as respostas autenticadas.
+
+**Procedência.** Protótipo HTML do autor, ramo `feature/calendario-do-sono`, base `86b683a`. Conferências locais no Windows, Node 24.11.0, em 25/11.
+
+---
+
+# 2026-11-26 — UI-45: revisão da PR #295 do calendário do sono
+
+**O problema, como foi entendido no início.** A sequência podia começar antes do primeiro dia da janela do calendário. Nesse caso, a sequência atual e a melhor apareciam como contagens exatas. A revisão também pediu cobertura direta das funções de calendário e dos estados e controles da tela.
+
+**Hipótese de trabalho.** Exibir “Pelo menos N dias consecutivos” quando o começo da sequência toca a borda da janela comunica o que o painel sabe sem aumentar o número de consultas na abertura do painel.
+
+**O que foi testado, e como.** Seis testes de unidade em `calendarioDoSono.test.ts` cobrem a soma de duas sessões no dia, a ordenação dos dias consecutivos, a quebra por um dia sem registro, a virada de mês, a véspera e o dia seguinte na consulta e um mês que começa no domingo. Cinco testes em `montagem.test.ts` usam a rota real do painel com respostas de API simuladas. Eles cobrem a sequência que terminou ontem, o limite de páginas do histórico, as setas em Semana e Mês e a sequência iniciada antes da janela.
+
+**Resultado medido.** Os 14 testes focados passaram, incluindo os 11 novos. O teste da borda falhou com o componente original de `12992da`, pela ausência de “Pelo menos 8 dias consecutivos”. Lint e build passaram. A suíte completa passou com 1.060 testes em 70 arquivos com `npm test -- --maxWorkers=2`. As cinco sabotagens foram executadas e restauradas:
+
+| Sabotagem | Teste que falhou |
+|---|---|
+| Gravar `registros.set(dia, tempo)` | “soma o tempo registrado de duas sessões no mesmo dia” |
+| Remover a regra de ontem | “mantém como atual a sequência cujo último registro foi ontem” |
+| Remover o aviso de histórico parcial | “mostra Histórico parcial quando ainda há registros após o limite de páginas” |
+| Inverter a navegação | Os dois casos de “navega pelas setas em Semana/Mês e bloqueia o próximo período ao voltar ao atual” |
+| Apresentar a sequência recortada como exata | “mostra pelo menos N dias quando a sequência vem do mês anterior e toca a borda” |
+
+**Adaptação.** A listagem e o resumo qualificam a sequência que toca a borda inicial. A melhor contagem também vira um mínimo sempre que houver uma sequência nessa condição, pois ela pode superar a maior sequência observada.
+
+**O que deu errado no caminho.** A primeira massa do cenário de virada tinha um único registro por dia. O agrupamento por sessão inferiu um intervalo típico de um dia e reuniu as leituras. A massa passou a ter três registros de 30 s por dia, com intervalos de aproximadamente um dia entre sessões. Na primeira suíte completa, o teste de linguagem excedeu 5 s e o cenário “parada” da tela Noite excedeu a espera pelo seletor. Os dois arquivos passaram na reexecução isolada.
+
+**Risco em aberto.** A duração da sequência antes da borda continua indeterminada. A tela apresenta o mínimo conhecido e mantém o tratamento separado de histórico truncado pelo limite de páginas.
+
+**Procedência.** Revisão da PR #295 em `feature/calendario-do-sono`, sobre `12992da`. Execução local no Windows, Node 24.11.0, em 26/11.
+
+✏️ *26/11, segunda revisão:* com um dia só na borda, o texto saía "Pelo menos 1 dia consecutivo". Passou a ser "Pelo menos 1 dia", porque um dia só não é sequência. Um teste de tela novo cobre o caso, e volta a falhar com o texto antigo. A suíte do frontend passa a 1061 testes.
+
+---
+
+# O que este diário não cobre
+
+Registrado para que a ausência não passe por completude.
+
+| Lacuna | Por quê |
+|---|---|
+| Tudo antes de 2026-02-18 — e de 20/02 a 30/05, sem commit nenhum | ✏️ *Corrigido em 28/10 (`DOC-12`): dizia "antes de 2026-04-29", que é a data do clone, não do primeiro commit.* Anterior ao versionamento, ou fora dele. A escolha do ESP32 + MPU6050 aparece **feita** no README de 18/02, sem justificativa; a do travesseiro em vez do punho, e o enunciado inicial do problema não estão no git. |
+| Grande parte de junho a agosto | O `HISTORICO.md` cobre o período, mas **não é versionado** (está no `.gitignore`), então não pode ser citado como procedência num capítulo de TCC. As entradas desse intervalo aqui saem de reflog e de código, e por isso são poucas. |
+| ~~As suítes do backend e do frontend~~ | **Coberto em 16/10:** backend 240 passam, frontend 338 passam em 22 arquivos, `tsc --noEmit` e `vite build` limpos. Substitui os números de 10/09 (221 pytest, 315 vitest). Com duas ressalvas: `web-app/tests/rls/` **não rodou** (125 pulados — exige Postgres de verdade), e os 338 do frontend foram medidos **sobre a árvore de trabalho**, não sobre o estado commitado — ver a linha abaixo. ✏️ **17/10:** a segunda ressalva caiu com os 15 arquivos commitados — o frontend passa a 376 testes em 24 arquivos, medidos sobre a árvore versionada, e os dois números coincidem porque não há mais pendência. A ressalva do `rls` continua valendo. O backend **não foi reexecutado em 17/10**: os 240 seguem sendo de 16/10, e nada do trabalho de 17/10 toca `web-app/` fora de documentação. |
+| ~~O frontend de 29/09~~ | ✏️ **Lacuna fechada em 17/10 — ver a entrada (iii) daquela data.** Os 15 arquivos foram lidos e commitados em quatro commits (`a586b0b`, `fea1c48`, `22a9268`, `f58f52c`). Eram a metade de cliente do `DASH-12`/`DASH-13`, trabalho não catalogado do `DASH-08`, a montagem do `UI-10` e uma correção de cabeçalho do `FW-06` — **14 de trabalho e 1 que não era mudança nenhuma**, só entrada de índice desatualizada. Os números do frontend passam a medir a árvore versionada: **376 testes**, `tsc` limpo. |
+| Execução em runner de verdade | Os jobs de CI validados em 16/10 rodaram **localmente**. Nenhum rodou num runner do GitHub, e o `chore/GIT-01-normalizar-fim-de-linha` não foi enviado. A diferença não é cosmética: o `actions/checkout` é o ponto central da análise do `CI-05`. |
+| Toda a camada L1 e L2 | Nada foi medido no dispositivo físico. Os 8 pinos do MPU6050 não estão soldados. Todo número de hardware neste arquivo é **calculado ou simulado**, com uma exceção — a leitura de 25/08, que é medição de um sensor mal conectado e serve só para dizer que não serve. |
+
+> ✏️ *26/11: o rodapé "O que este diário não cobre" voltou para o fim do arquivo. Até aqui ele estava no meio, entre entradas de 19/11, e cinco entradas de 24 e 25/11 foram escritas logo antes dele, fora da ordem; as de 25/11 foram renumeradas sem repetição.*

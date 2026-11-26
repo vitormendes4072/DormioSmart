@@ -214,22 +214,27 @@ DevKit V1, carregada fora do travesseiro num carregador de LiFePO4.**
 
 ### 8.1 O circuito
 
-Esquemático: `docs/diagramas/DIAG-02-esquematico.py`, folha **v3** (PROJETO, não montado).
+Esquemático: `docs/diagramas/DIAG-02-esquematico.py`, folha **v4** (PROJETO, não montado).
+✏️ *25/11: era a folha v3. No orçamento das peças, a célula escolhida (LiFePO4 18650 Rontek)
+veio **sem proteção**, e o circuito ganhou a placa de proteção U3. Ela corta pelo negativo, e
+por isso o terra de todo o circuito passou a ser o **P−** dela. A v3 continua gerada, como
+registro.*
 
 ```
- B1 LiFePO4 (+) ── Q1 P-MOSFET ── F1 1 A ── S1 ──┬──────────┬────────── 3V3   U1 ESP32 DevKit V1
-  3,0–3,6 V      (inversão)    (sem PTC)  chave  │          │                 (GY-521 no 3V3 e I2C
-                                              C1 1000 µF  R1 1 MΩ              como na v1)
-                                                 │          ├──┬────── GPIO35 (ADC1)
- B1 (−) ── GND                                  GND      R2 1 MΩ  C2 100 nF
-                                                            │      │
-                                                           GND    GND ──────── GND
+ B1 (+) ── U3 B+ ═ P+ ── Q1 AO3401A ── F1 1 A ── S1 ──┬──────────┬────────── 3V3   U1 ESP32 DevKit V1
+ LiFePO4  placa de      D → S, porta  (sem PTC)  chave │          │                 (GY-521 no 3V3 e I2C
+ 3,0–3,6 V proteção     no P−                       C1 1000 µF  R1 1 MΩ              como na v1)
+ B1 (−) ── U3 B−                                       │          ├──┬────── GPIO35 (ADC1)
+           U3 P− ══ GND do circuito                   GND      R2 1 MΩ  C2 100 nF
+                                                                  │      │
+ (todo "GND" é o P− da U3; o B− da célula só vai à U3)           GND    GND ──────── GND
 ```
 
 | Ref. | Componente | Por quê |
 |---|---|---|
-| B1 | LiFePO4 18650, 1 400 a 1 800 mAh, **de fabricante identificado e com certificação UN38.3**, com proteção integrada ou uma placa de proteção para LiFePO4 1S (corte em ~2,5 V) | contra célula falsificada e descarga profunda |
-| Q1 | P-MOSFET de baixa resistência (por exemplo, da família AO3401 ou SI2301) como proteção contra inversão | a célula é removível e vai e volta do carregador: invertida, ela poria −3,3 V no ESP32. Um diodo em série custaria 0,2 a 0,4 V, fora da folga do LFP; o MOSFET, com 0,05 a 0,1 Ω a 3,2 V de porta, custa 15 a 30 mV no pico |
+| B1 | LiFePO4 18650, 1 400 a 1 800 mAh, **de fabricante identificado e com certificação UN38.3**, com proteção integrada ou uma placa de proteção para LiFePO4 1S (corte em ~2,5 V). ✏️ *25/11, no orçamento: Rontek RTLFPO 18650, 3,2 V, "2 000 mAh 3C" no rótulo, **sem proteção**; a importadora responde pelo produto, mas a capacidade é o topo do que uma LFP 18650 entrega, e a real sai do ensaio de descarga (seção 9, item 4). Com 1 400 mAh, o pior caso da faixa ainda dá ~83 h (cálculo)* | contra célula falsificada e descarga profunda |
+| U3 | ✏️ *25/11:* placa de proteção (PCM) para **LiFePO4 1S**, fixa no circuito, soldada aos fios do suporte; corte de descarga **entre 2,0 e 2,5 V** (o anúncio da Rontek, 6 A contínuos, não diz o valor: confirmar antes de comprar) | a célula comprada não tem proteção. Se ela se esgota no meio da noite, o ESP32 reinicia em ciclo e continua drenando, e só a placa impede a descarga profunda. Ela corta pelo **negativo**: o GND do circuito é o **P−** dela. Uma placa serve às duas células. Ela não se protege de célula invertida (o Q1 protege o ESP32, não ela) |
+| Q1 | P-MOSFET de baixa resistência (por exemplo, da família AO3401 ou SI2301) como proteção contra inversão. ✏️ *25/11: AO3401A (SOT-23) numa plaquinha adaptadora para DIP; dreno do lado da U3, fonte do lado da carga, porta no P−* | a célula é removível e vai e volta do carregador: invertida, ela poria −3,3 V no ESP32. Um diodo em série custaria 0,2 a 0,4 V, fora da folga do LFP; o MOSFET, com 0,05 a 0,1 Ω a 3,2 V de porta, custa 15 a 30 mV no pico |
 | F1 | **fusível rápido de 1 A**, de vidro ou lâmina, **não PTC** | protege os fios contra curto. 500 mA ficaria no limite do que o ESP32 pede; um PTC de 0,5 A tem ~0,5 a 1 Ω e derrubaria 0,15 a 0,3 V no pico do rádio |
 | S1 | chave liga e desliga de 1 A ou mais | desligar sem abrir o travesseiro e **isolar a célula para gravar pelo USB** |
 | C1 | eletrolítico de baixo ESR, 1 000 µF, ≥ 6,3 V, junto do pino 3V3 | segura o pico do rádio contra a resistência da célula, dos contatos e dos fios |
@@ -238,6 +243,9 @@ Esquemático: `docs/diagramas/DIAG-02-esquematico.py`, folha **v3** (PROJETO, n�
 
 **Carregador**, fora do travesseiro: um carregador de bancada com modo LiFePO4, ou um módulo
 TP5000 ajustado para 3,6 V. **Nunca** um carregador de Li-ion comum, que vai a 4,2 V.
+✏️ *25/11: escolhido o módulo TP5000 USB-C "Li-ion/LiFePO4". Antes da primeira carga, conferir
+como ele seleciona 3,6 V (muitos saem de fábrica em 4,2 V) e medir a tensão final com o
+multímetro: não pode passar de 3,65 V.*
 
 **Alternativa**, se a LFP 18650 não for encontrada com procedência: Li-ion 18650 **protegida** de
 2 600 mAh, com um LDO RT9080 de 3,3 V entre o fusível e o pino 3V3, e carregador TP4056 com

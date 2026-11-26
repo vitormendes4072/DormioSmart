@@ -72,6 +72,7 @@ function criarPlugin(cenario: Cenario): PluginNoite {
       return noites.find((noite) => noite.arquivo === arquivo)?.notas ?? notas;
     },
     lerEpocas: async () => ({ epocas: [] }),
+    modeloDoAparelho: async () => ({}),
     marcarEnviadas: async () => ({ enviadas: 0 }),
     lembrete: async () => ({ ativo: false, hora: 22, minuto: 0, notificacoes: true }),
     definirLembrete: async (valor) => ({ ...valor, notificacoes: true }),
