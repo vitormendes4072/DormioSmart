@@ -166,7 +166,7 @@ export function CalendarioDoSono({ dispositivo, demo, selecionado, aoSelecionarD
   );
 
   return (
-    <div className={`w-full min-w-0 space-y-2 ${aberto || !destinoDoGrafico ? "" : "ml-auto max-w-[510px]"}`}>
+    <div data-calendario-do-inicio className={`w-full min-w-0 space-y-2 ${aberto && destinoDoGrafico ? "col-span-full" : ""}`}>
       <section aria-labelledby={titulo} className="@container min-w-0 rounded-2xl border border-border bg-card shadow-sm">
         <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2 px-3 py-2.5 sm:px-4 @[450px]:grid-cols-[minmax(9rem,1fr)_minmax(10rem,1.5fr)_auto]">
           <div>
