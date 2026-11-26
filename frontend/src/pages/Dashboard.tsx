@@ -17,7 +17,7 @@ import { useHistoricoPaginado } from "../hooks/useHistoricoPaginado";
 import { LIMITE_DO_PAINEL } from "../lib/api";
 import { origemDaTemperatura, descreverRecorte } from "../lib/dispositivos";
 import { calcularCobertura } from "../lib/cobertura";
-import { limitesDaConsulta, sessoesDoDia } from "../lib/calendarioDoSono";
+import { limitesDaConsulta, sessoesDoDia, somarDias } from "../lib/calendarioDoSono";
 import { estaEmModoDemo } from "../lib/demo";
 import {
   calcularMetricas,
@@ -69,6 +69,7 @@ export function Dashboard() {
   // opcional: sem ele o painel se comporta como antes.
   const [dispositivo, setDispositivo] = useState<string | null>(null);
   const [diaSelecionado, setDiaSelecionado] = useState<Date | null>(null);
+  const [ancoraDoCalendario, setAncoraDoCalendario] = useState(() => somarDias(new Date(), 0));
   const [verTudo, setVerTudo] = useState(false);
   const [periodo, setPeriodo] = useState<Periodo>("Sessão toda");
   const dispositivos = useDispositivos();
@@ -134,7 +135,8 @@ export function Dashboard() {
     />
   );
   const calendario = (
-    <CalendarioDoSono dispositivo={dispositivo} demo={demo} selecionado={diaSelecionado} aoSelecionarDia={selecionarDia} />
+    <CalendarioDoSono dispositivo={dispositivo} demo={demo} selecionado={diaSelecionado} aoSelecionarDia={selecionarDia}
+      ancora={ancoraDoCalendario} aoNavegar={setAncoraDoCalendario} />
   );
   const linkHistorico = (
     <Link to={destinoDoWorkspace("/historico", search)} className={LINK_DO_CARTAO}>Ver histórico</Link>
@@ -564,7 +566,7 @@ function Cabecalho({
   return (
     <header>
       <BarraDoWorkspace secao="Visão geral" />
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+      <div className="flex flex-wrap items-start gap-x-4 gap-y-2">
         {acao}
         {calendario}
       </div>
