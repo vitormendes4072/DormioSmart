@@ -207,6 +207,16 @@ async function montar(rota: string): Promise<void> {
  */
 const PRAZO = { timeout: 60_000 };
 
+/** UI-48/UI-49: o Início tem duas colunas a partir de 1 050 px; o jsdom não mede, então se simula. */
+function simularTelaLarga() {
+  vi.stubGlobal("matchMedia", (consulta: string) => ({
+    matches: consulta === "(min-width: 1050px)",
+    media: consulta,
+    addEventListener: () => {},
+    removeEventListener: () => {},
+  }));
+}
+
 describe("montagem real das telas (UI-17)", PRAZO, () => {
   it("o ponto de entrada renderiza alguma coisa na raiz", async () => {
     // Guarda do próprio instrumento, pelo mesmo motivo das duas do
@@ -1240,7 +1250,7 @@ describe("o painel em camadas (UI-40)", PRAZO, () => {
     const dentro = within(grafico);
     const opcao = (name: string) => dentro.getByRole("button", { name });
 
-    expect(opcao("Noite toda").getAttribute("aria-pressed")).toBe("true");
+    expect(opcao("Sessão toda").getAttribute("aria-pressed")).toBe("true");
     expect(dentro.getByRole("img", { name: /6 pontos, 2 com movimento/ })).toBeTruthy();
     fireEvent.click(opcao("1ª metade"));
     expect(opcao("1ª metade").getAttribute("aria-pressed")).toBe("true");
@@ -1250,7 +1260,7 @@ describe("o painel em camadas (UI-40)", PRAZO, () => {
     expect(opcao("2ª metade").getAttribute("aria-pressed")).toBe("true");
     expect(dentro.getByRole("img", { name: /3 pontos, 2 com movimento/ })).toBeTruthy();
     expect(grafico.querySelectorAll("[data-lacuna]")).toHaveLength(1);
-    fireEvent.click(opcao("Noite toda"));
+    fireEvent.click(opcao("Sessão toda"));
     expect(dentro.getByRole("img", { name: /6 pontos, 2 com movimento/ })).toBeTruthy();
     expect(resumo.textContent).toBe(textoOriginal);
   });
@@ -1317,6 +1327,7 @@ describe("o painel em camadas (UI-40)", PRAZO, () => {
 
     it("detalha a duração no dia em que a sessão anterior à meia-noite começou", async () => {
       await abrir();
+      fireEvent.click(calendario().getByRole("button", { name: "Expandir" }));
       fireEvent.click(await calendario().findByRole("button", { name: /^segunda-feira, 23 de novembro, com registro/ }));
       expect(calendario().getByText("Tempo registrado · 1m 30s")).toBeTruthy();
       expect(calendario().getByRole("button", { name: "Recolher", expanded: true })).toBeTruthy();
@@ -1429,6 +1440,212 @@ describe("o painel em camadas (UI-40)", PRAZO, () => {
     });
   });
 
+  describe("Recorte do Início pelo dia (UI-46)", () => {
+    const consultaDoDia = (dia: number) => new Date(2026, 10, dia - 1).toISOString();
+    const calendario = () => within(screen.getByRole("region", { name: "Calendário do sono" }));
+    const escolher = (nome: RegExp) => fireEvent.click(calendario().getByRole("button", { name: nome }));
+    const titulo = "Sessões de terça-feira, 24 de novembro";
+    const semanaPassada = /^terça-feira, 17 de novembro/;
+
+    beforeEach(() => {
+      vi.useFakeTimers({ toFake: ["Date"] });
+      vi.setSystemTime(new Date(2026, 10, 25, 12));
+      const sessao = (dia: number, hora: number, pontos: number, extra = {}) =>
+        Array.from({ length: pontos }, (_, i) => leitura(0, {
+          created_at: new Date(2026, 10, dia, hora, 0, (i + 1) * 30).toISOString(), ...extra,
+        }));
+      const ultimas = sessao(25, 5, 4);
+      const historico = [
+        ...ultimas, ...sessao(24, 7, 3), ...sessao(24, 2, 2),
+        ...sessao(24, 6, 2, { device_id: "c" }), ...sessao(17, 4, 3),
+      ];
+      const anterior = vi.mocked(fetch).getMockImplementation()!;
+      vi.mocked(fetch).mockImplementation((entrada, opcoes) => {
+        const url = new URL(String(entrada), "http://localhost");
+        if (url.pathname === "/api/devices") return Promise.resolve(respostaJson([travesseiro, celular]));
+        if (url.pathname !== "/api/sleep-history") return anterior(entrada, opcoes);
+        const desde = url.searchParams.get("desde");
+        const ate = url.searchParams.get("ate");
+        const dispositivo = url.searchParams.get("device");
+        const filtradas = desde && ate ? historico.filter((l) => l.created_at >= desde && l.created_at <= ate) : ultimas;
+        return Promise.resolve(respostaJson(filtradas.filter((l) => !dispositivo || dispositivo === l.device_id)));
+      });
+    });
+
+    afterEach(() => vi.useRealTimers());
+
+    it("abre na última sessão do dia e alterna apenas entre as sessões desse dia", async () => {
+      await abrir();
+      expect(serieDeMovimento().getByRole("img", { name: /4 pontos,/ })).toBeTruthy();
+      escolher(/^terça-feira, 24 de novembro/);
+      await screen.findByRole("img", { name: /3 pontos,/ });
+      expect(screen.getByRole("heading", { name: titulo })).toBeTruthy();
+      expect(calendario().getByRole("button", { name: "Expandir", expanded: false })).toBeTruthy();
+      expect(calendario().getByRole("button", { name: /^terça-feira, 24 de novembro/, pressed: true })).toBeTruthy();
+      expect(screen.queryByRole("heading", { name: "Sessões anteriores" })).toBeNull();
+      expect(screen.getByRole("link", { name: "Ver histórico" }).getAttribute("href")).toBe("/historico");
+      fireEvent.click(screen.getByRole("button", { name: "Ver as 3 sessões" }));
+      expect(screen.getByText("7 registros no período, 0 com movimento.")).toBeTruthy();
+      const consultas = vi.mocked(fetch).mock.calls.map(([entrada]) => new URL(String(entrada), "http://localhost"));
+      expect(consultas.some((url) => url.searchParams.get("desde") === consultaDoDia(24)
+        && url.searchParams.get("ate") === new Date(2026, 10, 25, 23, 59, 59, 999).toISOString())).toBe(true);
+    });
+
+    it("mantém a semana e o dia selecionados ao recolher depois de navegar", async () => {
+      await abrir();
+      fireEvent.click(calendario().getByRole("button", { name: "Expandir" }));
+      fireEvent.click(calendario().getByRole("button", { name: "Período anterior" }));
+      escolher(semanaPassada);
+      await screen.findByRole("img", { name: /3 pontos,/ });
+      fireEvent.click(calendario().getByRole("button", { name: "Recolher" }));
+      const semana = within(calendario().getByRole("group", { name: "Semana selecionada" }));
+      expect(semana.getByRole("button", { name: semanaPassada, pressed: true })).toBeTruthy();
+      expect(semana.queryByRole("button", { name: /^quarta-feira, 25 de novembro/ })).toBeNull();
+    });
+
+    it("mostra um dia vazio e volta à última sessão ao clicar de novo", async () => {
+      await abrir();
+      const diaVazio = /^segunda-feira, 23 de novembro/;
+      escolher(diaVazio);
+      await screen.findByText("Sem registros neste dia");
+      expect(screen.queryByRole("figure", { name: "Movimento ao longo do tempo" })).toBeNull();
+      escolher(diaVazio);
+      await screen.findByRole("heading", { name: "Seus registros" });
+      expect(serieDeMovimento().getByRole("img", { name: /4 pontos,/ })).toBeTruthy();
+    });
+
+    it("limpa a seleção no botão Hoje e volta à última sessão", async () => {
+      await abrir();
+      fireEvent.click(calendario().getByRole("button", { name: "Expandir" }));
+      escolher(/^terça-feira, 24 de novembro/);
+      await screen.findByRole("img", { name: /3 pontos,/ });
+      fireEvent.click(calendario().getByRole("button", { name: "Hoje" }));
+      await screen.findByRole("heading", { name: "Seus registros" });
+      expect(serieDeMovimento().getByRole("img", { name: /4 pontos,/ })).toBeTruthy();
+      expect(calendario().queryByRole("button", { pressed: true, name: /^terça-feira, 24 de novembro/ })).toBeNull();
+    });
+
+    it("mantém a data e volta ao período completo do gráfico ao trocar de aparelho", async () => {
+      await abrir();
+      escolher(/^terça-feira, 24 de novembro/);
+      await screen.findByRole("img", { name: /3 pontos,/ });
+      fireEvent.click(screen.getByRole("button", { name: "1ª metade" }));
+      fireEvent.change(seletorDeAparelho(), { target: { value: "c" } });
+      await screen.findByRole("img", { name: /2 pontos,/ });
+      expect(screen.getByRole("heading", { name: titulo })).toBeTruthy();
+      expect(screen.getByRole("button", { name: "Sessão toda", pressed: true })).toBeTruthy();
+    });
+
+    it("UI-47: acompanha a semana navegada e compartilha o dia marcado com o calendário", async () => {
+      await abrir();
+      const grafico = () => within(screen.getByRole("region", { name: "Tempo registrado por dia" }));
+      const dia = /^terça-feira, 17 de novembro/;
+      fireEvent.click(calendario().getByRole("button", { name: "Expandir" }));
+      fireEvent.click(calendario().getByRole("button", { name: "Período anterior" }));
+      fireEvent.click(await grafico().findByRole("button", { name: /^terça-feira, 17 de novembro, 0h 01m registrados$/ }));
+      await screen.findByRole("img", { name: /3 pontos,/ });
+      fireEvent.click(calendario().getByRole("button", { name: "Recolher" }));
+      expect(calendario().getByRole("button", { name: dia, pressed: true }).querySelector("[data-marca-dia]")).toBeTruthy();
+      expect(grafico().getByRole("button", { name: dia, pressed: true }).querySelector("[data-marca-dia]")).toBeTruthy();
+      fireEvent.click(grafico().getByRole("button", { name: dia, pressed: true }));
+      await screen.findByRole("heading", { name: "Seus registros" });
+      expect(grafico().queryByRole("button", { name: dia })).toBeNull();
+    });
+
+    it("UI-47: reutiliza a consulta do calendário e acompanha o dispositivo", async () => {
+      await abrir();
+      const grafico = () => within(screen.getByRole("region", { name: "Tempo registrado por dia" }));
+      await grafico().findByRole("button", { name: /^terça-feira, 24 de novembro, 0h 03m registrados$/ });
+      const desde = new Date(2026, 9, 25).toISOString();
+      const consultas = vi.mocked(fetch).mock.calls
+        .map(([entrada]) => new URL(String(entrada), "http://localhost"))
+        .filter((url) => url.pathname === "/api/sleep-history" && url.searchParams.get("desde") === desde);
+      expect(consultas).toHaveLength(1);
+      fireEvent.change(seletorDeAparelho(), { target: { value: "c" } });
+      await grafico().findByRole("button", { name: /^terça-feira, 24 de novembro, 0h 01m registrados$/ });
+    });
+
+    it("UI-48: em tela larga o gráfico fica na coluna da direita, inclusive num dia sem registro", async () => {
+      simularTelaLarga();
+      await abrir();
+      const regiao = () => screen.getByRole("region", { name: "Tempo registrado por dia" });
+      const naColuna = () => regiao().closest("[data-vaga-do-grafico]") !== null && regiao().closest("header") === null;
+      // Com sessão, na mesma linha dos cartões do resumo, para começar e terminar alinhado com eles.
+      const aoLadoDosCartoes = () => regiao().closest("[data-resumo-da-sessao]") !== null;
+      await waitFor(() => expect(naColuna()).toBe(true));
+      expect(aoLadoDosCartoes()).toBe(true);
+      escolher(/^segunda-feira, 23 de novembro/);
+      await screen.findByText("Sem registros neste dia");
+      expect(naColuna()).toBe(true);
+      escolher(/^terça-feira, 24 de novembro/);
+      await screen.findByRole("heading", { name: titulo });
+      expect(naColuna()).toBe(true);
+      expect(aoLadoDosCartoes()).toBe(true);
+    });
+
+    it("UI-49: em tela larga o título e o filtro ficam ao lado do calendário, que fica na coluna do gráfico", async () => {
+      simularTelaLarga();
+      await abrir();
+      const topo = document.querySelector("[data-topo-do-inicio]")!;
+      const [esquerda, direita] = Array.from(topo.children);
+      const titulo = screen.getByRole("heading", { level: 1, name: "Seus registros" });
+      expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+      expect(esquerda.contains(titulo)).toBe(true);
+      expect(esquerda.contains(screen.getByRole("combobox", { name: "Dispositivo exibido" }))).toBe(true);
+      expect(direita.matches("[data-calendario-do-inicio]")).toBe(true);
+      expect(direita.contains(screen.getByRole("region", { name: "Calendário do sono" }))).toBe(true);
+      // As linhas do Início usam a mesma grade, e a coluna da direita não fica estreita demais
+      // para o calendário e o gráfico (UI-49, ajuste: com 220 px de mínimo, chegava a 262 px).
+      const grades = ["[data-topo-do-inicio]", "[data-linha-dos-cartoes]", "[data-linha-do-movimento]"]
+        .map((seletor) => document.querySelector(seletor)?.className.match(/grid-cols-\[[^\]]+\]/)?.[0]);
+      expect(new Set(grades)).toEqual(new Set(["grid-cols-[minmax(0,1.8fr)_minmax(320px,0.9fr)]"]));
+      // O resumo aponta para o título do topo, e os cartões seguem nomeados por ele.
+      expect(screen.getByRole("region", { name: "Seus registros" }).querySelector("ul[aria-label='Métricas da sessão']")).toBeTruthy();
+
+      escolher(/^terça-feira, 24 de novembro/);
+      const doDia = await screen.findByRole("heading", { level: 1, name: "Sessões de terça-feira, 24 de novembro" });
+      expect(esquerda.contains(doDia)).toBe(true);
+
+      fireEvent.click(calendario().getByRole("button", { name: "Expandir" }));
+      expect(direita.classList.contains("col-span-full")).toBe(true);
+      fireEvent.click(calendario().getByRole("button", { name: "Recolher" }));
+      expect(direita.classList.contains("col-span-full")).toBe(false);
+    });
+
+    it("UI-48: em tela estreita o gráfico continua logo abaixo do calendário", async () => {
+      await abrir();
+      const regiao = await screen.findByRole("region", { name: "Tempo registrado por dia" });
+      expect(regiao.closest("header")).not.toBeNull();
+      expect(document.querySelector("[data-vaga-do-grafico]")).toBeNull();
+    });
+
+    it("UI-48: o dia escolhido leva o anel também no calendário expandido", async () => {
+      await abrir();
+      escolher(/^terça-feira, 24 de novembro/);
+      await screen.findByRole("heading", { name: titulo });
+      fireEvent.click(calendario().getByRole("button", { name: "Expandir" }));
+      const dia = calendario().getByRole("button", { name: /^terça-feira, 24 de novembro/, pressed: true });
+      expect(dia.querySelector("[data-marca-dia]")).toBeTruthy();
+      expect(calendario().getAllByRole("button").filter((b) => b.querySelector("[data-marca-dia]"))).toHaveLength(1);
+    });
+
+    it("permite tentar novamente quando falha a consulta daquele dia", async () => {
+      const anterior = vi.mocked(fetch).getMockImplementation()!;
+      vi.mocked(fetch).mockImplementation((entrada, opcoes) => {
+        const url = new URL(String(entrada), "http://localhost");
+        if (url.searchParams.get("desde") === consultaDoDia(24)) return Promise.reject(new Error("sem conexão"));
+        return anterior(entrada, opcoes);
+      });
+      await abrir();
+      escolher(/^terça-feira, 24 de novembro/);
+      const tentar = await screen.findByRole("button", { name: "Tentar novamente" });
+      expect(screen.getByRole("heading", { name: titulo })).toBeTruthy();
+      vi.mocked(fetch).mockImplementation(anterior);
+      fireEvent.click(tentar);
+      await screen.findByRole("img", { name: /3 pontos,/ });
+    });
+  });
+
   function responderComDoisAparelhos() {
     responder({
       dispositivos: [travesseiro, celular],
@@ -1513,13 +1730,25 @@ describe("o painel em camadas (UI-40)", PRAZO, () => {
     expect(ajuda.querySelector("summary")?.textContent).toContain("Entenda");
     expect(ajuda.textContent).toContain("captam o mesmo movimento de formas diferentes");
 
+    // UI-49: o aviso acompanha o filtro, no topo, e não fica solto entre o topo e os cartões.
+    expect(aviso.closest("header")?.contains(seletorDeAparelho())).toBe(true);
+
     selecionarSegundaMetade();
     expect(screen.queryByText(/Gráfico combina/)).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "Noite toda" }));
+    fireEvent.click(screen.getByRole("button", { name: "Sessão toda" }));
     expect(screen.getByText("Gráfico combina Travesseiro e Celular")).toBeTruthy();
     fireEvent.change(seletorDeAparelho(), { target: { value: "c" } });
     await screen.findByText("Dispositivo no resumo: Meu celular.");
     expect(screen.queryByText(/Gráfico combina/)).toBeNull();
+  });
+
+  it("UI-49: em tela larga o aviso de mistura fica ao lado do seletor, na coluna do título", async () => {
+    simularTelaLarga();
+    responderComDoisAparelhos();
+    await abrir();
+    const coluna = document.querySelector("[data-topo-do-inicio]")!.firstElementChild!;
+    expect(coluna.contains(screen.getByText("Gráfico combina Travesseiro e Celular"))).toBe(true);
+    expect(coluna.contains(seletorDeAparelho())).toBe(true);
   });
 
   it("indica a sessão exibida e deixa a contagem descartada nos detalhes", async () => {
@@ -1538,7 +1767,7 @@ describe("o painel em camadas (UI-40)", PRAZO, () => {
     expect(resumo.getByText("Última sessão")).toBeTruthy();
   });
 
-  it("volta para Noite toda ao trocar de aparelho", async () => {
+  it("volta para Sessão toda ao trocar de aparelho", async () => {
     responder({
       dispositivos: [travesseiro, celular],
       leituras: [0, 30, 60, 7200, 7230, 7260].map((s) => leitura(s, { device_id: s < 100 ? "p" : "c" })),
@@ -1547,16 +1776,16 @@ describe("o painel em camadas (UI-40)", PRAZO, () => {
     selecionarSegundaMetade();
     fireEvent.change(screen.getByRole("combobox", { name: "Dispositivo exibido" }), { target: { value: "c" } });
     await screen.findByText("Dispositivo no resumo: Meu celular.");
-    expect(screen.getByRole("button", { name: "Noite toda", pressed: true })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Sessão toda", pressed: true })).toBeTruthy();
   });
 
-  it("volta para Noite toda ao alternar entre todas e a última sessão", async () => {
+  it("volta para Sessão toda ao alternar entre todas e a última sessão", async () => {
     responder({ dispositivos: [travesseiro], leituras: duasSessoes() });
     await abrir();
     selecionarSegundaMetade();
     fireEvent.click(screen.getByRole("button", { name: /ver as \d+ sessões/i }));
     fireEvent.click(screen.getByRole("button", { name: "Ver só a última" }));
-    expect(screen.getByRole("button", { name: "Noite toda", pressed: true })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Sessão toda", pressed: true })).toBeTruthy();
   });
 
   it("esconde o seletor de período quando mostra todas as sessões", async () => {

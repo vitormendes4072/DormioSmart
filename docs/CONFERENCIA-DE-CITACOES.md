@@ -42,7 +42,7 @@ nove artigos.
 | BRASIL, 2018 | 6.3.3 | ✅ Confere | Art. 6º, III (necessidade); arts. 15 e 16 (término e eliminação, sem prazo fixo). |
 | GIL, 2002, p. 17 | 6.1 | ✅ Confere | A passagem está na seção 1.2, que o sumário da 4.ª edição põe na p. 17 (cópia digitalizada). |
 | GIL, 2002, p. 41; BELLO, 2005, p. 50 e p. 17; ELKINGTON, 1997 | 6.1 e 3 | Não conferida | Sem cópia acessível. Conferir no exemplar. |
-| OLIVERIO, 2026 | 1, 5.7, 6.3.6 | ✅ Confere | O repositório do projeto. |
+| [AUTOR], 2026 | 1, 5.7, 6.3.6 | ✅ Confere | O repositório do projeto. |
 
 **Na lista, sem citação no texto:** W3C (*DeviceOrientation*), SUPABASE (*Auth*), META PLATFORMS
 (*React*); também as duas normas da ABNT e as regras do curso. As três primeiras documentam coisas

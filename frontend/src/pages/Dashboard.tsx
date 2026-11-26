@@ -1,9 +1,10 @@
 import { SeletorSegmentado } from "../components/SeletorSegmentado";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
 import { Link, useLocation } from "react-router";
 
 import { BarraDoWorkspace } from "../components/BarraDoWorkspace";
 import { CalendarioDoSono } from "../components/CalendarioDoSono";
+import { COLUNAS_DO_INICIO, COLUNAS_DO_INICIO_EM_TELA_LARGA } from "../components/colunasDoInicio";
 import { GraficoDeMovimento } from "../components/GraficoDeMovimento";
 import { destinoDoWorkspace } from "../components/nav";
 import { Carregando, FalhaAoCarregar, SemLeituras } from "../components/EstadoDaTela";
@@ -13,9 +14,11 @@ import { ResumoDaSessao } from "../components/ResumoDaSessao";
 import { AvisoDeMistura, SeletorDeDispositivo } from "../components/SeletorDeDispositivo";
 import { useDispositivos } from "../hooks/useDispositivos";
 import { useHistorico } from "../hooks/useHistorico";
+import { useHistoricoPaginado } from "../hooks/useHistoricoPaginado";
 import { LIMITE_DO_PAINEL } from "../lib/api";
 import { origemDaTemperatura, descreverRecorte } from "../lib/dispositivos";
 import { calcularCobertura } from "../lib/cobertura";
+import { limitesDaConsulta, sessoesDoDia, somarDias } from "../lib/calendarioDoSono";
 import { estaEmModoDemo } from "../lib/demo";
 import {
   calcularMetricas,
@@ -52,21 +55,40 @@ import { semBancada, sessoesDaMarca } from "../lib/trecho";
 const COR_MOVIMENTO = "var(--chart-movimento)";
 const COR_REPOUSO = "var(--chart-repouso)";
 const PERIODOS = [
-  { valor: "Noite toda", rotulo: "Noite toda" },
+  { valor: "Sessão toda", rotulo: "Sessão toda" },
   { valor: "1ª metade", rotulo: "1ª metade" },
   { valor: "2ª metade", rotulo: "2ª metade" },
 ] as const;
 type Periodo = typeof PERIODOS[number]["valor"];
+const DATA_DO_DIA = new Intl.DateTimeFormat("pt-BR", { weekday: "long", day: "numeric", month: "long" });
 const CARTAO = "rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5";
 const LINK_DO_CARTAO = "inline-flex min-h-9 items-center justify-center rounded-lg border border-border px-3 py-2 text-center text-sm font-semibold text-primary hover:bg-secondary focus-visible:outline-2 focus-visible:outline-ring";
+
+// UI-48: a partir desta largura o Início tem duas colunas, e o gráfico de tempo por dia vai para a
+// coluna da direita, logo abaixo do calendário. Abaixo dela, fica dentro do cartão do calendário.
+const TELA_LARGA = "(min-width: 1050px)";
+
+function observarTelaLarga(atualizar: () => void) {
+  const midia = window.matchMedia?.(TELA_LARGA);
+  midia?.addEventListener("change", atualizar);
+  return () => midia?.removeEventListener("change", atualizar);
+}
+
+function ehTelaLarga() {
+  return window.matchMedia?.(TELA_LARGA).matches ?? false;
+}
 
 export function Dashboard() {
   const { hash, key, search } = useLocation();
   // `null` = todos os dispositivos. O recorte por instrumento (DASH-05) e
   // opcional: sem ele o painel se comporta como antes.
   const [dispositivo, setDispositivo] = useState<string | null>(null);
+  const [diaSelecionado, setDiaSelecionado] = useState<Date | null>(null);
+  const [ancoraDoCalendario, setAncoraDoCalendario] = useState(() => somarDias(new Date(), 0));
+  const telaLarga = useSyncExternalStore(observarTelaLarga, ehTelaLarga, () => false);
+  const [vagaDoGrafico, setVagaDoGrafico] = useState<HTMLElement | null>(null);
   const [verTudo, setVerTudo] = useState(false);
-  const [periodo, setPeriodo] = useState<Periodo>("Noite toda");
+  const [periodo, setPeriodo] = useState<Periodo>("Sessão toda");
   const dispositivos = useDispositivos();
   const pausados = dispositivos.filter((d) => !d.revoked_at && d.receber_leituras === false);
   const avisoDePausa = pausados.length > 0 && (
@@ -77,13 +99,18 @@ export function Dashboard() {
   // `limite` explicito (DASH-13): sem ele o backend devolve 20 linhas — dez
   // minutos de celular —, e todo o recorte por sessao operava sobre isso
   // enquanto a tela dizia descrever a captação inteira.
-  const { leituras: recebidas, carregando, erro, recarregar } = useHistorico({
-    dispositivo,
-    limite: LIMITE_DO_PAINEL,
-  });
-  // DATA-16: o que o titular marcou como bancada/teste não entra no painel. A
-  // borda do limite continua contada sobre o que a API devolveu (abaixo).
-  const leituras = semBancada(recebidas);
+  const recentes = useHistorico({ dispositivo, limite: LIMITE_DO_PAINEL });
+  const demo = import.meta.env.DEV && estaEmModoDemo(search);
+  const historicoDoDia = useHistoricoPaginado(
+    diaSelecionado && limitesDaConsulta(diaSelecionado, diaSelecionado), dispositivo, demo,
+  );
+  const { carregando, erro, recarregar } = diaSelecionado ? historicoDoDia : recentes;
+  const recebidas = diaSelecionado ? historicoDoDia.dados?.leituras ?? [] : recentes.leituras;
+  const sessoesSelecionadas = diaSelecionado ? sessoesDoDia(recebidas, diaSelecionado) : null;
+  // DATA-16: as coletas de bancada não entram no painel.
+  const leituras = sessoesSelecionadas?.flatMap((sessao) => sessao.leituras) ?? semBancada(recebidas);
+  const historicoParcial = diaSelecionado !== null && historicoDoDia.dados?.truncada;
+  const tituloDoDia = diaSelecionado ? `Sessões de ${DATA_DO_DIA.format(diaSelecionado)}` : undefined;
 
   useEffect(() => {
     if (!carregando && hash) {
@@ -97,7 +124,14 @@ export function Dashboard() {
 
   function selecionarDispositivo(id: string | null) {
     setDispositivo(id);
-    setPeriodo("Noite toda");
+    if (diaSelecionado) setVerTudo(false);
+    setPeriodo("Sessão toda");
+  }
+
+  function selecionarDia(dia: Date | null) {
+    setDiaSelecionado(dia);
+    setVerTudo(false);
+    setPeriodo("Sessão toda");
   }
 
   const seletor = (
@@ -118,7 +152,30 @@ export function Dashboard() {
     />
   );
   const calendario = (
-    <CalendarioDoSono dispositivo={dispositivo} demo={import.meta.env.DEV && estaEmModoDemo(search)} />
+    <CalendarioDoSono dispositivo={dispositivo} demo={demo} selecionado={diaSelecionado} aoSelecionarDia={selecionarDia}
+      ancora={ancoraDoCalendario} aoNavegar={setAncoraDoCalendario} destinoDoGrafico={telaLarga ? vagaDoGrafico : null} />
+  );
+  // Onde o gráfico entra em tela larga. Esticado (`*:flex-1`), ele acompanha a altura do que está
+  // ao lado.
+  const espacoDoGrafico = telaLarga
+    ? <div ref={setVagaDoGrafico} data-vaga-do-grafico className="flex min-w-0 *:flex-1" />
+    : null;
+  // Nos estados sem sessão (carregando, erro, dia vazio) a coluna da direita começa pelo gráfico,
+  // na altura do primeiro cartão. Com sessão, ele fica ao lado dos cartões do resumo (ver abaixo).
+  // `esticar`: o conteúdo é um cartão só, que acompanha a altura do gráfico (e vice-versa).
+  const comColunaDoGrafico = (conteudo: ReactNode, esticar = false) => telaLarga ? (
+    <div className={`grid ${COLUNAS_DO_INICIO} gap-3.5 ${esticar ? "" : "items-start"}`}>
+      <div className={`min-w-0 space-y-3.5 ${esticar ? "flex flex-col *:flex-1" : ""}`}>{conteudo}</div>
+      {espacoDoGrafico}
+    </div>
+  ) : conteudo;
+  const linkHistorico = (
+    <Link to={destinoDoWorkspace("/historico", search)} className={LINK_DO_CARTAO}>Ver histórico</Link>
+  );
+  const avisoHistoricoParcial = historicoParcial && (
+    <p role="status" className="rounded-xl border border-border px-3 py-3 text-sm text-muted-foreground">
+      Histórico parcial. Parte dos registros do período ficou fora da consulta.
+    </p>
   );
 
   // O seletor aparece tambem nos tres estados iniciais: se o dispositivo
@@ -126,9 +183,12 @@ export function Dashboard() {
   if (carregando) {
     return (
       <div className="space-y-6">
-        <Cabecalho acao={seletor} calendario={calendario} instrumento={instrumento} />
-        {avisoDePausa}
-        <Carregando />
+        <Cabecalho acao={seletor} calendario={calendario} instrumento={instrumento} titulo={tituloDoDia} telaLarga={telaLarga} />
+        {comColunaDoGrafico(<>
+          {avisoDePausa}
+          <Carregando mensagem={diaSelecionado ? "Carregando registros do dia..." : undefined} />
+          {diaSelecionado && linkHistorico}
+        </>)}
       </div>
     );
   }
@@ -136,9 +196,12 @@ export function Dashboard() {
   if (erro) {
     return (
       <div className="space-y-6">
-        <Cabecalho acao={seletor} calendario={calendario} instrumento={instrumento} />
-        {avisoDePausa}
-        <FalhaAoCarregar mensagem={erro} aoTentarNovamente={recarregar} />
+        <Cabecalho acao={seletor} calendario={calendario} instrumento={instrumento} titulo={tituloDoDia} telaLarga={telaLarga} />
+        {comColunaDoGrafico(<>
+          {avisoDePausa}
+          <FalhaAoCarregar mensagem={erro} aoTentarNovamente={recarregar} />
+          {diaSelecionado && linkHistorico}
+        </>)}
       </div>
     );
   }
@@ -146,10 +209,23 @@ export function Dashboard() {
   if (leituras.length === 0) {
     return (
       <div className="space-y-6">
-        <Cabecalho acao={seletor} calendario={calendario} instrumento={instrumento} />
+        <Cabecalho acao={seletor} calendario={calendario} instrumento={instrumento} titulo={tituloDoDia} telaLarga={telaLarga} />
         {avisoDePausa}
         <NotaDeEscopo />
-        <div id="sessoes-recentes"><SemLeituras /></div>
+        {comColunaDoGrafico(
+          <div id="sessoes-recentes">
+            {diaSelecionado ? (
+              <div className={`${CARTAO} h-full`}>
+                {avisoHistoricoParcial}
+                <p className="py-5 text-sm font-medium" role="status">
+                  {historicoParcial ? "Sem registros do dia entre os dados carregados" : "Sem registros neste dia"}
+                </p>
+                {linkHistorico}
+              </div>
+            ) : <SemLeituras />}
+          </div>,
+          true,
+        )}
         {resumoDeDispositivos}
       </div>
     );
@@ -165,18 +241,18 @@ export function Dashboard() {
   //
   // UI-38: recebe também a bancada, para cortar onde ela está. Sem o corte, a
   // bancada marcada no meio apareceria como pausa do aparelho.
-  const sessoes = sessoesDaMarca(recebidas, false);
+  const sessoes = sessoesSelecionadas ?? sessoesDaMarca(recebidas, false);
   // UI-40: a última está no resumo; a lista é do que veio antes dela.
   const sessoesAnteriores = sessoes.slice(0, -1).slice(-3).reverse();
   const ultima = sessoes.length > 0 ? sessoes[sessoes.length - 1] : null;
   const leiturasVisiveis = verTudo || ultima === null ? leituras : ultima.leituras;
 
-  const borda = leituraNaBordaDoLimite(recebidas, LIMITE_DO_PAINEL);
+  const borda = diaSelecionado ? undefined : leituraNaBordaDoLimite(recebidas, LIMITE_DO_PAINEL);
   const recorteParcial = borda !== undefined && leiturasVisiveis.includes(borda);
   const m = calcularMetricas(leiturasVisiveis);
   const podeRecortar = !verTudo && ultima !== null && m.totalLeituras > 1;
   const meio = podeRecortar ? ultima.inicio + (ultima.fim - ultima.inicio) / 2 : null;
-  const recorteDoGrafico = meio === null || periodo === "Noite toda"
+  const recorteDoGrafico = meio === null || periodo === "Sessão toda"
     ? undefined
     : periodo === "1ª metade" ? { fim: meio } : { inicio: meio };
   const serie = prepararSerie(leiturasVisiveis, m.cobertura, recorteDoGrafico);
@@ -232,13 +308,14 @@ export function Dashboard() {
         instrumento={instrumento}
         acao={seletor}
         calendario={calendario}
+        telaLarga={telaLarga}
+        titulo={tituloDoDia}
+        // Em tela estreita o título fica no resumo, logo acima dos cartões; em tela larga, no topo.
         mostrarTitulo={false}
+        // UI-49: o aviso é consequência do filtro ("Todos os dispositivos"), então fica junto dele.
+        aviso={aparelhosDoGrafico.size > 1 && <AvisoDeMistura dispositivos={dispositivosDoGrafico} />}
       />
       {avisoDePausa}
-
-      {aparelhosDoGrafico.size > 1 && (
-        <AvisoDeMistura dispositivos={dispositivosDoGrafico} />
-      )}
 
       {/* A coleta teve buracos? Isso precisa aparecer ANTES dos números, e
           não depois — porque é o que decide se eles significam algo. */}
@@ -247,12 +324,18 @@ export function Dashboard() {
           Período incompleto: só os registros mais recentes foram carregados.
         </p>
       )}
+      {avisoHistoricoParcial}
       <AvisoDeLacuna cobertura={cob} />
 
       <ResumoDaSessao
         sessoes={verTudo || ultima === null ? sessoes : [ultima]}
         verTudo={verTudo}
         metricas={m}
+        titulo={tituloDoDia}
+        idDoTitulo={telaLarga ? ID_DO_TITULO : undefined}
+        // UI-48: em tela larga, o gráfico de tempo por dia fica na mesma linha dos cartões,
+        // alinhado no topo e na base com eles.
+        lateral={espacoDoGrafico}
       >
         {/* O recorte, e como sair dele. */}
         {sessoes.length > 1 && (
@@ -261,13 +344,13 @@ export function Dashboard() {
             verTudo={verTudo}
             aoAlternar={() => {
               setVerTudo((v) => !v);
-              setPeriodo("Noite toda");
+              setPeriodo("Sessão toda");
             }}
           />
         )}
       </ResumoDaSessao>
 
-      <div className="grid gap-3.5 min-[1050px]:grid-cols-[minmax(0,1.8fr)_minmax(220px,0.9fr)]">
+      <div data-linha-do-movimento className={`grid gap-3.5 ${COLUNAS_DO_INICIO_EM_TELA_LARGA}`}>
         <figure aria-labelledby="titulo-linha-do-tempo" className={`min-w-0 ${CARTAO}`}>
           <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
             <div>
@@ -329,42 +412,44 @@ export function Dashboard() {
           de lacuna, e a inferência não aparecia em lugar nenhum da tela. */}
       <NotaDeInferencia cobertura={cob} />
 
-      <section aria-labelledby="sessoes-recentes" className={CARTAO}>
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 id="sessoes-recentes" className="text-base font-extrabold tracking-tight text-foreground">Sessões anteriores</h2>
-          <Link to={destinoDoWorkspace("/historico", search)} className={LINK_DO_CARTAO}>
-            Ver histórico
-          </Link>
-        </div>
-        {sessoesAnteriores.length === 0 ? (
-          <p className="mt-2 text-sm text-muted-foreground">Nenhuma sessão anterior nos registros carregados.</p>
-        ) : (
-          <table className="mt-3 w-full text-left text-sm">
-            <thead className="border-b border-border text-xs text-muted-foreground">
-              <tr>
-                <th scope="col" className="pb-2 pr-3">Quando</th>
-                <th scope="col" className="pb-2">Registrado</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {sessoesAnteriores.map((sessao) => {
-                const resumo = calcularCobertura(sessao.leituras);
-                const registrado = resumo.janelaMs > 0
-                  ? `${formatarDuracao(resumo.tempoCobertoMs)} de ${formatarDuracao(resumo.janelaMs)}`
-                  : "—";
-                return (
-                  <tr key={sessao.inicio}>
-                    <td className="py-3 pr-3">{descreverQuando(sessao.inicio, sessao.fim)}</td>
-                    <td className="py-3">
-                      {registrado}{borda !== undefined && sessao.leituras.includes(borda) ? " · Parcial" : ""}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        )}
-      </section>
+      {diaSelecionado ? (
+        <div id="sessoes-recentes">{linkHistorico}</div>
+      ) : (
+        <section aria-labelledby="sessoes-recentes" className={CARTAO}>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 id="sessoes-recentes" className="text-base font-extrabold tracking-tight text-foreground">Sessões anteriores</h2>
+            {linkHistorico}
+          </div>
+          {sessoesAnteriores.length === 0 ? (
+            <p className="mt-2 text-sm text-muted-foreground">Nenhuma sessão anterior nos registros carregados.</p>
+          ) : (
+            <table className="mt-3 w-full text-left text-sm">
+              <thead className="border-b border-border text-xs text-muted-foreground">
+                <tr>
+                  <th scope="col" className="pb-2 pr-3">Quando</th>
+                  <th scope="col" className="pb-2">Registrado</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {sessoesAnteriores.map((sessao) => {
+                  const resumo = calcularCobertura(sessao.leituras);
+                  const registrado = resumo.janelaMs > 0
+                    ? `${formatarDuracao(resumo.tempoCobertoMs)} de ${formatarDuracao(resumo.janelaMs)}`
+                    : "—";
+                  return (
+                    <tr key={sessao.inicio}>
+                      <td className="py-3 pr-3">{descreverQuando(sessao.inicio, sessao.fim)}</td>
+                      <td className="py-3">
+                        {registrado}{borda !== undefined && sessao.leituras.includes(borda) ? " · Parcial" : ""}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+        </section>
+      )}
 
       {/* UI-40: fórmula, limite, contagens e amostras. Recolhido, e por isso
           NENHUM aviso de falha entra aqui. */}
@@ -508,32 +593,68 @@ export function Dashboard() {
   );
 }
 
+const ID_DO_TITULO = "titulo-do-inicio";
+
 function Cabecalho({
   instrumento,
   acao,
   calendario,
+  telaLarga,
+  aviso,
   mostrarTitulo = true,
+  titulo = "Seus registros",
 }: {
   instrumento: string;
   acao?: ReactNode;
   calendario: ReactNode;
+  telaLarga: boolean;
+  /** O aviso de mistura de aparelhos, que acompanha o seletor. */
+  aviso?: ReactNode;
+  /** Só em tela estreita: em tela larga o título está sempre no topo. */
   mostrarTitulo?: boolean;
+  titulo?: string;
 }) {
+  const cabecalho = (
+    <>
+      <h1 id={ID_DO_TITULO} className="text-2xl font-extrabold tracking-tight text-foreground sm:text-[27px]">
+        {titulo}
+      </h1>
+      <p className="sr-only">{instrumento}</p>
+    </>
+  );
+
+  // UI-49: em tela larga o topo usa as mesmas duas colunas do resto do Início. À esquerda, o título
+  // em cima e o filtro embaixo; à direita, o calendário, na largura do gráfico que vem abaixo dele.
+  // Aberto, o calendário ocupa as duas colunas (ver `CalendarioDoSono`).
+  if (telaLarga) {
+    return (
+      <header>
+        <BarraDoWorkspace secao="Visão geral" />
+        <div data-topo-do-inicio className={`grid ${COLUNAS_DO_INICIO} gap-x-3.5 gap-y-3`}>
+          {/* Título e filtro juntos, na base do calendário: o calendário compacto, na largura da
+              coluna, é mais alto que os dois, e separá-los deixava uma faixa vazia entre eles. */}
+          <div data-titulo-e-filtro className="flex min-w-0 flex-col justify-end gap-2">
+            <div className="min-w-0">{cabecalho}</div>
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+              {acao}
+              {aviso}
+            </div>
+          </div>
+          {calendario}
+        </div>
+      </header>
+    );
+  }
+
   return (
     <header>
       <BarraDoWorkspace secao="Visão geral" />
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+      <div className="flex flex-wrap items-start gap-x-4 gap-y-2">
         {acao}
+        {aviso && <div className="w-full">{aviso}</div>}
         {calendario}
       </div>
-      {mostrarTitulo && (
-        <div className="mt-3 min-w-0">
-          <h1 className="text-2xl font-extrabold tracking-tight text-foreground sm:text-[27px]">
-            Seus registros
-          </h1>
-          <p className="sr-only">{instrumento}</p>
-        </div>
-      )}
+      {mostrarTitulo && <div className="mt-3 min-w-0">{cabecalho}</div>}
     </header>
   );
 }

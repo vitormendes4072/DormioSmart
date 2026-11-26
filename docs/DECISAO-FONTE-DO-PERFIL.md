@@ -1,7 +1,7 @@
 # Decisão — qual é a fonte de verdade do perfil
 
 > **Item:** `PERFIL-01`. Fecha também o `LGPD-04`, por outro caminho que o previsto.
-> **Data:** 2026-10-17. **Decidido por:** Vitor Mendes Oliverio.
+> **Data:** 2026-10-17. **Decidido por:** o autor.
 > **Procedência do diagnóstico:** diário de 2026-10-17 (iii); `docs/LICOES-APRENDIDAS.md`
 > §5 ocorrência 4; migração `001` linha 125; migração `006` linhas 151 e 169.
 >
@@ -232,7 +232,7 @@ finalidade mais fácil de escrever e a menos defensável das duas.
    Lei 13.709/2018, que exige melhor interesse e, para criança, consentimento de um dos pais
    ou responsável legal). O sistema **não verifica idade e não trata idade declarada de menor
    de forma diferente hoje.** Isso é lacuna, está dita como lacuna na política e virou o item
-   `LGPD-05` — e é **decisão do Vitor**, não deste trabalho de implementação: a alternativa
+   `LGPD-05` — e é **decisão do autor**, não deste trabalho de implementação: a alternativa
    (restringir a maiores de 18 no cadastro) é mudança de produto.
 
 ---

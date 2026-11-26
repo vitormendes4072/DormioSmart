@@ -31,7 +31,7 @@ acrescenta, e que só passam a importar quando a tabela deixa de ser inerte:
 `updated_at` que se mantém, teto de tamanho do nome, e a finalidade declarada
 de `idade` junto do dado.
 
-⚠️ **A `008` precisa ser aplicada no Supabase pelo Vitor.** Aqui ela é
+⚠️ **A `008` precisa ser aplicada no Supabase pelo autor.** Aqui ela é
 aplicada pelo `conftest`, contra um Postgres descartável — o que estes testes
 provam é que o SQL faz o que diz, **não** que o banco de produção o tem.
 """

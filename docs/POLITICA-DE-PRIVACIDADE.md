@@ -4,7 +4,7 @@
 
 > **Como ler este documento.** O que está entre as linhas `── TEXTO ──` é a
 > política propriamente dita, redigida para ser publicada. O que está fora delas
-> são **notas para o Vitor**, não para o titular nem para a banca — mesma
+> são **notas para o autor**, não para o titular nem para a banca — mesma
 > convenção de `docs/CALCULOS-TCC.md` e `docs/LGPD-ELIMINACAO.md`.
 >
 > **Regra que governou a redação:** descrever **o que o sistema faz hoje**, não o

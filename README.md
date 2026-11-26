@@ -178,4 +178,4 @@ Projeto acadêmico (Trabalho de Conclusão de Curso). Uso e distribuição confo
 Centro Universitário Senac — para reutilização, consulte os autores.
 
 ## 👥 Autores
-Arthur Neves Vieira Ponzoni · Vitor Mendes Oliverio
+Os dois autores do trabalho de conclusão de curso, no Centro Universitário Senac. Os nomes ficam no documento do TCC, não no repositório.

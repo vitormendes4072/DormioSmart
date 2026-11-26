@@ -18,12 +18,21 @@ export function janelaDoCalendario(data: Date) {
   return { inicio, fim, diasNoMes: ultimo.getDate(), deslocamento: (primeiro.getDay() + 6) % 7 };
 }
 
+function diaDaSessao(inicio: number): number {
+  return somarDias(new Date(inicio), 0).getTime();
+}
+
+export function sessoesDoDia(leituras: LeituraSono[], dia: Date) {
+  const alvo = somarDias(dia, 0).getTime();
+  return sessoesDaMarca(leituras, false).filter((sessao) => diaDaSessao(sessao.inicio) === alvo);
+}
+
 const meiaNoite = (data: Date) => new Date(data.getFullYear(), data.getMonth(), data.getDate());
 
 export function registrosDoCalendario(leituras: LeituraSono[], inicio: Date, fim: Date) {
   const registros = new Map<number, number>();
   for (const sessao of sessoesDaMarca(leituras, false)) {
-    const dia = somarDias(new Date(sessao.inicio), 0).getTime();
+    const dia = diaDaSessao(sessao.inicio);
     if (dia < inicio.getTime() || dia > fim.getTime()) continue;
     const tempo = calcularCobertura(sessao.leituras).tempoCobertoMs;
     registros.set(dia, (registros.get(dia) ?? 0) + tempo);
@@ -52,4 +61,42 @@ export function sequenciasDoCalendario(registros: ReadonlyMap<number, number>): 
     }
   }
   return sequencias.reverse();
+}
+
+export const DIAS_DA_SEMANA = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
+
+type Dia = { data: Date; rotulo: string };
+type DiaRegistrado = Dia & { estado: "registrado"; tempoMs: number };
+type DiaSemValor = Dia & { estado: "sem-registro" | "incompleto" | "futuro"; tempoMs: null };
+
+export function serieDaSemana(
+  registros: ReadonlyMap<number, number>,
+  referencia: Date,
+  hoje: Date,
+  parcial: boolean,
+) {
+  const segunda = segundaDaSemana(referencia);
+  const hojeMs = somarDias(hoje, 0).getTime();
+  const dias = DIAS_DA_SEMANA.map((rotulo, indice): DiaRegistrado | DiaSemValor => {
+    const data = somarDias(segunda, indice);
+    if (data.getTime() > hojeMs) return { data, rotulo, estado: "futuro", tempoMs: null };
+    const tempoMs = registros.get(data.getTime());
+    return tempoMs === undefined
+      ? { data, rotulo, estado: parcial ? "incompleto" : "sem-registro", tempoMs: null }
+      : { data, rotulo, estado: "registrado", tempoMs };
+  });
+
+  const comRegistro = dias.filter((dia): dia is DiaRegistrado => dia.estado === "registrado");
+  if (comRegistro.length === 0) return { dias, comRegistro, media: null, maiores: [], menores: [] };
+
+  const valores = comRegistro.map(({ tempoMs }) => tempoMs);
+  const maximo = Math.max(...valores);
+  const minimo = Math.min(...valores);
+  return {
+    dias,
+    comRegistro,
+    media: valores.reduce((total, valor) => total + valor, 0) / valores.length,
+    maiores: comRegistro.filter(({ tempoMs }) => tempoMs === maximo),
+    menores: comRegistro.filter(({ tempoMs }) => tempoMs === minimo),
+  };
 }

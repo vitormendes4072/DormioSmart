@@ -1241,7 +1241,7 @@ parametrização). O que nunca aconteceu é outra coisa, mais estreita e ainda a
 **Risco em aberto.**
 
 - **O push continua pendente, e é bloqueio de ambiente, não de decisão.** Os 6 commits estão no
-  clone local do Vitor e em nenhum outro lugar. Enquanto não saírem, o CI não roda e nada nesta
+  clone local do autor e em nenhum outro lugar. Enquanto não saírem, o CI não roda e nada nesta
   entrada ou na anterior pode ser chamado de "o CI passa".
 - **Nada do que a entrada anterior chamou de "validado localmente" mudou de status aqui.** Esta
   entrada não acrescentou uma única execução de job; acrescentou o conhecimento de que a dívida
@@ -2199,7 +2199,7 @@ catalogadas no `UI-19`: `lib/dispositivos.ts :: nomeDoDispositivo` (3 testes, o 
 `lib/autenticacao.ts :: pareceContaExistente` (3 testes, cujo assunto declarado é uma decisão
 de segurança). Trabalho de limpeza, peso baixo, decisão já tomada. **E o enunciado estava
 errado na parte que importava:** o `UI-19` havia concluído em 19/10, em negrito, que *"a
-proteção existe e não há vazamento"*. O Vitor foi cadastrar um e-mail já existente. A tela
+proteção existe e não há vazamento"*. O autor foi cadastrar um e-mail já existente. A tela
 respondeu **"Já existe uma conta com este e-mail."**
 
 **Hipótese de trabalho.** Duas, e a segunda é a da sessão.
@@ -2310,7 +2310,7 @@ toca `web-app/`. O `web-app/tests/rls/` continua fora da conta (exige Postgres d
   ontem em honestidade e **idêntico em risco**: qualquer um com devtools enumera e-mails deste
   projeto. O que mudou é que a tela não entrega mais de graça, e que a limitação deixou de ser
   **suposta** para ser **declarada** — a distinção que é o §1 inteiro das lições. **A decisão de
-  fechá-lo é do Vitor** e tem custo de experiência real: a saída (A) quebra o roteiro de
+  fechá-lo é do autor** e tem custo de experiência real: a saída (A) quebra o roteiro de
   demonstração da banca ("cadastre e entre") e depende de um remetente de e-mail que o plano
   gratuito do Supabase limita por hora.
 - **Nenhum teste deste repositório pode pegar a reincidência deste defeito**, e vale dizer com
@@ -2539,7 +2539,7 @@ flag de tenant; `aws-amplify/amplify-js` #6238 sobre `UsernameExistsException` n
 
 # 2026-10-20 (iii) — `SEC-08` executado: a saída (B′), os comentários que prometiam segurança, e o achado que estava escondido num custo
 
-**O problema, como foi entendido no início.** Executar a decisão da entrada anterior — o Vitor
+**O problema, como foi entendido no início.** Executar a decisão da entrada anterior — o autor
 aprovou a saída **(B′)** — e fechar o que ficou pendente: os dois comentários falsos no código, os
 quatro canais em `LIMITACOES-TCC.md`, o captcha como item dele, e os dois canais novos catalogados.
 Trabalho de registro, com uma pergunta aberta de verdade no meio: **a retenção de credencial em
@@ -2636,7 +2636,7 @@ limpo. Backend **293**, reexecutado e inalterado. RLS fora da conta (exige Postg
 1. **A retenção de credencial foi promovida de nota a item (`SEC-10`)** — justificativa em (a).
 2. **O `SEC-08` saiu do L3 e o `SEC-11` entrou nele.** Parece contabilidade e não é: o `SEC-08`
    estava em L3 porque *"a saída é decisão sua"*, e a decisão foi tomada. O que resta dele é
-   declaração, que é L0. O que precisa do Vitor agora é **uma chave de painel**, e ela tem item
+   declaração, que é L0. O que precisa do autor agora é **uma chave de painel**, e ela tem item
    próprio justamente para não ficar pendurada num item de 🟠 que ninguém mais precisa abrir.
    *Pendência que depende de outra pessoa não mora dentro de um item já decidido.*
 
@@ -2757,7 +2757,7 @@ enunciado é a evidência, e é **inferência**.
    *versionar*, com a parte pessoal num `CLAUDE.local.md` gitignorado. Motivo medido: a correção
    envelheceu em dez dias sem que nada a alcançasse, a lista de jobs errada passou para o backlog, e
    existem cópias divergentes. **Não executada:** revoga uma decisão explícita do autor e resulta em
-   publicação num repositório público. A decisão é do Vitor.
+   publicação num repositório público. A decisão é do autor.
 
 **Risco em aberto.**
 
@@ -2788,7 +2788,7 @@ a cópia na pasta `backup-interno` (fora do repositório).
 
 # 2026-10-27 (ii) — `DOC-11` fechado: o `CLAUDE.md` passa a ser versionado, e a lista de ponteiros não encolheu
 
-**O problema, como foi entendido no início.** O Vitor decidiu pela recomendação da entrada
+**O problema, como foi entendido no início.** O autor decidiu pela recomendação da entrada
 anterior: versionar o `CLAUDE.md` e mover a parte pessoal (devlog, mídia, caminhos da máquina)
 para um `CLAUDE.local.md` gitignorado. Mostrar o diff antes de commitar.
 
@@ -2854,7 +2854,7 @@ interrompida, e **bloqueia commit**. Registrado no `GIT-03`.
 - ~~O lock precisa sair antes do commit~~ — **eram dois.** Removido o `index.lock`, o commit
   falhou num `HEAD.lock` da mesma hora (20/10 01:22:28). Os dois foram removidos, cada um com
   aprovação própria, depois de conferir 0 bytes e nenhum `git.exe` rodando; o
-  `objects/maintenance.lock` (16/10) ficou, por decisão do Vitor. **Erro de método meu:** a
+  `objects/maintenance.lock` (16/10) ficou, por decisão do autor. **Erro de método meu:** a
   varredura `find .git -name "*.lock"` devia ter vindo antes da primeira remoção, não depois da
   falha (`GIT-03`).
 
@@ -2869,7 +2869,7 @@ interrompida, e **bloqueia commit**. Registrado no `GIT-03`.
 **O problema, como foi entendido no início.** Versionar os três arquivos da consolidação
 interrompida em 20/10 (`scripts/consolidar_registro.py` e os dois documentos que ele gera), que
 deixavam o job `documentos` vermelho desde que o diário e o `CLAUDE.md` passaram a citá-los. Plano
-aprovado pelo Vitor com sete escolhas: a linha `ML-04b` fora da contagem e visível; o push como
+aprovado pelo autor com sete escolhas: a linha `ML-04b` fora da contagem e visível; o push como
 `GIT-07`; dois commits de conteúdo (consertar e versionar; levar as discordâncias ao backlog), com
 a data do versionamento virando item próprio; todas as discordâncias reconferidas, e nada fechado
 sem abrir o artefato; números puros derivados e frases que nomeiam casos travadas por guarda;
@@ -2951,7 +2951,7 @@ do `✓` final quebra em `cp1252`. Arquivo não tocado por este lote, terceira i
 reprovando no Windows **só** pelos dois documentos ainda fora do git; em Linux, com eles no índice,
 dá OK.
 
-**(i) A revisão antes do commit achou três coisas, e uma delas era minha afirmação.** O Vitor
+**(i) A revisão antes do commit achou três coisas, e uma delas era minha afirmação.** O autor
 pediu que eu revisasse os patches e só commitasse sem divergência. (1) **A linha do `DOCS-WIN-01`
 no backlog estava partida em seis desde o commit `4014798`, de ontem**: o texto cita `\n`, `\r\n`
 e `\r` como exemplo, e o script de 27/10 os gravou como caracteres de controle — inclusive um CR
@@ -3010,7 +3010,7 @@ commits `846986a`, `c0725ca`, `d74aa01`, `778ec27`, `275665a`.
 **O problema, como foi entendido no início.** Fechar o que a entrada anterior deixou aberto: o
 push (`GIT-07`), os dois testes de ML e o script que falhavam no Windows (`ML-WIN-01`,
 `DOCS-WIN-02`), os dois diagramas que não fecharam (`DIAG-01`, `DIAG-03`) e a data de início do
-versionamento (`DOC-12`). O Vitor autorizou o push pela conta dele e aprovou de antemão o que
+versionamento (`DOC-12`). O autor autorizou o push pela conta dele e aprovou de antemão o que
 precisasse de aprovação. A sessão foi interrompida por um desligamento do computador no meio do
 registro; nada se perdeu, e está conferido abaixo.
 
@@ -3047,7 +3047,7 @@ existe sem `setup-python` (3.11.17). Fecham `GIT-07` e `CI-06`.
 **(b) E o runner avisou de uma coisa que o projeto não sabia:** o `ubuntu-latest` está migrando
 para o Ubuntu 26. Os seis jobs usam `ubuntu-latest`, e a próxima execução pode pegar outro `g++` e
 outro Python. O `ci.yml` já tem a regra, para o Postgres: *"nunca `latest`"*. Virou o `CI-07`,
-**decisão do Vitor**.
+**decisão do autor**.
 
 **(c) `DOCS-WIN-02` era maior do que eu tinha registrado.** Ontem medi só o `--conferir` do
 `estudo_buffer`, que passa; o modo relatório quebrava no `ĝ`. Os dois scripts, nos dois modos: 3 de
@@ -3119,11 +3119,11 @@ sequências, que continua pegando. Registrado como ocorrência 6 do §4.
 
 **Risco em aberto.**
 
-- **`CI-07`**: a próxima execução pode cair no Ubuntu 26. Decisão do Vitor.
+- **`CI-07`**: a próxima execução pode cair no Ubuntu 26. Decisão do autor.
 - **O piso entre plataformas é amostra, não medida.** Dois runners e um Windows; uma quarta
   máquina pode errar mais. A régua dos ângulos é derivada da condição do `arccos`, que não
   depende da máquina; a de 1e-9 dos demais floats ainda é empírica.
-- **`ventregaz-redis`** — um contêiner de outro projeto do Vitor estava rodando; não foi tocado.
+- **`ventregaz-redis`** — um contêiner de outro projeto do autor estava rodando; não foi tocado.
 - A lacuna de 20/02 a 30/05 e a justificativa do travesseiro dependem de material fora do git.
 
 **Procedência.** Execução `40639232458` do Actions; commit `7016c81` (`scripts/calculos_tcc.py`,
@@ -3138,7 +3138,7 @@ de abertura deste diário); `docs/BACKLOG-COMPLETO.md` (75 = 42/12/9/12, reconta
 # 2026-10-28 (iii) — `CI-07`: a imagem do runner fica fixa
 
 **O problema, como foi entendido no início.** O runner avisou que o `ubuntu-latest` migra para o
-Ubuntu 26, e os seis jobs usavam `ubuntu-latest`. O Vitor decidiu fixar.
+Ubuntu 26, e os seis jobs usavam `ubuntu-latest`. O autor decidiu fixar.
 
 **Hipótese de trabalho.** Que fixar `runs-on: ubuntu-24.04` mantivesse os sete jobs verdes e fizesse
 o aviso sumir.
@@ -3170,7 +3170,7 @@ execuções `40746683981` e `40750204890`; `docs/BACKLOG-COMPLETO.md` (`CI-07`, 
 produção respondeu **503**, com `"banco": "consulta falhou"`. A produção vem de `main`, de 10/09;
 não era efeito de nada desta semana.
 
-**Hipótese de trabalho.** Projeto Supabase pausado por inatividade. **Confirmada pelo Vitor**:
+**Hipótese de trabalho.** Projeto Supabase pausado por inatividade. **Confirmada pelo autor**:
 plano gratuito, pausa depois de uma semana sem uso; ele reativou o projeto.
 
 **O que foi testado, e como.**
@@ -3212,7 +3212,7 @@ YAML, para poder ser sabotada aqui.
 # 2026-10-28 (v) — `SEC-12`: a chave pública executava as funções do banco, e a suíte de segurança passava no vazio
 
 **O problema, como foi entendido no início.** Conferir quais migrações estavam aplicadas na
-produção e quais precisavam ser — pergunta do Vitor. Não havia como saber: as migrações são
+produção e quais precisavam ser — pergunta do autor. Não havia como saber: as migrações são
 aplicadas à mão, e nada registra quais rodaram.
 
 **Hipótese de trabalho.** Que bastasse procurar no catálogo as marcas de cada migração. Isso
@@ -3223,7 +3223,7 @@ objeto novo nasce sem privilégio para o cliente.
 
 | # | O que | Como | Natureza |
 |:-:|---|---|---|
-| 1 | Quais migrações estão aplicadas | `DIAGNOSTICO-migracoes-aplicadas.sql`, rodado pelo Vitor na produção | inventário |
+| 1 | Quais migrações estão aplicadas | `DIAGNOSTICO-migracoes-aplicadas.sql`, rodado pelo autor na produção | inventário |
 | 2 | O diagnóstico acerta? | aplicando 001→009 num Postgres local, e na ordem real da produção | execução |
 | 3 | A ordem segura de aplicar | as operações do código de `main` antes e depois de cada grupo de migrações | execução |
 | 4 | O verificador acusa? | três sabotagens: marca errada, critério frouxo, migração que tira privilégio | **controle positivo** |
@@ -3236,7 +3236,7 @@ objeto novo nasce sem privilégio para o cliente.
 **(a) O estado da produção:** 001, 003, 004 aplicadas; 002 desnecessária (0 leituras sem dono);
 005–008 não. A 005, 006 e 008 podem entrar antes do release — as 10 operações do código de
 `main` dão o mesmo resultado com elas; a 007 quebra exatamente as 2 que usam `devices.token_hash`
-e por isso só entra com o release. O Vitor aplicou a 005, 006 e 008; o diagnóstico confirmou.
+e por isso só entra com o release. O autor aplicou a 005, 006 e 008; o diagnóstico confirmou.
 Fecham `PERFIL-02` e `DATA-03`.
 
 **(b) A sabotagem que não foi acusada, e o que ela escondia.** Das três sabotagens do verificador,
@@ -3245,7 +3245,7 @@ reaplicava os GRANTs das tabelas **depois** das migrações, desfazendo o `revok
 apareceu que a 007 cria `device_tokens` dizendo *"sem GRANT para anon"* e não revoga nada — o que só
 vale se o banco não der privilégio sozinho. **Na produção, dá:** `pg_default_acl` mostra ALL em
 tabela e EXECUTE em função, nominais, para `anon` e `authenticated`. E `revoke ... from public`,
-que as 005–008 usavam, não alcança grant nominal. Conferido pelo Vitor: **as sete funções
+que as 005–008 usavam, não alcança grant nominal. Conferido pelo autor: **as sete funções
 aplicadas eram executáveis por `anon`**.
 
 **(c) O impacto, medido antes de corrigir:** chamando as oito funções como `anon`, nada mudou —
@@ -3280,7 +3280,7 @@ tabela aberta.
 `007_…` (revogações), `DIAGNOSTICO-migracoes-aplicadas.sql`, `README.md`;
 `web-app/tests/rls/esquema_base.sql` (bloco 1b), `test_rls_privilegios.py`,
 `verificar_por_mutacao.py`; `web-app/tests/migracoes/verificar_migracoes.py`; `pg_default_acl` e
-`has_function_privilege` da produção (resultados colados pelo Vitor); backlog `SEC-12`, `SEC-13`.
+`has_function_privilege` da produção (resultados colados pelo autor); backlog `SEC-12`, `SEC-13`.
 
 ---
 
@@ -3292,7 +3292,7 @@ tabela aberta.
 **Hipótese de trabalho.** Que a 009 tirasse de `anon` todas as funções sem tocar no que o código
 da produção usa. Confirmada.
 
-**O que foi testado, e como.** O Vitor aplicou a 009 no SQL Editor e colou dois resultados: a
+**O que foi testado, e como.** O autor aplicou a 009 no SQL Editor e colou dois resultados: a
 consulta de privilégios por função e o diagnóstico de migrações. O `/health` foi conferido daqui
 depois da aplicação. Para o release: `git diff` de `main` para `develop` (arquivos, variáveis de
 ambiente, `vercel.json`) e todas as chamadas que o código de `develop` faz ao banco.
@@ -3320,7 +3320,7 @@ ambiente, `vercel.json`) e todas as chamadas que o código de `develop` faz ao b
   o padrão do Supabase lhe dá EXECUTE — mas isso é leitura; a conferência entrou no roteiro do
   release, antes do merge.
 
-**Procedência.** Resultados da produção colados pelo Vitor em 29/10; `git diff origin/main
+**Procedência.** Resultados da produção colados pelo autor em 29/10; `git diff origin/main
 origin/develop`; `web-app/database.py`, `web-app/dispositivos.py`; backlog `SEC-12`.
 
 ---
@@ -3338,12 +3338,12 @@ duas partes.
 
 **O que foi testado, e como.**
 
-- **Antes do merge:** o Vitor rodou no SQL Editor `has_function_privilege('service_role', …)` nas
+- **Antes do merge:** o autor rodou no SQL Editor `has_function_privilege('service_role', …)` nas
   cinco funções que o backend chama e a contagem de dispositivos.
 - **O release:** PR #5, `develop` → `main`. **O merge em `main` foi negado a esta sessão** pelo
-  classificador de permissões (deploy de produção); o Vitor mesclou pelo GitHub
+  classificador de permissões (deploy de produção); o autor mesclou pelo GitHub
   (*Create a merge commit*).
-- **Depois do merge:** `/health` e as rotas protegidas conferidos daqui. O Vitor aplicou a 007
+- **Depois do merge:** `/health` e as rotas protegidas conferidos daqui. O autor aplicou a 007
   e rodou a conferência que vem nela e o diagnóstico de migrações.
 - **O monitor:** disparado à mão (`workflow_dispatch`) a partir de `main`.
 
@@ -3362,7 +3362,7 @@ duas partes.
 - **O monitor:** a execução `40818265459`, de `main`, passou.
 
 **Adaptação.** Nenhuma no plano. A permissão negada mudou só quem clica: merge em `main` é do
-Vitor, e assim fica.
+autor, e assim fica.
 
 **Risco em aberto.**
 
@@ -3374,7 +3374,7 @@ Vitor, e assim fica.
 - **Não medido:** o pareamento de ponta a ponta pelo app em produção (`POST /api/devices`). O
   que se mediu foi o privilégio da função no banco.
 
-**Procedência.** Resultados da produção colados pelo Vitor em 29/10 (privilégios de
+**Procedência.** Resultados da produção colados pelo autor em 29/10 (privilégios de
 `service_role`, conferência da 007, diagnóstico); PR #5 e `main 787227c`; execução `40818265459`
 de `saude-producao.yml`; backlog `INFRA-03`.
 
@@ -3548,7 +3548,7 @@ existisse no sensor. As duas eram lembrança, não leitura.
 # 2026-10-30 — `ML-11`: três features bastam, e o WoM custa de 0,07 a 0,10 de kappa
 
 **O problema, como foi entendido no início.** Depois da análise do `ARQ-01` (29/10 (v)), o
-Vitor perguntou se todas as 8 features são necessárias, e pediu o resultado antes de decidir
+autor perguntou se todas as 8 features são necessárias, e pediu o resultado antes de decidir
 qualquer coisa. Ele está inclinado ao sono leve com FIFO. Pediu também a investigação do
 registro pelo celular, que não tem as limitações do ESP32, e se dá para oferecer mais de um
 modo de registro ao usuário, com tudo registrado num documento.
@@ -3633,7 +3633,7 @@ modo de registro ao usuário, com tudo registrado num documento.
 
 # 2026-10-30 (ii) — `ARQ-01` decidido: arquitetura C2, e o `ML-11` fora de `develop`
 
-**O problema, como foi entendido no início.** O Vitor mesclou as PRs #12 e #13 e decidiu:
+**O problema, como foi entendido no início.** O autor mesclou as PRs #12 e #13 e decidiu:
 seguir com a arquitetura **C2** (sono leve + FIFO). Pediu os ajustes que a decisão exige, depois
 o `API-03`, depois o `ML-12`, tudo registrado, e que eu dissesse se houve algum erro em qualquer
 parte.
@@ -6223,14 +6223,14 @@ batiam. Sabotagens **4/4**, cada uma com a mensagem que nomeia o item. `npm audi
 `session`), python-dotenv 1.2.1 (CVE-2026-28684, `set_key` segue link simbólico), gunicorn 21.2.0
 (CVE-2024-1135 e CVE-2024-6827, contrabando de requisição). Nenhum explorável aqui: a Vercel roda
 pelo `@vercel/python` e o gunicorn não aparece fora do `requirements.txt`; o backend não usa a
-`session` do Flask nem o `set_key`. Por decisão do Vitor os três subiram (3.1.3, 1.2.2, 22.0.0):
+`session` do Flask nem o `set_key`. Por decisão do autor os três subiram (3.1.3, 1.2.2, 22.0.0):
 **417 testes do backend passam** em Python 3.11 limpo, e o `pip-audit` sai sem aviso. Na sabotagem,
 os dois jobs do workflow reprovaram (execução `41749478900`): o `npm audit` listou os avisos do
 `react-router` (faixa até 7.18.1; o 7.18.4 em uso fica fora), o `pip-audit` os dois do gunicorn.
 
 **Adaptação.** A regra do `DOC-13` mudou de "ID fechado citado" para três conferências
 estruturadas — a literal acusaria 161 menções e ensinaria a ignorar o alarme. O plano aprovado
-previa parar se o `pip-audit` acusasse: parou, os avisos foram levados ao Vitor com a análise de
+previa parar se o `pip-audit` acusasse: parou, os avisos foram levados ao autor com a análise de
 alcance, e a decisão foi subir as versões em vez de ignorar os IDs.
 
 **O que deu errado no caminho.** A primeira tentativa da sabotagem do quadro não acusou: o
@@ -6317,7 +6317,7 @@ o carregador dos testes confere o caminho **com a query**, e uma liberação de 
 com `…md?raw` — só a de pasta. Confirmado liberando `docs/` por um instante (os 22 testes dos dois
 arquivos passaram). A liberação de `docs/` ficou só no `vitest.config.ts`; o `vite.config.ts`
 segue liberando o arquivo, e só ele. A auditoria do `CI-08` passou de `--omit=dev` para todas
-as dependências, por decisão do Vitor no plano.
+as dependências, por decisão do autor no plano.
 
 **O que deu errado no caminho.** Três coisas. (1) Tentei primeiro exportar a lista do
 `vite.config.ts` para o `vitest.config.ts` — a falha continuou, porque o problema não era a lista
@@ -6346,7 +6346,7 @@ documento importado com `?raw` passaria no CI e no build e só quebraria no `npm
 
 **Hipótese de trabalho.** Que um teste estático bastasse: achar os `?raw` dos módulos da aplicação
 e conferir cada um contra o `server.fs.allow` do servidor de desenvolvimento. Liberar `docs/` também
-no servidor de desenvolvimento foi descartado, por decisão do Vitor: desfaria o "só ele" do
+no servidor de desenvolvimento foi descartado, por decisão do autor: desfaria o "só ele" do
 `LGPD-01` (b) sem ganho além de simetria.
 
 **O que foi testado, e como.** `frontend/src/raw.test.ts` importa o `vite.config.ts`, lê a lista e
@@ -6403,7 +6403,7 @@ dois imports de outro documento → `403`, o inexistente → "arquivo não exist
 seu teste, a política fora da lista → o servidor recusa. Suíte: **465 testes, 33 arquivos**; `tsc`
 limpo; o servidor sobe e responde em menos de 100 ms.
 
-✏️ *Mesmo dia, antes do merge, a pedido do Vitor: avaliado o limite que restava, o caminho montado em
+✏️ *Mesmo dia, antes do merge, a pedido do autor: avaliado o limite que restava, o caminho montado em
 execução. Medido com sabotagens temporárias: um template com variável
 (`` import(`../docs/${nome}.md?raw`) ``) **já reprova** ("arquivo não existe"); a concatenação
 (`import(base + "?raw")`) passava no teste e **no build, sem aviso** (com `@vite-ignore`), o documento
@@ -6508,7 +6508,7 @@ mesmas variáveis), não medição na produção. O `DOC-14` segue aberto.
 # 2026-11-03 (xxiv) — `DOC-14`: o README reescrito, executado e com o painel de hoje
 
 **O problema, como foi entendido no início.** O `README.md` é a primeira coisa que a banca lê, e o
-`INFRA-04` mostrou que ele envelheceu além da stack. O Vitor pediu revisão completa, inclusive das
+`INFRA-04` mostrou que ele envelheceu além da stack. O autor pediu revisão completa, inclusive das
 imagens.
 
 **Hipótese de trabalho.** Que bastasse reescrever as seções contra o código; e que a imagem do
@@ -6546,7 +6546,7 @@ dataset pendente): não entrou no README, e virou o `UI-23`. Os READMEs de `web-
 instruções mandavam rodar os testes sem instalar o `pytest`, que não está no `requirements.txt`.
 Corrigido e reexecutado. O primeiro teste do simulador não imprimiu nada — o `timeout` matava o
 processo antes de o Python esvaziar a saída; com `-u` apareceu o `401`. A primeira captura pelo
-Edge não gerou arquivo, porque o caminho curto do Windows (`VITOR-~1`) não foi aceito; com o caminho
+Edge não gerou arquivo, porque o caminho curto do Windows (`USUARI~1`, por exemplo) não foi aceito; com o caminho
 longo, gerou. E a captura pelo painel do navegador do app saía reduzida (800 px, JPEG), por isso o
 Edge.
 
@@ -6646,7 +6646,7 @@ backlog `DOC-14`, `DEMO-02`, `UI-23`, `DOC-15`.
 **O problema, como foi entendido no início.** O risco que a entrada de 04/11 deixou em aberto: em
 modo demonstração o painel pedia `GET /api/devices`, e o servidor de desenvolvimento sem backend
 respondia `500` no console. Ficou registrado só no diário — e a prática 2 do `CLAUDE.md` pede que
-todo risco em aberto aponte um item do backlog. O Vitor apontou.
+todo risco em aberto aponte um item do backlog. O autor apontou.
 
 **Hipótese de trabalho.** Que fosse o `useDispositivos` sem a verificação que o `useHistorico` já
 tem, e que bastasse devolver a lista vazia em demo — o mesmo efeito na tela que a falha silenciosa
@@ -11815,7 +11815,7 @@ O GitHub Releases dá o endereço fixo (`releases/latest/download/smart-dormio.a
 - **O guia `docs/DISTRIBUICAO-DO-APP.md`** ganhou o caminho do GitHub Releases e o passo a passo de uma versão nova.
 
 **O que deu errado no caminho.**
-- **O Gradle recusou começar** ("Unable to establish loopback connection") com o `jdk.net.unixdomain.tmpdir` na pasta temporária de nome curto (`VITOR-~1`). Com um caminho longo, sem o `~`, compilou.
+- **O Gradle recusou começar** ("Unable to establish loopback connection") com o `jdk.net.unixdomain.tmpdir` na pasta temporária de nome curto (`USUARI~1`, por exemplo). Com um caminho longo, sem o `~`, compilou.
 - **O primeiro gesto para abrir a gaveta de apps no emulador não abriu nada.** O ícone foi achado pelo despejo da interface (`uiautomator`): estava na fileira de baixo como "Predicted app: Smart Dormio", com o anel de app sugerido do launcher do Pixel.
 
 **Risco em aberto.**
@@ -13577,6 +13577,325 @@ Os dois controles originais da etapa também voltaram a falhar sob sabotagem. No
 **Procedência.** Revisão da PR #295 em `feature/calendario-do-sono`, sobre `12992da`. Execução local no Windows, Node 24.11.0, em 26/11.
 
 ✏️ *26/11, segunda revisão:* com um dia só na borda, o texto saía "Pelo menos 1 dia consecutivo". Passou a ser "Pelo menos 1 dia", porque um dia só não é sequência. Um teste de tela novo cobre o caso, e volta a falhar com o texto antigo. A suíte do frontend passa a 1061 testes.
+
+---
+
+# 2026-11-26 (ii) — release R21: o app 1.1.6, o calendário do sono e o nome do celular
+
+**O problema, como foi entendido no início.** O `develop` tinha, fora da produção, o nome do celular pelo modelo (`APP-22`, #291), os textos mais curtos do Início (#293) e o calendário do sono (`UI-45`, #295). As duas primeiras mudanças alteram o app, e o celular só as recebe com um APK novo.
+
+**Hipótese de trabalho.** Subir o app para 1.1.6 (`versionCode` 8), gerar o APK com o `frontend/.env` e conferi-lo com o `conferir_apk.py`, como no R20, publica tudo de uma vez. Sem migração, o merge em `main` não tem janela de risco no banco.
+
+**O que foi testado, e como.**
+- **A versão:** a PR #297 sobe a versão no `build.gradle`, no `appAndroid.ts`, no `versao-do-app.json` e na landing; os 40 testes de versão, landing e aviso de atualização.
+- **O APK:** gerado da branch da #297 numa cópia com o `frontend/.env` e o `local.properties`; `testDebugUnitTest` junto. `conferir_apk.py`, `apksigner verify --print-certs`, `aapt2 dump badging` e o SHA-256.
+- **No emulador Pixel 6:** o 1.1.6 instalado **por cima do 1.1.5**, a tela de login e um login com um e-mail fictício (`example.com`).
+- **O merge:** a #297 com o CI 19 de 19 e a PR #298 (`develop` em `main`) com o CI 12 de 12, lidos antes do merge.
+- **A produção, depois do deploy** `8078019981`: `/health`, rotas sem credencial, a CSP das cinco páginas, a landing, o `versao-do-app.json` e o link `latest`.
+
+**Resultado medido.**
+- **O APK:** `conferir_apk.py` com código 0 (endereço do Supabase presente, versão 1.1.6); certificado do autor (SHA-256 `06b2e4f9…d14a`), `versionCode` 8, não depurável, três ABIs, 5 265 469 B, SHA-256 `2fec5adb…7305`.
+- **No emulador:** a instalação por cima deu `Success`, o sistema passou a informar `versionName=1.1.6`, e o login respondeu "E-mail ou senha incorretos." do Supabase.
+- **A produção:** `/health` `200`, contrato 2.12.0; `401` sem token em `/api/devices`, no `POST /api/devices/celular` e em `/api/features`; a CSP igual nas cinco páginas; a landing com "Versão 1.1.6 (beta)"; o `versao-do-app.json` com 1.1.6; o link `latest` com `200` e o mesmo SHA-256 do APK gerado.
+
+**Adaptação.** O `test_conferir_apk.py` fixava "1.1.5" como a versão atual e derrubou o CI da #297 em dois jobs, sem defeito no script. O teste passou a ler a `VERSAO_DO_APP_ANDROID` como o script lê, e a versão divergente virou "0.0.1"; a próxima versão não quebra o teste.
+
+**O que deu errado no caminho.**
+- **O teste do conferidor preso à versão** (acima). O APK não mudou com a correção, que só toca um teste do backend.
+- **O System UI do emulador travou** de novo, três vezes. Com ele travado, a captura de tela saiu preta e a digitação pelo `adb` misturou o e-mail com a senha. A tela foi lida pelo `uiautomator`. O pedido saiu do app e chegou ao Supabase mesmo com o e-mail malformado, que é o que o teste pretendia mostrar.
+- **O `gh release edit --target`** recusou o commit do merge; a tag foi criada e enviada pelo `git`, e a release publicada em seguida.
+
+**Risco em aberto.**
+- **O nome do celular pelo modelo e o calendário no celular do autor**, com uma conta de verdade. O nome só aparece num celular pareado depois da atualização; um celular já pareado com outro nome mantém o nome.
+- **Quem tem a 1.1.3 ou a 1.1.4** continua sem o aviso de versão nova e depende do aviso do autor.
+
+**Procedência.** PRs #297 e #298; `main` `3b2a3d2`; deploy `8078019981`; release `app-v1.1.6`; conferências desta máquina (Windows 11, emulador Pixel 6); 26/11.
+
+---
+
+# 2026-11-26 (iii) — revisão do que sobe ao GitHub: e-mail e nome fora dos arquivos
+
+**O problema, como foi entendido no início.** O autor pediu uma revisão rigorosa de tudo o que vai ao repositório, que é público. A regra do projeto já dizia que nada versionado pode conter segredo, nome de pessoa ou caminho de máquina, e a política de privacidade usa `[CONTROLADOR]` e `[CONTATO]` justamente para isso.
+
+**O que foi testado, e como.** Os 778 arquivos de `develop`, o histórico enviado (todas as branches remotas), as sete releases e o APK 1.1.6, os textos das 299 PRs e o site em produção. Segredos: o valor real de cada chave do `.env`, do `secrets.h` e do keystore procurado na árvore e no histórico, e padrões de JWT, chave privada e token. Dados pessoais: nome, e-mail, telefone e caminhos da máquina. Imagens: metadados EXIF e conteúdo. Dados de ML: se há dado bruto de base restrita.
+
+**Resultado medido.**
+- **Segredos:** nenhum, nem no histórico. O APK leva só a chave anon, que é pública por desenho, e o site não publica `.map`.
+- **Dados pessoais nos arquivos:** o e-mail do autor num rascunho de plano de pesquisa; o nome completo em quatro arquivos (créditos do README, `diagram.json`, uma decisão e o mesmo rascunho) e numa citação; o primeiro nome em 66 frases do tipo "decisão do autor"; e o nome curto da pasta de usuário do Windows em duas entradas do diário.
+- **Fora dos arquivos:** o e-mail pessoal é o autor de cerca de mil commits já enviados. Isso não sai sem reescrever o histórico público, o que quebraria branches e tags das releases; a saída é usar o e-mail `noreply` do GitHub daqui em diante.
+- **Imagens:** sem metadados. Uma figura do esquema elétrico traz a marca d'água de um site de terceiros, e as imagens da landing não têm origem registrada.
+
+**Adaptação.** O e-mail e o nome viraram marcadores (`[[NOME]]`, `[[E-MAIL]]`, `[AUTOR]`) ou "o autor". Os créditos do README dizem que os nomes ficam no documento do TCC. O `PENDENCIAS-ABERTAS.md` e o `CORRECOES-APLICADAS.md` foram regenerados pelo `consolidar_registro.py`.
+
+**Risco em aberto.**
+- **O histórico e os commits** continuam com o nome e o e-mail; só o que vem depois muda.
+- **A origem das imagens** da landing e do esquema elétrico, para o direito de uso.
+
+**Procedência.** Revisão de 26/11 sobre `develop` `f3439e9`, nesta máquina (Windows 11); branch `docs/sem-dados-pessoais`.
+
+---
+
+# 2026-11-26 (iv) — CI-13: o fluxo de merge sem tanta espera
+
+**O problema, como foi entendido no início.** O autor achou o fluxo engessado: a cada tarefa, parar e esperar o CI e responder "mescle?". Medido nas PRs #295, #297, #299 e #300, o `ci.yml` levou **3 a 5 min** por rodada (o job mais longo, o RLS no Postgres 16). O tempo ia no fluxo: o R21 teve quatro PRs (tarefa, versão, release e registro), cada uma com CI e um pedido de merge; o CI rodava duas vezes por PR (no `push` da branch e no `pull_request`); e a espera do CI era feita parada.
+
+**Hipótese de trabalho.** Se a trava contra o CI vermelho for do GitHub, e não da conferência à mão, a aprovação do plano pode valer para o merge sem perder segurança. Hoje nenhuma branch tinha proteção: o merge no vermelho só não acontecia porque alguém olhava, e isso já falhou uma vez (o lockfile, em 23/11).
+
+**O que foi testado, e como.**
+- **No GitHub:** merge automático ligado; a branch remota apagada no merge; o `develop` protegido exigindo o check "CI ok" (sem revisão obrigatória, sem `force push`, sem apagar a branch).
+- **No `ci.yml`:** o `push` só em `develop`; `concurrency` que cancela a rodada antiga da mesma PR (nunca em `develop`); o job `ci-ok` ("CI ok"), que depende dos seis outros, roda com `always()` e falha se algum não terminou com sucesso.
+- **No `CLAUDE.md`:** a regra de merge e os passos 9 a 12 do protocolo.
+- **Esta própria PR** é o primeiro uso: aberta com o merge automático, ela só pode entrar com o "CI ok" verde.
+
+**Resultado medido.** A proteção respondeu com o check "CI ok" exigido. O resto (o CI uma vez só, o cancelamento e o merge automático desta PR) fica medido na própria PR.
+
+✏️ *26/11, depois do merge:* a PR #301 rodou o `ci.yml` **uma vez** (só no `pull_request`), entrou sozinha com o "CI ok" verde e teve a branch apagada. **Controle positivo:** a PR #302 trazia um teste que falha de propósito; o "CI ok" ficou vermelho, a PR ficou `BLOCKED`, e o `gh pr merge` sem `--admin` foi recusado. Fechada sem merge.
+
+**Adaptação.** A proteção exige só o "CI ok", e não cada job: o RLS roda em três versões do Postgres e os nomes mudam com a matriz, e o "CI ok" junta tudo num nome estável. Os workflows do Android e do ESP32 só rodam quando os arquivos deles mudam e por isso **não** são exigidos (um check exigido que não roda deixa a PR esperando para sempre). A `main` segue sem proteção: o release é sempre um "sim" explícito do autor.
+
+**O que deu errado no caminho.** Nada nesta etapa.
+
+**Risco em aberto.**
+- **O build do APK e o do ESP32 não travam o merge.** Uma PR que quebre só o Android entra no `develop`; o workflow dele avisa, mas não impede. Se isso acontecer, o item é exigir esses checks com um filtro de caminho dentro do job.
+- **O `enforce_admins` está desligado:** o dono do repositório ainda consegue passar por cima. A regra do `CLAUDE.md` proíbe o `--admin`.
+
+**Procedência.** Branch `ci/fluxo-mais-leve` sobre `develop` `9802ac9`; configurações do repositório pela API do GitHub; 26/11.
+
+---
+
+# 2026-11-26 (v) — UI-46: dia do calendário comanda o Início
+
+**O problema, como foi entendido no início.** O clique em um dia da semana compacta expandia o calendário. A data selecionada também não chegava a “Seus registros”, que continuava exibindo a última sessão geral.
+
+**Hipótese de trabalho.** Controlar o dia no Dashboard e consultar o histórico paginado na janela dessa data permite reaproveitar as métricas e o seletor existentes. A data local do início mantém a atribuição da sessão igual à do calendário.
+
+**O que foi testado, e como.** Quatro testes de agrupamento em `calendarioDoSono.test.ts`, um de seleção controlada em `CalendarioDoSono.test.tsx` e seis na rota real em `montagem.test.ts`, com respostas de API simuladas. No Edge, a demonstração foi verificada nos estados sem seleção, com sessão e dia vazio, nos dois temas, em 1440 × 960.
+
+**Resultado medido.** 11 de 11 testes novos falharam com o código original de `develop` em `8bcc652`. O controle do calendário pegou a reintrodução de `setAberto(true)` no clique de data. O teste da sessão que atravessa a meia-noite pegou o recorte pela data de fim. O teste que abre na última sessão do dia pegou o Dashboard que ignora a seleção. Os três controles foram executados em separado e o código foi restaurado após cada um. Na suíte completa do frontend, 1.072 testes passaram em 71 arquivos com dois workers.
+
+**Adaptação.** A data abre na última sessão daquele dia e permite alternar para todas. A navegação no calendário expandido e o dia do Dashboard têm estados independentes. Ao recolher, a semana do dia selecionado fica visível. O controle de período passou a dizer “Sessão toda”. A consulta reaproveita a paginação do calendário e as margens da véspera e do dia seguinte.
+
+**O que deu errado no caminho.** A sessão ainda tinha permissão de escrita apenas na worktree anterior e usou comandos aprovados para gravar na nova. O `npm.cmd` interpretou o primeiro filtro com barras verticais como pipeline, e a execução focada usou Vitest diretamente. O teste do gráfico contou inicialmente apenas registros reais, mas a figura também inclui dois separadores de lacuna. A asserção passou a conferir a contagem de registros nos detalhes técnicos.
+
+**Risco em aberto.** A consulta continua sujeita ao limite de páginas e mostra “Histórico parcial” quando há dados além dele. A verificação local usou dados de demonstração no navegador e respostas simuladas na suíte.
+
+**Procedência.** Plano aprovado do UI-46, implementação sobre `origin/develop` `8bcc652`. Windows, Node 24.11.0 e Edge em 26/11. As seis capturas de demonstração estão em `docs/evidencias/ui-46/`.
+
+---
+
+# 2026-11-26 (vi) — VIA-02: a primeira noite com o travesseiro e o celular juntos
+
+**O problema, como foi entendido no início.** O `VIA-02` pergunta se o travesseiro capta o movimento que o celular sobre o colchão capta, com o critério fixado em 23/11, antes dos dados (`docs/PROTOCOLO-VIA-02.md`). Até aqui não havia nenhuma noite gravada pelos dois ao mesmo tempo.
+
+**Hipótese de trabalho.** Os dois calculam as mesmas features com o mesmo núcleo; a diferença está no acoplamento ao corpo. Com a cabeça sobre o travesseiro, ele deveria ver ao menos o que o celular ao lado vê.
+
+**O que foi testado, e como.**
+- **Antes de deitar:** a placa no USB foi ouvida pela serial por ~13 min, sem reiniciar. Épocas de 30 s a 50,2 Hz, todas com features e guardadas na fila; o ciclo de envio deu `HTTP 200` em dois lotes (21 aceitas, 0 rejeitadas), heap mínimo 42 256 B. O sensor foi achado dormindo duas vezes e reconfigurado pelo firmware, e uma época saiu recusada (motivo 5).
+- **A noite:** travesseiro com o `firmware/sketch.ino` e o celular com o app, sobre o colchão. A exportação seguiu o trecho do protocolo, rodado no navegador do autor. A janela (26/11, 05:01 a 11:45, horário local) **saiu dos dados**, da primeira e da última época do celular: o início, o fim, o lado da tela e a linha de calibração não foram anotados.
+- **A análise:** `scripts/analisar_via02.py` e `scripts/analisar_cal03.py` sobre o arquivo exportado, sem nenhuma mudança no critério. O arquivo e os resultados ficam fora do repositório.
+
+**Resultado medido.**
+- **Cobertura:** 753 épocas do travesseiro e 810 do celular na janela, sem buracos acima de 2 min; 732 pares. Cobertura de 98,3% e 99,96%.
+- **Atraso entre os relógios:** −1 registro, escolhido pela correlação e aplicado.
+- **O travesseiro viu 4 dos 5** registros com movimento no celular (0,80). Na direção contrária, o celular viu 4 dos 63 do travesseiro (0,06). Fração com movimento: travesseiro 8,6%, celular 0,7%. κ de Cohen 0,11; intensidade com Pearson 0,32 e Spearman 0,37.
+- **Limiar candidato do celular** (relatado, não decide): **0,08 m/s²** de pico iguala a fração dele à do travesseiro, contra os 1,2 m/s² em uso.
+- **Modelo:** a mesma classe nos dois em 88% dos pares; sono de 83,7% no travesseiro e 85,4% no celular.
+- **Veredito do `VIA-02`:** nenhum. O critério pede 5 noites; há 1.
+- **`CAL-03`:** nenhuma das 810 épocas do celular saiu calibrada; a gravidade dá a tela para cima. Como controle, 800 épocas paradas, piso 0,00 mg, norma 0,9963 g, 25,2 °C. Veredito inconclusivo, como esperado com uma noite.
+
+**Adaptação.** Nenhuma no critério. A janela tirada dos dados no lugar da anotada está declarada no arquivo exportado.
+
+**O que deu errado no caminho.**
+- **O navegador embutido do Claude não salva downloads no disco.** O arquivo foi gerado nele e não apareceu em pasta nenhuma; a cópia pela área de transferência também falhou (a página sem foco recusa `writeText`). A exportação foi refeita pelo autor no navegador dele, com o trecho do protocolo.
+- **As anotações da noite não foram feitas**, e a calibração não pode ser explicada por elas.
+- **O travesseiro amanheceu "Pausado"** em Dispositivos, com a última época às 11:13. O que ele mandar depois disso é descartado até ser retomado. A causa da pausa não foi investigada.
+
+**Risco em aberto.**
+- **Cinco movimentos no celular são pouco.** Os 80% vêm de 4 de 5 e não dizem nada sozinhos; o intervalo do critério existe para isso. O `VIA-02` segue aberto.
+- **Com a régua de 1,2 m/s², o celular sobre o colchão quase não marca movimento.** O limiar dele é o `DATA-06`, que espera as 5 noites.
+- **Por que a calibração do celular não entrou** está no `CAL-03`.
+
+**Procedência.** Branch `feature/VIA-02-primeira-noite` sobre `develop` `26658db`; análises rodadas no Windows, Python 3.13, em 26/11; dados na conta do autor, exportados pelo trecho do `docs/PROTOCOLO-VIA-02.md`.
+
+---
+
+# 2026-11-26 (vii) — UI-47: tempo registrado por dia da semana
+
+**O problema, como foi entendido no início.** O calendário indica quais dias têm sessões, mas a comparação de duração exigia abrir cada dia. A seleção compacta também precisava de uma marca distinta do anel de hoje e da faixa de sequência.
+
+**Hipótese de trabalho.** Um gráfico semanal usando o mesmo mapa de durações do calendário permite comparar os dias e preserva a interpretação de tempo registrado. A união dos trechos já usada pelo calendário deve impedir que dois aparelhos simultâneos dupliquem a duração.
+
+**O que foi testado, e como.** Antes da implementação, dois testes temporários executaram `registrosDoCalendario` com duas fontes de épocas de 30 s, uma com sete horas exatamente sobre a outra e outra deslocada em duas horas. Na implementação, 14 testes novos cobrem série, sobreposição, paridade, teclado, mouse, toque, histórico parcial, navegação, dispositivo e a consulta compartilhada. No Edge foram capturados quatro estados em cada tema, em 1440 × 1050. Em 390 px, foram testados o encaixe das sete colunas, o toque que seleciona e mostra o valor e o segundo toque que limpa.
+
+**Resultado medido.** O calendário original retornou 7 h na sobreposição total e 9 h com o deslocamento, em vez das 14 h que uma soma por aparelho produziria. Os dois cenários também passaram pela série do gráfico. Os 14 testes novos falharam com o código de `develop` em `e33be52`. Os 30 testes focados de UI-45, UI-46 e UI-47 passaram com a implementação. A suíte completa passou com 1.086 testes em 73 arquivos, usando dois workers. Quatro sabotagens foram executadas e restauradas:
+
+| Sabotagem | Teste que falhou |
+|---|---|
+| Tratar ausência como zero | “ordena de segunda a domingo, separa ausência de zero e exclui o futuro” |
+| Dividir a média incluindo dias sem registro | “calcula a média apenas dos dias com registro” |
+| Atribuir a sessão pela data de fim | “mantém o valor do calendário no dia de início e exclui bancada” |
+| Tratar dia indeterminado como ausência | “histórico parcial anuncia dados incompletos e resume só os valores conhecidos” |
+
+**Adaptação.** A referência de navegação passou ao Dashboard. Gráfico e calendário recebem o mesmo mapa e usam o mesmo clique do dia. A semana compacta e a barra usam o mesmo losango para a seleção, separado do anel de hoje e da faixa de sequência. O resumo exclui dias indeterminados de média e extremos e avisa que a semana está incompleta. O teste de componente do UI-46 passou a fornecer a referência controlada e procurar o botão de dia dentro da região do calendário. As asserções do teste e as de montagem do UI-46 foram preservadas.
+
+**O que deu errado no caminho.** Na primeira prévia, o seletor de dispositivo ficou centralizado na altura dos dois cartões. O alinhamento passou para o topo. A massa inicial das capturas estava em ordem crescente, e a regra da borda de “Seus registros” mostrou um aviso fora da situação representada. A massa foi reordenada para seguir a API.
+
+**Risco em aberto.** Quando a consulta atinge o limite de páginas, parte da semana pode estar faltando. A tela sinaliza a limitação. A inspeção no navegador usou dados de demonstração e a suíte simulou as respostas de API.
+
+**Procedência.** UI-47 sobre `origin/develop` `e33be52`. Windows, Node 24.11.0 e Edge em 26/11. Capturas em `docs/evidencias/ui-47/`.
+
+---
+
+# 2026-11-26 (viii) — UI-48: o gráfico na coluna da direita e o anel no dia escolhido
+
+**O problema, como foi entendido no início.** Na revisão do `UI-47`, dois pontos ficaram para o autor decidir. Primeiro: no computador, o gráfico de tempo por dia ficava no topo do Início, abaixo do calendário. Os dois cartões, à direita, somavam quase 400 px de altura, e à esquerda, ao lado do seletor de aparelho, sobrava um espaço vazio do mesmo tamanho, que empurrava "Seus registros" para baixo. As capturas do próprio `UI-47` mostram o vazio. Segundo: a marca do dia escolhido era um losango de 6 px no canto do dia, que se perdia na semana compacta.
+
+**Hipótese de trabalho.** O autor escolheu, entre as opções apresentadas: em tela larga, o gráfico vai para a coluna da direita; a marca vira um anel grosso na cor primária, afastado do número. O anel não se confunde com o anel fino de "hoje" nem com o fundo cheio da sequência. Para o gráfico não trocar de lugar quando um dia é escolhido, a coluna da direita precisa existir em todos os estados da tela (carregando, erro, dia sem registro, com dados), e não só no estado com dados.
+
+**O que foi testado, e como.**
+- **O gráfico continua dentro do calendário**, que guarda a consulta e a semana, e é desenhado num destino na coluna da direita por `createPortal`, só quando a tela tem 1 050 px ou mais (`matchMedia`, a mesma largura em que o Início já tinha duas colunas). Sem destino, ele fica sob o calendário como antes.
+- **3 testes novos no `montagem.test.ts`:** em tela larga, o gráfico está na coluna e fora do cabeçalho, inclusive depois de escolher um dia sem registro e um dia com registro; em tela estreita, continua no cabeçalho e não existe coluna; no calendário expandido, o dia escolhido tem o anel, e só ele.
+- **No navegador**, em modo demonstração: 1 440 px no tema claro, 900 px e 375 px no tema escuro.
+
+**Resultado medido.**
+- **Suíte do frontend:** 1 089 testes em 73 arquivos, `tsc`, lint, Knip, build e as conferências de documento sem erro.
+- **Contra o código de `develop` (`9e62720`):** 2 dos 3 testes novos falham. O terceiro, o da tela estreita, passa lá de propósito: ele protege o comportamento do celular, que não mudou.
+- **Sabotagens:**
+
+| Sabotagem | Testes que falharam |
+|---|---|
+| Ignorar o destino e desenhar sempre sob o calendário | 1 (o da tela larga) |
+| Tirar a coluna do estado "dia sem registro" | 1 (o da tela larga, no passo do dia vazio) |
+| Mostrar o anel só com o calendário recolhido, como no `UI-47` | 1 (o do calendário expandido) |
+
+- **No navegador, a 1 440 px:** o topo voltou a ter só o seletor e a semana compacta; "Seus registros" sobe para logo abaixo dele, e o gráfico abre a coluna da direita, sob o calendário. Escolhendo a quarta 25, sem registro, o gráfico ficou no mesmo lugar, com o anel em "Qua" e no 25. **A 900 px**, o calendário e o gráfico ocupam a largura toda, sem vazio. **A 375 px**, igual ao `UI-47`, sem rolagem lateral, com o anel visível sobre o dia da sequência atual. Console sem erros além do aviso do `.env` ausente.
+
+**Adaptação.** Duas além do que o autor escolheu. O anel aparece também no calendário expandido: o `UI-47` o escondia ali, e o dia escolhido ficava marcado só por um sublinhado, que saiu. O resumo da sessão passa a dividir a largura com o gráfico em tela larga, e não ocupa mais a largura toda como na prévia mostrada ao autor: é o que deixa o gráfico logo abaixo do calendário e no mesmo lugar em todos os estados.
+
+**O que deu errado no caminho.** O primeiro desenho punha o gráfico ao lado de "Movimento ao longo do tempo". Ao ler o `Dashboard.tsx`, a tela troca de estrutura enquanto o dia carrega e quando o dia não tem registro: o gráfico pularia para o topo e voltaria a cada clique. Daí a coluna em todos os estados.
+
+**Risco em aberto.** O destino depende da largura lida pelo `matchMedia`; num navegador sem ele, o gráfico fica sob o calendário, como no celular. Entre 1 050 px e cerca de 1 150 px, o calendário recolhido é mais largo que a coluna da direita; as bordas direitas coincidem, as esquerdas não.
+
+**Procedência.** Branch `bugfix/UI-48-grafico-na-coluna` sobre `develop` `9e62720`; Windows, Node 24.11.0, em 26/11; navegador embutido do Claude com dados de demonstração.
+
+---
+
+# 2026-11-26 (ix) — UI-48, ajuste: o gráfico alinhado com os cartões
+
+**O problema, como foi entendido no início.** Depois do merge da PR #307, o autor olhou o Início no computador e achou estranho o gráfico de tempo por dia desalinhado com os cartões da esquerda. O gráfico começava na altura do aviso "Gráfico combina Travesseiro e Celular", acima do título "Seus registros", e terminava uns 70 px antes da base dos três cartões de métricas.
+
+**Hipótese de trabalho.** O gráfico tem de estar na mesma linha dos cartões do resumo, não no topo da coluna. Assim o topo dele coincide com o do cartão "Registrado", e os dois lados podem se esticar até a mesma base.
+
+**O que foi testado, e como.**
+- **O `ResumoDaSessao` ganhou um encaixe lateral.** Em tela larga, o título fica em cima, com a largura toda, e abaixo dele uma grade de duas colunas: à esquerda o cartão "Registrado" e as métricas, à direita o gráfico. Os dois lados se esticam até a altura do maior: a lista de métricas cresce, ou o cartão do gráfico cresce. Os avisos continuam acima do título, com a largura toda. As proporções da grade (1,8 para 0,9) são as mesmas da linha de baixo, então o gráfico também se alinha com "Seu dispositivo".
+- **Num dia sem registro**, a nota de escopo passou para cima, com a largura toda, e o cartão "Sem registros neste dia" se estica ao lado do gráfico.
+- **O teste da tela larga** (`montagem.test.ts`) passou a exigir que, com sessão, o gráfico esteja dentro da seção do resumo.
+- **No navegador**, a 1 440 px, medindo as posições com `getBoundingClientRect`.
+
+**Resultado medido.**
+- **Com sessão:** topo do gráfico e do cartão "Registrado" em 272,5 px; base do gráfico e das métricas em 551,0 px.
+- **Dia sem registro:** gráfico e cartão de 298,5 px a 577,0 px.
+- **A 375 px:** sem a coluna, o gráfico sob o calendário, sem rolagem lateral, como antes.
+- **Suíte do frontend:** 1 089 testes em 73 arquivos (a contagem não muda; o teste existente ganhou duas verificações). `tsc`, lint, Knip e build sem erro.
+- **Controle positivo:** contra o `develop` (`caa5f16`), e com o encaixe lateral sabotado (`lateral={null}`), o teste da tela larga falha nos dois casos.
+
+**Adaptação.** Nenhuma. O ajuste do dia sem registro não foi pedido de forma explícita, mas segue a mesma regra de alinhar o gráfico com o cartão ao lado.
+
+**O que deu errado no caminho.** A entrada (viii) e a PR #307 deram o problema do espaço vazio por resolvido sem medir o alinhamento: a captura mostrava o gráfico na coluna e isso bastou. O autor precisou apontar. A regra que fica: quando dois blocos dividem uma linha, medir topo e base dos dois.
+
+**Risco em aberto.** No estado carregando e no de erro, o gráfico segue alinhado só pelo topo com o primeiro elemento: são estados curtos e com mensagem de uma linha, e não foram esticados.
+
+**Procedência.** Branch `bugfix/UI-48-alinhar-grafico` sobre `develop` `caa5f16`; Windows, Node 24.11.0, em 26/11; navegador embutido do Claude com dados de demonstração.
+
+---
+
+# 2026-11-26 (x) — UI-49: o topo do Início em duas colunas
+
+**O problema, como foi entendido no início.** Com o gráfico alinhado aos cartões (entrada ix), o autor apontou o que sobrava no topo do Início em tela larga. Na captura dele, a 1 440 px:
+- **Dois vãos:** um de ~250 × 80 px entre o seletor de aparelho e o calendário; outro de ~110 px entre a base do calendário e o topo dos cartões.
+- **O que ocupava o segundo vão:** só duas linhas soltas, "Gráfico combina Travesseiro e Celular · Entenda" e o título "Seus registros".
+- **Larguras desencontradas:** o calendário tinha 510 px e o gráfico logo abaixo, ~350.
+
+O autor sugeriu levar o aviso para perto do seletor e pediu uma análise da disposição inteira.
+
+**Hipótese de trabalho.** Proposta apresentada ao autor com um esboço, e aprovada por ele: o topo passa a usar as mesmas duas colunas do resto do Início (1,8 para 0,9).
+- **À esquerda:** o título em cima e, embaixo, o seletor com o aviso ao lado.
+- **À direita:** o calendário, na largura da coluna. Aberto, ele ocupa as duas colunas.
+- **Por que o aviso vai para o seletor:** ele é consequência do filtro ("Todos os dispositivos") e some quando um aparelho é escolhido.
+
+**O que foi testado, e como.**
+- **O `Cabecalho` do `Dashboard.tsx`** ganhou o arranjo de tela larga. O título passa a morar nele, e o `ResumoDaSessao` só aponta para ele (`aria-labelledby`), sem repetir o `h1`. Em tela estreita, nada muda além do aviso, que vai para logo abaixo do seletor.
+- **2 testes novos e 1 ampliado no `montagem.test.ts`:**
+  - Em tela larga, o título e o seletor estão na coluna da esquerda do topo e o calendário na da direita. Há um só `h1`, o resumo continua nomeado por ele, e o título do dia escolhido aparece no mesmo lugar. Aberto, o calendário ocupa as duas colunas, e volta ao recolher.
+  - Em tela larga, o aviso de mistura está na coluna do seletor.
+  - No teste que já existia, o aviso está no cabeçalho, junto do seletor.
+- **No navegador**, medindo as caixas com `getBoundingClientRect`: 1 440 px (claro), 1 100 px (escuro, com um dia escolhido) e 375 px.
+
+**Resultado medido.**
+- **A 1 440 px:**
+
+| O que | Posição medida |
+|---|---|
+| Calendário e gráfico (borda esquerda e direita) | x de 1 019 a 1 395 px, nos dois |
+| Topo do título e do calendário | 86 px, nos dois |
+| Base do seletor e do calendário | 215 px, nos dois |
+| Topo do cartão "Registrado" e do gráfico | 229 px, nos dois |
+
+  Antes, os cartões começavam em 272 px, na medida da entrada (ix).
+- **A 1 100 px:** a mesma coluna para calendário e gráfico (x de 793 a 1 055 px). O título longo do dia ("Sessões de terça-feira, 24 de novembro") coube numa linha.
+- **A 375 px:** sem rolagem lateral e com um só `h1`.
+- **Suíte do frontend:** 1 091 testes em 73 arquivos; `tsc`, lint, Knip e build sem erro.
+- **Contra o `develop` (`2183149`):** os 3 testes (2 novos e 1 ampliado) falham.
+- **Sabotagens:**
+
+| Sabotagem | Testes que falharam |
+|---|---|
+| Topo sempre no arranjo estreito | 2 |
+| Aviso de volta entre o topo e os cartões | 2 |
+| Calendário aberto sem ocupar as duas colunas | 1 |
+
+**Adaptação.** Nenhuma em relação à proposta.
+
+**O que deu errado no caminho.** Nada quebrou. Um ponto da proposta não se confirmou como previsto: o calendário, na largura da coluna, quebra a semana compacta numa segunda linha e fica mais alto (129 px). Por isso sobra uma faixa de ~58 px entre o título e o seletor, à esquerda, para que o título fique alinhado ao topo do calendário e o seletor à base dele.
+
+**Risco em aberto.**
+- **A 1 100 px**, a coluna da direita tem 262 px. O "Calendário do sono" quebra em duas linhas, e os rótulos do gráfico ficam apertados: o anel do dia escolhido encosta nos vizinhos.
+- **Entre 1 050 e ~1 200 px** vale um ajuste fino do gráfico, se o autor usar a tela nessa largura.
+
+**Procedência.** Branch `feature/UI-49-topo-em-colunas` sobre `develop` `2183149`; Windows, Node 24.11.0, em 26/11; navegador embutido do Claude com dados de demonstração.
+
+---
+
+# 2026-11-26 (xi) — UI-49, ajuste: a coluna da direita e o título junto do filtro
+
+**O problema, como foi entendido no início.** O autor pediu o ajuste dos dois riscos deixados na entrada (x):
+- **A faixa vazia à esquerda do topo:** ~58 px entre o título e o seletor. O título estava alinhado ao topo do calendário e o seletor à base, e o calendário compacto (129 px) é mais alto que os dois juntos.
+- **A coluna da direita estreita entre 1 050 e ~1 200 px:** 262 px a 1 100 px. O "Calendário do sono" quebrava em duas linhas, e o anel do dia escolhido no gráfico ficava a 2 px e a 1 px dos rótulos vizinhos.
+
+**Hipótese de trabalho.**
+- **A faixa:** o título e o filtro formam um bloco só. Juntos e encostados na base do calendário, a sobra passa para cima do título, emendada com a margem do topo da página, em vez de virar um buraco entre eles.
+- **A coluna:** um mínimo de 320 px, no lugar de 220, resolve as duas quebras. Vale nas quatro grades do Início, que passam a ler o mesmo texto de `components/colunasDoInicio.ts` para não divergirem.
+- **O anel no rótulo do gráfico:** fica mais justo (`-inset-0.5` em vez de `-inset-1`), com o mesmo traço e a mesma cor do calendário. O eixo das horas cede 4 px (2 rem para 1,75 rem).
+
+**O que foi testado, e como.**
+- **No teste da tela larga do `UI-49`:** o topo, a linha dos cartões e a linha do gráfico de movimento têm de usar a mesma grade, com o mínimo de 320 px.
+- **No navegador, medindo com `getBoundingClientRect`:** a 1 440 px, a 1 100 px e a 1 050 px. Nas duas larguras menores, o anel foi medido contra o texto dos rótulos vizinhos (com `Range` sobre o texto).
+
+**Resultado medido.**
+- **A 1 440 px:** título em 136–172 px e seletor em 180–215 px, 8 px entre eles. A base do seletor coincide com a do calendário (215 px). O calendário e o gráfico seguem com as mesmas bordas (x de 1 019 a 1 395 px), e o gráfico e o cartão "Registrado" começam juntos (229 px).
+- **A 1 100 px:** coluna da direita com 320 px; o "Calendário do sono" numa linha. Com "Ter" escolhido, o anel fica a 9,6 px de "Seg" e a 8,6 px de "Qua".
+- **A 1 050 px, o caso mais apertado:** com "Qua" escolhido, o anel fica a 9 px de "Ter" e a 7 px de "Qui". O título do dia quebra em duas linhas, e não há rolagem lateral.
+- **A 375 px:** sem rolagem lateral; o arranjo estreito, sem a grade.
+- **Suíte do frontend:** 1 091 testes em 73 arquivos; `tsc`, lint, Knip e build sem erro.
+- **Controle positivo:** contra o `develop` (`2e6d9ae`) e com uma das grades de volta aos 220 px, o teste da tela larga falha.
+
+**Adaptação.** O ajuste do anel e do eixo do gráfico não estava no pedido: o mínimo de 320 px sozinho deixava o anel a 2 px dos vizinhos a 1 050 px, na conta feita antes de medir. O anel continua igual em traço, cor e afastamento do conteúdo; só a folga em volta do texto diminui.
+
+**O que deu errado no caminho.** Nada quebrou. A primeira medida do anel contou o próprio anel como se fosse um rótulo (ele é um `span` dentro do rótulo); a segunda mediu o texto pelo `Range`.
+
+**Risco em aberto.** A 1 050 px a coluna da esquerda tem ~430 px, e o título de um dia escolhido ocupa duas linhas; os três cartões de métricas ficam mais apertados. Não houve sobreposição nem rolagem.
+
+**Procedência.** Branch `bugfix/UI-49-colunas-e-topo` sobre `develop` `2e6d9ae`; Windows, Node 24.11.0, em 26/11; navegador embutido do Claude com dados de demonstração.
 
 ---
 

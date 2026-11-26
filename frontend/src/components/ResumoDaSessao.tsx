@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 import { CartaoDeMetrica, CartaoEmDestaque } from "./CartoesDeRegistro";
+import { COLUNAS_DO_INICIO } from "./colunasDoInicio";
 
 import { calcularCobertura, type Sessao } from "../lib/cobertura";
 import {
@@ -24,14 +25,22 @@ export function ResumoDaSessao({
   sessoes,
   verTudo,
   metricas,
+  titulo = "Seus registros",
+  idDoTitulo,
+  lateral,
   children,
 }: {
   /** As exibidas: a última, ou todas. Em ordem crescente. */
   sessoes: Sessao[];
   verTudo: boolean;
   metricas: ReturnType<typeof calcularMetricas>;
+  titulo?: string;
+  /** UI-49: o título está fora (no topo do Início); a seção só aponta para ele. */
+  idDoTitulo?: string;
   /** O seletor de sessão, quando há mais de uma. */
   children?: ReactNode;
+  /** UI-48: em tela larga, o que vai na mesma linha dos cartões (o gráfico de tempo por dia). */
+  lateral?: ReactNode;
 }) {
   const { cobertura, fracaoEmMovimento, maiorPeriodoSemMovimentoMs } = metricas;
   const paradas = sessoes
@@ -53,17 +62,13 @@ export function ResumoDaSessao({
     ? descreverQuando(sessoes[0].inicio, sessoes[sessoes.length - 1].fim)
     : null;
 
-  return (
-    <section aria-labelledby="resumo-da-sessao" className="space-y-3">
-      <h1 id="resumo-da-sessao" className="text-2xl font-extrabold tracking-tight text-foreground sm:text-[27px]">
-        Seus registros
-      </h1>
-
+  const cartoes = (
+    <>
       <CartaoEmDestaque rotulo="Registrado" valor={formatarDuracao(cobertura.tempoCobertoMs)}>
         {[janela, quando].filter(Boolean).join(" · ")}
       </CartaoEmDestaque>
 
-      <ul aria-label="Métricas da sessão" className="grid gap-2 min-[360px]:grid-cols-3">
+      <ul aria-label="Métricas da sessão" className={`grid gap-2 min-[360px]:grid-cols-3 ${lateral ? "flex-1" : ""}`}>
         <CartaoDeMetrica valor={movimento ?? "—"}>
           <p>
             {movimento == null
@@ -87,6 +92,24 @@ export function ResumoDaSessao({
           )}
         </CartaoDeMetrica>
       </ul>
+    </>
+  );
+
+  return (
+    <section aria-labelledby={idDoTitulo ?? "resumo-da-sessao"} data-resumo-da-sessao className="space-y-3">
+      {!idDoTitulo && (
+        <h1 id="resumo-da-sessao" className="text-2xl font-extrabold tracking-tight text-foreground sm:text-[27px]">
+          {titulo}
+        </h1>
+      )}
+
+      {lateral ? (
+        // A coluna dos cartões e o gráfico ao lado crescem juntos: começam e terminam na mesma altura.
+        <div data-linha-dos-cartoes className={`grid ${COLUNAS_DO_INICIO} gap-3.5`}>
+          <div className="flex min-w-0 flex-col gap-3">{cartoes}</div>
+          {lateral}
+        </div>
+      ) : cartoes}
 
       {children && <div className="pt-1">{children}</div>}
     </section>
