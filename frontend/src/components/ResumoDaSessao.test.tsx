@@ -46,7 +46,6 @@ function texto(leituras: LeituraSono[], verTudo = false): string {
     <ResumoDaSessao
       sessoes={exibidas}
       verTudo={verTudo}
-      aparelho="Travesseiro"
       metricas={calcularMetricas(verTudo ? leituras : exibidas[0].leituras)}
     />,
   );
@@ -56,24 +55,24 @@ function texto(leituras: LeituraSono[], verTudo = false): string {
 describe("ResumoDaSessao (UI-40)", () => {
   it("a noite com duas pausas: quando, quanto, quantas paradas", () => {
     const t = texto(serie([[11], [708, 129_000], [67, 91_000]]));
-    expect(t).toContain("Última sessão · Travesseiro");
+    expect(t).not.toContain("Última sessão ·");
     expect(t).toContain("17/11, das 02:44 às 09:");
     expect(t).toMatch(/6h 33m de 6h 36m/);
-    expect(t).toContain("O registro parou 2 vezes, a mais longa por 2m 9s");
+    expect(t).toContain("2 pausasMaior pausa: 2m 9s");
   });
 
   it("uma parada fica no singular", () => {
-    expect(texto(serie([[20], [20, 150_000]]))).toContain("O registro parou 1 vez, por 2m 30s");
+    expect(texto(serie([[20], [20, 150_000]]))).toContain("1 pausaDuração: 2m 30s");
   });
 
   it("sem interrupção, diz que não parou", () => {
-    expect(texto(serie([[40]]))).toContain("O registro não parou");
+    expect(texto(serie([[40]]))).toContain("Sem pausas");
   });
 
   it("movimento é fração do tempo, e pouco não vira nenhum", () => {
-    expect(texto(serie([[100]], { movimentoACada: 10 }))).toContain("Movimento em 10% do tempo registrado");
+    expect(texto(serie([[100]], { movimentoACada: 10 }))).toContain("10%Com movimento no tempo registrado");
     cleanup();
-    expect(texto(serie([[200]], { movimentoACada: 200 }))).toContain("Movimento em <1% do tempo registrado");
+    expect(texto(serie([[200]], { movimentoACada: 200 }))).toContain("<1%Com movimento no tempo registrado");
   });
 
   it("o maior período sem movimento registrado não atravessa a parada", () => {
@@ -90,9 +89,8 @@ describe("ResumoDaSessao (UI-40)", () => {
 
   it("em todas as sessões, o intervalo entre elas não é parada nem denominador", () => {
     const t = texto(serie([[20], [20, 150_000], [40, 8 * 3_600_000]]), true);
-    expect(t).toContain("2 sessões · Travesseiro");
     expect(t).toContain("40m 0s em 2 sessões");
-    expect(t).toContain("O registro parou 1 vez, por 2m 30s");
+    expect(t).toContain("1 pausaDuração: 2m 30s");
   });
 
   it("registro sem duração não inventa porcentagem", () => {
@@ -115,10 +113,10 @@ it("destaca o tempo registrado e distribui as frases em três cartões (UI-43)",
 
   const metricas = within(screen.getByRole("list", { name: "Métricas da sessão" }));
   const cartoes = metricas.getAllByRole("listitem");
-  expect(cartoes.map((cartao) => within(cartao).getByRole("strong").textContent)).toEqual(["25%", "1m 30s", "Parou 1 vez"]);
+  expect(cartoes.map((cartao) => within(cartao).getByRole("strong").textContent)).toEqual(["25%", "1m 30s", "1 pausa"]);
   expect(metricas.queryByRole("heading")).toBeNull();
-  expect(cartoes[0].textContent).toContain("Movimento em 25% do tempo registrado");
+  expect(cartoes[0].textContent).toBe("25%Com movimento no tempo registrado");
   // UI-43: o valor fica só no destaque, e a frase embaixo não o repete.
   expect(cartoes[1].textContent).toBe("1m 30sMaior período sem movimento registrado");
-  expect(cartoes[2].textContent).toContain("O registro parou 1 vez, por 2m 30s");
+  expect(cartoes[2].textContent).toBe("1 pausaDuração: 2m 30s");
 });
