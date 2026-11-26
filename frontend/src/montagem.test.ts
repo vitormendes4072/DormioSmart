@@ -1283,6 +1283,152 @@ describe("o painel em camadas (UI-40)", PRAZO, () => {
   const seletorDeAparelho = () => screen.getByRole<HTMLSelectElement>("combobox", { name: "Dispositivo exibido" });
   const serieDeMovimento = () => within(screen.getByRole("figure", { name: "Movimento ao longo do tempo" }));
 
+  describe("Calendário do sono (UI-45)", () => {
+    beforeEach(() => {
+      vi.useFakeTimers({ toFake: ["Date"] });
+      vi.setSystemTime(new Date(2026, 10, 25, 12));
+      const epoca = (dia: number, horas: number, minutos: number, segundos: number, extra = {}) =>
+        leitura(0, { created_at: new Date(2026, 10, dia, horas, minutos, segundos).toISOString(), ...extra });
+      responder({ dispositivos: [travesseiro, celular], leituras: [
+        epoca(25, 3, 1, 0, { bancada: true }),
+        epoca(24, 3, 1, 0, { device_id: "c" }),
+        epoca(24, 0, 0, 30),
+        epoca(24, 0, 0, 0),
+        epoca(23, 23, 59, 30),
+      ] });
+    });
+
+    afterEach(() => vi.useRealTimers());
+
+    const calendario = () => within(screen.getByRole("region", { name: "Calendário do sono" }));
+
+    it("fica entre o seletor e Seus registros, com a semana recolhida", async () => {
+      await abrir();
+      const regiao = screen.getByRole("region", { name: "Calendário do sono" });
+      const registros = screen.getByRole("heading", { name: "Seus registros" });
+      expect(seletorDeAparelho().compareDocumentPosition(regiao) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      expect(regiao.compareDocumentPosition(registros) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      expect(calendario().getByRole("button", { name: "Expandir", expanded: false })).toBeTruthy();
+      const semana = within(calendario().getByRole("group", { name: "Semana atual" }));
+      expect(semana.getAllByRole("button")).toHaveLength(7);
+      await semana.findByRole("button", { name: /^segunda-feira, 23 de novembro, com registro/ });
+      expect(semana.getByRole("button", { name: /^quarta-feira, 25 de novembro$/ })).toBeTruthy();
+    });
+
+    it("detalha a duração no dia em que a sessão anterior à meia-noite começou", async () => {
+      await abrir();
+      fireEvent.click(await calendario().findByRole("button", { name: /^segunda-feira, 23 de novembro, com registro/ }));
+      expect(calendario().getByText("Tempo registrado · 1m 30s")).toBeTruthy();
+      expect(calendario().getByRole("button", { name: "Recolher", expanded: true })).toBeTruthy();
+      fireEvent.click(calendario().getByRole("button", { name: "Sequências" }));
+      expect(calendario().getByText("Dias com registro em sequência:", { exact: false }).textContent).toMatch(/23.*24/);
+    });
+
+    it("consulta outro mês e o histórico do dispositivo selecionado", async () => {
+      await abrir();
+      fireEvent.click(calendario().getByRole("button", { name: "Expandir" }));
+      fireEvent.click(calendario().getByRole("button", { name: "Mês" }));
+      fireEvent.click(calendario().getByRole("button", { name: "Período anterior" }));
+      expect(calendario().getByRole("heading", { name: "outubro de 2026" })).toBeTruthy();
+      fireEvent.click(calendario().getByRole("button", { name: "Hoje" }));
+      expect(calendario().getByRole("heading", { name: "novembro de 2026" })).toBeTruthy();
+      fireEvent.change(seletorDeAparelho(), { target: { value: "c" } });
+      await calendario().findByRole("button", { name: /^terça-feira, 24 de novembro, com registro/ });
+      expect(calendario().getByRole("button", { name: /^segunda-feira, 23 de novembro$/ })).toBeTruthy();
+      const consultas = vi.mocked(fetch).mock.calls
+        .map(([caminho]) => new URL(String(caminho), "http://localhost"))
+        .filter((url) => url.pathname === "/api/sleep-history" && url.searchParams.has("desde"));
+      expect(consultas.some((url) =>
+        url.searchParams.get("desde") === new Date(2026, 8, 27).toISOString()
+        && url.searchParams.get("ate") === new Date(2026, 10, 2, 23, 59, 59, 999).toISOString(),
+      )).toBe(true);
+      expect(consultas.some((url) => url.searchParams.get("device") === "c")).toBe(true);
+    });
+
+    it("mantém como atual a sequência cujo último registro foi ontem", async () => {
+      await abrir();
+      expect(await calendario().findByText("2 dias consecutivos")).toBeTruthy();
+      fireEvent.click(calendario().getByRole("button", { name: "Expandir" }));
+      const resumo = within(calendario().getByRole("complementary", { name: "Resumo das sequências" }));
+      expect(resumo.getByText("Sequência atual")).toBeTruthy();
+      expect(resumo.getByText("2 dias consecutivos")).toBeTruthy();
+    });
+
+    it("mostra Histórico parcial quando ainda há registros após o limite de páginas", async () => {
+      const { LIMITE_DO_PAINEL, MAX_PAGINAS_DO_HISTORICO } = await import("./lib/api");
+      const responderPainel = vi.mocked(fetch).getMockImplementation()!;
+      vi.mocked(fetch).mockImplementation((entrada, opcoes) => {
+        const url = new URL(String(entrada), "http://localhost");
+        if (url.pathname !== "/api/sleep-history" || !url.searchParams.has("desde")) {
+          return responderPainel(entrada, opcoes);
+        }
+        const posicao = Number(url.searchParams.get("cursor_id") ?? 0);
+        const total = LIMITE_DO_PAINEL * MAX_PAGINAS_DO_HISTORICO + 1;
+        const quantidade = Math.min(Number(url.searchParams.get("limite")), total - posicao);
+        const pagina = Array.from({ length: quantidade }, (_, i) => {
+          const id = posicao + i + 1;
+          return leitura(id * 30, { id: String(id) });
+        });
+        return Promise.resolve(respostaJson(pagina));
+      });
+
+      await abrir();
+      expect(await calendario().findByText("Histórico parcial")).toBeTruthy();
+      fireEvent.click(calendario().getByRole("button", { name: "Expandir" }));
+      expect(calendario().getByText(/^Histórico parcial\./)).toBeTruthy();
+    });
+
+    it.each([
+      ["Semana", /23 de nov.*29 de nov/, /16 de nov.*22 de nov/],
+      ["Mês", /novembro de 2026/, /outubro de 2026/],
+    ])("navega pelas setas em %s e bloqueia o próximo período ao voltar ao atual", async (visao, atual, anterior) => {
+      await abrir();
+      fireEvent.click(calendario().getByRole("button", { name: "Expandir" }));
+      fireEvent.click(calendario().getByRole("button", { name: visao }));
+      const proximo = () => calendario().getByRole<HTMLButtonElement>("button", { name: "Próximo período" });
+      expect(calendario().getByRole("heading", { name: atual })).toBeTruthy();
+      expect(proximo().disabled).toBe(true);
+      fireEvent.click(calendario().getByRole("button", { name: "Período anterior" }));
+      expect(calendario().getByRole("heading", { name: anterior })).toBeTruthy();
+      expect(proximo().disabled).toBe(false);
+      fireEvent.click(proximo());
+      expect(calendario().getByRole("heading", { name: atual })).toBeTruthy();
+      expect(proximo().disabled).toBe(true);
+    });
+
+    it("mostra pelo menos N dias quando a sequência vem do mês anterior e toca a borda", async () => {
+      vi.setSystemTime(new Date(2026, 10, 3, 12));
+      // Novembro começa no domingo. A grade consulta a partir de 26/10 e
+      // 25/10 é a margem. A sequência real já começou em 24/10.
+      const leituras = Array.from({ length: 10 }, (_, i) =>
+        [0, 30, 60].map((segundos) =>
+          leitura(0, { created_at: new Date(2026, 9, 24 + i, 3, 1, segundos).toISOString() }),
+        )).flat();
+      responder({ dispositivos: [travesseiro], leituras });
+
+      await abrir();
+      expect(await calendario().findByText("Pelo menos 8 dias consecutivos")).toBeTruthy();
+      fireEvent.click(calendario().getByRole("button", { name: "Expandir" }));
+      const resumo = within(calendario().getByRole("complementary", { name: "Resumo das sequências" }));
+      expect(resumo.getByText("Pelo menos 8 dias consecutivos")).toBeTruthy();
+      expect(resumo.getByText("Melhor sequência no período · Pelo menos 8 dias consecutivos")).toBeTruthy();
+    });
+
+    it("mostra pelo menos 1 dia, sem 'consecutivo', quando o único registro está na borda", async () => {
+      vi.setSystemTime(new Date(2026, 10, 3, 12));
+      // 26/10 é o primeiro dia da grade de novembro; 25/10, a margem, fica vazio.
+      const leituras = [0, 30, 60].map((segundos) =>
+        leitura(0, { created_at: new Date(2026, 9, 26, 3, 1, segundos).toISOString() }));
+      responder({ dispositivos: [travesseiro], leituras });
+
+      await abrir();
+      fireEvent.click(await calendario().findByRole("button", { name: "Expandir" }));
+      const resumo = within(calendario().getByRole("complementary", { name: "Resumo das sequências" }));
+      expect(await resumo.findByText("Melhor sequência no período · Pelo menos 1 dia")).toBeTruthy();
+      expect(calendario().queryByText(/Pelo menos 1 dia consecutivo/)).toBeNull();
+    });
+  });
+
   function responderComDoisAparelhos() {
     responder({
       dispositivos: [travesseiro, celular],
