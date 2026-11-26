@@ -13975,6 +13975,33 @@ O autor sugeriu levar o aviso para perto do seletor e pediu uma análise da disp
 
 ---
 
+# 2026-11-26 (xiv) — UI-50: barra lateral recolhível e largura útil do Início
+
+**O problema, como foi entendido no início.** A barra fixa ocupava 224 px no computador. O autor queria liberar largura para o Início e o Histórico preservando a navegação. A regra de 1050 px do Início acompanhava a janela, mesmo quando o espaço útil mudava.
+
+**Hipótese de trabalho.** Um trilho de 72 px recupera 152 px. Usar 766 px úteis como limiar reproduz os 1050 px da configuração original, descontando a barra de 224 px e os 60 px de margens internas da `main`.
+
+**O que foi testado, e como.** Sete testes de montagem sobre preferência, rotas, rótulos, demonstração, largura útil e identidade do gráfico. No Edge, dados de demonstração nos temas claro e escuro, com nove capturas. A largura foi medida no Início e no Histórico a 900, 1050, 1150 e 1280 px. A 1000 px, foram observados 16 quadros em cada sentido da transição. A 900 px, foi conferido o primeiro quadro visível com a preferência salva. Também foram conferidos recarga, dica por foco e mouse, movimento reduzido e navegação a 767 px.
+
+**Resultado medido.** A 900 px, 616 → 768 px úteis e uma → duas colunas. A 1050 px, gráfico de movimento 432 → 584 px, calendário e gráfico semanal 320 px cada, tabela 732 → 884 px. A 1150 px, movimento 532 → 669 px, calendário e semanal 320 → 335 px, tabela 832 → 984 px. A 1280 px, movimento 655 → 756 px, calendário e semanal 327 → 378 px, tabela 962 → 1114 px. Nenhum desses elementos transbordou nos cenários medidos. A primeira pintura a 900 px já mostrou duas colunas. Cada animação mudou a grade uma vez, preservou os nós do calendário e do gráfico e deslocou o primeiro ícone 0 px na vertical. A suíte completa passou com 1.098 testes em 73 arquivos. Lint, build e os dois Knip passaram. O orçamento passou com 166.811 B gzip no Dashboard para um teto de 260.000 B. Os sete testes novos falharam contra `develop` `5e706d9`. As quatro sabotagens foram executadas e restauradas:
+
+| Sabotagem | Teste que falhou |
+|---|---|
+| Deixar de salvar a preferência | “abre expandida e salva a escolha ao recolher e ao expandir” |
+| Ocultar o link inteiro no trilho | “mantém os destinos e os nomes acessíveis no trilho”, site e Android |
+| Remover o `aria-label` do link | “mantém os destinos e os nomes acessíveis no trilho”, site e Android |
+| Remontar o gráfico quando muda o portal | “usa o mesmo limiar útil com o menu nos dois estados e mantém a instância do gráfico” |
+
+**Adaptação.** A medição acompanha a `main` e o primeiro cálculo antecede a pintura. A regra de janela serve de fallback sem `ResizeObserver`. O suporte estável do portal preserva o gráfico. Os três testes UI-48/UI-49 que usam `simularTelaLarga` mantiveram as asserções e passaram a exercitar explicitamente o fallback. O trilho deixa o topo para o botão e mantém a altura do cabeçalho.
+
+**O que deu errado no caminho.** A prévia da captura inicial não estava mais aberta na porta 5199. A medição de partida usou uma cópia temporária do código versionado de `develop`. A primeira atualização da branch encontrou mudança local no diário e foi abortada pelo Git. A entrada do UI-50 foi reservada, o diário foi restaurado pelo Git para atualizar a base e a entrada foi reaplicada.
+
+**Risco em aberto.** A 900 px recolhida, o ganho útil se distribui entre duas colunas. A verificação do Android usou a simulação do plugin Capacitor na suíte.
+
+**Procedência.** Código testado sobre `origin/develop` `5e706d9`. Branch atualizada para `cd9535e`, que acrescentou apenas documentação à base. Windows, Node 24.11.0 e Edge, em 26/11. Capturas em `frontend/src/evidencias/ui-50/`.
+
+---
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

@@ -1,10 +1,10 @@
 import { SeletorSegmentado } from "../components/SeletorSegmentado";
-import { useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { Link, useLocation } from "react-router";
 
 import { BarraDoWorkspace } from "../components/BarraDoWorkspace";
 import { CalendarioDoSono } from "../components/CalendarioDoSono";
-import { COLUNAS_DO_INICIO, COLUNAS_DO_INICIO_EM_TELA_LARGA } from "../components/colunasDoInicio";
+import { COLUNAS_DO_INICIO } from "../components/colunasDoInicio";
 import { GraficoDeMovimento } from "../components/GraficoDeMovimento";
 import { destinoDoWorkspace } from "../components/nav";
 import { Carregando, FalhaAoCarregar, SemLeituras } from "../components/EstadoDaTela";
@@ -64,18 +64,39 @@ const DATA_DO_DIA = new Intl.DateTimeFormat("pt-BR", { weekday: "long", day: "nu
 const CARTAO = "rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5";
 const LINK_DO_CARTAO = "inline-flex min-h-9 items-center justify-center rounded-lg border border-border px-3 py-2 text-center text-sm font-semibold text-primary hover:bg-secondary focus-visible:outline-2 focus-visible:outline-ring";
 
-// UI-48: a partir desta largura o Início tem duas colunas, e o gráfico de tempo por dia vai para a
-// coluna da direita, logo abaixo do calendário. Abaixo dela, fica dentro do cartão do calendário.
-const TELA_LARGA = "(min-width: 1050px)";
+// 1050 − 224 − 60: a largura útil no ponto de quebra original com a barra expandida.
+const LARGURA_UTIL_PARA_DUAS_COLUNAS = 766;
+const JANELA_LARGA = "(min-width: 1050px)";
 
-function observarTelaLarga(atualizar: () => void) {
-  const midia = window.matchMedia?.(TELA_LARGA);
-  midia?.addEventListener("change", atualizar);
-  return () => midia?.removeEventListener("change", atualizar);
-}
+function useColunasDoInicio() {
+  const conteudo = useRef<HTMLDivElement>(null);
+  const [telaLarga, setTelaLarga] = useState(() => window.matchMedia?.(JANELA_LARGA).matches ?? false);
 
-function ehTelaLarga() {
-  return window.matchMedia?.(TELA_LARGA).matches ?? false;
+  useLayoutEffect(() => {
+    const midia = window.matchMedia?.(JANELA_LARGA);
+    const main = conteudo.current?.closest("main");
+    if (!main || typeof ResizeObserver === "undefined") {
+      const atualizar = () => setTelaLarga(midia?.matches ?? false);
+      atualizar();
+      midia?.addEventListener("change", atualizar);
+      return () => midia?.removeEventListener("change", atualizar);
+    }
+
+    function atualizar(largura: number) {
+      setTelaLarga(largura > 0 ? largura >= LARGURA_UTIL_PARA_DUAS_COLUNAS : midia?.matches ?? false);
+    }
+
+    // A main mantém a largura durante a troca da grade. A primeira leitura antecede a pintura.
+    const estilo = getComputedStyle(main);
+    atualizar(main.clientWidth - (parseFloat(estilo.paddingLeft) || 0) - (parseFloat(estilo.paddingRight) || 0));
+    const observador = new ResizeObserver(([entrada]) => {
+      if (entrada) atualizar(entrada.contentRect.width);
+    });
+    observador.observe(main);
+    return () => observador.disconnect();
+  }, []);
+
+  return { conteudo, telaLarga };
 }
 
 export function Dashboard() {
@@ -85,7 +106,7 @@ export function Dashboard() {
   const [dispositivo, setDispositivo] = useState<string | null>(null);
   const [diaSelecionado, setDiaSelecionado] = useState<Date | null>(null);
   const [ancoraDoCalendario, setAncoraDoCalendario] = useState(() => somarDias(new Date(), 0));
-  const telaLarga = useSyncExternalStore(observarTelaLarga, ehTelaLarga, () => false);
+  const { conteudo, telaLarga } = useColunasDoInicio();
   const [vagaDoGrafico, setVagaDoGrafico] = useState<HTMLElement | null>(null);
   const [verTudo, setVerTudo] = useState(false);
   const [periodo, setPeriodo] = useState<Periodo>("Sessão toda");
@@ -182,7 +203,7 @@ export function Dashboard() {
   // escolhido nao tem leitura, e preciso poder trocar sem sair da tela.
   if (carregando) {
     return (
-      <div className="space-y-6">
+      <div ref={conteudo} className="space-y-6">
         <Cabecalho acao={seletor} calendario={calendario} instrumento={instrumento} titulo={tituloDoDia} telaLarga={telaLarga} />
         {comColunaDoGrafico(<>
           {avisoDePausa}
@@ -195,7 +216,7 @@ export function Dashboard() {
 
   if (erro) {
     return (
-      <div className="space-y-6">
+      <div ref={conteudo} className="space-y-6">
         <Cabecalho acao={seletor} calendario={calendario} instrumento={instrumento} titulo={tituloDoDia} telaLarga={telaLarga} />
         {comColunaDoGrafico(<>
           {avisoDePausa}
@@ -208,7 +229,7 @@ export function Dashboard() {
 
   if (leituras.length === 0) {
     return (
-      <div className="space-y-6">
+      <div ref={conteudo} className="space-y-6">
         <Cabecalho acao={seletor} calendario={calendario} instrumento={instrumento} titulo={tituloDoDia} telaLarga={telaLarga} />
         {avisoDePausa}
         <NotaDeEscopo />
@@ -303,7 +324,7 @@ export function Dashboard() {
     .slice(0, 8);
 
   return (
-    <div className="mx-auto max-w-[1540px] space-y-3.5">
+    <div ref={conteudo} className="mx-auto max-w-[1540px] space-y-3.5">
       <Cabecalho
         instrumento={instrumento}
         acao={seletor}
@@ -350,7 +371,7 @@ export function Dashboard() {
         )}
       </ResumoDaSessao>
 
-      <div data-linha-do-movimento className={`grid gap-3.5 ${COLUNAS_DO_INICIO_EM_TELA_LARGA}`}>
+      <div data-linha-do-movimento className={`grid gap-3.5 ${telaLarga ? COLUNAS_DO_INICIO : ""}`}>
         <figure aria-labelledby="titulo-linha-do-tempo" className={`min-w-0 ${CARTAO}`}>
           <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
             <div>
@@ -626,35 +647,22 @@ function Cabecalho({
   // UI-49: em tela larga o topo usa as mesmas duas colunas do resto do Início. À esquerda, o título
   // em cima e o filtro embaixo; à direita, o calendário, na largura do gráfico que vem abaixo dele.
   // Aberto, o calendário ocupa as duas colunas (ver `CalendarioDoSono`).
-  if (telaLarga) {
-    return (
-      <header>
-        <BarraDoWorkspace secao="Visão geral" />
-        <div data-topo-do-inicio className={`grid ${COLUNAS_DO_INICIO} gap-x-3.5 gap-y-3`}>
-          {/* Título e filtro juntos, na base do calendário: o calendário compacto, na largura da
-              coluna, é mais alto que os dois, e separá-los deixava uma faixa vazia entre eles. */}
-          <div data-titulo-e-filtro className="flex min-w-0 flex-col justify-end gap-2">
-            <div className="min-w-0">{cabecalho}</div>
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-              {acao}
-              {aviso}
-            </div>
-          </div>
-          {calendario}
-        </div>
-      </header>
-    );
-  }
-
   return (
     <header>
       <BarraDoWorkspace secao="Visão geral" />
-      <div className="flex flex-wrap items-start gap-x-4 gap-y-2">
-        {acao}
-        {aviso && <div className="w-full">{aviso}</div>}
+      <div data-topo-do-inicio={telaLarga ? "" : undefined}
+        className={telaLarga ? `grid ${COLUNAS_DO_INICIO} gap-x-3.5 gap-y-3` : "flex flex-wrap items-start gap-x-4 gap-y-2"}>
+        <div data-titulo-e-filtro={telaLarga ? "" : undefined}
+          className={telaLarga ? "flex min-w-0 flex-col justify-end gap-2" : "contents"}>
+          {telaLarga && <div className="min-w-0">{cabecalho}</div>}
+          <div className={telaLarga ? "flex flex-wrap items-center gap-x-4 gap-y-1" : "contents"}>
+            {acao}
+            {telaLarga ? aviso : aviso && <div className="w-full">{aviso}</div>}
+          </div>
+        </div>
         {calendario}
       </div>
-      {mostrarTitulo && <div className="mt-3 min-w-0">{cabecalho}</div>}
+      {!telaLarga && mostrarTitulo && <div className="mt-3 min-w-0">{cabecalho}</div>}
     </header>
   );
 }

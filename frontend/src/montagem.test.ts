@@ -207,8 +207,9 @@ async function montar(rota: string): Promise<void> {
  */
 const PRAZO = { timeout: 60_000 };
 
-/** UI-48/UI-49: o Início tem duas colunas a partir de 1 050 px; o jsdom não mede, então se simula. */
+/** UI-48/49: sem observador, mede pela janela como antes. */
 function simularTelaLarga() {
+  vi.stubGlobal("ResizeObserver", undefined);
   vi.stubGlobal("matchMedia", (consulta: string) => ({
     matches: consulta === "(min-width: 1050px)",
     media: consulta,
@@ -1009,6 +1010,113 @@ describe("montagem real das telas (UI-17)", PRAZO, () => {
     // rota saísse do `App.tsx`, o `*` levaria à Landing e os erros seriam
     // "não achei o botão", que mandam procurar o botão em vez da rota.
     expect(screen.getByRole("heading", { name: /configurações/i })).toBeTruthy();
+  });
+});
+
+describe("barra lateral recolhível (UI-50)", PRAZO, () => {
+  const chave = "dormio-menu-lateral";
+  const menu = () => within(screen.getByRole("navigation", { name: "Navegação principal" }));
+  const alternador = (aberto: boolean) => screen.getByRole("button", {
+    name: aberto ? "Recolher menu" : "Expandir menu", expanded: aberto,
+  });
+
+  beforeEach(() => window.localStorage.removeItem(chave));
+  afterEach(() => window.localStorage.removeItem(chave));
+
+  it("abre expandida e salva a escolha ao recolher e ao expandir", async () => {
+    await montar("/dashboard?demo=1");
+    const botao = alternador(true);
+    fireEvent.click(botao);
+    expect(alternador(false)).toBe(botao);
+    expect(window.localStorage.getItem(chave)).toBe("recolhido");
+    fireEvent.click(botao);
+    expect(alternador(true)).toBe(botao);
+    expect(window.localStorage.getItem(chave)).toBe("expandido");
+  });
+
+  it.each([["recolhido", false], ["valor estranho", true]] as const)(
+    "restaura a preferência %s em uma montagem nova", async (salvo, aberto) => {
+      window.localStorage.setItem(chave, salvo);
+      await montar("/historico");
+      expect(alternador(aberto)).toBeTruthy();
+    },
+  );
+
+  it.each([["site", false, "Nova coleta", "/coletar"], ["Android", true, "Noite", "/noite"]] as const)(
+    "mantém os destinos e os nomes acessíveis no trilho do %s", async (_, app, coleta, rota) => {
+      const nativo = vi.spyOn(Capacitor, "isNativePlatform").mockReturnValue(app);
+      const plugin = vi.spyOn(Capacitor, "isPluginAvailable").mockImplementation((nome) => nome === "Noite");
+      window.localStorage.setItem(chave, "recolhido");
+      try {
+        await montar("/historico");
+        const destinos = [
+          ["Visão geral", "/dashboard"], [coleta, rota], ["Histórico", "/historico"],
+          ["Dispositivos", "/dispositivos"], ["Configurações", "/configuracoes"],
+        ];
+        for (const [nome, destino] of destinos) {
+          const link = menu().getByRole("link", { name: nome });
+          expect(link.getAttribute("href")).toBe(destino);
+          expect(link.getAttribute("aria-label")).toBe(nome);
+        }
+        expect(menu().getByRole("link", { name: "Histórico" }).getAttribute("aria-current")).toBe("page");
+        const barra = screen.getByRole("navigation", { name: "Navegação principal" }).closest("aside")!;
+        expect(within(barra).getByRole("button", { name: "Sair" }).querySelector("svg")).toBeTruthy();
+      } finally {
+        nativo.mockRestore();
+        plugin.mockRestore();
+      }
+    },
+  );
+
+  it("mantém a conta de demonstração e a navegação móvel", async () => {
+    window.localStorage.setItem(chave, "recolhido");
+    await montar("/dashboard?demo=1");
+    const barra = screen.getByRole("navigation", { name: "Navegação principal" }).closest("aside")!;
+    expect(within(barra).getAllByText("Demonstração").length).toBeGreaterThan(0);
+    expect(within(barra).queryByRole("button", { name: "Sair" })).toBeNull();
+    const movel = within(screen.getByRole("navigation", { name: "Navegação móvel" }));
+    expect(movel.getByRole("link", { name: "Histórico" }).getAttribute("href")).toBe("/historico?demo=1");
+    expect(alternador(false).closest("aside")).toBe(barra);
+    expect(barra.classList.contains("hidden")).toBe(true);
+    expect(barra.classList.contains("md:flex")).toBe(true);
+  });
+
+  it("usa o mesmo limiar útil com o menu nos dois estados e mantém a instância do gráfico", async () => {
+    let notificar: ResizeObserverCallback | undefined;
+    let observado: Element | undefined;
+    vi.stubGlobal("ResizeObserver", class {
+      constructor(callback: ResizeObserverCallback) { notificar = callback; }
+      observe(elemento: Element) { observado = elemento; }
+      disconnect() {}
+    });
+    const largura = vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockImplementation(function (this: HTMLElement) {
+      return this.tagName === "MAIN" ? 766 : 0;
+    });
+    try {
+      await montar("/dashboard?demo=1");
+      const grafico = await screen.findByRole("region", { name: "Tempo registrado por dia" });
+      const calendario = screen.getByRole("region", { name: "Calendário do sono" });
+      const emDuasColunas = () => grafico.closest("[data-vaga-do-grafico]") !== null;
+      const medir = async (width: number) => {
+        await act(async () => notificar?.([{ contentRect: { width } } as ResizeObserverEntry], {} as ResizeObserver));
+        expect(screen.getByRole("region", { name: "Tempo registrado por dia" })).toBe(grafico);
+        expect(screen.getByRole("region", { name: "Calendário do sono" })).toBe(calendario);
+      };
+      expect(observado).toBe(document.querySelector("main"));
+      expect(emDuasColunas()).toBe(true);
+      fireEvent.click(alternador(true));
+      await medir(766);
+      expect(emDuasColunas()).toBe(true);
+      await medir(765);
+      expect(emDuasColunas()).toBe(false);
+      fireEvent.click(alternador(false));
+      await medir(765);
+      expect(emDuasColunas()).toBe(false);
+      await medir(766);
+      expect(emDuasColunas()).toBe(true);
+    } finally {
+      largura.mockRestore();
+    }
   });
 });
 
