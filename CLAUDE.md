@@ -99,7 +99,13 @@ Branches:
 - `feature/<id-do-item>-<descricao>` — novas funcionalidades (base: `develop`)
 - `bugfix/<id-do-item>-<descricao>` — correções (base: `develop`)
 
-**Nunca fazer merge direto.** Sempre apresentar o resumo das alterações para o usuário revisar e aprovar o merge para `develop`.
+**Nunca push direto em `develop` ou `main` com mudança de código; tudo entra por PR.**
+
+**Merge em `develop`** ✏️ *(26/11, fluxo revisto com o autor: as tarefas pediam três ou quatro PRs e um "mescle?" para cada uma, e o tempo ia na espera, não no CI, que leva 4 a 5 min).* O `develop` é **protegido no GitHub**: só aceita merge com o check **"CI ok"** verde, que resume todos os jobs do `ci.yml`. A trava é da máquina, não da conversa; o `--admin` para passar por cima dela não se usa. Assim:
+- **A aprovação do plano vale também para o merge** de telas, textos, testes, documentos, CI e PRs do Codex revisadas. Depois dos testes locais, a PR é aberta com o merge automático (`gh pr merge <n> --auto --merge`) e entra sozinha quando o CI passar. O CI é acompanhado em segundo plano, sem ficar esperando.
+- **Pedem o "sim" explícito do autor antes do merge:** o release para `main` (produção); migração de banco; mudança em autenticação, RLS, LGPD, consentimento ou política de privacidade; e qualquer mudança que tenha saído do plano aprovado.
+- **Uma PR por tarefa:** o diário, o backlog e o registro entram na **mesma PR** da mudança, sem PR só de registro. A versão do APK entra na PR do release, e mudanças pequenas e relacionadas vão juntas.
+- **Revisão proporcional:** sabotagem (controle positivo) para lógica, segurança e cálculo; para texto e visual, a suíte e a tela bastam.
 
 **PR sempre com base em `develop`, nunca empilhada sobre outra branch** (✏️ 30/10). A PR #13 tinha como base a branch da #12; a #12 entrou em `develop` 19 s antes, a #13 foi mesclada na branch antiga, e o `ML-11` ficou fora de `develop` sem que nada avisasse. Trabalho que depende de outra PR ainda aberta parte da branch dela, mas a PR aponta para `develop`: o diff mostra os dois, e qualquer ordem de merge chega ao lugar certo.
 
@@ -129,22 +135,17 @@ Branches:
    - Rodar os testes existentes — todos devem continuar passando
    - Adicionar testes cobrindo o item novo, onde fizer sentido (ver "Testes")
    - **Se algum teste falhar:** não avançar — reportar com diagnóstico e aguardar decisão
-9. **Push da branch e verificar CI (se configurado):**
-   ```bash
-   git push origin <branch>
-   ```
-   - Com CI configurado: aguardar e só avançar com verde ✅; se falhar, investigar o log, corrigir e novo push
-   - Sem CI ainda: a verificação local cumpre esse papel (configurar CI é item de roadmap)
-10. Apresentar: resumo das alterações + testes locais + status do CI — **nunca fazer merge sozinho**
-11. Após aprovação do merge:
+9. **Registrar na mesma branch, antes do push:** entrada no `docs/DIARIO-DE-ENGENHARIA.md` (logo antes do rodapé), item fechado ou criado no `docs/BACKLOG-COMPLETO.md` (com a contagem por camada fechando), e `ROADMAP.md` **localmente** (`[x]` e **Concluído** com o nome da branch)
+10. **Push, PR e merge automático:**
     ```bash
-    git checkout develop
-    git merge --no-ff <branch> -m "Merge <branch> into develop"
-    git push origin develop
-    git branch -d <branch>
-    git push origin --delete <branch>
+    git push -u origin <branch>
+    gh pr create --base develop ...
+    gh pr merge <n> --auto --merge   # só quando o merge não pede "sim" explícito (ver acima)
     ```
-12. Registrar: entrada no `docs/DIARIO-DE-ENGENHARIA.md`, item fechado ou criado no `docs/BACKLOG-COMPLETO.md` (com a contagem por camada fechando), e `ROADMAP.md` **localmente** (`[x]` e **Concluído** com o nome da branch)
+    - O CI roda uma vez, na PR; um commit novo cancela a rodada antiga. Acompanhar em segundo plano e seguir trabalhando.
+    - Se falhar: investigar o log, corrigir e novo push. O merge automático continua ligado e entra quando ficar verde.
+11. Apresentar: resumo das alterações + testes locais + estado do CI. Nos casos que pedem "sim" explícito, aguardar a resposta antes do merge.
+12. Depois do merge, o GitHub apaga a branch remota; apagar a branch local e a worktree (passo 14)
 13. **Se for um marco que vale mostrar:** gerar a entrada de devlog (regras em `CLAUDE.local.md`, quando existir na máquina)
 14. Limpar worktree:
     ```bash

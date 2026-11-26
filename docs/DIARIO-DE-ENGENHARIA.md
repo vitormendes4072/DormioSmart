@@ -13635,6 +13635,32 @@ Os dois controles originais da etapa também voltaram a falhar sob sabotagem. No
 
 ---
 
+# 2026-11-26 (iv) — CI-13: o fluxo de merge sem tanta espera
+
+**O problema, como foi entendido no início.** O autor achou o fluxo engessado: a cada tarefa, parar e esperar o CI e responder "mescle?". Medido nas PRs #295, #297, #299 e #300, o `ci.yml` levou **3 a 5 min** por rodada (o job mais longo, o RLS no Postgres 16). O tempo ia no fluxo: o R21 teve quatro PRs (tarefa, versão, release e registro), cada uma com CI e um pedido de merge; o CI rodava duas vezes por PR (no `push` da branch e no `pull_request`); e a espera do CI era feita parada.
+
+**Hipótese de trabalho.** Se a trava contra o CI vermelho for do GitHub, e não da conferência à mão, a aprovação do plano pode valer para o merge sem perder segurança. Hoje nenhuma branch tinha proteção: o merge no vermelho só não acontecia porque alguém olhava, e isso já falhou uma vez (o lockfile, em 23/11).
+
+**O que foi testado, e como.**
+- **No GitHub:** merge automático ligado; a branch remota apagada no merge; o `develop` protegido exigindo o check "CI ok" (sem revisão obrigatória, sem `force push`, sem apagar a branch).
+- **No `ci.yml`:** o `push` só em `develop`; `concurrency` que cancela a rodada antiga da mesma PR (nunca em `develop`); o job `ci-ok` ("CI ok"), que depende dos seis outros, roda com `always()` e falha se algum não terminou com sucesso.
+- **No `CLAUDE.md`:** a regra de merge e os passos 9 a 12 do protocolo.
+- **Esta própria PR** é o primeiro uso: aberta com o merge automático, ela só pode entrar com o "CI ok" verde.
+
+**Resultado medido.** A proteção respondeu com o check "CI ok" exigido. O resto (o CI uma vez só, o cancelamento e o merge automático desta PR) fica medido na própria PR.
+
+**Adaptação.** A proteção exige só o "CI ok", e não cada job: o RLS roda em três versões do Postgres e os nomes mudam com a matriz, e o "CI ok" junta tudo num nome estável. Os workflows do Android e do ESP32 só rodam quando os arquivos deles mudam e por isso **não** são exigidos (um check exigido que não roda deixa a PR esperando para sempre). A `main` segue sem proteção: o release é sempre um "sim" explícito do autor.
+
+**O que deu errado no caminho.** Nada nesta etapa.
+
+**Risco em aberto.**
+- **O build do APK e o do ESP32 não travam o merge.** Uma PR que quebre só o Android entra no `develop`; o workflow dele avisa, mas não impede. Se isso acontecer, o item é exigir esses checks com um filtro de caminho dentro do job.
+- **O `enforce_admins` está desligado:** o dono do repositório ainda consegue passar por cima. A regra do `CLAUDE.md` proíbe o `--admin`.
+
+**Procedência.** Branch `ci/fluxo-mais-leve` sobre `develop` `9802ac9`; configurações do repositório pela API do GitHub; 26/11.
+
+---
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

@@ -1,21 +1,22 @@
 name: CI
 
 on:
+  # ✏️ 26/11: o push roda só em `develop`. Antes rodava também em cada branch
+  # de trabalho, e toda PR tinha o CI duas vezes (push e pull_request), com o
+  # resultado repetido. A branch é coberta pela PR; o `chore/**` que um dia
+  # passou sem CI (motivo da lista antiga) hoje passa pela PR do mesmo jeito.
   push:
     branches:
       - develop
-      # Prefixos alinhados aos tipos de commit do projeto. `chore/**` foi
-      # acrescentado depois de uma branch desse tipo passar SEM verificacao
-      # nenhuma — o CI so cobria feature e bugfix.
-      - 'feature/**'
-      - 'bugfix/**'
-      - 'chore/**'
-      - 'docs/**'
-      - 'security/**'
-      - 'ci/**'
   pull_request:
     branches:
       - develop
+
+# Um commit novo na PR cancela a rodada antiga da mesma PR. Em `develop` nada
+# é cancelado: cada merge tem a sua rodada inteira.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   test:
@@ -510,3 +511,22 @@ jobs:
       # reproduz, entao a checagem e no texto do codigo.
       - name: Subprocess com encoding (CI-11)
         run: python scripts/conferir_subprocess_utf8.py
+
+  # ✏️ 26/11: o check que a proteção do `develop` exige. Resume os outros
+  # para que a regra não precise listar cada job (nem cada versão do
+  # Postgres) e não quebre quando um job mudar de nome. Roda mesmo se algum
+  # falhar (`always()`) e só passa se todos passaram.
+  ci-ok:
+    name: CI ok
+    if: always()
+    needs: [test, rls, frontend, ml, firmware, documentos]
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Todos os jobs passaram
+        env:
+          RESULTADOS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          echo "Resultados: $RESULTADOS"
+          for r in $RESULTADOS; do
+            [ "$r" = "success" ] || { echo "::error::um job terminou como $r"; exit 1; }
+          done
