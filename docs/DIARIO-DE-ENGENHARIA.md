@@ -13379,6 +13379,7 @@ Os dois controles originais da etapa também voltaram a falhar sob sabotagem. No
 
 ---
 
+
 # 2026-11-25 (iii) — APP-21: configuração de login no APK Android
 
 **O problema, como foi entendido no início.** O APK 1.1.4 publicado exibia “Autenticação não configurada” ao tentar entrar. O 1.1.3 trazia o endereço necessário no JavaScript empacotado.
@@ -13479,3 +13480,41 @@ Os dois controles originais da etapa também voltaram a falhar sob sabotagem. No
 **Risco em aberto.** Os R$ 10.000 da Anatel e os R$ 3.000 de renovação são estimativas de certificadoras, com interesse comercial, e o SAR pode somar de R$ 15.000 a R$ 40.000; os preços do AliExpress são promocionais; a Rontek tem cerca de 25 células no anúncio; o encapsulamento não tem preço. Tudo carregado pelo `VIA-03` (e o encapsulamento pelo `HW-04`).
 
 **Procedência.** Notas e pedidos fotografados pelo autor em 25/11; anúncios e páginas consultados em 25/11 no navegador embutido do app (Windows 11); planilha do autor no Google Sheets; 8 rascunhos de cotação criados no Gmail do autor, não enviados; conferências do repositório nesta máquina (Windows 11, Python 3.13) sobre `develop` `a361d27`.
+
+# 2026-11-25 (vii) — HW-02: o orçamento das peças e a placa de proteção no DIAG-02 (v4)
+
+**O problema, como foi entendido no início.** O autor levantou o preço das peças do `HW-02` em duas lojas da Santa Ifigênia e no Mercado Livre. A célula que apareceu nas três frentes é a LiFePO4 18650 da Rontek, que vem **sem proteção**. O circuito de 17/11 (`DIAG-02` v3) aceitava "célula com proteção ou uma placa de proteção", mas só desenhava a primeira. Com a célula nua, entra uma placa de proteção (PCM) LiFePO4 1S, e o circuito muda.
+
+**Hipótese de trabalho.** A placa corta pelo negativo. Então o terra do circuito tem de ser o P− dela, e não o B− da célula. Como a célula é removível, a placa fica fixa, soldada aos fios do suporte, e serve às duas células. O Q1 continua no positivo, depois da placa.
+
+**O que foi testado, e como.**
+- **Os orçamentos, item por item**, contra a tabela da §8.1 do estudo: Mamute (nº 354234/1), a conversa com a Santa Ifigênia Componentes Eletrônicos e o carrinho do Mercado Livre, com os anúncios da célula e da placa.
+- **A folha v4 do `DIAG-02`**, gerada com `schemdraw` 0.19 e `matplotlib` 3.9.2 num ambiente à parte, como a v3. A imagem foi olhada três vezes e corrigida duas.
+- **A orientação do Q1**, conferida pelas âncoras do `PFet` do `schemdraw` em seis rotações antes de desenhar. Com `theta(-90)`, o dreno fica à esquerda (do lado da placa), a fonte à direita (do lado da carga) e a porta para baixo (no P−).
+- **O script recusaria desenhar** se o firmware divergisse. Ele desenhou, então a conferência de SDA, SCL e endereço passou.
+
+**Resultado medido.** Nenhuma medição elétrica. O que mudou (*especificação* dos anúncios e *cálculo*):
+- **B1:** Rontek RTLFPO 18650, 3,2 V, "2 000 mAh 3C" no rótulo. Os 2 000 mAh são o topo do que uma LFP 18650 entrega. Com 1 400 mAh, o pior caso da faixa de S1 (13,6 mA) ainda dá ~83 h, acima do mínimo de 72 h.
+- **U3, nova:** placa de proteção LiFePO4 1S da Rontek, de 6 A contínuos. O anúncio não diz o corte de descarga, e o modelo diz "2A" enquanto a descrição diz 6 A.
+- **Q1:** AO3401A, que só existe em SOT-23. Sem uma plaquinha adaptadora para DIP, não há como montá-lo nos fios. Os P-MOSFET de terminal comum da região (IRF9540) não conduzem com 3,2 V na porta.
+- **Carregador:** TP5000 USB-C "Li-ion/LiFePO4", com a seleção de 3,6 V a conferir.
+- **Divisão sugerida das compras:** na Santa Ifigênia Componentes, o MOSFET, o capacitor (105 °C, menor e no mesmo preço do da Mamute), a chave KCD11 e o termorretrátil. Na Mamute, os suportes, os fusíveis, o porta-fusível, os resistores (4, e não 1 como estava no orçamento) e o cerâmico. No Mercado Livre, a plaquinha SOT-23, o TP5000, a célula e a placa. Ficou de ~R$ 150 a 170 no total.
+
+**Veredito.** A v4 é o circuito vigente (PROJETO, não montado). Todo símbolo de terra é o P− da placa, e o B− só vai a ela. A v3 continua gerada, como registro do estudo. O `HW-02` segue aberto: comprar, confirmar o corte da placa e a seleção do TP5000, medir e montar.
+
+**Adaptação.**
+- Os números de autonomia do estudo não foram refeitos para os 2 000 mAh do rótulo, que não estão medidos. Ficou só a conta do lado conservador (1 400 mAh), que é a que decide se a célula serve.
+- A primeira avaliação da célula do Mercado Livre a tratou como suspeita de procedência. Quando o autor mostrou o anúncio, apareceu a lata impressa "RONTEK", a mesma marca da loja. A dúvida ficou só na capacidade.
+
+**O que deu errado no caminho.**
+- **Na primeira versão da v4, o Q1 saiu vertical**: a porta descia rente à borda da placa e sobre a linha do P+, e o título cobria o rótulo do Q1. A causa foi supor a orientação do `PFet` sem olhar as âncoras. Corrigido com `theta(-90)`, conferido pelas âncoras.
+- **Na segunda, os rótulos "GND = P−" e "G no P−" se sobrepunham** ao terra da porta. O segundo saiu (a nota da folha já diz isso), e o primeiro foi para baixo do símbolo.
+- **Um script de substituição falhou** porque os arquivos têm fim de linha CRLF e o texto procurado tinha LF. Nada foi gravado. As edições foram refeitas pela ferramenta de edição.
+
+**Risco em aberto.**
+- **O corte da placa de proteção não está confirmado** (`HW-02`). Abaixo de 2,0 V, ele não protegeria a célula LFP.
+- **O TP5000 pode sair de fábrica em 4,2 V** (`HW-02`): a primeira carga tem de ser medida.
+- **A placa de proteção não resiste a uma célula invertida.** O Q1 protege o ESP32, não ela, e a regra de conferir a polaridade continua.
+- **Nada foi medido nem montado** (`HW-02`, `RD-10`).
+
+**Procedência.** Branch `docs/HW-02-diag02-placa-de-protecao` sobre `develop` `93bd0ea`. `docs/diagramas/DIAG-02-esquematico.py` (folha v4, gerada fora do repositório, como as outras). Os orçamentos e os anúncios ficam com o autor, fora do repositório. Windows 11, 25/11.

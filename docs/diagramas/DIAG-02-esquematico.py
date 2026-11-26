@@ -33,6 +33,10 @@ O QUE O ESQUEMÁTICO AFIRMA, E DE ONDE CADA LIGAÇÃO VEM:
   célula proposta pelo `docs/ESTUDO-ENERGIA.md` sai numa terceira folha (`v3`), rotulada
   PROJETO — não montada: LiFePO4 18650 direto no 3V3, com proteção contra inversão, fusível,
   chave, capacitor de reserva e o divisor da leitura da bateria (`HW-10`) no GPIO35.*
+  ✏️ *25/11 (`HW-02`, orçamento das peças): a célula escolhida (Rontek) vem sem proteção, e
+  entra uma placa de proteção de LiFePO4 1S fixa no circuito. A quarta folha (`v4`) a desenha,
+  com o terra do circuito no P− da placa e o Q1 (AO3401A) com dreno, fonte e porta explícitos.
+  A v3 continua gerada, como registro do estudo de 17/11; a vigente é a v4.*
 
 A v2 (dois sensores, 0x68 e 0x69 pelo AD0 do segundo) é CONTINGÊNCIA PROJETADA: quem decide
 é o `VIA-01`, que depende da solda. Ela sai numa folha própria, com o segundo módulo em caixa
@@ -45,7 +49,7 @@ depois de o pino mudar no código é o defeito que este arquivo existe para não
 
 Uso:
     python DIAG-02-esquematico.py [pasta_de_saida]
-Gera DIAG-02-v1, -v2 e -v3 (.svg e .png). Requer `schemdraw==0.19` e
+Gera DIAG-02-v1, -v2, -v3 e -v4 (.svg e .png). Requer `schemdraw==0.19` e
 `matplotlib==3.9.2` (fora do `ml/.venv`: esta figura não é do pipeline de ML).
 """
 import json
@@ -215,6 +219,91 @@ def desenhar_alimentacao(pasta):
             d.save(str(pasta / f"DIAG-02-v3.{ext}"), dpi=150)
 
 
+def desenhar_alimentacao_v4(pasta):
+    """v4: a v3 com a placa de proteção da célula e o terra no P− (PROJETO).
+
+    A célula escolhida na compra (LiFePO4 18650 Rontek) vem sem proteção. A placa de proteção
+    (PCM 1S de LiFePO4) fica fixa no circuito, soldada aos fios do suporte, e corta pelo
+    negativo: o terra de todo o circuito passa a ser o P− dela, e o B− da célula só vai à placa.
+    """
+    with schemdraw.Drawing(show=False) as d:
+        d.config(fontsize=10, unit=2, margin=1.5)
+        # A célula, de baixo (−) para cima (+). Nenhum símbolo de terra no B−.
+        bat = elm.Battery().up()
+        d += bat
+        d += elm.Label().at(em(bat.center, -0.5, 0)).label(
+            "B1 · LiFePO4 18650\n(Rontek, sem proteção)\n3,0–3,6 V · removível\nno suporte",
+            fontsize=9, halign="right")
+        d += elm.Line().right().length(1.0)
+        pcm = elm.Ic(pins=[
+            elm.IcPin(name="B+", side="left", slot="2/2", anchorname="bmais"),
+            elm.IcPin(name="B−", side="left", slot="1/2", anchorname="bmenos"),
+            elm.IcPin(name="P+", side="right", slot="2/2", anchorname="pmais"),
+            elm.IcPin(name="P−", side="right", slot="1/2", anchorname="pmenos"),
+        ], size=(2.4, 2.0)).anchor("bmais")
+        d += pcm
+        d += elm.Label().at(em(pcm.bmais, 1.2, 1.15)).label(
+            "U3 · placa de proteção\nLiFePO4 1S (PCM)", fontsize=9)
+        d += elm.Wire("-|").at(bat.start).to(pcm.bmenos)
+        # Q1 no positivo: dreno do lado da célula, fonte do lado da carga, porta no P−.
+        d += elm.Line().at(pcm.pmais).right().length(0.8)
+        # theta(-90): dreno à esquerda, fonte à direita, porta para baixo (conferido pelas
+        # âncoras); o diodo de corpo conduz da célula para a carga, e só nesse sentido.
+        q1 = elm.PFet(bulk=True).theta(-90).anchor("drain")
+        d += q1
+        d += elm.Label().at(em(q1.center, 0, 1.0)).label(
+            "Q1 · AO3401A\ncontra inversão", fontsize=9)
+        d += elm.Fuse().at(q1.source).right().label("F1 · 1 A\n(sem PTC)", fontsize=9)
+        d += elm.Switch().right().label("S1 · liga/desliga", fontsize=9)
+        d += elm.Dot()
+        no_3v3 = d.here
+        d += elm.Line().right().length(3.0)
+        d += elm.Dot()
+        no_div = d.here
+        d += elm.Line().right().length(3.5)
+        esp = elm.Ic(pins=[
+            elm.IcPin(name="3V3", side="left", slot="3/3", anchorname="p3v3"),
+            elm.IcPin(name="GPIO35 (ADC1)", side="left", slot="2/3", anchorname="adc"),
+            elm.IcPin(name="GND", side="left", slot="1/3", anchorname="gnd"),
+        ], size=(4.6, 3.6)).anchor("p3v3")
+        d += esp
+        d += elm.Label().at(em(esp.p3v3, 1.0, 1.0)).label("U1 · ESP32 DevKit V1", fontsize=11)
+        # O P− é o terra do circuito: todo símbolo de terra desta folha é ele.
+        d += elm.Line().at(pcm.pmenos).right().length(0.4)
+        d += elm.Line().down().length(0.8)
+        d += elm.Ground().label("GND = P−", loc="bottom", fontsize=9)
+        d += elm.Line().at(q1.gate).down().toy(pcm.pmenos[1] - 0.8)
+        d += elm.Ground()
+        d += elm.Label().at(em(bat.center, 0.3, 0.55)).label("+", fontsize=11, halign="left")
+        d += elm.Capacitor(polar=True).at(no_3v3).down().label("C1 · 1 000 µF", loc="top", fontsize=9)
+        d += elm.Ground()
+        d += elm.Resistor().at(no_div).down().label("R1 · 1 MΩ", loc="bottom")
+        d += elm.Dot()
+        meio = d.here
+        d += elm.Resistor().down().label("R2 · 1 MΩ", loc="bottom")
+        d += elm.Ground()
+        d += elm.Wire("-|").at(meio).to(esp.adc)
+        d += elm.Line().at(meio).left().length(0.5)
+        d += elm.Capacitor().down().label("C2 · 100 nF", loc="top", fontsize=9)
+        d += elm.Ground()
+        d += elm.Line().at(esp.gnd).left().length(0.6)
+        d += elm.Ground()
+        nota = ("PROJETO — não montado (HW-02, docs/ESTUDO-ENERGIA.md §8.1). Todo símbolo de terra é o P− "
+                "da placa de proteção: o GND do ESP32, do GY-521, de C1, do divisor e a porta de Q1.\n"
+                "O B− da célula só vai à placa. A placa fica fixa, soldada aos fios do suporte: uma placa "
+                "serve às duas células. Corte de descarga da placa: entre 2,0 e 2,5 V (a confirmar).\n"
+                "Sem regulador: o patamar de 3,2–3,3 V da LiFePO4 cabe nos 3,0–3,6 V do ESP32. "
+                "O GY-521 e o I2C seguem como na v1, com o VCC do módulo no 3V3.\n"
+                "Carregar a célula FORA do travesseiro, no TP5000 em 3,6 V. "
+                "⚠ Nunca ligar o USB com S1 fechada. ⚠ A placa não se protege de célula invertida: "
+                "Q1 protege o ESP32, não ela.")
+        d += elm.Label().at(em(bat.start, -1.0, -3.4)).label(nota, fontsize=8, halign="left")
+        d += elm.Label().at(em(bat.end, 4.0, 3.4)).label(
+            "DIAG-02 — v4: célula LiFePO4 com placa de proteção (PROJETO)", fontsize=13)
+        for ext in ("svg", "png"):
+            d.save(str(pasta / f"DIAG-02-v4.{ext}"), dpi=150)
+
+
 # O que a figura afirma, e onde no código isso tem de estar.
 SDA, SCL, ENDERECO = 21, 22, 0x68
 RAIZ = Path(__file__).resolve().parents[2]
@@ -255,6 +344,7 @@ def main():
     for v in ("v1", "v2"):
         desenhar(v, pasta)
     desenhar_alimentacao(pasta)
+    desenhar_alimentacao_v4(pasta)
     print(f"gerado em {pasta}")
 
 
