@@ -13780,6 +13780,35 @@ Os dois controles originais da etapa também voltaram a falhar sob sabotagem. No
 
 ---
 
+# 2026-11-26 (ix) — UI-48, ajuste: o gráfico alinhado com os cartões
+
+**O problema, como foi entendido no início.** Depois do merge da PR #307, o autor olhou o Início no computador e achou estranho o gráfico de tempo por dia desalinhado com os cartões da esquerda. O gráfico começava na altura do aviso "Gráfico combina Travesseiro e Celular", acima do título "Seus registros", e terminava uns 70 px antes da base dos três cartões de métricas.
+
+**Hipótese de trabalho.** O gráfico tem de estar na mesma linha dos cartões do resumo, não no topo da coluna. Assim o topo dele coincide com o do cartão "Registrado", e os dois lados podem se esticar até a mesma base.
+
+**O que foi testado, e como.**
+- **O `ResumoDaSessao` ganhou um encaixe lateral.** Em tela larga, o título fica em cima, com a largura toda, e abaixo dele uma grade de duas colunas: à esquerda o cartão "Registrado" e as métricas, à direita o gráfico. Os dois lados se esticam até a altura do maior: a lista de métricas cresce, ou o cartão do gráfico cresce. Os avisos continuam acima do título, com a largura toda. As proporções da grade (1,8 para 0,9) são as mesmas da linha de baixo, então o gráfico também se alinha com "Seu dispositivo".
+- **Num dia sem registro**, a nota de escopo passou para cima, com a largura toda, e o cartão "Sem registros neste dia" se estica ao lado do gráfico.
+- **O teste da tela larga** (`montagem.test.ts`) passou a exigir que, com sessão, o gráfico esteja dentro da seção do resumo.
+- **No navegador**, a 1 440 px, medindo as posições com `getBoundingClientRect`.
+
+**Resultado medido.**
+- **Com sessão:** topo do gráfico e do cartão "Registrado" em 272,5 px; base do gráfico e das métricas em 551,0 px.
+- **Dia sem registro:** gráfico e cartão de 298,5 px a 577,0 px.
+- **A 375 px:** sem a coluna, o gráfico sob o calendário, sem rolagem lateral, como antes.
+- **Suíte do frontend:** 1 089 testes em 73 arquivos (a contagem não muda; o teste existente ganhou duas verificações). `tsc`, lint, Knip e build sem erro.
+- **Controle positivo:** contra o `develop` (`caa5f16`), e com o encaixe lateral sabotado (`lateral={null}`), o teste da tela larga falha nos dois casos.
+
+**Adaptação.** Nenhuma. O ajuste do dia sem registro não foi pedido de forma explícita, mas segue a mesma regra de alinhar o gráfico com o cartão ao lado.
+
+**O que deu errado no caminho.** A entrada (viii) e a PR #307 deram o problema do espaço vazio por resolvido sem medir o alinhamento: a captura mostrava o gráfico na coluna e isso bastou. O autor precisou apontar. A regra que fica: quando dois blocos dividem uma linha, medir topo e base dos dois.
+
+**Risco em aberto.** No estado carregando e no de erro, o gráfico segue alinhado só pelo topo com o primeiro elemento: são estados curtos e com mensagem de uma linha, e não foram esticados.
+
+**Procedência.** Branch `bugfix/UI-48-alinhar-grafico` sobre `develop` `caa5f16`; Windows, Node 24.11.0, em 26/11; navegador embutido do Claude com dados de demonstração.
+
+---
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

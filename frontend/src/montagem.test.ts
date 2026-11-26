@@ -1565,13 +1565,17 @@ describe("o painel em camadas (UI-40)", PRAZO, () => {
       await abrir();
       const regiao = () => screen.getByRole("region", { name: "Tempo registrado por dia" });
       const naColuna = () => regiao().closest("[data-vaga-do-grafico]") !== null && regiao().closest("header") === null;
+      // Com sessão, na mesma linha dos cartões do resumo, para começar e terminar alinhado com eles.
+      const aoLadoDosCartoes = () => regiao().closest("section[aria-labelledby='resumo-da-sessao']") !== null;
       await waitFor(() => expect(naColuna()).toBe(true));
+      expect(aoLadoDosCartoes()).toBe(true);
       escolher(/^segunda-feira, 23 de novembro/);
       await screen.findByText("Sem registros neste dia");
       expect(naColuna()).toBe(true);
       escolher(/^terça-feira, 24 de novembro/);
       await screen.findByRole("heading", { name: titulo });
       expect(naColuna()).toBe(true);
+      expect(aoLadoDosCartoes()).toBe(true);
     });
 
     it("UI-48: em tela estreita o gráfico continua logo abaixo do calendário", async () => {

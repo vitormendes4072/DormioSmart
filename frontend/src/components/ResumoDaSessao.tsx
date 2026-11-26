@@ -25,6 +25,7 @@ export function ResumoDaSessao({
   verTudo,
   metricas,
   titulo = "Seus registros",
+  lateral,
   children,
 }: {
   /** As exibidas: a última, ou todas. Em ordem crescente. */
@@ -34,6 +35,8 @@ export function ResumoDaSessao({
   titulo?: string;
   /** O seletor de sessão, quando há mais de uma. */
   children?: ReactNode;
+  /** UI-48: em tela larga, o que vai na mesma linha dos cartões (o gráfico de tempo por dia). */
+  lateral?: ReactNode;
 }) {
   const { cobertura, fracaoEmMovimento, maiorPeriodoSemMovimentoMs } = metricas;
   const paradas = sessoes
@@ -55,17 +58,13 @@ export function ResumoDaSessao({
     ? descreverQuando(sessoes[0].inicio, sessoes[sessoes.length - 1].fim)
     : null;
 
-  return (
-    <section aria-labelledby="resumo-da-sessao" className="space-y-3">
-      <h1 id="resumo-da-sessao" className="text-2xl font-extrabold tracking-tight text-foreground sm:text-[27px]">
-        {titulo}
-      </h1>
-
+  const cartoes = (
+    <>
       <CartaoEmDestaque rotulo="Registrado" valor={formatarDuracao(cobertura.tempoCobertoMs)}>
         {[janela, quando].filter(Boolean).join(" · ")}
       </CartaoEmDestaque>
 
-      <ul aria-label="Métricas da sessão" className="grid gap-2 min-[360px]:grid-cols-3">
+      <ul aria-label="Métricas da sessão" className={`grid gap-2 min-[360px]:grid-cols-3 ${lateral ? "flex-1" : ""}`}>
         <CartaoDeMetrica valor={movimento ?? "—"}>
           <p>
             {movimento == null
@@ -89,6 +88,22 @@ export function ResumoDaSessao({
           )}
         </CartaoDeMetrica>
       </ul>
+    </>
+  );
+
+  return (
+    <section aria-labelledby="resumo-da-sessao" className="space-y-3">
+      <h1 id="resumo-da-sessao" className="text-2xl font-extrabold tracking-tight text-foreground sm:text-[27px]">
+        {titulo}
+      </h1>
+
+      {lateral ? (
+        // A coluna dos cartões e o gráfico ao lado crescem juntos: começam e terminam na mesma altura.
+        <div className="grid grid-cols-[minmax(0,1.8fr)_minmax(220px,0.9fr)] gap-3.5">
+          <div className="flex min-w-0 flex-col gap-3">{cartoes}</div>
+          {lateral}
+        </div>
+      ) : cartoes}
 
       {children && <div className="pt-1">{children}</div>}
     </section>
