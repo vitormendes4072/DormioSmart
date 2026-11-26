@@ -13719,6 +13719,33 @@ Os dois controles originais da etapa também voltaram a falhar sob sabotagem. No
 
 ---
 
+# 2026-11-26 (vii) — UI-47: tempo registrado por dia da semana
+
+**O problema, como foi entendido no início.** O calendário indica quais dias têm sessões, mas a comparação de duração exigia abrir cada dia. A seleção compacta também precisava de uma marca distinta do anel de hoje e da faixa de sequência.
+
+**Hipótese de trabalho.** Um gráfico semanal usando o mesmo mapa de durações do calendário permite comparar os dias e preserva a interpretação de tempo registrado. A união dos trechos já usada pelo calendário deve impedir que dois aparelhos simultâneos dupliquem a duração.
+
+**O que foi testado, e como.** Antes da implementação, dois testes temporários executaram `registrosDoCalendario` com duas fontes de épocas de 30 s, uma com sete horas exatamente sobre a outra e outra deslocada em duas horas. Na implementação, 14 testes novos cobrem série, sobreposição, paridade, teclado, mouse, toque, histórico parcial, navegação, dispositivo e a consulta compartilhada. No Edge foram capturados quatro estados em cada tema, em 1440 × 1050. Em 390 px, foram testados o encaixe das sete colunas, o toque que seleciona e mostra o valor e o segundo toque que limpa.
+
+**Resultado medido.** O calendário original retornou 7 h na sobreposição total e 9 h com o deslocamento, em vez das 14 h que uma soma por aparelho produziria. Os dois cenários também passaram pela série do gráfico. Os 14 testes novos falharam com o código de `develop` em `e33be52`. Os 30 testes focados de UI-45, UI-46 e UI-47 passaram com a implementação. A suíte completa passou com 1.086 testes em 73 arquivos, usando dois workers. Quatro sabotagens foram executadas e restauradas:
+
+| Sabotagem | Teste que falhou |
+|---|---|
+| Tratar ausência como zero | “ordena de segunda a domingo, separa ausência de zero e exclui o futuro” |
+| Dividir a média incluindo dias sem registro | “calcula a média apenas dos dias com registro” |
+| Atribuir a sessão pela data de fim | “mantém o valor do calendário no dia de início e exclui bancada” |
+| Tratar dia indeterminado como ausência | “histórico parcial anuncia dados incompletos e resume só os valores conhecidos” |
+
+**Adaptação.** A referência de navegação passou ao Dashboard. Gráfico e calendário recebem o mesmo mapa e usam o mesmo clique do dia. A semana compacta e a barra usam o mesmo losango para a seleção, separado do anel de hoje e da faixa de sequência. O resumo exclui dias indeterminados de média e extremos e avisa que a semana está incompleta. O teste de componente do UI-46 passou a fornecer a referência controlada e procurar o botão de dia dentro da região do calendário. As asserções do teste e as de montagem do UI-46 foram preservadas.
+
+**O que deu errado no caminho.** Na primeira prévia, o seletor de dispositivo ficou centralizado na altura dos dois cartões. O alinhamento passou para o topo. A massa inicial das capturas estava em ordem crescente, e a regra da borda de “Seus registros” mostrou um aviso fora da situação representada. A massa foi reordenada para seguir a API.
+
+**Risco em aberto.** Quando a consulta atinge o limite de páginas, parte da semana pode estar faltando. A tela sinaliza a limitação. A inspeção no navegador usou dados de demonstração e a suíte simulou as respostas de API.
+
+**Procedência.** UI-47 sobre `origin/develop` `e33be52`. Windows, Node 24.11.0 e Edge em 26/11. Capturas em `docs/evidencias/ui-47/`.
+
+---
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

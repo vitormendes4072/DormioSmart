@@ -1526,6 +1526,35 @@ describe("o painel em camadas (UI-40)", PRAZO, () => {
       expect(screen.getByRole("button", { name: "Sessão toda", pressed: true })).toBeTruthy();
     });
 
+    it("UI-47: acompanha a semana navegada e compartilha o dia marcado com o calendário", async () => {
+      await abrir();
+      const grafico = () => within(screen.getByRole("region", { name: "Tempo registrado por dia" }));
+      const dia = /^terça-feira, 17 de novembro/;
+      fireEvent.click(calendario().getByRole("button", { name: "Expandir" }));
+      fireEvent.click(calendario().getByRole("button", { name: "Período anterior" }));
+      fireEvent.click(await grafico().findByRole("button", { name: /^terça-feira, 17 de novembro, 0h 01m registrados$/ }));
+      await screen.findByRole("img", { name: /3 pontos,/ });
+      fireEvent.click(calendario().getByRole("button", { name: "Recolher" }));
+      expect(calendario().getByRole("button", { name: dia, pressed: true }).querySelector("[data-marca-dia]")).toBeTruthy();
+      expect(grafico().getByRole("button", { name: dia, pressed: true }).querySelector("[data-marca-dia]")).toBeTruthy();
+      fireEvent.click(grafico().getByRole("button", { name: dia, pressed: true }));
+      await screen.findByRole("heading", { name: "Seus registros" });
+      expect(grafico().queryByRole("button", { name: dia })).toBeNull();
+    });
+
+    it("UI-47: reutiliza a consulta do calendário e acompanha o dispositivo", async () => {
+      await abrir();
+      const grafico = () => within(screen.getByRole("region", { name: "Tempo registrado por dia" }));
+      await grafico().findByRole("button", { name: /^terça-feira, 24 de novembro, 0h 03m registrados$/ });
+      const desde = new Date(2026, 9, 25).toISOString();
+      const consultas = vi.mocked(fetch).mock.calls
+        .map(([entrada]) => new URL(String(entrada), "http://localhost"))
+        .filter((url) => url.pathname === "/api/sleep-history" && url.searchParams.get("desde") === desde);
+      expect(consultas).toHaveLength(1);
+      fireEvent.change(seletorDeAparelho(), { target: { value: "c" } });
+      await grafico().findByRole("button", { name: /^terça-feira, 24 de novembro, 0h 01m registrados$/ });
+    });
+
     it("permite tentar novamente quando falha a consulta daquele dia", async () => {
       const anterior = vi.mocked(fetch).getMockImplementation()!;
       vi.mocked(fetch).mockImplementation((entrada, opcoes) => {
