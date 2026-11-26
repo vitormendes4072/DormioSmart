@@ -1,5 +1,6 @@
 import { ChevronDown, ChevronLeft, ChevronRight, Moon } from "lucide-react";
 import { useId, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 import { GraficoDeTempoPorDia } from "./GraficoDeTempoPorDia";
 import { MarcaDoDiaSelecionado } from "./MarcaDoDiaSelecionado";
@@ -41,13 +42,15 @@ function diasEmSequencia(total: number, podeSerMaior = false) {
   return total === 1 ? "1 dia consecutivo" : `${total} dias consecutivos`;
 }
 
-export function CalendarioDoSono({ dispositivo, demo, selecionado, aoSelecionarDia, ancora, aoNavegar }: {
+export function CalendarioDoSono({ dispositivo, demo, selecionado, aoSelecionarDia, ancora, aoNavegar, destinoDoGrafico = null }: {
   dispositivo: string | null;
   demo: boolean;
   selecionado: Date | null;
   aoSelecionarDia: (dia: Date | null) => void;
   ancora: Date;
   aoNavegar: (dia: Date) => void;
+  /** UI-48: em tela larga, o gráfico vai para a coluna da direita do Início; sem destino, fica abaixo do calendário. */
+  destinoDoGrafico?: HTMLElement | null;
 }) {
   const hoje = somarDias(new Date(), 0);
   const [aberto, setAberto] = useState(false);
@@ -113,6 +116,12 @@ export function CalendarioDoSono({ dispositivo, demo, selecionado, aoSelecionarD
     aoSelecionarDia(selecionado?.getTime() === dia.getTime() ? null : dia);
   }
 
+  const grafico = (
+    <GraficoDeTempoPorDia registros={registros} referencia={data} hoje={hoje} selecionado={selecionado}
+      aoSelecionarDia={selecionarDia} carregando={carregando} falhou={dados === null}
+      parcial={dados?.truncada ?? false} recarregar={recarregar} />
+  );
+
   const grade = (
     <>
       <div className="grid grid-cols-7 text-center text-[11px] font-semibold text-muted-foreground" aria-hidden="true">
@@ -140,10 +149,12 @@ export function CalendarioDoSono({ dispositivo, demo, selecionado, aoSelecionarD
               aria-current={eHoje ? "date" : undefined}
               aria-pressed={instante === selecionado?.getTime()}
               onClick={() => selecionarDia(dia)}
-              className={`group relative grid min-h-9 min-w-0 place-content-center justify-items-center text-xs font-semibold focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-ring aria-pressed:underline sm:text-sm ${aberto ? "min-h-12" : ""} ${atual ? "border-(color:--sessao-destaque-borda) bg-(color:--sessao-destaque-borda) text-white" : passada ? "bg-accent text-accent-foreground" : "rounded-xl text-foreground hover:bg-secondary"} ${emFaixa && inicioFaixa ? "rounded-s-2xl" : ""} ${emFaixa && fimFaixa ? "rounded-e-2xl" : ""}`}
+              className={`group relative grid min-h-9 min-w-0 place-content-center justify-items-center text-xs font-semibold focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-ring sm:text-sm ${aberto ? "min-h-12" : ""} ${atual ? "border-(color:--sessao-destaque-borda) bg-(color:--sessao-destaque-borda) text-white" : passada ? "bg-accent text-accent-foreground" : "rounded-xl text-foreground hover:bg-secondary"} ${emFaixa && inicioFaixa ? "rounded-s-2xl" : ""} ${emFaixa && fimFaixa ? "rounded-e-2xl" : ""}`}
             >
-              <span className={`grid size-6 place-items-center rounded-full ${eHoje ? "ring-1 ring-inset ring-current" : ""} group-aria-pressed:font-extrabold`}>{dia.getDate()}</span>
-              {!aberto && instante === selecionado?.getTime() && <MarcaDoDiaSelecionado />}
+              <span className={`relative grid size-6 place-items-center rounded-full ${eHoje ? "ring-1 ring-inset ring-current" : ""} group-aria-pressed:font-extrabold`}>
+                {dia.getDate()}
+                {instante === selecionado?.getTime() && <MarcaDoDiaSelecionado />}
+              </span>
               {temRegistro && (
                 <span className={`size-1.5 rounded-full ${atual ? "bg-white" : "bg-primary"}`} aria-hidden="true" />
               )}
@@ -155,7 +166,7 @@ export function CalendarioDoSono({ dispositivo, demo, selecionado, aoSelecionarD
   );
 
   return (
-    <div className={`w-full min-w-0 space-y-2 ${aberto ? "" : "md:ml-auto md:w-[510px]"}`}>
+    <div className={`w-full min-w-0 space-y-2 ${aberto || !destinoDoGrafico ? "" : "ml-auto max-w-[510px]"}`}>
       <section aria-labelledby={titulo} className="@container min-w-0 rounded-2xl border border-border bg-card shadow-sm">
         <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2 px-3 py-2.5 sm:px-4 @[450px]:grid-cols-[minmax(9rem,1fr)_minmax(10rem,1.5fr)_auto]">
           <div>
@@ -244,9 +255,7 @@ export function CalendarioDoSono({ dispositivo, demo, selecionado, aoSelecionarD
           )}
         </div>
       </section>
-      <GraficoDeTempoPorDia registros={registros} referencia={data} hoje={hoje} selecionado={selecionado}
-        aoSelecionarDia={selecionarDia} carregando={carregando} falhou={dados === null}
-        parcial={dados?.truncada ?? false} recarregar={recarregar} />
+      {destinoDoGrafico ? createPortal(grafico, destinoDoGrafico) : grafico}
     </div>
   );
 }

@@ -140,7 +140,7 @@ export function GraficoDeTempoPorDia({
                             aoSelecionarDia(dia.data);
                           }}
                           className="relative flex min-w-0 cursor-pointer items-end justify-center rounded-sm pt-36 text-xs font-semibold text-muted-foreground focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-ring aria-pressed:text-primary">
-                          <span className="relative block min-w-7 pt-1">{dia.rotulo}{ativo && <MarcaDoDiaSelecionado />}</span>
+                          <span className="block pt-1.5"><span className="relative inline-block rounded-full px-1.5 leading-5">{dia.rotulo}{ativo && <MarcaDoDiaSelecionado />}</span></span>
                         </button>
                       );
                     })}

@@ -13746,6 +13746,40 @@ Os dois controles originais da etapa também voltaram a falhar sob sabotagem. No
 
 ---
 
+# 2026-11-26 (viii) — UI-48: o gráfico na coluna da direita e o anel no dia escolhido
+
+**O problema, como foi entendido no início.** Na revisão do `UI-47`, dois pontos ficaram para o autor decidir. Primeiro: no computador, o gráfico de tempo por dia ficava no topo do Início, abaixo do calendário. Os dois cartões, à direita, somavam quase 400 px de altura, e à esquerda, ao lado do seletor de aparelho, sobrava um espaço vazio do mesmo tamanho, que empurrava "Seus registros" para baixo. As capturas do próprio `UI-47` mostram o vazio. Segundo: a marca do dia escolhido era um losango de 6 px no canto do dia, que se perdia na semana compacta.
+
+**Hipótese de trabalho.** O autor escolheu, entre as opções apresentadas: em tela larga, o gráfico vai para a coluna da direita; a marca vira um anel grosso na cor primária, afastado do número. O anel não se confunde com o anel fino de "hoje" nem com o fundo cheio da sequência. Para o gráfico não trocar de lugar quando um dia é escolhido, a coluna da direita precisa existir em todos os estados da tela (carregando, erro, dia sem registro, com dados), e não só no estado com dados.
+
+**O que foi testado, e como.**
+- **O gráfico continua dentro do calendário**, que guarda a consulta e a semana, e é desenhado num destino na coluna da direita por `createPortal`, só quando a tela tem 1 050 px ou mais (`matchMedia`, a mesma largura em que o Início já tinha duas colunas). Sem destino, ele fica sob o calendário como antes.
+- **3 testes novos no `montagem.test.ts`:** em tela larga, o gráfico está na coluna e fora do cabeçalho, inclusive depois de escolher um dia sem registro e um dia com registro; em tela estreita, continua no cabeçalho e não existe coluna; no calendário expandido, o dia escolhido tem o anel, e só ele.
+- **No navegador**, em modo demonstração: 1 440 px no tema claro, 900 px e 375 px no tema escuro.
+
+**Resultado medido.**
+- **Suíte do frontend:** 1 089 testes em 73 arquivos, `tsc`, lint, Knip, build e as conferências de documento sem erro.
+- **Contra o código de `develop` (`9e62720`):** 2 dos 3 testes novos falham. O terceiro, o da tela estreita, passa lá de propósito: ele protege o comportamento do celular, que não mudou.
+- **Sabotagens:**
+
+| Sabotagem | Testes que falharam |
+|---|---|
+| Ignorar o destino e desenhar sempre sob o calendário | 1 (o da tela larga) |
+| Tirar a coluna do estado "dia sem registro" | 1 (o da tela larga, no passo do dia vazio) |
+| Mostrar o anel só com o calendário recolhido, como no `UI-47` | 1 (o do calendário expandido) |
+
+- **No navegador, a 1 440 px:** o topo voltou a ter só o seletor e a semana compacta; "Seus registros" sobe para logo abaixo dele, e o gráfico abre a coluna da direita, sob o calendário. Escolhendo a quarta 25, sem registro, o gráfico ficou no mesmo lugar, com o anel em "Qua" e no 25. **A 900 px**, o calendário e o gráfico ocupam a largura toda, sem vazio. **A 375 px**, igual ao `UI-47`, sem rolagem lateral, com o anel visível sobre o dia da sequência atual. Console sem erros além do aviso do `.env` ausente.
+
+**Adaptação.** Duas além do que o autor escolheu. O anel aparece também no calendário expandido: o `UI-47` o escondia ali, e o dia escolhido ficava marcado só por um sublinhado, que saiu. O resumo da sessão passa a dividir a largura com o gráfico em tela larga, e não ocupa mais a largura toda como na prévia mostrada ao autor: é o que deixa o gráfico logo abaixo do calendário e no mesmo lugar em todos os estados.
+
+**O que deu errado no caminho.** O primeiro desenho punha o gráfico ao lado de "Movimento ao longo do tempo". Ao ler o `Dashboard.tsx`, a tela troca de estrutura enquanto o dia carrega e quando o dia não tem registro: o gráfico pularia para o topo e voltaria a cada clique. Daí a coluna em todos os estados.
+
+**Risco em aberto.** O destino depende da largura lida pelo `matchMedia`; num navegador sem ele, o gráfico fica sob o calendário, como no celular. Entre 1 050 px e cerca de 1 150 px, o calendário recolhido é mais largo que a coluna da direita; as bordas direitas coincidem, as esquerdas não.
+
+**Procedência.** Branch `bugfix/UI-48-grafico-na-coluna` sobre `develop` `9e62720`; Windows, Node 24.11.0, em 26/11; navegador embutido do Claude com dados de demonstração.
+
+---
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

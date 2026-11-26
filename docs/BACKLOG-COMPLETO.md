@@ -591,6 +591,7 @@ diagrama** — que é o que a banca lê.
 
 | Item | O quê | Peso |
 |---|---|:---:|
+| **UI-48** ✅ *(26/11, pedido do autor, base `9e62720`)* | **Gráfico na coluna da direita e anel no dia escolhido.** Em tela larga (a partir de 1 050 px), o gráfico de tempo por dia sai do topo e abre a coluna da direita do Início, em todos os estados da tela; abaixo disso, segue sob o calendário. O dia escolhido ganha um anel grosso na cor primária, igual no calendário (recolhido e expandido) e no gráfico. Diário, 26/11 (viii). | ✅ |
 | **UI-47** ✅ *(26/11, pedido do autor, base `e33be52`)* | **Tempo registrado por dia no Início.** Gráfico de segunda a domingo ao lado do fluxo de seleção do calendário, com a mesma consulta, média dos dias com registro e marca de seleção compartilhada. A sobreposição de dois aparelhos foi conferida. Diário, 26/11 (vii). | ✅ |
 | **UI-46** ✅ *(26/11, pedido do autor, base `8bcc652`)* | **Dia do calendário comanda o Início.** A seleção mantém a semana visível, abre a última sessão da data e permite ver as demais. O Dia usa a data local de início, respeita o filtro de dispositivo e mantém o acesso ao Histórico. Diário, 26/11 (v). | ✅ |
 | **UI-45** ✅ *(25/11, pedido do autor)* | **Calendário do sono no Início.** A semana compacta fica entre o seletor de dispositivos e “Seus registros”. A versão expandida mostra Semana, Mês e Sequências. Usa o histórico do dispositivo selecionado, exclui as coletas de teste e atribui cada sessão à data local de início. O resumo de sequências identifica o período consultado. Diário, 25/11 (x). | ✅ |

@@ -1555,6 +1555,42 @@ describe("o painel em camadas (UI-40)", PRAZO, () => {
       await grafico().findByRole("button", { name: /^terça-feira, 24 de novembro, 0h 01m registrados$/ });
     });
 
+    it("UI-48: em tela larga o gráfico fica na coluna da direita, inclusive num dia sem registro", async () => {
+      vi.stubGlobal("matchMedia", (consulta: string) => ({
+        matches: consulta === "(min-width: 1050px)",
+        media: consulta,
+        addEventListener: () => {},
+        removeEventListener: () => {},
+      }));
+      await abrir();
+      const regiao = () => screen.getByRole("region", { name: "Tempo registrado por dia" });
+      const naColuna = () => regiao().closest("[data-vaga-do-grafico]") !== null && regiao().closest("header") === null;
+      await waitFor(() => expect(naColuna()).toBe(true));
+      escolher(/^segunda-feira, 23 de novembro/);
+      await screen.findByText("Sem registros neste dia");
+      expect(naColuna()).toBe(true);
+      escolher(/^terça-feira, 24 de novembro/);
+      await screen.findByRole("heading", { name: titulo });
+      expect(naColuna()).toBe(true);
+    });
+
+    it("UI-48: em tela estreita o gráfico continua logo abaixo do calendário", async () => {
+      await abrir();
+      const regiao = await screen.findByRole("region", { name: "Tempo registrado por dia" });
+      expect(regiao.closest("header")).not.toBeNull();
+      expect(document.querySelector("[data-vaga-do-grafico]")).toBeNull();
+    });
+
+    it("UI-48: o dia escolhido leva o anel também no calendário expandido", async () => {
+      await abrir();
+      escolher(/^terça-feira, 24 de novembro/);
+      await screen.findByRole("heading", { name: titulo });
+      fireEvent.click(calendario().getByRole("button", { name: "Expandir" }));
+      const dia = calendario().getByRole("button", { name: /^terça-feira, 24 de novembro/, pressed: true });
+      expect(dia.querySelector("[data-marca-dia]")).toBeTruthy();
+      expect(calendario().getAllByRole("button").filter((b) => b.querySelector("[data-marca-dia]"))).toHaveLength(1);
+    });
+
     it("permite tentar novamente quando falha a consulta daquele dia", async () => {
       const anterior = vi.mocked(fetch).getMockImplementation()!;
       vi.mocked(fetch).mockImplementation((entrada, opcoes) => {
