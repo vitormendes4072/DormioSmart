@@ -193,8 +193,8 @@ GRUPOS = [SOFTWARE, DECISAO, ACAO, HARDWARE, TERCEIRO_G]
 
 ROTULO_GRUPO = {
     SOFTWARE: "A — Depende só de software: dá para fazer a qualquer momento",
-    DECISAO: "B — Depende de decisão do Vitor",
-    ACAO: "C — Depende de ação do Vitor que não é decisão",
+    DECISAO: "B — Depende de decisão do autor",
+    ACAO: "C — Depende de ação do autor que não é decisão",
     HARDWARE: "D — Bloqueado por hardware ou coleta",
     TERCEIRO_G: "E — Bloqueado por terceiro",
 }
@@ -1750,7 +1750,7 @@ DEFEITOS: list[Defeito] = [
         correcao="Linha reconstruída a partir dos bytes; conferido que nenhuma "
                  "linha de tabela ficou sem `|` final.",
         commit="2254934",
-        nota="Achado na revisão dos patches pedida pelo Vitor antes do commit.",
+        nota="Achado na revisão dos patches pedida pelo autor antes do commit.",
     ),
     Defeito(
         data="2026-10-28", area=SEG, item="SEC-12", familia=2,
@@ -2504,7 +2504,7 @@ PENDENCIAS: list[Pendencia] = [
                    "`ruff.toml` nem `setup.cfg` em lugar nenhum do repositório. "
                    "A **decisão** de configuração está no grupo B."),
 
-    # ───────── B — DECISÃO DO VITOR ──────────────────────────────────────
+    # ───────── B — DECISÃO DO AUTOR ──────────────────────────────────────
     Pendencia("LGPD-01 (a)", DECISAO, "Controlador e base legal da política de "
               "privacidade.", "🟡", camada_backlog="L0",
               decisao="O controlador é você pessoa física ou a instituição de "
@@ -2550,7 +2550,7 @@ PENDENCIAS: list[Pendencia] = [
                    "é a maior decisão em aberto sem ID próprio. ✏️ **28/10:** virou "
                    "o item `ESC-01`."),
 
-    # ───────── C — AÇÃO DO VITOR QUE NÃO É DECISÃO ───────────────────────
+    # ───────── C — AÇÃO DO AUTOR QUE NÃO É DECISÃO ───────────────────────
     Pendencia("Etapa 0 — soldar", ACAO, "**Soldar os 8 pinos do MPU6050.** Teste "
               "de aceitação: pose Z+ com ruído ~0,02. **Trava as camadas L1 e L2 "
               "inteiras.**", "🔴", camada_backlog="L3",

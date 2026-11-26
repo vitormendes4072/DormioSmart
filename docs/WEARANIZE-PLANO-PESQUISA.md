@@ -73,9 +73,9 @@ Non-commercial academic research. No external funding. No industrial partner.
 
 | | |
 |---|---|
-| **Recipient scientist / applicant** | Vitor Mendes Oliverio, undergraduate student, `[[DEPARTMENT / PROGRAMME]]`, `[[INSTITUTION]]` |
+| **Recipient scientist / applicant** | `[[NOME]]`, undergraduate student, `[[DEPARTMENT / PROGRAMME]]`, `[[INSTITUTION]]` |
 | **ORCID** | `[[ORCID]]` |
-| **E-mail** | vitormendes4072@gmail.com |
+| **E-mail** | `[[E-MAIL]]` |
 | **Supervisor** | `[[SUPERVISOR NAME, TITLE]]`, `[[DEPARTMENT]]`, `[[INSTITUTION]]` |
 | **Recipient institution** | `[[INSTITUTION]]`, `[[CITY, STATE, BRAZIL]]` |
 | **Project partners** | None |
@@ -335,9 +335,9 @@ Sem parceiro industrial.
 
 | | |
 |---|---|
-| **Cientista recebedor / solicitante** | Vitor Mendes Oliverio, graduando, `[[CURSO]]`, `[[INSTITUIÇÃO]]` |
+| **Cientista recebedor / solicitante** | `[[NOME]]`, graduando, `[[CURSO]]`, `[[INSTITUIÇÃO]]` |
 | **ORCID** | `[[ORCID]]` |
-| **E-mail** | vitormendes4072@gmail.com |
+| **E-mail** | `[[E-MAIL]]` |
 | **Orientador** | `[[NOME DO ORIENTADOR, TITULAÇÃO]]` |
 | **Instituição recebedora** | `[[INSTITUIÇÃO]]`, `[[CIDADE, ESTADO, BRASIL]]` |
 | **Parceiros do projeto** | Nenhum |

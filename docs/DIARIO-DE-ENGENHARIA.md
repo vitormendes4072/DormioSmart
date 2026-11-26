@@ -1241,7 +1241,7 @@ parametrização). O que nunca aconteceu é outra coisa, mais estreita e ainda a
 **Risco em aberto.**
 
 - **O push continua pendente, e é bloqueio de ambiente, não de decisão.** Os 6 commits estão no
-  clone local do Vitor e em nenhum outro lugar. Enquanto não saírem, o CI não roda e nada nesta
+  clone local do autor e em nenhum outro lugar. Enquanto não saírem, o CI não roda e nada nesta
   entrada ou na anterior pode ser chamado de "o CI passa".
 - **Nada do que a entrada anterior chamou de "validado localmente" mudou de status aqui.** Esta
   entrada não acrescentou uma única execução de job; acrescentou o conhecimento de que a dívida
@@ -2199,7 +2199,7 @@ catalogadas no `UI-19`: `lib/dispositivos.ts :: nomeDoDispositivo` (3 testes, o 
 `lib/autenticacao.ts :: pareceContaExistente` (3 testes, cujo assunto declarado é uma decisão
 de segurança). Trabalho de limpeza, peso baixo, decisão já tomada. **E o enunciado estava
 errado na parte que importava:** o `UI-19` havia concluído em 19/10, em negrito, que *"a
-proteção existe e não há vazamento"*. O Vitor foi cadastrar um e-mail já existente. A tela
+proteção existe e não há vazamento"*. O autor foi cadastrar um e-mail já existente. A tela
 respondeu **"Já existe uma conta com este e-mail."**
 
 **Hipótese de trabalho.** Duas, e a segunda é a da sessão.
@@ -2310,7 +2310,7 @@ toca `web-app/`. O `web-app/tests/rls/` continua fora da conta (exige Postgres d
   ontem em honestidade e **idêntico em risco**: qualquer um com devtools enumera e-mails deste
   projeto. O que mudou é que a tela não entrega mais de graça, e que a limitação deixou de ser
   **suposta** para ser **declarada** — a distinção que é o §1 inteiro das lições. **A decisão de
-  fechá-lo é do Vitor** e tem custo de experiência real: a saída (A) quebra o roteiro de
+  fechá-lo é do autor** e tem custo de experiência real: a saída (A) quebra o roteiro de
   demonstração da banca ("cadastre e entre") e depende de um remetente de e-mail que o plano
   gratuito do Supabase limita por hora.
 - **Nenhum teste deste repositório pode pegar a reincidência deste defeito**, e vale dizer com
@@ -2539,7 +2539,7 @@ flag de tenant; `aws-amplify/amplify-js` #6238 sobre `UsernameExistsException` n
 
 # 2026-10-20 (iii) — `SEC-08` executado: a saída (B′), os comentários que prometiam segurança, e o achado que estava escondido num custo
 
-**O problema, como foi entendido no início.** Executar a decisão da entrada anterior — o Vitor
+**O problema, como foi entendido no início.** Executar a decisão da entrada anterior — o autor
 aprovou a saída **(B′)** — e fechar o que ficou pendente: os dois comentários falsos no código, os
 quatro canais em `LIMITACOES-TCC.md`, o captcha como item dele, e os dois canais novos catalogados.
 Trabalho de registro, com uma pergunta aberta de verdade no meio: **a retenção de credencial em
@@ -2636,7 +2636,7 @@ limpo. Backend **293**, reexecutado e inalterado. RLS fora da conta (exige Postg
 1. **A retenção de credencial foi promovida de nota a item (`SEC-10`)** — justificativa em (a).
 2. **O `SEC-08` saiu do L3 e o `SEC-11` entrou nele.** Parece contabilidade e não é: o `SEC-08`
    estava em L3 porque *"a saída é decisão sua"*, e a decisão foi tomada. O que resta dele é
-   declaração, que é L0. O que precisa do Vitor agora é **uma chave de painel**, e ela tem item
+   declaração, que é L0. O que precisa do autor agora é **uma chave de painel**, e ela tem item
    próprio justamente para não ficar pendurada num item de 🟠 que ninguém mais precisa abrir.
    *Pendência que depende de outra pessoa não mora dentro de um item já decidido.*
 
@@ -2757,7 +2757,7 @@ enunciado é a evidência, e é **inferência**.
    *versionar*, com a parte pessoal num `CLAUDE.local.md` gitignorado. Motivo medido: a correção
    envelheceu em dez dias sem que nada a alcançasse, a lista de jobs errada passou para o backlog, e
    existem cópias divergentes. **Não executada:** revoga uma decisão explícita do autor e resulta em
-   publicação num repositório público. A decisão é do Vitor.
+   publicação num repositório público. A decisão é do autor.
 
 **Risco em aberto.**
 
@@ -2788,7 +2788,7 @@ a cópia na pasta `backup-interno` (fora do repositório).
 
 # 2026-10-27 (ii) — `DOC-11` fechado: o `CLAUDE.md` passa a ser versionado, e a lista de ponteiros não encolheu
 
-**O problema, como foi entendido no início.** O Vitor decidiu pela recomendação da entrada
+**O problema, como foi entendido no início.** O autor decidiu pela recomendação da entrada
 anterior: versionar o `CLAUDE.md` e mover a parte pessoal (devlog, mídia, caminhos da máquina)
 para um `CLAUDE.local.md` gitignorado. Mostrar o diff antes de commitar.
 
@@ -2854,7 +2854,7 @@ interrompida, e **bloqueia commit**. Registrado no `GIT-03`.
 - ~~O lock precisa sair antes do commit~~ — **eram dois.** Removido o `index.lock`, o commit
   falhou num `HEAD.lock` da mesma hora (20/10 01:22:28). Os dois foram removidos, cada um com
   aprovação própria, depois de conferir 0 bytes e nenhum `git.exe` rodando; o
-  `objects/maintenance.lock` (16/10) ficou, por decisão do Vitor. **Erro de método meu:** a
+  `objects/maintenance.lock` (16/10) ficou, por decisão do autor. **Erro de método meu:** a
   varredura `find .git -name "*.lock"` devia ter vindo antes da primeira remoção, não depois da
   falha (`GIT-03`).
 
@@ -2869,7 +2869,7 @@ interrompida, e **bloqueia commit**. Registrado no `GIT-03`.
 **O problema, como foi entendido no início.** Versionar os três arquivos da consolidação
 interrompida em 20/10 (`scripts/consolidar_registro.py` e os dois documentos que ele gera), que
 deixavam o job `documentos` vermelho desde que o diário e o `CLAUDE.md` passaram a citá-los. Plano
-aprovado pelo Vitor com sete escolhas: a linha `ML-04b` fora da contagem e visível; o push como
+aprovado pelo autor com sete escolhas: a linha `ML-04b` fora da contagem e visível; o push como
 `GIT-07`; dois commits de conteúdo (consertar e versionar; levar as discordâncias ao backlog), com
 a data do versionamento virando item próprio; todas as discordâncias reconferidas, e nada fechado
 sem abrir o artefato; números puros derivados e frases que nomeiam casos travadas por guarda;
@@ -2951,7 +2951,7 @@ do `✓` final quebra em `cp1252`. Arquivo não tocado por este lote, terceira i
 reprovando no Windows **só** pelos dois documentos ainda fora do git; em Linux, com eles no índice,
 dá OK.
 
-**(i) A revisão antes do commit achou três coisas, e uma delas era minha afirmação.** O Vitor
+**(i) A revisão antes do commit achou três coisas, e uma delas era minha afirmação.** O autor
 pediu que eu revisasse os patches e só commitasse sem divergência. (1) **A linha do `DOCS-WIN-01`
 no backlog estava partida em seis desde o commit `4014798`, de ontem**: o texto cita `\n`, `\r\n`
 e `\r` como exemplo, e o script de 27/10 os gravou como caracteres de controle — inclusive um CR
@@ -3010,7 +3010,7 @@ commits `846986a`, `c0725ca`, `d74aa01`, `778ec27`, `275665a`.
 **O problema, como foi entendido no início.** Fechar o que a entrada anterior deixou aberto: o
 push (`GIT-07`), os dois testes de ML e o script que falhavam no Windows (`ML-WIN-01`,
 `DOCS-WIN-02`), os dois diagramas que não fecharam (`DIAG-01`, `DIAG-03`) e a data de início do
-versionamento (`DOC-12`). O Vitor autorizou o push pela conta dele e aprovou de antemão o que
+versionamento (`DOC-12`). O autor autorizou o push pela conta dele e aprovou de antemão o que
 precisasse de aprovação. A sessão foi interrompida por um desligamento do computador no meio do
 registro; nada se perdeu, e está conferido abaixo.
 
@@ -3047,7 +3047,7 @@ existe sem `setup-python` (3.11.17). Fecham `GIT-07` e `CI-06`.
 **(b) E o runner avisou de uma coisa que o projeto não sabia:** o `ubuntu-latest` está migrando
 para o Ubuntu 26. Os seis jobs usam `ubuntu-latest`, e a próxima execução pode pegar outro `g++` e
 outro Python. O `ci.yml` já tem a regra, para o Postgres: *"nunca `latest`"*. Virou o `CI-07`,
-**decisão do Vitor**.
+**decisão do autor**.
 
 **(c) `DOCS-WIN-02` era maior do que eu tinha registrado.** Ontem medi só o `--conferir` do
 `estudo_buffer`, que passa; o modo relatório quebrava no `ĝ`. Os dois scripts, nos dois modos: 3 de
@@ -3119,11 +3119,11 @@ sequências, que continua pegando. Registrado como ocorrência 6 do §4.
 
 **Risco em aberto.**
 
-- **`CI-07`**: a próxima execução pode cair no Ubuntu 26. Decisão do Vitor.
+- **`CI-07`**: a próxima execução pode cair no Ubuntu 26. Decisão do autor.
 - **O piso entre plataformas é amostra, não medida.** Dois runners e um Windows; uma quarta
   máquina pode errar mais. A régua dos ângulos é derivada da condição do `arccos`, que não
   depende da máquina; a de 1e-9 dos demais floats ainda é empírica.
-- **`ventregaz-redis`** — um contêiner de outro projeto do Vitor estava rodando; não foi tocado.
+- **`ventregaz-redis`** — um contêiner de outro projeto do autor estava rodando; não foi tocado.
 - A lacuna de 20/02 a 30/05 e a justificativa do travesseiro dependem de material fora do git.
 
 **Procedência.** Execução `40639232458` do Actions; commit `7016c81` (`scripts/calculos_tcc.py`,
@@ -3138,7 +3138,7 @@ de abertura deste diário); `docs/BACKLOG-COMPLETO.md` (75 = 42/12/9/12, reconta
 # 2026-10-28 (iii) — `CI-07`: a imagem do runner fica fixa
 
 **O problema, como foi entendido no início.** O runner avisou que o `ubuntu-latest` migra para o
-Ubuntu 26, e os seis jobs usavam `ubuntu-latest`. O Vitor decidiu fixar.
+Ubuntu 26, e os seis jobs usavam `ubuntu-latest`. O autor decidiu fixar.
 
 **Hipótese de trabalho.** Que fixar `runs-on: ubuntu-24.04` mantivesse os sete jobs verdes e fizesse
 o aviso sumir.
@@ -3170,7 +3170,7 @@ execuções `40746683981` e `40750204890`; `docs/BACKLOG-COMPLETO.md` (`CI-07`, 
 produção respondeu **503**, com `"banco": "consulta falhou"`. A produção vem de `main`, de 10/09;
 não era efeito de nada desta semana.
 
-**Hipótese de trabalho.** Projeto Supabase pausado por inatividade. **Confirmada pelo Vitor**:
+**Hipótese de trabalho.** Projeto Supabase pausado por inatividade. **Confirmada pelo autor**:
 plano gratuito, pausa depois de uma semana sem uso; ele reativou o projeto.
 
 **O que foi testado, e como.**
@@ -3212,7 +3212,7 @@ YAML, para poder ser sabotada aqui.
 # 2026-10-28 (v) — `SEC-12`: a chave pública executava as funções do banco, e a suíte de segurança passava no vazio
 
 **O problema, como foi entendido no início.** Conferir quais migrações estavam aplicadas na
-produção e quais precisavam ser — pergunta do Vitor. Não havia como saber: as migrações são
+produção e quais precisavam ser — pergunta do autor. Não havia como saber: as migrações são
 aplicadas à mão, e nada registra quais rodaram.
 
 **Hipótese de trabalho.** Que bastasse procurar no catálogo as marcas de cada migração. Isso
@@ -3223,7 +3223,7 @@ objeto novo nasce sem privilégio para o cliente.
 
 | # | O que | Como | Natureza |
 |:-:|---|---|---|
-| 1 | Quais migrações estão aplicadas | `DIAGNOSTICO-migracoes-aplicadas.sql`, rodado pelo Vitor na produção | inventário |
+| 1 | Quais migrações estão aplicadas | `DIAGNOSTICO-migracoes-aplicadas.sql`, rodado pelo autor na produção | inventário |
 | 2 | O diagnóstico acerta? | aplicando 001→009 num Postgres local, e na ordem real da produção | execução |
 | 3 | A ordem segura de aplicar | as operações do código de `main` antes e depois de cada grupo de migrações | execução |
 | 4 | O verificador acusa? | três sabotagens: marca errada, critério frouxo, migração que tira privilégio | **controle positivo** |
@@ -3236,7 +3236,7 @@ objeto novo nasce sem privilégio para o cliente.
 **(a) O estado da produção:** 001, 003, 004 aplicadas; 002 desnecessária (0 leituras sem dono);
 005–008 não. A 005, 006 e 008 podem entrar antes do release — as 10 operações do código de
 `main` dão o mesmo resultado com elas; a 007 quebra exatamente as 2 que usam `devices.token_hash`
-e por isso só entra com o release. O Vitor aplicou a 005, 006 e 008; o diagnóstico confirmou.
+e por isso só entra com o release. O autor aplicou a 005, 006 e 008; o diagnóstico confirmou.
 Fecham `PERFIL-02` e `DATA-03`.
 
 **(b) A sabotagem que não foi acusada, e o que ela escondia.** Das três sabotagens do verificador,
@@ -3245,7 +3245,7 @@ reaplicava os GRANTs das tabelas **depois** das migrações, desfazendo o `revok
 apareceu que a 007 cria `device_tokens` dizendo *"sem GRANT para anon"* e não revoga nada — o que só
 vale se o banco não der privilégio sozinho. **Na produção, dá:** `pg_default_acl` mostra ALL em
 tabela e EXECUTE em função, nominais, para `anon` e `authenticated`. E `revoke ... from public`,
-que as 005–008 usavam, não alcança grant nominal. Conferido pelo Vitor: **as sete funções
+que as 005–008 usavam, não alcança grant nominal. Conferido pelo autor: **as sete funções
 aplicadas eram executáveis por `anon`**.
 
 **(c) O impacto, medido antes de corrigir:** chamando as oito funções como `anon`, nada mudou —
@@ -3280,7 +3280,7 @@ tabela aberta.
 `007_…` (revogações), `DIAGNOSTICO-migracoes-aplicadas.sql`, `README.md`;
 `web-app/tests/rls/esquema_base.sql` (bloco 1b), `test_rls_privilegios.py`,
 `verificar_por_mutacao.py`; `web-app/tests/migracoes/verificar_migracoes.py`; `pg_default_acl` e
-`has_function_privilege` da produção (resultados colados pelo Vitor); backlog `SEC-12`, `SEC-13`.
+`has_function_privilege` da produção (resultados colados pelo autor); backlog `SEC-12`, `SEC-13`.
 
 ---
 
@@ -3292,7 +3292,7 @@ tabela aberta.
 **Hipótese de trabalho.** Que a 009 tirasse de `anon` todas as funções sem tocar no que o código
 da produção usa. Confirmada.
 
-**O que foi testado, e como.** O Vitor aplicou a 009 no SQL Editor e colou dois resultados: a
+**O que foi testado, e como.** O autor aplicou a 009 no SQL Editor e colou dois resultados: a
 consulta de privilégios por função e o diagnóstico de migrações. O `/health` foi conferido daqui
 depois da aplicação. Para o release: `git diff` de `main` para `develop` (arquivos, variáveis de
 ambiente, `vercel.json`) e todas as chamadas que o código de `develop` faz ao banco.
@@ -3320,7 +3320,7 @@ ambiente, `vercel.json`) e todas as chamadas que o código de `develop` faz ao b
   o padrão do Supabase lhe dá EXECUTE — mas isso é leitura; a conferência entrou no roteiro do
   release, antes do merge.
 
-**Procedência.** Resultados da produção colados pelo Vitor em 29/10; `git diff origin/main
+**Procedência.** Resultados da produção colados pelo autor em 29/10; `git diff origin/main
 origin/develop`; `web-app/database.py`, `web-app/dispositivos.py`; backlog `SEC-12`.
 
 ---
@@ -3338,12 +3338,12 @@ duas partes.
 
 **O que foi testado, e como.**
 
-- **Antes do merge:** o Vitor rodou no SQL Editor `has_function_privilege('service_role', …)` nas
+- **Antes do merge:** o autor rodou no SQL Editor `has_function_privilege('service_role', …)` nas
   cinco funções que o backend chama e a contagem de dispositivos.
 - **O release:** PR #5, `develop` → `main`. **O merge em `main` foi negado a esta sessão** pelo
-  classificador de permissões (deploy de produção); o Vitor mesclou pelo GitHub
+  classificador de permissões (deploy de produção); o autor mesclou pelo GitHub
   (*Create a merge commit*).
-- **Depois do merge:** `/health` e as rotas protegidas conferidos daqui. O Vitor aplicou a 007
+- **Depois do merge:** `/health` e as rotas protegidas conferidos daqui. O autor aplicou a 007
   e rodou a conferência que vem nela e o diagnóstico de migrações.
 - **O monitor:** disparado à mão (`workflow_dispatch`) a partir de `main`.
 
@@ -3362,7 +3362,7 @@ duas partes.
 - **O monitor:** a execução `40818265459`, de `main`, passou.
 
 **Adaptação.** Nenhuma no plano. A permissão negada mudou só quem clica: merge em `main` é do
-Vitor, e assim fica.
+autor, e assim fica.
 
 **Risco em aberto.**
 
@@ -3374,7 +3374,7 @@ Vitor, e assim fica.
 - **Não medido:** o pareamento de ponta a ponta pelo app em produção (`POST /api/devices`). O
   que se mediu foi o privilégio da função no banco.
 
-**Procedência.** Resultados da produção colados pelo Vitor em 29/10 (privilégios de
+**Procedência.** Resultados da produção colados pelo autor em 29/10 (privilégios de
 `service_role`, conferência da 007, diagnóstico); PR #5 e `main 787227c`; execução `40818265459`
 de `saude-producao.yml`; backlog `INFRA-03`.
 
@@ -3548,7 +3548,7 @@ existisse no sensor. As duas eram lembrança, não leitura.
 # 2026-10-30 — `ML-11`: três features bastam, e o WoM custa de 0,07 a 0,10 de kappa
 
 **O problema, como foi entendido no início.** Depois da análise do `ARQ-01` (29/10 (v)), o
-Vitor perguntou se todas as 8 features são necessárias, e pediu o resultado antes de decidir
+autor perguntou se todas as 8 features são necessárias, e pediu o resultado antes de decidir
 qualquer coisa. Ele está inclinado ao sono leve com FIFO. Pediu também a investigação do
 registro pelo celular, que não tem as limitações do ESP32, e se dá para oferecer mais de um
 modo de registro ao usuário, com tudo registrado num documento.
@@ -3633,7 +3633,7 @@ modo de registro ao usuário, com tudo registrado num documento.
 
 # 2026-10-30 (ii) — `ARQ-01` decidido: arquitetura C2, e o `ML-11` fora de `develop`
 
-**O problema, como foi entendido no início.** O Vitor mesclou as PRs #12 e #13 e decidiu:
+**O problema, como foi entendido no início.** O autor mesclou as PRs #12 e #13 e decidiu:
 seguir com a arquitetura **C2** (sono leve + FIFO). Pediu os ajustes que a decisão exige, depois
 o `API-03`, depois o `ML-12`, tudo registrado, e que eu dissesse se houve algum erro em qualquer
 parte.
@@ -6223,14 +6223,14 @@ batiam. Sabotagens **4/4**, cada uma com a mensagem que nomeia o item. `npm audi
 `session`), python-dotenv 1.2.1 (CVE-2026-28684, `set_key` segue link simbólico), gunicorn 21.2.0
 (CVE-2024-1135 e CVE-2024-6827, contrabando de requisição). Nenhum explorável aqui: a Vercel roda
 pelo `@vercel/python` e o gunicorn não aparece fora do `requirements.txt`; o backend não usa a
-`session` do Flask nem o `set_key`. Por decisão do Vitor os três subiram (3.1.3, 1.2.2, 22.0.0):
+`session` do Flask nem o `set_key`. Por decisão do autor os três subiram (3.1.3, 1.2.2, 22.0.0):
 **417 testes do backend passam** em Python 3.11 limpo, e o `pip-audit` sai sem aviso. Na sabotagem,
 os dois jobs do workflow reprovaram (execução `41749478900`): o `npm audit` listou os avisos do
 `react-router` (faixa até 7.18.1; o 7.18.4 em uso fica fora), o `pip-audit` os dois do gunicorn.
 
 **Adaptação.** A regra do `DOC-13` mudou de "ID fechado citado" para três conferências
 estruturadas — a literal acusaria 161 menções e ensinaria a ignorar o alarme. O plano aprovado
-previa parar se o `pip-audit` acusasse: parou, os avisos foram levados ao Vitor com a análise de
+previa parar se o `pip-audit` acusasse: parou, os avisos foram levados ao autor com a análise de
 alcance, e a decisão foi subir as versões em vez de ignorar os IDs.
 
 **O que deu errado no caminho.** A primeira tentativa da sabotagem do quadro não acusou: o
@@ -6317,7 +6317,7 @@ o carregador dos testes confere o caminho **com a query**, e uma liberação de 
 com `…md?raw` — só a de pasta. Confirmado liberando `docs/` por um instante (os 22 testes dos dois
 arquivos passaram). A liberação de `docs/` ficou só no `vitest.config.ts`; o `vite.config.ts`
 segue liberando o arquivo, e só ele. A auditoria do `CI-08` passou de `--omit=dev` para todas
-as dependências, por decisão do Vitor no plano.
+as dependências, por decisão do autor no plano.
 
 **O que deu errado no caminho.** Três coisas. (1) Tentei primeiro exportar a lista do
 `vite.config.ts` para o `vitest.config.ts` — a falha continuou, porque o problema não era a lista
@@ -6346,7 +6346,7 @@ documento importado com `?raw` passaria no CI e no build e só quebraria no `npm
 
 **Hipótese de trabalho.** Que um teste estático bastasse: achar os `?raw` dos módulos da aplicação
 e conferir cada um contra o `server.fs.allow` do servidor de desenvolvimento. Liberar `docs/` também
-no servidor de desenvolvimento foi descartado, por decisão do Vitor: desfaria o "só ele" do
+no servidor de desenvolvimento foi descartado, por decisão do autor: desfaria o "só ele" do
 `LGPD-01` (b) sem ganho além de simetria.
 
 **O que foi testado, e como.** `frontend/src/raw.test.ts` importa o `vite.config.ts`, lê a lista e
@@ -6403,7 +6403,7 @@ dois imports de outro documento → `403`, o inexistente → "arquivo não exist
 seu teste, a política fora da lista → o servidor recusa. Suíte: **465 testes, 33 arquivos**; `tsc`
 limpo; o servidor sobe e responde em menos de 100 ms.
 
-✏️ *Mesmo dia, antes do merge, a pedido do Vitor: avaliado o limite que restava, o caminho montado em
+✏️ *Mesmo dia, antes do merge, a pedido do autor: avaliado o limite que restava, o caminho montado em
 execução. Medido com sabotagens temporárias: um template com variável
 (`` import(`../docs/${nome}.md?raw`) ``) **já reprova** ("arquivo não existe"); a concatenação
 (`import(base + "?raw")`) passava no teste e **no build, sem aviso** (com `@vite-ignore`), o documento
@@ -6508,7 +6508,7 @@ mesmas variáveis), não medição na produção. O `DOC-14` segue aberto.
 # 2026-11-03 (xxiv) — `DOC-14`: o README reescrito, executado e com o painel de hoje
 
 **O problema, como foi entendido no início.** O `README.md` é a primeira coisa que a banca lê, e o
-`INFRA-04` mostrou que ele envelheceu além da stack. O Vitor pediu revisão completa, inclusive das
+`INFRA-04` mostrou que ele envelheceu além da stack. O autor pediu revisão completa, inclusive das
 imagens.
 
 **Hipótese de trabalho.** Que bastasse reescrever as seções contra o código; e que a imagem do
@@ -6546,7 +6546,7 @@ dataset pendente): não entrou no README, e virou o `UI-23`. Os READMEs de `web-
 instruções mandavam rodar os testes sem instalar o `pytest`, que não está no `requirements.txt`.
 Corrigido e reexecutado. O primeiro teste do simulador não imprimiu nada — o `timeout` matava o
 processo antes de o Python esvaziar a saída; com `-u` apareceu o `401`. A primeira captura pelo
-Edge não gerou arquivo, porque o caminho curto do Windows (`VITOR-~1`) não foi aceito; com o caminho
+Edge não gerou arquivo, porque o caminho curto do Windows (`USUARI~1`, por exemplo) não foi aceito; com o caminho
 longo, gerou. E a captura pelo painel do navegador do app saía reduzida (800 px, JPEG), por isso o
 Edge.
 
@@ -6646,7 +6646,7 @@ backlog `DOC-14`, `DEMO-02`, `UI-23`, `DOC-15`.
 **O problema, como foi entendido no início.** O risco que a entrada de 04/11 deixou em aberto: em
 modo demonstração o painel pedia `GET /api/devices`, e o servidor de desenvolvimento sem backend
 respondia `500` no console. Ficou registrado só no diário — e a prática 2 do `CLAUDE.md` pede que
-todo risco em aberto aponte um item do backlog. O Vitor apontou.
+todo risco em aberto aponte um item do backlog. O autor apontou.
 
 **Hipótese de trabalho.** Que fosse o `useDispositivos` sem a verificação que o `useHistorico` já
 tem, e que bastasse devolver a lista vazia em demo — o mesmo efeito na tela que a falha silenciosa
@@ -11815,7 +11815,7 @@ O GitHub Releases dá o endereço fixo (`releases/latest/download/smart-dormio.a
 - **O guia `docs/DISTRIBUICAO-DO-APP.md`** ganhou o caminho do GitHub Releases e o passo a passo de uma versão nova.
 
 **O que deu errado no caminho.**
-- **O Gradle recusou começar** ("Unable to establish loopback connection") com o `jdk.net.unixdomain.tmpdir` na pasta temporária de nome curto (`VITOR-~1`). Com um caminho longo, sem o `~`, compilou.
+- **O Gradle recusou começar** ("Unable to establish loopback connection") com o `jdk.net.unixdomain.tmpdir` na pasta temporária de nome curto (`USUARI~1`, por exemplo). Com um caminho longo, sem o `~`, compilou.
 - **O primeiro gesto para abrir a gaveta de apps no emulador não abriu nada.** O ícone foi achado pelo despejo da interface (`uiautomator`): estava na fileira de baixo como "Predicted app: Smart Dormio", com o anel de app sugerido do launcher do Pixel.
 
 **Risco em aberto.**
@@ -13610,6 +13610,28 @@ Os dois controles originais da etapa também voltaram a falhar sob sabotagem. No
 - **Quem tem a 1.1.3 ou a 1.1.4** continua sem o aviso de versão nova e depende do aviso do autor.
 
 **Procedência.** PRs #297 e #298; `main` `3b2a3d2`; deploy `8078019981`; release `app-v1.1.6`; conferências desta máquina (Windows 11, emulador Pixel 6); 26/11.
+
+---
+
+# 2026-11-26 (iii) — revisão do que sobe ao GitHub: e-mail e nome fora dos arquivos
+
+**O problema, como foi entendido no início.** O autor pediu uma revisão rigorosa de tudo o que vai ao repositório, que é público. A regra do projeto já dizia que nada versionado pode conter segredo, nome de pessoa ou caminho de máquina, e a política de privacidade usa `[CONTROLADOR]` e `[CONTATO]` justamente para isso.
+
+**O que foi testado, e como.** Os 778 arquivos de `develop`, o histórico enviado (todas as branches remotas), as sete releases e o APK 1.1.6, os textos das 299 PRs e o site em produção. Segredos: o valor real de cada chave do `.env`, do `secrets.h` e do keystore procurado na árvore e no histórico, e padrões de JWT, chave privada e token. Dados pessoais: nome, e-mail, telefone e caminhos da máquina. Imagens: metadados EXIF e conteúdo. Dados de ML: se há dado bruto de base restrita.
+
+**Resultado medido.**
+- **Segredos:** nenhum, nem no histórico. O APK leva só a chave anon, que é pública por desenho, e o site não publica `.map`.
+- **Dados pessoais nos arquivos:** o e-mail do autor num rascunho de plano de pesquisa; o nome completo em quatro arquivos (créditos do README, `diagram.json`, uma decisão e o mesmo rascunho) e numa citação; o primeiro nome em 66 frases do tipo "decisão do autor"; e o nome curto da pasta de usuário do Windows em duas entradas do diário.
+- **Fora dos arquivos:** o e-mail pessoal é o autor de cerca de mil commits já enviados. Isso não sai sem reescrever o histórico público, o que quebraria branches e tags das releases; a saída é usar o e-mail `noreply` do GitHub daqui em diante.
+- **Imagens:** sem metadados. Uma figura do esquema elétrico traz a marca d'água de um site de terceiros, e as imagens da landing não têm origem registrada.
+
+**Adaptação.** O e-mail e o nome viraram marcadores (`[[NOME]]`, `[[E-MAIL]]`, `[AUTOR]`) ou "o autor". Os créditos do README dizem que os nomes ficam no documento do TCC. O `PENDENCIAS-ABERTAS.md` e o `CORRECOES-APLICADAS.md` foram regenerados pelo `consolidar_registro.py`.
+
+**Risco em aberto.**
+- **O histórico e os commits** continuam com o nome e o e-mail; só o que vem depois muda.
+- **A origem das imagens** da landing e do esquema elétrico, para o direito de uso.
+
+**Procedência.** Revisão de 26/11 sobre `develop` `f3439e9`, nesta máquina (Windows 11); branch `docs/sem-dados-pessoais`.
 
 ---
 

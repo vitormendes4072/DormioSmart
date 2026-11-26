@@ -1335,7 +1335,7 @@ só de código filtra pela coluna de área.
 
 **A correção.** Linha reconstruída a partir dos bytes; conferido que nenhuma linha de tabela ficou sem `|` final.
 
-**Nota.** Achado na revisão dos patches pedida pelo Vitor antes do commit.
+**Nota.** Achado na revisão dos patches pedida pelo autor antes do commit.
 
 **Commit.** `2254934` · procedência **completa**
 
