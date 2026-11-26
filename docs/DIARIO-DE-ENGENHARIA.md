@@ -13683,6 +13683,42 @@ Os dois controles originais da etapa também voltaram a falhar sob sabotagem. No
 
 ---
 
+# 2026-11-26 (vi) — VIA-02: a primeira noite com o travesseiro e o celular juntos
+
+**O problema, como foi entendido no início.** O `VIA-02` pergunta se o travesseiro capta o movimento que o celular sobre o colchão capta, com o critério fixado em 23/11, antes dos dados (`docs/PROTOCOLO-VIA-02.md`). Até aqui não havia nenhuma noite gravada pelos dois ao mesmo tempo.
+
+**Hipótese de trabalho.** Os dois calculam as mesmas features com o mesmo núcleo; a diferença está no acoplamento ao corpo. Com a cabeça sobre o travesseiro, ele deveria ver ao menos o que o celular ao lado vê.
+
+**O que foi testado, e como.**
+- **Antes de deitar:** a placa no USB foi ouvida pela serial por ~13 min, sem reiniciar. Épocas de 30 s a 50,2 Hz, todas com features e guardadas na fila; o ciclo de envio deu `HTTP 200` em dois lotes (21 aceitas, 0 rejeitadas), heap mínimo 42 256 B. O sensor foi achado dormindo duas vezes e reconfigurado pelo firmware, e uma época saiu recusada (motivo 5).
+- **A noite:** travesseiro com o `firmware/sketch.ino` e o celular com o app, sobre o colchão. A exportação seguiu o trecho do protocolo, rodado no navegador do autor. A janela (26/11, 05:01 a 11:45, horário local) **saiu dos dados**, da primeira e da última época do celular: o início, o fim, o lado da tela e a linha de calibração não foram anotados.
+- **A análise:** `scripts/analisar_via02.py` e `scripts/analisar_cal03.py` sobre o arquivo exportado, sem nenhuma mudança no critério. O arquivo e os resultados ficam fora do repositório.
+
+**Resultado medido.**
+- **Cobertura:** 753 épocas do travesseiro e 810 do celular na janela, sem buracos acima de 2 min; 732 pares. Cobertura de 98,3% e 99,96%.
+- **Atraso entre os relógios:** −1 registro, escolhido pela correlação e aplicado.
+- **O travesseiro viu 4 dos 5** registros com movimento no celular (0,80). Na direção contrária, o celular viu 4 dos 63 do travesseiro (0,06). Fração com movimento: travesseiro 8,6%, celular 0,7%. κ de Cohen 0,11; intensidade com Pearson 0,32 e Spearman 0,37.
+- **Limiar candidato do celular** (relatado, não decide): **0,08 m/s²** de pico iguala a fração dele à do travesseiro, contra os 1,2 m/s² em uso.
+- **Modelo:** a mesma classe nos dois em 88% dos pares; sono de 83,7% no travesseiro e 85,4% no celular.
+- **Veredito do `VIA-02`:** nenhum. O critério pede 5 noites; há 1.
+- **`CAL-03`:** nenhuma das 810 épocas do celular saiu calibrada; a gravidade dá a tela para cima. Como controle, 800 épocas paradas, piso 0,00 mg, norma 0,9963 g, 25,2 °C. Veredito inconclusivo, como esperado com uma noite.
+
+**Adaptação.** Nenhuma no critério. A janela tirada dos dados no lugar da anotada está declarada no arquivo exportado.
+
+**O que deu errado no caminho.**
+- **O navegador embutido do Claude não salva downloads no disco.** O arquivo foi gerado nele e não apareceu em pasta nenhuma; a cópia pela área de transferência também falhou (a página sem foco recusa `writeText`). A exportação foi refeita pelo autor no navegador dele, com o trecho do protocolo.
+- **As anotações da noite não foram feitas**, e a calibração não pode ser explicada por elas.
+- **O travesseiro amanheceu "Pausado"** em Dispositivos, com a última época às 11:13. O que ele mandar depois disso é descartado até ser retomado. A causa da pausa não foi investigada.
+
+**Risco em aberto.**
+- **Cinco movimentos no celular são pouco.** Os 80% vêm de 4 de 5 e não dizem nada sozinhos; o intervalo do critério existe para isso. O `VIA-02` segue aberto.
+- **Com a régua de 1,2 m/s², o celular sobre o colchão quase não marca movimento.** O limiar dele é o `DATA-06`, que espera as 5 noites.
+- **Por que a calibração do celular não entrou** está no `CAL-03`.
+
+**Procedência.** Branch `feature/VIA-02-primeira-noite` sobre `develop` `26658db`; análises rodadas no Windows, Python 3.13, em 26/11; dados na conta do autor, exportados pelo trecho do `docs/PROTOCOLO-VIA-02.md`.
+
+---
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
