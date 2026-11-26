@@ -14,7 +14,7 @@ import { AvisoDeMistura, SeletorDeDispositivo } from "../components/SeletorDeDis
 import { useDispositivos } from "../hooks/useDispositivos";
 import { useHistorico } from "../hooks/useHistorico";
 import { LIMITE_DO_PAINEL } from "../lib/api";
-import { origemDaTemperatura, descreverRecorte, serieMisturaInstrumentos } from "../lib/dispositivos";
+import { origemDaTemperatura, descreverRecorte } from "../lib/dispositivos";
 import { calcularCobertura } from "../lib/cobertura";
 import { estaEmModoDemo } from "../lib/demo";
 import {
@@ -189,7 +189,20 @@ export function Dashboard() {
   const cob = m.cobertura;
   const pctCoberto =
     cob.janelaMs > 0 ? (cob.tempoCobertoMs / cob.janelaMs) * 100 : null;
-  // O aparelho DA sessão exibida, mesmo com "todos" no seletor.
+  // O aviso acompanha os pontos do gráfico, inclusive ao mostrar uma metade da sessão.
+  const aparelhosDoGrafico = new Set<string>();
+  for (const leitura of leiturasVisiveis) {
+    const instante = Date.parse(instanteDaLeitura(leitura));
+    if (
+      leitura.device_id && Number.isFinite(instante)
+      && instante >= (recorteDoGrafico?.inicio ?? -Infinity)
+      && instante < (recorteDoGrafico?.fim ?? Infinity)
+    ) {
+      aparelhosDoGrafico.add(leitura.device_id);
+    }
+  }
+  const dispositivosDoGrafico = dispositivos.filter(({ id }) => aparelhosDoGrafico.has(id));
+  const leiturasFora = leituras.length - leiturasVisiveis.length;
   const aparelhosVisiveis = new Set(leiturasVisiveis.map((l) => l.device_id));
   const aparelhoDaSessao = aparelhosVisiveis.size === 1
     ? dispositivos.find((item) => aparelhosVisiveis.has(item.id))
@@ -223,8 +236,8 @@ export function Dashboard() {
       />
       {avisoDePausa}
 
-      {serieMisturaInstrumentos(dispositivos, dispositivo) && (
-        <AvisoDeMistura dispositivos={dispositivos} selecionado={dispositivo} />
+      {aparelhosDoGrafico.size > 1 && (
+        <AvisoDeMistura dispositivos={dispositivosDoGrafico} />
       )}
 
       {/* A coleta teve buracos? Isso precisa aparecer ANTES dos números, e
@@ -239,7 +252,6 @@ export function Dashboard() {
       <ResumoDaSessao
         sessoes={verTudo || ultima === null ? sessoes : [ultima]}
         verTudo={verTudo}
-        aparelho={aparelhoDoResumo}
         metricas={m}
       >
         {/* O recorte, e como sair dele. */}
@@ -247,7 +259,6 @@ export function Dashboard() {
           <SeletorDeSessao
             total={sessoes.length}
             verTudo={verTudo}
-            leiturasFora={leituras.length - leiturasVisiveis.length}
             aoAlternar={() => {
               setVerTudo((v) => !v);
               setPeriodo("Noite toda");
@@ -363,6 +374,12 @@ export function Dashboard() {
         </summary>
         <div className="space-y-4 border-t border-border p-4">
           <ul className="space-y-1 text-xs text-muted-foreground">
+            <li>Dispositivo no resumo: {aparelhoDoResumo}.</li>
+            {leiturasFora > 0 && (
+              <li>
+                {leiturasFora.toLocaleString("pt-BR")} {leiturasFora === 1 ? "registro ficou" : "registros ficaram"} fora do recorte.
+              </li>
+            )}
             <li>
               Intensidade: |magnitude − {GRAVIDADE.toFixed(2).replace(".", ",")} m/s²|, o desvio do repouso.
             </li>
