@@ -13975,7 +13975,62 @@ O autor sugeriu levar o aviso para perto do seletor e pediu uma análise da disp
 
 ---
 
-# 2026-11-26 (xiv) — UI-50: barra lateral recolhível e largura útil do Início
+# 2026-11-26 (xiv) — duas ESP32 reaproveitadas, dois sensores que não são MPU6050, e o HW-12
+
+**O problema, como foi entendido no início.** O autor tinha duas ESP32-WROOM de projetos anteriores e quis montar mais dois dispositivos para conhecidos testarem. Pediu, nesta ordem: conferir as duas placas, gravar o firmware do Dormio nelas e, com o sensor soldado, conferir a solda e a captação.
+
+**Hipótese de trabalho.**
+- Placa usada pode ter flash gasta, RAM ruim ou rádio com defeito: testar cada parte antes de investir solda nela.
+- O firmware leva no binário o Wi-Fi, o token do dispositivo e a calibração da unidade (`secrets.h` e `calibracao_da_unidade.h`). Gravar como está mandaria o dado das placas novas para o travesseiro do autor, com a calibração de outro sensor.
+
+**O que foi testado, e como.**
+- **As placas** (`68c0` e `a434`, pelo fim do MAC), com o `esptool` 5.3.1 do pacote `esp32` 3.3.12:
+  1. chip, eFuses e identificação da flash;
+  2. a flash original salva por leitura (fora do repositório);
+  3. 4 MB aleatórios escritos na flash inteira e conferidos;
+  4. um sketch de diagnóstico: RAM em padrões, os dois núcleos, varredura de Wi-Fi e o controlador de Bluetooth.
+- **O firmware:** uma cópia do sketch montada fora do repositório, como faz o `scripts/compilar_sketch_esp32.py`, com o Wi-Fi do autor, a calibração desligada (`aceita = false`) e um token novo por placa, de dois pareamentos feitos pelo autor no app. Os tokens vieram por foto da tela; cada leitura foi conferida com um `POST /api/data/lote` **sem corpo**: o token errado recebe `401` e o certo passa da autenticação e para no corpo (`400`), sem gravar nada.
+- **Os sensores:** o `diagnostico-i2c` e um sketch que lê o WHO_AM_I, a aceleração parada nas quatro escalas e a contagem da FIFO até transbordar.
+- **O `HW-12`:** o `diagnostico-i2c` mudado (abaixo), compilado com o `arduino-cli` 1.6.0 e rodado na placa com o sensor; duas cópias sabotadas rodadas também; `make sintaxe` em contêiner `gcc:13`.
+
+**Resultado medido.**
+- **As duas placas estão boas:** ESP32-D0WD-V3 rev 3.1; eFuses limpos (sem criptografia de flash, sem secure boot); flash de 4 MB conferida inteira; RAM, os dois núcleos, Wi-Fi e Bluetooth sem falha. O Bluetooth falhou na primeira rodada por causa do sketch (abaixo).
+- **O firmware do Dormio nas duas:** 1 097 264 B de programa e 109 072 B de RAM fixa, os números do `HW-10`; as quatro regiões conferidas; os dois tokens aceitos pelo servidor. Sem sensor, a placa liga, monta a fila (0 corrompidos), diz `Calibracao da unidade: NAO aplicada` e acusa o MPU6050 ausente.
+- **Os dois sensores, comprados juntos, não são MPU6050**, embora o chip diga "MPU-6050":
+
+  | | sensor 1 (`a434`) | sensor 2 (`68c0`) | o do travesseiro (11/11 (ix)) |
+  |---|---|---|---|
+  | falhas de barramento | 0 | 0 | 0 |
+  | WHO_AM_I | `0x70` em 2 000/2 000 | `0x70` em 2 000/2 000 | `0x68` em 1 000/1 000 |
+  | FIFO no transbordo | 512 B | 510–512 B | — (1024 B pela folha de dados) |
+  | \|a\| parado | 1,86 g, igual nas 4 escalas | 0,96 g (9,38–9,40 m/s²) | 10,03 m/s² (1,02 g) |
+
+  Com o firmware do Dormio, o sensor 1 teve **toda** drenagem descartada por transbordo (`fifo 512 B, INT_STATUS 0x11`, a cada ~1,7 s) e as épocas recusadas com motivo 2.
+- **A decisão do autor:** trocar os sensores (`HW-13`), e não adaptar o firmware. O motivo principal: pela folha de dados do MPU6500, o filtro de 21 Hz que o firmware escreve no `CONFIG` (0x1A) vale só para o giroscópio, e o do acelerômetro fica em outro registrador; o dado dessas unidades sairia com outra banda e não seria comparável. **Isso foi lido, não medido.**
+- **O `HW-12`:** o diagnóstico antigo dizia "BARRAMENTO NÃO CONFIÁVEL" com 0 falhas e `0x70` constante. O novo classifica a identidade em três casos (original, chip não original com barramento ok, barramento ruim), mede a capacidade da FIFO (passo [4], corte em 768 B) e dá um veredito do chip no fim. Na placa, com o sensor 2: "CHIP NÃO É MPU6050 ORIGINAL" nas duas velocidades e FIFO de 512 e 510 B. Controles na placa: **S1**, um bit trocado em 1 de cada 7 leituras → "BARRAMENTO NÃO CONFIÁVEL", 857 de 1 000 iguais; **S2**, o clone fingindo `0x68` → o passo [2] o aceita e o veredito final o pega pela FIFO de 512 B. `make sintaxe`: os 4 sketches compilam.
+
+**Adaptação.**
+- A versão antiga do `diagnostico-i2c` vale como o "antes" do `HW-12`: rodou no mesmo sensor 2 hoje, antes da mudança, e acusou barramento não confiável.
+- Os tokens das duas placas ficaram num `secrets.h` por placa, numa pasta local fora do repositório, para regravar sem parear de novo. As cópias temporárias com segredo foram apagadas.
+
+**O que deu errado no caminho.**
+- **Bluetooth "com falha" no primeiro diagnóstico das placas:** o core do Arduino libera a memória do Bluetooth quando o sketch não declara usá-lo (`btInUse()`), e o `btStart()` falha. Declarado o uso, passou.
+- **"Nada respondeu" no sensor 2:** o SDA estava soldado no RX0 da ESP32, e não no D21. Um sketch de níveis mostrou o SCL alto (o pull-up do módulo, logo o módulo alimentado) e o SDA baixo; o autor ressoldou no D21 e o sensor apareceu.
+- **Duas vezes o mesmo erro de compilação no `HW-12`:** `'Identidade' does not name a type`. A IDE gera os protótipos das funções antes da primeira função do arquivo; primeiro o `enum` estava depois dela, e depois uma função auxiliar nova foi parar antes dele. O `make sintaxe` **passou** nas duas versões, porque compila com g++ puro, sem esse passo da IDE. Na segunda vez, a placa ainda tinha a cópia sabotada S2, e a saída lida depois da compilação falha era dela (dizia `0x68`); foi descartada.
+- **Comando git errado:** para trazer o `develop`, que tinha avançado com o registro do R23, um `reset --soft HEAD~2` depois do merge deixou as mudanças do R23 no índice como se fossem desta branch. Corrigido com `reset --mixed origin/develop`, antes de qualquer commit.
+- **A contagem da FIFO no transbordo oscila** (510 ou 512 B). A primeira versão comparava com 1024 exato, e um MPU6050 original poderia ler um pouco menos e cair em "menor". Virou um corte em 768 B.
+
+**Risco em aberto.**
+- **O `HW-12` não rodou contra um MPU6050 original:** o caminho "original" só foi exercitado pela sabotagem S2, que não mede uma FIFO de 1024 B. O primeiro módulo original comprado no `HW-13` é o teste.
+- **O CI não compila o `diagnostico-i2c` com o `arduino-cli`**, só com o `make sintaxe`, que não pega o erro de protótipo acima.
+- **O sensor 1 (1,86 g)** não foi caracterizado; sai de uso com o `HW-13`.
+- **As duas placas estão com sketches de teste**, não com o Dormio, até os sensores novos chegarem.
+
+**Procedência.** Bancada desta máquina (Windows 11), 26/11: `esptool` 5.3.1, `arduino-cli` 1.6.0, pacote `esp32` 3.3.12, `make sintaxe` em `gcc:13`. O "antes" do `diagnostico-i2c` e os números do travesseiro vêm do diário de 11/11 (ix). Itens `HW-12` e `HW-13`.
+
+---
+
+# 2026-11-26 (xv) — UI-50: barra lateral recolhível e largura útil do Início
 
 **O problema, como foi entendido no início.** A barra fixa ocupava 224 px no computador. O autor queria liberar largura para o Início e o Histórico preservando a navegação. A regra de 1050 px do Início acompanhava a janela, mesmo quando o espaço útil mudava.
 

@@ -26,12 +26,23 @@
  *
  *   1. Varredura do barramento: quais enderecos respondem, e sempre os
  *      mesmos? Endereco que aparece e some ja e prova de contato ruim.
- *   2. WHO_AM_I mil vezes: deve devolver 0x68 SEMPRE. Uma unica divergencia
- *      condena o barramento.
+ *   2. WHO_AM_I mil vezes: o MPU6050 original devolve 0x68 SEMPRE (com AD0
+ *      alto ou baixo). Tres casos (HW-12, 26/11/2026):
+ *        - 0x68 em todas, sem falha       -> MPU6050 original;
+ *        - o MESMO valor diferente de 0x68 em todas, sem falha de barramento
+ *                                         -> CHIP NAO ORIGINAL, barramento ok;
+ *        - falhas, ou valores que variam  -> barramento nao confiavel.
+ *      Ate 26/11 o segundo caso caia no terceiro: um clone com 0x70 constante
+ *      e zero falhas era anunciado como "barramento nao confiavel".
  *   3. Bloco de 14 bytes (acelerometro + temperatura + giroscopio) mil vezes,
  *      com verificacao de plausibilidade: parado, |a| tem que ficar perto de
  *      9,81. Conta quantas leituras saem da faixa.
- *   4. Repete tudo em 100 kHz e em 400 kHz. Se so a velocidade baixa
+ *   4. Capacidade da FIFO (HW-12): enche a FIFO so com o acelerometro e mede
+ *      a contagem em que ela transborda. O MPU6050 tem 1024 B; os clones com
+ *      WHO_AM_I 0x70 medidos em 26/11 transbordaram em 512 B. O firmware do
+ *      Dormio esvazia a FIFO a cada ~1,7 s contando com 1024 B: com 512 B,
+ *      toda drenagem e descartada por transbordo.
+ *   5. Repete tudo em 100 kHz e em 400 kHz. Se so a velocidade baixa
  *      funciona, o problema e capacitancia/comprimento de fio.
  *
  * -- COMO LER O RESULTADO -----------------------------------------------
@@ -40,6 +51,8 @@
  *   erros so em 400 kHz           -> fio comprido ou pull-up fraco
  *   erros nas duas               -> contato intermitente ou solda fria
  *   nada responde na varredura    -> alimentacao ou fio trocado
+ *   WHO_AM_I constante != 0x68    -> chip nao original: a marcacao "MPU-6050"
+ *                                    no chip nao prova nada (HW-12)
  *
  * DICA: rode e, enquanto ele mede, PRESSIONE cada fio e os pinos do header.
  * Se a contagem de erros mudar com a pressao, o defeito e mecanico.
@@ -56,9 +69,27 @@ const uint8_t REG_SMPLRT_DIV   = 0x19;
 const uint8_t REG_CONFIG       = 0x1A;
 const uint8_t REG_GYRO_CONFIG  = 0x1B;
 const uint8_t REG_ACCEL_CONFIG = 0x1C;
+const uint8_t REG_FIFO_EN      = 0x23;
+const uint8_t REG_INT_STATUS   = 0x3A;
 const uint8_t REG_ACCEL_XOUT_H = 0x3B;
+const uint8_t REG_USER_CTRL    = 0x6A;
 const uint8_t REG_PWR_MGMT_1   = 0x6B;
+const uint8_t REG_FIFO_COUNT_H = 0x72;
 const uint8_t REG_WHO_AM_I     = 0x75;
+
+const uint8_t WHO_AM_I_MPU6050  = 0x68;
+const uint16_t FIFO_MPU6050_B   = 1024;   // o que o firmware do Dormio espera
+// A contagem lida no instante do transbordo oscila alguns bytes (510 ou 512 B
+// no clone de 26/11; 1024 nao e multiplo de 6). O corte fica no meio do
+// caminho entre 512 e 1024, e nao em 1024 exato.
+const uint16_t FIFO_CORTE_B     = 768;
+
+// ANTES de qualquer funcao: a IDE gera os prototipos de todas as funcoes
+// logo antes da primeira delas, e eles ja usam o tipo. O `make sintaxe`
+// compila com g++ puro e nao pega isso; so o arduino-cli pega.
+enum Identidade { ID_ORIGINAL, ID_NAO_ORIGINAL, ID_BARRAMENTO_RUIM };
+
+bool fifoComoMpu6050(uint16_t n) { return n >= FIFO_CORTE_B; }
 
 const float GRAVIDADE   = 9.80665;
 const float ESCALA_8G   = 4096.0;   // LSB/g em +-8 g
@@ -115,18 +146,42 @@ void varrer() {
 
 // --- 2. WHO_AM_I ---------------------------------------------------------
 
-void testarIdentidade() {
-  Serial.printf("[2] WHO_AM_I x%d (esperado 0x68 sempre)\n", REPETICOES);
-  int falhasDeLeitura = 0, divergentes = 0;
-  uint8_t primeiroErrado = 0;
+// HW-12: o valor constante sem falha nenhuma e a identidade do chip, nao
+// ruido. Barramento ruim muda o valor de uma leitura para outra (ou falha).
+Identidade classificarIdentidade(int falhas, int lidos, int iguaisAoPrimeiro,
+                                 uint8_t primeiro) {
+  if (falhas > 0 || lidos == 0 || iguaisAoPrimeiro != lidos) return ID_BARRAMENTO_RUIM;
+  return primeiro == WHO_AM_I_MPU6050 ? ID_ORIGINAL : ID_NAO_ORIGINAL;
+}
+
+const char *nomeDaIdentidade(uint8_t v) {
+  switch (v) {
+    case 0x68: return "MPU6050";
+    case 0x70: return "MPU6500 (ou clone com a identidade dele)";
+    case 0x71: return "MPU9250";
+    case 0x73: return "MPU9255";
+    default:   return "desconhecida (clone)";
+  }
+}
+
+Identidade testarIdentidade() {
+  Serial.printf("[2] WHO_AM_I x%d (o MPU6050 original devolve 0x68 sempre)\n",
+                REPETICOES);
+  int falhasDeLeitura = 0, divergentes = 0, lidos = 0, iguaisAoPrimeiro = 0;
+  uint8_t primeiro = 0, primeiroErrado = 0;
 
   for (int i = 0; i < REPETICOES; i++) {
     uint8_t v = 0;
     if (!ler(REG_WHO_AM_I, &v, 1)) {
       falhasDeLeitura++;
-    } else if (v != 0x68) {
-      if (divergentes == 0) primeiroErrado = v;
-      divergentes++;
+    } else {
+      if (lidos == 0) primeiro = v;
+      lidos++;
+      if (v == primeiro) iguaisAoPrimeiro++;
+      if (v != WHO_AM_I_MPU6050) {
+        if (divergentes == 0) primeiroErrado = v;
+        divergentes++;
+      }
     }
     delayMicroseconds(500);
   }
@@ -135,13 +190,22 @@ void testarIdentidade() {
   Serial.printf("    valor divergente     : %d", divergentes);
   if (divergentes) Serial.printf("  (primeiro: 0x%02X)", primeiroErrado);
   Serial.println();
-  if (falhasDeLeitura == 0 && divergentes == 0) {
-    Serial.println("    -> identidade estavel");
+  Serial.printf("    iguais ao primeiro   : %d de %d lidos\n", iguaisAoPrimeiro, lidos);
+
+  Identidade id = classificarIdentidade(falhasDeLeitura, lidos, iguaisAoPrimeiro, primeiro);
+  if (id == ID_ORIGINAL) {
+    Serial.println("    -> identidade estavel: MPU6050 original (0x68)");
+  } else if (id == ID_NAO_ORIGINAL) {
+    Serial.printf("    -> CHIP NAO E MPU6050 ORIGINAL: 0x%02X em todas as leituras,\n", primeiro);
+    Serial.printf("       sem falha de barramento. Identidade: %s.\n", nomeDaIdentidade(primeiro));
+    Serial.println("       O barramento esta ok; a marcacao \"MPU-6050\" no chip nao");
+    Serial.println("       prova nada. Ver a capacidade da FIFO no passo [4].");
   } else {
-    Serial.println("    -> BARRAMENTO NAO CONFIAVEL. Uma so divergencia ja condena:");
-    Serial.println("       este registrador e constante de fabrica.");
+    Serial.println("    -> BARRAMENTO NAO CONFIAVEL: falhas de leitura ou valores que");
+    Serial.println("       variam. O registrador e constante de fabrica.");
   }
   Serial.println();
+  return id;
 }
 
 // --- 3. Bloco de dados ---------------------------------------------------
@@ -199,7 +263,53 @@ void testarDados() {
   Serial.println();
 }
 
+// --- 4. Capacidade da FIFO (HW-12) ---------------------------------------
+
+/** Enche a FIFO so com o acelerometro (6 B por amostra, 1 kHz) e devolve a
+ *  contagem no transbordo; 0 se nao conseguiu medir. */
+uint16_t medirFifo() {
+  Serial.println("[4] Capacidade da FIFO (so acelerometro, 1 kHz)");
+  bool ok = escrever(REG_FIFO_EN, 0x00);
+  ok &= escrever(REG_USER_CTRL, 0x04);           // FIFO_RESET
+  delay(5);
+  uint8_t st;
+  ok &= ler(REG_INT_STATUS, &st, 1);             // ler limpa o bit de transbordo
+  ok &= escrever(REG_USER_CTRL, 0x40);           // FIFO_EN
+  ok &= escrever(REG_FIFO_EN, 0x08);             // ACCEL_FIFO_EN
+  uint16_t maior = 0, noTransbordo = 0;
+  // 1 kHz x 6 B: 1024 B enchem em ~0,17 s. 500 consultas de 1 ms sobram.
+  for (int i = 0; ok && i < 500; i++) {
+    uint8_t c[2];
+    if (!ler(REG_FIFO_COUNT_H, c, 2) || !ler(REG_INT_STATUS, &st, 1)) { ok = false; break; }
+    uint16_t n = (uint16_t)((c[0] << 8) | c[1]);
+    if (n > maior) maior = n;
+    if (st & 0x10) { noTransbordo = n; break; }
+    delay(1);
+  }
+  escrever(REG_FIFO_EN, 0x00);
+  escrever(REG_USER_CTRL, 0x04);
+
+  if (!ok) {
+    Serial.println("    falha de barramento durante a medida -> sem resultado");
+  } else if (noTransbordo == 0) {
+    Serial.printf("    nao transbordou em 0,5 s (maior contagem %u B) -> sem resultado\n", maior);
+  } else {
+    Serial.printf("    transbordou com %u B (maior contagem %u B)\n", noTransbordo, maior);
+    if (fifoComoMpu6050(noTransbordo)) {
+      Serial.println("    -> ~1024 B, como o MPU6050: serve ao firmware do Dormio");
+    } else {
+      Serial.printf("    -> MENOR QUE OS %u B DO MPU6050: o firmware do Dormio descarta\n", FIFO_MPU6050_B);
+      Serial.println("       toda drenagem por transbordo com este sensor");
+    }
+  }
+  Serial.println();
+  return ok ? noTransbordo : 0;
+}
+
 // --- Bateria completa numa velocidade -----------------------------------
+
+Identidade ultimaIdentidade = ID_BARRAMENTO_RUIM;
+uint16_t ultimaFifo = 0;
 
 void bateria(uint32_t hz) {
   Serial.println("=====================================================");
@@ -223,8 +333,9 @@ void bateria(uint32_t hz) {
   delay(100);
   Serial.printf("    configuracao escrita : %s\n\n", ok ? "ok" : "FALHOU");
 
-  testarIdentidade();
+  ultimaIdentidade = testarIdentidade();
   testarDados();
+  ultimaFifo = medirFifo();
 }
 
 void setup() {
@@ -266,6 +377,20 @@ void setup() {
   Serial.println(" erros so em 400 kHz          -> fio comprido ou pull-up fraco");
   Serial.println(" erros nas duas               -> contato intermitente / solda fria");
   Serial.println(" nada respondeu na varredura  -> alimentacao ou fio trocado");
+  Serial.println(" WHO_AM_I constante != 0x68   -> chip nao original, barramento ok");
+  Serial.println();
+  // HW-12: o veredito do chip, separado do veredito do barramento (o da
+  // ultima velocidade medida, 400 kHz).
+  Serial.println(" CHIP:");
+  if (ultimaIdentidade == ID_ORIGINAL && fifoComoMpu6050(ultimaFifo)) {
+    Serial.println("   MPU6050 original (0x68, FIFO de 1024 B)");
+  } else if (ultimaIdentidade == ID_NAO_ORIGINAL ||
+             (ultimaFifo > 0 && !fifoComoMpu6050(ultimaFifo))) {
+    Serial.printf("   NAO E MPU6050 ORIGINAL (FIFO medida: %u B). O firmware do\n", ultimaFifo);
+    Serial.println("   Dormio nao capta com ele. Trocar o sensor antes de soldar.");
+  } else {
+    Serial.println("   sem veredito: o barramento nao deixou medir");
+  }
   Serial.println();
   Serial.println(" Copie tudo desde o inicio e mande para analise.");
 }
