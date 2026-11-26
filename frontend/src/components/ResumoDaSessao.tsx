@@ -25,6 +25,7 @@ export function ResumoDaSessao({
   verTudo,
   metricas,
   titulo = "Seus registros",
+  idDoTitulo,
   lateral,
   children,
 }: {
@@ -33,6 +34,8 @@ export function ResumoDaSessao({
   verTudo: boolean;
   metricas: ReturnType<typeof calcularMetricas>;
   titulo?: string;
+  /** UI-49: o título está fora (no topo do Início); a seção só aponta para ele. */
+  idDoTitulo?: string;
   /** O seletor de sessão, quando há mais de uma. */
   children?: ReactNode;
   /** UI-48: em tela larga, o que vai na mesma linha dos cartões (o gráfico de tempo por dia). */
@@ -92,10 +95,12 @@ export function ResumoDaSessao({
   );
 
   return (
-    <section aria-labelledby="resumo-da-sessao" className="space-y-3">
-      <h1 id="resumo-da-sessao" className="text-2xl font-extrabold tracking-tight text-foreground sm:text-[27px]">
-        {titulo}
-      </h1>
+    <section aria-labelledby={idDoTitulo ?? "resumo-da-sessao"} data-resumo-da-sessao className="space-y-3">
+      {!idDoTitulo && (
+        <h1 id="resumo-da-sessao" className="text-2xl font-extrabold tracking-tight text-foreground sm:text-[27px]">
+          {titulo}
+        </h1>
+      )}
 
       {lateral ? (
         // A coluna dos cartões e o gráfico ao lado crescem juntos: começam e terminam na mesma altura.

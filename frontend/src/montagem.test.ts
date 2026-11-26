@@ -207,6 +207,16 @@ async function montar(rota: string): Promise<void> {
  */
 const PRAZO = { timeout: 60_000 };
 
+/** UI-48/UI-49: o Início tem duas colunas a partir de 1 050 px; o jsdom não mede, então se simula. */
+function simularTelaLarga() {
+  vi.stubGlobal("matchMedia", (consulta: string) => ({
+    matches: consulta === "(min-width: 1050px)",
+    media: consulta,
+    addEventListener: () => {},
+    removeEventListener: () => {},
+  }));
+}
+
 describe("montagem real das telas (UI-17)", PRAZO, () => {
   it("o ponto de entrada renderiza alguma coisa na raiz", async () => {
     // Guarda do próprio instrumento, pelo mesmo motivo das duas do
@@ -1556,17 +1566,12 @@ describe("o painel em camadas (UI-40)", PRAZO, () => {
     });
 
     it("UI-48: em tela larga o gráfico fica na coluna da direita, inclusive num dia sem registro", async () => {
-      vi.stubGlobal("matchMedia", (consulta: string) => ({
-        matches: consulta === "(min-width: 1050px)",
-        media: consulta,
-        addEventListener: () => {},
-        removeEventListener: () => {},
-      }));
+      simularTelaLarga();
       await abrir();
       const regiao = () => screen.getByRole("region", { name: "Tempo registrado por dia" });
       const naColuna = () => regiao().closest("[data-vaga-do-grafico]") !== null && regiao().closest("header") === null;
       // Com sessão, na mesma linha dos cartões do resumo, para começar e terminar alinhado com eles.
-      const aoLadoDosCartoes = () => regiao().closest("section[aria-labelledby='resumo-da-sessao']") !== null;
+      const aoLadoDosCartoes = () => regiao().closest("[data-resumo-da-sessao]") !== null;
       await waitFor(() => expect(naColuna()).toBe(true));
       expect(aoLadoDosCartoes()).toBe(true);
       escolher(/^segunda-feira, 23 de novembro/);
@@ -1576,6 +1581,30 @@ describe("o painel em camadas (UI-40)", PRAZO, () => {
       await screen.findByRole("heading", { name: titulo });
       expect(naColuna()).toBe(true);
       expect(aoLadoDosCartoes()).toBe(true);
+    });
+
+    it("UI-49: em tela larga o título e o filtro ficam ao lado do calendário, que fica na coluna do gráfico", async () => {
+      simularTelaLarga();
+      await abrir();
+      const topo = document.querySelector("[data-topo-do-inicio]")!;
+      const [esquerda, direita] = Array.from(topo.children);
+      const titulo = screen.getByRole("heading", { level: 1, name: "Seus registros" });
+      expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+      expect(esquerda.contains(titulo)).toBe(true);
+      expect(esquerda.contains(screen.getByRole("combobox", { name: "Dispositivo exibido" }))).toBe(true);
+      expect(direita.matches("[data-calendario-do-inicio]")).toBe(true);
+      expect(direita.contains(screen.getByRole("region", { name: "Calendário do sono" }))).toBe(true);
+      // O resumo aponta para o título do topo, e os cartões seguem nomeados por ele.
+      expect(screen.getByRole("region", { name: "Seus registros" }).querySelector("ul[aria-label='Métricas da sessão']")).toBeTruthy();
+
+      escolher(/^terça-feira, 24 de novembro/);
+      const doDia = await screen.findByRole("heading", { level: 1, name: "Sessões de terça-feira, 24 de novembro" });
+      expect(esquerda.contains(doDia)).toBe(true);
+
+      fireEvent.click(calendario().getByRole("button", { name: "Expandir" }));
+      expect(direita.classList.contains("col-span-full")).toBe(true);
+      fireEvent.click(calendario().getByRole("button", { name: "Recolher" }));
+      expect(direita.classList.contains("col-span-full")).toBe(false);
     });
 
     it("UI-48: em tela estreita o gráfico continua logo abaixo do calendário", async () => {
@@ -1696,6 +1725,9 @@ describe("o painel em camadas (UI-40)", PRAZO, () => {
     expect(ajuda.querySelector("summary")?.textContent).toContain("Entenda");
     expect(ajuda.textContent).toContain("captam o mesmo movimento de formas diferentes");
 
+    // UI-49: o aviso acompanha o filtro, no topo, e não fica solto entre o topo e os cartões.
+    expect(aviso.closest("header")?.contains(seletorDeAparelho())).toBe(true);
+
     selecionarSegundaMetade();
     expect(screen.queryByText(/Gráfico combina/)).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Sessão toda" }));
@@ -1703,6 +1735,15 @@ describe("o painel em camadas (UI-40)", PRAZO, () => {
     fireEvent.change(seletorDeAparelho(), { target: { value: "c" } });
     await screen.findByText("Dispositivo no resumo: Meu celular.");
     expect(screen.queryByText(/Gráfico combina/)).toBeNull();
+  });
+
+  it("UI-49: em tela larga o aviso de mistura fica ao lado do seletor, na coluna do título", async () => {
+    simularTelaLarga();
+    responderComDoisAparelhos();
+    await abrir();
+    const coluna = document.querySelector("[data-topo-do-inicio]")!.firstElementChild!;
+    expect(coluna.contains(screen.getByText("Gráfico combina Travesseiro e Celular"))).toBe(true);
+    expect(coluna.contains(seletorDeAparelho())).toBe(true);
   });
 
   it("indica a sessão exibida e deixa a contagem descartada nos detalhes", async () => {

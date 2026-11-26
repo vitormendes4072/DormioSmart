@@ -182,7 +182,7 @@ export function Dashboard() {
   if (carregando) {
     return (
       <div className="space-y-6">
-        <Cabecalho acao={seletor} calendario={calendario} instrumento={instrumento} titulo={tituloDoDia} />
+        <Cabecalho acao={seletor} calendario={calendario} instrumento={instrumento} titulo={tituloDoDia} telaLarga={telaLarga} />
         {comColunaDoGrafico(<>
           {avisoDePausa}
           <Carregando mensagem={diaSelecionado ? "Carregando registros do dia..." : undefined} />
@@ -195,7 +195,7 @@ export function Dashboard() {
   if (erro) {
     return (
       <div className="space-y-6">
-        <Cabecalho acao={seletor} calendario={calendario} instrumento={instrumento} titulo={tituloDoDia} />
+        <Cabecalho acao={seletor} calendario={calendario} instrumento={instrumento} titulo={tituloDoDia} telaLarga={telaLarga} />
         {comColunaDoGrafico(<>
           {avisoDePausa}
           <FalhaAoCarregar mensagem={erro} aoTentarNovamente={recarregar} />
@@ -208,7 +208,7 @@ export function Dashboard() {
   if (leituras.length === 0) {
     return (
       <div className="space-y-6">
-        <Cabecalho acao={seletor} calendario={calendario} instrumento={instrumento} titulo={tituloDoDia} />
+        <Cabecalho acao={seletor} calendario={calendario} instrumento={instrumento} titulo={tituloDoDia} telaLarga={telaLarga} />
         {avisoDePausa}
         <NotaDeEscopo />
         {comColunaDoGrafico(
@@ -307,13 +307,14 @@ export function Dashboard() {
         instrumento={instrumento}
         acao={seletor}
         calendario={calendario}
+        telaLarga={telaLarga}
+        titulo={tituloDoDia}
+        // Em tela estreita o título fica no resumo, logo acima dos cartões; em tela larga, no topo.
         mostrarTitulo={false}
+        // UI-49: o aviso é consequência do filtro ("Todos os dispositivos"), então fica junto dele.
+        aviso={aparelhosDoGrafico.size > 1 && <AvisoDeMistura dispositivos={dispositivosDoGrafico} />}
       />
       {avisoDePausa}
-
-      {aparelhosDoGrafico.size > 1 && (
-        <AvisoDeMistura dispositivos={dispositivosDoGrafico} />
-      )}
 
       {/* A coleta teve buracos? Isso precisa aparecer ANTES dos números, e
           não depois — porque é o que decide se eles significam algo. */}
@@ -330,6 +331,7 @@ export function Dashboard() {
         verTudo={verTudo}
         metricas={m}
         titulo={tituloDoDia}
+        idDoTitulo={telaLarga ? ID_DO_TITULO : undefined}
         // UI-48: em tela larga, o gráfico de tempo por dia fica na mesma linha dos cartões,
         // alinhado no topo e na base com eles.
         lateral={espacoDoGrafico}
@@ -590,34 +592,66 @@ export function Dashboard() {
   );
 }
 
+const ID_DO_TITULO = "titulo-do-inicio";
+
 function Cabecalho({
   instrumento,
   acao,
   calendario,
+  telaLarga,
+  aviso,
   mostrarTitulo = true,
   titulo = "Seus registros",
 }: {
   instrumento: string;
   acao?: ReactNode;
   calendario: ReactNode;
+  telaLarga: boolean;
+  /** O aviso de mistura de aparelhos, que acompanha o seletor. */
+  aviso?: ReactNode;
+  /** Só em tela estreita: em tela larga o título está sempre no topo. */
   mostrarTitulo?: boolean;
   titulo?: string;
 }) {
+  const cabecalho = (
+    <>
+      <h1 id={ID_DO_TITULO} className="text-2xl font-extrabold tracking-tight text-foreground sm:text-[27px]">
+        {titulo}
+      </h1>
+      <p className="sr-only">{instrumento}</p>
+    </>
+  );
+
+  // UI-49: em tela larga o topo usa as mesmas duas colunas do resto do Início. À esquerda, o título
+  // em cima e o filtro embaixo; à direita, o calendário, na largura do gráfico que vem abaixo dele.
+  // Aberto, o calendário ocupa as duas colunas (ver `CalendarioDoSono`).
+  if (telaLarga) {
+    return (
+      <header>
+        <BarraDoWorkspace secao="Visão geral" />
+        <div data-topo-do-inicio className="grid grid-cols-[minmax(0,1.8fr)_minmax(220px,0.9fr)] gap-x-3.5 gap-y-3">
+          <div className="flex min-w-0 flex-col justify-between gap-3">
+            <div className="min-w-0">{cabecalho}</div>
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+              {acao}
+              {aviso}
+            </div>
+          </div>
+          {calendario}
+        </div>
+      </header>
+    );
+  }
+
   return (
     <header>
       <BarraDoWorkspace secao="Visão geral" />
-      <div className="flex flex-wrap items-start gap-x-4 gap-y-2 min-[1050px]:items-center">
+      <div className="flex flex-wrap items-start gap-x-4 gap-y-2">
         {acao}
+        {aviso && <div className="w-full">{aviso}</div>}
         {calendario}
       </div>
-      {mostrarTitulo && (
-        <div className="mt-3 min-w-0">
-          <h1 className="text-2xl font-extrabold tracking-tight text-foreground sm:text-[27px]">
-            {titulo}
-          </h1>
-          <p className="sr-only">{instrumento}</p>
-        </div>
-      )}
+      {mostrarTitulo && <div className="mt-3 min-w-0">{cabecalho}</div>}
     </header>
   );
 }

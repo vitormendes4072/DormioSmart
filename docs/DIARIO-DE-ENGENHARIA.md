@@ -13809,6 +13809,63 @@ Os dois controles originais da etapa também voltaram a falhar sob sabotagem. No
 
 ---
 
+# 2026-11-26 (x) — UI-49: o topo do Início em duas colunas
+
+**O problema, como foi entendido no início.** Com o gráfico alinhado aos cartões (entrada ix), o autor apontou o que sobrava no topo do Início em tela larga. Na captura dele, a 1 440 px:
+- **Dois vãos:** um de ~250 × 80 px entre o seletor de aparelho e o calendário; outro de ~110 px entre a base do calendário e o topo dos cartões.
+- **O que ocupava o segundo vão:** só duas linhas soltas, "Gráfico combina Travesseiro e Celular · Entenda" e o título "Seus registros".
+- **Larguras desencontradas:** o calendário tinha 510 px e o gráfico logo abaixo, ~350.
+
+O autor sugeriu levar o aviso para perto do seletor e pediu uma análise da disposição inteira.
+
+**Hipótese de trabalho.** Proposta apresentada ao autor com um esboço, e aprovada por ele: o topo passa a usar as mesmas duas colunas do resto do Início (1,8 para 0,9).
+- **À esquerda:** o título em cima e, embaixo, o seletor com o aviso ao lado.
+- **À direita:** o calendário, na largura da coluna. Aberto, ele ocupa as duas colunas.
+- **Por que o aviso vai para o seletor:** ele é consequência do filtro ("Todos os dispositivos") e some quando um aparelho é escolhido.
+
+**O que foi testado, e como.**
+- **O `Cabecalho` do `Dashboard.tsx`** ganhou o arranjo de tela larga. O título passa a morar nele, e o `ResumoDaSessao` só aponta para ele (`aria-labelledby`), sem repetir o `h1`. Em tela estreita, nada muda além do aviso, que vai para logo abaixo do seletor.
+- **2 testes novos e 1 ampliado no `montagem.test.ts`:**
+  - Em tela larga, o título e o seletor estão na coluna da esquerda do topo e o calendário na da direita. Há um só `h1`, o resumo continua nomeado por ele, e o título do dia escolhido aparece no mesmo lugar. Aberto, o calendário ocupa as duas colunas, e volta ao recolher.
+  - Em tela larga, o aviso de mistura está na coluna do seletor.
+  - No teste que já existia, o aviso está no cabeçalho, junto do seletor.
+- **No navegador**, medindo as caixas com `getBoundingClientRect`: 1 440 px (claro), 1 100 px (escuro, com um dia escolhido) e 375 px.
+
+**Resultado medido.**
+- **A 1 440 px:**
+
+| O que | Posição medida |
+|---|---|
+| Calendário e gráfico (borda esquerda e direita) | x de 1 019 a 1 395 px, nos dois |
+| Topo do título e do calendário | 86 px, nos dois |
+| Base do seletor e do calendário | 215 px, nos dois |
+| Topo do cartão "Registrado" e do gráfico | 229 px, nos dois |
+
+  Antes, os cartões começavam em 272 px, na medida da entrada (ix).
+- **A 1 100 px:** a mesma coluna para calendário e gráfico (x de 793 a 1 055 px). O título longo do dia ("Sessões de terça-feira, 24 de novembro") coube numa linha.
+- **A 375 px:** sem rolagem lateral e com um só `h1`.
+- **Suíte do frontend:** 1 091 testes em 73 arquivos; `tsc`, lint, Knip e build sem erro.
+- **Contra o `develop` (`2183149`):** os 3 testes (2 novos e 1 ampliado) falham.
+- **Sabotagens:**
+
+| Sabotagem | Testes que falharam |
+|---|---|
+| Topo sempre no arranjo estreito | 2 |
+| Aviso de volta entre o topo e os cartões | 2 |
+| Calendário aberto sem ocupar as duas colunas | 1 |
+
+**Adaptação.** Nenhuma em relação à proposta.
+
+**O que deu errado no caminho.** Nada quebrou. Um ponto da proposta não se confirmou como previsto: o calendário, na largura da coluna, quebra a semana compacta numa segunda linha e fica mais alto (129 px). Por isso sobra uma faixa de ~58 px entre o título e o seletor, à esquerda, para que o título fique alinhado ao topo do calendário e o seletor à base dele.
+
+**Risco em aberto.**
+- **A 1 100 px**, a coluna da direita tem 262 px. O "Calendário do sono" quebra em duas linhas, e os rótulos do gráfico ficam apertados: o anel do dia escolhido encosta nos vizinhos.
+- **Entre 1 050 e ~1 200 px** vale um ajuste fino do gráfico, se o autor usar a tela nessa largura.
+
+**Procedência.** Branch `feature/UI-49-topo-em-colunas` sobre `develop` `2183149`; Windows, Node 24.11.0, em 26/11; navegador embutido do Claude com dados de demonstração.
+
+---
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
