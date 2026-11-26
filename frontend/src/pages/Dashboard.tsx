@@ -64,8 +64,9 @@ const DATA_DO_DIA = new Intl.DateTimeFormat("pt-BR", { weekday: "long", day: "nu
 const CARTAO = "rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-5";
 const LINK_DO_CARTAO = "inline-flex min-h-9 items-center justify-center rounded-lg border border-border px-3 py-2 text-center text-sm font-semibold text-primary hover:bg-secondary focus-visible:outline-2 focus-visible:outline-ring";
 
-// 1050 − 224 − 60: a largura útil no ponto de quebra original com a barra expandida.
-const LARGURA_UTIL_PARA_DUAS_COLUNAS = 766;
+// UI-48: nas duas colunas, o gráfico semanal passa para a coluna da direita.
+// 1050 − 224 − 60 = 766 px úteis no ponto de quebra original, sem barra de rolagem.
+const LARGURA_UTIL_SEM_ROLAGEM = 766;
 const JANELA_LARGA = "(min-width: 1050px)";
 
 function useColunasDoInicio() {
@@ -83,7 +84,11 @@ function useColunasDoInicio() {
     }
 
     function atualizar(largura: number) {
-      setTelaLarga(largura > 0 ? largura >= LARGURA_UTIL_PARA_DUAS_COLUNAS : midia?.matches ?? false);
+      const larguraVisivel = document.documentElement.clientWidth;
+      // A rolagem clássica reduz a largura da main. Descontá-la também no
+      // limiar preserva os 1050 px da janela com o menu expandido.
+      const larguraDaRolagem = larguraVisivel > 0 ? Math.max(0, window.innerWidth - larguraVisivel) : 0;
+      setTelaLarga(largura > 0 ? largura >= LARGURA_UTIL_SEM_ROLAGEM - larguraDaRolagem : midia?.matches ?? false);
     }
 
     // A main mantém a largura durante a troca da grade. A primeira leitura antecede a pintura.

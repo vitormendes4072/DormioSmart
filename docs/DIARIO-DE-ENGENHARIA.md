@@ -14034,11 +14034,13 @@ O autor sugeriu levar o aviso para perto do seletor e pediu uma análise da disp
 
 **O problema, como foi entendido no início.** A barra fixa ocupava 224 px no computador. O autor queria liberar largura para o Início e o Histórico preservando a navegação. A regra de 1050 px do Início acompanhava a janela, mesmo quando o espaço útil mudava.
 
-**Hipótese de trabalho.** Um trilho de 72 px recupera 152 px. Usar 766 px úteis como limiar reproduz os 1050 px da configuração original, descontando a barra de 224 px e os 60 px de margens internas da `main`.
+**Hipótese de trabalho.** Um trilho de 72 px recupera 152 px. O ponto de quebra original, 1050 px, equivale a 766 px úteis depois de descontar a barra de 224 px e os 60 px de margens internas da `main`. A rolagem clássica também ocupa espaço. Descontar do limiar a largura real da rolagem preserva o ponto de quebra em cada navegador.
 
-**O que foi testado, e como.** Sete testes de montagem sobre preferência, rotas, rótulos, demonstração, largura útil e identidade do gráfico. No Edge, dados de demonstração nos temas claro e escuro, com nove capturas. A largura foi medida no Início e no Histórico a 900, 1050, 1150 e 1280 px. A 1000 px, foram observados 16 quadros em cada sentido da transição. A 900 px, foi conferido o primeiro quadro visível com a preferência salva. Também foram conferidos recarga, dica por foco e mouse, movimento reduzido e navegação a 767 px.
+**O que foi testado, e como.** Oito testes de montagem sobre preferência, rotas, rótulos, demonstração, largura útil e identidade do gráfico. O novo caso simula 1050 px de janela, 15 px de rolagem e 751 px úteis. No Edge, foram medidos o Início e o Histórico com dados de demonstração, com a rolagem clássica de 15 px visível e sem área reservada para a rolagem. As nove capturas originais são dos temas claro e escuro, sem barra de rolagem visível. Na primeira rodada também foram conferidos recarga, dica por foco e mouse, movimento reduzido e navegação a 767 px.
 
-**Resultado medido.** A 900 px, 616 → 768 px úteis e uma → duas colunas. A 1050 px, gráfico de movimento 432 → 584 px, calendário e gráfico semanal 320 px cada, tabela 732 → 884 px. A 1150 px, movimento 532 → 669 px, calendário e semanal 320 → 335 px, tabela 832 → 984 px. A 1280 px, movimento 655 → 756 px, calendário e semanal 327 → 378 px, tabela 962 → 1114 px. Nenhum desses elementos transbordou nos cenários medidos. A primeira pintura a 900 px já mostrou duas colunas. Cada animação mudou a grade uma vez, preservou os nós do calendário e do gráfico e deslocou o primeiro ícone 0 px na vertical. A suíte completa passou com 1.098 testes em 73 arquivos. Lint, build e os dois Knip passaram. O orçamento passou com 166.811 B gzip no Dashboard para um teto de 260.000 B. Os sete testes novos falharam contra `develop` `5e706d9`. As quatro sabotagens foram executadas e restauradas:
+**Resultado medido.** Com rolagem visível de 15 px, a 900 px o Início passou de 601 para 753 px úteis e de uma para duas colunas. O menu recolhido manteve uma coluna a 897 px e passou a duas a 898 px. Com o menu expandido, 1049 px mostrou uma coluna e 1050 px (751 px úteis) e 1060 px (761 px úteis) mostraram duas. Sem rolagem visível, 900 px recolhido deu 768 px úteis, e o corte com o menu expandido também ficou entre 1049 e 1050 px. A 1280 px com rolagem visível, o gráfico de movimento passou de 645 para 746 px, calendário e gráfico semanal de 322 para 373 px cada, e a tabela do Histórico de 947 para 1099 px. Na transição a 1000 px, cada alternância mudou a grade uma vez, preservou os nós do calendário e do gráfico e deslocou o primeiro ícone 0 px na vertical, nos dois modos de rolagem.
+
+A suíte passou com 1.099 testes em 73 arquivos. Lint, build, os dois Knip e as três conferências de documentação passaram. O Dashboard ficou em 166.852 B gzip para um teto de 260.000 B. Os oito testes novos falharam contra o código de `develop` `845e3e7`. As cinco sabotagens foram executadas e restauradas:
 
 | Sabotagem | Teste que falhou |
 |---|---|
@@ -14046,14 +14048,15 @@ O autor sugeriu levar o aviso para perto do seletor e pediu uma análise da disp
 | Ocultar o link inteiro no trilho | “mantém os destinos e os nomes acessíveis no trilho”, site e Android |
 | Remover o `aria-label` do link | “mantém os destinos e os nomes acessíveis no trilho”, site e Android |
 | Remontar o gráfico quando muda o portal | “usa o mesmo limiar útil com o menu nos dois estados e mantém a instância do gráfico” |
+| Fixar o limiar em 766 px úteis | “mantém duas colunas com 751 px úteis a 1050 px e rolagem clássica” |
 
-**Adaptação.** A medição acompanha a `main` e o primeiro cálculo antecede a pintura. A regra de janela serve de fallback sem `ResizeObserver`. O suporte estável do portal preserva o gráfico. Os três testes UI-48/UI-49 que usam `simularTelaLarga` mantiveram as asserções e passaram a exercitar explicitamente o fallback. O trilho deixa o topo para o botão e mantém a altura do cabeçalho.
+**Adaptação.** A medição acompanha a `main` e o primeiro cálculo antecede a pintura. O limiar desconta a diferença entre a largura da janela e a largura visível do documento. A regra de janela serve de fallback sem `ResizeObserver`. O suporte estável do portal preserva o gráfico. Os três testes UI-48/UI-49 que usam `simularTelaLarga` mantiveram as asserções e passaram a exercitar explicitamente o fallback. O trilho deixa o topo para o botão e mantém a altura do cabeçalho.
 
-**O que deu errado no caminho.** A prévia da captura inicial não estava mais aberta na porta 5199. A medição de partida usou uma cópia temporária do código versionado de `develop`. A primeira atualização da branch encontrou mudança local no diário e foi abortada pelo Git. A entrada do UI-50 foi reservada, o diário foi restaurado pelo Git para atualizar a base e a entrada foi reaplicada.
+**O que deu errado no caminho.** A prévia inicial na porta 5199 foi encerrada. A medição de partida usou uma cópia temporária de `develop`. Na revisão da PR #316, o limiar fixo de 766 px fez o Início perder a segunda coluna com rolagem clássica na vizinhança dos 1050 px e deixou o menu recolhido com uma coluna a 900 px. A primeira amostragem da animação não confirmou a troca após redimensionar a janela. A medição foi repetida em aba ativa, aguardando a grade se estabilizar antes de alternar o menu. A atualização para `845e3e7` conflitou no diário após o HW-12. A entrada do HW-12 foi preservada e a do UI-50 ficou logo depois.
 
 **Risco em aberto.** A 900 px recolhida, o ganho útil se distribui entre duas colunas. A verificação do Android usou a simulação do plugin Capacitor na suíte.
 
-**Procedência.** Código testado sobre `origin/develop` `5e706d9`. Branch atualizada para `cd9535e`, que acrescentou apenas documentação à base. Windows, Node 24.11.0 e Edge, em 26/11. Capturas em `frontend/src/evidencias/ui-50/`.
+**Procedência.** Código da revisão testado sobre `origin/develop` `845e3e7`. Execuções locais em Windows 11, Node 24.11.0 e Edge, em 26/11. [Nove capturas do UI-50](evidencias/ui-50/).
 
 ---
 

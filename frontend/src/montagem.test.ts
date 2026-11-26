@@ -1118,6 +1118,23 @@ describe("barra lateral recolhível (UI-50)", PRAZO, () => {
       largura.mockRestore();
     }
   });
+
+  it("UI-50: mantém duas colunas com 751 px úteis a 1050 px e rolagem clássica", async () => {
+    vi.stubGlobal("innerWidth", 1050);
+    const largura = vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockImplementation(function (this: HTMLElement) {
+      // A janela mede 1050 px, dos quais 15 px são da barra de rolagem.
+      if (this.tagName === "HTML") return 1035;
+      return this.tagName === "MAIN" ? 751 : 0;
+    });
+    try {
+      await montar("/dashboard?demo=1");
+      expect(alternador(true)).toBeTruthy();
+      const grafico = await screen.findByRole("region", { name: "Tempo registrado por dia" });
+      expect(grafico.closest("[data-vaga-do-grafico]")).not.toBeNull();
+    } finally {
+      largura.mockRestore();
+    }
+  });
 });
 
 describe("rotas esperadas (UI-18)", PRAZO, () => {

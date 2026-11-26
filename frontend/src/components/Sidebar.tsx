@@ -61,6 +61,14 @@ export function Sidebar() {
   const { usuario, carregando, sair } = useAuth();
   const { perfil, carregando: carregandoPerfil } = usePerfil();
   const [recolhida, setRecolhida] = useState(lerMenuRecolhido);
+
+  // O nome vem de `public.profiles`, pela rota — NAO do metadado do Auth
+  // (PERFIL-01, Regra 1: leitor unico). `fonteDoNomeDoPerfil.test.ts` reprova
+  // se alguem voltar a ler `user_metadata` aqui.
+  //
+  // Sem fallback para o metadado quando a leitura falha, de proposito: seria o
+  // segundo leitor de volta, sob condicao. O que aparece nesse caso e "Conta" e
+  // o e-mail, que e verdadeiro e sempre disponivel.
   const nome = nomeDoPerfil(perfil);
 
   const nativo = useNavegacaoNativa();
@@ -86,6 +94,8 @@ export function Sidebar() {
       <div className="relative h-24 shrink-0">
         {!recolhida && (
           <div className="absolute inset-x-5 bottom-4 overflow-hidden">
+            {/* Ocupa a largura util da sidebar (176px), o que dá ~30px de altura —
+                o tamanho em que o "SMART" foi verificado como legível. */}
             <MarcaDoProduto className="h-[30px] max-w-none" />
           </div>
         )}
