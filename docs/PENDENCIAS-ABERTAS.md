@@ -50,8 +50,8 @@ linha, não um resumo: resumo é a cópia que diverge.
 | Grupo | Itens |
 |---|---:|
 | A — Depende só de software: dá para fazer a qualquer momento | **15** |
-| B — Depende de decisão do Vitor | **7** |
-| C — Depende de ação do Vitor que não é decisão | **5** |
+| B — Depende de decisão do autor | **7** |
+| C — Depende de ação do autor que não é decisão | **5** |
 | D — Bloqueado por hardware ou coleta | **18** |
 | E — Bloqueado por terceiro | **4** |
 | **Total** | **49** |
@@ -185,7 +185,7 @@ O firmware confere o certificado do servidor (`setCACert` com as raízes de `fir
 
 ---
 
-## B — Depende de decisão do Vitor
+## B — Depende de decisão do autor
 
 **7 itens.**
 
@@ -253,7 +253,7 @@ A decisão de escopo que atravessa o trabalho inteiro.
 
 ---
 
-## C — Depende de ação do Vitor que não é decisão
+## C — Depende de ação do autor que não é decisão
 
 **5 itens.**
 

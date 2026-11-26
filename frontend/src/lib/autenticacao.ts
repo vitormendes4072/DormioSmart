@@ -55,7 +55,7 @@ export function traduzirErroDeAuth(erro: AuthError | null | undefined): string {
   // e nao a frase, continua distinguindo os dois — e nenhuma mudanca de
   // frontend fecha isso, porque o oraculo esta na resposta da API. Ver
   // `SEC-08` no backlog: a saida que torna os caminhos identicos e ligar a
-  // confirmacao de e-mail, e essa decisao e do Vitor.
+  // confirmacao de e-mail, e essa decisao e do autor.
   if (eh("user_already_exists", "already registered")) {
     return (
       "Não foi possível criar a conta com estes dados. " +
