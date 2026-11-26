@@ -11826,6 +11826,27 @@ Vitest e build no Windows; servidor local com autenticação fictícia; 19/11/20
 
 ---
 
+
+---
+
+# 2026-11-25 (v) — APP-22: nome inicial do celular pelo modelo
+
+**O problema, como foi entendido no início.** O pareamento automático criava o celular com nome fixo, sem identificar o aparelho.
+
+**Hipótese de trabalho.** O fabricante e o modelo fornecidos pelo Android podem nomear o dispositivo sem consultar o nome personalizado do sistema. O servidor deve validar o texto e preservar os nomes escolhidos.
+
+**O que foi testado, e como.** Pytest sem RLS, incluindo a cobertura da política; Vitest, lint, TypeScript no build, dois Knip, build e conferência do pacote; `testDebugUnitTest` com JDK 21; Ruff. As seis sabotagens foram executadas e restauradas: renomear sempre derrubou `test_preserva_nome_alterado`; aceitar quebra de linha, `test_cria_com_padrao_quando_modelo_invalido`; tornar a troca obrigatória, `test_falha_na_troca_nao_derruba_rota`; repetir fabricante, `naoRepete`; aceitar unknown, `desconhecido`; omitir o modelo do corpo, `manda modelo com versao`. Contra os arquivos da base, os 13 testes novos do backend falharam por ausência da função nova usada no mock; no frontend falhou o teste de envio do modelo. As sabotagens verificam os comportamentos separadamente.
+
+**Resultado medido.** Backend: 751 passaram e 1 pulou. Frontend: 1044 passaram em 69 arquivos; lint, TypeScript, Knip, Knip de tipos, build e conferência do pacote passaram. Android: 48 testes passaram; Ruff passou. Os seis controles positivos falharam como esperado.
+
+**Adaptação.** O update automático filtra também pelo nome padrão no banco, protegendo contra edição concorrente. A interface da demonstração continua independente do método novo da ponte nativa. Sem migração ou alteração de RLS e funções do banco; versão do app mantida para a release.
+
+**O que deu errado no caminho.** A consulta remota inicial foi bloqueada pela rede do sandbox e repetida com permissão. A primeira compilação Android precisou da sincronização do Capacitor e de JDK 21, pois o padrão era 17. A primeira tipagem exigia o método novo nas simulações; foi corrigida. Uma execução Vitest foi interrompida após mostrar os testes verdes e repetida até saída zero. A saída de uma sabotagem falhou por codificação do terminal; foi repetida em UTF-8.
+
+**Risco em aberto.** Assim como no `APP-19`, a decisão sobre a mudança da política sem novo consentimento fica para o orientador (`LGPD-03`). A rota continua reutilizando o celular ativo mais antigo; o modelo não identifica nem separa automaticamente aparelhos físicos diferentes. Não foi testado em aparelho real.
+
+**Procedência.** Branch `feature/APP-22-nome-pelo-modelo`, base `develop` `395f84c`, 25/11/2026. Executado no Windows 11, Python 3.13.5, Node 24.11.0 e JDK 21; sem dados de aparelho real.
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
@@ -13358,7 +13379,109 @@ Os dois controles originais da etapa também voltaram a falhar sob sabotagem. No
 
 ---
 
-# 2026-11-25 (iii) — HW-02: o orçamento das peças e a placa de proteção no DIAG-02 (v4)
+
+# 2026-11-25 (iii) — APP-21: configuração de login no APK Android
+
+**O problema, como foi entendido no início.** O APK 1.1.4 publicado exibia “Autenticação não configurada” ao tentar entrar. O 1.1.3 trazia o endereço necessário no JavaScript empacotado.
+
+**Hipótese de trabalho.** Reprovar o build Android sem as duas variáveis evita gerar um pacote inválido em uma cópia limpa. Conferir o APK final detecta a falta de configuração no arquivo entregue e valida a versão pelo manifesto.
+
+**O que foi testado, e como.** Foram executados três builds Android com e sem `frontend/.env` e com a liberação do CI. Os seis testes novos do Vite carregam a configuração de build. Com o arquivo original de `develop`, os três casos de configuração ausente falharam. Os cinco testes Python exercitam ZIPs falsos e simulam a saída do `aapt2`. Ao desativar as checagens de configuração e versão separadamente, falharam três testes e um teste, respectivamente. O script também foi executado com o `aapt2` em dois APKs públicos baixados via `gh release download`.
+
+**Resultado medido.** O build Android sem `.env` reprovou com código 1 e indicou as duas variáveis. Com `.env` passou com código 0. Sem `.env` e com a liberação explícita passou com código 0. O APK 1.1.4 (SHA-256 `13a35f53…41b0`) reprovou por ausência do endereço (código 1) e o 1.1.3 passou (código 0). A versão nativa conferiu nos dois. Passaram 1.041 testes Vitest em 68 arquivos, os cinco testes Python, lint, TypeScript, ambos os Knip, o build web e a conferência do pacote.
+
+**Adaptação.** A liberação fica no passo de build do APK sem credenciais no CI. A conferência completa do APK fica no roteiro manual da release junto com o login real no emulador. A versão 1.1.5 usa `versionCode` 7.
+
+**O que deu errado no caminho.** O 1.1.4 saiu sem `VITE_SUPABASE_*` porque foi gerado numa cópia limpa sem `frontend/.env` e o Vite aceitou a falta de configuração. `/health` e as rotas sem credencial passaram sem exercitar o login do APK. Durante a correção, a primeira consulta ao GitHub e a primeira escrita direta na worktree foram bloqueadas pelo sandbox e repetidas com permissão.
+
+**Risco em aberto.** A geração e a assinatura do APK 1.1.5, o login com uma conta de teste no emulador e a publicação ficam com o autor na release do `APP-21`.
+
+**Procedência.** Branch `bugfix/APP-21-apk-sem-supabase` sobre `develop` `93bd0ea`, em 25/11/2026. Executado no Windows com Node 24.11.0, Python 3.13.5 e `aapt2` do Build-Tools 36.0.0. Os APKs históricos ficaram fora dos commits.
+
+# 2026-11-25 (iv) — release R20: o app 1.1.5, que volta a fazer login
+
+**O problema, como foi entendido no início.** O APK 1.1.4 (release R19) não fazia login: saiu sem `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` (diário, 25/11 (iii)). Quem o instalou não entra na conta e, por isso, também não vê o aviso de versão nova. O `develop` tinha ainda, fora da produção, a barra lateral e o cartão "Seu dispositivo" do `UI-43` (PRs #283 a #286).
+
+**Hipótese de trabalho.** Um APK 1.1.5, gerado de uma cópia com o `frontend/.env` e conferido pelo `conferir_apk.py` antes de publicar, resolve o login; quem tem a 1.1.4 instala por cima sem perder as noites. Sem migração, o merge em `main` não tem janela de risco no banco.
+
+**O que foi testado, e como.**
+- **O APK:** gerado de `develop` `219aad0` numa cópia limpa com o `frontend/.env` copiado; o `build:app` com a trava nova passou. `conferir_apk.py`, `apksigner verify --print-certs`, `aapt2 dump badging` e o SHA-256.
+- **No emulador Pixel 6:** instalação do APK de release, a tela de login e um login com um e-mail inexistente (`example.com`), para ver se o pedido chega ao Supabase.
+- **A release:** o rascunho `app-v1.1.5` com o APK e as notas; depois do merge, a tag no `65f0ad4`, a publicação como `latest` e o aviso no topo das notas da `app-v1.1.4`.
+- **O merge:** a PR #289 com o CI 12 de 12, lido antes do merge.
+- **A produção, depois do deploy** `8065762574`: `/health`, rotas sem credencial, a CSP das cinco páginas, a landing, o `versao-do-app.json`, o link `latest` e o `conferir_producao.py`.
+
+**Resultado medido.**
+- **O APK:** `conferir_apk.py` com código 0 (endereço do Supabase presente, versão 1.1.5); certificado do autor, `versionCode` 7, não depurável, três ABIs, 5 261 705 B, SHA-256 `910fff57…e62f`.
+- **No emulador:** a resposta foi "E-mail ou senha incorretos", e não "Autenticação não configurada".
+- **A produção:** `/health` `200`, contrato 2.12.0; `401` sem token em dispositivos, no `POST` do celular e nas features; a CSP igual nas cinco páginas; a landing com "Versão 1.1.5 (beta)"; o `versao-do-app.json` com 1.1.5; o link `latest` com `200` e o mesmo SHA-256 do APK gerado.
+
+**Adaptação.** O emulador tinha um 1.1.3 de depuração, com outra assinatura: o Android recusou a instalação por cima (`INSTALL_FAILED_UPDATE_INCOMPATIBLE`), e o app foi desinstalado **só no emulador** antes de instalar o de release. O login de verdade, com uma conta, fica com o autor: a conferência daqui usou só um e-mail inexistente.
+
+**O que deu errado no caminho.**
+- **O System UI do emulador travou** logo depois de ligar ("System UI isn't responding"), duas vezes; fechado pelo diálogo, o app abriu.
+- **A digitação pelo `adb` cortou o e-mail** em "con"; a resposta do Supabase veio do mesmo jeito, e o teste continua valendo para o que pretendia (o pedido sair do app).
+- **Na revisão da PR #287, dois testes da Noite** (cenários "parada" e "gravando") caíram na primeira rodada depois do `npm ci` e passaram nas duas seguintes; é a segunda vez. Não investigado.
+
+**Risco em aberto.**
+- **O login com uma conta de verdade no 1.1.5** e as telas novas no celular do autor.
+- **Quem tem a 1.1.3 ou a 1.1.4 precisa ser avisado pelo autor:** nenhuma das duas mostra o aviso (a 1.1.3 não tem o recurso; a 1.1.4 não passa do login).
+- **A instabilidade dos testes da Noite** logo depois do `npm ci`, sem item ainda.
+
+**Procedência.** PRs #287 e #289; `main` `65f0ad4`; deploy `8065762574`; release `app-v1.1.5`; conferências desta máquina (Windows 11, emulador Pixel 6); 25/11.
+
+# 2026-11-25 (v) — APP-22 mesclado e o APP-23 aberto: dois celulares na mesma conta
+
+**O problema, como foi entendido no início.** Na revisão da PR #291 (`APP-22`, o nome do celular pelo modelo), o Codex e o Claude apontaram que a rota `POST /api/devices/celular` devolve sempre o celular ativo mais antigo da conta. Com dois aparelhos na mesma conta, as noites dos dois vão para um registro só, e o nome passa a ser o modelo do primeiro.
+
+**Hipótese de trabalho.** O defeito é anterior ao `APP-22` (as noites já se misturavam) e só fica visível agora, porque o nome deixou de ser genérico. Corrigir exige um identificador estável por aparelho, que é dado pessoal novo: vira item próprio, e o `APP-22` entra como está.
+
+**O que foi testado, e como.**
+- **A PR #291**, com dois ajustes do Claude no commit `920b8c9`: a frase do modelo foi para a linha "Nome do dispositivo" da tabela da seção 2.1 da política, e o método `modeloDoAparelho` entrou na interface `PluginNoite` (com os três objetos falsos do plugin completados). `tsc`, `vitest` (1 044), lint, os dois Knip, o build e a conferência do pacote; no backend, os testes do modelo e da política (21). O CI 19 de 19, lido antes do merge.
+- **Antes dos ajustes, na revisão:** backend 751 passam e 1 pula; frontend 1 044; JVM 48; 7 de 7 sabotagens pegas (renomear sempre, pela rota e pelo filtro; sem validação; a falha derrubando a rota; o Java repetindo o fabricante e aceitando "unknown"; o app sem mandar o modelo).
+- **O item novo:** `conferir_backlog.py --conferir` com a contagem 41 e o `APP-23` no quadro.
+
+**Resultado medido.** A #291 mesclada em `develop` (`22eb20a`). O `APP-23` aberto em L0, com a contagem 41 (L0 10) conferida pelo script.
+
+**Adaptação.** O Codex tinha tipado o método à parte porque, na interface, os três objetos falsos do plugin deixam de compilar; o ajuste completou os três em vez de manter o tipo separado.
+
+**O que deu errado no caminho.** A primeira tentativa do ajuste do tipo reprovou no `tsc` pelos três objetos falsos, e só passou depois de completá-los.
+
+**Risco em aberto.** O nome errado para quem usar dois celulares na mesma conta, até o `APP-23`. O `APP-22` só chega ao celular com o APK 1.1.6.
+
+**Procedência.** PR #291 (`920b8c9`), merge `22eb20a`; conferências nesta máquina (Windows 11, Node 24.11.0, Python 3.13); 25/11.
+
+# 2026-11-25 (vi) — VIA-03: o custo do protótipo, o custo em lote, o preço e a homologação na Anatel
+
+**O problema, como foi entendido no início.** O RD-17 (custo de componentes de um protótipo) estava aberto desde o `REQ-01`, à espera dos preços pagos. Com as compras do `HW-02` feitas em 25/11, o autor pediu para contabilizar o custo de uma unidade e, na sequência, quanto custaria produzir em escala, por quanto vender, que lucro sobra e o que mais é preciso para vender.
+
+**Hipótese de trabalho.** O custo de peças do protótipo seria dominado por poucos módulos (ESP32, bateria e proteção), e o custo em escala cairia bastante comprando fora do varejo. A dúvida era se o produto se pagaria, e o que entraria na conta além das peças.
+
+**O que foi testado, e como.**
+- **Uma planilha no Google Sheets do autor** (fora do repositório, por registrar compras pessoais), com oito abas e fórmulas no lugar de valores digitados: as 27 linhas das três compras, o desconto de cada loja rateado, o custo por unidade, o custo em lote, o preço e a margem, os concorrentes e a homologação. Cada aba foi relida depois de escrita, conferindo os totais contra as notas (Mamute R$ 237,10 − R$ 12,10 = R$ 225,00; Santa Ifigênia R$ 19,30 − R$ 0,30 = R$ 19,00; Mercado Livre R$ 75,80 + R$ 134,80 = R$ 210,60).
+- **Pesquisa de preços no navegador embutido do app:** AliExpress (as variantes de cada anúncio lidas uma a uma, porque a busca mostra o preço da variante mais barata, muitas vezes um acessório), Mercado Livre (com o login do autor), Mamute, Eletrogate, Amazon e Zoom.
+- **Impostos e câmbio:** busca na web (Remessa Conforme e PTAX de 25/11); a estimativa de imposto mostrada nos anúncios do AliExpress (cerca de 25% sobre o preço, ICMS de 20% por dentro) foi usada para conferir a premissa.
+- **Anatel:** busca na web e leitura de páginas de certificadoras e da Anatel por um subagente; a página da Anatel com a lista de OCDs redirecionou e não foi lida.
+- **Concorrentes:** cada preço conferido na página original, depois de uma primeira versão feita com os resumos da busca.
+- **No repositório:** `scripts/requisitos_dispositivo.py --conferir` (26 números) e `scripts/conferir_backlog.py --conferir` (contagem 42, `VIA-03` no quadro), nesta máquina.
+
+**Resultado medido.** Protótipo: **R$ 219,36** com o carregador, R$ 190,46 dentro do travesseiro; seis itens somam 93,6%. Total gasto no projeto: R$ 454,60. Lote de 100, comprando cada peça onde é mais barata: **R$ 101,69** por unidade (−53,6%), com o ESP32 e a célula do Mercado Livre e o resto do AliExpress (fator de impostos 1,88). A R$ 279,90, R$ 84,38 de lucro por unidade antes dos custos do negócio; com eles e a homologação estimada em R$ 10.000, o lote de 100 dá −R$ 4.797,34, e o lucro começa em cerca de 200 unidades (R$ 44.618 com 1 000, comprando em remessas de 100). Nenhum travesseiro com monitor de sono à venda no Brasil em 25/11. Tudo em `docs/ESTUDO-CUSTOS-E-VIABILIDADE.md`.
+
+**Adaptação.** A célula LiFePO4 ficou no Mercado Livre porque o AliExpress não a envia para o Brasil. Kits de células genéricas a R$ 6,78 foram recusados de propósito, pelo mesmo critério de procedência do `ESTUDO-ENERGIA.md`. O capital parado passou a ser calculado por remessa de compra, e entrou a renovação do certificado a cada 24 meses.
+
+**O que deu errado no caminho.**
+- **Preços de concorrentes tirados dos resumos da busca, sem abrir as páginas.** O autor não achou o preço do Persono na página da Abit e perguntou; ele estava lá, mas era de 2022. Conferidos um a um, quatro dos sete estavam errados (o Beautyrest quase dobrou, de R$ 579,99 para R$ 966,20; o EMFIT estava indisponível). Os dois travesseiros com sensor não são mais vendidos.
+- **O GY-521 da Mamute foi lido como R$ 12,80** numa foto pequena da nota; a segunda foto mostrou R$ 32,80.
+- **As quantidades do Mercado Livre foram supostas** (duas células, um GY-521) e estavam trocadas (uma célula, dois GY-521): corrigido com os prints dos pedidos.
+- **A primeira versão dos cenários comprava o lote inteiro de uma vez**, e o capital parado, que cresce com o quadrado do lote, derrubava o retorno de 1 000 unidades para 9,7%. O autor perguntou por que o ROI caía.
+- **A planilha em português do Brasil reprovou as fórmulas com vírgula** (`#ERROR!`); reescritas com ponto e vírgula.
+- **O Mercado Livre pediu login** no navegador do app, e algumas buscas não carregaram mesmo depois dele; um anúncio do AliExpress foi bloqueado.
+
+**Risco em aberto.** Os R$ 10.000 da Anatel e os R$ 3.000 de renovação são estimativas de certificadoras, com interesse comercial, e o SAR pode somar de R$ 15.000 a R$ 40.000; os preços do AliExpress são promocionais; a Rontek tem cerca de 25 células no anúncio; o encapsulamento não tem preço. Tudo carregado pelo `VIA-03` (e o encapsulamento pelo `HW-04`).
+
+**Procedência.** Notas e pedidos fotografados pelo autor em 25/11; anúncios e páginas consultados em 25/11 no navegador embutido do app (Windows 11); planilha do autor no Google Sheets; 8 rascunhos de cotação criados no Gmail do autor, não enviados; conferências do repositório nesta máquina (Windows 11, Python 3.13) sobre `develop` `a361d27`.
+
+# 2026-11-25 (vii) — HW-02: o orçamento das peças e a placa de proteção no DIAG-02 (v4)
 
 **O problema, como foi entendido no início.** O autor levantou o preço das peças do `HW-02` em duas lojas da Santa Ifigênia e no Mercado Livre. A célula que apareceu nas três frentes é a LiFePO4 18650 da Rontek, que vem **sem proteção**. O circuito de 17/11 (`DIAG-02` v3) aceitava "célula com proteção ou uma placa de proteção", mas só desenhava a primeira. Com a célula nua, entra uma placa de proteção (PCM) LiFePO4 1S, e o circuito muda.
 

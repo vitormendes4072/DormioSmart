@@ -72,7 +72,9 @@ Medido em 10/11: o `aapt2 dump badging` mostra `application-debuggable` no de de
 release, e o `apksigner verify` aceita o de release (esquema v2), assinado com uma chave descartável
 de teste.
 
-**Versão:** `versionName` 1.1.2 e `versionCode` 4, em `app/build.gradle` ✏️ *(22/11, `LGPD-15`: a tela do consentimento nova vai dentro do APK; antes, o 1.1.1 com `versionCode` 3, de 21/11, release R15, com o `APP-18`; antes, o 1.1.0 com `versionCode` 2, de 19/11, e o primeiro APK, de 11/11, o 1.0.0 com `versionCode` 1)*. A versão também está em `frontend/src/lib/appAndroid.ts` e na landing, e o `appAndroid.test.ts` reprova se divergirem. A cada APK novo enviado,
+**Versão:** `versionName` 1.1.5 e `versionCode` 7, em `app/build.gradle` (25/11, `APP-21`).
+A versão também está em `frontend/src/lib/appAndroid.ts`, em `frontend/public/versao-do-app.json` e nas duas landings.
+Os testes do frontend conferem a consistência entre esses pontos. A cada APK novo enviado,
 aumente o `versionCode`: o Android recusa instalar por cima uma versão de número igual ou menor.
 
 ### 1.3 Como mandar
@@ -91,16 +93,18 @@ https://github.com/vitormendes4072/DormioSmart/releases/latest/download/smart-do
 
 **Para publicar uma versão nova:**
 
-1. Subir o `versionCode` e o `versionName` no `app/build.gradle`, e a mesma versão em `frontend/src/lib/appAndroid.ts` e na landing (o teste acusa o que faltar).
-2. Gerar o APK assinado (1.2) e conferir: `apksigner verify --print-certs` com o certificado do autor, e o `aapt2 dump badging` sem `application-debuggable`.
-3. Criar a release com a tag `app-v<versão>` e o arquivo com o nome **`smart-dormio.apk`** (o endereço fixo depende do nome):
+1. Subir o `versionCode` e o `versionName` no `app/build.gradle` e sincronizar a versão conforme a seção 1.2.
+2. Gerar o APK assinado (1.2) em uma cópia com `frontend/.env` preenchido com `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY`. Conferir a assinatura com `apksigner verify --print-certs` e a ausência de `application-debuggable` com `aapt2 dump badging`.
+3. Na raiz do repositório, rodar `python scripts/conferir_apk.py frontend/android/app/build/outputs/apk/release/app-release.apk`. O script usa o `aapt2` do Android SDK Build-Tools. Se ele estiver fora do PATH, indique o executável com `--aapt2`. Prossiga apenas com código de saída 0.
+4. Instalar esse mesmo APK no emulador e **fazer um login real com uma conta de teste**. Confirmar que o painel abre com a sessão autenticada.
+5. Criar a release com a tag `app-v<versão>` e o arquivo com o nome **`smart-dormio.apk`** (o endereço fixo depende do nome).
 
    ```bash
-   gh release create app-v1.1.0 smart-dormio.apk --title "App Android 1.1.0 (beta)" --notes-file notas.md --target main
+   gh release create app-v1.1.5 smart-dormio.apk --title "App Android 1.1.5 (beta)" --notes-file notas.md --target main
    ```
 
    A release **não** pode ser marcada como pré-lançamento: o `latest` ignora pré-lançamentos, e o link da landing quebraria.
-4. Baixar pelo link da landing e comparar o SHA-256 com o do arquivo gerado.
+6. Baixar pelo link da landing e comparar o SHA-256 com o do arquivo gerado.
 
 ⚠️ **Download público não é o mesmo que testador do TCC.** Qualquer pessoa pode baixar e usar o app, coberta pela política e pelo consentimento da tela. Os dados dessas pessoas **não** entram no TCC sem o termo de participação e o aval do orientador (`LGPD-03`).
 

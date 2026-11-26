@@ -130,7 +130,7 @@ O controlador dos dados é **[CONTROLADOR]**, que pode ser contatado em
 | **Senha** | No cadastro | Serviço de autenticação, apenas como *hash* — nunca em texto legível |
 | **Nome** | No cadastro, e corrigível em *Configurações → Conta* | Tabela de perfis |
 | **Idade** | **Opcional**, em *Configurações → Conta*. Nunca pedida no cadastro | Tabela de perfis |
-| **Nome do dispositivo** | Ao parear um aparelho, opcional | Tabela de dispositivos |
+| **Nome do dispositivo** | Ao parear um aparelho, opcional. No aplicativo para Android, o celular começa com o fabricante e o modelo informados pelo sistema (por exemplo, "Motorola moto g54 5G"); dá para trocar em *Dispositivos* | Tabela de dispositivos |
 
 > ✏️ **Mudança de 2026-10-17, e ela é material** (seção 10): a **idade passou a
 > ser coletada**. Até esta data o campo existia na estrutura do banco e estava

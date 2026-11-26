@@ -443,15 +443,20 @@ def init_routes(app):
         versao = dispositivos.validar_versao_app(
             corpo.get("versao_app") if isinstance(corpo, dict) else None)
 
+        modelo = dispositivos.validar_modelo(corpo.get("modelo") if isinstance(corpo, dict) else None)
         device = dispositivos.primeiro_do_tipo(client, g.usuario_id, "celular")
         status = 200
         if device is None:
             device = dispositivos.criar(
-                client, dispositivos.NOME_CELULAR, hash_token(gerar_token()), "celular",
+                client, modelo or dispositivos.NOME_CELULAR, hash_token(gerar_token()), "celular",
             )
             if device is None:
                 return jsonify({"error": "nao foi possivel preparar o dispositivo"}), 503
             status = 201
+        elif modelo and device.get("nome") == dispositivos.NOME_CELULAR:
+            atualizado = dispositivos.registrar_modelo(client, g.usuario_id, device["id"], modelo)
+            if atualizado:
+                device = atualizado
         if versao:
             dispositivos.registrar_versao(
                 client, g.usuario_id, device["id"], versao, datetime.now(timezone.utc).isoformat())

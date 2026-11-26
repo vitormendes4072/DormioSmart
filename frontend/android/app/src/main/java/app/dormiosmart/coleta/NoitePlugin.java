@@ -38,6 +38,14 @@ import java.io.IOException;
 public class NoitePlugin extends Plugin {
 
     @PluginMethod
+    public void modeloDoAparelho(PluginCall call) {
+        JSObject resposta = new JSObject();
+        String modelo = NomeDoAparelho.formatar(Build.MANUFACTURER, Build.MODEL);
+        if (modelo != null) resposta.put("modelo", modelo);
+        call.resolve(resposta);
+    }
+
+    @PluginMethod
     public void iniciar(PluginCall call) {
         // Android 13+: sem a permissao, o servico roda, mas a notificacao fica
         // escondida -- e o usuario perde o unico sinal de que a noite esta sendo

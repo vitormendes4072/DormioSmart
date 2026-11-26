@@ -88,14 +88,14 @@ pele), e não desta página (`DOC-06b`).
 
 | ID | Requisito | Critério verificável | Origem | Estado |
 |---|---|---|---|---|
-| RD-17 | Custo de componentes de um protótipo | Soma dos preços pagos (ESP32 DevKit V1, módulo GY-521, bateria, carregador, encapsulamento) | — | **Aberto**: faltam os preços pagos pelos autores, a bateria e o carregador (`HW-02`) |
+| RD-17 | Custo de componentes de um protótipo | Soma dos preços pagos (ESP32 DevKit V1, módulo GY-521, bateria, carregador, encapsulamento) | `docs/ESTUDO-CUSTOS-E-VIABILIDADE.md` §1 (`VIA-03`) | ✏️ *25/11:* **R$ 219,36** com o carregador (R$ 190,46 dentro do travesseiro), pelos preços pagos e com o menor preço quando a peça foi comprada em duas lojas. **Falta o encapsulamento** (`HW-04`), e o C2 está com o preço do cerâmico errado até a troca |
 
 ## 6. Segurança
 
 | ID | Requisito | Critério verificável | Origem | Estado |
 |---|---|---|---|---|
 | RD-18 | Nenhuma tensão acima de 3,3 V nos pinos do ESP32 | Tensão de repouso de SDA e SCL medida ≤ 3,3 V; os *pull-ups* do módulo ligados ao trilho de 3,3 V | `CALCULOS-TCC.md` Z.3; `DIAG-02` | **Aberto** (`HW-02`, `HW-08`) |
-| RD-19 | Bateria protegida contra sobrecarga, descarga profunda e curto-circuito | Módulo de carga com circuito de proteção | `HW-02` | **Aberto** (`HW-02`): nada comprado |
+| RD-19 | Bateria protegida contra sobrecarga, descarga profunda e curto-circuito | Módulo de carga com circuito de proteção | `HW-02` | **Aberto** (`HW-02`): ✏️ *25/11:* placa de proteção LiFePO4 1S, carregador TP5000, fusível e chave comprados; falta montar e medir |
 | RD-20 | Dados cifrados em trânsito, com o servidor autenticado | HTTPS com conferência do certificado contra as raízes do firmware | `SEC-15`; `conferir_tls_firmware.py` | Atendido em teste e no monitor da produção |
 | RD-21 | Credencial do dispositivo revogável, sem expor segredo se o banco vazar | Token guardado como resumo criptográfico; marcação de revogação | Tabela `devices` | Atendido |
 | RD-22 | Cada pessoa vê só os próprios dados | Isolamento no próprio banco (RLS), não por filtro na aplicação | Suíte RLS (174 testes) e mutação 32/32 | Atendido em teste |
@@ -107,7 +107,7 @@ pele), e não desta página (`DOC-06b`).
 
 1. **Confirmar ou trocar os dois valores propostos:** 7 dias sem recarga (RD-09) e 1 °C de
    elevação (RD-12).
-2. **Informar os preços pagos** (RD-17) e, quando houver, as dimensões do travesseiro e do
+2. ~~**Informar os preços pagos** (RD-17)~~ ✏️ *25/11: informados (`VIA-03`).* Quando houver, as dimensões do travesseiro e do
    encapsulamento (RD-14).
 3. **A medir na placa:** RD-01, RD-07, RD-12, RD-15 e RD-18. A primeira medição útil é a do consumo
    fixo da placa, porque é ela que decide a bateria (RD-10).
