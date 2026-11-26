@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 import { CartaoDeMetrica, CartaoEmDestaque } from "./CartoesDeRegistro";
+import { COLUNAS_DO_INICIO } from "./colunasDoInicio";
 
 import { calcularCobertura, type Sessao } from "../lib/cobertura";
 import {
@@ -104,7 +105,7 @@ export function ResumoDaSessao({
 
       {lateral ? (
         // A coluna dos cartões e o gráfico ao lado crescem juntos: começam e terminam na mesma altura.
-        <div className="grid grid-cols-[minmax(0,1.8fr)_minmax(220px,0.9fr)] gap-3.5">
+        <div data-linha-dos-cartoes className={`grid ${COLUNAS_DO_INICIO} gap-3.5`}>
           <div className="flex min-w-0 flex-col gap-3">{cartoes}</div>
           {lateral}
         </div>

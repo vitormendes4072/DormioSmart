@@ -13866,6 +13866,39 @@ O autor sugeriu levar o aviso para perto do seletor e pediu uma análise da disp
 
 ---
 
+# 2026-11-26 (xi) — UI-49, ajuste: a coluna da direita e o título junto do filtro
+
+**O problema, como foi entendido no início.** O autor pediu o ajuste dos dois riscos deixados na entrada (x):
+- **A faixa vazia à esquerda do topo:** ~58 px entre o título e o seletor. O título estava alinhado ao topo do calendário e o seletor à base, e o calendário compacto (129 px) é mais alto que os dois juntos.
+- **A coluna da direita estreita entre 1 050 e ~1 200 px:** 262 px a 1 100 px. O "Calendário do sono" quebrava em duas linhas, e o anel do dia escolhido no gráfico ficava a 2 px e a 1 px dos rótulos vizinhos.
+
+**Hipótese de trabalho.**
+- **A faixa:** o título e o filtro formam um bloco só. Juntos e encostados na base do calendário, a sobra passa para cima do título, emendada com a margem do topo da página, em vez de virar um buraco entre eles.
+- **A coluna:** um mínimo de 320 px, no lugar de 220, resolve as duas quebras. Vale nas quatro grades do Início, que passam a ler o mesmo texto de `components/colunasDoInicio.ts` para não divergirem.
+- **O anel no rótulo do gráfico:** fica mais justo (`-inset-0.5` em vez de `-inset-1`), com o mesmo traço e a mesma cor do calendário. O eixo das horas cede 4 px (2 rem para 1,75 rem).
+
+**O que foi testado, e como.**
+- **No teste da tela larga do `UI-49`:** o topo, a linha dos cartões e a linha do gráfico de movimento têm de usar a mesma grade, com o mínimo de 320 px.
+- **No navegador, medindo com `getBoundingClientRect`:** a 1 440 px, a 1 100 px e a 1 050 px. Nas duas larguras menores, o anel foi medido contra o texto dos rótulos vizinhos (com `Range` sobre o texto).
+
+**Resultado medido.**
+- **A 1 440 px:** título em 136–172 px e seletor em 180–215 px, 8 px entre eles. A base do seletor coincide com a do calendário (215 px). O calendário e o gráfico seguem com as mesmas bordas (x de 1 019 a 1 395 px), e o gráfico e o cartão "Registrado" começam juntos (229 px).
+- **A 1 100 px:** coluna da direita com 320 px; o "Calendário do sono" numa linha. Com "Ter" escolhido, o anel fica a 9,6 px de "Seg" e a 8,6 px de "Qua".
+- **A 1 050 px, o caso mais apertado:** com "Qua" escolhido, o anel fica a 9 px de "Ter" e a 7 px de "Qui". O título do dia quebra em duas linhas, e não há rolagem lateral.
+- **A 375 px:** sem rolagem lateral; o arranjo estreito, sem a grade.
+- **Suíte do frontend:** 1 091 testes em 73 arquivos; `tsc`, lint, Knip e build sem erro.
+- **Controle positivo:** contra o `develop` (`2e6d9ae`) e com uma das grades de volta aos 220 px, o teste da tela larga falha.
+
+**Adaptação.** O ajuste do anel e do eixo do gráfico não estava no pedido: o mínimo de 320 px sozinho deixava o anel a 2 px dos vizinhos a 1 050 px, na conta feita antes de medir. O anel continua igual em traço, cor e afastamento do conteúdo; só a folga em volta do texto diminui.
+
+**O que deu errado no caminho.** Nada quebrou. A primeira medida do anel contou o próprio anel como se fosse um rótulo (ele é um `span` dentro do rótulo); a segunda mediu o texto pelo `Range`.
+
+**Risco em aberto.** A 1 050 px a coluna da esquerda tem ~430 px, e o título de um dia escolhido ocupa duas linhas; os três cartões de métricas ficam mais apertados. Não houve sobreposição nem rolagem.
+
+**Procedência.** Branch `bugfix/UI-49-colunas-e-topo` sobre `develop` `2e6d9ae`; Windows, Node 24.11.0, em 26/11; navegador embutido do Claude com dados de demonstração.
+
+---
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
