@@ -13649,6 +13649,8 @@ Os dois controles originais da etapa também voltaram a falhar sob sabotagem. No
 
 **Resultado medido.** A proteção respondeu com o check "CI ok" exigido. O resto (o CI uma vez só, o cancelamento e o merge automático desta PR) fica medido na própria PR.
 
+✏️ *26/11, depois do merge:* a PR #301 rodou o `ci.yml` **uma vez** (só no `pull_request`), entrou sozinha com o "CI ok" verde e teve a branch apagada. **Controle positivo:** a PR #302 trazia um teste que falha de propósito; o "CI ok" ficou vermelho, a PR ficou `BLOCKED`, e o `gh pr merge` sem `--admin` foi recusado. Fechada sem merge.
+
 **Adaptação.** A proteção exige só o "CI ok", e não cada job: o RLS roda em três versões do Postgres e os nomes mudam com a matriz, e o "CI ok" junta tudo num nome estável. Os workflows do Android e do ESP32 só rodam quando os arquivos deles mudam e por isso **não** são exigidos (um check exigido que não roda deixa a PR esperando para sempre). A `main` segue sem proteção: o release é sempre um "sim" explícito do autor.
 
 **O que deu errado no caminho.** Nada nesta etapa.
