@@ -18,12 +18,21 @@ export function janelaDoCalendario(data: Date) {
   return { inicio, fim, diasNoMes: ultimo.getDate(), deslocamento: (primeiro.getDay() + 6) % 7 };
 }
 
+function diaDaSessao(inicio: number): number {
+  return somarDias(new Date(inicio), 0).getTime();
+}
+
+export function sessoesDoDia(leituras: LeituraSono[], dia: Date) {
+  const alvo = somarDias(dia, 0).getTime();
+  return sessoesDaMarca(leituras, false).filter((sessao) => diaDaSessao(sessao.inicio) === alvo);
+}
+
 const meiaNoite = (data: Date) => new Date(data.getFullYear(), data.getMonth(), data.getDate());
 
 export function registrosDoCalendario(leituras: LeituraSono[], inicio: Date, fim: Date) {
   const registros = new Map<number, number>();
   for (const sessao of sessoesDaMarca(leituras, false)) {
-    const dia = somarDias(new Date(sessao.inicio), 0).getTime();
+    const dia = diaDaSessao(sessao.inicio);
     if (dia < inicio.getTime() || dia > fim.getTime()) continue;
     const tempo = calcularCobertura(sessao.leituras).tempoCobertoMs;
     registros.set(dia, (registros.get(dia) ?? 0) + tempo);

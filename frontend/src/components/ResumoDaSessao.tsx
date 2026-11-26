@@ -24,12 +24,14 @@ export function ResumoDaSessao({
   sessoes,
   verTudo,
   metricas,
+  titulo = "Seus registros",
   children,
 }: {
   /** As exibidas: a última, ou todas. Em ordem crescente. */
   sessoes: Sessao[];
   verTudo: boolean;
   metricas: ReturnType<typeof calcularMetricas>;
+  titulo?: string;
   /** O seletor de sessão, quando há mais de uma. */
   children?: ReactNode;
 }) {
@@ -56,7 +58,7 @@ export function ResumoDaSessao({
   return (
     <section aria-labelledby="resumo-da-sessao" className="space-y-3">
       <h1 id="resumo-da-sessao" className="text-2xl font-extrabold tracking-tight text-foreground sm:text-[27px]">
-        Seus registros
+        {titulo}
       </h1>
 
       <CartaoEmDestaque rotulo="Registrado" valor={formatarDuracao(cobertura.tempoCobertoMs)}>
