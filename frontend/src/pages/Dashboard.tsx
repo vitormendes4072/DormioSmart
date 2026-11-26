@@ -154,12 +154,18 @@ export function Dashboard() {
     <CalendarioDoSono dispositivo={dispositivo} demo={demo} selecionado={diaSelecionado} aoSelecionarDia={selecionarDia}
       ancora={ancoraDoCalendario} aoNavegar={setAncoraDoCalendario} destinoDoGrafico={telaLarga ? vagaDoGrafico : null} />
   );
-  // Em todos os estados da tela (carregando, erro, dia vazio, com dados) a coluna da direita começa
-  // pelo gráfico, para ele não pular de lugar quando um dia é escolhido.
-  const comColunaDoGrafico = (conteudo: ReactNode) => telaLarga ? (
-    <div className="grid grid-cols-[minmax(0,1.8fr)_minmax(220px,0.9fr)] items-start gap-3.5">
-      <div className="min-w-0 space-y-3.5">{conteudo}</div>
-      <div ref={setVagaDoGrafico} data-vaga-do-grafico className="min-w-0" />
+  // Onde o gráfico entra em tela larga. Esticado (`*:flex-1`), ele acompanha a altura do que está
+  // ao lado.
+  const espacoDoGrafico = telaLarga
+    ? <div ref={setVagaDoGrafico} data-vaga-do-grafico className="flex min-w-0 *:flex-1" />
+    : null;
+  // Nos estados sem sessão (carregando, erro, dia vazio) a coluna da direita começa pelo gráfico,
+  // na altura do primeiro cartão. Com sessão, ele fica ao lado dos cartões do resumo (ver abaixo).
+  // `esticar`: o conteúdo é um cartão só, que acompanha a altura do gráfico (e vice-versa).
+  const comColunaDoGrafico = (conteudo: ReactNode, esticar = false) => telaLarga ? (
+    <div className={`grid grid-cols-[minmax(0,1.8fr)_minmax(220px,0.9fr)] gap-3.5 ${esticar ? "" : "items-start"}`}>
+      <div className={`min-w-0 space-y-3.5 ${esticar ? "flex flex-col *:flex-1" : ""}`}>{conteudo}</div>
+      {espacoDoGrafico}
     </div>
   ) : conteudo;
   const linkHistorico = (
@@ -203,12 +209,12 @@ export function Dashboard() {
     return (
       <div className="space-y-6">
         <Cabecalho acao={seletor} calendario={calendario} instrumento={instrumento} titulo={tituloDoDia} />
-        {comColunaDoGrafico(<>
-          {avisoDePausa}
-          <NotaDeEscopo />
+        {avisoDePausa}
+        <NotaDeEscopo />
+        {comColunaDoGrafico(
           <div id="sessoes-recentes">
             {diaSelecionado ? (
-              <div className={CARTAO}>
+              <div className={`${CARTAO} h-full`}>
                 {avisoHistoricoParcial}
                 <p className="py-5 text-sm font-medium" role="status">
                   {historicoParcial ? "Sem registros do dia entre os dados carregados" : "Sem registros neste dia"}
@@ -216,8 +222,9 @@ export function Dashboard() {
                 {linkHistorico}
               </div>
             ) : <SemLeituras />}
-          </div>
-        </>)}
+          </div>,
+          true,
+        )}
         {resumoDeDispositivos}
       </div>
     );
@@ -302,42 +309,43 @@ export function Dashboard() {
         calendario={calendario}
         mostrarTitulo={false}
       />
-      {comColunaDoGrafico(<>
-        {avisoDePausa}
+      {avisoDePausa}
 
-        {aparelhosDoGrafico.size > 1 && (
-          <AvisoDeMistura dispositivos={dispositivosDoGrafico} />
+      {aparelhosDoGrafico.size > 1 && (
+        <AvisoDeMistura dispositivos={dispositivosDoGrafico} />
+      )}
+
+      {/* A coleta teve buracos? Isso precisa aparecer ANTES dos números, e
+          não depois — porque é o que decide se eles significam algo. */}
+      {recorteParcial && (
+        <p role="status" className="rounded-xl border border-border px-3 py-3 text-sm text-muted-foreground">
+          Período incompleto: só os registros mais recentes foram carregados.
+        </p>
+      )}
+      {avisoHistoricoParcial}
+      <AvisoDeLacuna cobertura={cob} />
+
+      <ResumoDaSessao
+        sessoes={verTudo || ultima === null ? sessoes : [ultima]}
+        verTudo={verTudo}
+        metricas={m}
+        titulo={tituloDoDia}
+        // UI-48: em tela larga, o gráfico de tempo por dia fica na mesma linha dos cartões,
+        // alinhado no topo e na base com eles.
+        lateral={espacoDoGrafico}
+      >
+        {/* O recorte, e como sair dele. */}
+        {sessoes.length > 1 && (
+          <SeletorDeSessao
+            total={sessoes.length}
+            verTudo={verTudo}
+            aoAlternar={() => {
+              setVerTudo((v) => !v);
+              setPeriodo("Sessão toda");
+            }}
+          />
         )}
-
-        {/* A coleta teve buracos? Isso precisa aparecer ANTES dos números, e
-            não depois — porque é o que decide se eles significam algo. */}
-        {recorteParcial && (
-          <p role="status" className="rounded-xl border border-border px-3 py-3 text-sm text-muted-foreground">
-            Período incompleto: só os registros mais recentes foram carregados.
-          </p>
-        )}
-        {avisoHistoricoParcial}
-        <AvisoDeLacuna cobertura={cob} />
-
-        <ResumoDaSessao
-          sessoes={verTudo || ultima === null ? sessoes : [ultima]}
-          verTudo={verTudo}
-          metricas={m}
-          titulo={tituloDoDia}
-        >
-          {/* O recorte, e como sair dele. */}
-          {sessoes.length > 1 && (
-            <SeletorDeSessao
-              total={sessoes.length}
-              verTudo={verTudo}
-              aoAlternar={() => {
-                setVerTudo((v) => !v);
-                setPeriodo("Sessão toda");
-              }}
-            />
-          )}
-        </ResumoDaSessao>
-      </>)}
+      </ResumoDaSessao>
 
       <div className="grid gap-3.5 min-[1050px]:grid-cols-[minmax(0,1.8fr)_minmax(220px,0.9fr)]">
         <figure aria-labelledby="titulo-linha-do-tempo" className={`min-w-0 ${CARTAO}`}>
