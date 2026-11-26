@@ -1594,6 +1594,11 @@ describe("o painel em camadas (UI-40)", PRAZO, () => {
       expect(esquerda.contains(screen.getByRole("combobox", { name: "Dispositivo exibido" }))).toBe(true);
       expect(direita.matches("[data-calendario-do-inicio]")).toBe(true);
       expect(direita.contains(screen.getByRole("region", { name: "Calendário do sono" }))).toBe(true);
+      // As linhas do Início usam a mesma grade, e a coluna da direita não fica estreita demais
+      // para o calendário e o gráfico (UI-49, ajuste: com 220 px de mínimo, chegava a 262 px).
+      const grades = ["[data-topo-do-inicio]", "[data-linha-dos-cartoes]", "[data-linha-do-movimento]"]
+        .map((seletor) => document.querySelector(seletor)?.className.match(/grid-cols-\[[^\]]+\]/)?.[0]);
+      expect(new Set(grades)).toEqual(new Set(["grid-cols-[minmax(0,1.8fr)_minmax(320px,0.9fr)]"]));
       // O resumo aponta para o título do topo, e os cartões seguem nomeados por ele.
       expect(screen.getByRole("region", { name: "Seus registros" }).querySelector("ul[aria-label='Métricas da sessão']")).toBeTruthy();
 

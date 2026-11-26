@@ -100,7 +100,7 @@ export function GraficoDeTempoPorDia({
                   </>
                 )}
               </ul>}
-              <div className="mt-3 grid grid-cols-[2rem_minmax(0,1fr)]">
+              <div className="mt-3 grid grid-cols-[1.75rem_minmax(0,1fr)]">
                 <div aria-hidden="true" className="relative h-36 text-[10px] tabular-nums text-muted-foreground">
                   {ticks.map((valor, i) => (
                     <span key={valor} className="absolute right-2 -translate-y-1/2" style={{ top: i * 100 / 3 + "%" }}>
@@ -140,7 +140,7 @@ export function GraficoDeTempoPorDia({
                             aoSelecionarDia(dia.data);
                           }}
                           className="relative flex min-w-0 cursor-pointer items-end justify-center rounded-sm pt-36 text-xs font-semibold text-muted-foreground focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-ring aria-pressed:text-primary">
-                          <span className="block pt-1.5"><span className="relative inline-block rounded-full px-1.5 leading-5">{dia.rotulo}{ativo && <MarcaDoDiaSelecionado />}</span></span>
+                          <span className="block pt-1.5"><span className="relative inline-block rounded-full px-1 leading-5">{dia.rotulo}{ativo && <MarcaDoDiaSelecionado justa />}</span></span>
                         </button>
                       );
                     })}

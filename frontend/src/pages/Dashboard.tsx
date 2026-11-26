@@ -4,6 +4,7 @@ import { Link, useLocation } from "react-router";
 
 import { BarraDoWorkspace } from "../components/BarraDoWorkspace";
 import { CalendarioDoSono } from "../components/CalendarioDoSono";
+import { COLUNAS_DO_INICIO, COLUNAS_DO_INICIO_EM_TELA_LARGA } from "../components/colunasDoInicio";
 import { GraficoDeMovimento } from "../components/GraficoDeMovimento";
 import { destinoDoWorkspace } from "../components/nav";
 import { Carregando, FalhaAoCarregar, SemLeituras } from "../components/EstadoDaTela";
@@ -163,7 +164,7 @@ export function Dashboard() {
   // na altura do primeiro cartão. Com sessão, ele fica ao lado dos cartões do resumo (ver abaixo).
   // `esticar`: o conteúdo é um cartão só, que acompanha a altura do gráfico (e vice-versa).
   const comColunaDoGrafico = (conteudo: ReactNode, esticar = false) => telaLarga ? (
-    <div className={`grid grid-cols-[minmax(0,1.8fr)_minmax(220px,0.9fr)] gap-3.5 ${esticar ? "" : "items-start"}`}>
+    <div className={`grid ${COLUNAS_DO_INICIO} gap-3.5 ${esticar ? "" : "items-start"}`}>
       <div className={`min-w-0 space-y-3.5 ${esticar ? "flex flex-col *:flex-1" : ""}`}>{conteudo}</div>
       {espacoDoGrafico}
     </div>
@@ -349,7 +350,7 @@ export function Dashboard() {
         )}
       </ResumoDaSessao>
 
-      <div className="grid gap-3.5 min-[1050px]:grid-cols-[minmax(0,1.8fr)_minmax(220px,0.9fr)]">
+      <div data-linha-do-movimento className={`grid gap-3.5 ${COLUNAS_DO_INICIO_EM_TELA_LARGA}`}>
         <figure aria-labelledby="titulo-linha-do-tempo" className={`min-w-0 ${CARTAO}`}>
           <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
             <div>
@@ -629,8 +630,10 @@ function Cabecalho({
     return (
       <header>
         <BarraDoWorkspace secao="Visão geral" />
-        <div data-topo-do-inicio className="grid grid-cols-[minmax(0,1.8fr)_minmax(220px,0.9fr)] gap-x-3.5 gap-y-3">
-          <div className="flex min-w-0 flex-col justify-between gap-3">
+        <div data-topo-do-inicio className={`grid ${COLUNAS_DO_INICIO} gap-x-3.5 gap-y-3`}>
+          {/* Título e filtro juntos, na base do calendário: o calendário compacto, na largura da
+              coluna, é mais alto que os dois, e separá-los deixava uma faixa vazia entre eles. */}
+          <div data-titulo-e-filtro className="flex min-w-0 flex-col justify-end gap-2">
             <div className="min-w-0">{cabecalho}</div>
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
               {acao}
