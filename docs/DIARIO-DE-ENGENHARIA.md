@@ -13899,6 +13899,39 @@ O autor sugeriu levar o aviso para perto do seletor e pediu uma análise da disp
 
 ---
 
+# 2026-11-26 (xii) — release R22: o Início com o tempo por dia e o topo em duas colunas
+
+**O problema, como foi entendido no início.** O autor pediu o release para a produção. O `develop` estava 11 PRs à frente da `main` (#299 a #310): quatro itens do Início (`UI-46` a `UI-49`), e o resto sem efeito no site (`CI-13`, `VIA-02`, a retirada do nome do autor e o registro do R21).
+
+**Hipótese de trabalho.** É um release só do site. Antes de abrir a PR, o diff `main`...`develop` foi lido nos arquivos sensíveis. Na política de privacidade e no `autenticacao.ts`, a #300 trocou "Vitor" por "o autor" em comentários e na nota de leitura, fora do texto publicado. Não há migração nem mudança no backend (fora um comentário de teste) ou no `vercel.json`. Por isso o "sim" do autor, dado no pedido, cobria o merge, sem decisão de política nem de banco pendente.
+
+**O que foi testado, e como.**
+- **PR #311 (`develop` → `main`):** os 14 checks foram lidos antes do merge. Passaram, entre eles o "CI ok", o app Android, o sketch do ESP32, o RLS nas três versões do Postgres e o deploy de prévia da Vercel.
+- **Merge manual:** a `main` não é protegida; o merge foi `46506e3`. O status de deploy da Vercel foi acompanhado até `success`, no deploy de produção `8095030641`.
+- **Conferência de fora, desta máquina:**
+  - `/health`.
+  - As rotas autenticadas sem token e com `Bearer` inválido.
+  - O cabeçalho da CSP em cinco páginas.
+  - O pacote publicado, seguindo as importações a partir do `index.html` até os 31 pedaços JS.
+
+**Resultado medido.**
+- **Saúde:** `/health` `200`, com o banco ok, o contrato 2.12.0 e o modelo `ml-inf-cabeca-v2`.
+- **Autenticação:** `401` sem token em `/api/devices`, `/api/sleep-history` e `/api/features`, e com `Bearer` inválido em `/api/devices`.
+- **CSP:** a mesma em `/`, `/login`, `/dashboard`, `/privacidade` e `/lista-de-espera`.
+- **Pacote publicado:** o pedaço do Início (`Dashboard-2jNSncQM.js`) tem "Tempo registrado por dia", `data-topo-do-inicio`, `data-marca-dia`, "dados incompletos" e a grade de 320 px. O CSS publicado tem a classe da grade.
+
+**Adaptação.** Nenhuma.
+
+**O que deu errado no caminho.** A primeira busca no pacote olhou só o JS de entrada e não achou nada: o Início é um pedaço carregado por rota desde o `UI-15`. A segunda seguiu as importações.
+
+**Risco em aberto.**
+- **Não conferido:** o Início com a conta do autor, logado, e com dados de verdade de dois aparelhos.
+- **O app Android segue no 1.1.6,** com o Início antigo, até o próximo APK.
+
+**Procedência.** PR #311, merge `46506e3`, deploy `8095030641`, em 26/11; conferências rodadas no Windows, por `curl`, contra `https://dormio-smart.vercel.app`.
+
+---
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
