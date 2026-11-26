@@ -1344,6 +1344,75 @@ describe("o painel em camadas (UI-40)", PRAZO, () => {
       )).toBe(true);
       expect(consultas.some((url) => url.searchParams.get("device") === "c")).toBe(true);
     });
+
+    it("mantém como atual a sequência cujo último registro foi ontem", async () => {
+      await abrir();
+      expect(await calendario().findByText("2 dias consecutivos")).toBeTruthy();
+      fireEvent.click(calendario().getByRole("button", { name: "Expandir" }));
+      const resumo = within(calendario().getByRole("complementary", { name: "Resumo das sequências" }));
+      expect(resumo.getByText("Sequência atual")).toBeTruthy();
+      expect(resumo.getByText("2 dias consecutivos")).toBeTruthy();
+    });
+
+    it("mostra Histórico parcial quando ainda há registros após o limite de páginas", async () => {
+      const { LIMITE_DO_PAINEL, MAX_PAGINAS_DO_HISTORICO } = await import("./lib/api");
+      const responderPainel = vi.mocked(fetch).getMockImplementation()!;
+      vi.mocked(fetch).mockImplementation((entrada, opcoes) => {
+        const url = new URL(String(entrada), "http://localhost");
+        if (url.pathname !== "/api/sleep-history" || !url.searchParams.has("desde")) {
+          return responderPainel(entrada, opcoes);
+        }
+        const posicao = Number(url.searchParams.get("cursor_id") ?? 0);
+        const total = LIMITE_DO_PAINEL * MAX_PAGINAS_DO_HISTORICO + 1;
+        const quantidade = Math.min(Number(url.searchParams.get("limite")), total - posicao);
+        const pagina = Array.from({ length: quantidade }, (_, i) => {
+          const id = posicao + i + 1;
+          return leitura(id * 30, { id: String(id) });
+        });
+        return Promise.resolve(respostaJson(pagina));
+      });
+
+      await abrir();
+      expect(await calendario().findByText("Histórico parcial")).toBeTruthy();
+      fireEvent.click(calendario().getByRole("button", { name: "Expandir" }));
+      expect(calendario().getByText(/^Histórico parcial\./)).toBeTruthy();
+    });
+
+    it.each([
+      ["Semana", /23 de nov.*29 de nov/, /16 de nov.*22 de nov/],
+      ["Mês", /novembro de 2026/, /outubro de 2026/],
+    ])("navega pelas setas em %s e bloqueia o próximo período ao voltar ao atual", async (visao, atual, anterior) => {
+      await abrir();
+      fireEvent.click(calendario().getByRole("button", { name: "Expandir" }));
+      fireEvent.click(calendario().getByRole("button", { name: visao }));
+      const proximo = () => calendario().getByRole<HTMLButtonElement>("button", { name: "Próximo período" });
+      expect(calendario().getByRole("heading", { name: atual })).toBeTruthy();
+      expect(proximo().disabled).toBe(true);
+      fireEvent.click(calendario().getByRole("button", { name: "Período anterior" }));
+      expect(calendario().getByRole("heading", { name: anterior })).toBeTruthy();
+      expect(proximo().disabled).toBe(false);
+      fireEvent.click(proximo());
+      expect(calendario().getByRole("heading", { name: atual })).toBeTruthy();
+      expect(proximo().disabled).toBe(true);
+    });
+
+    it("mostra pelo menos N dias quando a sequência vem do mês anterior e toca a borda", async () => {
+      vi.setSystemTime(new Date(2026, 10, 3, 12));
+      // Novembro começa no domingo. A grade consulta a partir de 26/10 e
+      // 25/10 é a margem. A sequência real já começou em 24/10.
+      const leituras = Array.from({ length: 10 }, (_, i) =>
+        [0, 30, 60].map((segundos) =>
+          leitura(0, { created_at: new Date(2026, 9, 24 + i, 3, 1, segundos).toISOString() }),
+        )).flat();
+      responder({ dispositivos: [travesseiro], leituras });
+
+      await abrir();
+      expect(await calendario().findByText("Pelo menos 8 dias consecutivos")).toBeTruthy();
+      fireEvent.click(calendario().getByRole("button", { name: "Expandir" }));
+      const resumo = within(calendario().getByRole("complementary", { name: "Resumo das sequências" }));
+      expect(resumo.getByText("Pelo menos 8 dias consecutivos")).toBeTruthy();
+      expect(resumo.getByText("Melhor sequência no período · Pelo menos 8 dias consecutivos")).toBeTruthy();
+    });
   });
 
   function responderComDoisAparelhos() {

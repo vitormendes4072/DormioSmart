@@ -13550,6 +13550,34 @@ Os dois controles originais da etapa também voltaram a falhar sob sabotagem. No
 
 ---
 
+# 2026-11-26 — UI-45: revisão da PR #295 do calendário do sono
+
+**O problema, como foi entendido no início.** A sequência podia começar antes do primeiro dia da janela do calendário. Nesse caso, a sequência atual e a melhor apareciam como contagens exatas. A revisão também pediu cobertura direta das funções de calendário e dos estados e controles da tela.
+
+**Hipótese de trabalho.** Exibir “Pelo menos N dias consecutivos” quando o começo da sequência toca a borda da janela comunica o que o painel sabe sem aumentar o número de consultas na abertura do painel.
+
+**O que foi testado, e como.** Seis testes de unidade em `calendarioDoSono.test.ts` cobrem a soma de duas sessões no dia, a ordenação dos dias consecutivos, a quebra por um dia sem registro, a virada de mês, a véspera e o dia seguinte na consulta e um mês que começa no domingo. Cinco testes em `montagem.test.ts` usam a rota real do painel com respostas de API simuladas. Eles cobrem a sequência que terminou ontem, o limite de páginas do histórico, as setas em Semana e Mês e a sequência iniciada antes da janela.
+
+**Resultado medido.** Os 14 testes focados passaram, incluindo os 11 novos. O teste da borda falhou com o componente original de `12992da`, pela ausência de “Pelo menos 8 dias consecutivos”. Lint e build passaram. A suíte completa passou com 1.060 testes em 70 arquivos com `npm test -- --maxWorkers=2`. As cinco sabotagens foram executadas e restauradas:
+
+| Sabotagem | Teste que falhou |
+|---|---|
+| Gravar `registros.set(dia, tempo)` | “soma o tempo registrado de duas sessões no mesmo dia” |
+| Remover a regra de ontem | “mantém como atual a sequência cujo último registro foi ontem” |
+| Remover o aviso de histórico parcial | “mostra Histórico parcial quando ainda há registros após o limite de páginas” |
+| Inverter a navegação | Os dois casos de “navega pelas setas em Semana/Mês e bloqueia o próximo período ao voltar ao atual” |
+| Apresentar a sequência recortada como exata | “mostra pelo menos N dias quando a sequência vem do mês anterior e toca a borda” |
+
+**Adaptação.** A listagem e o resumo qualificam a sequência que toca a borda inicial. A melhor contagem também vira um mínimo sempre que houver uma sequência nessa condição, pois ela pode superar a maior sequência observada.
+
+**O que deu errado no caminho.** A primeira massa do cenário de virada tinha um único registro por dia. O agrupamento por sessão inferiu um intervalo típico de um dia e reuniu as leituras. A massa passou a ter três registros de 30 s por dia, com intervalos de aproximadamente um dia entre sessões. Na primeira suíte completa, o teste de linguagem excedeu 5 s e o cenário “parada” da tela Noite excedeu a espera pelo seletor. Os dois arquivos passaram na reexecução isolada.
+
+**Risco em aberto.** A duração da sequência antes da borda continua indeterminada. A tela apresenta o mínimo conhecido e mantém o tratamento separado de histórico truncado pelo limite de páginas.
+
+**Procedência.** Revisão da PR #295 em `feature/calendario-do-sono`, sobre `12992da`. Execução local no Windows, Node 24.11.0, em 26/11.
+
+---
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

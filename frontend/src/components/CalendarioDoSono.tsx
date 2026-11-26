@@ -35,8 +35,9 @@ function intervalo(inicio: Date, fim: Date) {
     : `${CURTA.format(inicio)} – ${CURTA.format(fim)}`;
 }
 
-function diasEmSequencia(total: number) {
-  return total === 1 ? "1 dia consecutivo" : `${total} dias consecutivos`;
+function diasEmSequencia(total: number, podeSerMaior = false) {
+  const dias = total === 1 ? "1 dia consecutivo" : `${total} dias consecutivos`;
+  return podeSerMaior ? `Pelo menos ${dias}` : dias;
 }
 
 export function CalendarioDoSono({ dispositivo, demo }: { dispositivo: string | null; demo: boolean }) {
@@ -89,6 +90,11 @@ export function CalendarioDoSono({ dispositivo, demo }: { dispositivo: string | 
   const porMes = sequencias.filter((grupo) => grupo.length > 1 && grupo.some((dia) => dia.getMonth() === data.getMonth()));
   const ativa = porMes.find((grupo) => grupo[0].getTime() === inicioDaSequencia) ?? porMes[0];
   const melhor = Math.max(0, ...sequencias.map((grupo) => grupo.length));
+  // Um grupo que toca a borda esquerda pode ter começado antes dos dias
+  // exibidos. Isso também pode mudar qual é a melhor sequência.
+  const comecaNaBorda = (grupo?: Date[]) => grupo?.[0].getTime() === inicioMs;
+  const textoAtual = diasEmSequencia(atual?.length ?? 0, comecaNaBorda(atual));
+  const textoMelhor = diasEmSequencia(melhor, registros.has(inicioMs));
   const tempo = registros.get(data.getTime());
   const ehSemana = visao === "semana" || !aberto;
   const dias = ehSemana
@@ -167,7 +173,7 @@ export function CalendarioDoSono({ dispositivo, demo }: { dispositivo: string | 
           <h2 id={titulo} className="text-sm font-extrabold tracking-tight sm:text-base">Calendário do sono</h2>
           {!aberto && (
             <p role="status" className="mt-0.5 text-xs text-muted-foreground">
-              {carregado === undefined ? "Carregando registros…" : dados === null ? "Falha ao carregar registros" : dados?.truncada ? "Histórico parcial" : atual ? diasEmSequencia(atual.length) : "Sem sequência ativa no período"}
+              {carregado === undefined ? "Carregando registros…" : dados === null ? "Falha ao carregar registros" : dados?.truncada ? "Histórico parcial" : atual ? textoAtual : "Sem sequência ativa no período"}
             </p>
           )}
         </div>
@@ -214,7 +220,7 @@ export function CalendarioDoSono({ dispositivo, demo }: { dispositivo: string | 
                       <li key={grupo[0].getTime()}>
                         <button type="button" aria-pressed={grupo === ativa} onClick={() => setInicioDaSequencia(grupo[0].getTime())} className={`${BOTAO} w-full flex-wrap justify-between aria-pressed:bg-accent`}>
                           <span>{intervalo(grupo[0], grupo[grupo.length - 1])}</span>
-                          <span>{diasEmSequencia(grupo.length)}</span>
+                          <span>{diasEmSequencia(grupo.length, comecaNaBorda(grupo))}</span>
                         </button>
                       </li>
                     ))}
@@ -238,8 +244,8 @@ export function CalendarioDoSono({ dispositivo, demo }: { dispositivo: string | 
             </div>
             <aside aria-label="Resumo das sequências" className="self-start rounded-xl border border-(color:--sessao-destaque-borda) bg-(image:--sessao-destaque-fundo) p-4 text-white">
               <p className="flex items-center gap-2 text-xs font-semibold text-(color:--sessao-destaque-rotulo)"><Moon size={14} aria-hidden="true" /> {recorteAtual ? "Sequência atual" : "Melhor sequência"}</p>
-              <p className="mt-1 text-lg font-extrabold tracking-tight">{dados && !dados.truncada ? diasEmSequencia(recorteAtual ? (atual?.length ?? 0) : melhor) : "—"}</p>
-              {recorteAtual && <p className="mt-2 border-t border-white/25 pt-2 text-xs">Melhor sequência no período · {dados && !dados.truncada ? diasEmSequencia(melhor) : "—"}</p>}
+              <p className="mt-1 text-lg font-extrabold tracking-tight">{dados && !dados.truncada ? (recorteAtual ? textoAtual : textoMelhor) : "—"}</p>
+              {recorteAtual && <p className="mt-2 border-t border-white/25 pt-2 text-xs">Melhor sequência no período · {dados && !dados.truncada ? textoMelhor : "—"}</p>}
               <p className="mt-2 text-xs text-(color:--sessao-destaque-legenda)">Período consultado: {intervalo(janela.inicio, janela.fim)}</p>
             </aside>
           </div>
