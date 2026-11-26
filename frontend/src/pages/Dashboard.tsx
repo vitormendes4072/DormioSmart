@@ -3,6 +3,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { Link, useLocation } from "react-router";
 
 import { BarraDoWorkspace } from "../components/BarraDoWorkspace";
+import { CalendarioDoSono } from "../components/CalendarioDoSono";
 import { GraficoDeMovimento } from "../components/GraficoDeMovimento";
 import { destinoDoWorkspace } from "../components/nav";
 import { Carregando, FalhaAoCarregar, SemLeituras } from "../components/EstadoDaTela";
@@ -15,6 +16,7 @@ import { useHistorico } from "../hooks/useHistorico";
 import { LIMITE_DO_PAINEL } from "../lib/api";
 import { origemDaTemperatura, descreverRecorte, serieMisturaInstrumentos } from "../lib/dispositivos";
 import { calcularCobertura } from "../lib/cobertura";
+import { estaEmModoDemo } from "../lib/demo";
 import {
   calcularMetricas,
   descreverQuando,
@@ -115,13 +117,16 @@ export function Dashboard() {
       classeDoLink={LINK_DO_CARTAO}
     />
   );
+  const calendario = (
+    <CalendarioDoSono dispositivo={dispositivo} demo={import.meta.env.DEV && estaEmModoDemo(search)} />
+  );
 
   // O seletor aparece tambem nos tres estados iniciais: se o dispositivo
   // escolhido nao tem leitura, e preciso poder trocar sem sair da tela.
   if (carregando) {
     return (
       <div className="space-y-6">
-        <Cabecalho acao={seletor} instrumento={instrumento} />
+        <Cabecalho acao={seletor} calendario={calendario} instrumento={instrumento} />
         {avisoDePausa}
         <Carregando />
       </div>
@@ -131,7 +136,7 @@ export function Dashboard() {
   if (erro) {
     return (
       <div className="space-y-6">
-        <Cabecalho acao={seletor} instrumento={instrumento} />
+        <Cabecalho acao={seletor} calendario={calendario} instrumento={instrumento} />
         {avisoDePausa}
         <FalhaAoCarregar mensagem={erro} aoTentarNovamente={recarregar} />
       </div>
@@ -141,7 +146,7 @@ export function Dashboard() {
   if (leituras.length === 0) {
     return (
       <div className="space-y-6">
-        <Cabecalho acao={seletor} instrumento={instrumento} />
+        <Cabecalho acao={seletor} calendario={calendario} instrumento={instrumento} />
         {avisoDePausa}
         <NotaDeEscopo />
         <div id="sessoes-recentes"><SemLeituras /></div>
@@ -213,6 +218,7 @@ export function Dashboard() {
       <Cabecalho
         instrumento={instrumento}
         acao={seletor}
+        calendario={calendario}
         mostrarTitulo={false}
       />
       {avisoDePausa}
@@ -488,24 +494,29 @@ export function Dashboard() {
 function Cabecalho({
   instrumento,
   acao,
+  calendario,
   mostrarTitulo = true,
 }: {
   instrumento: string;
   acao?: ReactNode;
+  calendario: ReactNode;
   mostrarTitulo?: boolean;
 }) {
   return (
     <header>
       <BarraDoWorkspace secao="Visão geral" />
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        {mostrarTitulo && <div className="min-w-0">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+        {acao}
+        {calendario}
+      </div>
+      {mostrarTitulo && (
+        <div className="mt-3 min-w-0">
           <h1 className="text-2xl font-extrabold tracking-tight text-foreground sm:text-[27px]">
             Seus registros
           </h1>
           <p className="sr-only">{instrumento}</p>
-        </div>}
-        {acao}
-      </div>
+        </div>
+      )}
     </header>
   );
 }

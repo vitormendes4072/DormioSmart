@@ -1282,6 +1282,69 @@ describe("o painel em camadas (UI-40)", PRAZO, () => {
   const seletorDeAparelho = () => screen.getByRole<HTMLSelectElement>("combobox", { name: "Dispositivo exibido" });
   const serieDeMovimento = () => within(screen.getByRole("figure", { name: "Movimento ao longo do tempo" }));
 
+  describe("Calendário do sono (UI-45)", () => {
+    beforeEach(() => {
+      vi.useFakeTimers({ toFake: ["Date"] });
+      vi.setSystemTime(new Date(2026, 10, 25, 12));
+      const epoca = (dia: number, horas: number, minutos: number, segundos: number, extra = {}) =>
+        leitura(0, { created_at: new Date(2026, 10, dia, horas, minutos, segundos).toISOString(), ...extra });
+      responder({ dispositivos: [travesseiro, celular], leituras: [
+        epoca(25, 3, 1, 0, { bancada: true }),
+        epoca(24, 3, 1, 0, { device_id: "c" }),
+        epoca(24, 0, 0, 30),
+        epoca(24, 0, 0, 0),
+        epoca(23, 23, 59, 30),
+      ] });
+    });
+
+    afterEach(() => vi.useRealTimers());
+
+    const calendario = () => within(screen.getByRole("region", { name: "Calendário do sono" }));
+
+    it("fica entre o seletor e Seus registros, com a semana recolhida", async () => {
+      await abrir();
+      const regiao = screen.getByRole("region", { name: "Calendário do sono" });
+      const registros = screen.getByRole("heading", { name: "Seus registros" });
+      expect(seletorDeAparelho().compareDocumentPosition(regiao) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      expect(regiao.compareDocumentPosition(registros) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      expect(calendario().getByRole("button", { name: "Expandir", expanded: false })).toBeTruthy();
+      const semana = within(calendario().getByRole("group", { name: "Semana atual" }));
+      expect(semana.getAllByRole("button")).toHaveLength(7);
+      await semana.findByRole("button", { name: /^segunda-feira, 23 de novembro, com registro/ });
+      expect(semana.getByRole("button", { name: /^quarta-feira, 25 de novembro$/ })).toBeTruthy();
+    });
+
+    it("detalha a duração no dia em que a sessão anterior à meia-noite começou", async () => {
+      await abrir();
+      fireEvent.click(await calendario().findByRole("button", { name: /^segunda-feira, 23 de novembro, com registro/ }));
+      expect(calendario().getByText("Tempo registrado · 1m 30s")).toBeTruthy();
+      expect(calendario().getByRole("button", { name: "Recolher", expanded: true })).toBeTruthy();
+      fireEvent.click(calendario().getByRole("button", { name: "Sequências" }));
+      expect(calendario().getByText("Dias com registro em sequência:", { exact: false }).textContent).toMatch(/23.*24/);
+    });
+
+    it("consulta outro mês e o histórico do dispositivo selecionado", async () => {
+      await abrir();
+      fireEvent.click(calendario().getByRole("button", { name: "Expandir" }));
+      fireEvent.click(calendario().getByRole("button", { name: "Mês" }));
+      fireEvent.click(calendario().getByRole("button", { name: "Período anterior" }));
+      expect(calendario().getByRole("heading", { name: "outubro de 2026" })).toBeTruthy();
+      fireEvent.click(calendario().getByRole("button", { name: "Hoje" }));
+      expect(calendario().getByRole("heading", { name: "novembro de 2026" })).toBeTruthy();
+      fireEvent.change(seletorDeAparelho(), { target: { value: "c" } });
+      await calendario().findByRole("button", { name: /^terça-feira, 24 de novembro, com registro/ });
+      expect(calendario().getByRole("button", { name: /^segunda-feira, 23 de novembro$/ })).toBeTruthy();
+      const consultas = vi.mocked(fetch).mock.calls
+        .map(([caminho]) => new URL(String(caminho), "http://localhost"))
+        .filter((url) => url.pathname === "/api/sleep-history" && url.searchParams.has("desde"));
+      expect(consultas.some((url) =>
+        url.searchParams.get("desde") === new Date(2026, 8, 27).toISOString()
+        && url.searchParams.get("ate") === new Date(2026, 10, 2, 23, 59, 59, 999).toISOString(),
+      )).toBe(true);
+      expect(consultas.some((url) => url.searchParams.get("device") === "c")).toBe(true);
+    });
+  });
+
   function responderComDoisAparelhos() {
     responder({
       dispositivos: [travesseiro, celular],

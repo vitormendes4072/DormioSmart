@@ -11847,6 +11847,26 @@ Vitest e build no Windows; servidor local com autenticação fictícia; 19/11/20
 
 **Procedência.** Branch `feature/APP-22-nome-pelo-modelo`, base `develop` `395f84c`, 25/11/2026. Executado no Windows 11, Python 3.13.5, Node 24.11.0 e JDK 21; sem dados de aparelho real.
 
+# 2026-11-25 (viii) — UI-45: calendário do sono no Início
+
+**O problema.** O autor trouxe um protótipo HTML com uma semana compacta entre o seletor de dispositivos e “Seus registros” e pediu a integração do calendário ao Início.
+
+**Hipótese de trabalho.** A consulta paginada do Histórico e o agrupamento existente por sessão permitem mostrar os dias com captação, o tempo registrado e as sequências usando o mesmo critério das outras telas.
+
+**O que foi testado.** Três testes na rota real do painel, com respostas de API simuladas, verificam posição, expansão, sequência, sessão que atravessa meia-noite, exclusão de bancada, navegação e filtro por dispositivo. No Edge, a demonstração foi aberta em 1440 × 1000 e 390 × 844. Foram executados lint, build e a suíte completa do frontend.
+
+**Resultado medido.** Os três testes novos falharam com o Dashboard de `develop` pela ausência do calendário e passaram com a integração. A suíte completa passou com 1.047 testes em 69 arquivos. Lint e build passaram.
+
+**Adaptação.** A data representa o início local da sessão, como no Histórico. A consulta inclui margens nas bordas para as sessões que atravessam a meia-noite. A interface mostra o período consultado para as sequências e identifica o histórico parcial.
+
+**O que deu errado no caminho.** A atualização inicial do Git e o primeiro `npm ci` esbarraram no sandbox. A suíte fora do sandbox recuperou o teste do servidor Vite. Lint e TypeScript acusaram um import sobrando e o formato de intervalo incompatível com o alvo. O teste de linguagem acusou “captação” no detalhe, substituído por “Tempo registrado”. A prévia precisou de uma porta livre e de renovar o cache do Vite.
+
+**Risco em aberto.** O limite de páginas do Histórico pode omitir parte da consulta com muitos registros. A tela avisa nesse caso e omite o total de sequências. A conferência visual usou a demonstração e a suíte simulou as respostas autenticadas.
+
+**Procedência.** Protótipo HTML do autor, ramo `feature/calendario-do-sono`, base `86b683a`. Conferências locais no Windows, Node 24.11.0, em 25/11.
+
+---
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
