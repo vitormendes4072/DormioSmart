@@ -13932,6 +13932,49 @@ O autor sugeriu levar o aviso para perto do seletor e pediu uma análise da disp
 
 ---
 
+# 2026-11-26 (xiii) — release R23: o app 1.1.7 com o Início novo
+
+**O problema, como foi entendido no início.** Depois do R22, o site tinha o Início novo (UI-46 a UI-49), e o app Android seguia no 1.1.6, com o antigo. O autor pediu o APK novo e, com ele pronto, o "sim" para publicar.
+
+**Hipótese de trabalho.** Seguir a seção 1.3 da `docs/DISTRIBUICAO-DO-APP.md`, na ordem:
+1. Subir a versão nos quatro pontos.
+2. Gerar o APK assinado numa cópia com o `frontend/.env`.
+3. Conferir com o `conferir_apk.py`.
+4. Instalar no emulador.
+5. Criar a release em rascunho.
+6. Fazer o release para a `main`, publicar a release e conferir o download pelo link `latest`.
+
+**O que foi testado, e como.**
+- **PR #313:** `versionCode` 9 e `versionName` 1.1.7 no `build.gradle`, mais `appAndroid.ts`, `versao-do-app.json`, a landing completa e a seção 1.2 da distribuição. `appAndroid.test.ts` (28) e `test_conferir_apk.py` (5) passaram.
+- **APK:** `npm run build:app` e `./gradlew assembleRelease` com o JDK do Android Studio. Conferido com `apksigner verify --print-certs`, `aapt2 dump badging` e o `conferir_apk.py`. O APK foi extraído para buscar os textos do Início novo nos pedaços JS.
+- **Emulador Pixel 6:** o APK instalado por cima do 1.1.6, aberto, com a tela capturada e o log lido.
+- **Release:** PR #314 para a `main`, com os checks lidos antes do merge. Depois do deploy, a release `app-v1.1.7` foi publicada, sem marca de pré-lançamento. O APK foi baixado pelo link fixo da landing.
+
+**Resultado medido.**
+- **APK:** certificado SHA-256 `06b2e4f9…d14a` (o do autor), sem `application-debuggable`, três ABIs. O `conferir_apk.py` deu código 0, com o endereço do Supabase encontrado e a versão conferindo. Tem 5 268 357 B, SHA-256 `dd6683ab…3a41`. Os pedaços JS têm "Tempo registrado por dia", `data-topo-do-inicio` e a grade de 320 px.
+- **Emulador:** `versionCode` 8 → 9, a tela de entrada aberta, nenhuma exceção fatal no log.
+- **Checks da #314:** todos passaram. Merge `55b6736`, deploy de produção `8095700494`.
+- **Produção:**
+  - `/health` `200` com o contrato 2.12.0.
+  - `401` sem token em dispositivos, histórico e features.
+  - A CSP igual nas cinco páginas.
+  - `versao-do-app.json` com 1.1.7 e a landing com "Versão 1.1.7 (beta)".
+  - O link `latest` responde `200` e entrega o mesmo arquivo: 5 268 357 B, mesmo SHA-256.
+
+**Adaptação.** O login real com uma conta de teste no emulador, que a seção 1.3 pede, não foi feito pelo Claude: é digitar senha numa conta de produção, e fica com o autor.
+
+**O que deu errado no caminho.**
+- **Gradle no Windows:** a primeira compilação parou com "Unable to establish loopback connection". O `JAVA_TOOL_OPTIONS` apontava o `jdk.net.unixdomain.tmpdir` para a pasta temporária do usuário, de caminho longo. Com uma pasta curta (`.gradle/uds` no perfil), compilou em 1 min 53 s.
+- **Fim de linha:** o `cap sync` reescreveu `capacitor.build.gradle` e `capacitor.settings.gradle` só no fim de linha; as duas mudanças foram descartadas antes do commit.
+
+**Risco em aberto.**
+- **O login no 1.1.7** com a conta do autor não foi conferido.
+- **O aviso de versão nova** no 1.1.6 instalado só aparece quando o app consulta o `versao-do-app.json`; não foi visto num celular.
+
+**Procedência.** PRs #313 e #314, merge `55b6736`, deploy `8095700494`, release `app-v1.1.7`, em 26/11; build e conferências no Windows, Node 24.11.0, JDK do Android Studio, Build-Tools 37.0.0.
+
+---
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
