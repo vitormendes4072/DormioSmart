@@ -13580,6 +13580,39 @@ Os dois controles originais da etapa também voltaram a falhar sob sabotagem. No
 
 ---
 
+# 2026-11-26 (ii) — release R21: o app 1.1.6, o calendário do sono e o nome do celular
+
+**O problema, como foi entendido no início.** O `develop` tinha, fora da produção, o nome do celular pelo modelo (`APP-22`, #291), os textos mais curtos do Início (#293) e o calendário do sono (`UI-45`, #295). As duas primeiras mudanças alteram o app, e o celular só as recebe com um APK novo.
+
+**Hipótese de trabalho.** Subir o app para 1.1.6 (`versionCode` 8), gerar o APK com o `frontend/.env` e conferi-lo com o `conferir_apk.py`, como no R20, publica tudo de uma vez. Sem migração, o merge em `main` não tem janela de risco no banco.
+
+**O que foi testado, e como.**
+- **A versão:** a PR #297 sobe a versão no `build.gradle`, no `appAndroid.ts`, no `versao-do-app.json` e na landing; os 40 testes de versão, landing e aviso de atualização.
+- **O APK:** gerado da branch da #297 numa cópia com o `frontend/.env` e o `local.properties`; `testDebugUnitTest` junto. `conferir_apk.py`, `apksigner verify --print-certs`, `aapt2 dump badging` e o SHA-256.
+- **No emulador Pixel 6:** o 1.1.6 instalado **por cima do 1.1.5**, a tela de login e um login com um e-mail fictício (`example.com`).
+- **O merge:** a #297 com o CI 19 de 19 e a PR #298 (`develop` em `main`) com o CI 12 de 12, lidos antes do merge.
+- **A produção, depois do deploy** `8078019981`: `/health`, rotas sem credencial, a CSP das cinco páginas, a landing, o `versao-do-app.json` e o link `latest`.
+
+**Resultado medido.**
+- **O APK:** `conferir_apk.py` com código 0 (endereço do Supabase presente, versão 1.1.6); certificado do autor (SHA-256 `06b2e4f9…d14a`), `versionCode` 8, não depurável, três ABIs, 5 265 469 B, SHA-256 `2fec5adb…7305`.
+- **No emulador:** a instalação por cima deu `Success`, o sistema passou a informar `versionName=1.1.6`, e o login respondeu "E-mail ou senha incorretos." do Supabase.
+- **A produção:** `/health` `200`, contrato 2.12.0; `401` sem token em `/api/devices`, no `POST /api/devices/celular` e em `/api/features`; a CSP igual nas cinco páginas; a landing com "Versão 1.1.6 (beta)"; o `versao-do-app.json` com 1.1.6; o link `latest` com `200` e o mesmo SHA-256 do APK gerado.
+
+**Adaptação.** O `test_conferir_apk.py` fixava "1.1.5" como a versão atual e derrubou o CI da #297 em dois jobs, sem defeito no script. O teste passou a ler a `VERSAO_DO_APP_ANDROID` como o script lê, e a versão divergente virou "0.0.1"; a próxima versão não quebra o teste.
+
+**O que deu errado no caminho.**
+- **O teste do conferidor preso à versão** (acima). O APK não mudou com a correção, que só toca um teste do backend.
+- **O System UI do emulador travou** de novo, três vezes. Com ele travado, a captura de tela saiu preta e a digitação pelo `adb` misturou o e-mail com a senha. A tela foi lida pelo `uiautomator`. O pedido saiu do app e chegou ao Supabase mesmo com o e-mail malformado, que é o que o teste pretendia mostrar.
+- **O `gh release edit --target`** recusou o commit do merge; a tag foi criada e enviada pelo `git`, e a release publicada em seguida.
+
+**Risco em aberto.**
+- **O nome do celular pelo modelo e o calendário no celular do autor**, com uma conta de verdade. O nome só aparece num celular pareado depois da atualização; um celular já pareado com outro nome mantém o nome.
+- **Quem tem a 1.1.3 ou a 1.1.4** continua sem o aviso de versão nova e depende do aviso do autor.
+
+**Procedência.** PRs #297 e #298; `main` `3b2a3d2`; deploy `8078019981`; release `app-v1.1.6`; conferências desta máquina (Windows 11, emulador Pixel 6); 26/11.
+
+---
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
