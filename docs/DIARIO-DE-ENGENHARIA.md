@@ -14088,6 +14088,36 @@ A suíte passou com 1.099 testes em 73 arquivos. Lint, build, os dois Knip e as 
 
 ---
 
+# 2026-11-26 (xvii) — UI-51: o "Tempo registrado" igual na landing e no Início, com detalhe
+
+**O problema, como foi entendido no início.** O autor comparou o cartão em destaque do Início com o do celular de exemplo da landing. Na landing, "TEMPO MONITORADO 7h 24m", com "23:15 até 06:39 · toque para detalhes", abria um painel de detalhes. No Início, "Registrado", com "6h 33m de 6h 36m · 17/11, das 02:44 às 09:…", não abria nada. Ele pediu um texto único para os dois e o detalhe no painel.
+
+**Hipótese de trabalho.** Os dois cartões não diferem só no texto: medem coisas diferentes. Os 7h 24m da landing são o período inteiro, de 23:15 a 06:39. O detalhe de cobertura da própria landing diz que só 426 dos 444 min têm registro. O Início mostra o tempo que o aparelho mediu. O padrão segue o Início e o glossário do `UI-39` (`PADRAO-VISUAL.md` §10): rótulo "Tempo registrado", o número é o medido (na landing, 7h 06m), a legenda é "23:15 às 06:39 · ver detalhes" ("ver", e não "toque", porque o painel também é usado no computador). O detalhe mostra Início, Fim, Período e "Do período foi registrado", com a frase "O tempo registrado é o que o aparelho mediu entre o início e o fim. Não é a duração do sono."
+
+**O que foi testado, e como.**
+- `ResumoDaSessao.test.tsx`: os testes da legenda antiga reescritos e 4 novos (os quatro quadros, a soma dos períodos em "todas as sessões", fechar pelo botão com o foco voltando ao cartão, fechar pelo Esc e pelo fundo, mas não por um toque dentro do painel).
+- **Sabotagens:** (1) o período de "todas as sessões" medido do início da primeira ao fim da última, contando o intervalo entre elas; (2) qualquer clique fechando o painel. Cada uma derrubou o teste que lhe corresponde, e só ele.
+- **Na tela**, com o servidor de desenvolvimento e `?demo=1`: a 360 px no escuro (a folha sobe de baixo) e a ~1360 px no claro (o painel fica no centro). Na landing, o cartão e o painel conferidos pelo texto e pela captura.
+
+**Resultado medido.** Frontend **1 103 passam, 73 arquivos** (+4). `tsc`, `eslint`, `knip`, `knip:tipos` e `vite build` limpos. `conferir_csp.py` ok depois de trocar o hash do script da landing no `vercel.json`. Os quatro quadros na demonstração: 13:35, 21:15, 7h 40m, 100%.
+
+**Adaptação.** O primeiro rascunho usava "Janela" e "Cobertura", como a landing. O `linguagem.test.ts` reprovou os dois termos, que o glossário troca por "período" e "registrado X de Y". O detalhe ficou com "Período" e "Do período foi registrado", como a Noite já escreve, e a landing passou a usar os mesmos termos. Também na landing: "JANELA DA SESSÃO 7h24", no Relatório, virou "PERÍODO DA SESSÃO 7h 24m".
+
+**O que deu errado no caminho.**
+- O rascunho do componente foi escrito antes do plano aprovado, numa branch criada no checkout principal, e não numa worktree. O arquivo foi movido para a worktree depois da aprovação, sem commit no meio.
+- O `node_modules` do checkout principal estava incompleto (sem o `react`). A junção apontando para ele não servia, e a worktree ganhou um `npm ci` próprio.
+- Um teste esperava "99%" para 6h 33m de 6h 36m, mas o glossário escreve ">99%". O teste estava errado, e o código certo.
+
+**Risco em aberto.**
+- A legenda do Início deixou de mostrar a data e o "X de Y". Os dois passaram para o detalhe; o dia continua no topo do Início.
+- O detalhe está só no Início. Os cartões em destaque da Noite e do Histórico seguem sem ele.
+- O detalhe de "Cobertura da coleta" da landing segue com os termos antigos ("Disponíveis", "Intervalo", "Cobertura"). Fica para quando o autor trouxer esse cartão.
+- O app no celular recebe a mudança só no próximo APK.
+
+**Procedência.** Branch `feature/UI-51-detalhe-do-tempo-registrado`, base `develop` `14b49f4`. Execuções em Windows 11, Node 24.11.0 e no navegador do Claude, em 26/11.
+
+---
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
