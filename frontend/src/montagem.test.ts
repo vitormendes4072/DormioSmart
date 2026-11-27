@@ -1497,6 +1497,9 @@ describe("o painel em camadas (UI-40)", PRAZO, () => {
       expect(localStorage.getItem("dormio-jornada-" + SESSAO.user.id)).not.toContain("codigo-sintetico");
       fireEvent.click(screen.getByRole("button", { name: "Já copiei, aguardar sinal" }));
       await screen.findByRole("heading", { name: "Aguardando o travesseiro" });
+      const buscando = "Procurando o travesseiro…";
+      const estado = (await screen.findByText(buscando)).closest('[role="status"]');
+      expect(estado?.getAttribute("aria-live")).toBe("polite");
       expect(screen.queryByText("Recebemos o primeiro sinal dele")).toBeNull();
       fireEvent.click(screen.getByRole("button", { name: "Continuar depois" }));
       await faixaApareceu();
@@ -1504,10 +1507,12 @@ describe("o painel em camadas (UI-40)", PRAZO, () => {
       indisponivel = true;
       fireEvent.click(faixa().getByRole("link", { name: "Continuar" }));
       const tentar = await screen.findByRole("button", { name: "Tentar novamente" });
+      expect(screen.queryByText(buscando)).toBeNull();
       sinal = true;
       indisponivel = false;
       fireEvent.click(tentar);
       expect(await screen.findByRole("heading", { name: "Recebemos o primeiro sinal dele" })).toBeTruthy();
+      expect(screen.queryByText(buscando)).toBeNull();
     });
 
     it("UI-62: a jornada valida a meta do UI-61 e salva só esse campo", async () => {

@@ -9,6 +9,7 @@ type Resultado = "aguardando" | "sinal" | "erro" | "ausente";
 export function usePrimeiroSinal(aparelho: string) {
   const [consulta, setConsulta] = useState(0);
   const [resultado, setResultado] = useState<Resultado>("aguardando");
+  const [pausado, setPausado] = useState(() => document.hidden);
 
   useEffect(() => {
     let controle: AbortController | undefined;
@@ -55,7 +56,9 @@ export function usePrimeiroSinal(aparelho: string) {
 
     function aoMudarVisibilidade() {
       parar();
-      if (!document.hidden) void consultar();
+      const oculto = document.hidden;
+      setPausado(oculto);
+      if (!oculto) void consultar();
     }
 
     document.addEventListener("visibilitychange", aoMudarVisibilidade);
@@ -68,6 +71,7 @@ export function usePrimeiroSinal(aparelho: string) {
 
   return {
     resultado,
+    pausado,
     tentarNovamente: () => {
       setResultado("aguardando");
       setConsulta((anterior) => anterior + 1);

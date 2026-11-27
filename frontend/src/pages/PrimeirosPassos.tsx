@@ -1,4 +1,4 @@
-import { ArrowLeft, BedSingle, ChevronRight, Smartphone, type LucideIcon } from "lucide-react";
+import { ArrowLeft, BedSingle, ChevronRight, Loader2, Smartphone, type LucideIcon } from "lucide-react";
 import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
 
@@ -322,15 +322,28 @@ function AguardarTravesseiro({ aparelho, aoReceber, aoReparear, aoAdiar }: {
   aoReparear: () => void;
   aoAdiar: () => void;
 }) {
-  const { resultado, tentarNovamente } = usePrimeiroSinal(aparelho);
+  const { resultado, pausado, tentarNovamente } = usePrimeiroSinal(aparelho);
+  const [estadoMontado, setEstadoMontado] = useState(false);
+  useEffect(() => {
+    // A região de estado precisa existir antes de receber a primeira mensagem.
+    const depoisDaMontagem = window.setTimeout(() => setEstadoMontado(true), 0);
+    return () => window.clearTimeout(depoisDaMontagem);
+  }, []);
+
   useEffect(() => {
     if (resultado === "sinal") aoReceber();
   }, [resultado, aoReceber]);
 
   return <>
     <p>Depois de gravar o código, ligue o travesseiro. Esta tela avança assim que o aparelho enviar o primeiro sinal.</p>
-    {resultado === "erro" && <p className={ERRO} role="status">Não foi possível consultar o travesseiro. Vamos tentar novamente.</p>}
-    {resultado === "ausente" && <p className={ERRO} role="status">Este travesseiro não está mais disponível na conta.</p>}
+    <p role="status" aria-live="polite" className={resultado === "aguardando" ? "flex items-center gap-2 text-sm font-medium text-primary" : ERRO}>
+      {resultado === "aguardando" && estadoMontado && <>
+        <Loader2 size={16} aria-hidden className="shrink-0 motion-safe:animate-spin" style={pausado ? { animationPlayState: "paused" } : undefined} />
+        Procurando o travesseiro…
+      </>}
+      {resultado === "erro" && "Não foi possível consultar o travesseiro. Vamos tentar novamente."}
+      {resultado === "ausente" && "Este travesseiro não está mais disponível na conta."}
+    </p>
     <div className="flex flex-wrap gap-2">
       {resultado === "erro" && <button className={PRINCIPAL} onClick={tentarNovamente}>Tentar novamente</button>}
       {resultado === "ausente" && <button className={PRINCIPAL} onClick={aoReparear}>Parear novamente</button>}

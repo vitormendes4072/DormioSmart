@@ -39,16 +39,20 @@ describe("espera do primeiro sinal (UI-62)", () => {
     vi.useFakeTimers();
     const oculto = vi.spyOn(document, "hidden", "get").mockReturnValue(false);
     listar.mockResolvedValue([travesseiro]);
-    renderHook(() => usePrimeiroSinal(travesseiro.id));
+    const { result } = renderHook(() => usePrimeiroSinal(travesseiro.id));
     await act(() => vi.advanceTimersByTimeAsync(0));
     expect(listar).toHaveBeenCalledTimes(1);
+    expect(result.current.pausado).toBe(false);
     oculto.mockReturnValue(true);
-    document.dispatchEvent(new Event("visibilitychange"));
+    act(() => { document.dispatchEvent(new Event("visibilitychange")); });
     await act(() => vi.advanceTimersByTimeAsync(20_000));
     expect(listar).toHaveBeenCalledTimes(1);
+    expect(result.current.pausado).toBe(true);
     oculto.mockReturnValue(false);
-    document.dispatchEvent(new Event("visibilitychange"));
+    act(() => { document.dispatchEvent(new Event("visibilitychange")); });
     expect(listar).toHaveBeenCalledTimes(2);
+    await act(() => vi.advanceTimersByTimeAsync(0));
+    expect(result.current.pausado).toBe(false);
   });
 
   it("trata um pedido que fica sem resposta e volta a consultar", async () => {
