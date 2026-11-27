@@ -14197,6 +14197,37 @@ A suíte passou com 1.099 testes em 73 arquivos. Lint, build, os dois Knip e as 
 
 ---
 
+# 2026-11-26 (xxi) — release R25: o Histórico novo e o "Tempo registrado" com detalhe
+
+**O problema, como foi entendido no início.** Com o `UI-51` a `UI-54` no `develop` (#320, #321, #323, #324), o autor pediu o release para o site.
+
+**Hipótese de trabalho.** Release só do site: sem migração, sem backend e sem APK (o app segue no 1.1.7). No `vercel.json`, muda só o hash de um script da landing (o do `UI-51`), que precisa chegar à CSP servida.
+
+**O que foi testado, e como.**
+- **PR #325** (`develop` → `main`): os 14 checks lidos antes do merge, incluindo o app Android, o firmware e o RLS nas três versões do Postgres.
+- **Deploy:** `scripts/verificar-deploy.sh` no commit do merge, que espera o deploy daquele commit antes de testar.
+- **De fora, desta máquina:** a CSP servida com a landing, a landing publicada, as rotas sem sessão e os pedaços JS do Histórico e do Início, baixados da produção e buscados.
+
+**Resultado medido.**
+- **Checks da #325:** todos passaram. Merge `7f9f4f9`, deploy de produção `8099626746`.
+- **`verificar-deploy.sh`:** landing, rota do SPA, `/health`, logo e pacote `200`; ingestão sem token e leitura sem sessão `401`.
+- `/health` `200` com o contrato 2.12.0 e o modelo; `/api/devices`, `/api/sleep-history` e `/api/features` sem token `401`.
+- A CSP da landing traz o hash novo (`sha256-HWInuL…`); a landing servida tem "TEMPO REGISTRADO" com 7h 06m e não tem mais "TEMPO MONITORADO".
+- `Historico-CxiEN5ao.js` contém "Tempo registrado por sessão", "Abrir no Início" e "Do período foi registrado"; `Dashboard-DydumHzo.js` contém o detalhe do tempo registrado e a leitura do aparelho no endereço.
+
+**Adaptação.** O laço que esperava os checks da #325 contava os checks "não concluídos" pelo campo `status`, e o check da Vercel (um `StatusContext`) não tem esse campo: o laço nunca terminou, embora os 14 estivessem verdes. Lido pelo `gh pr checks` e mesclado em seguida.
+
+**O que deu errado no caminho.** O laço acima atrasou o merge até o autor perguntar se o release tinha saído. A pasta `.claude/worktrees/ui-52` ficou presa por um processo ao remover a worktree (branches apagadas).
+
+**Risco em aberto.**
+- **O Histórico novo e o detalhe com a conta do autor**, logado, não foram vistos pelo Claude.
+- **30 dias no celular**, com 30 gráficos pequenos, não foi medido numa conta real.
+- O app 1.1.7 segue com o Histórico e o Início antigos até o próximo APK.
+
+**Procedência.** PR #325, merge `7f9f4f9`, deploy `8099626746`, em 26/11; verificação nesta máquina (Windows 11).
+
+---
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
