@@ -118,7 +118,7 @@ function respostaJson(corpo: unknown): Response {
 beforeEach(() => {
   sessaoDoServidor = SESSAO;
   publicarSessao = undefined;
-  for (const chave of ["dormio-primeiros-passos-", "dormio-jornada-", "dormio-primeira-sessao-"]) {
+  for (const chave of ["dormio-primeiros-passos-", "dormio-jornada-", "dormio-primeira-sessao-", "dormio-conta-com-registro-"]) {
     localStorage.removeItem(chave + SESSAO.user.id);
   }
   localStorage.removeItem("dormio-historico-aparelho");
@@ -1344,6 +1344,65 @@ describe("jornada automática após autenticar (UI-62)", PRAZO, () => {
       nativo.mockRestore();
     }
   });
+
+  it("na segunda abertura do app, uma conta com registro vai à Noite sem consultar o histórico", async () => {
+    const nativo = vi.spyOn(Capacitor, "isNativePlatform").mockReturnValue(true);
+    const plugin = vi.spyOn(Capacitor, "isPluginAvailable").mockImplementation((nome) => nome === "Noite");
+    const original = vi.mocked(fetch).getMockImplementation()!;
+    let consultas = 0;
+    vi.mocked(fetch).mockImplementation(async (url, opcoes) => {
+      if (!String(url).startsWith("/api/sleep-history")) return original(url, opcoes);
+      consultas++;
+      return respostaJson([{ created_at: "2026-11-27T12:00:00Z", bancada: false }]);
+    });
+    try {
+      await montar("/");
+      await screen.findByRole("heading", { name: "A noite inteira" });
+      expect(consultas).toBe(1);
+      await act(async () => {
+        window.history.pushState({}, "", "/");
+        window.dispatchEvent(new PopStateEvent("popstate"));
+      });
+      await screen.findByRole("heading", { name: "A noite inteira" });
+      expect(window.location.pathname).toBe("/noite");
+      expect(consultas).toBe(1);
+    } finally {
+      plugin.mockRestore();
+      nativo.mockRestore();
+    }
+  });
+
+  it("sem rede, uma conta sem marca chega à Noite em até três segundos", async () => {
+    const nativo = vi.spyOn(Capacitor, "isNativePlatform").mockReturnValue(true);
+    const plugin = vi.spyOn(Capacitor, "isPluginAvailable").mockImplementation((nome) => nome === "Noite");
+    const original = vi.mocked(fetch).getMockImplementation()!;
+    let consulta: AbortSignal | null | undefined;
+    let responderComVazio: ((resposta: Response) => void) | undefined;
+    vi.mocked(fetch).mockImplementation((url, opcoes) => {
+      if (!String(url).startsWith("/api/sleep-history")) return original(url, opcoes);
+      consulta = opcoes?.signal;
+      return new Promise<Response>((resolve) => { responderComVazio = resolve; });
+    });
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    try {
+      await montar("/");
+      expect(window.location.pathname).toBe("/entrada");
+      expect(consulta?.aborted).toBe(false);
+      await act(() => vi.advanceTimersByTimeAsync(3_000));
+      expect(window.location.pathname).toBe("/noite");
+      expect(consulta?.aborted).toBe(true);
+      await act(async () => {
+        responderComVazio?.(respostaJson([]));
+        await vi.dynamicImportSettled();
+      });
+      expect(screen.getByRole("heading", { name: "A noite inteira" })).toBeTruthy();
+      expect(screen.queryByRole("heading", { name: "Primeiros passos" })).toBeNull();
+    } finally {
+      vi.useRealTimers();
+      plugin.mockRestore();
+      nativo.mockRestore();
+    }
+  });
 });
 
 describe("o painel em camadas (UI-40)", PRAZO, () => {
@@ -1374,9 +1433,16 @@ describe("o painel em camadas (UI-40)", PRAZO, () => {
       await montar("/entrada");
       const comeco = await screen.findByRole("heading", { name: "Primeiros passos" });
       expect(document.activeElement).toBe(comeco);
+      expect(screen.getByRole("img", { name: "Smart Dormio" })).toBeTruthy();
+      const progresso = screen.getByRole("progressbar", { name: "Progresso dos primeiros passos" });
+      expect(progresso.getAttribute("aria-valuenow")).toBe("1");
+      expect(progresso.getAttribute("aria-valuemax")).toBe("5");
       fireEvent.click(screen.getByRole("button", { name: "Começar" }));
       expect(document.activeElement).toBe(screen.getByRole("heading", { name: "Como você vai registrar?" }));
-      fireEvent.click(screen.getByRole("button", { name: "Celular" }));
+      expect(progresso.getAttribute("aria-valuenow")).toBe("2");
+      const celular = screen.getByRole("button", { name: "Celular", description: "App para Android, sobre o colchão" });
+      expect(screen.getByRole("button", { name: "Travesseiro", description: "O sensor dentro da fronha" })).toBeTruthy();
+      fireEvent.click(celular);
       expect(screen.getByRole("img", { name: /QR code para baixar/ })).toBeTruthy();
       expect(screen.getByRole("link", { name: "Baixar o app para Android" }).getAttribute("href")).toMatch(/releases\/latest/);
       fireEvent.click(screen.getByRole("button", { name: "Voltar" }));
@@ -1393,7 +1459,7 @@ describe("o painel em camadas (UI-40)", PRAZO, () => {
     });
 
     function faixaApareceu() {
-      return screen.findByRole("region", { name: "Próximo passo" });
+      return screen.findByRole("region", { name: "Próximo passo" }, { timeout: 5000 });
     }
 
     it("UI-62: o teste no navegador abre Coletar e deixa a meta para a retomada", async () => {

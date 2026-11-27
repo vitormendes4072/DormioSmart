@@ -43,6 +43,26 @@ export function guardarJornada(conta: string, jornada: Jornada): boolean {
   }
 }
 
+function chaveDaContaComRegistro(conta: string) {
+  return "dormio-conta-com-registro-" + conta;
+}
+
+export function contaJaTeveRegistro(conta: string): boolean {
+  try {
+    return localStorage.getItem(chaveDaContaComRegistro(conta)) === "com-registro";
+  } catch {
+    return false;
+  }
+}
+
+export function guardarContaComRegistro(conta: string) {
+  try {
+    localStorage.setItem(chaveDaContaComRegistro(conta), "com-registro");
+  } catch {
+    // A entrada ainda pode usar a consulta quando o armazenamento não está disponível.
+  }
+}
+
 export function estadoDoAviso(conta: string): string | null {
   try {
     return localStorage.getItem("dormio-primeira-sessao-" + conta);

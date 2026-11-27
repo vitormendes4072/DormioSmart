@@ -4,7 +4,7 @@ import { useNavigate } from "react-router";
 import { useAuth } from "../contexts/AuthContext";
 import { verificarRegistrosDaConta } from "../lib/api";
 import { noiteNativaDisponivel } from "../lib/noiteNativa";
-import { anotarAviso, estadoDoAviso, guardarJornada, lerJornada } from "../lib/primeirosPassos";
+import { anotarAviso, contaJaTeveRegistro, estadoDoAviso, guardarContaComRegistro, guardarJornada, lerJornada } from "../lib/primeirosPassos";
 import { DESTINO_PADRAO_APOS_LOGIN } from "../lib/rotas";
 
 export function EntradaDaConta() {
@@ -14,8 +14,9 @@ export function EntradaDaConta() {
 
   useEffect(() => {
     if (!conta) return;
-    const destino = noiteNativaDisponivel() ? "/noite" : DESTINO_PADRAO_APOS_LOGIN;
-    if (lerJornada(conta)) {
+    const noApp = noiteNativaDisponivel();
+    const destino = noApp ? "/noite" : DESTINO_PADRAO_APOS_LOGIN;
+    if (contaJaTeveRegistro(conta) || lerJornada(conta)) {
       navegar(destino, { replace: true });
       return;
     }
@@ -23,12 +24,13 @@ export function EntradaDaConta() {
     const prazo = window.setTimeout(() => {
       controle.abort();
       navegar(destino, { replace: true });
-    }, 12_000);
+    }, noApp ? 3_000 : 12_000);
     async function entrar(id: string) {
       const presenca = await verificarRegistrosDaConta(null, controle.signal).catch(() => "inconclusivo");
       window.clearTimeout(prazo);
       if (controle.signal.aborted) return;
-      if (presenca === "sem-registro") {
+      if (presenca === "com-registro") guardarContaComRegistro(id);
+      if (presenca === "sem-registro" && !contaJaTeveRegistro(id)) {
         if (estadoDoAviso(id) === null) anotarAviso(id, "aguardando");
         if (!lerJornada(id) && guardarJornada(id, { passo: "inicio" })) {
           navegar("/primeiros-passos", { replace: true });

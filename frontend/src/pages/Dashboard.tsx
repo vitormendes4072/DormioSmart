@@ -25,7 +25,7 @@ import { origemDaTemperatura, descreverRecorte, estaAtivo } from "../lib/disposi
 import { consentimentoVigente } from "../lib/consentimento";
 import { noiteNativaDisponivel } from "../lib/noiteNativa";
 import { minutosDaMeta } from "../lib/metaDiaria";
-import { guiaDispensado, lerJornada, salvarPreferenciaDoGuia, type Jornada } from "../lib/primeirosPassos";
+import { guardarContaComRegistro, guiaDispensado, lerJornada, salvarPreferenciaDoGuia, type Jornada } from "../lib/primeirosPassos";
 import { calcularCobertura } from "../lib/cobertura";
 import { limitesDaConsulta, sessoesDoDia, somarDias } from "../lib/calendarioDoSono";
 import { estaEmModoDemo } from "../lib/demo";
@@ -153,6 +153,9 @@ export function Dashboard() {
   );
   const contaSemRegistro = presencaNaConta === "sem-registro";
   const demo = import.meta.env.DEV && estaEmModoDemo(search);
+  useEffect(() => {
+    if (!demo && conta && presencaNaConta === "com-registro") guardarContaComRegistro(conta);
+  }, [conta, demo, presencaNaConta]);
   const historicoDoDia = useHistoricoPaginado(
     diaSelecionado && limitesDaConsulta(diaSelecionado, diaSelecionado), dispositivo, demo,
   );

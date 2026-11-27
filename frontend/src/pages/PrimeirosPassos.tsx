@@ -1,8 +1,9 @@
-import { ArrowLeft, ChevronRight, Smartphone } from "lucide-react";
+import { ArrowLeft, BedSingle, ChevronRight, Smartphone, type LucideIcon } from "lucide-react";
 import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
 
 import { CampoMetaDiaria } from "../components/CampoMetaDiaria";
+import { MarcaDoProduto } from "../components/MarcaDoProduto";
 import { TelaDeConsentimento } from "../components/TelaDeConsentimento";
 import { TokenRecemCriado } from "../components/TokenRecemCriado";
 import { useAuth } from "../contexts/AuthContext";
@@ -49,6 +50,7 @@ const numeros: Record<PassoDaJornada, number> = {
   inicio: 1, escolha: 2, conectar: 3, bateria: 3, notificacao: 3, preparado: 3,
   codigo: 3, espera: 3, sinal: 3, meta: 4, fim: 5,
 };
+const TOTAL_DE_PASSOS = 5;
 
 export function PrimeirosPassos() {
   const conta = useAuth().sessao?.user.id;
@@ -139,15 +141,14 @@ function JornadaDaConta({ conta }: { conta: string }) {
       </>;
       break;
     case "escolha":
-      conteudo = <div className="grid gap-3">
-        <button className={PRINCIPAL + " justify-between text-left"} onClick={() => ir("conectar", { caminho: "celular" })}>
-          <span className="flex items-center gap-3"><Smartphone size={18} aria-hidden /> Celular</span>
-          <ChevronRight size={18} aria-hidden />
-        </button>
-        <button className={SECUNDARIA + " justify-between border border-border text-left"} onClick={() => ir("conectar", { caminho: "travesseiro" })}>
-          Travesseiro <ChevronRight size={18} aria-hidden />
-        </button>
-      </div>;
+      conteudo = (
+        <div className="grid gap-3">
+          <OpcaoDeRegistro id="celular" titulo="Celular" descricao="App para Android, sobre o colchão"
+            icone={Smartphone} aoEscolher={() => ir("conectar", { caminho: "celular" })} />
+          <OpcaoDeRegistro id="travesseiro" titulo="Travesseiro" descricao="O sensor dentro da fronha"
+            icone={BedSingle} aoEscolher={() => ir("conectar", { caminho: "travesseiro" })} />
+        </div>
+      );
       break;
     case "conectar":
       if (caminho === "travesseiro") {
@@ -220,12 +221,19 @@ function JornadaDaConta({ conta }: { conta: string }) {
   }
 
   return (
-    <main className="min-h-dvh bg-background px-5 py-6 text-foreground sm:px-8 sm:py-12">
-      <div className="mx-auto max-w-lg space-y-8">
-        <nav aria-label="Primeiros passos" className="flex items-center justify-between gap-3">
-          <button className={SECUNDARIA + " gap-2"} onClick={voltar}><ArrowLeft size={16} aria-hidden /> Voltar</button>
-          <p className="text-sm text-muted-foreground">Passo {numeros[passo]} de 5</p>
-        </nav>
+    <main className="min-h-dvh bg-background px-5 py-6 text-foreground sm:grid sm:place-items-center sm:px-8 sm:py-12">
+      <div className="mx-auto w-full max-w-xl space-y-7 sm:min-h-[32rem] sm:space-y-8 sm:rounded-[1.75rem] sm:border sm:border-border sm:bg-card sm:p-10 sm:shadow-sm">
+        <header className="space-y-5">
+          <MarcaDoProduto className="h-8 sm:h-9" />
+          <nav aria-label="Primeiros passos" className="flex items-center justify-between gap-3">
+            <button className={SECUNDARIA + " -ml-3 gap-2 px-3"} onClick={voltar}><ArrowLeft size={16} aria-hidden /> Voltar</button>
+            <p className="text-sm font-medium tabular-nums text-muted-foreground">Passo {numeros[passo]} de {TOTAL_DE_PASSOS}</p>
+          </nav>
+          <div role="progressbar" aria-label="Progresso dos primeiros passos" aria-valuemin={0}
+            aria-valuemax={TOTAL_DE_PASSOS} aria-valuenow={numeros[passo]} className="h-1.5 overflow-hidden rounded-full bg-secondary">
+            <div className="h-full rounded-full bg-primary" style={{ width: `${numeros[passo] / TOTAL_DE_PASSOS * 100}%` }} />
+          </div>
+        </header>
         <section aria-labelledby="titulo-da-jornada" className="space-y-4">
           <h1 id="titulo-da-jornada" ref={titulo} tabIndex={-1}
             className="text-3xl font-extrabold tracking-tight outline-none sm:text-4xl">{tituloAtual}</h1>
@@ -233,6 +241,26 @@ function JornadaDaConta({ conta }: { conta: string }) {
         </section>
       </div>
     </main>
+  );
+}
+
+function OpcaoDeRegistro({ id, titulo, descricao, icone: Icone, aoEscolher }: {
+  id: string;
+  titulo: string;
+  descricao: string;
+  icone: LucideIcon;
+  aoEscolher: () => void;
+}) {
+  return (
+    <button type="button" aria-labelledby={id + "-titulo"} aria-describedby={id + "-descricao"} onClick={aoEscolher}
+      className="grid min-h-20 w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-xl border border-border bg-card p-3 text-left hover:border-primary hover:bg-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring sm:px-4">
+      <span className="grid size-11 place-items-center rounded-lg bg-primary/10 text-primary"><Icone size={21} aria-hidden /></span>
+      <span>
+        <span id={id + "-titulo"} className="block text-base font-bold text-foreground">{titulo}</span>
+        <span id={id + "-descricao"} className="block text-sm leading-snug text-muted-foreground">{descricao}</span>
+      </span>
+      <ChevronRight size={18} aria-hidden className="text-primary" />
+    </button>
   );
 }
 
