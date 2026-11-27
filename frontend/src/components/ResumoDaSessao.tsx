@@ -1,12 +1,12 @@
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 
 import { CartaoDeMetrica, CartaoEmDestaque } from "./CartoesDeRegistro";
 import { COLUNAS_DO_INICIO } from "./colunasDoInicio";
+import { DetalheDoTempoRegistrado, hora } from "./DetalheDoTempoRegistrado";
 
 import { calcularCobertura, type Sessao } from "../lib/cobertura";
 import {
   calcularMetricas,
-  descreverQuando,
   formatarDuracao,
   formatarPorcentagem,
 } from "../lib/metricas";
@@ -55,18 +55,32 @@ export function ResumoDaSessao({
   const valorDeParadas = totalParadas === 0
     ? "Sem pausas"
     : `${totalParadas} ${totalParadas === 1 ? "pausa" : "pausas"}`;
-  const janela = verTudo
-    ? `em ${sessoes.length} sessões`
-    : cobertura.janelaMs > 0 ? `de ${formatarDuracao(cobertura.janelaMs)}` : null;
-  const quando = sessoes.length > 0
-    ? descreverQuando(sessoes[0].inicio, sessoes[sessoes.length - 1].fim)
-    : null;
+  // UI-51: o mesmo texto do celular de exemplo da landing. A data e a janela
+  // ficam no detalhe, que o cartão abre.
+  const [detalheAberto, setDetalheAberto] = useState(false);
+  const quando = sessoes.length === 0
+    ? null
+    : verTudo
+      ? `${sessoes.length} sessões`
+      : `${hora(sessoes[0].inicio)} às ${hora(sessoes[sessoes.length - 1].fim)}`;
 
   const cartoes = (
     <>
-      <CartaoEmDestaque rotulo="Registrado" valor={formatarDuracao(cobertura.tempoCobertoMs)}>
-        {[janela, quando].filter(Boolean).join(" · ")}
+      <CartaoEmDestaque
+        rotulo="Tempo registrado"
+        valor={formatarDuracao(cobertura.tempoCobertoMs)}
+        aoAbrir={sessoes.length > 0 ? () => setDetalheAberto(true) : undefined}
+      >
+        {[quando, sessoes.length > 0 ? "ver detalhes" : null].filter(Boolean).join(" · ")}
       </CartaoEmDestaque>
+      {detalheAberto && (
+        <DetalheDoTempoRegistrado
+          sessoes={sessoes}
+          verTudo={verTudo}
+          registradoMs={cobertura.tempoCobertoMs}
+          aoFechar={() => setDetalheAberto(false)}
+        />
+      )}
 
       <ul aria-label="Métricas da sessão" className={`grid gap-2 min-[360px]:grid-cols-3 ${lateral ? "flex-1" : ""}`}>
         <CartaoDeMetrica valor={movimento ?? "—"}>

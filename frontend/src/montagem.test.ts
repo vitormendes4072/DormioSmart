@@ -1219,7 +1219,7 @@ describe("avisos no painel (UI-18)", PRAZO, () => {
   it("UI-39: o resumo fala a língua do glossário", async () => {
     await montarComLeituras([0, 30, 60], 30);
     const resumo = screen.getByRole("region", { name: "Seus registros" }).textContent;
-    for (const termo of ["Registrado", "no tempo registrado", "Maior período sem movimento registrado"]) {
+    for (const termo of ["Tempo registrado", "no tempo registrado", "Maior período sem movimento registrado"]) {
       expect(resumo).toContain(termo);
     }
     expect(screen.getByText("Intensidade do movimento")).toBeTruthy();
