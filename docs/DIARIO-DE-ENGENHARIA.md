@@ -14278,6 +14278,35 @@ A suíte passou com 1.099 testes em 73 arquivos. Lint, build, os dois Knip e as 
 
 ---
 
+# 2026-11-26 (xxiv) — release R26: o Histórico com os dois aparelhos
+
+**O problema, como foi entendido no início.** Com o `UI-55` (#327) e o `UI-56` (#328) no `develop`, o autor pediu o release para o site.
+
+**Hipótese de trabalho.** Release só do site: sem migração, backend, `vercel.json` nem APK (o app segue no 1.1.7).
+
+**O que foi testado, e como.**
+- **PR #329** (`develop` → `main`): os 13 checks lidos pelo `gh pr checks` antes do merge, incluindo o app Android, o firmware e o RLS nas três versões do Postgres. Desta vez, a espera usou o `gh pr checks`, que mostra também o check da Vercel (no R25, a espera pelo campo `status` não terminava).
+- **Deploy:** `scripts/verificar-deploy.sh` no commit do merge.
+- **De fora, desta máquina:** `/health`, as rotas sem sessão e o pedaço JS do Histórico, baixado da produção e buscado.
+
+**Resultado medido.**
+- **Checks da #329:** todos passaram. Merge `9926830`, deploy de produção `8100130523`.
+- **`verificar-deploy.sh`:** landing, rota do SPA, `/health`, logo e pacote `200`; ingestão sem token e leitura sem sessão `401`.
+- `/health` `200` com o contrato 2.12.0 e o modelo; `/api/devices`, `/api/sleep-history` e `/api/features` sem token `401`.
+- `Historico-CynE5utA.js` contém "com mais de um aparelho", "aparelhos" e a chave `dormio-historico-aparelho`, e não contém "noite".
+
+**Adaptação.** Nenhuma.
+
+**O que deu errado no caminho.** As worktrees `ui-55` e `r25` ficaram presas por um processo ao serem removidas (branches apagadas), como a `ui-52`.
+
+**Risco em aberto.**
+- **O Histórico com a conta do autor**, logado, com a noite gravada pelos dois aparelhos, não foi visto pelo Claude.
+- O app 1.1.7 segue com o Histórico antigo até o próximo APK.
+
+**Procedência.** PR #329, merge `9926830`, deploy `8100130523`, em 26/11; verificação nesta máquina (Windows 11).
+
+---
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
