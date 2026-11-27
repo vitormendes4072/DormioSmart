@@ -14228,6 +14228,28 @@ A suíte passou com 1.099 testes em 73 arquivos. Lint, build, os dois Knip e as 
 
 ---
 
+# 2026-11-26 (xxii) — UI-55: o Histórico diz de qual aparelho veio cada sessão, e filtra por ele
+
+**O problema, como foi entendido no início.** Depois do R25, o autor gravou uma noite com o celular e o travesseiro ao mesmo tempo (o protocolo do `VIA-02`). O Histórico mostrou duas sessões, "26/11" e "26/11", sem dizer de qual aparelho cada uma veio: parecia que eram dias diferentes. Ele pediu um filtro por aparelho e uma visão mista. O plano aprovado tem três partes: o filtro e o nome (`UI-55`), o mesmo período agrupado sem somar (`UI-56`) e o mesmo no Início (`UI-57`, opcional).
+
+**Hipótese de trabalho.** O Histórico já separa as sessões por aparelho (o `device_id` de cada leitura); faltava mostrar. Com mais de um aparelho na conta, cada linha e cada cartão diz o tipo e o nome ("Travesseiro · Quarto"), e o mesmo seletor do Início filtra a lista, os números e o gráfico. A escolha fica guardada para a próxima visita, como a barra lateral; um aparelho guardado que saiu da conta vale como "Todos".
+
+**O que foi testado, e como.**
+- `Historico.test.tsx` (+4, com a lista de aparelhos simulada): o nome de cada linha, o filtro (só a sessão do celular, e "1 Sessão" no topo) com a escolha lembrada depois de remontar, o aparelho guardado que não existe mais, e nenhum seletor nem nome com um aparelho só.
+- **Sabotagem:** o filtro sem efeito; caiu o teste que cobre a escolha.
+
+**Resultado medido.** Frontend **1 142 passam, 76 arquivos** (+4). `tsc`, `eslint`, `knip`, `knip:tipos` e `vite build` limpos.
+
+**Adaptação.** Em "Últimas 24 horas", o gráfico de movimento passa a valer também com dois aparelhos na conta, desde que um esteja escolhido no filtro.
+
+**O que deu errado no caminho.** Nada.
+
+**Risco em aberto.** Com "Todos os dispositivos", as duas sessões do mesmo período continuam em linhas separadas; o agrupamento é o `UI-56`, a seguir.
+
+**Procedência.** Branch `feature/UI-55-filtro-de-aparelho`, base `develop` depois do registro do R25 (#326). Execuções em Windows 11, Node 24.11.0, em 26/11.
+
+---
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
