@@ -102,6 +102,7 @@ export interface PluginNoite {
   apagarTeste(o: { arquivo: string }): Promise<void>;
   estado(): Promise<EstadoDaNoite>;
   pedirIsencaoDeBateria(): Promise<{ isentoDeBateria: boolean }>;
+  pedirNotificacoes(): Promise<{ notificacoes: boolean }>;
   noites(): Promise<{ noites: NoiteGravada[] }>;
   /** Até 60 épocas, como o texto JSON que o núcleo montou. */
   lerEpocas(o: { arquivo: string; de: number }): Promise<{ epocas: string[] }>;

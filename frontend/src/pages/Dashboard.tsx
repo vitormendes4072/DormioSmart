@@ -1,4 +1,5 @@
 import { SeletorSegmentado } from "../components/SeletorSegmentado";
+import { X } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
 
@@ -9,7 +10,6 @@ import { GraficoDeMovimento } from "../components/GraficoDeMovimento";
 import { destinoDoWorkspace } from "../components/nav";
 import { Carregando, FalhaAoCarregar, SemLeituras } from "../components/EstadoDaTela";
 import { NotaDeEscopo } from "../components/NotaDeEscopo";
-import { PrimeirosPassos } from "../components/PrimeirosPassos";
 import { ResumoDeDispositivos } from "../components/ResumoDeDispositivos";
 import { ResumoDaSessao } from "../components/ResumoDaSessao";
 import { AvisoDeMistura, SeletorDeDispositivo } from "../components/SeletorDeDispositivo";
@@ -17,6 +17,7 @@ import { useDispositivos } from "../hooks/useDispositivos";
 import { useAuth } from "../contexts/AuthContext";
 import { usePerfil } from "../contexts/PerfilContext";
 import { useHistorico } from "../hooks/useHistorico";
+import { useAvisoDaPrimeiraSessao } from "../hooks/useAvisoDaPrimeiraSessao";
 import { useHistoricoPaginado } from "../hooks/useHistoricoPaginado";
 import { usePresencaDeRegistros } from "../hooks/usePresencaDeRegistros";
 import { LIMITE_DO_PAINEL } from "../lib/api";
@@ -24,7 +25,7 @@ import { origemDaTemperatura, descreverRecorte, estaAtivo } from "../lib/disposi
 import { consentimentoVigente } from "../lib/consentimento";
 import { noiteNativaDisponivel } from "../lib/noiteNativa";
 import { minutosDaMeta } from "../lib/metaDiaria";
-import { guiaDispensado, salvarPreferenciaDoGuia } from "../lib/primeirosPassos";
+import { guiaDispensado, lerJornada, salvarPreferenciaDoGuia, type Jornada } from "../lib/primeirosPassos";
 import { calcularCobertura } from "../lib/cobertura";
 import { limitesDaConsulta, sessoesDoDia, somarDias } from "../lib/calendarioDoSono";
 import { estaEmModoDemo } from "../lib/demo";
@@ -132,7 +133,8 @@ export function Dashboard() {
   const { sessao } = useAuth();
   const conta = sessao?.user.id;
   const { perfil, carregando: carregandoPerfil, erro: erroNoPerfil } = usePerfil();
-  const [ocultarGuia, setOcultarGuia] = useState(() => guiaDispensado(conta));
+  const [contaDispensada, setContaDispensada] = useState<string>();
+  const ocultarGuia = conta !== undefined && (contaDispensada === conta || guiaDispensado(conta));
   const temAparelho = dispositivos.some(estaAtivo);
   const pausados = dispositivos.filter((d) => !d.revoked_at && d.receber_leituras === false);
   const avisoDePausa = pausados.length > 0 && (
@@ -161,13 +163,39 @@ export function Dashboard() {
   const leituras = sessoesSelecionadas?.flatMap((sessao) => sessao.leituras) ?? semBancada(recebidas);
   const historicoParcial = diaSelecionado !== null && historicoDoDia.dados?.truncada;
   const tituloDoDia = diaSelecionado ? `Sessões de ${DATA_DO_DIA.format(diaSelecionado)}` : undefined;
-  const mostrarGuia = contaSemRegistro && !ocultarGuia;
-
-  function alterarPreferenciaDoGuia(dispensar: boolean) {
-    salvarPreferenciaDoGuia(conta, dispensar);
-    setOcultarGuia(dispensar);
-    if (!dispensar && mostrarGuia) document.getElementById("titulo-primeiros-passos")?.focus();
+  const tempoDaPrimeiraSessao = useAvisoDaPrimeiraSessao(demo ? undefined : conta, presencaNaConta, recentesDaConta.leituras);
+  const jornada = conta ? lerJornada(conta) : null;
+  const travesseiroConectado = dispositivos.some((d) =>
+    estaAtivo(d) && d.tipo === "travesseiro" && (!jornada?.aparelho || d.id === jornada.aparelho) &&
+    d.last_seen_at && Number.isFinite(Date.parse(d.last_seen_at)),
+  );
+  const faltaTravesseiro = jornada?.caminho === "travesseiro" && estadoDosAparelhos === "pronto" && !travesseiroConectado;
+  const faltaConsentimento = jornada?.caminho === "celular" && noiteNativaDisponivel() &&
+    !carregandoPerfil && !erroNoPerfil && perfil !== null && !consentimentoVigente(perfil);
+  let retomar: Jornada | undefined;
+  if (jornada?.passo === "fim" && (faltaTravesseiro || faltaConsentimento)) {
+    retomar = { ...jornada, passo: faltaTravesseiro && jornada.aparelho ? "espera" : "conectar" };
   }
+  const proximoPasso = faltaTravesseiro ? "Falta conectar o travesseiro"
+    : faltaConsentimento ? "Falta preparar o celular"
+    : jornada?.caminho ? "Falta a primeira sessão" : "Escolha como registrar";
+  const statusDaJornada = contaSemRegistro && conta && !ocultarGuia && !demo ? (
+    <section aria-label="Próximo passo" className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2 rounded-xl border border-border bg-card px-3 py-2">
+      <p className="text-sm font-medium">{proximoPasso}</p>
+      <Link to="/primeiros-passos" state={retomar ? { jornada: retomar } : undefined} className={LINK_DO_CARTAO + " min-h-11"}>
+        Continuar
+      </Link>
+      <button type="button" aria-label="Dispensar" title="Dispensar" className="grid size-11 place-items-center rounded-lg text-muted-foreground hover:bg-secondary focus-visible:outline-2 focus-visible:outline-ring"
+        onClick={() => {
+          salvarPreferenciaDoGuia(conta, true);
+          setContaDispensada(conta);
+        }}><X size={16} aria-hidden /></button>
+    </section>
+  ) : tempoDaPrimeiraSessao ? (
+    <p role="status" className="rounded-xl border border-border bg-card px-4 py-3 text-sm">
+      Sua primeira sessão: {tempoDaPrimeiraSessao}
+    </p>
+  ) : null;
 
   useEffect(() => {
     if (!carregando && hash) {
@@ -222,7 +250,7 @@ export function Dashboard() {
   const calendario = (
     <CalendarioDoSono dispositivo={dispositivo} demo={demo} selecionado={diaSelecionado} aoSelecionarDia={selecionarDia}
       ancora={ancoraDoCalendario} aoNavegar={setAncoraDoCalendario} destinoDoGrafico={telaLarga ? vagaDoGrafico : null}
-      contaSemRegistro={contaSemRegistro} abrirGuia={() => alterarPreferenciaDoGuia(false)}
+      contaSemRegistro={contaSemRegistro}
       meta={minutosDaMeta(perfil?.meta_diaria_min)}
       dicaDaMeta={aparelhosDaMeta.some((d) => d.tipo === "travesseiro") ? "travesseiro"
         : noiteNativaDisponivel() || aparelhosDaMeta.some((d) => d.tipo === "celular") ? "app" : undefined} />
@@ -258,6 +286,7 @@ export function Dashboard() {
         <Cabecalho acao={seletor} calendario={calendario} instrumento={instrumento} titulo={tituloDoDia} telaLarga={telaLarga} />
         {comColunaDoGrafico(<>
           {avisoDePausa}
+          {statusDaJornada}
           <Carregando mensagem={diaSelecionado ? "Carregando registros do dia..." : undefined} />
           {diaSelecionado && linkHistorico}
         </>)}
@@ -271,6 +300,7 @@ export function Dashboard() {
         <Cabecalho acao={seletor} calendario={calendario} instrumento={instrumento} titulo={tituloDoDia} telaLarga={telaLarga} />
         {comColunaDoGrafico(<>
           {avisoDePausa}
+          {statusDaJornada}
           <FalhaAoCarregar mensagem={erro} aoTentarNovamente={recarregar} />
           {diaSelecionado && linkHistorico}
         </>)}
@@ -283,14 +313,11 @@ export function Dashboard() {
       <div ref={conteudo} className="space-y-6">
         <Cabecalho acao={seletor} calendario={calendario} instrumento={instrumento} titulo={tituloDoDia} telaLarga={telaLarga} />
         {avisoDePausa}
-        {!mostrarGuia && <NotaDeEscopo />}
+        {statusDaJornada}
+        <NotaDeEscopo />
         {comColunaDoGrafico(
           <div id="sessoes-recentes">
-            {mostrarGuia ? (
-              <PrimeirosPassos temAparelho={temAparelho} consentiu={consentimentoVigente(perfil)}
-                situacaoConhecida={estadoDosAparelhos === "pronto" && !carregandoPerfil && !erroNoPerfil && perfil !== null}
-                noApp={noiteNativaDisponivel()} dispensar={() => alterarPreferenciaDoGuia(true)} />
-            ) : diaSelecionado ? (
+            {diaSelecionado ? (
               <div className={`${CARTAO} h-full`}>
                 {avisoHistoricoParcial}
                 <p className="py-5 text-sm font-medium" role="status">
@@ -396,6 +423,7 @@ export function Dashboard() {
         aviso={aparelhosDoGrafico.size > 1 && <AvisoDeMistura dispositivos={dispositivosDoGrafico} />}
       />
       {avisoDePausa}
+      {statusDaJornada}
 
       {/* A coleta teve buracos? Isso precisa aparecer ANTES dos números, e
           não depois — porque é o que decide se eles significam algo. */}

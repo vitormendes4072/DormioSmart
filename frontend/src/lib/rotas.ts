@@ -85,8 +85,7 @@ export const DESTINO_PADRAO_APOS_LOGIN = "/dashboard";
  * invertida. Recusa `//host`, `/\\host`, `https://…`, `javascript:…`, vazio
  * e o que não for texto — e devolve o destino padrão.
  */
-export function destinoSeguro(candidato: unknown, appAndroid = false): string {
-  const padrao = appAndroid ? "/noite" : DESTINO_PADRAO_APOS_LOGIN;
+export function destinoSeguro(candidato: unknown, padrao = DESTINO_PADRAO_APOS_LOGIN): string {
   if (typeof candidato !== "string") return padrao;
   if (!candidato.startsWith("/")) return padrao;
   const segundo = candidato.charAt(1);

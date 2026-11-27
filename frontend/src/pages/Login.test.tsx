@@ -48,11 +48,11 @@ describe("destino pós-login (SEC-16)", () => {
     expect(await entrarVindoDe("/configuracoes?aba=conta")).toBe("/configuracoes?aba=conta");
   });
 
-  it("caminho que sairia do site vai para o painel", async () => {
-    expect(await entrarVindoDe("//evil.example")).toBe("/dashboard");
+  it("caminho que sairia do site usa a entrada padrão", async () => {
+    expect(await entrarVindoDe("//evil.example")).toBe("/entrada");
   });
 
-  it("sem destino, vai para o painel", async () => {
-    expect(await entrarVindoDe(undefined)).toBe("/dashboard");
+  it("sem destino, usa a entrada padrão", async () => {
+    expect(await entrarVindoDe(undefined)).toBe("/entrada");
   });
 });

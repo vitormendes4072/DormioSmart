@@ -2,7 +2,7 @@
  * A linguagem das telas depois do login (UI-39, `docs/PADRAO-VISUAL.md`, §10).
  *
  * Reprova jargão no texto que vai à tela. O conjunto de arquivos NÃO é uma
- * lista à mão: sai dos imports das seis telas, para que um componente novo
+ * lista à mão: sai dos imports das telas, para que um componente novo
  * entre na conferência sozinho. Comentário, classe e nome de variável não
  * contam; o que está num `<details>` de "Detalhes técnicos" também não.
  */
@@ -15,7 +15,7 @@ import { describe, expect, it } from "vitest";
 
 const RAIZ = dirname(fileURLToPath(import.meta.url));
 
-const TELAS = ["Dashboard", "Noite", "Historico", "Dispositivos", "Coletar", "Settings"]
+const TELAS = ["Dashboard", "Noite", "Historico", "Dispositivos", "Coletar", "Settings", "PrimeirosPassos"]
   .map((tela) => resolve(RAIZ, `pages/${tela}.tsx`));
 
 /** Fora da regra, cada um pelo seu motivo. */
@@ -111,7 +111,17 @@ it("UI-61: a meta usa o vocabulário de registro, com uma única frase de ajuda 
   const proibido = /\b(?:dormir|sono|ideal|saudável|deveria|qualidade|noite)\b|\brecomend/iu;
   const ajuda = "O Smart Dormio não recomenda quantas horas dormir.";
   const arquivos = ["components/CampoMetaDiaria.tsx", "components/ComparacaoDaMeta.tsx", "components/GraficoDeTempoPorDia.tsx"];
-  const ocorrencias = arquivos.flatMap((nome) => textos(nome, readFileSync(resolve(RAIZ, nome), "utf8")))
+  const nomeDaJornada = "pages/PrimeirosPassos.tsx";
+  const jornada = ts.createSourceFile(nomeDaJornada, readFileSync(resolve(RAIZ, nomeDaJornada), "utf8"), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  const formulario = jornada.statements.find((no) => ts.isFunctionDeclaration(no) && no.name?.text === "MetaDaJornada");
+  const titulos = jornada.statements
+    .flatMap((no) => ts.isVariableStatement(no) ? [...no.declarationList.declarations] : [])
+    .find((no) => no.name.getText(jornada) === "titulos")?.initializer;
+  const titulo = titulos && ts.isObjectLiteralExpression(titulos) ? titulos.properties.find((no) => no.name?.getText(jornada) === "meta") : undefined;
+  expect(formulario).toBeDefined();
+  expect(titulo).toBeDefined();
+  const ocorrencias = [...arquivos.flatMap((nome) => textos(nome, readFileSync(resolve(RAIZ, nome), "utf8"))),
+    ...textos(nomeDaJornada, `const titulos = { ${titulo!.getText(jornada)} };\n${formulario!.getText(jornada)}`)]
     .filter(({ texto }) => proibido.test(texto));
   expect(ocorrencias.map(({ texto }) => texto)).toEqual([`É uma meta sua. ${ajuda}`]);
 });
@@ -142,7 +152,7 @@ describe("as telas não falam a língua do desenvolvedor (UI-39)", () => {
 
   it("a conferência alcança os componentes e as mensagens das telas", () => {
     const nomes = arquivos.map(relativo);
-    for (const esperado of ["components/CartaoDaNoite.tsx", "components/MeusDispositivos.tsx",
+    for (const esperado of ["pages/PrimeirosPassos.tsx", "components/TokenRecemCriado.tsx", "components/CartaoDaNoite.tsx", "components/MeusDispositivos.tsx",
       "components/AvisoDeLacuna.tsx", "lib/coleta.ts", "lib/envioDaNoite.ts", "lib/dispositivos.ts"]) {
       expect(nomes).toContain(esperado);
     }
@@ -164,7 +174,7 @@ describe("as telas não falam a língua do desenvolvedor (UI-39)", () => {
     const tudo = arquivos.flatMap((arquivo) => textos(relativo(arquivo), readFileSync(arquivo, "utf8")))
       .map(({ texto }) => texto);
     for (const nome of ["Excluir…", "Marcar como bancada", "Desmarcar", "Excluir conta", "Editar dados",
-      "Iniciar a noite", "Encerrar a noite", "Meus dispositivos", "Seus dados"]) {
+      "Iniciar a noite", "Encerrar a noite", "Meus dispositivos", "Seus dados", "Primeiros passos"]) {
       expect(tudo).toContain(nome);
     }
   });

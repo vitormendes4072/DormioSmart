@@ -118,7 +118,9 @@ function respostaJson(corpo: unknown): Response {
 beforeEach(() => {
   sessaoDoServidor = SESSAO;
   publicarSessao = undefined;
-  localStorage.removeItem("dormio-primeiros-passos-" + SESSAO.user.id);
+  for (const chave of ["dormio-primeiros-passos-", "dormio-jornada-", "dormio-primeira-sessao-"]) {
+    localStorage.removeItem(chave + SESSAO.user.id);
+  }
   localStorage.removeItem("dormio-historico-aparelho");
   encerrarSessao.mockClear();
   // Lidos no topo de `lib/supabase.ts`, então têm de valer antes do import
@@ -1262,10 +1264,9 @@ describe("avisos no painel (UI-18)", PRAZO, () => {
     expect(screen.getByText(escopo)).toBeTruthy();
   });
 
-  it("escopo: o guia do painel sem leituras explica os limites do registro", async () => {
-    await montar("/dashboard");
-    const guia = await screen.findByRole("region", { name: "Primeiros passos" });
-    expect(within(guia).getByText(/não mede o sono e não é diagnóstico/i)).toBeTruthy();
+  it("escopo: a abertura da jornada explica os limites do registro", async () => {
+    await montar("/primeiros-passos");
+    expect(await screen.findByText("Não é diagnóstico e não mede o sono.")).toBeTruthy();
   });
 
   it("escopo: omite a nota durante o carregamento", async () => {
@@ -1307,8 +1308,8 @@ describe("toda rota do App.tsx monta (UI-17)", PRAZO, () => {
   });
 });
 
-describe("destino do Android após autenticar (UI-58)", PRAZO, () => {
-  it.each(["/login", "/cadastro"])("abre a Noite após autenticar a partir de %s sem consultar o histórico", async (rota) => {
+describe("jornada automática após autenticar (UI-62)", PRAZO, () => {
+  it.each(["/login", "/cadastro"])("abre Primeiros passos para conta vazia autenticada a partir de %s", async (rota) => {
     sessaoDoServidor = null;
     const nativo = vi.spyOn(Capacitor, "isNativePlatform").mockReturnValue(true);
     const plugin = vi.spyOn(Capacitor, "isPluginAvailable").mockImplementation((nome) => nome === "Noite");
@@ -1321,7 +1322,21 @@ describe("destino do Android após autenticar (UI-58)", PRAZO, () => {
       fireEvent.change(screen.getByLabelText("E-mail"), { target: { value: "titular@exemplo.com" } });
       fireEvent.change(screen.getByLabelText("Senha"), { target: { value: "senha-segura-de-teste" } });
       fireEvent.click(screen.getByRole("button", { name: rota === "/cadastro" ? "Criar conta" : "Entrar" }));
-      expect(await screen.findByRole("heading", { name: "A noite inteira" }, { timeout: 8000 })).toBeTruthy();
+      expect(await screen.findByRole("heading", { name: "Primeiros passos" }, { timeout: 8000 })).toBeTruthy();
+      expect(window.location.pathname).toBe("/primeiros-passos");
+    } finally {
+      plugin.mockRestore();
+      nativo.mockRestore();
+    }
+  });
+
+  it("no Android volta ao destino Noite após a jornada ter sido vista", async () => {
+    localStorage.setItem("dormio-jornada-" + SESSAO.user.id, JSON.stringify({ passo: "meta", caminho: "celular" }));
+    const nativo = vi.spyOn(Capacitor, "isNativePlatform").mockReturnValue(true);
+    const plugin = vi.spyOn(Capacitor, "isPluginAvailable").mockImplementation((nome) => nome === "Noite");
+    try {
+      await montar("/entrada");
+      expect(await screen.findByRole("heading", { name: "A noite inteira" })).toBeTruthy();
       expect(window.location.pathname).toBe("/noite");
       expect(vi.mocked(fetch).mock.calls.some(([url]) => String(url).startsWith("/api/sleep-history"))).toBe(false);
     } finally {
@@ -1352,30 +1367,108 @@ describe("o painel em camadas (UI-40)", PRAZO, () => {
     movimento_total: 9.81, temp: null, status: "Repouso", epoca_segundos: 30, device_id: "p", ...extra,
   });
 
-  describe("onboarding no Início (UI-57 a UI-59)", () => {
-    const guia = () => within(screen.getByRole("region", { name: "Primeiros passos" }));
+  describe("jornada e Início (UI-57, UI-62 e UI-63)", () => {
+    const faixa = () => within(screen.getByRole("region", { name: "Próximo passo" }));
 
-    it("UI-60: o guia oferece pular e salva a idade pela mesma rota, mostrando a aplicabilidade", async () => {
+    it("UI-62: o site mostra o APK, orienta a usar o mesmo e-mail e oferece a meta sem idade", async () => {
+      await montar("/entrada");
+      const comeco = await screen.findByRole("heading", { name: "Primeiros passos" });
+      expect(document.activeElement).toBe(comeco);
+      fireEvent.click(screen.getByRole("button", { name: "Começar" }));
+      expect(document.activeElement).toBe(screen.getByRole("heading", { name: "Como você vai registrar?" }));
+      fireEvent.click(screen.getByRole("button", { name: "Celular" }));
+      expect(screen.getByRole("img", { name: /QR code para baixar/ })).toBeTruthy();
+      expect(screen.getByRole("link", { name: "Baixar o app para Android" }).getAttribute("href")).toMatch(/releases\/latest/);
+      fireEvent.click(screen.getByRole("button", { name: "Voltar" }));
+      await screen.findByRole("heading", { name: "Como você vai registrar?" });
+      fireEvent.click(screen.getByRole("button", { name: "Celular" }));
+      fireEvent.click(screen.getByRole("button", { name: "Já instalei" }));
+      expect(screen.getByText("Passo 4 de 5")).toBeTruthy();
+      expect(screen.queryByLabelText(/idade/i)).toBeNull();
+      fireEvent.click(screen.getByRole("button", { name: "Definir depois" }));
+      expect(screen.getByText(/Entre no app com o mesmo e-mail desta conta/i)).toBeTruthy();
+      fireEvent.click(screen.getByRole("button", { name: "Ir para o Início" }));
+      expect(await faixaApareceu()).toBeTruthy();
+      expect(faixa().getByText("Falta a primeira sessão")).toBeTruthy();
+    });
+
+    function faixaApareceu() {
+      return screen.findByRole("region", { name: "Próximo passo" });
+    }
+
+    it("UI-62: o teste no navegador abre Coletar e deixa a meta para a retomada", async () => {
+      await montar("/primeiros-passos");
+      fireEvent.click(await screen.findByRole("button", { name: "Começar" }));
+      fireEvent.click(screen.getByRole("button", { name: "Celular" }));
+      fireEvent.click(screen.getByRole("button", { name: "Testar no navegador (sessão curta)" }));
+      await waitFor(() => expect(window.location.pathname).toBe("/coletar"));
+      expect(localStorage.getItem("dormio-jornada-" + SESSAO.user.id)).toContain('"passo":"meta"');
+    });
+
+    it("UI-62: retoma o travesseiro, tenta novamente e avança só com o primeiro sinal do aparelho pareado", async () => {
       const original = vi.mocked(fetch).getMockImplementation()!;
-      let recebido: unknown;
+      let criado = false;
+      let indisponivel = false;
+      let sinal = false;
+      const outro = { ...travesseiro, id: "outro", last_seen_at: "2026-11-27T12:00:00Z" };
+      vi.mocked(fetch).mockImplementation(async (entrada, opcoes) => {
+        if (String(entrada) !== "/api/devices") return original(entrada, opcoes);
+        if (opcoes?.method === "POST") {
+          criado = true;
+          return respostaJson({ device: travesseiro, token: "codigo-sintetico-para-o-teste" });
+        }
+        if (!criado) return respostaJson([]);
+        if (indisponivel && opcoes?.signal) throw new Error("indisponível");
+        return respostaJson([{ ...travesseiro, last_seen_at: sinal ? outro.last_seen_at : null }, outro]);
+      });
+      await montar("/primeiros-passos");
+      fireEvent.click(await screen.findByRole("button", { name: "Começar" }));
+      fireEvent.click(screen.getByRole("button", { name: "Travesseiro" }));
+      const gerar = screen.getByRole<HTMLButtonElement>("button", { name: "Gerar código de conexão" });
+      await waitFor(() => expect(gerar.disabled).toBe(false));
+      fireEvent.click(gerar);
+      expect(await screen.findByText("O código precisa ser gravado na placa do travesseiro.")).toBeTruthy();
+      expect(localStorage.getItem("dormio-jornada-" + SESSAO.user.id)).not.toContain("codigo-sintetico");
+      fireEvent.click(screen.getByRole("button", { name: "Já copiei, aguardar sinal" }));
+      await screen.findByRole("heading", { name: "Aguardando o travesseiro" });
+      expect(screen.queryByText("Recebemos o primeiro sinal dele")).toBeNull();
+      fireEvent.click(screen.getByRole("button", { name: "Continuar depois" }));
+      await faixaApareceu();
+      expect(faixa().getByText("Falta conectar o travesseiro")).toBeTruthy();
+      indisponivel = true;
+      fireEvent.click(faixa().getByRole("link", { name: "Continuar" }));
+      const tentar = await screen.findByRole("button", { name: "Tentar novamente" });
+      sinal = true;
+      indisponivel = false;
+      fireEvent.click(tentar);
+      expect(await screen.findByRole("heading", { name: "Recebemos o primeiro sinal dele" })).toBeTruthy();
+    });
+
+    it("UI-62: a jornada valida a meta do UI-61 e salva só esse campo", async () => {
+      const original = vi.mocked(fetch).getMockImplementation()!;
+      const alteracoes: unknown[] = [];
       vi.mocked(fetch).mockImplementation((entrada, opcoes) => {
         if (String(entrada) === "/api/me/perfil" && opcoes?.method === "PATCH") {
-          recebido = JSON.parse(String(opcoes.body));
-          perfilDoServidor = { ...perfilDoServidor, idade: 70 };
+          const dados = JSON.parse(String(opcoes.body));
+          alteracoes.push(dados);
+          perfilDoServidor = { ...perfilDoServidor, ...dados };
           return Promise.resolve(respostaJson(perfilDoServidor));
         }
         return original(entrada, opcoes);
       });
-      await montar("/dashboard");
-      expect(await screen.findByRole("button", { name: "Agora não" })).toBeTruthy();
-      fireEvent.click(guia().getByRole("button", { name: "Responder" }));
-      fireEvent.change(guia().getByLabelText("Idade (opcional)"), { target: { value: "70" } });
-      expect((guia().getByLabelText("Meta de tempo registrado por dia") as HTMLInputElement).value).toBe("");
-      fireEvent.click(guia().getByRole("button", { name: "Salvar respostas" }));
-      const aviso = aplicabilidadeDaIdade(70)?.aviso;
-      expect(aviso).toBeTruthy();
-      expect(await guia().findByText(aviso!)).toBeTruthy();
-      expect(recebido).toEqual({ idade: 70 });
+      await montar("/primeiros-passos");
+      fireEvent.click(await screen.findByRole("button", { name: "Começar" }));
+      fireEvent.click(screen.getByRole("button", { name: "Celular" }));
+      fireEvent.click(screen.getByRole("button", { name: "Já instalei" }));
+      const campo = screen.getByLabelText("Meta de tempo registrado por dia");
+      fireEvent.change(campo, { target: { value: "7:13" } });
+      fireEvent.click(screen.getByRole("button", { name: "Salvar meta" }));
+      expect(await screen.findByRole("alert")).toBeTruthy();
+      expect(alteracoes).toEqual([]);
+      fireEvent.change(campo, { target: { value: "7:15" } });
+      fireEvent.click(screen.getByRole("button", { name: "Salvar meta" }));
+      expect(await screen.findByRole("heading", { name: "Tudo pronto para hoje à noite" })).toBeTruthy();
+      expect(alteracoes).toEqual([{ meta_diaria_min: 435 }]);
     });
 
     it("UI-61: Editar dados salva a meta na conta e campo em branco a remove", async () => {
@@ -1411,7 +1504,7 @@ describe("o painel em camadas (UI-40)", PRAZO, () => {
 
     it("UI-57: mostra as ações de primeira utilização e abre o pareamento", async () => {
       await montar("/dashboard");
-      await screen.findByRole("heading", { name: "Primeiros passos" });
+      await faixaApareceu();
       expect(await screen.findByText("Os dias com registro aparecem marcados aqui.")).toBeTruthy();
       expect(await screen.findByText("Depois da primeira sessão, o tempo registrado de cada dia aparece aqui.")).toBeTruthy();
       expect(cartaoDoAparelho().getByText("Nenhum aparelho conectado ainda.")).toBeTruthy();
@@ -1422,27 +1515,38 @@ describe("o painel em camadas (UI-40)", PRAZO, () => {
       expect(screen.getByText(/depois de registrar uma sessão curta em/)).toBeTruthy();
     });
 
-    it("UI-58: descarta bancada e exibe os passos conforme aparelhos e consentimento vigente", async () => {
-      perfilDoServidor = {
-        ...perfilDoServidor,
-        consentimento_saude_em: "2026-11-26T12:00:00Z",
-        consentimento_saude_versao: VERSAO_DO_CONSENTIMENTO,
-      };
-      responder({ dispositivos: [{ ...celular, revoked_at: "2026-11-26" }], leituras: [leitura(0, { bancada: true })] });
-      await montar("/dashboard");
-      const titulo = await screen.findByRole("heading", { name: "Primeiros passos" });
-      expect(document.activeElement).toBe(titulo);
-      await guia().findByText("2 de 4 passos feitos");
-      const progresso = guia().getByRole("progressbar", { name: "2 de 4 passos feitos" });
-      const passos = guia().getByRole("list");
-      const itens = within(passos).getAllByRole("listitem");
-      expect(progresso.getAttribute("aria-valuenow")).toBe("2");
-      expect(Number(progresso.getAttribute("aria-valuemax"))).toBe(itens.length);
-      expect(itens.map((item) => item.textContent)).toEqual([
-        "Conta criada· feito", "Aparelho conectado· a fazer", "Consentimento dado· feito", "Primeira sessão registrada· a fazer",
-      ]);
-      expect(passos.contains(guia().getByRole("heading", { name: "Opcional: idade e meta" }))).toBe(false);
-      expect(guia().getByRole("link", { name: "Testar no navegador (sessão curta)" }).getAttribute("href")).toBe("/coletar");
+    it("UI-62: bancada não impede a abertura inicial, que acontece uma vez por conta", async () => {
+      responder({ dispositivos: [], leituras: [leitura(0, { bancada: true })] });
+      await montar("/entrada");
+      await screen.findByRole("heading", { name: "Primeiros passos" });
+      fireEvent.click(screen.getByRole("button", { name: "Voltar" }));
+      expect(await faixaApareceu()).toBeTruthy();
+      await act(async () => {
+        window.history.pushState({}, "", "/entrada");
+        window.dispatchEvent(new PopStateEvent("popstate"));
+      });
+      expect(await faixaApareceu()).toBeTruthy();
+      expect(window.location.pathname).toBe("/dashboard");
+      expect(screen.queryByRole("heading", { name: "Primeiros passos" })).toBeNull();
+    });
+
+    it("UI-62: conta com registros não abre a jornada", async () => {
+      responder({ dispositivos: [travesseiro], leituras: [leitura(30), leitura(0)] });
+      await montar("/entrada");
+      await waitFor(() => expect(window.location.pathname).toBe("/dashboard"));
+      expect(await screen.findByText("Intensidade do movimento")).toBeTruthy();
+      expect(screen.queryByRole("heading", { name: "Primeiros passos" })).toBeNull();
+      expect(screen.queryByText(/Sua primeira sessão/)).toBeNull();
+    });
+
+    it("UI-62: falha na entrada segue ao destino normal", async () => {
+      const original = vi.mocked(fetch).getMockImplementation()!;
+      vi.mocked(fetch).mockImplementation((url, opcoes) =>
+        String(url).startsWith("/api/sleep-history") ? Promise.reject(new Error("Indisponível")) : original(url, opcoes));
+      await montar("/entrada");
+      expect(await screen.findByText("Não foi possível carregar")).toBeTruthy();
+      expect(window.location.pathname).toBe("/dashboard");
+      expect(screen.queryByRole("heading", { name: "Primeiros passos" })).toBeNull();
     });
 
     it("mantém o guia oculto após 16 páginas cheias apenas de bancada", async () => {
@@ -1452,15 +1556,17 @@ describe("o painel em camadas (UI-40)", PRAZO, () => {
         const { pathname, searchParams } = new URL(String(entrada), "http://localhost");
         if (pathname !== "/api/sleep-history" || searchParams.has("desde")) return original(entrada, opcoes);
         const pagina = ++paginas;
-        if (pagina > MAX_PAGINAS_DO_HISTORICO) return respostaJson([]);
+        if (pagina > MAX_PAGINAS_DO_HISTORICO * 2) return respostaJson([]);
         return respostaJson(Array.from({ length: LIMITE_DO_PAINEL }, (_, indice) =>
           leitura(pagina * LIMITE_DO_PAINEL + indice, { id: `${pagina}-${indice}`, bancada: true })));
       });
 
-      await montar("/dashboard");
-      await waitFor(() => expect(paginas).toBe(MAX_PAGINAS_DO_HISTORICO));
+      await montar("/entrada");
+      await waitFor(() => expect(window.location.pathname).toBe("/dashboard"));
+      expect(screen.queryByRole("heading", { name: "Primeiros passos" })).toBeNull();
+      await waitFor(() => expect(paginas).toBe(MAX_PAGINAS_DO_HISTORICO * 2));
       expect(await screen.findByText("Sem registros no recorte carregado.")).toBeTruthy();
-      expect(screen.queryByRole("region", { name: "Primeiros passos" })).toBeNull();
+      expect(screen.queryByRole("region", { name: "Próximo passo" })).toBeNull();
     });
 
     it("mantém o guia oculto quando a consulta da conta falha e o aparelho selecionado não tem registros", async () => {
@@ -1489,63 +1595,38 @@ describe("o painel em camadas (UI-40)", PRAZO, () => {
       expect(pedidosDaConta).toBeGreaterThan(0);
       await act(async () => rejeitarConta(new Error("Consulta da conta indisponível")));
       expect(await screen.findByText("Sem registros no recorte carregado.")).toBeTruthy();
-      expect(screen.queryByRole("region", { name: "Primeiros passos" })).toBeNull();
+      expect(screen.queryByRole("region", { name: "Próximo passo" })).toBeNull();
     });
 
-    it("UI-58: esconde o guia com a primeira sessão fora da bancada", async () => {
+    it("UI-63: exibe uma vez o tempo da primeira sessão e retira a faixa", async () => {
       const leituras: ReturnType<typeof leitura>[] = [];
       responder({ dispositivos: [travesseiro], leituras });
       await montar("/dashboard");
-      await screen.findByRole("heading", { name: "Primeiros passos" });
+      await faixaApareceu();
       fireEvent.click(screen.getAllByRole("link", { name: "Configurações" })[0]);
-      const retomar = await screen.findByRole("link", { name: "Primeiros passos" }, { timeout: 8000 });
+      await screen.findByRole("heading", { name: "Configurações", level: 1 });
       leituras.push(leitura(30), leitura(0));
-      fireEvent.click(retomar);
-      await screen.findByRole("heading", { name: "Seus registros" }, { timeout: 8000 });
-      expect(screen.queryByRole("heading", { name: "Primeiros passos" })).toBeNull();
+      fireEvent.click(screen.getAllByRole("link", { name: "Início" })[0]);
+      expect(await screen.findByText(/Sua primeira sessão: 1 min/)).toBeTruthy();
+      expect(screen.queryByRole("region", { name: "Próximo passo" })).toBeNull();
+      fireEvent.click(screen.getAllByRole("link", { name: "Configurações" })[0]);
+      await screen.findByRole("heading", { name: "Configurações", level: 1 });
+      fireEvent.click(screen.getAllByRole("link", { name: "Início" })[0]);
+      await screen.findByText("Intensidade do movimento");
+      expect(screen.queryByText(/Sua primeira sessão/)).toBeNull();
     });
 
-    it.each(["/api/devices", "/api/me/perfil"])("UI-58: não marca passos quando %s falha", async (rota) => {
-      const original = vi.mocked(fetch).getMockImplementation()!;
-      vi.mocked(fetch).mockImplementation((entrada, opcoes) => String(entrada).startsWith(rota)
-        ? Promise.reject(new Error("API indisponível"))
-        : original(entrada, opcoes));
-      await montar("/dashboard");
-      await screen.findByRole("heading", { name: "Primeiros passos" });
-      expect(guia().getAllByRole("listitem")).toHaveLength(4);
-      expect(guia().queryByText(/a fazer|feito/)).toBeNull();
-      expect(guia().queryByRole("progressbar")).toBeNull();
-    });
-
-    it("UI-58: permite dispensar, retomar pelo gráfico e reabrir pelas Configurações", async () => {
+    it("UI-63: dispensa a faixa sem impedir a abertura pelas Configurações", async () => {
       responder({ dispositivos: [travesseiro], leituras: [] });
       await montar("/dashboard");
-      fireEvent.click(await screen.findByRole("button", { name: "Dispensar" }));
+      await faixaApareceu();
+      fireEvent.click(faixa().getByRole("button", { name: "Dispensar" }));
       expect(await screen.findByText(/verifique se ele está ligado/i)).toBeTruthy();
-      expect(screen.queryByRole("heading", { name: "Primeiros passos" })).toBeNull();
-      fireEvent.click(await screen.findByRole("button", { name: "Como registrar" }));
-      await screen.findByRole("heading", { name: "Primeiros passos" });
-      fireEvent.click(guia().getByRole("button", { name: "Dispensar" }));
+      expect(screen.queryByRole("region", { name: "Próximo passo" })).toBeNull();
       fireEvent.click(screen.getAllByRole("link", { name: "Configurações" })[0]);
-      await screen.findByRole("heading", { name: "Configurações", level: 1 }, { timeout: 8000 });
-      fireEvent.click(screen.getByRole("link", { name: "Primeiros passos" }));
+      fireEvent.click(await screen.findByRole("link", { name: "Primeiros passos" }));
       expect(await screen.findByRole("heading", { name: "Primeiros passos" })).toBeTruthy();
     });
-
-    it("UI-58: oferece Noite e oculta download e sessão curta dentro do app", async () => {
-      const nativo = vi.spyOn(Capacitor, "isNativePlatform").mockReturnValue(true);
-      const plugin = vi.spyOn(Capacitor, "isPluginAvailable").mockImplementation((nome) => nome === "Noite");
-      try {
-        await montar("/dashboard");
-        await screen.findByRole("heading", { name: "Primeiros passos" });
-        expect(guia().getByRole("link", { name: "Começar uma Noite" }).getAttribute("href")).toBe("/noite");
-        expect(guia().queryByRole("link", { name: /baixar|sessão curta/i })).toBeNull();
-      } finally {
-        plugin.mockRestore();
-        nativo.mockRestore();
-      }
-    });
-
     it("UI-57: Histórico vazio oferece retorno ao Início na visão de todos os aparelhos", async () => {
       responder({ dispositivos: [travesseiro, celular], leituras: [] });
       await montar("/historico");

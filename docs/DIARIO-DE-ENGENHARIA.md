@@ -14421,6 +14421,33 @@ Contra `develop`, falharam 5 testes de tela e vocabulário, 9 do PATCH e 4 de ac
 
 ---
 
+# 2026-11-27 (iii) — jornada de primeiro acesso (UI-62, UI-63 e LGPD-17)
+
+**O problema, como foi entendido no início.** A conta nova chegava a um Início vazio com as opções, todos os passos e perguntas opcionais no mesmo cartão. A pessoa precisava descobrir como começar, onde preparar o celular e como reconhecer que o travesseiro tinha enviado dados.
+
+**Hipótese de trabalho.** Uma rota própria com uma ação principal por tela e retomada no mesmo aparelho torna o próximo passo visível. O histórico confirma que a conta está vazia, o perfil informa consentimento e meta, e a lista de aparelhos confirma o sinal do travesseiro pareado.
+
+**O que foi testado, e como.** Montagem pelo ponto de entrada real, testes da consulta do travesseiro com relógio controlado e guarda de vocabulário. Edge a 390 e 1280 px, em claro e escuro, com preferência por movimento reduzido e dados sintéticos. O emulador usa um APK de depuração com identificador próprio e respostas sintéticas da autenticação e da API. Os contratos das rotas de histórico, dispositivos, perfil e consentimento foram conferidos por leitura no Flask.
+
+**Resultado medido.** A suíte do frontend passou com 1.190 testes em 80 arquivos. Lint, builds web e Android, os dois Knip, orçamento e as três conferências passaram. O leitor de QR recuperou o endereço fixo do APK do PNG de 794 B. No Edge, o foco voltou para o título ao trocar de passo e as telas couberam nas duas larguras. O Início mostrou “Sua primeira sessão: 6 h 12 registradas” a partir de 744 épocas sintéticas de 30 s e omitiu o aviso na reabertura. No Pixel 6, o APK percorreu login, boas-vindas, Voltar na tela, escolha, consentimento, bateria e notificação com “Continuar depois”, e chegou a `/noite`. Contra `develop` `7a21e9f`, falharam 12 casos de comportamento novo. O retorno a Noite depois da jornada, que preserva o destino anterior do Android, passou também na base.
+
+| Sabotagem | Resultado |
+|---|---|
+| Abrir para conta com registros | O teste de entrada ficou na jornada e falhou ao esperar o Início. |
+| Deixar a consulta ativa após sair | O teste encontrou a consulta em andamento sem cancelamento. |
+| Mostrar o aviso da primeira sessão duas vezes | O teste encontrou o aviso ao voltar para o Início. |
+| Trocar o título da meta por “Seu sono ideal” | A guarda do UI-61 acusou a frase fora do vocabulário de registro. |
+
+**Adaptação.** A entrada tem prazo de 12 s antes de seguir para o destino normal. Na espera do travesseiro, a consulta tem prazo de 10 s e é repetida 5 s depois de terminar. Sair do passo ou esconder a tela cancela a consulta e a próxima tentativa. O código fica em memória até a pessoa seguir para a espera. A retomada guarda só o ID do aparelho, o caminho e o passo. No celular, o botão Voltar do Android percorre a jornada e fecha a janela de consentimento quando ela está aberta. No caminho web, a conclusão indica entrar no app com o mesmo e-mail da conta. A política usa 27/11 como data prevista, a confirmar para o release.
+
+**O que deu errado no caminho.** O cache do npm estava incompleto. As dependências foram copiadas de uma worktree com o mesmo lockfile. A primeira cópia usada para o controle de base ficou dentro de `node_modules` e não recebeu a transformação JSX do Vite. O controle foi repetido numa pasta separada com as dependências copiadas. O isolamento de loopback afetou a prova do servidor do Vite e as primeiras capturas. O Edge concluiu os cenários com o pacote servido localmente. O executor de testes do Gradle perdeu a comunicação por loopback. Os 48 testes Java passaram diretamente pelo JUnitCore com as classes compiladas. Na WebView, a primeira interceptação não alcançou as requisições que o Capacitor encaminhava pelo HTTP nativo. Os avisos de travamento do launcher e da interface do sistema receberam a tecla Voltar antes do aplicativo. A WebView permitiu completar e capturar a jornada com o botão Voltar da tela.
+
+**Risco em aberto.** O aviso da primeira sessão depende do navegador ou app que reconheceu a conta vazia. Se a primeira sessão vier do app e a pessoa abrir o site em outro aparelho, o aviso pode não aparecer ali. A disponibilidade do fluxo no Android depende da distribuição do próximo APK. A data da política deve acompanhar o release e o merge depende de aceite explícito do autor após a revisão do diff.
+
+**Procedência.** Base `develop` `7a21e9f`, Windows 11, Node 24.11, Python 3.13, Edge e emulador Pixel 6. Os pedidos e dados da validação de tela foram sintéticos. [Capturas da jornada e do Início](evidencias/jornada-primeiros-passos/).
+
+---
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
