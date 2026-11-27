@@ -107,7 +107,7 @@ describe("ehRetornoDeRecuperacao", () => {
 });
 
 describe("destinoSeguro — só caminho interno (SEC-16)", () => {
-  it("UI-53: o Android abre a Noite por padrão e preserva o destino guardado válido", () => {
+  it("UI-58: o Android abre a Noite por padrão e preserva o destino guardado válido", () => {
     expect(destinoSeguro(undefined, true)).toBe("/noite");
     expect(destinoSeguro("//externo.example", true)).toBe("/noite");
     expect(destinoSeguro("/noite", true)).toBe("/noite");

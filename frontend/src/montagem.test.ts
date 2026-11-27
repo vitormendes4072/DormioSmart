@@ -61,6 +61,7 @@ import { act, fireEvent, screen, waitFor, within } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { aplicabilidadeDaIdade } from "./lib/aplicabilidade";
+import { LIMITE_DO_PAINEL, MAX_PAGINAS_DO_HISTORICO } from "./lib/api";
 import { VERSAO_DO_CONSENTIMENTO } from "./lib/consentimento";
 
 // ---------------------------------------------------------------------
@@ -1305,7 +1306,7 @@ describe("toda rota do App.tsx monta (UI-17)", PRAZO, () => {
   });
 });
 
-describe("destino do Android após autenticar (UI-53)", PRAZO, () => {
+describe("destino do Android após autenticar (UI-58)", PRAZO, () => {
   it.each(["/login", "/cadastro"])("abre a Noite após autenticar a partir de %s sem consultar o histórico", async (rota) => {
     sessaoDoServidor = null;
     const nativo = vi.spyOn(Capacitor, "isNativePlatform").mockReturnValue(true);
@@ -1350,10 +1351,10 @@ describe("o painel em camadas (UI-40)", PRAZO, () => {
     movimento_total: 9.81, temp: null, status: "Repouso", epoca_segundos: 30, device_id: "p", ...extra,
   });
 
-  describe("onboarding no Início (UI-52 a UI-54)", () => {
+  describe("onboarding no Início (UI-57 a UI-59)", () => {
     const guia = () => within(screen.getByRole("region", { name: "Primeiros passos" }));
 
-    it("UI-52: mostra as ações de primeira utilização e abre o pareamento", async () => {
+    it("UI-57: mostra as ações de primeira utilização e abre o pareamento", async () => {
       await montar("/dashboard");
       await screen.findByRole("heading", { name: "Primeiros passos" });
       expect(await screen.findByText("Os dias com registro aparecem marcados aqui.")).toBeTruthy();
@@ -1366,7 +1367,7 @@ describe("o painel em camadas (UI-40)", PRAZO, () => {
       expect(screen.getByText(/depois de registrar uma sessão curta em/)).toBeTruthy();
     });
 
-    it("UI-53: descarta bancada e exibe os passos conforme aparelhos e consentimento vigente", async () => {
+    it("UI-58: descarta bancada e exibe os passos conforme aparelhos e consentimento vigente", async () => {
       perfilDoServidor = {
         ...perfilDoServidor,
         consentimento_saude_em: "2026-11-26T12:00:00Z",
@@ -1377,13 +1378,61 @@ describe("o painel em camadas (UI-40)", PRAZO, () => {
       const titulo = await screen.findByRole("heading", { name: "Primeiros passos" });
       expect(document.activeElement).toBe(titulo);
       await guia().findByText("2 de 4 passos feitos");
+      expect(guia().getByRole("progressbar", { name: "2 de 4 passos feitos" }).getAttribute("aria-valuenow")).toBe("2");
       expect(guia().getAllByRole("listitem").map((item) => item.textContent)).toEqual([
         "Conta criada· feito", "Aparelho conectado· a fazer", "Consentimento dado· feito", "Primeira sessão registrada· a fazer",
       ]);
       expect(guia().getByRole("link", { name: "Testar no navegador (sessão curta)" }).getAttribute("href")).toBe("/coletar");
     });
 
-    it("UI-53: esconde o guia com a primeira sessão fora da bancada", async () => {
+    it("mantém o guia oculto após 16 páginas cheias apenas de bancada", async () => {
+      const original = vi.mocked(fetch).getMockImplementation()!;
+      let paginas = 0;
+      vi.mocked(fetch).mockImplementation(async (entrada, opcoes) => {
+        const { pathname, searchParams } = new URL(String(entrada), "http://localhost");
+        if (pathname !== "/api/sleep-history" || searchParams.has("desde")) return original(entrada, opcoes);
+        const pagina = ++paginas;
+        if (pagina > MAX_PAGINAS_DO_HISTORICO) return respostaJson([]);
+        return respostaJson(Array.from({ length: LIMITE_DO_PAINEL }, (_, indice) =>
+          leitura(pagina * LIMITE_DO_PAINEL + indice, { id: `${pagina}-${indice}`, bancada: true })));
+      });
+
+      await montar("/dashboard");
+      await waitFor(() => expect(paginas).toBe(MAX_PAGINAS_DO_HISTORICO));
+      expect(await screen.findByText("Sem registros no recorte carregado.")).toBeTruthy();
+      expect(screen.queryByRole("region", { name: "Primeiros passos" })).toBeNull();
+    });
+
+    it("mantém o guia oculto quando a consulta da conta falha e o aparelho selecionado não tem registros", async () => {
+      responder({ dispositivos: [travesseiro, celular], leituras: [] });
+      const original = vi.mocked(fetch).getMockImplementation()!;
+      let pedidosDaConta = 0;
+      let pedidosDoAparelho = 0;
+      let rejeitarConta!: (erro: Error) => void;
+      const consultaDaConta = new Promise<Response>((_, rejeitar) => { rejeitarConta = rejeitar; });
+      vi.mocked(fetch).mockImplementation((entrada, opcoes) => {
+        const { pathname, searchParams } = new URL(String(entrada), "http://localhost");
+        if (pathname === "/api/sleep-history" && !searchParams.has("desde")) {
+          if (!searchParams.has("device")) {
+            pedidosDaConta++;
+            return consultaDaConta;
+          }
+          if (searchParams.get("device") === travesseiro.id) pedidosDoAparelho++;
+        }
+        return original(entrada, opcoes);
+      });
+
+      await montar("/dashboard");
+      const seletor = await screen.findByRole("combobox", { name: "Dispositivo exibido" });
+      fireEvent.change(seletor, { target: { value: travesseiro.id } });
+      await waitFor(() => expect(pedidosDoAparelho).toBeGreaterThan(0));
+      expect(pedidosDaConta).toBeGreaterThan(0);
+      await act(async () => rejeitarConta(new Error("Consulta da conta indisponível")));
+      expect(await screen.findByText("Sem registros no recorte carregado.")).toBeTruthy();
+      expect(screen.queryByRole("region", { name: "Primeiros passos" })).toBeNull();
+    });
+
+    it("UI-58: esconde o guia com a primeira sessão fora da bancada", async () => {
       const leituras: ReturnType<typeof leitura>[] = [];
       responder({ dispositivos: [travesseiro], leituras });
       await montar("/dashboard");
@@ -1396,7 +1445,7 @@ describe("o painel em camadas (UI-40)", PRAZO, () => {
       expect(screen.queryByRole("heading", { name: "Primeiros passos" })).toBeNull();
     });
 
-    it.each(["/api/devices", "/api/me/perfil"])("UI-53: não marca passos quando %s falha", async (rota) => {
+    it.each(["/api/devices", "/api/me/perfil"])("UI-58: não marca passos quando %s falha", async (rota) => {
       const original = vi.mocked(fetch).getMockImplementation()!;
       vi.mocked(fetch).mockImplementation((entrada, opcoes) => String(entrada).startsWith(rota)
         ? Promise.reject(new Error("API indisponível"))
@@ -1408,7 +1457,7 @@ describe("o painel em camadas (UI-40)", PRAZO, () => {
       expect(guia().queryByRole("progressbar")).toBeNull();
     });
 
-    it("UI-53: permite dispensar, retomar pelo gráfico e reabrir pelas Configurações", async () => {
+    it("UI-58: permite dispensar, retomar pelo gráfico e reabrir pelas Configurações", async () => {
       responder({ dispositivos: [travesseiro], leituras: [] });
       await montar("/dashboard");
       fireEvent.click(await screen.findByRole("button", { name: "Dispensar" }));
@@ -1423,7 +1472,7 @@ describe("o painel em camadas (UI-40)", PRAZO, () => {
       expect(await screen.findByRole("heading", { name: "Primeiros passos" })).toBeTruthy();
     });
 
-    it("UI-53: oferece Noite e oculta download e sessão curta dentro do app", async () => {
+    it("UI-58: oferece Noite e oculta download e sessão curta dentro do app", async () => {
       const nativo = vi.spyOn(Capacitor, "isNativePlatform").mockReturnValue(true);
       const plugin = vi.spyOn(Capacitor, "isPluginAvailable").mockImplementation((nome) => nome === "Noite");
       try {
@@ -1437,7 +1486,7 @@ describe("o painel em camadas (UI-40)", PRAZO, () => {
       }
     });
 
-    it("UI-52: Histórico vazio oferece retorno ao Início", async () => {
+    it("UI-57: Histórico vazio oferece retorno ao Início", async () => {
       await montar("/historico");
       expect(await screen.findByText("Ainda não há sessões.")).toBeTruthy();
       expect(screen.getByRole("link", { name: "Ir para o Início" }).getAttribute("href")).toBe("/dashboard");

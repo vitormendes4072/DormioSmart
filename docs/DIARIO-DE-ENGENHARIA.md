@@ -14197,7 +14197,7 @@ A suíte passou com 1.099 testes em 73 arquivos. Lint, build, os dois Knip e as 
 
 ---
 
-# 2026-11-26 (xxi) — onboarding etapa 1 (UI-57, UI-58 e UI-59)
+# 2026-11-26 (xxii) — onboarding etapa 1 (UI-57, UI-58 e UI-59)
 
 **O problema, como foi entendido no início.** Quem chegava ao Início com conta nova via cartões vazios e uma orientação para verificar um aparelho que ainda não tinha. No Android, o destino padrão do login direto e do cadastro também levava ao painel vazio.
 
@@ -14215,6 +14215,17 @@ A suíte completa passou com 1.117 testes em 73 arquivos. Os 14 testes novos fal
 | Tratar o teto como ausência confirmada | Para em 16 páginas e devolve inconclusivo sem consultar a página 17 |
 | Contar bancada como sessão | Descarta bancada e exibe os passos conforme aparelhos e consentimento vigente |
 | Usar o padrão do site no app | Abre a Noite após login e cadastro sem consultar o histórico, e o teste de destino padrão do Android |
+
+✏️ **Revisão da PR #322.** A branch incorporou `develop` `4037d5a`, incluindo o resumo, a faixa de sessão e a abertura da sessão pelo Histórico. O onboarding foi renumerado para UI-57 a UI-59 nesta etapa e UI-60, UI-61 e LGPD-16 na próxima, com a migração 027 destinada ao UI-61.
+
+O revisor trocou a condição de conta vazia por `presencaNaConta !== "com-registro"` e os testes então existentes passaram. Os dois novos testes de montagem falham com essa alteração:
+
+| Caso de tela | Comportamento esperado |
+|---|---|
+| 16 páginas cheias só de bancada | Guia oculto e “Sem registros no recorte carregado.” |
+| Falha da consulta da conta enquanto o recorte do aparelho selecionado está vazio | Guia oculto e “Sem registros no recorte carregado.” |
+
+Os 16 testes de onboarding falharam contra `develop` `4037d5a`. A rodada da revisão executou e restaurou as quatro sabotagens anteriores e a nova. A suíte com o código restaurado passou com 1.154 testes em 76 arquivos. O preenchimento do progresso usa a cor primária de cada tema, sobre trilho secundário, e mantém o valor acessível. No Edge, medimos 25% de preenchimento para “1 de 4 passos feitos”, em azul `#0b6db5` no claro e `#4fb3f5` no escuro. As seis capturas do Início foram atualizadas. A branch também incorporou `d0e6f5f`, que só acrescentou o registro do R25 à documentação.
 
 **Adaptação.** O Início reaproveita a primeira página sem filtro e segue o cursor só quando ela vem cheia, sem sessão fora da bancada. A consulta da presença na conta termina na 16ª página e não publica vazio se o limite for inconclusivo. O Histórico mantém o recorte por período e só faz a conferência da conta quando o recorte completo não trouxe sessões válidas. No Android, a abertura por `/` e o retorno dado pelo guarda preservam o caminho existente. Só o padrão do login e cadastro passa a ser a Noite. O dispositivo guarda apenas a preferência de dispensar, por conta.
 

@@ -53,7 +53,11 @@ export function PrimeirosPassos({ temAparelho, consentiu, situacaoConhecida, noA
       {situacaoConhecida && (
         <div className="space-y-1">
           <p id="progresso-primeiros-passos" className="text-xs font-semibold">{feitos} de {passos.length} passos feitos</p>
-          <progress aria-labelledby="progresso-primeiros-passos" value={feitos} max={passos.length} className="block h-2 w-full accent-primary" />
+          <div role="progressbar" aria-labelledby="progresso-primeiros-passos"
+            aria-valuemin={0} aria-valuemax={passos.length} aria-valuenow={feitos}
+            className="h-2 overflow-hidden rounded-full bg-secondary">
+            <div className="h-full bg-primary" style={{ width: `${100 * feitos / passos.length}%` }} />
+          </div>
         </div>
       )}
       <ol className="list-decimal space-y-1 pl-5 text-sm">

@@ -65,7 +65,7 @@ describe("buscarHistorico", () => {
   });
 });
 
-describe("UI-53: presença de registro na conta", () => {
+describe("UI-58: presença de registro na conta", () => {
   const paginaDeBancada = (numero: number) => Array.from({ length: LIMITE_DO_PAINEL }, (_, i) => ({
     id: `${numero}-${i}`, created_at: "2026-11-01T00:00:00Z",
     device_id: "p", movimento_total: 9.81, temp: null, status: "Repouso", bancada: true,
