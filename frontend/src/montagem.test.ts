@@ -119,6 +119,7 @@ beforeEach(() => {
   sessaoDoServidor = SESSAO;
   publicarSessao = undefined;
   localStorage.removeItem("dormio-primeiros-passos-" + SESSAO.user.id);
+  localStorage.removeItem("dormio-historico-aparelho");
   encerrarSessao.mockClear();
   // Lidos no topo de `lib/supabase.ts`, então têm de valer antes do import
   // dinâmico. Valores de teste: a suíte não depende do `.env` de ninguém.
@@ -1486,10 +1487,18 @@ describe("o painel em camadas (UI-40)", PRAZO, () => {
       }
     });
 
-    it("UI-57: Histórico vazio oferece retorno ao Início", async () => {
+    it("UI-57: Histórico vazio oferece retorno ao Início na visão de todos os aparelhos", async () => {
+      responder({ dispositivos: [travesseiro, celular], leituras: [] });
       await montar("/historico");
       expect(await screen.findByText("Ainda não há sessões.")).toBeTruthy();
       expect(screen.getByRole("link", { name: "Ir para o Início" }).getAttribute("href")).toBe("/dashboard");
+      const filtro = await screen.findByRole<HTMLSelectElement>("combobox", { name: "Dispositivo exibido" });
+      const todos = filtro.value;
+      fireEvent.change(filtro, { target: { value: travesseiro.id } });
+      expect(await screen.findByText("Nenhuma sessão deste aparelho no período selecionado.")).toBeTruthy();
+      expect(screen.queryByRole("link", { name: "Ir para o Início" })).toBeNull();
+      fireEvent.change(filtro, { target: { value: todos } });
+      expect(await screen.findByRole("link", { name: "Ir para o Início" })).toBeTruthy();
     });
   });
   const detalhes = () =>
