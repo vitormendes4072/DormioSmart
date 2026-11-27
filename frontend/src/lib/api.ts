@@ -12,7 +12,7 @@
  */
 import { mensagemDoServidor } from "./mensagemDoServidor";
 import type { LeituraSono } from "../types/sleep";
-import { impressaoDosIds, type Trecho } from "./trecho";
+import { ehBancada, impressaoDosIds, type Trecho } from "./trecho";
 
 /** Prefixo do backend: vazio no site, o endereco completo no app (APP-02). */
 export function urlDaApi(caminho: string, base: string = import.meta.env.VITE_API_BASE ?? ""): string {
@@ -166,8 +166,9 @@ export function montarConsultaDeHistorico(filtro: FiltroDeHistorico = {}): strin
   return query ? `/api/sleep-history?${query}` : "/api/sleep-history";
 }
 
-export async function buscarHistorico(filtro: FiltroDeHistorico = {}): Promise<LeituraSono[]> {
+export async function buscarHistorico(filtro: FiltroDeHistorico = {}, exigirLista = false): Promise<LeituraSono[]> {
   const dados = await requisitarJson<unknown>(montarConsultaDeHistorico(filtro));
+  if (exigirLista && !Array.isArray(dados)) throw new Error("Resposta de histórico inválida.");
   return Array.isArray(dados) ? (dados as LeituraSono[]) : [];
 }
 
@@ -241,6 +242,23 @@ export async function marcarSessao(trecho: Trecho, bancada: boolean): Promise<nu
 }
 
 export const MAX_PAGINAS_DO_HISTORICO = 16;
+
+export async function verificarRegistrosDaConta(
+  primeiraPagina: LeituraSono[] | null,
+  signal: AbortSignal,
+): Promise<"com-registro" | "sem-registro" | "inconclusivo"> {
+  const filtro = { limite: LIMITE_DO_PAINEL };
+  let cursor: CursorHistorico | null = null;
+  for (let numero = 1; numero <= MAX_PAGINAS_DO_HISTORICO; numero++) {
+    const pagina = numero === 1 && primeiraPagina !== null
+      ? primeiraPagina
+      : await paginaDoHistorico(filtro, cursor, signal);
+    if (pagina.some((registro) => !ehBancada(registro))) return "com-registro";
+    if (pagina.length < LIMITE_DO_PAINEL) return "sem-registro";
+    cursor = proximoCursor(pagina, cursor);
+  }
+  return "inconclusivo";
+}
 
 export async function buscarJanelaDoHistorico(
   filtro: Omit<FiltroDeHistorico, "limite">,

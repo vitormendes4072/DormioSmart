@@ -76,10 +76,23 @@ varredura completa registrada nas notas do `LGPD-ELIMINACAO.md`.
 
 # Política de Privacidade — Smart Dormio
 
-**Última atualização:** 19 de novembro de 2026
+**Última atualização:** 27 de novembro de 2026
 
 > **O que mudou nesta revisão** (seção 10 pede que mudança material seja
 > anunciada):
+>
+> - **a idade passou a poder ser informada também no primeiro acesso**, num passo
+>   que pode ser pulado; continua opcional e com as mesmas finalidades (seções
+>   2.1 e 3);
+> - **a meta de tempo registrado por dia** passou a existir: um número que você
+>   mesmo escolhe, opcional, para o aplicativo mostrar quanto a sua média da
+>   semana está perto dele. É um dado novo e uma finalidade nova (seções 2.1, 3,
+>   6.3 e 6.5);
+> - **o responsável pelo projeto passou a contar, só de forma agregada, quantas
+>   contas novas chegam ao primeiro registro**, para saber se as primeiras telas
+>   ajudam (seção 3 e seção 5.3).
+>
+> *Revisão anterior (19 de novembro de 2026):*
 >
 > - **a lista de espera do lançamento** passou a existir: quem ainda não tem
 >   conta pode deixar o e-mail (e, se quiser, como prefere ser chamado) para ser
@@ -129,7 +142,8 @@ O controlador dos dados é **[CONTROLADOR]**, que pode ser contatado em
 | **Endereço de e-mail** | No cadastro | Serviço de autenticação |
 | **Senha** | No cadastro | Serviço de autenticação, apenas como *hash* — nunca em texto legível |
 | **Nome** | No cadastro, e corrigível em *Configurações → Conta* | Tabela de perfis |
-| **Idade** | **Opcional**, em *Configurações → Conta*. Nunca pedida no cadastro | Tabela de perfis |
+| **Idade** | **Opcional**, no primeiro acesso (em *Primeiros passos*, no Início, com a opção de pular) ou em *Configurações → Conta*. Nunca pedida no formulário de cadastro | Tabela de perfis |
+| **Meta de tempo registrado por dia** | **Opcional**, no primeiro acesso (em *Primeiros passos*) ou em *Configurações → Conta*. É um número que você escolhe; o aplicativo não sugere valor | Tabela de perfis |
 | **Nome do dispositivo** | Ao parear um aparelho, opcional. No aplicativo para Android, o celular começa com o fabricante e o modelo informados pelo sistema (por exemplo, "Motorola moto g54 5G"); dá para trocar em *Dispositivos* | Tabela de dispositivos |
 
 > ✏️ **Mudança de 2026-10-17, e ela é material** (seção 10): a **idade passou a
@@ -356,6 +370,28 @@ Exclusivamente para:
    com medições. Para avisar de versão nova, o próprio aplicativo pergunta ao
    site qual é a versão publicada e mostra o aviso na tela; essa pergunta não
    leva dado seu.
+8. **Mostrar a sua média da semana ao lado da meta que você escolheu.** Desde
+   27 de novembro de 2026. Convém ser explícito sobre o que ela não é:
+
+   - **O que acontece:** se você informar uma meta de tempo registrado por dia,
+     o Início mostra a média do tempo registrado nos dias da semana que tiveram
+     registro, a meta ao lado, quanto falta e quanto tempo registrado por dia,
+     nos dias que restam, levaria a média até ela. É uma conta com os seus
+     próprios registros.
+   - **O que NÃO acontece:** a meta **não é uma recomendação** do Smart Dormio
+     sobre quanto dormir, e o aplicativo não sugere valor. Tempo registrado não
+     é tempo de sono: inclui o tempo acordado com o aparelho registrando. A meta
+     não usa a sua idade, não altera nenhuma medida, não alimenta modelo algum e
+     não é comparada com a de outras pessoas.
+   - **Sem meta informada, nada disso aparece**, e nada mais no aplicativo muda.
+9. **Saber, de forma apenas agregada, se as contas novas chegam ao primeiro
+   registro.** Desde 27 de novembro de 2026. O responsável pelo projeto conta,
+   por semana de criação, **quantas contas foram criadas, quantas tiveram o
+   primeiro registro em até 7 dias e quantas tiveram um dia com mais de 4
+   horas registradas**. Semanas com menos de cinco contas não são exibidas. A contagem não
+   identifica ninguém, não é cruzada com idade, meta nem medição alguma, e não
+   usa nenhuma ferramenta de medição de comportamento: é uma consulta ao banco,
+   feita à mão.
 
 Os contatos da **lista de espera** (seção 2.6) têm uma finalidade só: o aviso do
 lançamento e o convite para os primeiros testes.
@@ -442,7 +478,9 @@ administrativo ao banco de dados, e portanto **acesso técnico aos dados
 armazenados**. Esse acesso não é usado para consultar medições individuais fora
 do que a manutenção do serviço exigir. **A idade é consultada apenas de forma
 agregada**, pela contagem por faixa descrita na seção 3, item 5 — nunca por
-pessoa.
+pessoa. Do mesmo modo, a chegada das contas novas ao primeiro registro só é
+contada de forma agregada (seção 3, item 9), e a meta de tempo registrado não é
+consultada pelo responsável pelo projeto.
 
 A única exceção é a de quem **assinar o termo de participação** (seção 3): as
 medições dessas pessoas são analisadas noite a noite pelo responsável pelo
@@ -489,9 +527,9 @@ tiver mais que isso e precisar do conjunto completo, solicite pelo canal da seç
 
 - **Nome do dispositivo:** pode ser alterado em *Configurações → Meus
   dispositivos*.
-- **Seu nome e sua idade:** em *Configurações → Conta → Editar dados*. Valem
-  assim que você salva. A idade pode ser **apagada** deixando o campo em branco
-  (ver 6.5).
+- **Seu nome, sua idade e sua meta de tempo registrado:** em *Configurações →
+  Conta → Editar dados*. Valem assim que você salva. A idade e a meta podem ser
+  **apagadas** deixando o campo em branco (ver 6.5).
 - **Seu e-mail:** na mesma tela, com uma diferença que a tela avisa **antes** de
   você salvar: o e-mail é a sua credencial de acesso, então a troca **não é
   imediata** — enviamos um link de confirmação e o seu acesso continua pelo
@@ -578,6 +616,9 @@ celular** (seção 2.3) continuam lá até você **desinstalar o aplicativo**.
   *Configurações → Conta → Editar dados*. O campo volta a ficar vazio no banco,
   e a frase da seção 3 deixa de aparecer. É eliminação daquele dado, não
   bloqueio dele.
+- **Meta de tempo registrado:** ✅ pode ser **retirada** do mesmo modo, apagando
+  o campo em *Configurações → Conta → Editar dados*. O campo volta a ficar vazio
+  no banco, e a comparação da seção 3, item 8, deixa de aparecer.
 - **Tirar uma sessão das análises:** ✅ em *Histórico*, *Marcar como
   bancada/teste*. As leituras continuam guardadas, mas saem do painel, da
   estimativa de sono e vigília e das medidas calculadas no servidor; *Desmarcar*
@@ -678,6 +719,10 @@ Mudanças materiais — nova categoria de dado, nova finalidade, novo operador �
 serão anunciadas antes de entrarem em vigor. A data no topo indica a última
 revisão.
 
+- **27 de novembro de 2026:** a idade também no primeiro acesso, opcional
+  (seção 2.1); a meta de tempo registrado por dia, opcional, com a sua
+  finalidade (seções 2.1, 3, item 8, 6.3 e 6.5); a contagem agregada da chegada
+  das contas novas ao primeiro registro (seção 3, item 9, e seção 5.3).
 - **19 de novembro de 2026:** a lista de espera do lançamento — e-mail e,
   opcionalmente, como a pessoa prefere ser chamada, com consentimento próprio,
   finalidade única e prazo de 12 meses (seções 2.6, 3, 4 e 7).

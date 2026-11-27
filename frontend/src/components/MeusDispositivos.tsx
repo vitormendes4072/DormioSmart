@@ -4,6 +4,7 @@ import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { Link } from "react-router";
 
 import { ErroApi } from "../lib/api";
+import { URL_DO_APK } from "../lib/appAndroid";
 import { noiteNativaDisponivel } from "../lib/noiteNativa";
 import {
   NOME_MAXIMO,
@@ -24,7 +25,10 @@ import { CartaoDeDispositivo, EstadoDoDispositivo } from "./CartaoDeDispositivo"
 import { SUPERFICIE_DO_CARTAO_DE_REGISTRO } from "./CartoesDeRegistro";
 import { MensagemDeFalha } from "./MensagemDeFalha";
 
-export function MeusDispositivos({ mostrarPareamento = true }: { mostrarPareamento?: boolean }) {
+export function MeusDispositivos({ mostrarPareamento = true, abrirPareamento }: {
+  mostrarPareamento?: boolean;
+  abrirPareamento?: () => void;
+}) {
   const [lista, setLista] = useState<Dispositivo[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState<string | ErroApi | null>(null);
@@ -111,11 +115,28 @@ export function MeusDispositivos({ mostrarPareamento = true }: { mostrarPareamen
         </div>
       ) : null}
 
-      {lista.length === 0 ? (!erro && (
-        <div className="rounded-xl border border-dashed border-border px-4 py-6 text-center">
-          <p className="text-sm text-muted-foreground">Nenhum dispositivo pareado</p>
+      {!erro && !lista.some(estaAtivo) && (
+        <div className="space-y-3 rounded-xl border border-dashed border-border px-4 py-6">
+          <p className="text-sm text-muted-foreground">
+            Nenhum aparelho conectado. O travesseiro precisa de pareamento; o celular aparece aqui sozinho depois da primeira Noite no app.
+          </p>
+          {abrirPareamento && (
+            <div className="flex flex-wrap gap-2">
+              {!mostrarPareamento && (
+                <button type="button" onClick={abrirPareamento} className="min-h-11 rounded-xl bg-primary px-3 text-sm font-semibold text-primary-foreground hover:bg-primary/90">
+                  Parear o travesseiro
+                </button>
+              )}
+              {!noiteNativaDisponivel() && (
+                <a href={URL_DO_APK} className="inline-flex min-h-11 items-center rounded-xl border border-border px-3 text-sm font-semibold text-primary hover:bg-secondary">
+                  Baixar o app
+                </a>
+              )}
+            </div>
+          )}
         </div>
-      )) : (
+      )}
+      {lista.length > 0 && (
         <ul className="space-y-3" aria-label="Dispositivos da conta">
           {lista.map((dispositivo) => (
             <LinhaDoDispositivo
@@ -146,8 +167,7 @@ export function MeusDispositivos({ mostrarPareamento = true }: { mostrarPareamen
 
 /**
  * O pareamento é só do travesseiro (UI-42). O celular entra na conta sozinho, na
- * primeira noite gravada pela Noite (app) ou pela Coletar (site): escolher
- * "Celular" aqui não pareava nada, só levava a essas telas.
+ * primeira gravação em Noite (app) ou numa sessão curta em Coletar (site).
  */
 function GuiaPareamento({ aoParear }: { aoParear: (aparelho: Dispositivo) => void }) {
   const noApp = noiteNativaDisponivel();
@@ -186,7 +206,7 @@ function GuiaPareamento({ aoParear }: { aoParear: (aparelho: Dispositivo) => voi
         </button>
 
         <p className="text-xs text-muted-foreground">
-          O celular não precisa de pareamento: ele aparece aqui sozinho depois da primeira noite gravada em{" "}
+          O celular não precisa de pareamento. Ele aparece aqui sozinho {noApp ? "depois da primeira gravação em " : "depois de registrar uma sessão curta em "}
           <Link to={noApp ? "/noite" : "/coletar"} className="font-semibold text-foreground underline underline-offset-2">
             {noApp ? "Noite" : "Coletar"}
           </Link>

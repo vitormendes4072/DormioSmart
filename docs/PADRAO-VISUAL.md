@@ -173,6 +173,9 @@ no código, no contrato de dados e no CSV.
 | sessão de captação | **sessão** | Nunca "noite", no painel e no Histórico, até o `ESC-01` |
 | janela | **período** | O intervalo exibido |
 | taxa do sensor | **ritmo do sensor** | Medidas por segundo |
+| meta escolhida pela pessoa | **Meta de tempo registrado por dia** | Opcional. Campo vazio significa sem meta. A ajuda diz “O Smart Dormio não recomenda quantas horas dormir.” |
+| comparação da semana | **Média dos dias com registro** e **Sua meta** | Informa quantos dias entraram na média. A linha da meta é tracejada e distinta da média. Dia sem registro fica fora da média e histórico parcial fica sem projeção. |
+| orientação no cartão da meta | **tempo registrado** e ações no aparelho | Usar “por dia”. Reservar “dormir” para a frase de ajuda e evitar vocabulário de recomendação, sono ou qualidade. |
 
 - **Nenhum rótulo afirma mais do que a conta:** registro é do aparelho, e não da pessoa. Nada de
   "você se mexeu", sono, qualidade ou diagnóstico.

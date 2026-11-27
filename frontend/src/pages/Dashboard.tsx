@@ -9,14 +9,22 @@ import { GraficoDeMovimento } from "../components/GraficoDeMovimento";
 import { destinoDoWorkspace } from "../components/nav";
 import { Carregando, FalhaAoCarregar, SemLeituras } from "../components/EstadoDaTela";
 import { NotaDeEscopo } from "../components/NotaDeEscopo";
+import { PrimeirosPassos } from "../components/PrimeirosPassos";
 import { ResumoDeDispositivos } from "../components/ResumoDeDispositivos";
 import { ResumoDaSessao } from "../components/ResumoDaSessao";
 import { AvisoDeMistura, SeletorDeDispositivo } from "../components/SeletorDeDispositivo";
 import { useDispositivos } from "../hooks/useDispositivos";
+import { useAuth } from "../contexts/AuthContext";
+import { usePerfil } from "../contexts/PerfilContext";
 import { useHistorico } from "../hooks/useHistorico";
 import { useHistoricoPaginado } from "../hooks/useHistoricoPaginado";
+import { usePresencaDeRegistros } from "../hooks/usePresencaDeRegistros";
 import { LIMITE_DO_PAINEL } from "../lib/api";
-import { origemDaTemperatura, descreverRecorte } from "../lib/dispositivos";
+import { origemDaTemperatura, descreverRecorte, estaAtivo } from "../lib/dispositivos";
+import { consentimentoVigente } from "../lib/consentimento";
+import { noiteNativaDisponivel } from "../lib/noiteNativa";
+import { minutosDaMeta } from "../lib/metaDiaria";
+import { guiaDispensado, salvarPreferenciaDoGuia } from "../lib/primeirosPassos";
 import { calcularCobertura } from "../lib/cobertura";
 import { limitesDaConsulta, sessoesDoDia, somarDias } from "../lib/calendarioDoSono";
 import { estaEmModoDemo } from "../lib/demo";
@@ -120,7 +128,12 @@ export function Dashboard() {
   const [vagaDoGrafico, setVagaDoGrafico] = useState<HTMLElement | null>(null);
   const [verTudo, setVerTudo] = useState(false);
   const [periodo, setPeriodo] = useState<Periodo>("Sessão toda");
-  const dispositivos = useDispositivos();
+  const { dispositivos, estado: estadoDosAparelhos } = useDispositivos();
+  const { sessao } = useAuth();
+  const conta = sessao?.user.id;
+  const { perfil, carregando: carregandoPerfil, erro: erroNoPerfil } = usePerfil();
+  const [ocultarGuia, setOcultarGuia] = useState(() => guiaDispensado(conta));
+  const temAparelho = dispositivos.some(estaAtivo);
   const pausados = dispositivos.filter((d) => !d.revoked_at && d.receber_leituras === false);
   const avisoDePausa = pausados.length > 0 && (
     <p role="status" className="rounded-xl border border-destructive/30 p-3 text-sm text-destructive">
@@ -130,7 +143,13 @@ export function Dashboard() {
   // `limite` explicito (DASH-13): sem ele o backend devolve 20 linhas — dez
   // minutos de celular —, e todo o recorte por sessao operava sobre isso
   // enquanto a tela dizia descrever a captação inteira.
-  const recentes = useHistorico({ dispositivo, limite: LIMITE_DO_PAINEL });
+  const recentesDaConta = useHistorico({ limite: LIMITE_DO_PAINEL }, { exigirLista: true });
+  const recentesDoAparelho = useHistorico({ dispositivo, limite: LIMITE_DO_PAINEL }, { habilitado: dispositivo !== null });
+  const recentes = dispositivo === null ? recentesDaConta : recentesDoAparelho;
+  const presencaNaConta = usePresencaDeRegistros(
+    recentesDaConta.carregando || recentesDaConta.erro ? undefined : recentesDaConta.leituras,
+  );
+  const contaSemRegistro = presencaNaConta === "sem-registro";
   const demo = import.meta.env.DEV && estaEmModoDemo(search);
   const historicoDoDia = useHistoricoPaginado(
     diaSelecionado && limitesDaConsulta(diaSelecionado, diaSelecionado), dispositivo, demo,
@@ -142,10 +161,17 @@ export function Dashboard() {
   const leituras = sessoesSelecionadas?.flatMap((sessao) => sessao.leituras) ?? semBancada(recebidas);
   const historicoParcial = diaSelecionado !== null && historicoDoDia.dados?.truncada;
   const tituloDoDia = diaSelecionado ? `Sessões de ${DATA_DO_DIA.format(diaSelecionado)}` : undefined;
+  const mostrarGuia = contaSemRegistro && !ocultarGuia;
+
+  function alterarPreferenciaDoGuia(dispensar: boolean) {
+    salvarPreferenciaDoGuia(conta, dispensar);
+    setOcultarGuia(dispensar);
+    if (!dispensar && mostrarGuia) document.getElementById("titulo-primeiros-passos")?.focus();
+  }
 
   useEffect(() => {
     if (!carregando && hash) {
-      document.getElementById(hash.slice(1))?.scrollIntoView();
+      document.getElementById(hash.slice(1))?.scrollIntoView?.();
     }
   }, [carregando, hash, key]);
 
@@ -186,13 +212,20 @@ export function Dashboard() {
       selecionado={dispositivo}
       aoSelecionar={selecionarDispositivo}
       destinoGerenciar={destinoDoWorkspace("/dispositivos", search)}
+      destinoParear={contaSemRegistro && estadoDosAparelhos === "pronto" && !temAparelho ? "/dispositivos?parear=1" : undefined}
+      listaConhecida={estadoDosAparelhos === "pronto"}
       className={CARTAO}
       classeDoLink={LINK_DO_CARTAO}
     />
   );
+  const aparelhosDaMeta = dispositivos.filter((d) => estaAtivo(d) && (dispositivo === null || d.id === dispositivo));
   const calendario = (
     <CalendarioDoSono dispositivo={dispositivo} demo={demo} selecionado={diaSelecionado} aoSelecionarDia={selecionarDia}
-      ancora={ancoraDoCalendario} aoNavegar={setAncoraDoCalendario} destinoDoGrafico={telaLarga ? vagaDoGrafico : null} />
+      ancora={ancoraDoCalendario} aoNavegar={setAncoraDoCalendario} destinoDoGrafico={telaLarga ? vagaDoGrafico : null}
+      contaSemRegistro={contaSemRegistro} abrirGuia={() => alterarPreferenciaDoGuia(false)}
+      meta={minutosDaMeta(perfil?.meta_diaria_min)}
+      dicaDaMeta={aparelhosDaMeta.some((d) => d.tipo === "travesseiro") ? "travesseiro"
+        : noiteNativaDisponivel() || aparelhosDaMeta.some((d) => d.tipo === "celular") ? "app" : undefined} />
   );
   // Onde o gráfico entra em tela larga. Esticado (`*:flex-1`), ele acompanha a altura do que está
   // ao lado.
@@ -250,10 +283,14 @@ export function Dashboard() {
       <div ref={conteudo} className="space-y-6">
         <Cabecalho acao={seletor} calendario={calendario} instrumento={instrumento} titulo={tituloDoDia} telaLarga={telaLarga} />
         {avisoDePausa}
-        <NotaDeEscopo />
+        {!mostrarGuia && <NotaDeEscopo />}
         {comColunaDoGrafico(
           <div id="sessoes-recentes">
-            {diaSelecionado ? (
+            {mostrarGuia ? (
+              <PrimeirosPassos temAparelho={temAparelho} consentiu={consentimentoVigente(perfil)}
+                situacaoConhecida={estadoDosAparelhos === "pronto" && !carregandoPerfil && !erroNoPerfil && perfil !== null}
+                noApp={noiteNativaDisponivel()} dispensar={() => alterarPreferenciaDoGuia(true)} />
+            ) : diaSelecionado ? (
               <div className={`${CARTAO} h-full`}>
                 {avisoHistoricoParcial}
                 <p className="py-5 text-sm font-medium" role="status">
@@ -261,9 +298,13 @@ export function Dashboard() {
                 </p>
                 {linkHistorico}
               </div>
-            ) : <SemLeituras />}
+            ) : contaSemRegistro && temAparelho ? <SemLeituras /> : (
+              <p className={CARTAO} role="status">
+                {contaSemRegistro ? "Ainda não há sessões." : "Sem registros no recorte carregado."}
+              </p>
+            )}
           </div>,
-          true,
+          !contaSemRegistro,
         )}
         {resumoDeDispositivos}
       </div>

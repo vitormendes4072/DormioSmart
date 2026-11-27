@@ -14278,6 +14278,116 @@ A suíte passou com 1.099 testes em 73 arquivos. Lint, build, os dois Knip e as 
 
 ---
 
+# 2026-11-26 (xxiv) — release R26: o Histórico com os dois aparelhos
+
+**O problema, como foi entendido no início.** Com o `UI-55` (#327) e o `UI-56` (#328) no `develop`, o autor pediu o release para o site.
+
+**Hipótese de trabalho.** Release só do site: sem migração, backend, `vercel.json` nem APK (o app segue no 1.1.7).
+
+**O que foi testado, e como.**
+- **PR #329** (`develop` → `main`): os 13 checks lidos pelo `gh pr checks` antes do merge, incluindo o app Android, o firmware e o RLS nas três versões do Postgres. Desta vez, a espera usou o `gh pr checks`, que mostra também o check da Vercel (no R25, a espera pelo campo `status` não terminava).
+- **Deploy:** `scripts/verificar-deploy.sh` no commit do merge.
+- **De fora, desta máquina:** `/health`, as rotas sem sessão e o pedaço JS do Histórico, baixado da produção e buscado.
+
+**Resultado medido.**
+- **Checks da #329:** todos passaram. Merge `9926830`, deploy de produção `8100130523`.
+- **`verificar-deploy.sh`:** landing, rota do SPA, `/health`, logo e pacote `200`; ingestão sem token e leitura sem sessão `401`.
+- `/health` `200` com o contrato 2.12.0 e o modelo; `/api/devices`, `/api/sleep-history` e `/api/features` sem token `401`.
+- `Historico-CynE5utA.js` contém "com mais de um aparelho", "aparelhos" e a chave `dormio-historico-aparelho`, e não contém "noite".
+
+**Adaptação.** Nenhuma.
+
+**O que deu errado no caminho.** As worktrees `ui-55` e `r25` ficaram presas por um processo ao serem removidas (branches apagadas), como a `ui-52`.
+
+**Risco em aberto.**
+- **O Histórico com a conta do autor**, logado, com a noite gravada pelos dois aparelhos, não foi visto pelo Claude.
+- O app 1.1.7 segue com o Histórico antigo até o próximo APK.
+
+**Procedência.** PR #329, merge `9926830`, deploy `8100130523`, em 26/11; verificação nesta máquina (Windows 11).
+
+---
+
+# 2026-11-26 (xxv) — onboarding etapa 1 (UI-57, UI-58 e UI-59)
+
+**O problema, como foi entendido no início.** Quem chegava ao Início com conta nova via cartões vazios e uma orientação para verificar um aparelho que ainda não tinha. No Android, o destino padrão do login direto e do cadastro também levava ao painel vazio.
+
+**Hipótese de trabalho.** A existência de sessão fora da bancada determina se o guia aparece. O estado do consentimento e dos aparelhos vem dos mesmos dados que a conta já usa. Com os dois caminhos de registro no card, a pessoa pode começar pelo travesseiro, pelo app ou conhecer a coleta curta no site.
+
+**O que foi testado, e como.** Montagem pela entrada real do frontend com respostas sintéticas. Verificamos estados vazios, recarga de dados após a primeira sessão, bancada, consentimento vigente, falha de aparelho ou perfil, retomar o guia e encaminhamento no Android. No Edge, capturamos Início, Dispositivos e Histórico a 390 e 1280 px, nos dois temas, e o Início a 1050 px, nos dois estados do menu.
+
+**Resultado medido.** A 390 px, o topo da navegação móvel ficou em 782,5 px na rolagem final. A última ação do Início terminou em 746,5 px, com 36 px de folga. Em Dispositivos, terminou em 380 px, e em Histórico, em 347 px. A 1050 px, o Início manteve duas colunas com o menu aberto e recolhido. Nenhuma das três telas transbordou horizontalmente nos cenários capturados. No Pixel 6 emulado, abertura logada, login vindo do guarda e cadastro novo chegaram a `/noite`, sem pedidos ao histórico.
+
+A suíte completa passou com 1.117 testes em 73 arquivos. Os 14 testes novos falharam contra `develop` `9efde23`. Lint, build, Knip e Knip de tipos passaram. O orçamento passou com 170.818 B gzip no Dashboard para um teto de 260.000 B. As três conferências dos documentos passaram.
+
+| Sabotagem | Teste que falhou |
+|---|---|
+| Retirar o teto de páginas | Para em 16 páginas e devolve inconclusivo sem consultar a página 17 |
+| Tratar o teto como ausência confirmada | Para em 16 páginas e devolve inconclusivo sem consultar a página 17 |
+| Contar bancada como sessão | Descarta bancada e exibe os passos conforme aparelhos e consentimento vigente |
+| Usar o padrão do site no app | Abre a Noite após login e cadastro sem consultar o histórico, e o teste de destino padrão do Android |
+
+✏️ **Revisão da PR #322.** A branch incorporou `develop` `4037d5a`, incluindo o resumo, a faixa de sessão e a abertura da sessão pelo Histórico. O onboarding foi renumerado para UI-57 a UI-59 nesta etapa e UI-60, UI-61 e LGPD-16 na próxima, com a migração 027 destinada ao UI-61.
+
+O revisor trocou a condição de conta vazia por `presencaNaConta !== "com-registro"` e os testes então existentes passaram. Os dois novos testes de montagem falham com essa alteração:
+
+| Caso de tela | Comportamento esperado |
+|---|---|
+| 16 páginas cheias só de bancada | Guia oculto e “Sem registros no recorte carregado.” |
+| Falha da consulta da conta enquanto o recorte do aparelho selecionado está vazio | Guia oculto e “Sem registros no recorte carregado.” |
+
+Os 16 testes de onboarding falharam contra `develop` `4037d5a`. A rodada da revisão executou e restaurou as quatro sabotagens anteriores e a nova. A suíte com o código restaurado passou com 1.154 testes em 76 arquivos. O preenchimento do progresso usa a cor primária de cada tema, sobre trilho secundário, e mantém o valor acessível. No Edge, medimos 25% de preenchimento para “1 de 4 passos feitos”, em azul `#0b6db5` no claro e `#4fb3f5` no escuro. As seis capturas do Início foram atualizadas. A branch também incorporou `d0e6f5f`, que só acrescentou o registro do R25 à documentação.
+
+✏️ **Integração do filtro do Histórico.** A revisão incorporou `cb12145`, com o filtro por aparelho do UI-55, o agrupamento do UI-56 e o registro do R26. Ao selecionar um aparelho, um recorte vazio mantém “Nenhuma sessão deste aparelho no período selecionado.”. Em “Todos os dispositivos”, o Histórico procura registros da conta quando a consulta do período terminou sem sessões válidas. A conta comprovadamente vazia oferece “Ir para o Início”.
+
+O teste “Histórico vazio oferece retorno ao Início na visão de todos os aparelhos” verifica a troca do filtro e falha se a consulta de conta vazia também for usada para um aparelho selecionado. Os 16 testes de onboarding falharam contra `cb12145`. As cinco sabotagens da rodada anterior e a sabotagem do filtro foram executadas e restauradas. A suíte passou em Windows 11 com 1.171 testes em 77 arquivos. No Edge, com dois aparelhos sintéticos e nenhuma sessão, as quatro capturas do Histórico foram atualizadas a 390 e 1280 px, em claro e escuro.
+
+**Adaptação.** O Início reaproveita a primeira página sem filtro e segue o cursor só quando ela vem cheia, sem sessão fora da bancada. A consulta da presença na conta termina na 16ª página e não publica vazio se o limite for inconclusivo. O Histórico mantém o recorte por período e por aparelho, e usa a consulta da conta no modo de todos os aparelhos. No Android, a abertura por `/` e o retorno dado pelo guarda preservam o caminho existente. Só o padrão do login e cadastro passa a ser a Noite. O dispositivo guarda apenas a preferência de dispensar, por conta.
+
+**O que deu errado no caminho.** O UI-51 foi atribuído à frente do detalhe de tempo registrado. Os três itens desta etapa foram renumerados antes de entrar no backlog. A primeira rodada de testes ainda buscava os textos anteriores e incluía a nova consulta sem `desde` na asserção do recorte do Histórico. Os testes mantiveram as verificações de filtro e de navegação com os textos novos. O teste de linguagem excedeu 5 s com o emulador e o build em paralelo. Passou isolado e na rodada completa com prazo de 15 s por teste, pela CLI. A primeira captura esperou o carregamento integral do documento e excedeu o prazo. A segunda aguardou o conteúdo da tela. No emulador, um diálogo do Android cobriu a primeira captura do aparelho. As três entradas foram repetidas para capturar a WebView diretamente.
+
+Na integração do UI-55, o dublê de `useDispositivos` no teste de Histórico ainda devolvia uma lista. O consumidor já usava o objeto com lista e estado de carregamento do onboarding. O dublê foi ajustado ao mesmo contrato, mantendo as asserções do filtro e do agrupamento.
+
+**Risco em aberto.** A verificação do cadastro e login usou respostas sintéticas. A distribuição ao Android continua dependendo do próximo APK de release. As perguntas opcionais, a meta e a política pertencem à etapa 2 (UI-60, UI-61 e LGPD-16).
+
+**Procedência.** Base `develop` `9efde23`. Execuções em Windows 11, Node 24.11.0 e Edge, em 26/11. No Android, APK debug instalado com identificador separado e respostas de autenticação e API simuladas na WebView. [Capturas da etapa 1](evidencias/onboarding-etapa-1/).
+
+---
+
+# 2026-11-27 — onboarding etapa 2 (UI-60, UI-61 e LGPD-16)
+
+**O problema, como foi entendido no início.** A etapa 1 ensinava como registrar. Faltavam as perguntas opcionais de idade e meta, a comparação semanal e o texto da política que descreve esses usos.
+
+**Hipótese de trabalho.** Usar a rota de perfil para as duas respostas mantém uma fonte de verdade. A média deve ser a do gráfico, e a projeção pode informar quanto tempo registrado faltaria sem sugerir uma meta à pessoa.
+
+**O que foi testado, e como.** Guia, edição da conta, linha e comparação da meta com dados sintéticos no Edge. API com pytest. RLS, faixas, supressão e união da cobertura na consulta, diagnóstico de migrações e reaplicação em Postgres 17. A conferência da 027 é somente leitura.
+
+**Resultado medido.** Frontend com 1.182 testes passando em 79 arquivos. Backend com 760 testes passando e 1 pulado. Postgres 17.11 com 356 testes RLS passando. O diagnóstico distinguiu os 25 estados e a conferência após duas aplicações da 027 devolveu cinco valores verdadeiros. Os privilégios já concedidos à tabela alcançam a nova coluna. Os testes reais confirmaram acesso à própria linha e isolamento de outra conta. A consulta omitiu a coorte sintética de quatro contas e, na semana com cinco, devolveu três primeiras sessões em até sete dias e um dia acima de quatro horas.
+
+Contra `develop`, falharam 5 testes de tela e vocabulário, 9 do PATCH e 4 de acesso à meta sem a coluna. A projeção também teve controles no módulo novo. As oito sabotagens foram executadas e restauradas.
+
+| Sabotagem | Resultado |
+|---|---|
+| Tratar dia vazio como zero | Falhou o teste da média e dos dias restantes da projeção |
+| Dividir o total por sete | Falhou o teste de média e projeção do gráfico |
+| Projetar com histórico parcial | Falhou o teste de omissão da projeção |
+| Inserir “ideal para dormir” no cartão | Falhou a guarda de vocabulário |
+| Remover a faixa no Flask | Falharam os casos 59 e 961 do PATCH |
+| Remover a restrição SQL | Falharam os dois casos de faixa no RLS |
+| Permitir a leitura e a escrita de outra conta | Falharam seis testes, incluindo o de isolamento da meta |
+| Suprimir apenas coortes com menos de quatro contas | Falhou o teste da consulta agregada |
+
+✏️ **Revisão da PR #331.** O progresso de “Primeiros passos” acompanha os quatro itens da lista. “Opcional: idade e meta” aparece em bloco separado, sem marca de pendência. O teste de tela compara o total acessível com o número de itens. Ao recolocar idade e meta como quinto item, falhou com “esperava 4, recebeu 5”. As quatro capturas do guia foram atualizadas.
+
+**Adaptação.** O gráfico usa a mesma série semanal do calendário, informa quantos dias entraram na média e omite a projeção quando o histórico é parcial. Hoje vazio e os dias futuros entram na projeção. A consulta agregada usa dias civis em `America/Sao_Paulo`, une intervalos com duração declarada e não estima duração das épocas antigas sem esse valor. O patch aprovado da política foi aplicado com as quatro datas em 27/11, para o release previsto.
+
+**O que deu errado no caminho.** A revisão automática ficou indisponível por limite de uso durante a troca de worktree. Após retomar na worktree registrada, a gravação foi autorizada. O primeiro cenário SQL tentava representar quatro horas como uma época, acima da faixa de uma época no banco. O teste passou a inserir épocas válidas. O controle sem 027 mostrou que uma recusa genérica aceitava o erro de coluna ausente nos testes de faixa. Esses testes passaram a exigir a violação da restrição. A primeira captura perdeu o contexto durante a atualização da prévia e foi repetida com a tela estabilizada.
+
+**Risco em aberto.** O autor aplica a 027 na produção e confirma antes do merge. A data pública da política deve acompanhar a data efetiva do release. A execução de banco desta etapa usou exclusivamente dados sintéticos, localmente.
+
+**Procedência.** `develop` `905ed46`. Windows 11, Node 24.11, Python 3.13, Edge e contêiner local Postgres 17.11. As capturas estão em [evidências da etapa 2](evidencias/onboarding-etapa-2/). O SQL de conferência está em `dados-locais/CONFERENCIA-027-meta-diaria.sql`, fora do Git. Nenhuma junction criada.
+
+---
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

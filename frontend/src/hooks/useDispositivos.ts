@@ -6,29 +6,29 @@ import { listarDispositivos, type Dispositivo } from "../lib/dispositivos";
 /**
  * Lista de dispositivos do usuario, para o seletor do painel (DASH-05).
  *
- * Falha em silencio, de proposito: se a listagem cair, o painel continua
- * mostrando o grafico sem seletor — que e exatamente o comportamento de antes
- * do DASH-05. Derrubar a tela inteira porque a lista de dispositivos nao
- * carregou seria trocar um recurso acessorio pelo principal.
+ * Se a listagem cair, o painel continua mostrando o gráfico sem seletor.
+ * O guia usa o estado da consulta para não tomar a falha por lista vazia.
  */
-export function useDispositivos(): Dispositivo[] {
-  const [dispositivos, setDispositivos] = useState<Dispositivo[]>(() => import.meta.env.DEV && estaEmModoDemo() ? listarAparelhosDemo() : []);
+export function useDispositivos() {
+  const demo = import.meta.env.DEV && estaEmModoDemo();
+  const [resultado, setResultado] = useState<{ dispositivos: Dispositivo[]; estado: "carregando" | "erro" | "pronto" }>(() =>
+    demo ? { dispositivos: listarAparelhosDemo(), estado: "pronto" } : { dispositivos: [], estado: "carregando" });
 
   useEffect(() => {
     // A demonstração tem sua própria lista local, sem consulta à API.
-    if (import.meta.env.DEV && estaEmModoDemo()) return;
+    if (demo) return;
     let vivo = true;
     listarDispositivos()
       .then((lista) => {
-        if (vivo) setDispositivos(lista);
+        if (vivo) setResultado({ dispositivos: lista, estado: "pronto" });
       })
       .catch(() => {
-        if (vivo) setDispositivos([]);
+        if (vivo) setResultado({ dispositivos: [], estado: "erro" });
       });
     return () => {
       vivo = false;
     };
-  }, []);
+  }, [demo]);
 
-  return dispositivos;
+  return resultado;
 }

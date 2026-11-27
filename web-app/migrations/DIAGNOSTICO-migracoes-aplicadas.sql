@@ -221,7 +221,12 @@ marcas (migracao, item, marca, presente) as (values
         exists (select 1 from col where nome = 'devices.versao_app')
         and exists (select 1 from col where nome = 'devices.versao_vista_em')),
     ('026', 'APP-19', 'restrição devices_versao_app_formato',
-        exists (select 1 from pg_constraint where conname = 'devices_versao_app_formato'))
+        exists (select 1 from pg_constraint where conname = 'devices_versao_app_formato')),
+    ('027', 'UI-61', 'coluna profiles.meta_diaria_min',
+        exists (select 1 from col where nome = 'profiles.meta_diaria_min')),
+    ('027', 'UI-61', 'restrição profiles_meta_diaria_faixa',
+        exists (select 1 from pg_constraint
+                where conrelid = to_regclass('public.profiles') and conname = 'profiles_meta_diaria_faixa'))
 ),
 esquema as (
     select migracao, min(item) as item,

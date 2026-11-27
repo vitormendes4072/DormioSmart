@@ -33,7 +33,7 @@ describe("useDispositivos e o modo demonstração (DEMO-03)", () => {
     const { result } = renderHook(() => useDispositivos());
     await new Promise((r) => setTimeout(r, 0));
     expect(listarDispositivos).not.toHaveBeenCalled();
-    expect(result.current.map(({ nome, tipo }) => ({ nome, tipo }))).toEqual([
+    expect(result.current.dispositivos.map(({ nome, tipo }) => ({ nome, tipo }))).toEqual([
       { nome: "Travesseiro de exemplo", tipo: "travesseiro" },
       { nome: "Celular de exemplo", tipo: "celular" },
     ]);
@@ -43,7 +43,7 @@ describe("useDispositivos e o modo demonstração (DEMO-03)", () => {
     vi.stubEnv("DEV", true);
     listarDispositivos.mockResolvedValue([{ id: "d1", nome: "Travesseiro" }]);
     const { result } = renderHook(() => useDispositivos());
-    await waitFor(() => expect(result.current).toHaveLength(1));
+    await waitFor(() => expect(result.current.dispositivos).toHaveLength(1));
     expect(listarDispositivos).toHaveBeenCalledTimes(1);
   });
 
@@ -56,7 +56,7 @@ describe("useDispositivos e o modo demonstração (DEMO-03)", () => {
     listarDispositivos.mockResolvedValue(aparelhos);
     const { result } = renderHook(() => useDispositivos());
     expect(listarDispositivos).toHaveBeenCalledTimes(1);
-    await waitFor(() => expect(result.current).toEqual(aparelhos));
+    await waitFor(() => expect(result.current.dispositivos).toEqual(aparelhos));
   });
 
   it("em produção com ?demo=1, o estado inicial ignora os aparelhos de exemplo", async () => {
@@ -69,7 +69,7 @@ describe("useDispositivos e o modo demonstração (DEMO-03)", () => {
     listarDispositivos.mockResolvedValue(aparelhos);
     const { result } = renderHook(() => useDispositivos());
     expect(listarAparelhosDemo).not.toHaveBeenCalled();
-    expect(result.current).toEqual([]);
-    await waitFor(() => expect(result.current).toEqual(aparelhos));
+    expect(result.current.dispositivos).toEqual([]);
+    await waitFor(() => expect(result.current.dispositivos).toEqual(aparelhos));
   });
 });

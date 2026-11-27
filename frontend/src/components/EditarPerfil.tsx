@@ -44,6 +44,8 @@ import { Link } from "react-router";
 import { useAuth } from "../contexts/AuthContext";
 import { usePerfil } from "../contexts/PerfilContext";
 import { aplicabilidadeDaIdade } from "../lib/aplicabilidade";
+import { minutosDaMeta, tempoDaMeta } from "../lib/metaDiaria";
+import { CampoMetaDiaria } from "./CampoMetaDiaria";
 import {
   IDADE_MAXIMA_DO_PERFIL,
   NOME_MAXIMO_DO_PERFIL,
@@ -67,6 +69,7 @@ export function EditarPerfil() {
   const [aberto, setAberto] = useState(false);
   const [nome, setNome] = useState(atual.nome);
   const [idade, setIdade] = useState(atual.idade);
+  const [meta, setMeta] = useState(atual.meta ?? "");
   const [email, setEmail] = useState(atual.email);
   const [salvando, setSalvando] = useState(false);
   const [resultado, setResultado] = useState<ResultadoDePerfil | null>(null);
@@ -78,6 +81,7 @@ export function EditarPerfil() {
     // "corrigir" de volta para o que a pessoa já trocou.
     setNome(atual.nome);
     setIdade(atual.idade);
+    setMeta(atual.meta ?? "");
     setEmail(atual.email);
     setResultado(null);
     setAberto(true);
@@ -86,7 +90,7 @@ export function EditarPerfil() {
   async function salvar() {
     setSalvando(true);
     try {
-      const desfecho = await atualizarPerfil(atual, { nome, idade, email });
+      const desfecho = await atualizarPerfil(atual, { nome, idade, email, meta });
       setResultado(desfecho);
       // Relê a fonte de verdade depois de gravar. Não aproveitamos o corpo da
       // resposta do `PATCH` para atualizar a tela: reler é o que garante que o
@@ -100,10 +104,11 @@ export function EditarPerfil() {
     }
   }
 
-  const alteracao = calcularAlteracao(atual, { nome, idade, email });
+  const alteracao = calcularAlteracao(atual, { nome, idade, email, meta });
   const semMudanca = nadaAFazer(alteracao);
   const trocandoEmail = alteracao.email !== undefined;
   const aplicabilidade = aplicabilidadeDaIdade(idadeDoPerfil(perfil));
+  const metaSalva = minutosDaMeta(perfil?.meta_diaria_min);
 
   if (!aberto) {
     return (
@@ -124,6 +129,10 @@ export function EditarPerfil() {
           <div className={LINHA_DE_CONFIGURACAO}>
             <dt className="shrink-0 text-muted-foreground">E-mail</dt>
             <dd className="min-w-0 wrap-anywhere text-right font-medium text-foreground">{atual.email || "—"}</dd>
+          </div>
+          <div className={LINHA_DE_CONFIGURACAO}>
+            <dt className="text-muted-foreground">Meta de tempo registrado por dia</dt>
+            <dd className="text-right font-medium">{metaSalva === null ? "Não definida" : tempoDaMeta(metaSalva)}</dd>
           </div>
         </dl>
 
@@ -205,6 +214,8 @@ export function EditarPerfil() {
           .
         </p>
       </div>
+
+      <CampoMetaDiaria valor={meta} alterar={setMeta} />
 
       <div className="space-y-1.5">
         <label className="text-xs text-muted-foreground" htmlFor="perfil-email">

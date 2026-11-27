@@ -56,6 +56,7 @@ novo, o autor reserva aqui antes.
 | `023` | `DATA-16` (excluir e marcar uma sessão) *(21/11; na produção desde o R16)* | Claude |
 | `024` | `LGPD-15` (a versão nova do consentimento) *(22/11; na produção desde o R17)* | Claude |
 | `025` | `DATA-17` (excluir e marcar só o que a tela mostrou) *(22/11, reservada pelo autor)* | Codex |
+| `027` | `UI-61` (meta de tempo registrado por dia) *(27/11, reservada pelo autor)* | Codex |
 
 IDs novos de backlog seguem a regra 5 do `AGENTS.md`: conferir em `origin/develop` e avisar o autor.
 

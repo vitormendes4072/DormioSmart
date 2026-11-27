@@ -39,13 +39,13 @@ logger = logging.getLogger(__name__)
 # num corpo de requisição, que é precisamente o que a rota não aceita.
 # LGPD-12: o consentimento vem junto, para a tela saber se pede. So a funcao do
 # banco o grava (migracao 017); `ALTERAVEIS` nao o inclui.
-CAMPOS = "nome, idade, updated_at, consentimento_saude_em, consentimento_saude_versao"
+CAMPOS = "nome, idade, updated_at, consentimento_saude_em, consentimento_saude_versao, meta_diaria_min"
 
 # Campos que o titular pode alterar. Qualquer outro no corpo é 400, e não
 # silenciosamente ignorado: ignorar faria `PATCH {"idadee": 30}` responder
 # sucesso sem ter gravado nada — confirmação emitida antes da verificação (§6
 # das lições), na forma mais fácil de cometer.
-ALTERAVEIS = ("nome", "idade")
+ALTERAVEIS = ("nome", "idade", "meta_diaria_min")
 
 # Teto de caracteres do nome nesta camada.
 #
@@ -64,6 +64,8 @@ NOME_MAXIMO = 120
 # maiores de idade (seção 2.1 da política de privacidade).
 IDADE_MINIMA = 18
 IDADE_MAXIMA = 149
+META_MINIMA = 60
+META_MAXIMA = 960
 
 
 def normalizar_nome(valor):
@@ -123,6 +125,16 @@ def validar_idade(valor):
     return valor, None
 
 
+def validar_meta(valor):
+    if valor is None:
+        return None, None
+    if type(valor) is not int:
+        return None, "a meta deve ser um numero inteiro de minutos ou nulo"
+    if not META_MINIMA <= valor <= META_MAXIMA:
+        return None, "a meta deve estar entre 60 e 960 minutos"
+    return valor, None
+
+
 def ler_alteracao(corpo):
     """Traduz o corpo do `PATCH` em `(campos, None)` ou `(None, motivo)`.
 
@@ -160,6 +172,12 @@ def ler_alteracao(corpo):
             return None, erro
         campos["idade"] = idade
 
+    if "meta_diaria_min" in corpo:
+        meta, erro = validar_meta(corpo["meta_diaria_min"])
+        if erro:
+            return None, erro
+        campos["meta_diaria_min"] = meta
+
     return campos, None
 
 
@@ -193,7 +211,7 @@ def ler(client, usuario_id):
 
 def _projetar(linha):
     """Só os campos que o cliente vê. Mesma lista do `select`."""
-    return {campo: linha.get(campo) for campo in ("nome", "idade", "updated_at")}
+    return {campo: linha.get(campo) for campo in ("nome", "idade", "updated_at", "meta_diaria_min")}
 
 
 def gravar(client, usuario_id, campos):

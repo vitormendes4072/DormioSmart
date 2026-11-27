@@ -107,6 +107,15 @@ function jargaoEm(nome: string, codigo: string): string[] {
     JARGAO.filter(([, regra]) => regra.test(texto)).map(([termo]) => `${nome}:${linha} [${termo}] ${texto}`));
 }
 
+it("UI-61: a meta usa o vocabulário de registro, com uma única frase de ajuda sobre dormir", () => {
+  const proibido = /\b(?:dormir|sono|ideal|saudável|deveria|qualidade|noite)\b|\brecomend/iu;
+  const ajuda = "O Smart Dormio não recomenda quantas horas dormir.";
+  const arquivos = ["components/CampoMetaDiaria.tsx", "components/ComparacaoDaMeta.tsx", "components/GraficoDeTempoPorDia.tsx"];
+  const ocorrencias = arquivos.flatMap((nome) => textos(nome, readFileSync(resolve(RAIZ, nome), "utf8")))
+    .filter(({ texto }) => proibido.test(texto));
+  expect(ocorrencias.map(({ texto }) => texto)).toEqual([`É uma meta sua. ${ajuda}`]);
+});
+
 describe("o detector de jargão (controle positivo)", () => {
   const acusa = (codigo: string) => jargaoEm("exemplo.tsx", codigo).length > 0;
 

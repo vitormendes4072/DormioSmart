@@ -96,6 +96,7 @@ import type { User } from "@supabase/supabase-js";
 
 import { ErroApi, requisitarJson } from "./api";
 import { traduzirErroDeAuth } from "./autenticacao";
+import { lerMetaDiaria, preencherMeta } from "./metaDiaria";
 import { obterSupabase } from "./supabase";
 
 /**
@@ -115,6 +116,7 @@ export const NOME_MAXIMO_DO_PERFIL = 120;
 export type PerfilDoServidor = {
   nome: string | null;
   idade: number | null;
+  meta_diaria_min?: number | null;
   updated_at?: string | null;
   /** A rota criou a linha agora, porque faltava. Ver o docstring da rota. */
   perfil_criado_agora?: boolean;
@@ -125,10 +127,10 @@ export type PerfilDoServidor = {
 
 /** Estado do formulário. `idade` é texto porque campo de formulário é texto —
  *  guardá-la como número obrigaria a inventar um valor para "vazio". */
-type DadosDoPerfil = { nome: string; idade: string; email: string };
+type DadosDoPerfil = { nome: string; idade: string; email: string; meta?: string };
 
 /** O que de fato mudou. `idade: null` é "apague", ausente é "não mexa". */
-type AlteracaoDePerfil = { nome?: string; idade?: number | null; email?: string };
+type AlteracaoDePerfil = { nome?: string; idade?: number | null; email?: string; meta_diaria_min?: number | null };
 
 export type ResultadoDePerfil =
   /** O formulário não mudou nada. Não houve ida à rede. */
@@ -160,6 +162,10 @@ export async function buscarPerfil(): Promise<PerfilDoServidor> {
   return requisitarJson<PerfilDoServidor>(CAMINHO);
 }
 
+export function salvarCamposDoPerfil(campos: { nome?: string; idade?: number | null; meta_diaria_min?: number | null }) {
+  return requisitarJson<PerfilDoServidor>(CAMINHO, { method: "PATCH", body: JSON.stringify(campos) });
+}
+
 /** E-mail de acesso a partir da sessão. O e-mail **não** está em `profiles`:
  *  ele é credencial, e mora no serviço de autenticação. */
 export function emailDaSessao(usuario: User | null): string {
@@ -188,6 +194,7 @@ export function formularioDoPerfil(
   return {
     nome: nomeDoPerfil(perfil),
     idade: idade === null ? "" : String(idade),
+    ...(perfil?.meta_diaria_min != null ? { meta: preencherMeta(perfil.meta_diaria_min) } : {}),
     email: emailDaSessao(usuario),
   };
 }
@@ -325,6 +332,10 @@ export function calcularAlteracao(
     // ficaria inerte e nada explicaria por quê.
     alteracao.idade = null;
   }
+  if (formulario.meta !== undefined && formulario.meta.trim() !== (atual.meta ?? "")) {
+    const meta = lerMetaDiaria(formulario.meta);
+    alteracao.meta_diaria_min = meta.ok ? meta.valor : null;
+  }
 
   return alteracao;
 }
@@ -333,7 +344,8 @@ export function nadaAFazer(alteracao: AlteracaoDePerfil): boolean {
   return (
     alteracao.nome === undefined &&
     alteracao.email === undefined &&
-    alteracao.idade === undefined
+    alteracao.idade === undefined &&
+    alteracao.meta_diaria_min === undefined
   );
 }
 
@@ -397,20 +409,22 @@ export async function atualizarPerfil(
     const valido = validarEmail(alteracao.email);
     if (!valido.ok) return { tipo: "invalido", mensagem: valido.motivo };
   }
+  if (alteracao.meta_diaria_min !== undefined) {
+    const meta = lerMetaDiaria(formulario.meta ?? "");
+    if (!meta.ok) return { tipo: "invalido", mensagem: meta.motivo };
+  }
 
   let perfilGravado = false;
   let residuoLimpo = false;
 
-  const campos: { nome?: string; idade?: number | null } = {};
+  const campos: Parameters<typeof salvarCamposDoPerfil>[0] = {};
   if (alteracao.nome !== undefined) campos.nome = alteracao.nome;
   if (alteracao.idade !== undefined) campos.idade = alteracao.idade;
+  if (alteracao.meta_diaria_min !== undefined) campos.meta_diaria_min = alteracao.meta_diaria_min;
 
   if (Object.keys(campos).length > 0) {
     try {
-      await requisitarJson<PerfilDoServidor>(CAMINHO, {
-        method: "PATCH",
-        body: JSON.stringify(campos),
-      });
+      await salvarCamposDoPerfil(campos);
       perfilGravado = true;
     } catch (erro) {
       // Não tenta o e-mail: o perfil é a parte que o titular pediu primeiro, e
@@ -428,7 +442,7 @@ export async function atualizarPerfil(
 
     // Só depois de a escrita autoritativa ter sucedido. Falha aqui não é falha
     // da correção — ver o cabeçalho.
-    residuoLimpo = await limparResiduoDoMetadado();
+    if (campos.nome !== undefined || campos.idade !== undefined) residuoLimpo = await limparResiduoDoMetadado();
   }
 
   if (alteracao.email === undefined) return { tipo: "salvo", perfilGravado, residuoLimpo };
