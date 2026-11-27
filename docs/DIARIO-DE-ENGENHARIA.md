@@ -14447,7 +14447,7 @@ Contra `develop`, falharam 5 testes de tela e vocabulário, 9 do PATCH e 4 de ac
 
 **Risco em aberto.**
 - **A data da revisão.** Se este PR for ao ar noutro dia, a data do topo e a da §10 precisam passar a ser a do release, numa revisão própria. Uma revisão já publicada não deve mudar em silêncio.
-- A frase "o nível a cada 20 ms não reconstrói fala" está no estudo como **hipótese sem fonte**. Precisa de referência ou teste antes da etapa 2 (`LGPD-17`, risco registrado no próprio documento).
+- A frase "o nível a cada 20 ms não reconstrói fala" entrou no estudo como hipótese e, **conferida no mesmo dia a pedido do autor, não se sustentou como garantia**: Xu e Pfingst (2008, texto lido) dizem que o reconhecimento da fala só se beneficia do envelope abaixo de 16–20 Hz, que o nível a 50 Hz cobre; a fala volta a ser entendida com três ou quatro faixas (Dorman et al. 1997, lido), e o número para uma faixa só não foi achado em fonte lida (Shannon et al. 1995 não abriu). Decisão registrada no estudo (seção 4.1): a série de 20 ms não sai da memória; só medidas por época são guardadas e enviadas. Falta o teste próprio de que as medidas por época não revelam fala (`EXP-01`).
 - O escopo (X.5 da `LIMITACOES-TCC.md`) e o CEP dependem do orientador (`EXP-01`, portão 0).
 - A política diz no topo "Não publicar sem revisão jurídica" (`LGPD-01`).
 

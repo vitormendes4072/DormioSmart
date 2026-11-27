@@ -112,15 +112,55 @@ desse termo e do protocolo do CEP.
 | Medida | Como | Onde se verifica |
 |---|---|---|
 | **Nenhuma amostra de som sai do processamento** | O núcleo recebe o bloco, calcula o nível e descarta o bloco. Nada vai para arquivo, memória persistente, rede ou registro de depuração | Teste do núcleo: dado um bloco, a única saída é o nível |
-| **Só o mínimo sai do aparelho** | Para o servidor, só as **medidas por época** (como já acontece com o movimento), não a série de 50 níveis por segundo | Contrato de dados (`DATA-CONTRACT.md`), versão nova |
-| **Teste de bancada sem fala** | O sketch do `EXP-01` imprime só o nível a cada 20 ms. Mesmo na bancada, nada que permita ouvir o quarto é gravado | Código do sketch |
+| **Só o mínimo sai da memória do aparelho** | No arquivo do celular, no servidor e na exportação, só as **medidas por época** (como já acontece com o movimento). A série de 50 níveis por segundo fica só na memória de trabalho (seção 4.1) | Contrato de dados (`DATA-CONTRACT.md`), versão nova; teste do núcleo |
+| **Teste de bancada sem gravar o som** | O sketch do `EXP-01` imprime só o nível a cada 20 ms, nunca as amostras. Como o nível ainda revela quando alguém fala (seção 4.1), a bancada é feita **com o autor sozinho no quarto** | Código do sketch; protocolo |
 | **Indicador visível** | O Android mostra o indicador de microfone em uso; a notificação fixa da noite deve dizer "medindo movimento e som" | Tela do app |
 | **Mesmo armazenamento, mesma retenção** | Os arquivos locais seguem a regra da seção 2.3 da política, e os dados da conta a da seção 7 | Política |
 
-> **Hipótese técnica a verificar, não afirmação:** um nível sonoro a cada 20 ms (50 valores
-> por segundo) **não deveria** permitir reconstruir fala inteligível. Isso é esperado, mas
-> **não foi conferido em fonte**. Antes de a política afirmar isso, precisa de referência ou
-> de teste.
+### 4.1 O nível a cada 20 ms protege a fala? Conferido em 27/11: **não como estava escrito**
+
+A primeira versão deste documento dizia que um nível a cada 20 ms "não deveria" permitir
+reconstruir fala inteligível. Conferida na literatura no mesmo dia, a frase **não se
+sustenta como garantia**:
+
+- **A informação da fala que o ouvido usa no tempo está justamente nas variações lentas.**
+  Xu e Pfingst (2008, *Hearing Research* 242:132–140, [PMC2610393](https://pmc.ncbi.nlm.nih.gov/articles/PMC2610393/),
+  texto lido) resumem: o reconhecimento da fala em inglês *"só se beneficia das frequências
+  do envelope abaixo de 16 a 20 Hz"*. Um nível a cada 20 ms é o envelope amostrado a 50 Hz,
+  e **cobre essa faixa inteira**.
+- **O que falta ao nosso sinal é a divisão em faixas de frequência.** O nível é um só, para
+  todo o espectro. Na literatura de *vocoders*, a fala volta a ser bem entendida com **três
+  ou quatro faixas** de envelope: Dorman, Loizou e Rainey (1997, *JASA* 102:2403, texto lido)
+  resumem Shannon et al. (1995) como "escores quase perfeitos" com *"três ou quatro faixas de
+  ruído"*; Xu e Pfingst, como "4 canais bastam" para ≥ 85% de acerto em consoantes, vogais e
+  frases. **Com uma faixa só, o caso do Dormio, não encontrei o número de inteligibilidade
+  de frases em fonte lida.** O artigo original de Shannon et al. (1995) não pôde ser aberto
+  (servidor recusou a conexão).
+- **Inteligibilidade não é a única coisa que vaza.** Mesmo sem palavras, a série mostra
+  **quando alguém fala, por quanto tempo e em que ritmo**. Trabalhos de segurança mostram
+  que sensores de baixa taxa revelam mais do que se espera: Michalevsky, Boneh e Nakibly
+  (2014, USENIX Security, "Gyrophone") relatam identificar quem fala e dígitos falados a
+  partir do giroscópio de celular, a cerca de 200 Hz. 🟡 *Visto só em resumo; e é uma forma
+  de onda a 200 Hz, não um envelope de faixa única, então não se transfere diretamente.*
+
+**Conclusão:** o nível a cada 20 ms **reduz muito** o que se pode extrair da fala, mas **não
+é garantia** de que nada se extraia. Portanto, a série de 50 valores por segundo **não deve
+sair da memória do aparelho**:
+
+| Onde | O que existe |
+|---|---|
+| Memória de trabalho do aparelho, por segundos | O nível a cada 20 ms, só para calcular a época |
+| Arquivo no celular, servidor, CSV de exportação | **Só as medidas por época de 30 s** (frequência e regularidade da respiração, ronco, pausas) |
+| Bancada (`EXP-01`) | O nível a cada 20 ms vai para o computador do autor, **com o autor sozinho no quarto**, porque é preciso para medir o pico respiratório. Nunca em participante |
+
+Resumir meio minuto num punhado de números elimina a faixa do envelope que importa à fala
+(abaixo de 16–20 Hz), porque a época é amostrada uma vez a cada 30 s. *Isso é dedução do
+próprio raciocínio, não resultado de fonte lida.* É isso que a política poderá dizer, depois
+do teste abaixo, e não "o nível de 20 ms protege".
+
+> ⚠️ **O que ainda falta:** um teste próprio que confirme que as medidas por época não
+> distinguem "silêncio", "fala" e "respiração" além do que se pretende (por exemplo, marcar
+> fala como ruído a descartar). Fica no `EXP-01`.
 
 ---
 
@@ -193,10 +233,10 @@ Na mesma PR do recurso, nunca antes:
 
 > **O som, se você ligar o microfone.** Desligado por padrão. Com ele ligado, o aplicativo
 > usa o microfone do celular durante a noite [e o dispositivo do travesseiro, se tiver
-> microfone, o dele]. **O som não é gravado.** A cada 20 milissegundos, o aparelho calcula
-> só o volume do som naquele instante e descarta o resto. Desses volumes, calcula por época
-> de 30 segundos [a frequência e a regularidade da respiração, a presença de ronco e as
-> pausas], e é só isso que é guardado e enviado.
+> microfone, o dele]. **O som não é gravado.** O aparelho calcula o volume do som, instante a
+> instante, e descarta o som em si; os volumes ficam só na memória, por alguns segundos.
+> Deles, o aparelho calcula por época de 30 segundos [a frequência e a regularidade da
+> respiração, a presença de ronco e as pausas], e **é só isso que é guardado e enviado**.
 
 **Seção 2.4 — trocar a primeira linha por:**
 
@@ -209,8 +249,9 @@ Na mesma PR do recurso, nunca antes:
 > As medidas de respiração e ronco também são tratadas como **dado de saúde**. E elas têm
 > uma diferença importante em relação ao movimento: **o microfone mede o quarto, não só
 > você.** Se outra pessoa dormir ou falar perto do aparelho, o volume dos sons dela entra nas
-> medidas. Ninguém consegue ouvir o que foi dito, porque o som não é gravado, mas o volume
-> entra. Se você não dorme sozinho, considere deixar o microfone desligado.
+> medidas. O que foi dito não é guardado, porque nem o som nem os volumes instante a instante
+> saem da memória do aparelho, mas a presença dela pode alterar as medidas. Se você não
+> dorme sozinho, considere deixar o microfone desligado.
 
 **Seção 4 — acrescentar:**
 
@@ -239,7 +280,7 @@ do parágrafo único. Se o orientador ou o CEP pedirem um relatório, ele sai da
 |---|---|---|
 | O escopo do TCC diz "acelerométrico" (`LIMITACOES-TCC.md`, X.5) | Decisão do autor e do orientador | `EXP-01` |
 | O CEP ainda não cobre áudio | Pendente com o orientador | — |
-| A hipótese "nível a cada 20 ms não reconstrói fala" não tem fonte | A verificar antes da etapa 2 | `LGPD-17` |
+| A série de níveis a cada 20 ms cobre a faixa do envelope que carrega a fala (abaixo de 16–20 Hz) | **Conferido em 27/11 (seção 4.1).** Decisão: a série não sai da memória; só medidas por época são guardadas e enviadas. Falta o teste próprio de que as medidas por época não revelam fala | `EXP-01` |
 | Outras pessoas no quarto | Mitigado (sem amostra guardada), não eliminado. Declarado no texto da etapa 2 | `LGPD-17` |
 | Revisão jurídica da política | A política diz no topo "Não publicar sem revisão jurídica" | `LGPD-01` |
 | Início automático da noite com microfone (lembrete) | O Android proíbe. Se um dia o lembrete iniciar a noite, o microfone fica fora | — |
@@ -260,6 +301,13 @@ do parágrafo único. Se o orientador ou o CEP pedirem um relatório, ele sai da
   `ServicoDaNoite.java`, `NoitePlugin.java`, `MainActivity.java`,
   `ReceptorDeInicializacao.java` (só reagenda o lembrete), `firmware/nucleo/coletor_celular.h`,
   `frontend/src/lib/consentimento.ts` (versão `2026-11-22`).
+- **Xu e Pfingst (2008)**, *Hearing Research* 242:132–140, DOI 10.1016/j.heares.2007.12.010,
+  PMC2610393, lido em 27/11/2026: o envelope abaixo de 16–20 Hz; 4 canais bastam.
+- **Dorman, Loizou e Rainey (1997)**, *J Acoust Soc Am* 102:2403, DOI 10.1121/1.419603, lido
+  em 27/11/2026: o resumo de Shannon et al. (1995), três ou quatro faixas. **Shannon et al.
+  (1995), *Science* 270:303–304, não foi lido** (o servidor da cópia recusou a conexão).
+- **Michalevsky, Boneh e Nakibly (2014)**, "Gyrophone", USENIX Security: **visto só em
+  resumo de busca**, não lido.
 - **Tran et al. (2023)**, *J Med Internet Res* 25:e46216, DOI 10.2196/46216, texto completo
   lido em 27/11/2026: a limitação de os dados terem sido coletados com pessoas dormindo
   sozinhas.
