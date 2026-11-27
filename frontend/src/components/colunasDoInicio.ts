@@ -9,4 +9,3 @@
  * Os textos ficam inteiros, e não montados, para o Tailwind achar as classes.
  */
 export const COLUNAS_DO_INICIO = "grid-cols-[minmax(0,1.8fr)_minmax(320px,0.9fr)]";
-export const COLUNAS_DO_INICIO_EM_TELA_LARGA = "min-[1050px]:grid-cols-[minmax(0,1.8fr)_minmax(320px,0.9fr)]";

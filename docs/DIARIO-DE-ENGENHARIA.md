@@ -13932,6 +13932,134 @@ O autor sugeriu levar o aviso para perto do seletor e pediu uma análise da disp
 
 ---
 
+# 2026-11-26 (xiii) — release R23: o app 1.1.7 com o Início novo
+
+**O problema, como foi entendido no início.** Depois do R22, o site tinha o Início novo (UI-46 a UI-49), e o app Android seguia no 1.1.6, com o antigo. O autor pediu o APK novo e, com ele pronto, o "sim" para publicar.
+
+**Hipótese de trabalho.** Seguir a seção 1.3 da `docs/DISTRIBUICAO-DO-APP.md`, na ordem:
+1. Subir a versão nos quatro pontos.
+2. Gerar o APK assinado numa cópia com o `frontend/.env`.
+3. Conferir com o `conferir_apk.py`.
+4. Instalar no emulador.
+5. Criar a release em rascunho.
+6. Fazer o release para a `main`, publicar a release e conferir o download pelo link `latest`.
+
+**O que foi testado, e como.**
+- **PR #313:** `versionCode` 9 e `versionName` 1.1.7 no `build.gradle`, mais `appAndroid.ts`, `versao-do-app.json`, a landing completa e a seção 1.2 da distribuição. `appAndroid.test.ts` (28) e `test_conferir_apk.py` (5) passaram.
+- **APK:** `npm run build:app` e `./gradlew assembleRelease` com o JDK do Android Studio. Conferido com `apksigner verify --print-certs`, `aapt2 dump badging` e o `conferir_apk.py`. O APK foi extraído para buscar os textos do Início novo nos pedaços JS.
+- **Emulador Pixel 6:** o APK instalado por cima do 1.1.6, aberto, com a tela capturada e o log lido.
+- **Release:** PR #314 para a `main`, com os checks lidos antes do merge. Depois do deploy, a release `app-v1.1.7` foi publicada, sem marca de pré-lançamento. O APK foi baixado pelo link fixo da landing.
+
+**Resultado medido.**
+- **APK:** certificado SHA-256 `06b2e4f9…d14a` (o do autor), sem `application-debuggable`, três ABIs. O `conferir_apk.py` deu código 0, com o endereço do Supabase encontrado e a versão conferindo. Tem 5 268 357 B, SHA-256 `dd6683ab…3a41`. Os pedaços JS têm "Tempo registrado por dia", `data-topo-do-inicio` e a grade de 320 px.
+- **Emulador:** `versionCode` 8 → 9, a tela de entrada aberta, nenhuma exceção fatal no log.
+- **Checks da #314:** todos passaram. Merge `55b6736`, deploy de produção `8095700494`.
+- **Produção:**
+  - `/health` `200` com o contrato 2.12.0.
+  - `401` sem token em dispositivos, histórico e features.
+  - A CSP igual nas cinco páginas.
+  - `versao-do-app.json` com 1.1.7 e a landing com "Versão 1.1.7 (beta)".
+  - O link `latest` responde `200` e entrega o mesmo arquivo: 5 268 357 B, mesmo SHA-256.
+
+**Adaptação.** O login real com uma conta de teste no emulador, que a seção 1.3 pede, não foi feito pelo Claude: é digitar senha numa conta de produção, e fica com o autor.
+
+**O que deu errado no caminho.**
+- **Gradle no Windows:** a primeira compilação parou com "Unable to establish loopback connection". O `JAVA_TOOL_OPTIONS` apontava o `jdk.net.unixdomain.tmpdir` para a pasta temporária do usuário, de caminho longo. Com uma pasta curta (`.gradle/uds` no perfil), compilou em 1 min 53 s.
+- **Fim de linha:** o `cap sync` reescreveu `capacitor.build.gradle` e `capacitor.settings.gradle` só no fim de linha; as duas mudanças foram descartadas antes do commit.
+
+**Risco em aberto.**
+- **O login no 1.1.7** com a conta do autor não foi conferido.
+- **O aviso de versão nova** no 1.1.6 instalado só aparece quando o app consulta o `versao-do-app.json`; não foi visto num celular.
+
+**Procedência.** PRs #313 e #314, merge `55b6736`, deploy `8095700494`, release `app-v1.1.7`, em 26/11; build e conferências no Windows, Node 24.11.0, JDK do Android Studio, Build-Tools 37.0.0.
+
+---
+
+# 2026-11-26 (xiv) — duas ESP32 reaproveitadas, dois sensores que não são MPU6050, e o HW-12
+
+**O problema, como foi entendido no início.** O autor tinha duas ESP32-WROOM de projetos anteriores e quis montar mais dois dispositivos para conhecidos testarem. Pediu, nesta ordem: conferir as duas placas, gravar o firmware do Dormio nelas e, com o sensor soldado, conferir a solda e a captação.
+
+**Hipótese de trabalho.**
+- Placa usada pode ter flash gasta, RAM ruim ou rádio com defeito: testar cada parte antes de investir solda nela.
+- O firmware leva no binário o Wi-Fi, o token do dispositivo e a calibração da unidade (`secrets.h` e `calibracao_da_unidade.h`). Gravar como está mandaria o dado das placas novas para o travesseiro do autor, com a calibração de outro sensor.
+
+**O que foi testado, e como.**
+- **As placas** (`68c0` e `a434`, pelo fim do MAC), com o `esptool` 5.3.1 do pacote `esp32` 3.3.12:
+  1. chip, eFuses e identificação da flash;
+  2. a flash original salva por leitura (fora do repositório);
+  3. 4 MB aleatórios escritos na flash inteira e conferidos;
+  4. um sketch de diagnóstico: RAM em padrões, os dois núcleos, varredura de Wi-Fi e o controlador de Bluetooth.
+- **O firmware:** uma cópia do sketch montada fora do repositório, como faz o `scripts/compilar_sketch_esp32.py`, com o Wi-Fi do autor, a calibração desligada (`aceita = false`) e um token novo por placa, de dois pareamentos feitos pelo autor no app. Os tokens vieram por foto da tela; cada leitura foi conferida com um `POST /api/data/lote` **sem corpo**: o token errado recebe `401` e o certo passa da autenticação e para no corpo (`400`), sem gravar nada.
+- **Os sensores:** o `diagnostico-i2c` e um sketch que lê o WHO_AM_I, a aceleração parada nas quatro escalas e a contagem da FIFO até transbordar.
+- **O `HW-12`:** o `diagnostico-i2c` mudado (abaixo), compilado com o `arduino-cli` 1.6.0 e rodado na placa com o sensor; duas cópias sabotadas rodadas também; `make sintaxe` em contêiner `gcc:13`.
+
+**Resultado medido.**
+- **As duas placas estão boas:** ESP32-D0WD-V3 rev 3.1; eFuses limpos (sem criptografia de flash, sem secure boot); flash de 4 MB conferida inteira; RAM, os dois núcleos, Wi-Fi e Bluetooth sem falha. O Bluetooth falhou na primeira rodada por causa do sketch (abaixo).
+- **O firmware do Dormio nas duas:** 1 097 264 B de programa e 109 072 B de RAM fixa, os números do `HW-10`; as quatro regiões conferidas; os dois tokens aceitos pelo servidor. Sem sensor, a placa liga, monta a fila (0 corrompidos), diz `Calibracao da unidade: NAO aplicada` e acusa o MPU6050 ausente.
+- **Os dois sensores, comprados juntos, não são MPU6050**, embora o chip diga "MPU-6050":
+
+  | | sensor 1 (`a434`) | sensor 2 (`68c0`) | o do travesseiro (11/11 (ix)) |
+  |---|---|---|---|
+  | falhas de barramento | 0 | 0 | 0 |
+  | WHO_AM_I | `0x70` em 2 000/2 000 | `0x70` em 2 000/2 000 | `0x68` em 1 000/1 000 |
+  | FIFO no transbordo | 512 B | 510–512 B | — (1024 B pela folha de dados) |
+  | \|a\| parado | 1,86 g, igual nas 4 escalas | 0,96 g (9,38–9,40 m/s²) | 10,03 m/s² (1,02 g) |
+
+  Com o firmware do Dormio, o sensor 1 teve **toda** drenagem descartada por transbordo (`fifo 512 B, INT_STATUS 0x11`, a cada ~1,7 s) e as épocas recusadas com motivo 2.
+- **A decisão do autor:** trocar os sensores (`HW-13`), e não adaptar o firmware. O motivo principal: pela folha de dados do MPU6500, o filtro de 21 Hz que o firmware escreve no `CONFIG` (0x1A) vale só para o giroscópio, e o do acelerômetro fica em outro registrador; o dado dessas unidades sairia com outra banda e não seria comparável. **Isso foi lido, não medido.**
+- **O `HW-12`:** o diagnóstico antigo dizia "BARRAMENTO NÃO CONFIÁVEL" com 0 falhas e `0x70` constante. O novo classifica a identidade em três casos (original, chip não original com barramento ok, barramento ruim), mede a capacidade da FIFO (passo [4], corte em 768 B) e dá um veredito do chip no fim. Na placa, com o sensor 2: "CHIP NÃO É MPU6050 ORIGINAL" nas duas velocidades e FIFO de 512 e 510 B. Controles na placa: **S1**, um bit trocado em 1 de cada 7 leituras → "BARRAMENTO NÃO CONFIÁVEL", 857 de 1 000 iguais; **S2**, o clone fingindo `0x68` → o passo [2] o aceita e o veredito final o pega pela FIFO de 512 B. `make sintaxe`: os 4 sketches compilam.
+
+**Adaptação.**
+- A versão antiga do `diagnostico-i2c` vale como o "antes" do `HW-12`: rodou no mesmo sensor 2 hoje, antes da mudança, e acusou barramento não confiável.
+- Os tokens das duas placas ficaram num `secrets.h` por placa, numa pasta local fora do repositório, para regravar sem parear de novo. As cópias temporárias com segredo foram apagadas.
+
+**O que deu errado no caminho.**
+- **Bluetooth "com falha" no primeiro diagnóstico das placas:** o core do Arduino libera a memória do Bluetooth quando o sketch não declara usá-lo (`btInUse()`), e o `btStart()` falha. Declarado o uso, passou.
+- **"Nada respondeu" no sensor 2:** o SDA estava soldado no RX0 da ESP32, e não no D21. Um sketch de níveis mostrou o SCL alto (o pull-up do módulo, logo o módulo alimentado) e o SDA baixo; o autor ressoldou no D21 e o sensor apareceu.
+- **Duas vezes o mesmo erro de compilação no `HW-12`:** `'Identidade' does not name a type`. A IDE gera os protótipos das funções antes da primeira função do arquivo; primeiro o `enum` estava depois dela, e depois uma função auxiliar nova foi parar antes dele. O `make sintaxe` **passou** nas duas versões, porque compila com g++ puro, sem esse passo da IDE. Na segunda vez, a placa ainda tinha a cópia sabotada S2, e a saída lida depois da compilação falha era dela (dizia `0x68`); foi descartada.
+- **Comando git errado:** para trazer o `develop`, que tinha avançado com o registro do R23, um `reset --soft HEAD~2` depois do merge deixou as mudanças do R23 no índice como se fossem desta branch. Corrigido com `reset --mixed origin/develop`, antes de qualquer commit.
+- **A contagem da FIFO no transbordo oscila** (510 ou 512 B). A primeira versão comparava com 1024 exato, e um MPU6050 original poderia ler um pouco menos e cair em "menor". Virou um corte em 768 B.
+
+**Risco em aberto.**
+- **O `HW-12` não rodou contra um MPU6050 original:** o caminho "original" só foi exercitado pela sabotagem S2, que não mede uma FIFO de 1024 B. O primeiro módulo original comprado no `HW-13` é o teste.
+- **O CI não compila o `diagnostico-i2c` com o `arduino-cli`**, só com o `make sintaxe`, que não pega o erro de protótipo acima.
+- **O sensor 1 (1,86 g)** não foi caracterizado; sai de uso com o `HW-13`.
+- **As duas placas estão com sketches de teste**, não com o Dormio, até os sensores novos chegarem.
+
+**Procedência.** Bancada desta máquina (Windows 11), 26/11: `esptool` 5.3.1, `arduino-cli` 1.6.0, pacote `esp32` 3.3.12, `make sintaxe` em `gcc:13`. O "antes" do `diagnostico-i2c` e os números do travesseiro vêm do diário de 11/11 (ix). Itens `HW-12` e `HW-13`.
+
+---
+
+# 2026-11-26 (xv) — UI-50: barra lateral recolhível e largura útil do Início
+
+**O problema, como foi entendido no início.** A barra fixa ocupava 224 px no computador. O autor queria liberar largura para o Início e o Histórico preservando a navegação. A regra de 1050 px do Início acompanhava a janela, mesmo quando o espaço útil mudava.
+
+**Hipótese de trabalho.** Um trilho de 72 px recupera 152 px. O ponto de quebra original, 1050 px, equivale a 766 px úteis depois de descontar a barra de 224 px e os 60 px de margens internas da `main`. A rolagem clássica também ocupa espaço. Descontar do limiar a largura real da rolagem preserva o ponto de quebra em cada navegador.
+
+**O que foi testado, e como.** Oito testes de montagem sobre preferência, rotas, rótulos, demonstração, largura útil e identidade do gráfico. O novo caso simula 1050 px de janela, 15 px de rolagem e 751 px úteis. No Edge, foram medidos o Início e o Histórico com dados de demonstração, com a rolagem clássica de 15 px visível e sem área reservada para a rolagem. As nove capturas originais são dos temas claro e escuro, sem barra de rolagem visível. Na primeira rodada também foram conferidos recarga, dica por foco e mouse, movimento reduzido e navegação a 767 px.
+
+**Resultado medido.** Com rolagem visível de 15 px, a 900 px o Início passou de 601 para 753 px úteis e de uma para duas colunas. O menu recolhido manteve uma coluna a 897 px e passou a duas a 898 px. Com o menu expandido, 1049 px mostrou uma coluna e 1050 px (751 px úteis) e 1060 px (761 px úteis) mostraram duas. Sem rolagem visível, 900 px recolhido deu 768 px úteis, e o corte com o menu expandido também ficou entre 1049 e 1050 px. A 1280 px com rolagem visível, o gráfico de movimento passou de 645 para 746 px, calendário e gráfico semanal de 322 para 373 px cada, e a tabela do Histórico de 947 para 1099 px. Na transição a 1000 px, cada alternância mudou a grade uma vez, preservou os nós do calendário e do gráfico e deslocou o primeiro ícone 0 px na vertical, nos dois modos de rolagem.
+
+A suíte passou com 1.099 testes em 73 arquivos. Lint, build, os dois Knip e as três conferências de documentação passaram. O Dashboard ficou em 166.852 B gzip para um teto de 260.000 B. Os oito testes novos falharam contra o código de `develop` `845e3e7`. As cinco sabotagens foram executadas e restauradas:
+
+| Sabotagem | Teste que falhou |
+|---|---|
+| Deixar de salvar a preferência | “abre expandida e salva a escolha ao recolher e ao expandir” |
+| Ocultar o link inteiro no trilho | “mantém os destinos e os nomes acessíveis no trilho”, site e Android |
+| Remover o `aria-label` do link | “mantém os destinos e os nomes acessíveis no trilho”, site e Android |
+| Remontar o gráfico quando muda o portal | “usa o mesmo limiar útil com o menu nos dois estados e mantém a instância do gráfico” |
+| Fixar o limiar em 766 px úteis | “mantém duas colunas com 751 px úteis a 1050 px e rolagem clássica” |
+
+**Adaptação.** A medição acompanha a `main` e o primeiro cálculo antecede a pintura. O limiar desconta a diferença entre a largura da janela e a largura visível do documento. A regra de janela serve de fallback sem `ResizeObserver`. O suporte estável do portal preserva o gráfico. Os três testes UI-48/UI-49 que usam `simularTelaLarga` mantiveram as asserções e passaram a exercitar explicitamente o fallback. O trilho deixa o topo para o botão e mantém a altura do cabeçalho.
+
+**O que deu errado no caminho.** A prévia inicial na porta 5199 foi encerrada. A medição de partida usou uma cópia temporária de `develop`. Na revisão da PR #316, o limiar fixo de 766 px fez o Início perder a segunda coluna com rolagem clássica na vizinhança dos 1050 px e deixou o menu recolhido com uma coluna a 900 px. A primeira amostragem da animação não confirmou a troca após redimensionar a janela. A medição foi repetida em aba ativa, aguardando a grade se estabilizar antes de alternar o menu. A atualização para `845e3e7` conflitou no diário após o HW-12. A entrada do HW-12 foi preservada e a do UI-50 ficou logo depois.
+
+**Risco em aberto.** A 900 px recolhida, o ganho útil se distribui entre duas colunas. A verificação do Android usou a simulação do plugin Capacitor na suíte.
+
+**Procedência.** Código da revisão testado sobre `origin/develop` `845e3e7`. Execuções locais em Windows 11, Node 24.11.0 e Edge, em 26/11. [Nove capturas do UI-50](evidencias/ui-50/).
+
+---
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

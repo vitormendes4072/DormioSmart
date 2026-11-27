@@ -1,4 +1,5 @@
-import { Activity, LayoutGrid, LogOut, User } from "lucide-react";
+import { Activity, LayoutGrid, LogOut, PanelLeftClose, PanelLeftOpen, User, type LucideIcon } from "lucide-react";
+import { useState } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router";
 
 import { useAuth } from "../contexts/AuthContext";
@@ -9,14 +10,57 @@ import { nomeDoPerfil } from "../lib/perfil";
 import { destinoDoWorkspace, itensDeNavegacao, useNavegacaoNativa } from "./nav";
 import { MarcaDoProduto } from "./MarcaDoProduto";
 
-/** Navegação de desktop. Em telas menores que `md` dá lugar à MobileNav —
- *  uma barra lateral de 224px fixa não cabe num celular. */
+const CHAVE_DO_MENU = "dormio-menu-lateral";
+
+function lerMenuRecolhido() {
+  try {
+    return window.localStorage.getItem(CHAVE_DO_MENU) === "recolhido";
+  } catch {
+    return false;
+  }
+}
+
+function salvarMenuRecolhido(recolhido: boolean) {
+  try {
+    window.localStorage.setItem(CHAVE_DO_MENU, recolhido ? "recolhido" : "expandido");
+  } catch {
+    // A barra continua operável em visitas em que o armazenamento está indisponível.
+  }
+}
+
+function Dica({ texto }: { texto: string }) {
+  return (
+    <span aria-hidden="true" className="pointer-events-none absolute left-full top-1/2 z-20 ml-2 hidden -translate-y-1/2 whitespace-nowrap rounded-lg border border-border bg-card px-2.5 py-1.5 text-xs font-medium text-foreground shadow-sm group-hover:block group-focus-visible:block">
+      {texto}
+    </span>
+  );
+}
+
+function LinkDaBarra({ to, label, icon: Icon, recolhida }: {
+  to: string; label: string; icon: LucideIcon; recolhida: boolean;
+}) {
+  return (
+    <NavLink to={to} aria-label={label}
+      className={({ isActive }) => "group relative flex h-10 w-full items-center gap-3 rounded-xl text-sm font-medium focus-visible:outline-2 focus-visible:outline-ring "
+        + (recolhida ? "justify-center " : "px-3 ")
+        + (isActive ? (recolhida ? "text-primary" : "bg-primary/15 text-primary") : "text-muted-foreground hover:bg-secondary hover:text-foreground")}
+    >
+      <span className={recolhida ? "grid size-9 shrink-0 place-items-center rounded-xl group-aria-[current=page]:bg-primary/15 group-aria-[current=page]:text-primary" : "shrink-0"}>
+        <Icon className="size-4" aria-hidden="true" />
+      </span>
+      {recolhida ? <Dica texto={label} /> : <span className="overflow-hidden whitespace-nowrap">{label}</span>}
+    </NavLink>
+  );
+}
+
+/** Navegação de desktop. Abaixo de md, a navegação fica na MobileNav. */
 export function Sidebar() {
   const navigate = useNavigate();
   const { search } = useLocation();
   const demo = estaEmModoDemo(search);
   const { usuario, carregando, sair } = useAuth();
   const { perfil, carregando: carregandoPerfil } = usePerfil();
+  const [recolhida, setRecolhida] = useState(lerMenuRecolhido);
 
   // O nome vem de `public.profiles`, pela rota — NAO do metadado do Auth
   // (PERFIL-01, Regra 1: leitor unico). `fonteDoNomeDoPerfil.test.ts` reprova
@@ -35,67 +79,80 @@ export function Sidebar() {
     return item;
   });
   const configuracoes = destinos.find(({ to }) => to === "/configuracoes");
+  const tituloDaConta = demo ? "Demonstração" : carregando || carregandoPerfil ? "..." : nome || "Conta";
+  const IconeDoMenu = recolhida ? PanelLeftOpen : PanelLeftClose;
+
+  function alternarMenu() {
+    const proxima = !recolhida;
+    setRecolhida(proxima);
+    salvarMenuRecolhido(proxima);
+  }
 
   return (
-    <aside className="hidden md:flex w-56 flex-shrink-0 bg-card border-r border-border flex-col h-screen sticky top-0">
-      <div className="px-5 pb-8 pt-7">
-        {/* Ocupa a largura util da sidebar (176px), o que dá ~30px de altura —
-            o tamanho em que o "SMART" foi verificado como legível. */}
-        <MarcaDoProduto className="h-[30px]" />
+    <aside className={"sticky top-0 z-20 hidden h-screen flex-shrink-0 flex-col border-r border-border bg-card motion-safe:transition-[width] motion-safe:duration-150 md:flex "
+      + (recolhida ? "w-[72px]" : "w-56")}>
+      <div className="relative h-24 shrink-0">
+        {!recolhida && (
+          <div className="absolute inset-x-5 bottom-4 overflow-hidden">
+            {/* Ocupa a largura util da sidebar (176px), o que dá ~30px de altura —
+                o tamanho em que o "SMART" foi verificado como legível. */}
+            <MarcaDoProduto className="h-[30px] max-w-none" />
+          </div>
+        )}
+        <button type="button" aria-label={recolhida ? "Expandir menu" : "Recolher menu"}
+          aria-expanded={!recolhida} onClick={alternarMenu}
+          className={"absolute top-1.5 grid size-9 place-items-center rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring "
+            + (recolhida ? "left-1/2 -translate-x-1/2" : "right-2")}>
+          <IconeDoMenu className="size-4" aria-hidden="true" />
+        </button>
       </div>
 
       <nav aria-label="Navegação principal" className="flex-1 space-y-1 px-2.5">
-        <p className="px-3 pb-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Workspace</p>
-        {navegacao.map(({ to, label, icon: Icon }) => (
-          <NavLink
-            key={to}
-            to={destinoDoWorkspace(to, search)}
-            className={({ isActive }) =>
-              `w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 ${
-                isActive
-                  ? "bg-primary/15 text-primary"
-                  : "text-muted-foreground hover:text-foreground hover:bg-secondary"
-              }`
-            }
-          >
-            <Icon className="w-4 h-4" />
-            {label}
-          </NavLink>
+        <p className={"overflow-hidden whitespace-nowrap px-3 pb-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground "
+          + (recolhida ? "invisible" : "")}>Workspace</p>
+        {navegacao.map(({ to, label, icon }) => (
+          <LinkDaBarra key={to} to={destinoDoWorkspace(to, search)} label={label} icon={icon} recolhida={recolhida} />
         ))}
         {configuracoes && (
           <>
-            <p className="px-3 pb-2 pt-7 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Preferências</p>
-            <NavLink to={destinoDoWorkspace(configuracoes.to, search)} className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground aria-[current=page]:bg-primary/15 aria-[current=page]:text-primary">
-              <configuracoes.icon className="size-4" aria-hidden /> {configuracoes.label}
-            </NavLink>
+            <p className={"overflow-hidden whitespace-nowrap px-3 pb-2 pt-7 text-[10px] font-bold uppercase tracking-widest text-muted-foreground "
+              + (recolhida ? "invisible" : "")}>Preferências</p>
+            <LinkDaBarra to={destinoDoWorkspace(configuracoes.to, search)} label={configuracoes.label}
+              icon={configuracoes.icon} recolhida={recolhida} />
           </>
         )}
       </nav>
 
-      <div className="p-4 border-t border-border space-y-3">
-        <div className="flex items-center gap-3 px-1">
-          <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
-            <User className="w-4 h-4 text-primary" />
+      <div className="space-y-3 border-t border-border p-4">
+        <div className={"group relative flex min-h-8 items-center gap-3 " + (recolhida ? "justify-center" : "px-1")}>
+          <div className="grid size-8 shrink-0 place-items-center rounded-full bg-primary/20">
+            <User className="size-4 text-primary" aria-hidden="true" />
           </div>
-          <div className="min-w-0">
-            <p className="text-sm font-medium text-foreground truncate">
-              {demo ? "Demonstração" : carregando || carregandoPerfil ? "..." : (nome || "Conta")}
-            </p>
-            <p className="text-xs text-muted-foreground truncate">
-              {demo || carregando ? "" : (usuario?.email ?? "não autenticada")}
-            </p>
-          </div>
+          {recolhida ? (
+            <>
+              <span className="sr-only">{demo ? "Demonstração" : "Conta"}</span>
+              <Dica texto={demo ? "Demonstração" : "Conta"} />
+            </>
+          ) : (
+            <div className="min-w-0">
+              <p className="truncate text-sm font-medium text-foreground">{tituloDaConta}</p>
+              <p className="truncate text-xs text-muted-foreground">
+                {demo || carregando ? "" : (usuario?.email ?? "não autenticada")}
+              </p>
+            </div>
+          )}
         </div>
-        {!demo && <button
-          onClick={async () => {
+        {!demo && (
+          <button type="button" aria-label="Sair" onClick={async () => {
             await sair();
             navigate("/login");
           }}
-          className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm text-muted-foreground hover:text-foreground hover:bg-secondary transition-all duration-150"
-        >
-          <LogOut className="w-4 h-4" />
-          Sair
-        </button>}
+            className={"group relative flex h-9 w-full items-center gap-2 rounded-xl text-sm text-muted-foreground hover:bg-secondary hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring "
+              + (recolhida ? "justify-center" : "px-3")}>
+            <LogOut className="size-4 shrink-0" aria-hidden="true" />
+            {recolhida ? <Dica texto="Sair" /> : <span className="overflow-hidden whitespace-nowrap">Sair</span>}
+          </button>
+        )}
       </div>
     </aside>
   );
