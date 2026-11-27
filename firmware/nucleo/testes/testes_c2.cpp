@@ -21,6 +21,7 @@
 #include "../filtro.h"
 #include "../lote.h"
 #include "../payload.h"
+#include "../perfil_do_sensor.h"
 #include "../radio.h"
 #include "../reamostragem.h"
 #include "../relogio.h"
@@ -300,10 +301,12 @@ struct Simulacao {
   uint64_t enviadas;
   double proxima_s;
   uint32_t estado;
+  uint32_t base_us;  // FW-21: o intervalo do sensor
 
-  void iniciar(double taxa) {
+  void iniciar(double taxa, uint32_t base = INTERVALO_DE_DRENAGEM_US) {
     origem = 50000000ull;
     fs = taxa;
+    base_us = base;
     enviadas = 0;
     proxima_s = -2.0 + 0.9;
     estado = 99;
@@ -315,7 +318,7 @@ struct Simulacao {
     int feitas = 0;
     while (proxima_s <= ate_s) {
       const double agora = proxima_s;
-      proxima_s += intervalo_de_drenagem_us(&estado) / 1e6;
+      proxima_s += intervalo_de_drenagem_us(&estado, base_us) / 1e6;
       const uint64_t t_us = origem + static_cast<uint64_t>(llround((agora + 10.0) * 1e6)) -
                             10000000ull;
       // amostras com instante -2 + k/fs <= agora
@@ -1063,6 +1066,106 @@ static void testar_sensor_precisa_reconfigurar() {
   VERIFICAR(sensor_precisa_reconfigurar(0x00, user_ok, 0x00), "acelerometro fora do FIFO_EN");
 }
 
+// ── FW-21: o MPU6500 ────────────────────────────────────────────────────
+
+static void testar_perfil_do_sensor() {
+  secao("FW-21 -- o perfil do sensor, pelo WHO_AM_I");
+  const PerfilDoSensor *p50 = perfil_do_sensor(0x68);
+  const PerfilDoSensor *p65 = perfil_do_sensor(0x70);
+  const PerfilDoSensor *outro = perfil_do_sensor(0x72);
+  VERIFICAR(p50 == &PERFIL_MPU6050, "0x68 e o MPU6050");
+  VERIFICAR(p50->fifo_bytes == 1024 && p50->intervalo_de_drenagem_us == 1700000 &&
+                !p50->filtro_em_accel_config2,
+            "o MPU6050 segue como antes: 1024 B, 1,7 s, sem 0x1D");
+  VERIFICAR(p65 == &PERFIL_MPU6500, "0x70 e o MPU6500");
+  VERIFICAR(p65->fifo_bytes == 512 && p65->intervalo_de_drenagem_us == 850000 &&
+                p65->filtro_em_accel_config2,
+            "o MPU6500: 512 B, 0,85 s, filtro em ACCEL_CONFIG 2");
+  VERIFICAR(outro == &PERFIL_DESCONHECIDO && outro->fifo_bytes == 512 &&
+                !outro->filtro_em_accel_config2,
+            "chip desconhecido: a FIFO menor, e sem escrever o 0x1D");
+  VERIFICAR(MPU_REG_ACCEL_CONFIG2 == 0x1D && C2_A_DLPF_CFG == C2_DLPF_CFG,
+            "o filtro do acelerometro do MPU6500 recebe o mesmo 4 do MPU6050");
+
+  // A folga de cada perfil no pior caso: intervalo no maximo da variacao, mais
+  // 3 ms de despertar e 0,4 s de trabalho (apagamento de setor), com o
+  // oscilador a +10 %.
+  const PerfilDoSensor *perfis[] = {&PERFIL_MPU6050, &PERFIL_MPU6500, &PERFIL_DESCONHECIDO};
+  for (const PerfilDoSensor *p : perfis) {
+    const double pior_s = (p->intervalo_de_drenagem_us + VARIACAO_DA_DRENAGEM_US) / 1e6 + 0.003 + 0.4;
+    char msg[120];
+    snprintf(msg, sizeof(msg), "%s: %.0f amostras no pior caso, cabem %u", p->nome,
+             pior_s * 50.0 * 1.10, static_cast<unsigned>(p->fifo_bytes / BYTES_POR_AMOSTRA));
+    VERIFICAR(pior_s * 50.0 * 1.10 < p->fifo_bytes / BYTES_POR_AMOSTRA, msg);
+  }
+  // E o intervalo do MPU6050 nao serve ao MPU6500: a 50 Hz exatos, 1,7 s sao
+  // 510 B, 2 abaixo do teto -- a variacao de 20 ms e o oscilador passam dele.
+  // Na bancada de 26/11, 512 B encheram em 1 723 ms.
+  VERIFICAR((INTERVALO_DE_DRENAGEM_US + VARIACAO_DA_DRENAGEM_US) / 1e6 * 50.0 * BYTES_POR_AMOSTRA >=
+                FIFO_MPU6500_BYTES,
+            "o intervalo do MPU6050 encheria a FIFO do MPU6500 (por isso o perfil)");
+
+  // O anel de drenagens cobre pelo menos o anel de amostras, com o oscilador a
+  // -10 %: assim, com 0,85 s, quem limita o atraso de fechar a epoca continua
+  // sendo o anel de amostras, como era com 1,7 s.
+  const double drenagens_s = CAPACIDADE_DE_DRENAGENS * (INTERVALO_DE_DRENAGEM_MPU6500_US / 1e6);
+  const double amostras_s = CAPACIDADE_DE_AMOSTRAS / (50.0 * 0.90);
+  char msg[120];
+  snprintf(msg, sizeof(msg), "o anel de drenagens (%.1f s) cobre o de amostras (%.1f s a 45 Hz)",
+           drenagens_s, amostras_s);
+  VERIFICAR(drenagens_s >= amostras_s, msg);
+}
+
+static void testar_fifo_de_512() {
+  secao("FW-21 -- o teto da FIFO e o do sensor");
+  VERIFICAR(avaliar_fifo(512, 0, 512) == LEITURA_TRANSBORDOU, "512 B no MPU6500: cheia");
+  VERIFICAR(causa_da_leitura_recusada(512, 0, 512) == PERDA_TRANSBORDO_TETO,
+            "e a causa e o teto, nao o desalinhamento");
+  VERIFICAR(avaliar_fifo(510, 0, 512) == LEITURA_OK, "510 B (85 amostras) no MPU6500: ok");
+  VERIFICAR(avaliar_fifo(512, 0) == LEITURA_DESALINHADA,
+            "com o teto do MPU6050, 512 B pareceria desalinhada, e nao cheia");
+  VERIFICAR(avaliar_fifo(1020, 0) == LEITURA_OK, "o MPU6050 segue com o teto de 1024");
+
+  uint32_t estado = 7;
+  uint32_t menor = 0xFFFFFFFFu, maior = 0;
+  for (int i = 0; i < 2000; i++) {
+    const uint32_t v = intervalo_de_drenagem_us(&estado, INTERVALO_DE_DRENAGEM_MPU6500_US);
+    if (v < menor) menor = v;
+    if (v > maior) maior = v;
+  }
+  VERIFICAR(menor >= 850000 && maior < 870000, "com o MPU6500, entre 0,85 e 0,87 s");
+}
+
+static void testar_cadeia_com_o_mpu6500() {
+  secao("FW-21 -- a cadeia com drenagens a cada 0,85 s");
+  static Simulacao s;
+  EpocaReamostrada info;
+  const double taxas[] = {45.0, 50.0, 55.0};
+  for (double fs : taxas) {
+    s.iniciar(fs, INTERVALO_DE_DRENAGEM_MPU6500_US);
+    int prontas = 0;
+    uint32_t menos_drenagens = 1000;
+    double pior_taxa = 0.0;
+    for (int k = 0; k < 3; k++) {
+      s.avancar(34.5 + 30.0 * k);
+      if (s.cadeia.proxima_epoca(&info, gx_, gy_, gz_) == EPOCA_PRONTA) prontas++;
+      if (info.linha.n_drenagens < menos_drenagens) menos_drenagens = info.linha.n_drenagens;
+      pior_taxa = fmax(pior_taxa, fabs(1.0 / info.linha.b_s - fs));
+    }
+    char msg[140];
+    snprintf(msg, sizeof(msg), "%.0f Hz: 3 de 3 epocas prontas (%d), >= 38 drenagens cada (%u), taxa +-0,05 Hz",
+             fs, prontas, static_cast<unsigned>(menos_drenagens));
+    VERIFICAR(prontas == 3 && menos_drenagens >= 38 && pior_taxa < 0.05, msg);
+  }
+  // Fechar com atraso: a 45 Hz o anel de amostras guarda 51 s. Fechada aos
+  // 45 s, a epoca 0 precisa das drenagens desde -2,5 s (47,5 s antes); com 48
+  // drenagens no anel (40,8 s a 0,85 s), ela seria recusada sem amostras.
+  s.iniciar(45.0, INTERVALO_DE_DRENAGEM_MPU6500_US);
+  s.avancar(45.0);
+  VERIFICAR(s.cadeia.proxima_epoca(&info, gx_, gy_, gz_) == EPOCA_PRONTA,
+            "a epoca fechada 10 s atrasada ainda tem as drenagens que precisa");
+}
+
 int main() {
   printf("Nucleo do firmware Dormio -- pecas da arquitetura C2 (FW-07)\n");
 
@@ -1094,6 +1197,9 @@ int main() {
   testar_vigia_da_fifo();
   testar_guarda_do_barramento();
   testar_sensor_precisa_reconfigurar();
+  testar_perfil_do_sensor();
+  testar_fifo_de_512();
+  testar_cadeia_com_o_mpu6500();
 
   printf("\n-----------------------------------------\n");
   printf("%d verificacoes, %d falhas\n", total, falhas);

@@ -186,7 +186,7 @@ esperar "15. buffer confirma depois de degradar" unidade buffer.h \
   "    (void)geracao_do_lote;"
 
 esperar "16. FIFO no teto deixa de ser transbordo" unidade fifo_mpu.cpp \
-  "  if (fifo_count >= FIFO_CAPACIDADE_BYTES) return LEITURA_TRANSBORDOU;" \
+  "  if (fifo_count >= teto_bytes) return LEITURA_TRANSBORDOU;" \
   "  (void)0;"
 
 echo
@@ -362,6 +362,20 @@ esperar "47. sem histerese" unidade bateria.cpp \
 esperar "48. o pino solto vira tensao" unidade bateria.cpp \
   "  if (tensao_mv < BATERIA_MINIMA_PLAUSIVEL_MV) return BATERIA_INDISPONIVEL;" \
   ""
+
+echo
+echo "Sabotadores do FW-21 (o MPU6500) -- a suite de unidade tem de acusar:"
+esperar "49. o MPU6500 no intervalo do MPU6050" unidade cadeia_c2.h \
+  "const uint32_t INTERVALO_DE_DRENAGEM_MPU6500_US = 850000;" \
+  "const uint32_t INTERVALO_DE_DRENAGEM_MPU6500_US = 1700000;"
+
+esperar "50. o anel de drenagens volta a 48" unidade cadeia_c2.h \
+  "const uint32_t CAPACIDADE_DE_DRENAGENS = 64;" \
+  "const uint32_t CAPACIDADE_DE_DRENAGENS = 48;"
+
+esperar "51. o MPU6500 com a FIFO do MPU6050" unidade perfil_do_sensor.h \
+  "const PerfilDoSensor PERFIL_MPU6500 = {\"MPU6500\", FIFO_MPU6500_BYTES," \
+  "const PerfilDoSensor PERFIL_MPU6500 = {\"MPU6500\", FIFO_CAPACIDADE_BYTES,"
 
 echo
 echo "-----------------------------------------"

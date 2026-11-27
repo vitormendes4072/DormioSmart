@@ -6,13 +6,13 @@
 
 namespace dormio {
 
-uint32_t intervalo_de_drenagem_us(uint32_t *estado) {
+uint32_t intervalo_de_drenagem_us(uint32_t *estado, uint32_t base_us) {
   uint32_t x = (estado != 0 && *estado != 0) ? *estado : 0x9E3779B9u;
   x ^= x << 13;
   x ^= x >> 17;
   x ^= x << 5;
   if (estado != 0) *estado = x;
-  return INTERVALO_DE_DRENAGEM_US + x % VARIACAO_DA_DRENAGEM_US;
+  return base_us + x % VARIACAO_DA_DRENAGEM_US;
 }
 
 uint64_t proximo_prazo_de_drenagem_us(uint64_t prazo_us, uint64_t agora_us,
