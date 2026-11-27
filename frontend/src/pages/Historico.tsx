@@ -4,16 +4,31 @@ import { useLocation } from "react-router";
 
 import { BarraDoWorkspace } from "../components/BarraDoWorkspace";
 import { CartaoDeMetrica, CartaoEmDestaque, EtiquetaDeRegistro } from "../components/CartoesDeRegistro";
+import { ResumoDoPeriodo } from "../components/ResumoDoPeriodo";
 import { Carregando, FalhaAoCarregar } from "../components/EstadoDaTela";
 import { SeletorSegmentado } from "../components/SeletorSegmentado";
 import { apagarSessao, buscarJanelaDoHistorico, ErroApi, marcarSessao, MAX_PAGINAS_DO_HISTORICO } from "../lib/api";
 import { calcularCobertura } from "../lib/cobertura";
 import { estaEmModoDemo } from "../lib/demo";
-import { formatarDuracao } from "../lib/metricas";
-import { sessoesDaMarca, trechoDaSessao, type Trecho } from "../lib/trecho";
+import { formatarDuracao, prepararSerie } from "../lib/metricas";
+import { ehBancada, sessoesDaMarca, trechoDaSessao, type Trecho } from "../lib/trecho";
 import { instanteDaLeitura, type LeituraSono } from "../types/sleep";
 
 const TELA_ESTREITA = "(max-width: 767px)";
+/** No computador, a lista fica num cartão; no celular, os cartões já são das sessões. */
+const CARTAO_DA_LISTA = "md:rounded-2xl md:border md:border-border md:bg-card md:p-4 md:shadow-sm";
+
+/** UI-52: tocar numa barra do gráfico leva à sessão na lista. */
+function irParaSessao(chave: string) {
+  const alvo = document.getElementById(idDaSessao(chave));
+  if (!alvo) return;
+  alvo.scrollIntoView({ block: "center" });
+  alvo.focus({ preventScroll: true });
+}
+
+function idDaSessao(chave: string) {
+  return `sessao-${chave}`;
+}
 
 function observarLargura(atualizar: () => void) {
   const midia = window.matchMedia?.(TELA_ESTREITA);
@@ -128,13 +143,19 @@ export function Historico() {
         </div>
       </header>
 
-      <section aria-label="Sessões do período" className="md:rounded-2xl md:border md:border-border md:bg-card md:p-4 md:shadow-sm">
-        {demo ? (
-          <>
-            <ListaDeSessoes linhas={EXEMPLOS.filter((linha) => linha.inicio > EXEMPLOS[0].inicio - dias * DIA_MS)} />
-            <p className="pt-4 text-xs text-muted-foreground">Dados de exemplo para demonstrar a navegação do histórico.</p>
-          </>
-        ) : <SessoesDaConta key={dias} dias={dias} />}
+      <section aria-label="Sessões do período" className="space-y-4">
+        {demo ? (() => {
+          const exemplos = EXEMPLOS.filter((linha) => linha.inicio > EXEMPLOS[0].inicio - dias * DIA_MS);
+          return (
+            <>
+              <ResumoDoPeriodo sessoes={exemplos} aoEscolherSessao={irParaSessao} />
+              <div className={CARTAO_DA_LISTA}>
+                <ListaDeSessoes linhas={exemplos} />
+                <p className="pt-4 text-xs text-muted-foreground">Dados de exemplo para demonstrar a navegação do histórico.</p>
+              </div>
+            </>
+          );
+        })() : <SessoesDaConta key={dias} dias={dias} />}
       </section>
 
       <p className="rounded-xl border border-border border-l-4 border-l-primary px-3 py-3 text-xs text-muted-foreground">
@@ -225,6 +246,7 @@ function SessoesDaConta({ dias }: { dias: number }) {
 
   const normais = linhas.filter((linha) => !linha.bancada);
   const marcadas = linhas.filter((linha) => linha.bancada);
+  const movimento = dias === 1 ? serieDasUltimas24Horas(resultado.leituras, Date.parse(janela.desde)) : undefined;
   const acoes = (linha: Linha) => linha.trecho ? (
     <div className="flex flex-wrap justify-end gap-1.5">
       <button
@@ -281,11 +303,18 @@ function SessoesDaConta({ dias }: { dias: number }) {
           </div>
         </ConfirmacaoDeExclusao>
       )}
-      {normais.length > 0
-        ? <ListaDeSessoes linhas={normais} acoes={acoes} />
-        : <p className="py-12 text-center text-sm text-muted-foreground">Nenhuma sessão no período selecionado.</p>}
+      {normais.length > 0 && (
+        <div className="mb-4">
+          <ResumoDoPeriodo sessoes={normais} parcial={resultado.truncada} movimento={movimento} aoEscolherSessao={irParaSessao} />
+        </div>
+      )}
+      <div className={CARTAO_DA_LISTA}>
+        {normais.length > 0
+          ? <ListaDeSessoes linhas={normais} acoes={acoes} />
+          : <p className="py-12 text-center text-sm text-muted-foreground">Nenhuma sessão no período selecionado.</p>}
+      </div>
       {marcadas.length > 0 && (
-        <section aria-label="Sessões marcadas como bancada/teste" className="mt-6 space-y-2">
+        <section aria-label="Sessões marcadas como bancada/teste" className={`mt-6 space-y-2 ${CARTAO_DA_LISTA}`}>
           <h2 className="text-sm font-semibold text-foreground">Marcadas como bancada/teste</h2>
           <p className="text-xs text-muted-foreground">
             Continuam guardadas, mas ficam fora do painel e das análises. Desmarque para que voltem.
@@ -295,6 +324,20 @@ function SessoesDaConta({ dias }: { dias: number }) {
       )}
     </>
   );
+}
+
+/**
+ * UI-52: em "Últimas 24 horas", o gráfico do topo é o de movimento, como no Início.
+ * Só com um aparelho: a série de dois instrumentos juntos não tem leitura (o Início avisa
+ * a mistura; aqui, com mais de um, ficam as barras por sessão).
+ */
+function serieDasUltimas24Horas(leituras: LeituraSono[], desdeMs: number) {
+  const daJanela = leituras.filter((leitura) => !ehBancada(leitura)
+    && Date.parse(instanteDaLeitura(leitura)) >= desdeMs);
+  if (daJanela.length === 0 || new Set(daJanela.map((leitura) => leitura.device_id ?? null)).size > 1) return undefined;
+  const ordem = [...daJanela].sort((a, b) => Date.parse(instanteDaLeitura(a)) - Date.parse(instanteDaLeitura(b)));
+  const serie = prepararSerie(ordem, calcularCobertura(ordem));
+  return serie.length > 0 ? serie : undefined;
 }
 
 function ConfirmacaoDeExclusao({ ocupado, aoCancelar, children }: {
@@ -353,7 +396,7 @@ function ListaDeSessoes({ linhas, acoes, rotulo = "Tabela do histórico" }: {
       className="space-y-3">
       {linhas.map((linha, indice) => (
         <li key={linha.chave}>
-          <article className="space-y-3 rounded-2xl border border-border bg-card p-3 text-foreground">
+          <article id={idDaSessao(linha.chave)} tabIndex={-1} className="scroll-mt-20 outline-none focus-visible:ring-2 focus-visible:ring-ring space-y-3 rounded-2xl border border-border bg-card p-3 text-foreground">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h3 className="text-sm font-semibold">{dataDaSessao(linha)}</h3>
               <SituacaoDaSessao linha={linha} />
@@ -391,7 +434,7 @@ function ListaDeSessoes({ linhas, acoes, rotulo = "Tabela do histórico" }: {
         </thead>
         <tbody className="divide-y divide-border border-b border-border">
           {linhas.map((linha) => (
-            <tr key={linha.chave}>
+            <tr key={linha.chave} id={idDaSessao(linha.chave)} tabIndex={-1} className="scroll-mt-20 outline-none focus:bg-secondary/60">
               <th scope="row" className="whitespace-nowrap px-2 py-3 font-semibold">{dataDaSessao(linha)}</th>
               <td className="px-2 py-3">{tempoDaSessao(linha)}</td>
               <td className="px-2 py-3">{linha.leituras}</td>
