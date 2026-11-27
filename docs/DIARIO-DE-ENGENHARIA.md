@@ -14118,6 +14118,33 @@ A suíte passou com 1.099 testes em 73 arquivos. Lint, build, os dois Knip e as 
 
 ---
 
+# 2026-11-26 (xviii) — UI-52: o topo do Histórico, com os números e o gráfico do período
+
+**O problema, como foi entendido no início.** O autor achou o Histórico pobre, principalmente no computador: uma tabela de cinco colunas estreitas, sem nenhuma visão do período escolhido (24 horas, 7 ou 30 dias). Ele pediu um gráfico do período acima da tabela. O plano aprovado divide o redesenho em três partes: o topo (`UI-52`), a faixa da noite em cada sessão (`UI-53`) e a ligação com o Início (`UI-54`).
+
+**Hipótese de trabalho.** O Histórico já baixa todos os registros do período (até 16 páginas de 2 000) e só mostrava os totais. Dá para resumir e desenhar o período sem rota nova. Os números são somas por sessão, sem o intervalo entre elas, como no Início (`UI-40`): sessões, tempo registrado, média por sessão e quanto do período foi registrado. O gráfico tem uma barra por sessão, com a parte sem registro por cima. Em "Últimas 24 horas", com um aparelho só, fica o gráfico de movimento do Início.
+
+**O que foi testado, e como.**
+- `ResumoDoPeriodo.test.tsx` (12): as contas, a escala, os rótulos com 30 barras, a ordem, a parte sem registro só onde falta, a média, o rótulo por escrito de cada barra, o clique e o aviso de período incompleto.
+- `Historico.test.tsx` (+3): a bancada fora do resumo, a barra levando o foco à linha da tabela, o gráfico de movimento em 24 horas com um aparelho e as barras com dois.
+- **Sabotagens:** (1) a fração medida do início da primeira sessão ao fim da última; (2) as barras sem ordenar; (3) o gráfico de movimento com dois aparelhos misturados. Caíram 4, 1 e 1 testes, cada um o que cobre a regra.
+- **Na tela**, com `?demo=1`: 1280 px (o clique numa barra rola até a linha e a destaca) e 390 px.
+
+**Resultado medido.** Frontend **1 118 passam, 74 arquivos** (+15). `tsc`, `eslint`, `knip`, `knip:tipos` e `vite build` limpos; `conferir_pacote_frontend.py` dentro dos tetos.
+
+**Adaptação.** Com 5 sessões a 1280 px, cada barra ocupava um quinto da largura e parecia um bloco. O gráfico passou a ter no mínimo 7 posições, com as sessões à direita e a mais recente no fim, como uma linha do tempo. A borda branca do cartão passou a envolver só a lista: o resumo fica acima, fora dela.
+
+**O que deu errado no caminho.** Na primeira rodada, um teste do `linguagem.test.ts` estourou os 5 s, com o servidor de desenvolvimento rodando ao lado. Sozinho, passou; na suíte completa também.
+
+**Risco em aberto.**
+- **30 dias com dois aparelhos** podem passar do teto da consulta. O gráfico diz "Período incompleto", mas mostra as barras que vieram.
+- Em 24 horas com dois aparelhos, ficam as barras: não há seletor de aparelho no Histórico.
+- A faixa da noite por sessão e o gráfico em cada cartão do celular são o `UI-53`; abrir a sessão no Início é o `UI-54`.
+
+**Procedência.** Branch `feature/UI-52-resumo-do-periodo`, base `develop` `9efde23`. Execuções em Windows 11, Node 24.11.0 e no navegador do Claude, em 26/11.
+
+---
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

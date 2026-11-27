@@ -411,3 +411,34 @@ it("mostra as três janelas e destaca a selecionada nos botões do celular", asy
   expect(seletor.getByRole("button", { name: "Últimos 7 dias", pressed: false })).toBe(seteDias);
   expect(await screen.findByRole("list", { name: "Sessões do histórico" })).toBeTruthy();
 });
+
+describe("o topo do período (UI-52)", () => {
+  it("resume só as sessões normais e a barra leva à linha da sessão", async () => {
+    const scroll = vi.fn();
+    Element.prototype.scrollIntoView = scroll;
+    mostrar();
+    const numeros = within(await screen.findByRole("list", { name: "Números do período" }));
+    // A bancada (10 registros) fica de fora: uma sessão, 20 registros de 30 s.
+    expect(numeros.getAllByRole("listitem")[0].textContent).toBe("1Sessão");
+    expect(numeros.getAllByRole("listitem")[1].textContent).toBe("10m 0sTempo registrado");
+    fireEvent.click(screen.getByRole("button", { name: /registrados de/ }));
+    const linha = within(screen.getByRole("region", { name: "Tabela do histórico" })).getAllByRole("row")[1];
+    expect(document.activeElement).toBe(linha);
+    expect(scroll).toHaveBeenCalledTimes(1);
+  });
+
+  it("em 24 horas, com um aparelho, o gráfico é o de movimento", async () => {
+    mostrar();
+    await screen.findByRole("list", { name: "Números do período" });
+    fireEvent.click(screen.getByRole("button", { name: "Últimas 24 horas" }));
+    expect(await screen.findByRole("heading", { name: "Movimento nas últimas 24 horas" })).toBeTruthy();
+  });
+
+  it("em 24 horas, com dois aparelhos, ficam as barras por sessão", async () => {
+    buscar.mockResolvedValue({ leituras: [...NOITE, ...sessao("celular", 300, 20)], truncada: false });
+    mostrar();
+    await screen.findByRole("list", { name: "Números do período" });
+    fireEvent.click(screen.getByRole("button", { name: "Últimas 24 horas" }));
+    expect(await screen.findByRole("heading", { name: "Tempo registrado por sessão" })).toBeTruthy();
+  });
+});
