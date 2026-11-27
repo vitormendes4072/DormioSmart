@@ -18,7 +18,9 @@ import { Historico } from "./Historico";
 import { useDispositivos } from "../hooks/useDispositivos";
 import type { Dispositivo } from "../lib/dispositivos";
 
-vi.mock("../hooks/useDispositivos", () => ({ useDispositivos: vi.fn(() => []) }));
+vi.mock("../hooks/useDispositivos", () => ({
+  useDispositivos: vi.fn(() => ({ dispositivos: [], estado: "pronto" })),
+}));
 
 vi.mock("../lib/api", async (original) => ({
   ...await original<typeof import("../lib/api")>(),
@@ -511,11 +513,11 @@ describe("o aparelho de cada sessão (UI-55)", () => {
 
   beforeEach(() => {
     window.localStorage.clear();
-    vi.mocked(useDispositivos).mockReturnValue(aparelhos);
+    vi.mocked(useDispositivos).mockReturnValue({ dispositivos: aparelhos, estado: "pronto" });
     buscar.mockResolvedValue({ leituras: [...NOITE, ...sessao("celular", 300, 12)], truncada: false });
   });
 
-  afterEach(() => vi.mocked(useDispositivos).mockReturnValue([]));
+  afterEach(() => vi.mocked(useDispositivos).mockReturnValue({ dispositivos: [], estado: "pronto" }));
 
   it("com dois aparelhos, cada linha diz de qual veio", async () => {
     mostrar();
@@ -547,7 +549,7 @@ describe("o aparelho de cada sessão (UI-55)", () => {
   });
 
   it("com um aparelho só, não há seletor nem nome", async () => {
-    vi.mocked(useDispositivos).mockReturnValue([aparelhos[0]]);
+    vi.mocked(useDispositivos).mockReturnValue({ dispositivos: [aparelhos[0]], estado: "pronto" });
     buscar.mockResolvedValue({ leituras: NOITE, truncada: false });
     mostrar();
     const tabela = await screen.findByRole("region", { name: "Tabela do histórico" });
@@ -568,11 +570,11 @@ describe("o mesmo período com dois aparelhos (UI-56)", () => {
 
   beforeEach(() => {
     window.localStorage.clear();
-    vi.mocked(useDispositivos).mockReturnValue(aparelhos);
+    vi.mocked(useDispositivos).mockReturnValue({ dispositivos: aparelhos, estado: "pronto" });
     buscar.mockResolvedValue({ leituras: [...NOITE, ...CELULAR], truncada: false });
   });
 
-  afterEach(() => vi.mocked(useDispositivos).mockReturnValue([]));
+  afterEach(() => vi.mocked(useDispositivos).mockReturnValue({ dispositivos: [], estado: "pronto" }));
 
   it("no computador, uma data com 2 aparelhos e uma linha por aparelho, o travesseiro primeiro", async () => {
     mostrar();
