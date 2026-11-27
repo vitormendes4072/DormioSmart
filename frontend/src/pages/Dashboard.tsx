@@ -1,6 +1,6 @@
 import { SeletorSegmentado } from "../components/SeletorSegmentado";
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
-import { Link, useLocation } from "react-router";
+import { Link, useLocation, useNavigate } from "react-router";
 
 import { BarraDoWorkspace } from "../components/BarraDoWorkspace";
 import { CalendarioDoSono } from "../components/CalendarioDoSono";
@@ -27,6 +27,7 @@ import { guiaDispensado, salvarPreferenciaDoGuia } from "../lib/primeirosPassos"
 import { calcularCobertura } from "../lib/cobertura";
 import { limitesDaConsulta, sessoesDoDia, somarDias } from "../lib/calendarioDoSono";
 import { estaEmModoDemo } from "../lib/demo";
+import { lerDiaDoEndereco, semDiaNoEndereco } from "../lib/diaNoEndereco";
 import {
   calcularMetricas,
   descreverQuando,
@@ -112,12 +113,16 @@ function useColunasDoInicio() {
 }
 
 export function Dashboard() {
-  const { hash, key, search } = useLocation();
+  const { hash, key, search, pathname } = useLocation();
+  const navegar = useNavigate();
+  // UI-54: o Histórico abre uma sessão com `?dia=AAAA-MM-DD&aparelho=<id>`. Lido só na montagem:
+  // depois, quem manda é o calendário e o seletor, e o endereço perde os dois (abaixo).
+  const [doEndereco] = useState(() => lerDiaDoEndereco(search));
   // `null` = todos os dispositivos. O recorte por instrumento (DASH-05) e
   // opcional: sem ele o painel se comporta como antes.
-  const [dispositivo, setDispositivo] = useState<string | null>(null);
-  const [diaSelecionado, setDiaSelecionado] = useState<Date | null>(null);
-  const [ancoraDoCalendario, setAncoraDoCalendario] = useState(() => somarDias(new Date(), 0));
+  const [dispositivo, setDispositivo] = useState<string | null>(doEndereco.aparelho);
+  const [diaSelecionado, setDiaSelecionado] = useState<Date | null>(doEndereco.dia);
+  const [ancoraDoCalendario, setAncoraDoCalendario] = useState(() => somarDias(doEndereco.dia ?? new Date(), 0));
   const { conteudo, telaLarga } = useColunasDoInicio();
   const [vagaDoGrafico, setVagaDoGrafico] = useState<HTMLElement | null>(null);
   const [verTudo, setVerTudo] = useState(false);
@@ -173,13 +178,21 @@ export function Dashboard() {
     ? descreverRecorte(dispositivos, dispositivos[0].id)
     : descreverRecorte(dispositivos, dispositivo);
 
+  /** Escolher outro dia ou aparelho no Início tira do endereço o que veio do Histórico. */
+  function esquecerEndereco() {
+    const resto = semDiaNoEndereco(search);
+    if (resto !== null) void navegar({ pathname, search: resto, hash }, { replace: true });
+  }
+
   function selecionarDispositivo(id: string | null) {
+    esquecerEndereco();
     setDispositivo(id);
     if (diaSelecionado) setVerTudo(false);
     setPeriodo("Sessão toda");
   }
 
   function selecionarDia(dia: Date | null) {
+    esquecerEndereco();
     setDiaSelecionado(dia);
     setVerTudo(false);
     setPeriodo("Sessão toda");

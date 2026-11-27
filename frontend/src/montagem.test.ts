@@ -1903,6 +1903,40 @@ describe("o painel em camadas (UI-40)", PRAZO, () => {
       fireEvent.click(tentar);
       await screen.findByRole("img", { name: /3 pontos,/ });
     });
+
+    describe("aberto pelo Histórico (UI-54)", () => {
+      async function abrirNoDia(busca: string) {
+        await montar(`/dashboard${busca}`);
+      }
+
+      it("o dia do endereço abre selecionado, na semana dele", async () => {
+        await abrirNoDia("?dia=2026-11-24");
+        expect(await screen.findByRole("heading", { name: titulo })).toBeTruthy();
+        await screen.findByRole("img", { name: /3 pontos,/ });
+        expect(await calendario().findByRole("button", { name: /^terça-feira, 24 de novembro/, pressed: true })).toBeTruthy();
+      });
+
+      it("com o aparelho, abre só as sessões dele naquele dia", async () => {
+        await abrirNoDia("?dia=2026-11-24&aparelho=c");
+        await screen.findByRole("img", { name: /2 pontos,/ });
+        expect((seletorDeAparelho() as HTMLSelectElement).value).toBe("c");
+        expect(screen.getByRole("heading", { name: titulo })).toBeTruthy();
+      });
+
+      it("escolher outro dia no Início tira o dia do endereço", async () => {
+        await abrirNoDia("?dia=2026-11-24");
+        await screen.findByRole("img", { name: /3 pontos,/ });
+        fireEvent.click(await calendario().findByRole("button", { name: /^terça-feira, 24 de novembro/, pressed: true }));
+        await screen.findByRole("heading", { name: "Seus registros" });
+        expect(window.location.search).toBe("");
+      });
+
+      it("um dia que não existe é ignorado: o Início abre como sempre", async () => {
+        await abrirNoDia("?dia=2026-02-31&aparelho=c");
+        expect(await screen.findByRole("heading", { name: "Seus registros" })).toBeTruthy();
+        expect((seletorDeAparelho() as HTMLSelectElement).value).not.toBe("c");
+      });
+    });
   });
 
   function responderComDoisAparelhos() {
