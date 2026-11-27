@@ -13,18 +13,21 @@ export function EtiquetaDeRegistro({ children, cor = "text-primary" }: {
   );
 }
 
-export function CartaoEmDestaque({ rotulo, valor, children }: {
+const SUPERFICIE_EM_DESTAQUE = "relative overflow-hidden rounded-2xl border border-(color:--sessao-destaque-borda) bg-(image:--sessao-destaque-fundo) p-4 text-white shadow-md sm:p-5";
+
+/**
+ * O número em destaque num cartão escuro. Com `aoAbrir` (UI-51), o cartão
+ * inteiro vira um botão que abre o detalhe, como no celular de exemplo da landing.
+ */
+export function CartaoEmDestaque({ rotulo, valor, children, aoAbrir }: {
   rotulo: string;
   valor: string;
   children?: ReactNode;
+  aoAbrir?: () => void;
 }) {
   const id = useId();
-  return (
-    <div
-      role="group"
-      aria-labelledby={id}
-      className="relative overflow-hidden rounded-2xl border border-(color:--sessao-destaque-borda) bg-(image:--sessao-destaque-fundo) p-4 text-white shadow-md sm:p-5"
-    >
+  const conteudo = (
+    <>
       <span aria-hidden="true" className="pointer-events-none absolute -top-20 -right-10 size-44 rounded-full bg-(image:--sessao-destaque-brilho)" />
       <p id={id} className="text-[11px] font-extrabold uppercase tracking-widest text-(color:--sessao-destaque-rotulo)">
         {rotulo}
@@ -39,6 +42,24 @@ export function CartaoEmDestaque({ rotulo, valor, children }: {
           </span>
         )}
       </p>
+    </>
+  );
+  if (aoAbrir) {
+    return (
+      <button
+        type="button"
+        onClick={aoAbrir}
+        aria-haspopup="dialog"
+        data-cartao-em-destaque
+        className={`${SUPERFICIE_EM_DESTAQUE} block w-full cursor-pointer text-left transition-[filter] hover:brightness-110 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary`}
+      >
+        {conteudo}
+      </button>
+    );
+  }
+  return (
+    <div role="group" aria-labelledby={id} data-cartao-em-destaque className={SUPERFICIE_EM_DESTAQUE}>
+      {conteudo}
     </div>
   );
 }

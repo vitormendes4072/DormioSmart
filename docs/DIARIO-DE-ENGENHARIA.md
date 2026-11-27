@@ -14060,6 +14060,143 @@ A suíte passou com 1.099 testes em 73 arquivos. Lint, build, os dois Knip e as 
 
 ---
 
+# 2026-11-26 (xvi) — release R24: a barra lateral recolhível no site
+
+**O problema, como foi entendido no início.** Com o `UI-50` mesclado no `develop` (#316), o autor pediu o release para o site. O `develop` também tinha o `HW-12` (#317) e o registro do R23 (#315).
+
+**Hipótese de trabalho.** Release só do site, sem APK: o `UI-50` vale a partir de `md` e não muda a navegação do app; o `HW-12` é o sketch de diagnóstico, fora do site e do firmware do travesseiro. Sem migração, backend ou `vercel.json` na diferença `main`..`develop` (conferido pela lista de arquivos).
+
+**O que foi testado, e como.**
+- **PR #318** (`develop` → `main`): os 14 checks lidos antes do merge, incluindo o app Android e o sketch compilado do ESP32.
+- **Deploy:** `scripts/verificar-deploy.sh` no merge, que espera o deploy daquele commit antes de testar.
+- **O `UI-50` em produção:** o modo demonstração redireciona para o login no site publicado, e o login com uma conta real fica com o autor. Conferido pelo pacote publicado: os pedaços JS servidos pela produção foram baixados e buscados.
+
+**Resultado medido.**
+- **Checks da #318:** todos passaram. Merge `95f9fa8`, deploy de produção `8098449130`.
+- **Produção:** landing, rota do SPA, `/health`, logo e pacote `200`; ingestão sem token e leitura sem sessão `401`.
+- **Pacote publicado:** `index-CTfStgzF.js` contém "Recolher menu" e a chave `dormio-menu-lateral`.
+
+**Adaptação.** A barra recolhida não foi vista numa sessão logada em produção; a conferência visual foi feita na revisão da #316, com dados de demonstração, a 897/898 e 1049/1050 px.
+
+**O que deu errado no caminho.** Nada.
+
+**Risco em aberto.**
+- **A barra em produção com a conta do autor** não foi vista pelo Claude.
+- **O app 1.1.7** segue sem o `UI-50`; não faz diferença no celular, mas um tablet com o app a partir de 768 px veria a barra antiga até o próximo APK.
+
+**Procedência.** PR #318, merge `95f9fa8`, deploy `8098449130`, em 26/11; verificação nesta máquina (Windows 11).
+
+---
+
+# 2026-11-26 (xvii) — UI-51: o "Tempo registrado" igual na landing e no Início, com detalhe
+
+**O problema, como foi entendido no início.** O autor comparou o cartão em destaque do Início com o do celular de exemplo da landing. Na landing, "TEMPO MONITORADO 7h 24m", com "23:15 até 06:39 · toque para detalhes", abria um painel de detalhes. No Início, "Registrado", com "6h 33m de 6h 36m · 17/11, das 02:44 às 09:…", não abria nada. Ele pediu um texto único para os dois e o detalhe no painel.
+
+**Hipótese de trabalho.** Os dois cartões não diferem só no texto: medem coisas diferentes. Os 7h 24m da landing são o período inteiro, de 23:15 a 06:39. O detalhe de cobertura da própria landing diz que só 426 dos 444 min têm registro. O Início mostra o tempo que o aparelho mediu. O padrão segue o Início e o glossário do `UI-39` (`PADRAO-VISUAL.md` §10): rótulo "Tempo registrado", o número é o medido (na landing, 7h 06m), a legenda é "23:15 às 06:39 · ver detalhes" ("ver", e não "toque", porque o painel também é usado no computador). O detalhe mostra Início, Fim, Período e "Do período foi registrado", com a frase "O tempo registrado é o que o aparelho mediu entre o início e o fim. Não é a duração do sono."
+
+**O que foi testado, e como.**
+- `ResumoDaSessao.test.tsx`: os testes da legenda antiga reescritos e 4 novos (os quatro quadros, a soma dos períodos em "todas as sessões", fechar pelo botão com o foco voltando ao cartão, fechar pelo Esc e pelo fundo, mas não por um toque dentro do painel).
+- **Sabotagens:** (1) o período de "todas as sessões" medido do início da primeira ao fim da última, contando o intervalo entre elas; (2) qualquer clique fechando o painel. Cada uma derrubou o teste que lhe corresponde, e só ele.
+- **Na tela**, com o servidor de desenvolvimento e `?demo=1`: a 360 px no escuro (a folha sobe de baixo) e a ~1360 px no claro (o painel fica no centro). Na landing, o cartão e o painel conferidos pelo texto e pela captura.
+
+**Resultado medido.** Frontend **1 103 passam, 73 arquivos** (+4). `tsc`, `eslint`, `knip`, `knip:tipos` e `vite build` limpos. `conferir_csp.py` ok depois de trocar o hash do script da landing no `vercel.json`. Os quatro quadros na demonstração: 13:35, 21:15, 7h 40m, 100%.
+
+**Adaptação.** O primeiro rascunho usava "Janela" e "Cobertura", como a landing. O `linguagem.test.ts` reprovou os dois termos, que o glossário troca por "período" e "registrado X de Y". O detalhe ficou com "Período" e "Do período foi registrado", como a Noite já escreve, e a landing passou a usar os mesmos termos. Também na landing: "JANELA DA SESSÃO 7h24", no Relatório, virou "PERÍODO DA SESSÃO 7h 24m".
+
+**O que deu errado no caminho.**
+- O rascunho do componente foi escrito antes do plano aprovado, numa branch criada no checkout principal, e não numa worktree. O arquivo foi movido para a worktree depois da aprovação, sem commit no meio.
+- O `node_modules` do checkout principal estava incompleto (sem o `react`). A junção apontando para ele não servia, e a worktree ganhou um `npm ci` próprio.
+- Um teste esperava "99%" para 6h 33m de 6h 36m, mas o glossário escreve ">99%". O teste estava errado, e o código certo.
+
+**Risco em aberto.**
+- A legenda do Início deixou de mostrar a data e o "X de Y". Os dois passaram para o detalhe; o dia continua no topo do Início.
+- O detalhe está só no Início. Os cartões em destaque da Noite e do Histórico seguem sem ele.
+- O detalhe de "Cobertura da coleta" da landing segue com os termos antigos ("Disponíveis", "Intervalo", "Cobertura"). Fica para quando o autor trouxer esse cartão.
+- O app no celular recebe a mudança só no próximo APK.
+
+**Procedência.** Branch `feature/UI-51-detalhe-do-tempo-registrado`, base `develop` `14b49f4`. Execuções em Windows 11, Node 24.11.0 e no navegador do Claude, em 26/11.
+
+---
+
+# 2026-11-26 (xviii) — UI-52: o topo do Histórico, com os números e o gráfico do período
+
+**O problema, como foi entendido no início.** O autor achou o Histórico pobre, principalmente no computador: uma tabela de cinco colunas estreitas, sem nenhuma visão do período escolhido (24 horas, 7 ou 30 dias). Ele pediu um gráfico do período acima da tabela. O plano aprovado divide o redesenho em três partes: o topo (`UI-52`), a faixa da noite em cada sessão (`UI-53`) e a ligação com o Início (`UI-54`).
+
+**Hipótese de trabalho.** O Histórico já baixa todos os registros do período (até 16 páginas de 2 000) e só mostrava os totais. Dá para resumir e desenhar o período sem rota nova. Os números são somas por sessão, sem o intervalo entre elas, como no Início (`UI-40`): sessões, tempo registrado, média por sessão e quanto do período foi registrado. O gráfico tem uma barra por sessão, com a parte sem registro por cima. Em "Últimas 24 horas", com um aparelho só, fica o gráfico de movimento do Início.
+
+**O que foi testado, e como.**
+- `ResumoDoPeriodo.test.tsx` (12): as contas, a escala, os rótulos com 30 barras, a ordem, a parte sem registro só onde falta, a média, o rótulo por escrito de cada barra, o clique e o aviso de período incompleto.
+- `Historico.test.tsx` (+3): a bancada fora do resumo, a barra levando o foco à linha da tabela, o gráfico de movimento em 24 horas com um aparelho e as barras com dois.
+- **Sabotagens:** (1) a fração medida do início da primeira sessão ao fim da última; (2) as barras sem ordenar; (3) o gráfico de movimento com dois aparelhos misturados. Caíram 4, 1 e 1 testes, cada um o que cobre a regra.
+- **Na tela**, com `?demo=1`: 1280 px (o clique numa barra rola até a linha e a destaca) e 390 px.
+
+**Resultado medido.** Frontend **1 118 passam, 74 arquivos** (+15). `tsc`, `eslint`, `knip`, `knip:tipos` e `vite build` limpos; `conferir_pacote_frontend.py` dentro dos tetos.
+
+**Adaptação.** Com 5 sessões a 1280 px, cada barra ocupava um quinto da largura e parecia um bloco. O gráfico passou a ter no mínimo 7 posições, com as sessões à direita e a mais recente no fim, como uma linha do tempo. A borda branca do cartão passou a envolver só a lista: o resumo fica acima, fora dela.
+
+**O que deu errado no caminho.** Na primeira rodada, um teste do `linguagem.test.ts` estourou os 5 s, com o servidor de desenvolvimento rodando ao lado. Sozinho, passou; na suíte completa também.
+
+**Risco em aberto.**
+- **30 dias com dois aparelhos** podem passar do teto da consulta. O gráfico diz "Período incompleto", mas mostra as barras que vieram.
+- Em 24 horas com dois aparelhos, ficam as barras: não há seletor de aparelho no Histórico.
+- A faixa da noite por sessão e o gráfico em cada cartão do celular são o `UI-53`; abrir a sessão no Início é o `UI-54`.
+
+**Procedência.** Branch `feature/UI-52-resumo-do-periodo`, base `develop` `9efde23`. Execuções em Windows 11, Node 24.11.0 e no navegador do Claude, em 26/11.
+
+---
+
+# 2026-11-26 (xix) — UI-53: cada sessão do Histórico com a sua forma
+
+**O problema, como foi entendido no início.** Depois do topo do período (`UI-52`), cada sessão do Histórico continuava sendo "6h 23m de 6h 29m": não dizia quando houve movimento nem onde faltou registro. No computador, os botões "Marcar como bancada" e "Excluir…" pesavam mais que os dados. No celular, só a primeira sessão tinha o destaque escuro, e o autor pediu o gráfico de cada sessão no lugar dele, com o registrado ao lado dos registros.
+
+**Hipótese de trabalho.** Os registros de cada sessão já estão na tela. No computador, uma faixa por sessão na mesma régua de horário (de meio-dia a meio-dia, para a noite não partir na meia-noite) deixa comparar as noites de olho: o período em cinza, os trechos com registro em azul claro e um traço por registro com movimento. Além da faixa, uma coluna "Movimento", com a mesma conta do Início. No celular, todo cartão tem o gráfico de movimento da sessão, em versão pequena e sem toque (a geometria do Início), e três números embaixo. As ações vão para um "…" que abre um painel (uma divulgação com `aria-expanded`), e não um `role="menu"`, para os botões manterem os nomes que a política de privacidade cita.
+
+**O que foi testado, e como.**
+- `FaixaDaSessao.test.tsx` (8): a régua de duas noites (22h a 7h, marcas 22h a 6h), a mesma hora em dias diferentes no mesmo ponto, a régua da tarde, o limite de 24 horas, a geometria e o rótulo da faixa, e o menu (abre com o foco na primeira ação, fecha ao escolher, pelo Esc com o foco de volta e por um toque fora).
+- `Historico.test.tsx`: os testes de excluir e marcar abrem o "…" antes (um auxiliar, `abrirMenus`); o do cartão do celular foi reescrito (os três números em todos os cartões, o gráfico em cada um e a pausa como trecho sem registro); +1, a faixa e a coluna "Movimento" na tabela (25% com 5 de 20 registros com movimento).
+- **Sabotagens:** (1) a régua partindo na meia-noite; (2) o movimento sem a conta do Início; (3) o Esc sem fechar o painel. Caíram 3, 1 e 1 testes.
+- **Na tela**, com `?demo=1`: 1280 px (a régua de 22h a 6h e as faixas conferidas pelo DOM) e 390 px (os cartões com o gráfico). Os exemplos ganharam trechos, movimentos e uma série determinística, só para a demonstração.
+
+**Resultado medido.** Frontend **1 127 passam, 75 arquivos** (+9 sobre o `UI-52`). `tsc`, `eslint`, `knip`, `knip:tipos`, `vite build` e `conferir_pacote_frontend.py` ok.
+
+**Adaptação.** A régua "do dia" começa ao meio-dia: com a meia-noite, uma noite das 23h às 7h ocupava as duas pontas da faixa. Nos exemplos sem série, o cartão do celular mostra a faixa da sessão no lugar do gráfico.
+
+**O que deu errado no caminho.** O primeiro script de edição foi passado por heredoc no Bash e quebrou nas crases do TypeScript; foi gravado em arquivo e rodado dali. Nada foi aplicado pela metade (o `assert` de cada troca vinha antes da escrita).
+
+**Risco em aberto.**
+- Com 30 sessões, o celular desenha 30 gráficos pequenos. Na demonstração não pesou; numa conta real de 30 dias, não foi medido.
+- A régua comum fica estreita quando o período mistura uma sessão de tarde (bancada) com noites: a faixa de cada uma fica curta. A bancada marcada tem a sua própria tabela, com a sua régua.
+- Abrir a sessão no Início é o `UI-54`.
+
+**Procedência.** Branch `feature/UI-53-faixa-da-sessao`, sobre a do `UI-52` (PR #321). Execuções em Windows 11, Node 24.11.0 e no navegador do Claude, em 26/11.
+
+---
+
+# 2026-11-26 (xx) — UI-54: a sessão do Histórico abre no Início
+
+**O problema, como foi entendido no início.** Última parte do redesenho do Histórico. O Histórico mostra cada sessão com a sua forma (`UI-53`), mas para ver o gráfico com leitura por ponto, os detalhes técnicos e as sessões do dia, é preciso ir ao Início e achar o dia no calendário à mão.
+
+**Hipótese de trabalho.** O Início já sabe abrir um dia (o calendário, `UI-46`). Basta o dia e o aparelho virem do endereço: `/dashboard?dia=AAAA-MM-DD&aparelho=<id>`. O dia é o do começo da sessão, a mesma regra do calendário; o aparelho evita misturar o celular e o travesseiro. No computador, a data da linha é o link; no celular, o cartão ganha "Abrir no Início". O endereço é lido só na montagem, e escolher outro dia ou aparelho no Início o tira do endereço, para um recarregamento não voltar ao dia antigo.
+
+**O que foi testado, e como.**
+- `diaNoEndereco.test.ts` (5): o dia do começo de uma sessão que cruza a meia-noite, a ida e volta (dia ao meio-dia e aparelho), o modo demonstração guardado, dia malformado ou inexistente (2026-02-31) ignorado, aparelho com caractere fora do padrão recusado, e a limpeza do endereço.
+- `montagem.test.ts` (+4, no bloco do `UI-46`): o dia do endereço abre selecionado no calendário e com a última sessão do dia; com o aparelho, só as sessões dele; escolher outro dia tira o dia do endereço; dia inexistente abre o Início como sempre.
+- `Historico.test.tsx` (+2): o link da data na tabela e o "Abrir no Início" no cartão, com o dia e o aparelho da sessão.
+- **Sabotagem:** o Início sem tirar o dia do endereço; caiu o teste que cobre isso. O controle do meio-dia veio de um erro real (abaixo).
+- **Na tela**, com `?demo=1`: "Abrir no Início" num cartão leva a "Sessões de segunda-feira, 2 de novembro", com o calendário na semana dele.
+
+**Resultado medido.** Frontend **1 138 passam, 76 arquivos** (+11 sobre o `UI-53`). `tsc`, `eslint`, `knip`, `knip:tipos`, `vite build` e `conferir_pacote_frontend.py` ok.
+
+**Adaptação.** Nenhuma no desenho.
+
+**O que deu errado no caminho.** O dia lido do endereço era criado à meia-noite, e o calendário guarda cada dia ao meio-dia (`somarDias`) e marca o escolhido por igualdade. O Início abria no dia certo, mas nenhum dia aparecia marcado. Os dois testes do calendário caíram e mostraram o defeito; na tela, a captura não mostrava a diferença. Corrigido para o meio-dia, com o motivo no comentário.
+
+**Risco em aberto.** No modo demonstração, os exemplos do Histórico e os do Início são conjuntos diferentes: o link abre o dia certo, mas o Início mostra "Sem registros neste dia". Com a conta real, os dois vêm do mesmo banco.
+
+**Procedência.** Branch `feature/UI-54-sessao-no-inicio`, sobre a do `UI-53` (PR #323). Execuções em Windows 11, Node 24.11.0 e no navegador do Claude, em 26/11.
+
+---
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

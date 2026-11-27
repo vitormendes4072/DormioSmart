@@ -1396,7 +1396,7 @@ body.sd-scroll-active #sd-scroll-progress{opacity:1}
   <header class="sdp-apphead"><div class="sdp-brandmark" aria-hidden="true"><img src="/icone-192.png" alt=""/></div><div class="sdp-brandtext"><b>Smart Dormio</b><span>SEU RELATÓRIO NOTURNO</span></div></header>
   <div class="sdp-screen-content" id="sdp-screen-content" tabindex="0" aria-live="polite" aria-label="Conteúdo da tela do aplicativo">
    <div class="sdp-page-heading"><span class="sdp-eyebrow">QUARTA-FEIRA · DEMONSTRAÇÃO</span><h3>Sua noite, em detalhes.</h3><p>Explore o resumo de uma sessão simulada.</p></div>
-   <div class="sdp-feature-card"><span>TEMPO MONITORADO</span><strong>7h 24m</strong><small>Janela ilustrativa de coleta</small></div>
+   <div class="sdp-feature-card"><span>TEMPO REGISTRADO</span><strong>7h 06m</strong><small>23:15 às 06:39 · ver detalhes</small></div>
    <div class="sdp-standard-card"><b>Movimentação</b><p>Toque para visualizar o relatório.</p></div>
   </div>
   <nav class="sdp-tabbar" aria-label="Navegação do aplicativo de demonstração">
@@ -2164,7 +2164,7 @@ body.sd-scroll-active #sd-scroll-progress{opacity:1}
  </div>`}
  function heading(k,title,sub){return `<div class="sdp-page-heading"><div class="sdp-eyebrow">${k}</div><h3>${title}</h3><p>${sub}</p></div>`}
  function home(){return `${heading('RESUMO NOTURNO','Sua noite, em perspectiva.','Uma sessão fictícia para conhecer a experiência.')}
-  <button type="button" class="sdp-feature-card" data-phone-detail="duration"><span>TEMPO MONITORADO</span><strong>7h 24m</strong><small>23:15 até 06:39 · toque para detalhes</small></button>
+  <button type="button" class="sdp-feature-card" data-phone-detail="duration"><span>TEMPO REGISTRADO</span><strong>7h 06m</strong><small>23:15 às 06:39 · ver detalhes</small></button>
   ${chartCard(false)}
   <div class="sdp-metrics"><button type="button" class="sdp-metric" data-phone-tab="events"><span class="sdp-metric-label">EVENTOS IDENTIFICADOS</span><strong>18</strong><span class="sdp-metric-footer">Explorar eventos →</span></button>
   <button type="button" class="sdp-metric" data-phone-detail="coverage"><span class="sdp-metric-label">COBERTURA DA COLETA</span><strong>96%</strong><span class="sdp-metric-footer">Ver cobertura →</span></button></div>
@@ -2176,7 +2176,7 @@ body.sd-scroll-active #sd-scroll-progress{opacity:1}
     ${[['all','Noite toda'],['first','23h–03h'],['second','03h–07h']].map(([v,label])=>`<button type="button" data-phone-period="${v}" aria-pressed="${state.period===v}">${label}</button>`).join('')}
   </div>
   ${chartCard(true)}
-  <div class="sdp-metrics"><button class="sdp-metric" type="button" data-phone-detail="duration"><span class="sdp-metric-label">JANELA DA SESSÃO</span><strong>7h24</strong><span class="sdp-metric-footer">23:15–06:39</span></button><button class="sdp-metric" type="button" data-phone-detail="coverage"><span class="sdp-metric-label">COBERTURA</span><strong>96%</strong><span class="sdp-metric-footer">426 de 444 min</span></button></div>
+  <div class="sdp-metrics"><button class="sdp-metric" type="button" data-phone-detail="duration"><span class="sdp-metric-label">PERÍODO DA SESSÃO</span><strong>7h 24m</strong><span class="sdp-metric-footer">23:15–06:39</span></button><button class="sdp-metric" type="button" data-phone-detail="coverage"><span class="sdp-metric-label">COBERTURA</span><strong>96%</strong><span class="sdp-metric-footer">426 de 444 min</span></button></div>
   <div class="sdp-standard-card"><div class="sdp-card-head"><b>Disponibilidade do sinal</b><span class="sdp-subtle-action">96%</span></div><div class="sdp-activity-meter"><span style="width:96%"></span></div><p class="sdp-page-note">Cobertura demonstrativa. Sem medição real conectada.</p></div>
   <div class="sdp-report-legend"><span><i></i> Repouso relativo</span><span><i class="sdp-orange"></i> Pico de movimento</span></div>
   <button type="button" class="sdp-primary" data-phone-tab="events">Ver 18 eventos ${ico('arrow')}</button>`}
@@ -2204,7 +2204,7 @@ body.sd-scroll-active #sd-scroll-progress{opacity:1}
  }
  function go(tab){if(!['home','report','events','settings'].includes(tab))return;closeDetail();state.tab=tab;render();}
  function openDetail(which){let title,desc,metrics=[];
-   if(which==='duration'){title='Tempo monitorado';desc='A sessão fictícia começa às 23:15 e termina às 06:39. O intervalo apresentado não equivale à duração real de sono.';metrics=[['Início','23:15'],['Fim','06:39'],['Janela','444 min'],['Cobertura','96%']];}
+   if(which==='duration'){title='Tempo registrado';desc='Sessão fictícia de 04/11 a 05/11. O tempo registrado é o que o aparelho mediu entre o início e o fim. Não é a duração do sono.';metrics=[['Início','23:15'],['Fim','06:39'],['Período','7h 24m'],['Do período foi registrado','96%']];}
    else if(which==='coverage'){title='Cobertura da coleta';desc='Percentual ilustrativo de amostras válidas na janela demonstrativa; não indica eficiência ou qualidade do sono.';metrics=[['Disponíveis','426 min'],['Intervalo','444 min'],['Cobertura','96%'],['Sem dados','18 min']];}
    else {let e=events[Number(which)];if(!e)return;title=e.title;desc=`Evento de movimento simulado às ${e.time}. A intensidade ${e.level.toLowerCase()} é uma categoria ilustrativa, não um diagnóstico.`;metrics=[['Horário',e.time],['Amplitude',e.amp.toFixed(2)+' m/s²'],['Intensidade',e.level],['Sessão','04/11']];}
    state.detail=which;
