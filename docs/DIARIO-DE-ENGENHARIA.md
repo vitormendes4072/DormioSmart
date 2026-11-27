@@ -14060,6 +14060,34 @@ A suíte passou com 1.099 testes em 73 arquivos. Lint, build, os dois Knip e as 
 
 ---
 
+# 2026-11-26 (xvi) — release R24: a barra lateral recolhível no site
+
+**O problema, como foi entendido no início.** Com o `UI-50` mesclado no `develop` (#316), o autor pediu o release para o site. O `develop` também tinha o `HW-12` (#317) e o registro do R23 (#315).
+
+**Hipótese de trabalho.** Release só do site, sem APK: o `UI-50` vale a partir de `md` e não muda a navegação do app; o `HW-12` é o sketch de diagnóstico, fora do site e do firmware do travesseiro. Sem migração, backend ou `vercel.json` na diferença `main`..`develop` (conferido pela lista de arquivos).
+
+**O que foi testado, e como.**
+- **PR #318** (`develop` → `main`): os 14 checks lidos antes do merge, incluindo o app Android e o sketch compilado do ESP32.
+- **Deploy:** `scripts/verificar-deploy.sh` no merge, que espera o deploy daquele commit antes de testar.
+- **O `UI-50` em produção:** o modo demonstração redireciona para o login no site publicado, e o login com uma conta real fica com o autor. Conferido pelo pacote publicado: os pedaços JS servidos pela produção foram baixados e buscados.
+
+**Resultado medido.**
+- **Checks da #318:** todos passaram. Merge `95f9fa8`, deploy de produção `8098449130`.
+- **Produção:** landing, rota do SPA, `/health`, logo e pacote `200`; ingestão sem token e leitura sem sessão `401`.
+- **Pacote publicado:** `index-CTfStgzF.js` contém "Recolher menu" e a chave `dormio-menu-lateral`.
+
+**Adaptação.** A barra recolhida não foi vista numa sessão logada em produção; a conferência visual foi feita na revisão da #316, com dados de demonstração, a 897/898 e 1049/1050 px.
+
+**O que deu errado no caminho.** Nada.
+
+**Risco em aberto.**
+- **A barra em produção com a conta do autor** não foi vista pelo Claude.
+- **O app 1.1.7** segue sem o `UI-50`; não faz diferença no celular, mas um tablet com o app a partir de 768 px veria a barra antiga até o próximo APK.
+
+**Procedência.** PR #318, merge `95f9fa8`, deploy `8098449130`, em 26/11; verificação nesta máquina (Windows 11).
+
+---
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
