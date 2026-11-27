@@ -472,3 +472,27 @@ describe("a faixa e o movimento de cada sessão (UI-53)", () => {
     expect(faixa.querySelectorAll("[data-movimento]")).toHaveLength(5);
   });
 });
+
+describe("abrir a sessão no Início (UI-54)", () => {
+  const diaDe = (leitura: LeituraSono) => {
+    const d = new Date(Date.parse(leitura.captured_at!) - 30_000);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  };
+
+  it("no computador, a data da linha leva ao Início no dia e no aparelho da sessão", async () => {
+    mostrar();
+    const tabela = within(await screen.findByRole("region", { name: "Tabela do histórico" }));
+    const link = tabela.getByRole("link");
+    expect(link.getAttribute("href")).toBe(`/dashboard?dia=${diaDe(NOITE[0])}&aparelho=travesseiro`);
+  });
+
+  it("no celular, cada cartão tem o link Abrir no Início", async () => {
+    vi.stubGlobal("matchMedia", vi.fn((consulta: string) => ({
+      matches: consulta === "(max-width: 767px)", addEventListener: vi.fn(), removeEventListener: vi.fn(),
+    })));
+    mostrar();
+    const lista = await screen.findByRole("list", { name: "Sessões do histórico" });
+    expect(within(lista).getByRole("link", { name: "Abrir no Início" }).getAttribute("href"))
+      .toBe(`/dashboard?dia=${diaDe(NOITE[0])}&aparelho=travesseiro`);
+  });
+});
