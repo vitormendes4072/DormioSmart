@@ -15,6 +15,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { apagarSessao, buscarJanelaDoHistorico, marcarSessao, ErroApi } from "../lib/api";
 import type { LeituraSono } from "../types/sleep";
 import { Historico } from "./Historico";
+import { useDispositivos } from "../hooks/useDispositivos";
+import type { Dispositivo } from "../lib/dispositivos";
+
+vi.mock("../hooks/useDispositivos", () => ({ useDispositivos: vi.fn(() => []) }));
 
 vi.mock("../lib/api", async (original) => ({
   ...await original<typeof import("../lib/api")>(),
@@ -494,5 +498,60 @@ describe("abrir a sessão no Início (UI-54)", () => {
     const lista = await screen.findByRole("list", { name: "Sessões do histórico" });
     expect(within(lista).getByRole("link", { name: "Abrir no Início" }).getAttribute("href"))
       .toBe(`/dashboard?dia=${diaDe(NOITE[0])}&aparelho=travesseiro`);
+  });
+});
+
+
+describe("o aparelho de cada sessão (UI-55)", () => {
+  const aparelhos: Dispositivo[] = [
+    { id: "travesseiro", nome: "Quarto", tipo: "travesseiro", created_at: "", last_seen_at: null, revoked_at: null },
+    { id: "celular", nome: "Meu celular", tipo: "celular", created_at: "", last_seen_at: null, revoked_at: null },
+  ];
+  const seletor = () => screen.getByRole<HTMLSelectElement>("combobox");
+
+  beforeEach(() => {
+    window.localStorage.clear();
+    vi.mocked(useDispositivos).mockReturnValue(aparelhos);
+    buscar.mockResolvedValue({ leituras: [...NOITE, ...sessao("celular", 300, 12)], truncada: false });
+  });
+
+  afterEach(() => vi.mocked(useDispositivos).mockReturnValue([]));
+
+  it("com dois aparelhos, cada linha diz de qual veio", async () => {
+    mostrar();
+    const tabela = within(await screen.findByRole("region", { name: "Tabela do histórico" }));
+    const nomes = tabela.getAllByRole("row").slice(1)
+      .map((linha) => linha.querySelector("[data-aparelho]")?.textContent);
+    expect(nomes).toEqual(["Meu celular", "Travesseiro · Quarto"]);
+  });
+
+  it("escolher um aparelho mostra só as sessões dele e a escolha fica para a próxima visita", async () => {
+    mostrar();
+    await screen.findByRole("region", { name: "Tabela do histórico" });
+    fireEvent.change(seletor(), { target: { value: "celular" } });
+    const tabela = within(screen.getByRole("region", { name: "Tabela do histórico" }));
+    expect(tabela.getAllByRole("row")).toHaveLength(2);
+    expect(tabela.getByRole("cell", { name: "12" })).toBeTruthy();
+    expect(within(screen.getByRole("list", { name: "Números do período" })).getAllByRole("listitem")[0].textContent).toBe("1Sessão");
+    cleanup();
+    mostrar();
+    await screen.findByRole("region", { name: "Tabela do histórico" });
+    expect(seletor().value).toBe("celular");
+  });
+
+  it("um aparelho guardado que saiu da conta vale como todos", async () => {
+    window.localStorage.setItem("dormio-historico-aparelho", "apagado");
+    mostrar();
+    const tabela = within(await screen.findByRole("region", { name: "Tabela do histórico" }));
+    expect(tabela.getAllByRole("row")).toHaveLength(3);
+  });
+
+  it("com um aparelho só, não há seletor nem nome", async () => {
+    vi.mocked(useDispositivos).mockReturnValue([aparelhos[0]]);
+    buscar.mockResolvedValue({ leituras: NOITE, truncada: false });
+    mostrar();
+    const tabela = await screen.findByRole("region", { name: "Tabela do histórico" });
+    expect(screen.queryByRole("combobox")).toBeNull();
+    expect(tabela.querySelector("[data-aparelho]")).toBeNull();
   });
 });
