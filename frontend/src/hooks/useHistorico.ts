@@ -23,7 +23,10 @@ type EstadoHistorico = {
  * Isto descarta resultados no hook; nao cancela a chamada nem altera os
  * efeitos de autenticacao do cliente de API.
  */
-export function useHistorico(filtro: FiltroDeHistorico = {}): EstadoHistorico {
+export function useHistorico(
+  filtro: FiltroDeHistorico = {},
+  { habilitado = true, exigirLista = false } = {},
+): EstadoHistorico {
   const { dispositivo = null, desde = null, ate = null, limite = null } = filtro;
   const [leituras, setLeituras] = useState<LeituraSono[]>([]);
   const [carregando, setCarregando] = useState(true);
@@ -32,7 +35,7 @@ export function useHistorico(filtro: FiltroDeHistorico = {}): EstadoHistorico {
   const geracao = useRef(0);
 
   const carregar = useCallback(async () => {
-    if (!ativo.current) return;
+    if (!ativo.current || !habilitado) return;
     const pedido = ++geracao.current;
     const vigente = () => ativo.current && pedido === geracao.current;
 
@@ -40,9 +43,10 @@ export function useHistorico(filtro: FiltroDeHistorico = {}): EstadoHistorico {
     setErro(null);
     try {
       // A demonstracao continua local e guardada por build de desenvolvimento.
+      const filtro = { dispositivo, desde, ate, limite };
       const dados = import.meta.env.DEV && estaEmModoDemo()
         ? gerarHistoricoDemo(dispositivo)
-        : await buscarHistorico({ dispositivo, desde, ate, limite });
+        : await (exigirLista ? buscarHistorico(filtro, true) : buscarHistorico(filtro));
       if (vigente()) setLeituras(dados);
     } catch (e) {
       if (vigente()) {
@@ -53,7 +57,7 @@ export function useHistorico(filtro: FiltroDeHistorico = {}): EstadoHistorico {
     } finally {
       if (vigente()) setCarregando(false);
     }
-  }, [dispositivo, desde, ate, limite]);
+  }, [dispositivo, desde, ate, limite, habilitado, exigirLista]);
 
   useEffect(() => {
     // Reativar no setup e necessario no ciclo setup/cleanup/setup do Strict Mode.

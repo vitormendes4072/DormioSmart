@@ -1,11 +1,12 @@
 import { MensagemDeFalha } from "../components/MensagemDeFalha";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
-import { useLocation } from "react-router";
+import { Link, useLocation } from "react-router";
 
 import { BarraDoWorkspace } from "../components/BarraDoWorkspace";
 import { CartaoDeMetrica, CartaoEmDestaque, EtiquetaDeRegistro } from "../components/CartoesDeRegistro";
 import { Carregando, FalhaAoCarregar } from "../components/EstadoDaTela";
 import { SeletorSegmentado } from "../components/SeletorSegmentado";
+import { usePresencaDeRegistros } from "../hooks/usePresencaDeRegistros";
 import { apagarSessao, buscarJanelaDoHistorico, ErroApi, marcarSessao, MAX_PAGINAS_DO_HISTORICO } from "../lib/api";
 import { calcularCobertura } from "../lib/cobertura";
 import { estaEmModoDemo } from "../lib/demo";
@@ -283,7 +284,7 @@ function SessoesDaConta({ dias }: { dias: number }) {
       )}
       {normais.length > 0
         ? <ListaDeSessoes linhas={normais} acoes={acoes} />
-        : <p className="py-12 text-center text-sm text-muted-foreground">Nenhuma sessão no período selecionado.</p>}
+        : <HistoricoVazio podeConferirConta={!resultado.truncada} />}
       {marcadas.length > 0 && (
         <section aria-label="Sessões marcadas como bancada/teste" className="mt-6 space-y-2">
           <h2 className="text-sm font-semibold text-foreground">Marcadas como bancada/teste</h2>
@@ -294,6 +295,22 @@ function SessoesDaConta({ dias }: { dias: number }) {
         </section>
       )}
     </>
+  );
+}
+
+function HistoricoVazio({ podeConferirConta }: { podeConferirConta: boolean }) {
+  const presenca = usePresencaDeRegistros(podeConferirConta ? null : undefined);
+  if (presenca !== "sem-registro") {
+    return <p className="py-12 text-center text-sm text-muted-foreground">Nenhuma sessão no período selecionado.</p>;
+  }
+
+  return (
+    <div className="flex flex-col items-center gap-3 py-8">
+      <p className="text-sm text-muted-foreground">Ainda não há sessões.</p>
+      <Link to="/dashboard" className="inline-flex min-h-11 items-center rounded-lg border border-border px-3 text-sm font-semibold text-primary hover:bg-secondary focus-visible:outline-2 focus-visible:outline-ring">
+        Ir para o Início
+      </Link>
+    </div>
   );
 }
 

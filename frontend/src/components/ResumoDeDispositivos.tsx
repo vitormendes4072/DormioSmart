@@ -15,12 +15,14 @@ import { EstadoDoDispositivo, IconeDoDispositivo } from "./CartaoDeDispositivo";
 const LINHA = "flex w-full min-w-0 items-center gap-2.5 rounded-xl border border-transparent px-2 py-2 text-left hover:bg-secondary aria-pressed:border-primary/30 aria-pressed:bg-primary/10 focus-visible:outline-2 focus-visible:outline-ring";
 
 export function ResumoDeDispositivos({
-  dispositivos, selecionado, aoSelecionar, destinoGerenciar, className, classeDoLink,
+  dispositivos, selecionado, aoSelecionar, destinoGerenciar, destinoParear, listaConhecida = true, className, classeDoLink,
 }: {
   dispositivos: Dispositivo[];
   selecionado: string | null;
   aoSelecionar: (id: string | null) => void;
   destinoGerenciar: string;
+  destinoParear?: string;
+  listaConhecida?: boolean;
   className: string;
   classeDoLink: string;
 }) {
@@ -62,11 +64,13 @@ export function ResumoDeDispositivos({
           <DetalhesDoEnvio dispositivo={detalhado} />
         </div>
       )}
-      {disponiveis.length === 0 && !detalhado && (
-        <p className="text-sm text-muted-foreground">Nenhum dispositivo disponível para detalhar.</p>
+      {listaConhecida && disponiveis.length === 0 && !detalhado && (
+        <p className="text-sm text-muted-foreground">{destinoParear ? "Nenhum aparelho conectado ainda." : "Nenhum dispositivo disponível para detalhar."}</p>
       )}
-      <Link to={destinoGerenciar} className={`mt-auto self-start ${classeDoLink}`}>
-        Gerenciar dispositivos
+      <Link to={destinoParear ?? destinoGerenciar} className={`mt-auto self-start ${destinoParear
+        ? "inline-flex min-h-11 items-center rounded-lg bg-primary px-3 text-sm font-semibold text-primary-foreground hover:bg-primary/90 focus-visible:outline-2 focus-visible:outline-ring"
+        : classeDoLink}`}>
+        {destinoParear ? "Parear o travesseiro" : "Gerenciar dispositivos"}
       </Link>
     </aside>
   );

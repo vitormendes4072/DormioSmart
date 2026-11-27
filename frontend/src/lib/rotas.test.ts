@@ -107,6 +107,14 @@ describe("ehRetornoDeRecuperacao", () => {
 });
 
 describe("destinoSeguro — só caminho interno (SEC-16)", () => {
+  it("UI-53: o Android abre a Noite por padrão e preserva o destino guardado válido", () => {
+    expect(destinoSeguro(undefined, true)).toBe("/noite");
+    expect(destinoSeguro("//externo.example", true)).toBe("/noite");
+    expect(destinoSeguro("/noite", true)).toBe("/noite");
+    expect(destinoSeguro("/configuracoes?aba=conta", true)).toBe("/configuracoes?aba=conta");
+    expect(destinoSeguro(undefined, false)).toBe("/dashboard");
+  });
+
   it.each(["/dashboard", "/configuracoes?aba=conta", "/coletar#topo", "/"])("aceita %s", (c) => {
     expect(destinoSeguro(c)).toBe(c);
   });

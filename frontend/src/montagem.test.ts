@@ -73,6 +73,7 @@ const SESSAO = {
 };
 
 let sessaoDoServidor: typeof SESSAO | null = SESSAO;
+let publicarSessao: ((evento: string, sessao: typeof SESSAO) => void) | undefined;
 const encerrarSessao = vi.fn(async () => ({ error: null }));
 
 vi.mock("@supabase/supabase-js", () => ({
@@ -81,15 +82,26 @@ vi.mock("@supabase/supabase-js", () => ({
       getSession: async () => ({ data: { session: sessaoDoServidor }, error: null }),
       // O `AuthContext` chama o `unsubscribe` ao desmontar; sem ele o teste
       // quebraria na limpeza e não no que está sob teste.
-      onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
+      onAuthStateChange: (notificar: typeof publicarSessao) => {
+        publicarSessao = notificar;
+        return { data: { subscription: { unsubscribe: () => {} } } };
+      },
       signOut: () => encerrarSessao(),
       updateUser: async () => ({ data: { user: SESSAO.user }, error: null }),
+      signInWithPassword: async () => {
+        publicarSessao?.("SIGNED_IN", SESSAO);
+        return { error: null };
+      },
+      signUp: async () => {
+        publicarSessao?.("SIGNED_IN", SESSAO);
+        return { data: { session: SESSAO }, error: null };
+      },
     },
   }),
 }));
 
 /** Perfil que a rota devolve nesta execução. Trocado por teste. */
-let perfilDoServidor: { nome: string | null; idade: number | null } = {
+let perfilDoServidor: { nome: string | null; idade: number | null; consentimento_saude_em?: string; consentimento_saude_versao?: string } = {
   nome: "Titular de Teste",
   idade: null,
 };
@@ -104,6 +116,8 @@ function respostaJson(corpo: unknown): Response {
 
 beforeEach(() => {
   sessaoDoServidor = SESSAO;
+  publicarSessao = undefined;
+  localStorage.removeItem("dormio-primeiros-passos-" + SESSAO.user.id);
   encerrarSessao.mockClear();
   // Lidos no topo de `lib/supabase.ts`, então têm de valer antes do import
   // dinâmico. Valores de teste: a suíte não depende do `.env` de ninguém.
@@ -963,7 +977,7 @@ describe("montagem real das telas (UI-17)", PRAZO, () => {
   it("a rota /dispositivos monta o gerenciamento para a sessão autenticada", async () => {
     await montar("/dispositivos");
     expect(await screen.findByRole("heading", { name: "Dispositivos", level: 1 })).toBeTruthy();
-    expect(await screen.findByText("Nenhum dispositivo pareado")).toBeTruthy();
+    expect(await screen.findByText(/^Nenhum aparelho conectado\./)).toBeTruthy();
   });
 
   it.each([
@@ -1095,12 +1109,12 @@ describe("barra lateral recolhível (UI-50)", PRAZO, () => {
     try {
       await montar("/dashboard?demo=1");
       const grafico = await screen.findByRole("region", { name: "Tempo registrado por dia" });
-      const calendario = screen.getByRole("region", { name: "Calendário do sono" });
+      const calendario = screen.getByRole("region", { name: "Calendário de registros" });
       const emDuasColunas = () => grafico.closest("[data-vaga-do-grafico]") !== null;
       const medir = async (width: number) => {
         await act(async () => notificar?.([{ contentRect: { width } } as ResizeObserverEntry], {} as ResizeObserver));
         expect(screen.getByRole("region", { name: "Tempo registrado por dia" })).toBe(grafico);
-        expect(screen.getByRole("region", { name: "Calendário do sono" })).toBe(calendario);
+        expect(screen.getByRole("region", { name: "Calendário de registros" })).toBe(calendario);
       };
       expect(observado).toBe(document.querySelector("main"));
       expect(emDuasColunas()).toBe(true);
@@ -1290,6 +1304,30 @@ describe("toda rota do App.tsx monta (UI-17)", PRAZO, () => {
   });
 });
 
+describe("destino do Android após autenticar (UI-53)", PRAZO, () => {
+  it.each(["/login", "/cadastro"])("abre a Noite após autenticar a partir de %s sem consultar o histórico", async (rota) => {
+    sessaoDoServidor = null;
+    const nativo = vi.spyOn(Capacitor, "isNativePlatform").mockReturnValue(true);
+    const plugin = vi.spyOn(Capacitor, "isPluginAvailable").mockImplementation((nome) => nome === "Noite");
+    try {
+      await montar(rota);
+      if (rota === "/cadastro") {
+        fireEvent.change(screen.getByLabelText("Nome completo"), { target: { value: "Conta de teste" } });
+        fireEvent.click(screen.getByRole("checkbox"));
+      }
+      fireEvent.change(screen.getByLabelText("E-mail"), { target: { value: "titular@exemplo.com" } });
+      fireEvent.change(screen.getByLabelText("Senha"), { target: { value: "senha-segura-de-teste" } });
+      fireEvent.click(screen.getByRole("button", { name: rota === "/cadastro" ? "Criar conta" : "Entrar", exact: true }));
+      expect(await screen.findByRole("heading", { name: "A noite inteira" })).toBeTruthy();
+      expect(window.location.pathname).toBe("/noite");
+      expect(vi.mocked(fetch).mock.calls.some(([url]) => String(url).startsWith("/api/sleep-history"))).toBe(false);
+    } finally {
+      plugin.mockRestore();
+      nativo.mockRestore();
+    }
+  });
+});
+
 describe("o painel em camadas (UI-40)", PRAZO, () => {
   function responder({ dispositivos, leituras }: { dispositivos: unknown[]; leituras: ReturnType<typeof leitura>[] }) {
     const original = vi.mocked(fetch).getMockImplementation()!;
@@ -1309,6 +1347,94 @@ describe("o painel em camadas (UI-40)", PRAZO, () => {
   const leitura = (segundos: number, extra = {}) => ({
     created_at: new Date(Date.now() - segundos * 1000).toISOString(),
     movimento_total: 9.81, temp: null, status: "Repouso", epoca_segundos: 30, device_id: "p", ...extra,
+  });
+
+  describe("onboarding no Início (UI-52 a UI-54)", () => {
+    const guia = () => within(screen.getByRole("region", { name: "Primeiros passos" }));
+
+    it("UI-52: mostra as ações de primeira utilização e abre o pareamento", async () => {
+      await montar("/dashboard");
+      await screen.findByRole("heading", { name: "Primeiros passos" });
+      expect(await screen.findByText("Os dias com registro aparecem marcados aqui.")).toBeTruthy();
+      expect(await screen.findByText("Depois da primeira sessão, o tempo registrado de cada dia aparece aqui.")).toBeTruthy();
+      expect(cartaoDoAparelho().getByText("Nenhum aparelho conectado ainda.")).toBeTruthy();
+      expect(screen.queryByText(/verifique se ele está ligado/i)).toBeNull();
+      fireEvent.click(cartaoDoAparelho().getByRole("link", { name: "Parear o travesseiro" }));
+      expect(await screen.findByRole("heading", { name: "Parear um travesseiro" })).toBeTruthy();
+      expect(screen.getByRole("link", { name: "Baixar o app" }).getAttribute("href")).toMatch(/releases\/latest/);
+      expect(screen.getByText(/depois de registrar uma sessão curta em/)).toBeTruthy();
+    });
+
+    it("UI-53: descarta bancada e exibe os passos conforme aparelhos e consentimento vigente", async () => {
+      perfilDoServidor = {
+        ...perfilDoServidor,
+        consentimento_saude_em: "2026-11-26T12:00:00Z",
+        consentimento_saude_versao: VERSAO_DO_CONSENTIMENTO,
+      };
+      responder({ dispositivos: [{ ...celular, revoked_at: "2026-11-26" }], leituras: [leitura(0, { bancada: true })] });
+      await montar("/dashboard");
+      const titulo = await screen.findByRole("heading", { name: "Primeiros passos" });
+      expect(document.activeElement).toBe(titulo);
+      await guia().findByText("2 de 4 passos feitos");
+      expect(guia().getAllByRole("listitem").map((item) => item.textContent)).toEqual([
+        "Conta criada· feito", "Aparelho conectado· a fazer", "Consentimento dado· feito", "Primeira sessão registrada· a fazer",
+      ]);
+      expect(guia().getByRole("link", { name: "Testar no navegador (sessão curta)" }).getAttribute("href")).toBe("/coletar");
+    });
+
+    it("UI-53: esconde o guia com a primeira sessão fora da bancada", async () => {
+      responder({ dispositivos: [travesseiro], leituras: [leitura(30), leitura(0)] });
+      await montar("/dashboard");
+      await screen.findByRole("heading", { name: "Seus registros" });
+      expect(screen.queryByRole("heading", { name: "Primeiros passos" })).toBeNull();
+    });
+
+    it.each(["/api/devices", "/api/me/perfil"])("UI-53: não marca passos quando %s falha", async (rota) => {
+      const original = vi.mocked(fetch).getMockImplementation()!;
+      vi.mocked(fetch).mockImplementation((entrada, opcoes) => String(entrada).startsWith(rota)
+        ? Promise.reject(new Error("API indisponível"))
+        : original(entrada, opcoes));
+      await montar("/dashboard");
+      await screen.findByRole("heading", { name: "Primeiros passos" });
+      expect(guia().getAllByRole("listitem")).toHaveLength(4);
+      expect(guia().queryByText(/a fazer|feito/)).toBeNull();
+      expect(guia().queryByRole("progressbar")).toBeNull();
+    });
+
+    it("UI-53: permite dispensar, retomar pelo gráfico e reabrir pelas Configurações", async () => {
+      responder({ dispositivos: [travesseiro], leituras: [] });
+      await montar("/dashboard");
+      fireEvent.click(await screen.findByRole("button", { name: "Dispensar" }));
+      expect(await screen.findByText(/verifique se ele está ligado/i)).toBeTruthy();
+      expect(screen.queryByRole("heading", { name: "Primeiros passos" })).toBeNull();
+      fireEvent.click(await screen.findByRole("button", { name: "Como registrar" }));
+      await screen.findByRole("heading", { name: "Primeiros passos" });
+      fireEvent.click(guia().getByRole("button", { name: "Dispensar" }));
+      fireEvent.click(screen.getAllByRole("link", { name: "Configurações" })[0]);
+      await screen.findByRole("heading", { name: "Configurações", level: 1 });
+      fireEvent.click(screen.getByRole("link", { name: "Primeiros passos" }));
+      expect(await screen.findByRole("heading", { name: "Primeiros passos" })).toBeTruthy();
+    });
+
+    it("UI-53: oferece Noite e oculta download e sessão curta dentro do app", async () => {
+      const nativo = vi.spyOn(Capacitor, "isNativePlatform").mockReturnValue(true);
+      const plugin = vi.spyOn(Capacitor, "isPluginAvailable").mockImplementation((nome) => nome === "Noite");
+      try {
+        await montar("/dashboard");
+        await screen.findByRole("heading", { name: "Primeiros passos" });
+        expect(guia().getByRole("link", { name: "Começar uma Noite" }).getAttribute("href")).toBe("/noite");
+        expect(guia().queryByRole("link", { name: /baixar|sessão curta/i })).toBeNull();
+      } finally {
+        plugin.mockRestore();
+        nativo.mockRestore();
+      }
+    });
+
+    it("UI-52: Histórico vazio oferece retorno ao Início", async () => {
+      await montar("/historico");
+      expect(await screen.findByText("Ainda não há sessões.")).toBeTruthy();
+      expect(screen.getByRole("link", { name: "Ir para o Início" }).getAttribute("href")).toBe("/dashboard");
+    });
   });
   const detalhes = () =>
     [...document.querySelectorAll("details")].find((d) =>
@@ -1410,6 +1536,7 @@ describe("o painel em camadas (UI-40)", PRAZO, () => {
     if (comLeituras) {
       await screen.findByRole("heading", { name: "Seus registros" });
     } else {
+      fireEvent.click(await screen.findByRole("button", { name: "Dispensar" }));
       await screen.findByText("Nenhum registro ainda");
     }
     expect(cartaoDoAparelho().getByRole("link", { name: "Gerenciar dispositivos" }).getAttribute("href")).toBe(destino);
@@ -1418,7 +1545,7 @@ describe("o painel em camadas (UI-40)", PRAZO, () => {
   const seletorDeAparelho = () => screen.getByRole<HTMLSelectElement>("combobox", { name: "Dispositivo exibido" });
   const serieDeMovimento = () => within(screen.getByRole("figure", { name: "Movimento ao longo do tempo" }));
 
-  describe("Calendário do sono (UI-45)", () => {
+  describe("Calendário de registros (UI-45)", () => {
     beforeEach(() => {
       vi.useFakeTimers({ toFake: ["Date"] });
       vi.setSystemTime(new Date(2026, 10, 25, 12));
@@ -1435,11 +1562,11 @@ describe("o painel em camadas (UI-40)", PRAZO, () => {
 
     afterEach(() => vi.useRealTimers());
 
-    const calendario = () => within(screen.getByRole("region", { name: "Calendário do sono" }));
+    const calendario = () => within(screen.getByRole("region", { name: "Calendário de registros" }));
 
     it("fica entre o seletor e Seus registros, com a semana recolhida", async () => {
       await abrir();
-      const regiao = screen.getByRole("region", { name: "Calendário do sono" });
+      const regiao = screen.getByRole("region", { name: "Calendário de registros" });
       const registros = screen.getByRole("heading", { name: "Seus registros" });
       expect(seletorDeAparelho().compareDocumentPosition(regiao) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
       expect(regiao.compareDocumentPosition(registros) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
@@ -1567,7 +1694,7 @@ describe("o painel em camadas (UI-40)", PRAZO, () => {
 
   describe("Recorte do Início pelo dia (UI-46)", () => {
     const consultaDoDia = (dia: number) => new Date(2026, 10, dia - 1).toISOString();
-    const calendario = () => within(screen.getByRole("region", { name: "Calendário do sono" }));
+    const calendario = () => within(screen.getByRole("region", { name: "Calendário de registros" }));
     const escolher = (nome: RegExp) => fireEvent.click(calendario().getByRole("button", { name: nome }));
     const titulo = "Sessões de terça-feira, 24 de novembro";
     const semanaPassada = /^terça-feira, 17 de novembro/;
@@ -1718,7 +1845,7 @@ describe("o painel em camadas (UI-40)", PRAZO, () => {
       expect(esquerda.contains(titulo)).toBe(true);
       expect(esquerda.contains(screen.getByRole("combobox", { name: "Dispositivo exibido" }))).toBe(true);
       expect(direita.matches("[data-calendario-do-inicio]")).toBe(true);
-      expect(direita.contains(screen.getByRole("region", { name: "Calendário do sono" }))).toBe(true);
+      expect(direita.contains(screen.getByRole("region", { name: "Calendário de registros" }))).toBe(true);
       // As linhas do Início usam a mesma grade, e a coluna da direita não fica estreita demais
       // para o calendário e o gráfico (UI-49, ajuste: com 220 px de mínimo, chegava a 262 px).
       const grades = ["[data-topo-do-inicio]", "[data-linha-dos-cartoes]", "[data-linha-do-movimento]"]

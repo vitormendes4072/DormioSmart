@@ -7,6 +7,8 @@ import {
   buscarHistorico,
   buscarHistoricoCompleto,
   buscarJanelaDoHistorico,
+  LIMITE_DO_PAINEL,
+  verificarRegistrosDaConta,
   definirCallbackDeSessaoExpirada,
   definirProvedorDeToken,
   marcarSessao,
@@ -60,6 +62,37 @@ describe("buscarHistorico", () => {
     vi.stubGlobal("fetch", vi.fn(async () => resposta(200, { inesperado: true })));
 
     await expect(buscarHistorico()).resolves.toEqual([]);
+  });
+});
+
+describe("UI-53: presença de registro na conta", () => {
+  const paginaDeBancada = (numero: number) => Array.from({ length: LIMITE_DO_PAINEL }, (_, i) => ({
+    id: `${numero}-${i}`, created_at: "2026-11-01T00:00:00Z",
+    device_id: "p", movimento_total: 9.81, temp: null, status: "Repouso", bancada: true,
+  }));
+
+  it("aproveita a primeira página e encontra um registro mais antigo fora da bancada", async () => {
+    const primeiraPagina = paginaDeBancada(1);
+    const buscar = vi.fn(async () => resposta(200, [{ ...primeiraPagina[0], bancada: false }]));
+    vi.stubGlobal("fetch", buscar);
+
+    await expect(verificarRegistrosDaConta(primeiraPagina, new AbortController().signal)).resolves.toBe("com-registro");
+    expect(buscar).toHaveBeenCalledTimes(1);
+    expect(String(buscar.mock.calls[0]?.[0])).toContain("cursor_id=");
+  });
+
+  it("confirma ausência quando encontra o fim com apenas bancada", async () => {
+    const buscar = vi.fn(async () => resposta(200, paginaDeBancada(2).slice(0, 1)));
+    vi.stubGlobal("fetch", buscar);
+    await expect(verificarRegistrosDaConta(paginaDeBancada(1), new AbortController().signal)).resolves.toBe("sem-registro");
+  });
+
+  it("para em 16 páginas e devolve inconclusivo sem consultar a página 17", async () => {
+    let numero = 1;
+    const buscar = vi.fn(async () => resposta(200, numero++ < 17 ? paginaDeBancada(numero) : []));
+    vi.stubGlobal("fetch", buscar);
+    await expect(verificarRegistrosDaConta(null, new AbortController().signal)).resolves.toBe("inconclusivo");
+    expect(buscar).toHaveBeenCalledTimes(16);
   });
 });
 

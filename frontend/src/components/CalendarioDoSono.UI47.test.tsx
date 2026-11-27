@@ -60,7 +60,7 @@ it("UI-47: passar o mouse só consulta, tocar seleciona e repetir o toque limpa"
   await user.pointer({ keys: "[TouchA]", target: barra() });
   expect(barra().getAttribute("aria-pressed")).toBe("true");
   expect(grafico().getByRole("tooltip", { hidden: true }).textContent).toContain("2h 00m registrados");
-  const calendario = within(screen.getByRole("region", { name: "Calendário do sono" }));
+  const calendario = within(screen.getByRole("region", { name: "Calendário de registros" }));
   const dia = calendario.getByRole("button", { name: /^segunda-feira, 23 de novembro/, pressed: true });
   expect(dia.querySelector("[data-marca-dia]")).toBeTruthy();
   expect(barra().querySelector("[data-marca-dia]")).toBeTruthy();
