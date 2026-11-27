@@ -1504,15 +1504,20 @@ describe("o painel em camadas (UI-40)", PRAZO, () => {
       fireEvent.click(screen.getByRole("button", { name: "Continuar depois" }));
       await faixaApareceu();
       expect(faixa().getByText("Falta conectar o travesseiro")).toBeTruthy();
-      indisponivel = true;
       fireEvent.click(faixa().getByRole("link", { name: "Continuar" }));
+      await screen.findByText(buscando);
+      indisponivel = true;
+      fireEvent(document, new Event("visibilitychange"));
       const tentar = await screen.findByRole("button", { name: "Tentar novamente" });
-      expect(screen.queryByText(buscando)).toBeNull();
+      const textoDoErro = screen.getByRole("status").textContent;
+      expect(textoDoErro).toContain("Não foi possível consultar o travesseiro.");
+      expect(textoDoErro).not.toContain(buscando);
       sinal = true;
       indisponivel = false;
       fireEvent.click(tentar);
       expect(await screen.findByRole("heading", { name: "Recebemos o primeiro sinal dele" })).toBeTruthy();
-      expect(screen.queryByText(buscando)).toBeNull();
+      const textoDosEstados = screen.queryAllByRole("status").map((regiao) => regiao.textContent).join("\n");
+      expect(textoDosEstados).not.toContain(buscando);
     });
 
     it("UI-62: a jornada valida a meta do UI-61 e salva só esse campo", async () => {
