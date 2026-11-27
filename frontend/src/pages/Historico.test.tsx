@@ -51,6 +51,18 @@ function sessao(device: string, antesMin: number, n: number, bancada = false): L
 const NOITE = sessao("travesseiro", 600, 20);
 const BANCADA = sessao("travesseiro", 120, 10, true);
 
+/** UI-53: as ações ficam atrás do "…" de cada sessão; abre todos os do escopo. */
+function abrirMenus(escopo: HTMLElement) {
+  for (const menu of within(escopo).queryAllByRole("button", { name: /^Ações da sessão/, expanded: false })) {
+    fireEvent.click(menu);
+  }
+}
+
+function acao(escopo: HTMLElement, nome: string) {
+  abrirMenus(escopo);
+  return within(escopo).getByRole("button", { name: nome });
+}
+
 function mostrar() {
   render(<MemoryRouter><Historico /></MemoryRouter>);
 }
@@ -116,14 +128,14 @@ describe("Histórico: excluir e marcar uma sessão (DATA-16)", () => {
     const marcadas = screen.getByRole("region", { name: "Tabela das sessões marcadas como bancada" });
     expect(within(principal).getByText("20")).toBeTruthy();
     expect(within(marcadas).getByText("10")).toBeTruthy();
-    expect(within(principal).getByRole("button", { name: "Marcar como bancada" })).toBeTruthy();
-    expect(within(marcadas).getByRole("button", { name: "Desmarcar" })).toBeTruthy();
+    expect(acao(principal, "Marcar como bancada")).toBeTruthy();
+    expect(acao(marcadas, "Desmarcar")).toBeTruthy();
   });
 
   it("marcar manda o aparelho e o primeiro e o último instante da sessão, e recarrega", async () => {
     mostrar();
     const principal = await screen.findByRole("region", { name: "Tabela do histórico" });
-    fireEvent.click(within(principal).getByRole("button", { name: "Marcar como bancada" }));
+    fireEvent.click(acao(principal, "Marcar como bancada"));
     await waitFor(() => expect(marcar).toHaveBeenCalledTimes(1));
     expect(marcar).toHaveBeenCalledWith(expect.objectContaining({
       device: "travesseiro",
@@ -138,7 +150,7 @@ describe("Histórico: excluir e marcar uma sessão (DATA-16)", () => {
   it("desmarcar manda a marca falsa", async () => {
     mostrar();
     const marcadas = await screen.findByRole("region", { name: "Tabela das sessões marcadas como bancada" });
-    fireEvent.click(within(marcadas).getByRole("button", { name: "Desmarcar" }));
+    fireEvent.click(acao(marcadas, "Desmarcar"));
     await waitFor(() => expect(marcar).toHaveBeenCalledWith(expect.objectContaining({
       device: "travesseiro",
       desde: BANCADA[0].captured_at,
@@ -150,7 +162,7 @@ describe("Histórico: excluir e marcar uma sessão (DATA-16)", () => {
   it("excluir pede confirmação, e cancelar não apaga nada", async () => {
     mostrar();
     const principal = await screen.findByRole("region", { name: "Tabela do histórico" });
-    fireEvent.click(within(principal).getByRole("button", { name: "Excluir…" }));
+    fireEvent.click(acao(principal, "Excluir…"));
     const confirmacao = screen.getByRole("alertdialog", { name: "Confirmar exclusão da sessão" });
     expect(within(confirmacao).getByText(/não há como desfazer/)).toBeTruthy();
     expect(within(confirmacao).getByText("20 registros")).toBeTruthy();
@@ -164,7 +176,7 @@ describe("Histórico: excluir e marcar uma sessão (DATA-16)", () => {
     apagar.mockImplementationOnce(() => new Promise((resolve) => { concluir = resolve; }));
     mostrar();
     const principal = await screen.findByRole("region", { name: "Tabela do histórico" });
-    fireEvent.click(within(principal).getByRole("button", { name: "Excluir…" }));
+    fireEvent.click(acao(principal, "Excluir…"));
     const dialogo = screen.getByRole("alertdialog", { name: "Confirmar exclusão da sessão" });
     fireEvent.click(within(dialogo).getByRole("button", { name: "Excluir definitivamente" }));
     expect(apagar).toHaveBeenCalledTimes(1);
@@ -182,7 +194,7 @@ describe("Histórico: excluir e marcar uma sessão (DATA-16)", () => {
   it("confirmar apaga a sessão, mostra quantas épocas saíram e recarrega", async () => {
     mostrar();
     const principal = await screen.findByRole("region", { name: "Tabela do histórico" });
-    fireEvent.click(within(principal).getByRole("button", { name: "Excluir…" }));
+    fireEvent.click(acao(principal, "Excluir…"));
     fireEvent.click(screen.getByRole("button", { name: "Excluir definitivamente" }));
     await waitFor(() => expect(apagar).toHaveBeenCalledWith(expect.objectContaining({
       device: "travesseiro",
@@ -198,7 +210,7 @@ describe("Histórico: excluir e marcar uma sessão (DATA-16)", () => {
     apagar.mockRejectedValue(new Error("rede"));
     mostrar();
     const principal = await screen.findByRole("region", { name: "Tabela do histórico" });
-    fireEvent.click(within(principal).getByRole("button", { name: "Excluir…" }));
+    fireEvent.click(acao(principal, "Excluir…"));
     fireEvent.click(screen.getByRole("button", { name: "Excluir definitivamente" }));
     expect((await screen.findByRole("alert")).textContent).toContain("Não foi possível concluir");
     expect(buscar).toHaveBeenCalledTimes(1);
@@ -259,6 +271,7 @@ describe("excluir e marcar alcançam só a sessão mostrada (UI-38)", () => {
           marcar.mockClear();
           mostrar();
           await screen.findByRole("region", { name: "Tabela do histórico" });
+          abrirMenus(document.body);
           const botoes = screen.getAllByRole("button", { name: acao === "excluir"
             ? nome(bancada)
             : /^(Marcar como bancada|Desmarcar)$/ });
@@ -279,7 +292,7 @@ describe("excluir e marcar alcançam só a sessão mostrada (UI-38)", () => {
   it("a confirmação diz o início e o fim", async () => {
     mostrar();
     const principal = await screen.findByRole("region", { name: "Tabela do histórico" });
-    fireEvent.click(within(principal).getByRole("button", { name: "Excluir…" }));
+    fireEvent.click(acao(principal, "Excluir…"));
     const hora = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
     const texto = screen.getByRole("alertdialog").textContent;
     expect(texto).toContain(hora.format(Date.parse(NOITE[0].captured_at!) - 30_000));
@@ -290,6 +303,7 @@ describe("excluir e marcar alcançam só a sessão mostrada (UI-38)", () => {
     buscar.mockResolvedValue({ leituras: [...pedaco(0, 1), ...pedaco(0, 1, true)], truncada: false });
     mostrar();
     await screen.findByRole("region", { name: "Tabela do histórico" });
+    expect(screen.queryByRole("button", { name: /^Ações da sessão/ })).toBeNull();
     expect(screen.queryByRole("button", { name: "Excluir…" })).toBeNull();
   });
 });
@@ -332,7 +346,7 @@ it("DATA-17: divergência avisa e recarrega sem sucesso", async () => {
   marcar.mockRejectedValue(new ErroApi(409, "A sessão mudou desde que a tela carregou."));
   mostrar();
   const principal = await screen.findByRole("region", { name: "Tabela do histórico" });
-  fireEvent.click(within(principal).getByRole("button", { name: "Marcar como bancada" }));
+  fireEvent.click(acao(principal, "Marcar como bancada"));
   expect((await screen.findByRole("alert")).textContent).toContain("A sessão mudou");
   expect(buscar).toHaveBeenCalledTimes(2);
   expect(screen.queryByText(/Sessão marcada como bancada/)).toBeNull();
@@ -345,8 +359,8 @@ it("UI-41: a lista de cartões traz situação, ações e a confirmação modal"
   mostrar();
   const lista = await screen.findByRole("list", { name: "Sessões do histórico" });
   expect(within(lista).getByText("Completa")).toBeTruthy();
-  expect(within(lista).getByRole("button", { name: "Marcar como bancada" })).toBeTruthy();
-  fireEvent.click(within(lista).getByRole("button", { name: "Excluir…" }));
+  expect(acao(lista, "Marcar como bancada")).toBeTruthy();
+  fireEvent.click(acao(lista, "Excluir…"));
   const dialogo = screen.getByRole("alertdialog", { name: "Confirmar exclusão da sessão" });
   expect(dialogo.tagName).toBe("DIALOG");
   expect(apagar).not.toHaveBeenCalled();
@@ -385,18 +399,20 @@ it("mostra cartões com situação, duração registrada e total de registros no
   const lista = await screen.findByRole("list", { name: "Sessões do histórico" });
   const cartoes = within(lista).getAllByRole("article");
   expect(cartoes).toHaveLength(3);
-  const [primeiro, segundo, terceiro] = cartoes.map((cartao) => within(cartao));
-  expect(primeiro.getByText("Completa")).toBeTruthy();
-  const destaque = within(primeiro.getByRole("group", { name: "Registrado" }));
-  expect(destaque.getByText("10m 0s")).toBeTruthy();
-  expect(destaque.getByText("de 10m 0s")).toBeTruthy();
-  expect(primeiro.getByText("20", { exact: true })).toBeTruthy();
-  expect(segundo.getByText("Com pausas")).toBeTruthy();
-  expect(segundo.getByText("20m 0s de 22m 0s")).toBeTruthy();
-  expect(segundo.getByText("40", { exact: true })).toBeTruthy();
-  expect(terceiro.getByText("Incompleta")).toBeTruthy();
-  expect(terceiro.getByText("10m 0s de 10m 19s")).toBeTruthy();
-  expect(terceiro.getByText("20", { exact: true })).toBeTruthy();
+  // UI-53: todos os cartões iguais — o gráfico da sessão e três números embaixo.
+  const metricas = (cartao: HTMLElement) =>
+    within(within(cartao).getByRole("list", { name: "Métricas da sessão" })).getAllByRole("listitem").map((item) => item.textContent);
+  expect(within(cartoes[0]).getByText("Completa")).toBeTruthy();
+  expect(metricas(cartoes[0])).toEqual(["10m 0sregistrado de 10m 0s", "0%com movimento", "20registros"]);
+  expect(within(cartoes[1]).getByText("Com pausas")).toBeTruthy();
+  expect(metricas(cartoes[1])).toEqual(["20m 0sregistrado de 22m 0s", "0%com movimento", "40registros"]);
+  expect(within(cartoes[2]).getByText("Incompleta")).toBeTruthy();
+  expect(metricas(cartoes[2])).toEqual(["10m 0sregistrado de 10m 19s", "0%com movimento", "20registros"]);
+  for (const cartao of cartoes) {
+    expect(within(cartao).getByRole("img", { name: /^Intensidade do movimento na sessão/ })).toBeTruthy();
+  }
+  // A pausa de 2 min aparece no gráfico como trecho sem registro.
+  expect(within(cartoes[1]).getByRole("img", { name: /com trechos sem registro/ })).toBeTruthy();
 });
 
 it("mostra as três janelas e destaca a selecionada nos botões do celular", async () => {
@@ -440,5 +456,19 @@ describe("o topo do período (UI-52)", () => {
     await screen.findByRole("list", { name: "Números do período" });
     fireEvent.click(screen.getByRole("button", { name: "Últimas 24 horas" }));
     expect(await screen.findByRole("heading", { name: "Tempo registrado por sessão" })).toBeTruthy();
+  });
+});
+
+describe("a faixa e o movimento de cada sessão (UI-53)", () => {
+  it("a tabela mostra a faixa da sessão e a parte do tempo com movimento", async () => {
+    const comMovimento = NOITE.map((leitura, i) => (i % 4 === 0 ? { ...leitura, status: "Movimento" } : leitura));
+    buscar.mockResolvedValue({ leituras: comMovimento, truncada: false });
+    mostrar();
+    const tabela = within(await screen.findByRole("region", { name: "Tabela do histórico" }));
+    const [, linha] = tabela.getAllByRole("row");
+    expect(within(linha).getAllByRole("cell").map((celula) => celula.textContent)[2]).toBe("25%");
+    const faixa = within(linha).getByRole("img", { name: /registros com movimento/ });
+    expect(faixa.getAttribute("aria-label")).toMatch(/: 10m 0s com registro, 5 registros com movimento\.$/);
+    expect(faixa.querySelectorAll("[data-movimento]")).toHaveLength(5);
   });
 });

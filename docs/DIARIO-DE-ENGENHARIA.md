@@ -14145,6 +14145,33 @@ A suíte passou com 1.099 testes em 73 arquivos. Lint, build, os dois Knip e as 
 
 ---
 
+# 2026-11-26 (xix) — UI-53: cada sessão do Histórico com a sua forma
+
+**O problema, como foi entendido no início.** Depois do topo do período (`UI-52`), cada sessão do Histórico continuava sendo "6h 23m de 6h 29m": não dizia quando houve movimento nem onde faltou registro. No computador, os botões "Marcar como bancada" e "Excluir…" pesavam mais que os dados. No celular, só a primeira sessão tinha o destaque escuro, e o autor pediu o gráfico de cada sessão no lugar dele, com o registrado ao lado dos registros.
+
+**Hipótese de trabalho.** Os registros de cada sessão já estão na tela. No computador, uma faixa por sessão na mesma régua de horário (de meio-dia a meio-dia, para a noite não partir na meia-noite) deixa comparar as noites de olho: o período em cinza, os trechos com registro em azul claro e um traço por registro com movimento. Além da faixa, uma coluna "Movimento", com a mesma conta do Início. No celular, todo cartão tem o gráfico de movimento da sessão, em versão pequena e sem toque (a geometria do Início), e três números embaixo. As ações vão para um "…" que abre um painel (uma divulgação com `aria-expanded`), e não um `role="menu"`, para os botões manterem os nomes que a política de privacidade cita.
+
+**O que foi testado, e como.**
+- `FaixaDaSessao.test.tsx` (8): a régua de duas noites (22h a 7h, marcas 22h a 6h), a mesma hora em dias diferentes no mesmo ponto, a régua da tarde, o limite de 24 horas, a geometria e o rótulo da faixa, e o menu (abre com o foco na primeira ação, fecha ao escolher, pelo Esc com o foco de volta e por um toque fora).
+- `Historico.test.tsx`: os testes de excluir e marcar abrem o "…" antes (um auxiliar, `abrirMenus`); o do cartão do celular foi reescrito (os três números em todos os cartões, o gráfico em cada um e a pausa como trecho sem registro); +1, a faixa e a coluna "Movimento" na tabela (25% com 5 de 20 registros com movimento).
+- **Sabotagens:** (1) a régua partindo na meia-noite; (2) o movimento sem a conta do Início; (3) o Esc sem fechar o painel. Caíram 3, 1 e 1 testes.
+- **Na tela**, com `?demo=1`: 1280 px (a régua de 22h a 6h e as faixas conferidas pelo DOM) e 390 px (os cartões com o gráfico). Os exemplos ganharam trechos, movimentos e uma série determinística, só para a demonstração.
+
+**Resultado medido.** Frontend **1 127 passam, 75 arquivos** (+9 sobre o `UI-52`). `tsc`, `eslint`, `knip`, `knip:tipos`, `vite build` e `conferir_pacote_frontend.py` ok.
+
+**Adaptação.** A régua "do dia" começa ao meio-dia: com a meia-noite, uma noite das 23h às 7h ocupava as duas pontas da faixa. Nos exemplos sem série, o cartão do celular mostra a faixa da sessão no lugar do gráfico.
+
+**O que deu errado no caminho.** O primeiro script de edição foi passado por heredoc no Bash e quebrou nas crases do TypeScript; foi gravado em arquivo e rodado dali. Nada foi aplicado pela metade (o `assert` de cada troca vinha antes da escrita).
+
+**Risco em aberto.**
+- Com 30 sessões, o celular desenha 30 gráficos pequenos. Na demonstração não pesou; numa conta real de 30 dias, não foi medido.
+- A régua comum fica estreita quando o período mistura uma sessão de tarde (bancada) com noites: a faixa de cada uma fica curta. A bancada marcada tem a sua própria tabela, com a sua régua.
+- Abrir a sessão no Início é o `UI-54`.
+
+**Procedência.** Branch `feature/UI-53-faixa-da-sessao`, sobre a do `UI-52` (PR #321). Execuções em Windows 11, Node 24.11.0 e no navegador do Claude, em 26/11.
+
+---
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
