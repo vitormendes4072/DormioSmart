@@ -44,7 +44,7 @@ function diasEmSequencia(total: number, podeSerMaior = false) {
 
 export function CalendarioDoSono({
   dispositivo, demo, selecionado, aoSelecionarDia, ancora, aoNavegar, destinoDoGrafico = null,
-  contaSemRegistro = false, abrirGuia,
+  contaSemRegistro = false, abrirGuia, meta, dicaDaMeta,
 }: {
   dispositivo: string | null;
   demo: boolean;
@@ -56,6 +56,8 @@ export function CalendarioDoSono({
   destinoDoGrafico?: HTMLElement | null;
   contaSemRegistro?: boolean;
   abrirGuia?: () => void;
+  meta?: number | null;
+  dicaDaMeta?: "travesseiro" | "app";
 }) {
   const hoje = somarDias(new Date(), 0);
   const [aberto, setAberto] = useState(false);
@@ -137,7 +139,8 @@ export function CalendarioDoSono({
   const grafico = (
     <GraficoDeTempoPorDia registros={registros} referencia={data} hoje={hoje} selecionado={selecionado}
       aoSelecionarDia={selecionarDia} carregando={carregando} falhou={dados === null}
-      parcial={dados?.truncada ?? false} recarregar={recarregar} abrirGuia={contaSemRegistro ? abrirGuia : undefined} />
+      parcial={dados?.truncada ?? false} recarregar={recarregar} abrirGuia={contaSemRegistro ? abrirGuia : undefined}
+      meta={meta} dicaDaMeta={dicaDaMeta} />
   );
 
   const grade = (

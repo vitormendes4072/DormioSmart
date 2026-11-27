@@ -112,6 +112,7 @@ MIGRACOES_APLICADAS = (
     "025_conferir_identidade_trecho.sql",
     # APP-19 (23/11): a versao do app informada pelo celular. `test_rls_versao_do_app.py`.
     "026_versao_do_app.sql",
+    "027_meta_diaria.sql",
 )
 
 VARIAVEL = "DORMIO_RLS_DATABASE_URL"

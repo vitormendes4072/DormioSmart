@@ -27,7 +27,7 @@ JWT_BRUNO = "jwt-do-bruno"
 ID_ANA = "aaaaaaaa-0000-4000-8000-aaaaaaaaaaaa"
 ID_BRUNO = "bbbbbbbb-0000-4000-8000-bbbbbbbbbbbb"
 
-PERFIL_DA_ANA = {"nome": "Ana", "idade": 22, "updated_at": "2026-10-17T12:00:00Z"}
+PERFIL_DA_ANA = {"nome": "Ana", "idade": 22, "updated_at": "2026-10-17T12:00:00Z", "meta_diaria_min": None}
 
 _SESSAO = {"Authorization": f"Bearer {JWT_ANA}"}
 
@@ -196,6 +196,22 @@ def test_patch_grava_so_a_idade():
     resposta, gravar = _patch({"idade": 30})
     assert resposta.status_code == 200
     assert gravar.mock_calls[0].args[2] == {"idade": 30}
+
+
+@pytest.mark.parametrize("meta", [60, 405, 960, None])
+def test_patch_grava_meta_e_devolve_valor_do_banco(meta):
+    resposta, gravar = _patch({"meta_diaria_min": meta}, {**PERFIL_DA_ANA, "meta_diaria_min": meta})
+    assert resposta.status_code == 200
+    assert resposta.get_json()["meta_diaria_min"] == meta
+    assert gravar.mock_calls[0].args[2] == {"meta_diaria_min": meta}
+
+
+@pytest.mark.parametrize("meta", [59, 961, "480", 480.0, True])
+def test_patch_recusa_meta_invalida(meta):
+    resposta, gravar = _patch({"meta_diaria_min": meta})
+    assert resposta.status_code == 400
+    assert "a meta" in resposta.get_json()["error"]
+    gravar.assert_not_called()
 
 
 def test_patch_com_idade_nula_apaga_a_idade():
@@ -419,7 +435,7 @@ def test_gravar_insere_quando_o_update_nao_afeta_linha():
     """Zero linhas afetadas não é erro para o Postgres, e aqui tem de deixar
     de ser silêncio: sem o insert, a correção do titular responderia 200 sem
     ter gravado nada."""
-    criado = {"nome": "Ana", "idade": None, "updated_at": "2026-10-17T12:00:00Z"}
+    criado = {"nome": "Ana", "idade": None, "updated_at": "2026-10-17T12:00:00Z", "meta_diaria_min": None}
     cliente = _ClienteFalso(linhas_do_update=[], linhas_do_insert=[criado])
     assert perfil.gravar(cliente, ID_ANA, {"nome": "Ana"}) == criado
     assert cliente.verbos == ["update", "insert"]
@@ -449,6 +465,7 @@ def test_gravar_devolve_so_os_campos_da_interface():
         "nome",
         "idade",
         "updated_at",
+        "meta_diaria_min",
     }
 
 

@@ -102,7 +102,7 @@ vi.mock("@supabase/supabase-js", () => ({
 }));
 
 /** Perfil que a rota devolve nesta execução. Trocado por teste. */
-let perfilDoServidor: { nome: string | null; idade: number | null; consentimento_saude_em?: string; consentimento_saude_versao?: string } = {
+let perfilDoServidor: { nome: string | null; idade: number | null; meta_diaria_min?: number | null; consentimento_saude_em?: string; consentimento_saude_versao?: string } = {
   nome: "Titular de Teste",
   idade: null,
 };
@@ -1355,6 +1355,60 @@ describe("o painel em camadas (UI-40)", PRAZO, () => {
   describe("onboarding no Início (UI-57 a UI-59)", () => {
     const guia = () => within(screen.getByRole("region", { name: "Primeiros passos" }));
 
+    it("UI-60: o guia oferece pular e salva a idade pela mesma rota, mostrando a aplicabilidade", async () => {
+      const original = vi.mocked(fetch).getMockImplementation()!;
+      let recebido: unknown;
+      vi.mocked(fetch).mockImplementation((entrada, opcoes) => {
+        if (String(entrada) === "/api/me/perfil" && opcoes?.method === "PATCH") {
+          recebido = JSON.parse(String(opcoes.body));
+          perfilDoServidor = { ...perfilDoServidor, idade: 70 };
+          return Promise.resolve(respostaJson(perfilDoServidor));
+        }
+        return original(entrada, opcoes);
+      });
+      await montar("/dashboard");
+      expect(await screen.findByRole("button", { name: "Agora não" })).toBeTruthy();
+      fireEvent.click(guia().getByRole("button", { name: "Responder" }));
+      fireEvent.change(guia().getByLabelText("Idade (opcional)"), { target: { value: "70" } });
+      expect((guia().getByLabelText("Meta de tempo registrado por dia") as HTMLInputElement).value).toBe("");
+      fireEvent.click(guia().getByRole("button", { name: "Salvar respostas" }));
+      const aviso = aplicabilidadeDaIdade(70)?.aviso;
+      expect(aviso).toBeTruthy();
+      expect(await guia().findByText(aviso!)).toBeTruthy();
+      expect(recebido).toEqual({ idade: 70 });
+    });
+
+    it("UI-61: Editar dados salva a meta na conta e campo em branco a remove", async () => {
+      const original = vi.mocked(fetch).getMockImplementation()!;
+      const alteracoes: unknown[] = [];
+      vi.mocked(fetch).mockImplementation((entrada, opcoes) => {
+        if (String(entrada) === "/api/me/perfil" && opcoes?.method === "PATCH") {
+          const corpo = JSON.parse(String(opcoes.body));
+          alteracoes.push(corpo);
+          perfilDoServidor = { ...perfilDoServidor, ...corpo };
+          return Promise.resolve(respostaJson(perfilDoServidor));
+        }
+        return original(entrada, opcoes);
+      });
+      await montar("/configuracoes");
+      fireEvent.click(await screen.findByRole("button", { name: "Editar dados" }));
+      const meta = screen.getByLabelText("Meta de tempo registrado por dia");
+      expect((meta as HTMLInputElement).value).toBe("");
+      fireEvent.change(meta, { target: { value: "7:45" } });
+      fireEvent.click(screen.getByRole("button", { name: "Salvar" }));
+      await waitFor(() => expect(alteracoes).toEqual([{ meta_diaria_min: 465 }]));
+      const fechar = screen.getByRole<HTMLButtonElement>("button", { name: "Cancelar" });
+      await waitFor(() => expect(fechar.disabled).toBe(false));
+      fireEvent.click(fechar);
+      const salvo = await screen.findByRole("button", { name: "Editar dados" });
+      fireEvent.click(salvo);
+      const preenchido = screen.getByLabelText("Meta de tempo registrado por dia");
+      expect((preenchido as HTMLInputElement).value).toBe("7:45");
+      fireEvent.change(preenchido, { target: { value: "" } });
+      fireEvent.click(screen.getByRole("button", { name: "Salvar" }));
+      await waitFor(() => expect(alteracoes).toEqual([{ meta_diaria_min: 465 }, { meta_diaria_min: null }]));
+    });
+
     it("UI-57: mostra as ações de primeira utilização e abre o pareamento", async () => {
       await montar("/dashboard");
       await screen.findByRole("heading", { name: "Primeiros passos" });
@@ -1379,10 +1433,15 @@ describe("o painel em camadas (UI-40)", PRAZO, () => {
       const titulo = await screen.findByRole("heading", { name: "Primeiros passos" });
       expect(document.activeElement).toBe(titulo);
       await guia().findByText("2 de 4 passos feitos");
-      expect(guia().getByRole("progressbar", { name: "2 de 4 passos feitos" }).getAttribute("aria-valuenow")).toBe("2");
-      expect(guia().getAllByRole("listitem").map((item) => item.textContent)).toEqual([
+      const progresso = guia().getByRole("progressbar", { name: "2 de 4 passos feitos" });
+      const passos = guia().getByRole("list");
+      const itens = within(passos).getAllByRole("listitem");
+      expect(progresso.getAttribute("aria-valuenow")).toBe("2");
+      expect(Number(progresso.getAttribute("aria-valuemax"))).toBe(itens.length);
+      expect(itens.map((item) => item.textContent)).toEqual([
         "Conta criada· feito", "Aparelho conectado· a fazer", "Consentimento dado· feito", "Primeira sessão registrada· a fazer",
       ]);
+      expect(passos.contains(guia().getByRole("heading", { name: "Opcional: idade e meta" }))).toBe(false);
       expect(guia().getByRole("link", { name: "Testar no navegador (sessão curta)" }).getAttribute("href")).toBe("/coletar");
     });
 

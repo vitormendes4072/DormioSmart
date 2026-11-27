@@ -28,6 +28,8 @@ const frases: Record<string, string> = {
   "nome deve ter no maximo {} caracteres": "O nome tem mais caracteres do que o permitido.",
   "idade deve ser um numero inteiro ou nulo": "Informe a idade em anos completos ou deixe o campo em branco.",
   "idade deve estar entre {} e {}": "A idade informada está fora do intervalo permitido.",
+  "a meta deve ser um numero inteiro de minutos ou nulo": "Informe uma meta válida ou deixe o campo em branco.",
+  "a meta deve estar entre 60 e 960 minutos": "A meta deve ficar entre 1 e 16 horas.",
   "perfil nao atualizado (fonte indisponivel)": "Não foi possível atualizar o perfil. Tente novamente em instantes.",
   "confirmacao necessaria": "Confirme o pedido para continuar.",
   "trecho acima de {} h": "Esta sessão ultrapassa o limite de duração para ser alterada de uma só vez.",

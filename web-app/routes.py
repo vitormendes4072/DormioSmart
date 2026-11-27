@@ -584,7 +584,7 @@ def init_routes(app):
     @app.route('/api/me/perfil', methods=['PATCH'])
     @require_auth
     def corrigir_meu_perfil():
-        """Correção de nome e idade (LGPD art. 18, III).
+        """Correção de nome, idade e meta (LGPD art. 18, III).
 
         `PATCH` parcial: só o que vem no corpo é alterado. Campo ausente e
         campo `null` são coisas diferentes — ausente é "não mexa", `null` é

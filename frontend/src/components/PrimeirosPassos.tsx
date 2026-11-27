@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { Link } from "react-router";
 
 import { URL_DO_APK } from "../lib/appAndroid";
+import { PerguntasDoGuia } from "./PerguntasDoGuia";
 
 const ACAO = "inline-flex min-h-11 items-center rounded-lg px-3 py-2 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-ring";
 const PRIMARIA = ACAO + " bg-primary text-primary-foreground hover:bg-primary/90";
@@ -65,6 +66,7 @@ export function PrimeirosPassos({ temAparelho, consentiu, situacaoConhecida, noA
           <li key={texto}>{texto}{situacaoConhecida && <span className="ml-2 text-xs text-muted-foreground">· {feito ? "feito" : "a fazer"}</span>}</li>
         ))}
       </ol>
+      <PerguntasDoGuia habilitado={situacaoConhecida} />
       <button type="button" onClick={dispensar} className={SECUNDARIA}>Dispensar</button>
     </section>
   );
