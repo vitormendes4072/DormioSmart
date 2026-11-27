@@ -4,7 +4,7 @@ import { CartaoDeMetrica } from "./CartoesDeRegistro";
 import { GraficoDeMovimento } from "./GraficoDeMovimento";
 
 import { formatarDuracao, formatarPorcentagem, type PontoDaSerie } from "../lib/metricas";
-import { escalaEmHoras, resumirPeriodo, rotuloVisivel, type SessaoDoPeriodo } from "../lib/resumoDoPeriodo";
+import { escalaEmHoras, resumirPeriodo, rotuloVisivel, type ParteDaSessao, type SessaoDoPeriodo } from "../lib/resumoDoPeriodo";
 import { LIMIAR_DE_MOVIMENTO } from "../types/sleep";
 
 const DIA = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "2-digit" });
@@ -14,15 +14,20 @@ const LARGURA = 100;
 const MINIMO_DE_POSICOES = 7;
 
 /** Barra com o topo arredondado, do chão até `topo` (coordenadas do SVG). */
-function contorno(indice: number, topo: number) {
-  const esquerda = indice * LARGURA + 25;
-  const direita = esquerda + 50;
-  const raio = Math.min(9, ALTURA - topo);
+function contorno(indice: number, topo: number, parte = 0, partes = 1) {
+  // Com mais de um aparelho, as barras dividem a mesma faixa de 50, com 4 de folga entre elas.
+  const largura = (50 - 4 * (partes - 1)) / partes;
+  const esquerda = indice * LARGURA + 25 + parte * (largura + 4);
+  const direita = esquerda + largura;
+  const raio = Math.min(largura / 2, 9, ALTURA - topo);
   return ["M", esquerda, ALTURA, "V", topo + raio, "Q", esquerda, topo, esquerda + raio, topo,
     "H", direita - raio, "Q", direita, topo, direita, topo + raio, "V", ALTURA, "Z"].join(" ");
 }
 
-function descrever(sessao: SessaoDoPeriodo) {
+function descrever(sessao: SessaoDoPeriodo): string {
+  if (sessao.partes && sessao.partes.length > 1) {
+    return `${sessao.partes.length} aparelhos: ` + sessao.partes.map((parte) => `${parte.rotulo}, ${descrever({ ...parte, chave: "", inicio: 0, fim: 0 })}`).join("; ");
+  }
   const registrado = formatarDuracao(sessao.tempo);
   return sessao.periodo === null ? `${registrado} registrados` : `${registrado} registrados de ${formatarDuracao(sessao.periodo)}`;
 }
@@ -51,7 +56,14 @@ export function ResumoDoPeriodo({ sessoes, parcial = false, movimento, aoEscolhe
   return (
     <section aria-label="Resumo do período" data-resumo-do-periodo className="space-y-3">
       <ul aria-label="Números do período" className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-        <CartaoDeMetrica valor={resumo.sessoes}><p>{resumo.sessoes === 1 ? "Sessão" : "Sessões"}</p></CartaoDeMetrica>
+        <CartaoDeMetrica valor={resumo.sessoes}>
+          <p>{resumo.sessoes === 1 ? "Sessão" : "Sessões"}</p>
+          {resumo.comVariosAparelhos > 0 && (
+            <p data-varios-aparelhos className="text-[11px]">
+              {resumo.comVariosAparelhos === 1 ? "1 registrada" : `${resumo.comVariosAparelhos} registradas`} com mais de um aparelho
+            </p>
+          )}
+        </CartaoDeMetrica>
         <CartaoDeMetrica valor={formatarDuracao(resumo.tempoMs)}><p>Tempo registrado</p></CartaoDeMetrica>
         <CartaoDeMetrica valor={resumo.mediaMs === null ? "—" : formatarDuracao(resumo.mediaMs)}><p>Média por sessão</p></CartaoDeMetrica>
         <CartaoDeMetrica valor={porcentagem}><p>Do período foi registrado</p></CartaoDeMetrica>
@@ -87,7 +99,11 @@ function BarrasDasSessoes({ sessoes, mediaMs, aoEscolherSessao }: {
   const posicoes = Math.max(MINIMO_DE_POSICOES, total);
   const vazias = posicoes - total;
   const largura = posicoes * LARGURA;
-  const { topoMs, ticks } = escalaEmHoras(Math.max(0, ...ordem.map((s) => Math.max(s.tempo, s.periodo ?? 0))));
+  const { topoMs, ticks } = escalaEmHoras(Math.max(0, ...ordem.flatMap((s) => [s, ...(s.partes ?? [])])
+    .map((s) => Math.max(s.tempo, s.periodo ?? 0))));
+  // A legenda de cores só existe quando alguma barra tem mais de um aparelho.
+  const aparelhos = [...new Map(ordem.flatMap((s) => (s.partes && s.partes.length > 1 ? s.partes : []))
+    .map((parte) => [parte.rotulo, parte.cor])).entries()];
   const y = (ms: number) => ALTURA * (1 - ms / topoMs);
   const temFalta = ordem.some((s) => s.periodo !== null && s.periodo > s.tempo);
   const dica = inspecionada === null ? null : ordem[inspecionada];
@@ -109,10 +125,18 @@ function BarrasDasSessoes({ sessoes, mediaMs, aoEscolherSessao }: {
             ))}
             {ordem.map((sessao, i) => (
               <g key={sessao.chave} data-barra={sessao.chave} className={inspecionada !== null && inspecionada !== i ? "opacity-50" : undefined}>
-                {sessao.periodo !== null && sessao.periodo > sessao.tempo && (
-                  <path data-sem-registro d={contorno(vazias + i, y(sessao.periodo))} className="fill-muted-foreground/25" />
-                )}
-                <path data-registrado d={contorno(vazias + i, y(sessao.tempo))} className="fill-primary" />
+                {(sessao.partes && sessao.partes.length > 1 ? sessao.partes : [null]).map((parte, p, todas) => {
+                  const medida: Pick<ParteDaSessao, "tempo" | "periodo"> = parte ?? sessao;
+                  return (
+                    <g key={parte?.rotulo ?? "sessao"} data-parte={parte?.rotulo}>
+                      {medida.periodo !== null && medida.periodo > medida.tempo && (
+                        <path data-sem-registro d={contorno(vazias + i, y(medida.periodo), p, todas.length)} className="fill-muted-foreground/25" />
+                      )}
+                      <path data-registrado d={contorno(vazias + i, y(medida.tempo), p, todas.length)}
+                        className={parte ? undefined : "fill-primary"} style={parte ? { fill: parte.cor } : undefined} />
+                    </g>
+                  );
+                })}
               </g>
             ))}
             {mediaMs !== null && total > 1 && (
@@ -148,7 +172,13 @@ function BarrasDasSessoes({ sessoes, mediaMs, aoEscolherSessao }: {
         </div>
       </div>
       <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
-        <span className="flex items-center gap-1.5"><span aria-hidden="true" className="size-2.5 rounded-sm bg-primary" /> Registrado</span>
+        {aparelhos.length > 0
+          ? aparelhos.map(([rotulo, cor]) => (
+            <span key={rotulo} data-legenda-aparelho className="flex items-center gap-1.5">
+              <span aria-hidden="true" className="size-2.5 rounded-sm" style={{ background: cor }} /> {rotulo}
+            </span>
+          ))
+          : <span className="flex items-center gap-1.5"><span aria-hidden="true" className="size-2.5 rounded-sm bg-primary" /> Registrado</span>}
         {temFalta && <span className="flex items-center gap-1.5"><span aria-hidden="true" className="size-2.5 rounded-sm bg-muted-foreground/25" /> Sem registro</span>}
         {mediaMs !== null && total > 1 && <span className="flex items-center gap-1.5"><span aria-hidden="true" className="w-4 border-t border-dashed border-current" /> Média</span>}
         {aoEscolherSessao && <span>Toque numa barra para ver a sessão</span>}

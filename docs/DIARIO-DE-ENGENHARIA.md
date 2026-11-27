@@ -14250,6 +14250,34 @@ A suíte passou com 1.099 testes em 73 arquivos. Lint, build, os dois Knip e as 
 
 ---
 
+# 2026-11-26 (xxiii) — UI-56: o mesmo período com dois aparelhos, lado a lado, sem somar
+
+**O problema, como foi entendido no início.** Com o filtro (`UI-55`), cada sessão diz de qual aparelho veio, mas em "Todos os dispositivos" a noite gravada pelo celular e pelo travesseiro ao mesmo tempo continua em duas sessões soltas. O autor pediu uma visão mista e sugeriu uma média, um mínimo e um máximo ou os pontos de movimento pintados.
+
+**Hipótese de trabalho.** A média não pode ser a visão mista: os dois aparelhos medem de formas diferentes (na primeira noite do `VIA-02`, com o mesmo limite, o celular marcou 0,7% do tempo com movimento e o travesseiro 8,6%), e o limite do celular está em aberto (`DATA-06`). Sessões de aparelhos diferentes que se sobrepõem em pelo menos 30% da mais curta viram um grupo (componente conexo, `mesmoPeriodo.ts`). No topo, o grupo conta como uma sessão; o tempo registrado é o tempo em que pelo menos um aparelho registrou (a união), e o gráfico mostra uma barra por aparelho, lado a lado, na cor dele. Na lista, uma linha por aparelho sob a mesma data (computador) ou uma seção por aparelho no mesmo cartão (celular), cada uma com a sua faixa ou gráfico, os seus números e as suas ações. O travesseiro sempre primeiro, depois o celular. O grupo não se chama "noite" (`ESC-01`): "2 aparelhos", "registrada com mais de um aparelho".
+
+**O que foi testado, e como.**
+- `mesmoPeriodo.test.ts` (6): o celular e o travesseiro na mesma noite, a borda dos 30% (36 min de 2 h juntam; 30 min não), a bancada à tarde fora da noite, o mesmo aparelho nunca junto, a ligação transitiva (o travesseiro reiniciado), e a união.
+- `ResumoDoPeriodo.test.tsx` (+3): o grupo conta como uma sessão com o aviso, as barras por aparelho na cor e a legenda, e o rótulo por escrito de cada aparelho.
+- `Historico.test.tsx` (+4): a data com "2 aparelhos" sobre duas linhas, o topo com a união (14 min, e não 22), o cartão do celular com uma seção e um "…" por aparelho e o "Abrir no Início" sem aparelho, e nenhum grupo com um aparelho escolhido.
+- **Sabotagens:** (1) sem o limite de 30%; (2) a soma no lugar da união; (3) o mesmo aparelho podendo juntar. Caíram 4, 1 e 1 testes.
+- **Na tela**, com `?demo=1` (os exemplos ganharam duas sessões do celular de exemplo, junto com o travesseiro): 390 px (as barras pareadas e o cartão com os dois aparelhos) e 1280 px (as linhas do grupo, conferidas pelo DOM).
+
+**Resultado medido.** Frontend **1 155 passam, 77 arquivos** (+13). `tsc`, `eslint`, `knip`, `knip:tipos`, `vite build` e `conferir_pacote_frontend.py` ok.
+
+**Adaptação.** Dentro do grupo, a ordem era a de início, e a legenda trocava de lugar conforme quem começou antes; passou a ser a do tipo (travesseiro, celular, outros), a mesma das cores.
+
+**O que deu errado no caminho.** Um teste esperava 12 min de união; o travesseiro terminava 2 min depois do celular, e a conta certa é 14 min. O teste estava errado, e o código certo.
+
+**Risco em aberto.**
+- As faixas e os gráficos de cada aparelho ainda usam as cores do app, e não a cor do aparelho; a cor aparece no ponto ao lado do nome e nas barras.
+- O Início, em "Todos os dispositivos", ainda junta os dois num gráfico só (`UI-57`, opcional).
+- A concordância entre os dois ("o travesseiro viu 4 dos 5 movimentos do celular") espera o limite do celular (`DATA-06`).
+
+**Procedência.** Branch `feature/UI-56-mesmo-periodo`, sobre a do `UI-55` (PR #327). Execuções em Windows 11, Node 24.11.0 e no navegador do Claude, em 26/11.
+
+---
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
