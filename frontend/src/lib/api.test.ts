@@ -73,7 +73,7 @@ describe("UI-53: presença de registro na conta", () => {
 
   it("aproveita a primeira página e encontra um registro mais antigo fora da bancada", async () => {
     const primeiraPagina = paginaDeBancada(1);
-    const buscar = vi.fn(async () => resposta(200, [{ ...primeiraPagina[0], bancada: false }]));
+    const buscar = vi.fn<typeof fetch>(async () => resposta(200, [{ ...primeiraPagina[0], bancada: false }]));
     vi.stubGlobal("fetch", buscar);
 
     await expect(verificarRegistrosDaConta(primeiraPagina, new AbortController().signal)).resolves.toBe("com-registro");

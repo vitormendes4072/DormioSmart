@@ -650,10 +650,10 @@ describe("montagem real das telas (UI-17)", PRAZO, () => {
 
     vi.mocked(fetch).mockImplementation(original);
     fireEvent.click(screen.getByRole("button", { name: "Tentar novamente" }));
-    expect(await screen.findByText("Nenhuma sessão no período selecionado.")).toBeTruthy();
+    expect(await screen.findByText("Ainda não há sessões.")).toBeTruthy();
     const pedidos = vi.mocked(fetch).mock.calls
       .map(([caminho]) => new URL(String(caminho), "http://localhost"))
-      .filter(({ pathname }) => pathname === "/api/sleep-history");
+      .filter(({ pathname, searchParams }) => pathname === "/api/sleep-history" && searchParams.has("desde"));
     const recortes = pedidos.map(({ searchParams }) => Date.parse(searchParams.get("desde") ?? ""));
     expect(recortes.at(-1)!).toBeLessThan(recortes[0]);
   });
@@ -853,15 +853,15 @@ describe("montagem real das telas (UI-17)", PRAZO, () => {
   });
 
   it.each([
-    ["site", false, "Coletar"],
-    ["app", true, "Noite"],
-  ] as const)("explica o vínculo do celular no %s", async (_, nativo, tela) => {
+    ["site", false, "Coletar registra sessões curtas e vincula o celular à sua conta."],
+    ["app", true, "O celular é vinculado à sua conta depois da primeira gravação em Noite."],
+  ] as const)("explica o vínculo do celular no %s", async (_, nativo, mensagem) => {
     const plataforma = vi.spyOn(Capacitor, "isNativePlatform").mockReturnValue(nativo);
     const plugin = vi.spyOn(Capacitor, "isPluginAvailable").mockImplementation((nome) => nome === "Noite");
     try {
       await montar("/dispositivos");
       const quadro = screen.getByRole("heading", { name: "Sobre o pareamento" }).closest("section");
-      expect(quadro?.textContent).toContain(`O celular é vinculado à sua conta ao usar ${tela}.`);
+      expect(quadro?.textContent).toContain(mensagem);
     } finally {
       plataforma.mockRestore();
       plugin.mockRestore();
@@ -1260,9 +1260,10 @@ describe("avisos no painel (UI-18)", PRAZO, () => {
     expect(screen.getByText(escopo)).toBeTruthy();
   });
 
-  it("escopo: mostra a nota no painel sem leituras", async () => {
+  it("escopo: o guia do painel sem leituras explica os limites do registro", async () => {
     await montar("/dashboard");
-    expect(await screen.findByText(escopo)).toBeTruthy();
+    const guia = await screen.findByRole("region", { name: "Primeiros passos" });
+    expect(within(guia).getByText(/não mede o sono e não é diagnóstico/i)).toBeTruthy();
   });
 
   it("escopo: omite a nota durante o carregamento", async () => {
@@ -1317,8 +1318,8 @@ describe("destino do Android após autenticar (UI-53)", PRAZO, () => {
       }
       fireEvent.change(screen.getByLabelText("E-mail"), { target: { value: "titular@exemplo.com" } });
       fireEvent.change(screen.getByLabelText("Senha"), { target: { value: "senha-segura-de-teste" } });
-      fireEvent.click(screen.getByRole("button", { name: rota === "/cadastro" ? "Criar conta" : "Entrar", exact: true }));
-      expect(await screen.findByRole("heading", { name: "A noite inteira" })).toBeTruthy();
+      fireEvent.click(screen.getByRole("button", { name: rota === "/cadastro" ? "Criar conta" : "Entrar" }));
+      expect(await screen.findByRole("heading", { name: "A noite inteira" }, { timeout: 8000 })).toBeTruthy();
       expect(window.location.pathname).toBe("/noite");
       expect(vi.mocked(fetch).mock.calls.some(([url]) => String(url).startsWith("/api/sleep-history"))).toBe(false);
     } finally {
@@ -1383,9 +1384,15 @@ describe("o painel em camadas (UI-40)", PRAZO, () => {
     });
 
     it("UI-53: esconde o guia com a primeira sessão fora da bancada", async () => {
-      responder({ dispositivos: [travesseiro], leituras: [leitura(30), leitura(0)] });
+      const leituras: ReturnType<typeof leitura>[] = [];
+      responder({ dispositivos: [travesseiro], leituras });
       await montar("/dashboard");
-      await screen.findByRole("heading", { name: "Seus registros" });
+      await screen.findByRole("heading", { name: "Primeiros passos" });
+      fireEvent.click(screen.getAllByRole("link", { name: "Configurações" })[0]);
+      const retomar = await screen.findByRole("link", { name: "Primeiros passos" }, { timeout: 8000 });
+      leituras.push(leitura(30), leitura(0));
+      fireEvent.click(retomar);
+      await screen.findByRole("heading", { name: "Seus registros" }, { timeout: 8000 });
       expect(screen.queryByRole("heading", { name: "Primeiros passos" })).toBeNull();
     });
 
@@ -1411,7 +1418,7 @@ describe("o painel em camadas (UI-40)", PRAZO, () => {
       await screen.findByRole("heading", { name: "Primeiros passos" });
       fireEvent.click(guia().getByRole("button", { name: "Dispensar" }));
       fireEvent.click(screen.getAllByRole("link", { name: "Configurações" })[0]);
-      await screen.findByRole("heading", { name: "Configurações", level: 1 });
+      await screen.findByRole("heading", { name: "Configurações", level: 1 }, { timeout: 8000 });
       fireEvent.click(screen.getByRole("link", { name: "Primeiros passos" }));
       expect(await screen.findByRole("heading", { name: "Primeiros passos" })).toBeTruthy();
     });

@@ -14118,6 +14118,35 @@ A suíte passou com 1.099 testes em 73 arquivos. Lint, build, os dois Knip e as 
 
 ---
 
+# 2026-11-26 (xviii) — onboarding etapa 1 (UI-52, UI-53 e UI-54)
+
+**O problema, como foi entendido no início.** Quem chegava ao Início com conta nova via cartões vazios e uma orientação para verificar um aparelho que ainda não tinha. No Android, o destino padrão do login direto e do cadastro também levava ao painel vazio.
+
+**Hipótese de trabalho.** A existência de sessão fora da bancada determina se o guia aparece. O estado do consentimento e dos aparelhos vem dos mesmos dados que a conta já usa. Com os dois caminhos de registro no card, a pessoa pode começar pelo travesseiro, pelo app ou conhecer a coleta curta no site.
+
+**O que foi testado, e como.** Montagem pela entrada real do frontend com respostas sintéticas. Verificamos estados vazios, recarga de dados após a primeira sessão, bancada, consentimento vigente, falha de aparelho ou perfil, retomar o guia e encaminhamento no Android. No Edge, capturamos Início, Dispositivos e Histórico a 390 e 1280 px, nos dois temas, e o Início a 1050 px, nos dois estados do menu.
+
+**Resultado medido.** A 390 px, o topo da navegação móvel ficou em 782,5 px na rolagem final. A última ação do Início terminou em 746,5 px, com 36 px de folga. Em Dispositivos, terminou em 380 px, e em Histórico, em 347 px. A 1050 px, o Início manteve duas colunas com o menu aberto e recolhido. Nenhuma das três telas transbordou horizontalmente nos cenários capturados. No Pixel 6 emulado, abertura logada, login vindo do guarda e cadastro novo chegaram a `/noite`, sem pedidos ao histórico.
+
+A suíte completa passou com 1.117 testes em 73 arquivos. Os 14 testes novos falharam contra `develop` `9efde23`. Lint, build, Knip e Knip de tipos passaram. O orçamento passou com 170.818 B gzip no Dashboard para um teto de 260.000 B. As três conferências dos documentos passaram.
+
+| Sabotagem | Teste que falhou |
+|---|---|
+| Retirar o teto de páginas | Para em 16 páginas e devolve inconclusivo sem consultar a página 17 |
+| Tratar o teto como ausência confirmada | Para em 16 páginas e devolve inconclusivo sem consultar a página 17 |
+| Contar bancada como sessão | Descarta bancada e exibe os passos conforme aparelhos e consentimento vigente |
+| Usar o padrão do site no app | Abre a Noite após login e cadastro sem consultar o histórico, e o teste de destino padrão do Android |
+
+**Adaptação.** O Início reaproveita a primeira página sem filtro e segue o cursor só quando ela vem cheia, sem sessão fora da bancada. A consulta da presença na conta termina na 16ª página e não publica vazio se o limite for inconclusivo. O Histórico mantém o recorte por período e só faz a conferência da conta quando o recorte completo não trouxe sessões válidas. No Android, a abertura por `/` e o retorno dado pelo guarda preservam o caminho existente. Só o padrão do login e cadastro passa a ser a Noite. O dispositivo guarda apenas a preferência de dispensar, por conta.
+
+**O que deu errado no caminho.** O UI-51 foi atribuído à frente do detalhe de tempo registrado. Os três itens desta etapa foram renumerados antes de entrar no backlog. A primeira rodada de testes ainda buscava os textos anteriores e incluía a nova consulta sem `desde` na asserção do recorte do Histórico. Os testes mantiveram as verificações de filtro e de navegação com os textos novos. O teste de linguagem excedeu 5 s com o emulador e o build em paralelo. Passou isolado e na rodada completa com prazo de 15 s por teste, pela CLI. A primeira captura esperou o carregamento integral do documento e excedeu o prazo. A segunda aguardou o conteúdo da tela. No emulador, um diálogo do Android cobriu a primeira captura do aparelho. As três entradas foram repetidas para capturar a WebView diretamente.
+
+**Risco em aberto.** A verificação do cadastro e login usou respostas sintéticas. A distribuição ao Android continua dependendo do próximo APK de release. As perguntas opcionais, a meta e a política pertencem à etapa 2 (UI-55, UI-56 e LGPD-16).
+
+**Procedência.** Base `develop` `9efde23`. Execuções em Windows 11, Node 24.11.0 e Edge, em 26/11. No Android, APK debug instalado com identificador separado e respostas de autenticação e API simuladas na WebView. [Capturas da etapa 1](evidencias/onboarding-etapa-1/).
+
+---
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
