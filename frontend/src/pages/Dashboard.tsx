@@ -23,6 +23,7 @@ import { LIMITE_DO_PAINEL } from "../lib/api";
 import { origemDaTemperatura, descreverRecorte, estaAtivo } from "../lib/dispositivos";
 import { consentimentoVigente } from "../lib/consentimento";
 import { noiteNativaDisponivel } from "../lib/noiteNativa";
+import { minutosDaMeta } from "../lib/metaDiaria";
 import { guiaDispensado, salvarPreferenciaDoGuia } from "../lib/primeirosPassos";
 import { calcularCobertura } from "../lib/cobertura";
 import { limitesDaConsulta, sessoesDoDia, somarDias } from "../lib/calendarioDoSono";
@@ -217,10 +218,14 @@ export function Dashboard() {
       classeDoLink={LINK_DO_CARTAO}
     />
   );
+  const aparelhosDaMeta = dispositivos.filter((d) => estaAtivo(d) && (dispositivo === null || d.id === dispositivo));
   const calendario = (
     <CalendarioDoSono dispositivo={dispositivo} demo={demo} selecionado={diaSelecionado} aoSelecionarDia={selecionarDia}
       ancora={ancoraDoCalendario} aoNavegar={setAncoraDoCalendario} destinoDoGrafico={telaLarga ? vagaDoGrafico : null}
-      contaSemRegistro={contaSemRegistro} abrirGuia={() => alterarPreferenciaDoGuia(false)} />
+      contaSemRegistro={contaSemRegistro} abrirGuia={() => alterarPreferenciaDoGuia(false)}
+      meta={minutosDaMeta(perfil?.meta_diaria_min)}
+      dicaDaMeta={aparelhosDaMeta.some((d) => d.tipo === "travesseiro") ? "travesseiro"
+        : noiteNativaDisponivel() || aparelhosDaMeta.some((d) => d.tipo === "celular") ? "app" : undefined} />
   );
   // Onde o gráfico entra em tela larga. Esticado (`*:flex-1`), ele acompanha a altura do que está
   // ao lado.

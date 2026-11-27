@@ -1,6 +1,7 @@
 import { useId, useState } from "react";
 
 import { MarcaDoDiaSelecionado } from "./MarcaDoDiaSelecionado";
+import { ComparacaoDaMeta } from "./ComparacaoDaMeta";
 import { serieDaSemana } from "../lib/calendarioDoSono";
 
 const DATA = new Intl.DateTimeFormat("pt-BR", { weekday: "long", day: "numeric", month: "long" });
@@ -19,6 +20,8 @@ type Props = {
   parcial: boolean;
   recarregar: () => void;
   abrirGuia?: () => void;
+  meta?: number | null;
+  dicaDaMeta?: "travesseiro" | "app";
 };
 
 function duracao(tempoMs: number) {
@@ -45,16 +48,19 @@ function contornoDaBarra(indice: number, topo: number) {
 
 export function GraficoDeTempoPorDia({
   registros, referencia, hoje, selecionado, aoSelecionarDia, carregando, falhou, parcial, recarregar, abrirGuia,
+  meta = null, dicaDaMeta,
 }: Props) {
   const titulo = useId();
   const [diaInspecionado, setDiaInspecionado] = useState<number | null>(null);
-  const { dias, comRegistro, media, maiores, menores } = serieDaSemana(registros, referencia, hoje, parcial);
+  const serie = serieDaSemana(registros, referencia, hoje, parcial);
+  const { dias, comRegistro, media, maiores, menores } = serie;
   const escolhido = selecionado?.getTime();
   const escolhaNaSemana = dias.some((dia) => dia.estado !== "futuro" && dia.data.getTime() === escolhido);
   const existeDadoIndeterminado = dias.some((dia) => dia.estado === "incompleto");
   const indiceDoTooltip = dias.findIndex((dia) => dia.data.getTime() === diaInspecionado && dia.estado !== "futuro");
   const diaDoTooltip = dias[indiceDoTooltip];
-  const maximo = maiores[0]?.tempoMs ?? 0;
+  const metaMs = meta === null ? null : meta * 60_000;
+  const maximo = Math.max(maiores[0]?.tempoMs ?? 0, metaMs ?? 0);
   const passo = Math.max(1, Math.ceil(maximo / (3 * HORA)));
   const y = (tempoMs: number) => ALTURA * (1 - tempoMs / (passo * 3 * HORA));
   const ticks = [3 * passo, 2 * passo, passo, 0];
@@ -78,6 +84,7 @@ export function GraficoDeTempoPorDia({
       {!carregando && !falhou && (
         <>
           {parcial && <p role="status" className="mt-1 text-xs font-semibold text-muted-foreground">Histórico parcial. A semana está incompleta.</p>}
+          {meta !== null && <ComparacaoDaMeta serie={serie} meta={meta} hoje={hoje} parcial={parcial} orientacao={dicaDaMeta} />}
           {media === null && !parcial && abrirGuia ? (
             <>
               <p className="mt-2 text-sm text-muted-foreground">Depois da primeira sessão, o tempo registrado de cada dia aparece aqui.</p>
@@ -104,7 +111,7 @@ export function GraficoDeTempoPorDia({
                         <li><strong>Menos tempo:</strong> {resumo(menores)}</li>
                       </>
                     )}
-                    <li><strong>Média dos dias com registro:</strong> {duracao(media)}</li>
+                    {meta === null && <li><strong>Média dos dias com registro:</strong> {duracao(media)}</li>}
                   </>
                 )}
               </ul>}
@@ -128,6 +135,8 @@ export function GraficoDeTempoPorDia({
                     ))}
                     {media !== null && <line x1="0" x2="700" y1={y(media)} y2={y(media)} className="stroke-muted-foreground"
                       strokeDasharray="4 4" vectorEffect="non-scaling-stroke" />}
+                    {metaMs !== null && <line data-linha-da-meta x1="0" x2="700" y1={y(metaMs)} y2={y(metaMs)}
+                      className="stroke-primary" strokeDasharray="9 4" strokeWidth="2" vectorEffect="non-scaling-stroke" />}
                   </svg>
                   <div className="relative grid grid-cols-7">
                     {dias.map((dia) => {
@@ -163,6 +172,9 @@ export function GraficoDeTempoPorDia({
               </div>
               {media !== null && <p className="mt-2 flex items-center gap-1.5 text-[11px] text-muted-foreground">
                 <span aria-hidden="true" className="w-4 border-t border-dashed border-current" /> Média
+              </p>}
+              {meta !== null && <p className="mt-1 flex items-center gap-1.5 text-[11px] font-semibold text-primary">
+                <span aria-hidden="true" className="w-4 border-t-2 border-dashed border-current" /> Sua meta
               </p>}
             </>
           )}

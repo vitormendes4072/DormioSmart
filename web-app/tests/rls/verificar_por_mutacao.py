@@ -752,6 +752,23 @@ SABOTADORES = {
         exige="test_o_expurgo_apaga_so_o_que_passou_de_12_meses",
     ),
     # APP-19 (23/11): a versao do app no aparelho, migracao 026.
+    "meta_sem_faixa": dict(
+        descricao="a meta aceita valores fora da faixa",
+        sql="alter table public.profiles drop constraint profiles_meta_diaria_faixa;",
+        minimo=2,
+        exige="test_meta_fora_da_faixa_e_recusada",
+    ),
+    "meta_do_perfil_alheio": dict(
+        descricao="a meta pode ser lida e escrita em outra conta",
+        sql="""
+            drop policy profiles_select_own on public.profiles;
+            create policy profiles_select_own on public.profiles for select to authenticated using (true);
+            drop policy profiles_update_own on public.profiles;
+            create policy profiles_update_own on public.profiles for update to authenticated using (true) with check (true);
+        """,
+        minimo=1,
+        exige="test_outra_conta_nao_le_nem_grava_a_meta",
+    ),
     "versao_sem_formato": dict(
         descricao="a restricao do formato da versao do app sai",
         sql="alter table public.devices drop constraint devices_versao_app_formato;",

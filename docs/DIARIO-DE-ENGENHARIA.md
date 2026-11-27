@@ -14353,6 +14353,39 @@ Na integração do UI-55, o dublê de `useDispositivos` no teste de Histórico a
 
 ---
 
+# 2026-11-27 — onboarding etapa 2 (UI-60, UI-61 e LGPD-16)
+
+**O problema, como foi entendido no início.** A etapa 1 ensinava como registrar. Faltavam as perguntas opcionais de idade e meta, a comparação semanal e o texto da política que descreve esses usos.
+
+**Hipótese de trabalho.** Usar a rota de perfil para as duas respostas mantém uma fonte de verdade. A média deve ser a do gráfico, e a projeção pode informar quanto tempo registrado faltaria sem sugerir uma meta à pessoa.
+
+**O que foi testado, e como.** Guia, edição da conta, linha e comparação da meta com dados sintéticos no Edge. API com pytest. RLS, faixas, supressão e união da cobertura na consulta, diagnóstico de migrações e reaplicação em Postgres 17. A conferência da 027 é somente leitura.
+
+**Resultado medido.** Frontend com 1.182 testes passando em 79 arquivos. Backend com 760 testes passando e 1 pulado. Postgres 17.11 com 356 testes RLS passando. O diagnóstico distinguiu os 25 estados e a conferência após duas aplicações da 027 devolveu cinco valores verdadeiros. Os privilégios já concedidos à tabela alcançam a nova coluna. Os testes reais confirmaram acesso à própria linha e isolamento de outra conta. A consulta omitiu a coorte sintética de quatro contas e, na semana com cinco, devolveu três primeiras sessões em até sete dias e um dia acima de quatro horas.
+
+Contra `develop`, falharam 5 testes de tela e vocabulário, 9 do PATCH e 4 de acesso à meta sem a coluna. A projeção também teve controles no módulo novo. As oito sabotagens foram executadas e restauradas.
+
+| Sabotagem | Resultado |
+|---|---|
+| Tratar dia vazio como zero | Falhou o teste da média e dos dias restantes da projeção |
+| Dividir o total por sete | Falhou o teste de média e projeção do gráfico |
+| Projetar com histórico parcial | Falhou o teste de omissão da projeção |
+| Inserir “ideal para dormir” no cartão | Falhou a guarda de vocabulário |
+| Remover a faixa no Flask | Falharam os casos 59 e 961 do PATCH |
+| Remover a restrição SQL | Falharam os dois casos de faixa no RLS |
+| Permitir a leitura e a escrita de outra conta | Falharam seis testes, incluindo o de isolamento da meta |
+| Suprimir apenas coortes com menos de quatro contas | Falhou o teste da consulta agregada |
+
+**Adaptação.** O gráfico usa a mesma série semanal do calendário, informa quantos dias entraram na média e omite a projeção quando o histórico é parcial. Hoje vazio e os dias futuros entram na projeção. A consulta agregada usa dias civis em `America/Sao_Paulo`, une intervalos com duração declarada e não estima duração das épocas antigas sem esse valor. O patch aprovado da política foi aplicado com as quatro datas em 27/11, para o release previsto.
+
+**O que deu errado no caminho.** A revisão automática ficou indisponível por limite de uso durante a troca de worktree. Após retomar na worktree registrada, a gravação foi autorizada. O primeiro cenário SQL tentava representar quatro horas como uma época, acima da faixa de uma época no banco. O teste passou a inserir épocas válidas. O controle sem 027 mostrou que uma recusa genérica aceitava o erro de coluna ausente nos testes de faixa. Esses testes passaram a exigir a violação da restrição. A primeira captura perdeu o contexto durante a atualização da prévia e foi repetida com a tela estabilizada.
+
+**Risco em aberto.** O autor aplica a 027 na produção e confirma antes do merge. A data pública da política deve acompanhar a data efetiva do release. A execução de banco desta etapa usou exclusivamente dados sintéticos, localmente.
+
+**Procedência.** `develop` `905ed46`. Windows 11, Node 24.11, Python 3.13, Edge e contêiner local Postgres 17.11. As capturas estão em [evidências da etapa 2](evidencias/onboarding-etapa-2/). O SQL de conferência está em `dados-locais/CONFERENCIA-027-meta-diaria.sql`, fora do Git. Nenhuma junction criada.
+
+---
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
