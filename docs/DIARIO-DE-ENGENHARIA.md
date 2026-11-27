@@ -14376,6 +14376,8 @@ Contra `develop`, falharam 5 testes de tela e vocabulário, 9 do PATCH e 4 de ac
 | Permitir a leitura e a escrita de outra conta | Falharam seis testes, incluindo o de isolamento da meta |
 | Suprimir apenas coortes com menos de quatro contas | Falhou o teste da consulta agregada |
 
+✏️ **Revisão da PR #331.** O progresso de “Primeiros passos” acompanha os quatro itens da lista. “Opcional: idade e meta” aparece em bloco separado, sem marca de pendência. O teste de tela compara o total acessível com o número de itens. Ao recolocar idade e meta como quinto item, falhou com “esperava 4, recebeu 5”. As quatro capturas do guia foram atualizadas.
+
 **Adaptação.** O gráfico usa a mesma série semanal do calendário, informa quantos dias entraram na média e omite a projeção quando o histórico é parcial. Hoje vazio e os dias futuros entram na projeção. A consulta agregada usa dias civis em `America/Sao_Paulo`, une intervalos com duração declarada e não estima duração das épocas antigas sem esse valor. O patch aprovado da política foi aplicado com as quatro datas em 27/11, para o release previsto.
 
 **O que deu errado no caminho.** A revisão automática ficou indisponível por limite de uso durante a troca de worktree. Após retomar na worktree registrada, a gravação foi autorizada. O primeiro cenário SQL tentava representar quatro horas como uma época, acima da faixa de uma época no banco. O teste passou a inserir épocas válidas. O controle sem 027 mostrou que uma recusa genérica aceitava o erro de coluna ausente nos testes de faixa. Esses testes passaram a exigir a violação da restrição. A primeira captura perdeu o contexto durante a atualização da prévia e foi repetida com a tela estabilizada.

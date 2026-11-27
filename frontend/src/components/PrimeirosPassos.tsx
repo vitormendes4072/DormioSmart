@@ -2,9 +2,6 @@ import { useEffect, useRef } from "react";
 import { Link } from "react-router";
 
 import { URL_DO_APK } from "../lib/appAndroid";
-import { usePerfil } from "../contexts/PerfilContext";
-import { minutosDaMeta } from "../lib/metaDiaria";
-import { idadeDoPerfil } from "../lib/perfil";
 import { PerguntasDoGuia } from "./PerguntasDoGuia";
 
 const ACAO = "inline-flex min-h-11 items-center rounded-lg px-3 py-2 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-ring";
@@ -19,8 +16,6 @@ export function PrimeirosPassos({ temAparelho, consentiu, situacaoConhecida, noA
   dispensar: () => void;
 }) {
   const titulo = useRef<HTMLHeadingElement>(null);
-  const { perfil } = usePerfil();
-  const opcionaisPreenchidos = idadeDoPerfil(perfil) !== null && minutosDaMeta(perfil?.meta_diaria_min) !== null;
   const passos = [
     { texto: "Conta criada", feito: true },
     { texto: "Aparelho conectado", feito: temAparelho },
@@ -70,7 +65,6 @@ export function PrimeirosPassos({ temAparelho, consentiu, situacaoConhecida, noA
         {passos.map(({ texto, feito }) => (
           <li key={texto}>{texto}{situacaoConhecida && <span className="ml-2 text-xs text-muted-foreground">· {feito ? "feito" : "a fazer"}</span>}</li>
         ))}
-        <li>Idade e meta (opcional){situacaoConhecida && <span className="ml-2 text-xs text-muted-foreground">· {opcionaisPreenchidos ? "feito" : "a fazer"}</span>}</li>
       </ol>
       <PerguntasDoGuia habilitado={situacaoConhecida} />
       <button type="button" onClick={dispensar} className={SECUNDARIA}>Dispensar</button>

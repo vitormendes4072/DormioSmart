@@ -56,7 +56,7 @@ export function PerguntasDoGuia({ habilitado }: { habilitado: boolean }) {
 
   return (
     <div className="mt-2 space-y-2 rounded-xl border border-border p-3">
-      <h3 className="text-sm font-bold">Duas perguntas (opcional)</h3>
+      <h3 className="text-sm font-bold">Opcional: idade e meta</h3>
       {aviso && <p role="status" className="text-xs text-muted-foreground">{aviso}</p>}
       {abertas ? (
         <form className="space-y-3" onSubmit={salvar}>

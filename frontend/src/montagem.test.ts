@@ -1433,10 +1433,15 @@ describe("o painel em camadas (UI-40)", PRAZO, () => {
       const titulo = await screen.findByRole("heading", { name: "Primeiros passos" });
       expect(document.activeElement).toBe(titulo);
       await guia().findByText("2 de 4 passos feitos");
-      expect(guia().getByRole("progressbar", { name: "2 de 4 passos feitos" }).getAttribute("aria-valuenow")).toBe("2");
-      expect(guia().getAllByRole("listitem").map((item) => item.textContent)).toEqual([
-        "Conta criada· feito", "Aparelho conectado· a fazer", "Consentimento dado· feito", "Primeira sessão registrada· a fazer", "Idade e meta (opcional)· a fazer",
+      const progresso = guia().getByRole("progressbar", { name: "2 de 4 passos feitos" });
+      const passos = guia().getByRole("list");
+      const itens = within(passos).getAllByRole("listitem");
+      expect(progresso.getAttribute("aria-valuenow")).toBe("2");
+      expect(Number(progresso.getAttribute("aria-valuemax"))).toBe(itens.length);
+      expect(itens.map((item) => item.textContent)).toEqual([
+        "Conta criada· feito", "Aparelho conectado· a fazer", "Consentimento dado· feito", "Primeira sessão registrada· a fazer",
       ]);
+      expect(passos.contains(guia().getByRole("heading", { name: "Opcional: idade e meta" }))).toBe(false);
       expect(guia().getByRole("link", { name: "Testar no navegador (sessão curta)" }).getAttribute("href")).toBe("/coletar");
     });
 
@@ -1507,7 +1512,7 @@ describe("o painel em camadas (UI-40)", PRAZO, () => {
         : original(entrada, opcoes));
       await montar("/dashboard");
       await screen.findByRole("heading", { name: "Primeiros passos" });
-      expect(guia().getAllByRole("listitem")).toHaveLength(5);
+      expect(guia().getAllByRole("listitem")).toHaveLength(4);
       expect(guia().queryByText(/a fazer|feito/)).toBeNull();
       expect(guia().queryByRole("progressbar")).toBeNull();
     });
