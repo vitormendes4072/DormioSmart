@@ -4,6 +4,7 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router";
 import { RotaDeVisitante, RotaProtegida } from "./components/Guardas";
 
 import { Layout } from "./components/Layout";
+import { EntradaDaConta } from "./components/EntradaDaConta";
 import { noiteNativaDisponivel } from "./lib/noiteNativa";
 
 import { rotaSobDemanda } from "./components/RotaSobDemanda";
@@ -18,6 +19,7 @@ const NovaSenha = rotaSobDemanda("NovaSenha", () => import("./pages/NovaSenha").
 const Noite = rotaSobDemanda("Noite", () => import("./pages/Noite").then((m) => ({ default: m.Noite })));
 const Register = rotaSobDemanda("Register", () => import("./pages/Register").then((m) => ({ default: m.Register })));
 const Settings = rotaSobDemanda("Settings", () => import("./pages/Settings").then((m) => ({ default: m.Settings })));
+const PrimeirosPassos = rotaSobDemanda("PrimeirosPassos", () => import("./pages/PrimeirosPassos").then((m) => ({ default: m.PrimeirosPassos })));
 const Privacidade = rotaSobDemanda("Privacidade", () => import("./pages/Privacidade"));
 const ListaDeEspera = rotaSobDemanda("ListaDeEspera", () => import("./pages/ListaDeEspera").then((m) => ({ default: m.ListaDeEspera })));
 
@@ -42,7 +44,7 @@ export default function App() {
             usuario logado veem a mesma pagina, com o botao mudando de destino. */}
         {/* APP-02, etapa 4: no app Android, o comeco e a noite (ou o login, pelo
             guarda). A pagina de apresentacao e para quem chega pelo site. */}
-        <Route path="/" element={noiteNativaDisponivel() ? <Navigate to="/noite" replace /> : <Suspense fallback={null}><Landing /></Suspense>} />
+        <Route path="/" element={noiteNativaDisponivel() ? <Navigate to="/entrada" replace /> : <Suspense fallback={null}><Landing /></Suspense>} />
 
         <Route element={<RotaDeVisitante />}>
           <Route path="/login" element={<Suspense fallback={null}><Login /></Suspense>} />
@@ -67,6 +69,8 @@ export default function App() {
         <Route path="/lista-de-espera" element={<Suspense fallback={null}><ListaDeEspera /></Suspense>} />
 
         <Route element={<RotaProtegida />}>
+          <Route path="/entrada" element={<EntradaDaConta />} />
+          <Route path="/primeiros-passos" element={<Suspense fallback={null}><PrimeirosPassos /></Suspense>} />
           <Route element={<Layout />}>
             <Route path="/dashboard" element={<Suspense fallback={null}><Dashboard /></Suspense>} />
             <Route path="/coletar" element={<Suspense fallback={null}><Coletar /></Suspense>} />

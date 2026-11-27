@@ -3,8 +3,6 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router";
 
 import { AuthLayout } from "../components/AuthLayout";
-import { noiteNativaDisponivel } from "../lib/noiteNativa";
-import { destinoSeguro } from "../lib/rotas";
 import { MINIMO_DA_SENHA, cadastrar, reenviarConfirmacao } from "../lib/autenticacao";
 import { BOTAO_PRIMARIO_CLS, INPUT_CLS, LABEL_CLS } from "../lib/ui";
 
@@ -38,7 +36,7 @@ export function Register() {
       return;
     }
     // Sem confirmacao de e-mail no projeto, a sessao ja vem no cadastro.
-    navigate(destinoSeguro(undefined, noiteNativaDisponivel()));
+    navigate("/entrada", { replace: true });
   }
 
   if (aguardandoConfirmacao) {

@@ -42,8 +42,8 @@ export type Pareamento = {
 
 export const NOME_MAXIMO = 60;
 
-export function listarDispositivos(): Promise<Dispositivo[]> {
-  return requisitarJson<Dispositivo[]>("/api/devices");
+export function listarDispositivos(signal?: AbortSignal): Promise<Dispositivo[]> {
+  return requisitarJson<Dispositivo[]>("/api/devices", { signal });
 }
 
 export function parearDispositivo(
