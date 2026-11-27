@@ -1,5 +1,5 @@
 import { ChevronDown, ChevronLeft, ChevronRight, Moon } from "lucide-react";
-import { useId, useMemo, useRef, useState } from "react";
+import { useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 import { GraficoDeTempoPorDia } from "./GraficoDeTempoPorDia";
@@ -59,6 +59,19 @@ export function CalendarioDoSono({ dispositivo, demo, selecionado, aoSelecionarD
   const titulo = useId();
   const painel = useId();
   const alternador = useRef<HTMLButtonElement>(null);
+  const destinoInline = useRef<HTMLDivElement>(null);
+  const [suporteDoGrafico] = useState(() => {
+    const suporte = document.createElement("div");
+    suporte.className = "flex min-w-0 flex-1 flex-col *:flex-1";
+    return suporte;
+  });
+
+  // O portal mantém a mesma raiz quando muda de lugar, preservando a instância do gráfico.
+  useLayoutEffect(() => {
+    (destinoDoGrafico ?? destinoInline.current)?.append(suporteDoGrafico);
+    return () => suporteDoGrafico.remove();
+  }, [destinoDoGrafico, suporteDoGrafico]);
+
   const data = aberto ? ancora : selecionado ?? hoje;
   const janela = janelaDoCalendario(data);
   const semana = segundaDaSemana(data);
@@ -166,7 +179,7 @@ export function CalendarioDoSono({ dispositivo, demo, selecionado, aoSelecionarD
   );
 
   return (
-    <div data-calendario-do-inicio className={`w-full min-w-0 space-y-2 ${aberto && destinoDoGrafico ? "col-span-full" : ""}`}>
+    <div data-calendario-do-inicio className={`w-full min-w-0 ${aberto && destinoDoGrafico ? "col-span-full" : ""}`}>
       <section aria-labelledby={titulo} className="@container min-w-0 rounded-2xl border border-border bg-card shadow-sm">
         <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2 px-3 py-2.5 sm:px-4 @[450px]:grid-cols-[minmax(9rem,1fr)_minmax(10rem,1.5fr)_auto]">
           <div>
@@ -255,7 +268,8 @@ export function CalendarioDoSono({ dispositivo, demo, selecionado, aoSelecionarD
           )}
         </div>
       </section>
-      {destinoDoGrafico ? createPortal(grafico, destinoDoGrafico) : grafico}
+      <div ref={destinoInline} className={destinoDoGrafico ? "hidden" : "mt-2"} />
+      {createPortal(grafico, suporteDoGrafico)}
     </div>
   );
 }
