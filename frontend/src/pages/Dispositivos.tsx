@@ -12,7 +12,7 @@ import { noiteNativaDisponivel } from "../lib/noiteNativa";
 export function Dispositivos() {
   const { search } = useLocation();
   const demo = estaEmModoDemo(search);
-  const [pareamentoAberto, setPareamentoAberto] = useState(false);
+  const [pareamentoAberto, setPareamentoAberto] = useState(() => new URLSearchParams(search).get("parear") === "1");
 
   return (
     <div className="mx-auto max-w-[1540px] space-y-4">
@@ -29,7 +29,7 @@ export function Dispositivos() {
             aria-expanded={pareamentoAberto}
             aria-controls="pareamento-dispositivo"
             onClick={() => setPareamentoAberto((aberto) => !aberto)}
-            className="rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
+            className="min-h-11 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
           >
             {pareamentoAberto ? "Ocultar pareamento" : "Parear dispositivo"}
           </button>
@@ -39,13 +39,15 @@ export function Dispositivos() {
       {demo ? (
         <DispositivosDemonstrativos mostrarPareamento={pareamentoAberto} />
       ) : (
-        <MeusDispositivos mostrarPareamento={pareamentoAberto} />
+        <MeusDispositivos mostrarPareamento={pareamentoAberto} abrirPareamento={() => setPareamentoAberto(true)} />
       )}
 
       <section className={`${SUPERFICIE_DO_CARTAO_DE_REGISTRO} p-4`}>
         <h2 className="text-sm font-bold text-foreground">Sobre o pareamento</h2>
         <p className="mt-2 text-xs text-muted-foreground">
-          O travesseiro usa um código de conexão próprio. O celular é vinculado à sua conta ao usar {noiteNativaDisponivel() ? "Noite" : "Coletar"}.
+          O travesseiro usa um código de conexão próprio. {noiteNativaDisponivel()
+            ? "O celular é vinculado à sua conta depois da primeira gravação em Noite."
+            : "No navegador, Coletar registra sessões curtas e vincula o celular à sua conta."}
         </p>
       </section>
     </div>

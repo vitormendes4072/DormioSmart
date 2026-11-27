@@ -42,7 +42,10 @@ function diasEmSequencia(total: number, podeSerMaior = false) {
   return total === 1 ? "1 dia consecutivo" : `${total} dias consecutivos`;
 }
 
-export function CalendarioDoSono({ dispositivo, demo, selecionado, aoSelecionarDia, ancora, aoNavegar, destinoDoGrafico = null }: {
+export function CalendarioDoSono({
+  dispositivo, demo, selecionado, aoSelecionarDia, ancora, aoNavegar, destinoDoGrafico = null,
+  contaSemRegistro = false, abrirGuia,
+}: {
   dispositivo: string | null;
   demo: boolean;
   selecionado: Date | null;
@@ -51,6 +54,8 @@ export function CalendarioDoSono({ dispositivo, demo, selecionado, aoSelecionarD
   aoNavegar: (dia: Date) => void;
   /** UI-48: em tela larga, o gráfico vai para a coluna da direita do Início; sem destino, fica abaixo do calendário. */
   destinoDoGrafico?: HTMLElement | null;
+  contaSemRegistro?: boolean;
+  abrirGuia?: () => void;
 }) {
   const hoje = somarDias(new Date(), 0);
   const [aberto, setAberto] = useState(false);
@@ -132,7 +137,7 @@ export function CalendarioDoSono({ dispositivo, demo, selecionado, aoSelecionarD
   const grafico = (
     <GraficoDeTempoPorDia registros={registros} referencia={data} hoje={hoje} selecionado={selecionado}
       aoSelecionarDia={selecionarDia} carregando={carregando} falhou={dados === null}
-      parcial={dados?.truncada ?? false} recarregar={recarregar} />
+      parcial={dados?.truncada ?? false} recarregar={recarregar} abrirGuia={contaSemRegistro ? abrirGuia : undefined} />
   );
 
   const grade = (
@@ -183,10 +188,10 @@ export function CalendarioDoSono({ dispositivo, demo, selecionado, aoSelecionarD
       <section aria-labelledby={titulo} className="@container min-w-0 rounded-2xl border border-border bg-card shadow-sm">
         <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2 px-3 py-2.5 sm:px-4 @[450px]:grid-cols-[minmax(9rem,1fr)_minmax(10rem,1.5fr)_auto]">
           <div>
-            <h2 id={titulo} className="text-sm font-extrabold tracking-tight sm:text-base">Calendário do sono</h2>
+            <h2 id={titulo} className="text-sm font-extrabold tracking-tight sm:text-base">Calendário de registros</h2>
             {!aberto && (
               <p role="status" className="mt-0.5 text-xs text-muted-foreground">
-                {carregando ? "Carregando registros…" : dados === null ? "Falha ao carregar registros" : dados?.truncada ? "Histórico parcial" : atual ? textoAtual : "Sem sequência ativa no período"}
+                {carregando ? "Carregando registros…" : dados === null ? "Falha ao carregar registros" : dados?.truncada ? "Histórico parcial" : contaSemRegistro ? "Os dias com registro aparecem marcados aqui." : atual ? textoAtual : "Sem sequência ativa no período"}
               </p>
             )}
           </div>

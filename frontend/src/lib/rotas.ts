@@ -85,14 +85,15 @@ export const DESTINO_PADRAO_APOS_LOGIN = "/dashboard";
  * invertida. Recusa `//host`, `/\\host`, `https://…`, `javascript:…`, vazio
  * e o que não for texto — e devolve o destino padrão.
  */
-export function destinoSeguro(candidato: unknown): string {
-  if (typeof candidato !== "string") return DESTINO_PADRAO_APOS_LOGIN;
-  if (!candidato.startsWith("/")) return DESTINO_PADRAO_APOS_LOGIN;
+export function destinoSeguro(candidato: unknown, appAndroid = false): string {
+  const padrao = appAndroid ? "/noite" : DESTINO_PADRAO_APOS_LOGIN;
+  if (typeof candidato !== "string") return padrao;
+  if (!candidato.startsWith("/")) return padrao;
   const segundo = candidato.charAt(1);
-  if (segundo === "/" || segundo === "\\") return DESTINO_PADRAO_APOS_LOGIN;
+  if (segundo === "/" || segundo === "\\") return padrao;
   // Caractere de controle no meio (tab, quebra de linha) pode ser descartado
   // pelo navegador ao resolver a URL e transformar "/\t/host" em "//host".
   // eslint-disable-next-line no-control-regex -- Rejeita caracteres de controle antes que o navegador normalize o destino.
-  if (/[\u0000-\u001f\u007f]/.test(candidato)) return DESTINO_PADRAO_APOS_LOGIN;
+  if (/[\u0000-\u001f\u007f]/.test(candidato)) return padrao;
   return candidato;
 }

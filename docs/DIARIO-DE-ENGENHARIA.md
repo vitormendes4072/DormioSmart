@@ -14307,6 +14307,52 @@ A suíte passou com 1.099 testes em 73 arquivos. Lint, build, os dois Knip e as 
 
 ---
 
+# 2026-11-26 (xxv) — onboarding etapa 1 (UI-57, UI-58 e UI-59)
+
+**O problema, como foi entendido no início.** Quem chegava ao Início com conta nova via cartões vazios e uma orientação para verificar um aparelho que ainda não tinha. No Android, o destino padrão do login direto e do cadastro também levava ao painel vazio.
+
+**Hipótese de trabalho.** A existência de sessão fora da bancada determina se o guia aparece. O estado do consentimento e dos aparelhos vem dos mesmos dados que a conta já usa. Com os dois caminhos de registro no card, a pessoa pode começar pelo travesseiro, pelo app ou conhecer a coleta curta no site.
+
+**O que foi testado, e como.** Montagem pela entrada real do frontend com respostas sintéticas. Verificamos estados vazios, recarga de dados após a primeira sessão, bancada, consentimento vigente, falha de aparelho ou perfil, retomar o guia e encaminhamento no Android. No Edge, capturamos Início, Dispositivos e Histórico a 390 e 1280 px, nos dois temas, e o Início a 1050 px, nos dois estados do menu.
+
+**Resultado medido.** A 390 px, o topo da navegação móvel ficou em 782,5 px na rolagem final. A última ação do Início terminou em 746,5 px, com 36 px de folga. Em Dispositivos, terminou em 380 px, e em Histórico, em 347 px. A 1050 px, o Início manteve duas colunas com o menu aberto e recolhido. Nenhuma das três telas transbordou horizontalmente nos cenários capturados. No Pixel 6 emulado, abertura logada, login vindo do guarda e cadastro novo chegaram a `/noite`, sem pedidos ao histórico.
+
+A suíte completa passou com 1.117 testes em 73 arquivos. Os 14 testes novos falharam contra `develop` `9efde23`. Lint, build, Knip e Knip de tipos passaram. O orçamento passou com 170.818 B gzip no Dashboard para um teto de 260.000 B. As três conferências dos documentos passaram.
+
+| Sabotagem | Teste que falhou |
+|---|---|
+| Retirar o teto de páginas | Para em 16 páginas e devolve inconclusivo sem consultar a página 17 |
+| Tratar o teto como ausência confirmada | Para em 16 páginas e devolve inconclusivo sem consultar a página 17 |
+| Contar bancada como sessão | Descarta bancada e exibe os passos conforme aparelhos e consentimento vigente |
+| Usar o padrão do site no app | Abre a Noite após login e cadastro sem consultar o histórico, e o teste de destino padrão do Android |
+
+✏️ **Revisão da PR #322.** A branch incorporou `develop` `4037d5a`, incluindo o resumo, a faixa de sessão e a abertura da sessão pelo Histórico. O onboarding foi renumerado para UI-57 a UI-59 nesta etapa e UI-60, UI-61 e LGPD-16 na próxima, com a migração 027 destinada ao UI-61.
+
+O revisor trocou a condição de conta vazia por `presencaNaConta !== "com-registro"` e os testes então existentes passaram. Os dois novos testes de montagem falham com essa alteração:
+
+| Caso de tela | Comportamento esperado |
+|---|---|
+| 16 páginas cheias só de bancada | Guia oculto e “Sem registros no recorte carregado.” |
+| Falha da consulta da conta enquanto o recorte do aparelho selecionado está vazio | Guia oculto e “Sem registros no recorte carregado.” |
+
+Os 16 testes de onboarding falharam contra `develop` `4037d5a`. A rodada da revisão executou e restaurou as quatro sabotagens anteriores e a nova. A suíte com o código restaurado passou com 1.154 testes em 76 arquivos. O preenchimento do progresso usa a cor primária de cada tema, sobre trilho secundário, e mantém o valor acessível. No Edge, medimos 25% de preenchimento para “1 de 4 passos feitos”, em azul `#0b6db5` no claro e `#4fb3f5` no escuro. As seis capturas do Início foram atualizadas. A branch também incorporou `d0e6f5f`, que só acrescentou o registro do R25 à documentação.
+
+✏️ **Integração do filtro do Histórico.** A revisão incorporou `cb12145`, com o filtro por aparelho do UI-55, o agrupamento do UI-56 e o registro do R26. Ao selecionar um aparelho, um recorte vazio mantém “Nenhuma sessão deste aparelho no período selecionado.”. Em “Todos os dispositivos”, o Histórico procura registros da conta quando a consulta do período terminou sem sessões válidas. A conta comprovadamente vazia oferece “Ir para o Início”.
+
+O teste “Histórico vazio oferece retorno ao Início na visão de todos os aparelhos” verifica a troca do filtro e falha se a consulta de conta vazia também for usada para um aparelho selecionado. Os 16 testes de onboarding falharam contra `cb12145`. As cinco sabotagens da rodada anterior e a sabotagem do filtro foram executadas e restauradas. A suíte passou em Windows 11 com 1.171 testes em 77 arquivos. No Edge, com dois aparelhos sintéticos e nenhuma sessão, as quatro capturas do Histórico foram atualizadas a 390 e 1280 px, em claro e escuro.
+
+**Adaptação.** O Início reaproveita a primeira página sem filtro e segue o cursor só quando ela vem cheia, sem sessão fora da bancada. A consulta da presença na conta termina na 16ª página e não publica vazio se o limite for inconclusivo. O Histórico mantém o recorte por período e por aparelho, e usa a consulta da conta no modo de todos os aparelhos. No Android, a abertura por `/` e o retorno dado pelo guarda preservam o caminho existente. Só o padrão do login e cadastro passa a ser a Noite. O dispositivo guarda apenas a preferência de dispensar, por conta.
+
+**O que deu errado no caminho.** O UI-51 foi atribuído à frente do detalhe de tempo registrado. Os três itens desta etapa foram renumerados antes de entrar no backlog. A primeira rodada de testes ainda buscava os textos anteriores e incluía a nova consulta sem `desde` na asserção do recorte do Histórico. Os testes mantiveram as verificações de filtro e de navegação com os textos novos. O teste de linguagem excedeu 5 s com o emulador e o build em paralelo. Passou isolado e na rodada completa com prazo de 15 s por teste, pela CLI. A primeira captura esperou o carregamento integral do documento e excedeu o prazo. A segunda aguardou o conteúdo da tela. No emulador, um diálogo do Android cobriu a primeira captura do aparelho. As três entradas foram repetidas para capturar a WebView diretamente.
+
+Na integração do UI-55, o dublê de `useDispositivos` no teste de Histórico ainda devolvia uma lista. O consumidor já usava o objeto com lista e estado de carregamento do onboarding. O dublê foi ajustado ao mesmo contrato, mantendo as asserções do filtro e do agrupamento.
+
+**Risco em aberto.** A verificação do cadastro e login usou respostas sintéticas. A distribuição ao Android continua dependendo do próximo APK de release. As perguntas opcionais, a meta e a política pertencem à etapa 2 (UI-60, UI-61 e LGPD-16).
+
+**Procedência.** Base `develop` `9efde23`. Execuções em Windows 11, Node 24.11.0 e Edge, em 26/11. No Android, APK debug instalado com identificador separado e respostas de autenticação e API simuladas na WebView. [Capturas da etapa 1](evidencias/onboarding-etapa-1/).
+
+---
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

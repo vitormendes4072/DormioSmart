@@ -20,7 +20,7 @@ it("UI-46: comunica seleção e remoção sem expandir a semana compacta", async
     <CalendarioDoSono dispositivo={null} demo selecionado={selecionado} aoSelecionarDia={aoSelecionarDia}
       ancora={ancora} aoNavegar={aoNavegar} />;
   const { rerender } = render(calendario(null));
-  const grade = within(screen.getByRole("region", { name: "Calendário do sono" }));
+  const grade = within(screen.getByRole("region", { name: "Calendário de registros" }));
   await grade.findByRole("button", { name: /quarta-feira, 25 de novembro, com registro/ });
   const terca = () => grade.getByRole("button", { name: /^terça-feira, 24 de novembro/ });
 

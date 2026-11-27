@@ -12,6 +12,7 @@ import { SeletorDeDispositivo } from "../components/SeletorDeDispositivo";
 import { useDispositivos } from "../hooks/useDispositivos";
 import { Carregando, FalhaAoCarregar } from "../components/EstadoDaTela";
 import { SeletorSegmentado } from "../components/SeletorSegmentado";
+import { usePresencaDeRegistros } from "../hooks/usePresencaDeRegistros";
 import { apagarSessao, buscarJanelaDoHistorico, ErroApi, marcarSessao, MAX_PAGINAS_DO_HISTORICO } from "../lib/api";
 import { calcularCobertura, type Trecho as TrechoComRegistro } from "../lib/cobertura";
 import { marcasDaRegua, reguaDoHorario } from "../lib/faixaDaSessao";
@@ -203,7 +204,7 @@ export function Historico() {
   const { search } = useLocation();
   const demo = estaEmModoDemo(search);
   const [dias, setDias] = useState(7);
-  const dispositivos = useDispositivos();
+  const { dispositivos } = useDispositivos();
   const [guardado, setGuardado] = useState(lerAparelhoGuardado);
   // Um aparelho guardado que não está mais na conta (excluído) vale como "Todos".
   const aparelho = guardado && dispositivos.some((d) => d.id === guardado) ? guardado : null;
@@ -408,9 +409,7 @@ function SessoesDaConta({ dias, aparelho, dispositivos }: {
       <div className={CARTAO_DA_LISTA}>
         {normais.length > 0
           ? <ListaDeSessoes linhas={normais} acoes={acoes} dispositivos={dispositivos} />
-          : <p className="py-12 text-center text-sm text-muted-foreground">
-              {aparelho === null ? "Nenhuma sessão no período selecionado." : "Nenhuma sessão deste aparelho no período selecionado."}
-            </p>}
+          : <HistoricoVazio aparelho={aparelho} parcial={resultado.truncada} />}
       </div>
       {marcadas.length > 0 && (
         <section aria-label="Sessões marcadas como bancada/teste" className={`mt-6 space-y-2 ${CARTAO_DA_LISTA}`}>
@@ -422,6 +421,26 @@ function SessoesDaConta({ dias, aparelho, dispositivos }: {
         </section>
       )}
     </>
+  );
+}
+
+function HistoricoVazio({ aparelho, parcial }: { aparelho: string | null; parcial: boolean }) {
+  const presenca = usePresencaDeRegistros(aparelho === null && !parcial ? null : undefined);
+  if (presenca !== "sem-registro") {
+    return (
+      <p className="py-12 text-center text-sm text-muted-foreground">
+        {aparelho === null ? "Nenhuma sessão no período selecionado." : "Nenhuma sessão deste aparelho no período selecionado."}
+      </p>
+    );
+  }
+
+  return (
+    <div className="flex flex-col items-center gap-3 py-8">
+      <p className="text-sm text-muted-foreground">Ainda não há sessões.</p>
+      <Link to="/dashboard" className="inline-flex min-h-11 items-center rounded-lg border border-border px-3 text-sm font-semibold text-primary hover:bg-secondary focus-visible:outline-2 focus-visible:outline-ring">
+        Ir para o Início
+      </Link>
+    </div>
   );
 }
 

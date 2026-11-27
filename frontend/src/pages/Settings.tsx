@@ -24,6 +24,7 @@ import { estaEmModoDemo } from "../lib/demo";
 import { baixarCsv } from "../lib/exportar";
 import { listarDispositivos } from "../lib/dispositivos";
 import { noiteNativaDisponivel } from "../lib/noiteNativa";
+import { salvarPreferenciaDoGuia } from "../lib/primeirosPassos";
 import { LINHA_DE_CONFIGURACAO } from "../lib/ui";
 import { useAuth } from "../contexts/AuthContext";
 
@@ -41,6 +42,7 @@ import { useAuth } from "../contexts/AuthContext";
  */
 export function Settings() {
   const { search } = useLocation();
+  const { sessao } = useAuth();
   return (
     <div className="max-w-2xl space-y-4">
       <header className="mb-5">
@@ -53,6 +55,11 @@ export function Settings() {
       {estaEmModoDemo(search) ? <SecaoAcessoDemonstrativo /> : (
         <>
           <SecaoConta />
+          <Link to="/dashboard#primeiros-passos"
+            onClick={() => salvarPreferenciaDoGuia(sessao?.user.id, false)}
+            className="inline-flex min-h-11 items-center rounded-lg border border-border bg-card px-3 text-sm font-semibold text-primary hover:bg-secondary focus-visible:outline-2 focus-visible:outline-ring">
+            Primeiros passos
+          </Link>
           {noiteNativaDisponivel() ? <SecaoLembrete /> : null}
           <SecaoDispositivos />
           <SecaoDados />
