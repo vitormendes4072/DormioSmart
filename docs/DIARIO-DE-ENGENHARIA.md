@@ -14388,6 +14388,39 @@ Contra `develop`, falharam 5 testes de tela e vocabulário, 9 do PATCH e 4 de ac
 
 ---
 
+# 2026-11-27 (ii) — release R27: o onboarding e o app 1.1.8
+
+**O problema, como foi entendido no início.** As duas etapas do onboarding (`UI-57` a `UI-59`, #322; `UI-60`, `UI-61` e `LGPD-16`, #331) estavam no `develop`, com a migração 027 aplicada na produção pelo autor. Sem release, a conta nova seguia caindo no Início vazio, e o celular só recebe o onboarding com um APK novo. O autor pediu o release no mesmo dia, para a data da política (27/11) valer.
+
+**Hipótese de trabalho.** Release com site, backend e APK: o backend passa a ler `profiles.meta_diaria_min`, o que só é seguro com a 027 já aplicada, e o app sobe para 1.1.8 (`versionCode` 10).
+
+**O que foi testado, e como.**
+- **PR #332** (`chore/app-1.1.8` → `develop`): a versão em `app/build.gradle`, `appAndroid.ts`, `versao-do-app.json`, na landing completa e em `DISTRIBUICAO-DO-APP.md`. `appAndroid.test.ts` e `LandingLeve.test.tsx` (29) e o `npm run build:app`, nesta máquina; o CI da PR inteiro.
+- **APK:** `./gradlew assembleRelease` na branch da #332 (`916c758`), numa cópia com o `frontend/.env`; `conferir_apk.py`, `apksigner verify --print-certs` e `aapt2 dump badging`. No emulador Pixel 6, instalado por cima do 1.1.7 e aberto.
+- **PR #333** (`develop` → `main`): o código é a árvore de `develop` `2887039`, a mesma que passou no "CI ok" da #332; o merge foi feito com os checks da própria #333 ainda rodando, porque a `main` não é protegida e o `--auto` não esperaria.
+- **Release `app-v1.1.8`:** rascunho com o APK antes do merge, publicado depois com a tag no merge.
+- **De fora, desta máquina:** `/health`, as rotas da conta sem sessão, a CSP das cinco páginas, o `versao-do-app.json`, a landing, os pedaços JS publicados e o APK baixado pelo link `latest`.
+
+**Resultado medido.**
+- **#332:** CI verde, merge `2887039`. **#333:** merge `6424528`, deploy de produção `8104903163` com `success`.
+- **APK 1.1.8:** `conferir_apk.py` com código 0; certificado do autor (SHA-256 `06b2e4f9…d14a`); `versionCode` 10, `versionName` 1.1.8, sem `application-debuggable`, ABIs `arm64-v8a`, `armeabi-v7a` e `x86_64`; 5 285 011 B, SHA-256 `14eb37de…2af5`. No emulador, o `versionName` passou de 1.1.7 a 1.1.8 e o app abriu na tela de entrada, sem erro do app no log.
+- `/health` `200` com o contrato 2.12.0 e o modelo; `/api/devices`, `/api/sleep-history` e `/api/me/perfil` sem token `401`; `PATCH /api/me/perfil` sem token e `GET` com `Bearer` inválido `401`; `/privacidade` `200`; a CSP igual nas cinco páginas.
+- `versao-do-app.json` com 1.1.8; a landing com "Versão 1.1.8 (beta)"; o link `latest` baixa o APK com `200` e o mesmo SHA-256.
+- Os pedaços publicados contêm "Primeiros passos", "Opcional: idade e meta", "Sua meta", "Calendário de registros", `meta_diaria_min` e "27 de novembro de 2026", e não contêm "Calendário do sono".
+
+**Adaptação.** O merge da #333 não esperou os checks dela: a árvore era idêntica à que já tinha passado no "CI ok" da #332.
+
+**O que deu errado no caminho.** A remoção da worktree `app-118` por `git worktree remove --force` parou em "Filename too long" (as pastas de build do Gradle) com a junction de `frontend/node_modules`, que aponta para as dependências de outra worktree, ainda montada. Conferido em seguida: os 548 pacotes de topo do `package-lock.json` seguiam no destino. A junction foi desfeita com `rmdir` (sem `/s`) e a pasta apagada depois (§5 das lições, ocorrência 10: desfazer a junction **antes** de remover). No emulador, o aviso "System UI isn't responding" apareceu logo após o boot; é do sistema, não do app.
+
+**Risco em aberto.**
+- **O login com uma conta no 1.1.8 e o onboarding logado** (o guia, a meta gravada, a Noite depois do login) não foram vistos pelo Claude na produção: ficam com o autor.
+- A tela de entrada diz "Seu guia para um sono de qualidade". Ela fica fora do `linguagem.test.ts`, que cobre só as telas depois do login, e a frase promete o que o produto diz não medir. Sem item ainda: a decidir com o autor.
+- O campo da meta é texto livre "H:MM", ruim no teclado do celular. Sem item ainda: a decidir com o autor.
+
+**Procedência.** PRs #332 e #333, merges `2887039` e `6424528`, deploy `8104903163`, release `app-v1.1.8`, em 27/11; verificação nesta máquina (Windows 11, Node 24.11.0, JDK do Android Studio, emulador Pixel 6).
+
+---
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
