@@ -8,6 +8,8 @@ import { FaixaDaSessao } from "../components/FaixaDaSessao";
 import { MenuDaSessao } from "../components/MenuDaSessao";
 import { MiniGraficoDaSessao } from "../components/MiniGraficoDaSessao";
 import { ResumoDoPeriodo } from "../components/ResumoDoPeriodo";
+import { SeletorDeDispositivo } from "../components/SeletorDeDispositivo";
+import { useDispositivos } from "../hooks/useDispositivos";
 import { Carregando, FalhaAoCarregar } from "../components/EstadoDaTela";
 import { SeletorSegmentado } from "../components/SeletorSegmentado";
 import { apagarSessao, buscarJanelaDoHistorico, ErroApi, marcarSessao, MAX_PAGINAS_DO_HISTORICO } from "../lib/api";
@@ -15,6 +17,9 @@ import { calcularCobertura, type Trecho as TrechoComRegistro } from "../lib/cobe
 import { marcasDaRegua, reguaDoHorario } from "../lib/faixaDaSessao";
 import { estaEmModoDemo } from "../lib/demo";
 import { destinoDoDia } from "../lib/diaNoEndereco";
+import { agruparMesmoPeriodo, duracaoDaUniao } from "../lib/mesmoPeriodo";
+import type { SessaoDoPeriodo } from "../lib/resumoDoPeriodo";
+import { precisaEscolherDispositivo, rotuloDoTipo, type Dispositivo } from "../lib/dispositivos";
 import { calcularMetricas, formatarDuracao, formatarPorcentagem, prepararSerie, type PontoDaSerie } from "../lib/metricas";
 import { ehBancada, sessoesDaMarca, trechoDaSessao, type Trecho } from "../lib/trecho";
 import { ehMovimento, instanteDaLeitura, type LeituraSono } from "../types/sleep";
@@ -60,6 +65,8 @@ const DATA_E_HORA = new Intl.DateTimeFormat("pt-BR", {
 
 type Linha = {
   chave: string;
+  /** UI-55: o aparelho que gravou a sessão; `null` nas leituras sem aparelho. */
+  aparelho?: string | null;
   inicio: number;
   fim: number;
   tempo: number;
@@ -101,13 +108,26 @@ const EXEMPLOS: Linha[] = SESSOES_DO_PROTOTIPO.map(([ano, mes, dia, minutos, cob
   const meio = inicio + periodo / 2;
   return {
     chave: String(inicio), inicio, fim, tempo: minutos * 60_000, periodo, leituras,
-    lacunas: cobertura < 100, pausas,
+    lacunas: cobertura < 100, pausas, aparelho: "demo-travesseiro",
     trechos: falta > 0 ? [{ inicio, fim: meio - falta / 2 }, { inicio: meio + falta / 2, fim }] : [{ inicio, fim }],
     movimentos: Array.from({ length: 6 }, (_, i) => inicio + periodo * ((i * 0.37 + 0.08) % 1)),
     movimento: 0.03 + (dia % 4) / 100,
     serie: serieDeExemplo(dia, falta > 0),
   };
 });
+
+// UI-56: nos exemplos, o celular gravou junto com o travesseiro em duas sessões, como no VIA-02.
+EXEMPLOS.push(...EXEMPLOS.slice(0, 2).map((travesseiro, i): Linha => {
+  const inicio = travesseiro.inicio - (10 + i * 5) * 60_000;
+  const fim = travesseiro.fim + 6 * 60_000;
+  return {
+    ...travesseiro, chave: `celular-${travesseiro.chave}`, aparelho: "demo-celular", inicio, fim,
+    tempo: fim - inicio, periodo: fim - inicio, leituras: travesseiro.leituras + 2, lacunas: false, pausas: false,
+    trechos: [{ inicio, fim }], movimentos: (travesseiro.movimentos ?? []).filter((_, j) => j % 3 === 0),
+    movimento: 0.007, serie: serieDeExemplo(travesseiro.inicio % 7, false),
+  };
+}));
+EXEMPLOS.sort((a, b) => b.inicio - a.inicio);
 
 /** A série do gráfico do cartão nos exemplos: determinística, com a falta no meio. */
 function serieDeExemplo(semente: number, comFalta: boolean): PontoDaSerie[] {
@@ -137,6 +157,7 @@ function resumirSessoes(leituras: LeituraSono[], desdeMs: number, truncada: bool
     sessoesDaMarca(grupo, bancada).map((sessao, i) => {
       const cobertura = calcularCobertura(sessao.leituras);
       return {
+        aparelho: id,
         trechos: cobertura.trechos,
         movimentos: sessao.leituras.filter((leitura) => ehMovimento(leitura.status))
           .map((leitura) => Date.parse(instanteDaLeitura(leitura))).filter(Number.isFinite),
@@ -158,10 +179,38 @@ function resumirSessoes(leituras: LeituraSono[], desdeMs: number, truncada: bool
   )).flat().sort((a, b) => b.inicio - a.inicio);
 }
 
+const CHAVE_DO_APARELHO = "dormio-historico-aparelho";
+
+/** UI-55: o aparelho escolhido no Histórico fica para a próxima visita (como a barra lateral). */
+function lerAparelhoGuardado() {
+  try {
+    return window.localStorage.getItem(CHAVE_DO_APARELHO);
+  } catch {
+    return null;
+  }
+}
+
+function guardarAparelho(id: string | null) {
+  try {
+    if (id) window.localStorage.setItem(CHAVE_DO_APARELHO, id);
+    else window.localStorage.removeItem(CHAVE_DO_APARELHO);
+  } catch {
+    // Sem armazenamento (navegação privada): a escolha vale só nesta visita.
+  }
+}
+
 export function Historico() {
   const { search } = useLocation();
   const demo = estaEmModoDemo(search);
   const [dias, setDias] = useState(7);
+  const dispositivos = useDispositivos();
+  const [guardado, setGuardado] = useState(lerAparelhoGuardado);
+  // Um aparelho guardado que não está mais na conta (excluído) vale como "Todos".
+  const aparelho = guardado && dispositivos.some((d) => d.id === guardado) ? guardado : null;
+  const escolherAparelho = (id: string | null) => {
+    setGuardado(id);
+    guardarAparelho(id);
+  };
 
   return (
     <div className="mx-auto max-w-[1540px] space-y-4">
@@ -173,25 +222,29 @@ export function Historico() {
             <h1 className="mt-1 text-2xl font-extrabold tracking-tight text-foreground sm:text-[27px]">Histórico de sessões</h1>
             <p className="mt-0.5 text-xs text-muted-foreground">Veja cada sessão e quanto dela foi registrado.</p>
           </div>
-          <div className="w-full sm:max-w-sm">
-            <SeletorSegmentado rotulo="Período do histórico" opcoes={JANELAS} selecionado={dias} aoSelecionar={setDias} />
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+            <SeletorDeDispositivo dispositivos={dispositivos} selecionado={aparelho} aoSelecionar={escolherAparelho} />
+            <div className="w-full sm:w-sm">
+              <SeletorSegmentado rotulo="Período do histórico" opcoes={JANELAS} selecionado={dias} aoSelecionar={setDias} />
+            </div>
           </div>
         </div>
       </header>
 
       <section aria-label="Sessões do período" className="space-y-4">
         {demo ? (() => {
-          const exemplos = EXEMPLOS.filter((linha) => linha.inicio > EXEMPLOS[0].inicio - dias * DIA_MS);
+          const exemplos = EXEMPLOS.filter((linha) => linha.inicio > EXEMPLOS[0].inicio - dias * DIA_MS
+            && (aparelho === null || linha.aparelho === aparelho));
           return (
             <>
-              <ResumoDoPeriodo sessoes={exemplos} aoEscolherSessao={irParaSessao} />
+              <ResumoDoPeriodo sessoes={sessoesDoResumo(exemplos, dispositivos)} aoEscolherSessao={irParaSessao} />
               <div className={CARTAO_DA_LISTA}>
-                <ListaDeSessoes linhas={exemplos} />
+                <ListaDeSessoes linhas={exemplos} dispositivos={dispositivos} />
                 <p className="pt-4 text-xs text-muted-foreground">Dados de exemplo para demonstrar a navegação do histórico.</p>
               </div>
             </>
           );
-        })() : <SessoesDaConta key={dias} dias={dias} />}
+        })() : <SessoesDaConta key={dias} dias={dias} aparelho={aparelho} dispositivos={dispositivos} />}
       </section>
 
       <p className="rounded-xl border border-border border-l-4 border-l-primary px-3 py-3 text-xs text-muted-foreground">
@@ -201,7 +254,12 @@ export function Historico() {
   );
 }
 
-function SessoesDaConta({ dias }: { dias: number }) {
+function SessoesDaConta({ dias, aparelho, dispositivos }: {
+  dias: number;
+  /** UI-55: só as sessões deste aparelho; `null` = todos. */
+  aparelho: string | null;
+  dispositivos: Dispositivo[];
+}) {
   const [janela] = useState(() => {
     const agora = Date.now();
     return { desde: new Date(agora - dias * DIA_MS).toISOString(), ate: new Date(agora).toISOString() };
@@ -280,9 +338,12 @@ function SessoesDaConta({ dias }: { dias: number }) {
   }} />;
   if (!resultado) return <Carregando mensagem={`Carregando sessões... página ${pagina} de até ${MAX_PAGINAS_DO_HISTORICO}.`} />;
 
-  const normais = linhas.filter((linha) => !linha.bancada);
-  const marcadas = linhas.filter((linha) => linha.bancada);
-  const movimento = dias === 1 ? serieDasUltimas24Horas(resultado.leituras, Date.parse(janela.desde)) : undefined;
+  const doAparelho = aparelho === null ? linhas : linhas.filter((linha) => linha.aparelho === aparelho);
+  const normais = doAparelho.filter((linha) => !linha.bancada);
+  const marcadas = doAparelho.filter((linha) => linha.bancada);
+  const movimento = dias === 1
+    ? serieDasUltimas24Horas(resultado.leituras.filter((l) => aparelho === null || l.device_id === aparelho), Date.parse(janela.desde))
+    : undefined;
   const acoes = (linha: Linha) => linha.trecho ? (
     <MenuDaSessao rotulo={`Ações da sessão de ${dataDaSessao(linha)}`}>
       <button
@@ -341,13 +402,15 @@ function SessoesDaConta({ dias }: { dias: number }) {
       )}
       {normais.length > 0 && (
         <div className="mb-4">
-          <ResumoDoPeriodo sessoes={normais} parcial={resultado.truncada} movimento={movimento} aoEscolherSessao={irParaSessao} />
+          <ResumoDoPeriodo sessoes={sessoesDoResumo(normais, dispositivos)} parcial={resultado.truncada} movimento={movimento} aoEscolherSessao={irParaSessao} />
         </div>
       )}
       <div className={CARTAO_DA_LISTA}>
         {normais.length > 0
-          ? <ListaDeSessoes linhas={normais} acoes={acoes} />
-          : <p className="py-12 text-center text-sm text-muted-foreground">Nenhuma sessão no período selecionado.</p>}
+          ? <ListaDeSessoes linhas={normais} acoes={acoes} dispositivos={dispositivos} />
+          : <p className="py-12 text-center text-sm text-muted-foreground">
+              {aparelho === null ? "Nenhuma sessão no período selecionado." : "Nenhuma sessão deste aparelho no período selecionado."}
+            </p>}
       </div>
       {marcadas.length > 0 && (
         <section aria-label="Sessões marcadas como bancada/teste" className={`mt-6 space-y-2 ${CARTAO_DA_LISTA}`}>
@@ -355,7 +418,7 @@ function SessoesDaConta({ dias }: { dias: number }) {
           <p className="text-xs text-muted-foreground">
             Continuam guardadas, mas ficam fora do painel e das análises. Desmarque para que voltem.
           </p>
-          <ListaDeSessoes linhas={marcadas} acoes={acoes} rotulo="Tabela das sessões marcadas como bancada" />
+          <ListaDeSessoes linhas={marcadas} acoes={acoes} dispositivos={dispositivos} rotulo="Tabela das sessões marcadas como bancada" />
         </section>
       )}
     </>
@@ -421,52 +484,85 @@ function SituacaoDaSessao({ linha: { parcial, lacunas, periodo, pausas } }: { li
   );
 }
 
-function ListaDeSessoes({ linhas, acoes, rotulo = "Tabela do histórico" }: {
+function ListaDeSessoes({ linhas, acoes, dispositivos = [], rotulo = "Tabela do histórico" }: {
   linhas: Linha[];
   acoes?: (linha: Linha) => ReactNode;
+  /** UI-55: com mais de um aparelho na conta, cada sessão diz de qual veio. */
+  dispositivos?: Dispositivo[];
   rotulo?: string;
 }) {
+  const nomeDoAparelho = precisaEscolherDispositivo(dispositivos)
+    ? (linha: Linha) => aparelhoDaSessao(dispositivos, linha.aparelho)
+    : () => null;
   const estreita = useSyncExternalStore(observarLargura, telaEstreita);
   const { search } = useLocation();
   const regua = reguaDoHorario(linhas);
-  // UI-54: a sessão abre no Início, no dia em que começou e no aparelho dela.
-  const noInicio = (linha: Linha) => destinoDoDia(linha.inicio, linha.trecho?.device, search);
+  // UI-56: o mesmo período gravado por aparelhos diferentes vira um grupo, lado a lado.
+  const grupos = agruparMesmoPeriodo(linhas).map((grupo) => ordenarPorAparelho(grupo, dispositivos));
+  // UI-54: a sessão abre no Início, no dia em que começou e no aparelho dela; o grupo, com todos.
+  const noInicio = (grupo: Linha[]) => destinoDoDia(Math.min(...grupo.map((linha) => linha.inicio)), grupo.length > 1 ? null : grupo[0].trecho?.device, search);
+  const corDe = coresDosAparelhos(dispositivos);
+
   if (estreita) return (
     <ul aria-label={rotulo === "Tabela do histórico" ? "Sessões do histórico" : "Sessões de bancada"}
       className="space-y-3">
-      {linhas.map((linha) => (
-        <li key={linha.chave}>
-          <article id={idDaSessao(linha.chave)} tabIndex={-1} aria-label={`Sessão de ${dataDaSessao(linha)}`}
-            className="scroll-mt-20 space-y-3 rounded-2xl border border-border bg-card p-3 text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <h3 className="text-sm font-semibold">
-                {dataDaSessao(linha)}{" "}
-                <span className="font-normal text-muted-foreground">· {HORA.format(linha.inicio)} às {HORA.format(linha.fim)}</span>
-              </h3>
-              <SituacaoDaSessao linha={linha} />
-            </div>
-            {linha.serie && linha.serie.length > 1
-              ? <MiniGraficoDaSessao serie={linha.serie} />
-              : linha.trechos && (
-                <FaixaDaSessao regua={reguaDoHorario([linha])} inicio={linha.inicio} fim={linha.fim}
-                  trechos={linha.trechos} movimentos={linha.movimentos ?? []} tempo={linha.tempo} />
+      {grupos.map((grupo) => {
+        const [primeira] = grupo;
+        const inicio = Math.min(...grupo.map((linha) => linha.inicio));
+        const varios = grupo.length > 1;
+        const fim = Math.max(...grupo.map((linha) => linha.fim));
+        return (
+          <li key={chaveDoGrupo(grupo)}>
+            <article id={idDaSessao(chaveDoGrupo(grupo))} tabIndex={-1}
+              aria-label={varios ? `Sessões de ${dataDaSessao(primeira)}, ${grupo.length} aparelhos` : `Sessão de ${dataDaSessao(primeira)}`}
+              className="scroll-mt-20 space-y-3 rounded-2xl border border-border bg-card p-3 text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h3 className="text-sm font-semibold">
+                  {dataDaSessao(primeira)}{" "}
+                  <span className="font-normal text-muted-foreground">· {HORA.format(inicio)} às {HORA.format(fim)}</span>
+                  {!varios && nomeDoAparelho(primeira) && <span data-aparelho className="block text-xs font-medium text-muted-foreground">{nomeDoAparelho(primeira)}</span>}
+                </h3>
+                {varios
+                  ? <span data-varios-aparelhos className="rounded-full bg-secondary px-2 py-1 text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground">{grupo.length} aparelhos</span>
+                  : <SituacaoDaSessao linha={primeira} />}
+              </div>
+              {varios ? grupo.map((linha) => (
+                <section key={linha.chave} aria-label={nomeDoAparelho(linha) ?? "Aparelho"} className="space-y-1.5 border-t border-border pt-2.5">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span data-aparelho className="flex items-center gap-1.5 text-xs font-semibold">
+                      <span aria-hidden="true" className="size-2.5 rounded-full" style={{ background: corDe(linha.aparelho) }} />
+                      {nomeDoAparelho(linha) ?? "Aparelho"}
+                    </span>
+                    <SituacaoDaSessao linha={linha} />
+                  </div>
+                  <GraficoDoCartao linha={linha} />
+                  <p className="text-xs text-muted-foreground">
+                    <strong className="text-foreground">{tempoDaSessao(linha)}</strong> registrado · {movimentoDaSessao(linha)} com movimento · {linha.leituras} {linha.leituras === 1 ? "registro" : "registros"}
+                  </p>
+                  {acoes && <div className="flex justify-end">{acoes(linha)}</div>}
+                </section>
+              )) : (
+                <>
+                  <GraficoDoCartao linha={primeira} />
+                  <ul aria-label="Métricas da sessão" className="grid grid-cols-3 gap-2">
+                    <CartaoDeMetrica valor={formatarDuracao(primeira.tempo)}>
+                      <p>{primeira.periodo === null ? "registrado" : `registrado de ${formatarDuracao(primeira.periodo)}`}</p>
+                    </CartaoDeMetrica>
+                    <CartaoDeMetrica valor={movimentoDaSessao(primeira)}><p>com movimento</p></CartaoDeMetrica>
+                    <CartaoDeMetrica valor={primeira.leituras}><p>{primeira.leituras === 1 ? "registro" : "registros"}</p></CartaoDeMetrica>
+                  </ul>
+                </>
               )}
-            <ul aria-label="Métricas da sessão" className="grid grid-cols-3 gap-2">
-              <CartaoDeMetrica valor={formatarDuracao(linha.tempo)}>
-                <p>{linha.periodo === null ? "registrado" : `registrado de ${formatarDuracao(linha.periodo)}`}</p>
-              </CartaoDeMetrica>
-              <CartaoDeMetrica valor={movimentoDaSessao(linha)}><p>com movimento</p></CartaoDeMetrica>
-              <CartaoDeMetrica valor={linha.leituras}><p>{linha.leituras === 1 ? "registro" : "registros"}</p></CartaoDeMetrica>
-            </ul>
-            <div className="flex items-center justify-between gap-2">
-              <Link to={noInicio(linha)} className="inline-flex min-h-9 items-center rounded-lg px-1 text-sm font-semibold text-primary hover:underline focus-visible:outline-2 focus-visible:outline-ring">
-                Abrir no Início
-              </Link>
-              {acoes?.(linha)}
-            </div>
-          </article>
-        </li>
-      ))}
+              <div className="flex items-center justify-between gap-2">
+                <Link to={noInicio(grupo)} className="inline-flex min-h-9 items-center rounded-lg px-1 text-sm font-semibold text-primary hover:underline focus-visible:outline-2 focus-visible:outline-ring">
+                  Abrir no Início
+                </Link>
+                {!varios && acoes?.(primeira)}
+              </div>
+            </article>
+          </li>
+        );
+      })}
     </ul>
   );
 
@@ -493,35 +589,127 @@ function ListaDeSessoes({ linhas, acoes, rotulo = "Tabela do histórico" }: {
             {acoes && <th scope="col" className="px-2 py-3 text-right"><span className="sr-only">Ações</span></th>}
           </tr>
         </thead>
-        <tbody className="divide-y divide-border border-b border-border">
-          {linhas.map((linha) => (
-            <tr key={linha.chave} id={idDaSessao(linha.chave)} tabIndex={-1} className="scroll-mt-20 outline-none focus:bg-secondary/60">
-              <th scope="row" className="whitespace-nowrap px-2 py-3 font-semibold">
-                <Link to={noInicio(linha)} title="Abrir no Início"
-                  className="rounded-sm text-foreground underline-offset-2 hover:text-primary hover:underline focus-visible:outline-2 focus-visible:outline-ring">
-                  {dataDaSessao(linha)}
-                </Link>
-              </th>
-              <td className="px-2 py-3">
-                {linha.trechos
-                  ? <FaixaDaSessao regua={regua} inicio={linha.inicio} fim={linha.fim} trechos={linha.trechos}
-                      movimentos={linha.movimentos ?? []} tempo={linha.tempo} />
-                  : <span className="text-muted-foreground">—</span>}
-              </td>
-              <td className="whitespace-nowrap px-2 py-3">{tempoDaSessao(linha)}</td>
-              <td className="px-2 py-3">{movimentoDaSessao(linha)}</td>
-              <td className="px-2 py-3">{linha.leituras}</td>
-              <td className="px-2 py-3 text-right"><SituacaoDaSessao linha={linha} /></td>
-              {acoes && <td className="px-2 py-3 text-right">{acoes(linha)}</td>}
-            </tr>
-          ))}
+        <tbody className="border-b border-border">
+          {grupos.flatMap((grupo) => grupo.map((linha, i) => {
+            const varios = grupo.length > 1;
+            return (
+              <tr key={linha.chave} id={i === 0 ? idDaSessao(chaveDoGrupo(grupo)) : undefined} tabIndex={i === 0 ? -1 : undefined}
+                data-grupo={varios ? chaveDoGrupo(grupo) : undefined}
+                className={`scroll-mt-20 outline-none focus:bg-secondary/60 ${i === 0 ? "border-t border-border first:border-t-0" : ""}`}>
+                {i === 0 && (
+                  <th scope="row" rowSpan={grupo.length} className="whitespace-nowrap px-2 py-3 align-top font-semibold">
+                    <Link to={noInicio(grupo)} title="Abrir no Início"
+                      className="rounded-sm text-foreground underline-offset-2 hover:text-primary hover:underline focus-visible:outline-2 focus-visible:outline-ring">
+                      {dataDaSessao(linha)}
+                    </Link>
+                    {varios
+                      ? <span data-varios-aparelhos className="block text-[11px] font-medium text-muted-foreground">{grupo.length} aparelhos</span>
+                      : nomeDoAparelho(linha) && <span data-aparelho className="block text-[11px] font-medium text-muted-foreground">{nomeDoAparelho(linha)}</span>}
+                  </th>
+                )}
+                <td className={`px-2 ${varios ? "py-2" : "py-3"}`}>
+                  {varios && (
+                    <span data-aparelho className="mb-1 flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
+                      <span aria-hidden="true" className="size-2 rounded-full" style={{ background: corDe(linha.aparelho) }} />
+                      {nomeDoAparelho(linha) ?? "Aparelho"}
+                    </span>
+                  )}
+                  {linha.trechos
+                    ? <FaixaDaSessao regua={regua} inicio={linha.inicio} fim={linha.fim} trechos={linha.trechos}
+                        movimentos={linha.movimentos ?? []} tempo={linha.tempo} />
+                    : <span className="text-muted-foreground">—</span>}
+                </td>
+                <td className="whitespace-nowrap px-2 py-3">{tempoDaSessao(linha)}</td>
+                <td className="px-2 py-3">{movimentoDaSessao(linha)}</td>
+                <td className="px-2 py-3">{linha.leituras}</td>
+                <td className="px-2 py-3 text-right"><SituacaoDaSessao linha={linha} /></td>
+                {acoes && <td className="px-2 py-3 text-right">{acoes(linha)}</td>}
+              </tr>
+            );
+          }))}
         </tbody>
       </table>
     </div>
   );
 }
 
+/** O gráfico do cartão no celular; sem a série (os exemplos antigos), a faixa da sessão. */
+function GraficoDoCartao({ linha }: { linha: Linha }) {
+  if (linha.serie && linha.serie.length > 1) return <MiniGraficoDaSessao serie={linha.serie} />;
+  if (!linha.trechos) return null;
+  return (
+    <FaixaDaSessao regua={reguaDoHorario([linha])} inicio={linha.inicio} fim={linha.fim}
+      trechos={linha.trechos} movimentos={linha.movimentos ?? []} tempo={linha.tempo} />
+  );
+}
+
+/** Dentro do grupo, sempre a mesma ordem: travesseiro, celular, outros (como as cores). */
+function ordenarPorAparelho(grupo: Linha[], dispositivos: readonly Dispositivo[]) {
+  if (grupo.length < 2) return grupo;
+  const posicao = (linha: Linha) => {
+    const tipo = dispositivos.find((d) => d.id === linha.aparelho)?.tipo;
+    return tipo === "travesseiro" ? 0 : tipo === "celular" ? 1 : 2;
+  };
+  return [...grupo].sort((a, b) => posicao(a) - posicao(b) || a.inicio - b.inicio);
+}
+
+/** O grupo de uma sessão só usa a chave dela, para o endereço e o foco não mudarem. */
+function chaveDoGrupo(grupo: readonly Linha[]) {
+  return grupo.length === 1 ? grupo[0].chave : `grupo-${grupo[0].chave}`;
+}
+
+const CORES_DOS_APARELHOS = ["var(--chart-1)", "var(--chart-5)", "var(--chart-4)", "var(--chart-3)"];
+
+/**
+ * UI-56: uma cor fixa por aparelho, sempre ao lado do nome (a cor nunca é o único sinal).
+ * O travesseiro fica com o azul do app, e o celular com o violeta; outros, na ordem da conta.
+ */
+function coresDosAparelhos(dispositivos: readonly Dispositivo[]) {
+  const porTipo: Record<string, string> = { travesseiro: CORES_DOS_APARELHOS[0], celular: CORES_DOS_APARELHOS[1] };
+  const usadas = new Set<string>();
+  const cor = new Map<string, string>();
+  for (const d of dispositivos) {
+    const preferida = d.tipo ? porTipo[d.tipo] : undefined;
+    const escolhida = preferida && !usadas.has(preferida) ? preferida : CORES_DOS_APARELHOS.find((c) => !usadas.has(c)) ?? CORES_DOS_APARELHOS[0];
+    usadas.add(escolhida);
+    cor.set(d.id, escolhida);
+  }
+  return (id: string | null | undefined) => (id && cor.get(id)) || "var(--muted-foreground)";
+}
+
+/** As sessões do resumo do topo: um item por grupo, com uma parte por aparelho (UI-56). */
+function sessoesDoResumo(linhas: readonly Linha[], dispositivos: readonly Dispositivo[]): SessaoDoPeriodo[] {
+  const corDe = coresDosAparelhos(dispositivos);
+  return agruparMesmoPeriodo(linhas).map((grupo) => {
+    if (grupo.length === 1) return grupo[0];
+    const inicio = grupo[0].inicio;
+    grupo = ordenarPorAparelho(grupo, dispositivos);
+    return {
+      chave: chaveDoGrupo(grupo),
+      inicio,
+      fim: Math.max(...grupo.map((linha) => linha.fim)),
+      // O tempo em que pelo menos um aparelho registrou, e o período, na mesma régua: nada somado.
+      tempo: duracaoDaUniao(grupo.flatMap((linha) => linha.trechos ?? [{ inicio: linha.inicio, fim: linha.inicio + linha.tempo }])),
+      periodo: duracaoDaUniao(grupo.filter((linha) => linha.periodo !== null).map((linha) => ({ inicio: linha.inicio, fim: linha.fim }))) || null,
+      partes: grupo.map((linha) => ({
+        rotulo: aparelhoDaSessao([...dispositivos], linha.aparelho) ?? "Aparelho",
+        cor: corDe(linha.aparelho),
+        tempo: linha.tempo,
+        periodo: linha.periodo,
+      })),
+    };
+  });
+}
+
 const HORA = new Intl.DateTimeFormat("pt-BR", { hour: "2-digit", minute: "2-digit" });
+
+/** "Travesseiro" ou "Celular" (o tipo), com o nome que a pessoa deu quando ele diz algo a mais. */
+function aparelhoDaSessao(dispositivos: Dispositivo[], id: string | null | undefined) {
+  const d = dispositivos.find((x) => x.id === id);
+  if (!d) return id ? "Aparelho removido" : null;
+  const tipo = rotuloDoTipo(d.tipo);
+  return d.nome && !d.nome.toLowerCase().includes(tipo.toLowerCase()) ? `${tipo} · ${d.nome}` : d.nome || tipo;
+}
 
 function movimentoDaSessao(linha: Linha) {
   return linha.movimento == null ? "—" : formatarPorcentagem(linha.movimento * 100);

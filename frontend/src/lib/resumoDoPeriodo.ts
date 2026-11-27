@@ -13,7 +13,15 @@ export type SessaoDoPeriodo = {
   tempo: number;
   /** Do primeiro ao último registro; `null` quando não dá para calcular. */
   periodo: number | null;
+  /**
+   * UI-56: o mesmo período gravado por mais de um aparelho. O `tempo` e o `periodo` do
+   * grupo são a união (o tempo em que pelo menos um registrou), e cada parte é um aparelho,
+   * mostrada ao lado das outras, nunca somada.
+   */
+  partes?: ParteDaSessao[];
 };
+
+export type ParteDaSessao = { rotulo: string; cor: string; tempo: number; periodo: number | null };
 
 export function resumirPeriodo(sessoes: readonly SessaoDoPeriodo[]) {
   const tempoMs = sessoes.reduce((soma, sessao) => soma + sessao.tempo, 0);
@@ -22,6 +30,8 @@ export function resumirPeriodo(sessoes: readonly SessaoDoPeriodo[]) {
   const registradoNoPeriodoMs = comPeriodo.reduce((soma, sessao) => soma + Math.min(sessao.tempo, sessao.periodo!), 0);
   return {
     sessoes: sessoes.length,
+    /** UI-56: quantas delas foram gravadas por mais de um aparelho. */
+    comVariosAparelhos: sessoes.filter((sessao) => (sessao.partes?.length ?? 0) > 1).length,
     tempoMs,
     mediaMs: sessoes.length > 0 ? tempoMs / sessoes.length : null,
     /** Fração do período (somado) que tem registro; `null` sem período calculável. */

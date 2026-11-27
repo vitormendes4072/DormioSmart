@@ -15,6 +15,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { apagarSessao, buscarJanelaDoHistorico, marcarSessao, ErroApi } from "../lib/api";
 import type { LeituraSono } from "../types/sleep";
 import { Historico } from "./Historico";
+import { useDispositivos } from "../hooks/useDispositivos";
+import type { Dispositivo } from "../lib/dispositivos";
+
+vi.mock("../hooks/useDispositivos", () => ({ useDispositivos: vi.fn(() => []) }));
 
 vi.mock("../lib/api", async (original) => ({
   ...await original<typeof import("../lib/api")>(),
@@ -494,5 +498,120 @@ describe("abrir a sessão no Início (UI-54)", () => {
     const lista = await screen.findByRole("list", { name: "Sessões do histórico" });
     expect(within(lista).getByRole("link", { name: "Abrir no Início" }).getAttribute("href"))
       .toBe(`/dashboard?dia=${diaDe(NOITE[0])}&aparelho=travesseiro`);
+  });
+});
+
+
+describe("o aparelho de cada sessão (UI-55)", () => {
+  const aparelhos: Dispositivo[] = [
+    { id: "travesseiro", nome: "Quarto", tipo: "travesseiro", created_at: "", last_seen_at: null, revoked_at: null },
+    { id: "celular", nome: "Meu celular", tipo: "celular", created_at: "", last_seen_at: null, revoked_at: null },
+  ];
+  const seletor = () => screen.getByRole<HTMLSelectElement>("combobox");
+
+  beforeEach(() => {
+    window.localStorage.clear();
+    vi.mocked(useDispositivos).mockReturnValue(aparelhos);
+    buscar.mockResolvedValue({ leituras: [...NOITE, ...sessao("celular", 300, 12)], truncada: false });
+  });
+
+  afterEach(() => vi.mocked(useDispositivos).mockReturnValue([]));
+
+  it("com dois aparelhos, cada linha diz de qual veio", async () => {
+    mostrar();
+    const tabela = within(await screen.findByRole("region", { name: "Tabela do histórico" }));
+    const nomes = tabela.getAllByRole("row").slice(1)
+      .map((linha) => linha.querySelector("[data-aparelho]")?.textContent);
+    expect(nomes).toEqual(["Meu celular", "Travesseiro · Quarto"]);
+  });
+
+  it("escolher um aparelho mostra só as sessões dele e a escolha fica para a próxima visita", async () => {
+    mostrar();
+    await screen.findByRole("region", { name: "Tabela do histórico" });
+    fireEvent.change(seletor(), { target: { value: "celular" } });
+    const tabela = within(screen.getByRole("region", { name: "Tabela do histórico" }));
+    expect(tabela.getAllByRole("row")).toHaveLength(2);
+    expect(tabela.getByRole("cell", { name: "12" })).toBeTruthy();
+    expect(within(screen.getByRole("list", { name: "Números do período" })).getAllByRole("listitem")[0].textContent).toBe("1Sessão");
+    cleanup();
+    mostrar();
+    await screen.findByRole("region", { name: "Tabela do histórico" });
+    expect(seletor().value).toBe("celular");
+  });
+
+  it("um aparelho guardado que saiu da conta vale como todos", async () => {
+    window.localStorage.setItem("dormio-historico-aparelho", "apagado");
+    mostrar();
+    const tabela = within(await screen.findByRole("region", { name: "Tabela do histórico" }));
+    expect(tabela.getAllByRole("row")).toHaveLength(3);
+  });
+
+  it("com um aparelho só, não há seletor nem nome", async () => {
+    vi.mocked(useDispositivos).mockReturnValue([aparelhos[0]]);
+    buscar.mockResolvedValue({ leituras: NOITE, truncada: false });
+    mostrar();
+    const tabela = await screen.findByRole("region", { name: "Tabela do histórico" });
+    expect(screen.queryByRole("combobox")).toBeNull();
+    expect(tabela.querySelector("[data-aparelho]")).toBeNull();
+  });
+});
+
+
+describe("o mesmo período com dois aparelhos (UI-56)", () => {
+  const aparelhos: Dispositivo[] = [
+    { id: "celular", nome: "Meu celular", tipo: "celular", created_at: "", last_seen_at: null, revoked_at: null },
+    { id: "travesseiro", nome: "Quarto", tipo: "travesseiro", created_at: "", last_seen_at: null, revoked_at: null },
+  ];
+  // O travesseiro: 20 registros (10 min) a partir de 600 min atrás. O celular: 24 registros
+  // começando 4 min antes, sobrepostos ao travesseiro.
+  const CELULAR = sessao("celular", 604, 24);
+
+  beforeEach(() => {
+    window.localStorage.clear();
+    vi.mocked(useDispositivos).mockReturnValue(aparelhos);
+    buscar.mockResolvedValue({ leituras: [...NOITE, ...CELULAR], truncada: false });
+  });
+
+  afterEach(() => vi.mocked(useDispositivos).mockReturnValue([]));
+
+  it("no computador, uma data com 2 aparelhos e uma linha por aparelho, o travesseiro primeiro", async () => {
+    mostrar();
+    const tabela = within(await screen.findByRole("region", { name: "Tabela do histórico" }));
+    const [, primeira, segunda] = tabela.getAllByRole("row");
+    expect(within(primeira).getByRole("rowheader").getAttribute("rowspan")).toBe("2");
+    expect(within(primeira).getByRole("rowheader").textContent).toContain("2 aparelhos");
+    expect(primeira.querySelector("td [data-aparelho]")?.textContent).toBe("Travesseiro · Quarto");
+    expect(segunda.querySelector("td [data-aparelho]")?.textContent).toBe("Meu celular");
+    expect(within(segunda).getAllByRole("cell")[1].textContent).toBe("12m 0s de 12m 0s");
+  });
+
+  it("o topo conta uma sessão e o tempo em que pelo menos um registrou, sem somar", async () => {
+    mostrar();
+    const numeros = within(await screen.findByRole("list", { name: "Números do período" })).getAllByRole("listitem");
+    expect(numeros[0].textContent).toBe("1Sessão1 registrada com mais de um aparelho");
+    // O celular (12 min) e o travesseiro (10 min) se sobrepõem em 8 min: a união é 14 min, e não 22.
+    expect(numeros[1].textContent).toBe("14m 0sTempo registrado");
+  });
+
+  it("no celular, um cartão com uma seção por aparelho e as ações de cada um", async () => {
+    vi.stubGlobal("matchMedia", vi.fn((consulta: string) => ({
+      matches: consulta === "(max-width: 767px)", addEventListener: vi.fn(), removeEventListener: vi.fn(),
+    })));
+    mostrar();
+    const lista = await screen.findByRole("list", { name: "Sessões do histórico" });
+    const [cartao] = within(lista).getAllByRole("article");
+    expect(cartao.getAttribute("aria-label")).toMatch(/, 2 aparelhos$/);
+    const secoes = within(cartao).getAllByRole("region");
+    expect(secoes.map((secao) => secao.getAttribute("aria-label"))).toEqual(["Travesseiro · Quarto", "Meu celular"]);
+    for (const secao of secoes) expect(within(secao).getByRole("button", { name: /^Ações da sessão/ })).toBeTruthy();
+    expect(within(cartao).getByRole("link", { name: "Abrir no Início" }).getAttribute("href")).not.toContain("aparelho=");
+  });
+
+  it("com um aparelho escolhido no filtro, não há grupo", async () => {
+    window.localStorage.setItem("dormio-historico-aparelho", "celular");
+    mostrar();
+    const tabela = within(await screen.findByRole("region", { name: "Tabela do histórico" }));
+    expect(tabela.getAllByRole("row")).toHaveLength(2);
+    expect(tabela.queryByText("2 aparelhos")).toBeNull();
   });
 });

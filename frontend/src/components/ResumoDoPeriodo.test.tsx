@@ -22,7 +22,7 @@ function sessao(dia: number, tempo: number, periodo: number | null): SessaoDoPer
 describe("resumirPeriodo", () => {
   it("soma as sessões, tira a média e a fração do período somado", () => {
     const r = resumirPeriodo([sessao(20, 6 * H, 8 * H), sessao(22, 7 * H, 7 * H)]);
-    expect(r).toEqual({ sessoes: 2, tempoMs: 13 * H, mediaMs: 6.5 * H, fracaoRegistrada: 13 / 15 });
+    expect(r).toEqual({ sessoes: 2, comVariosAparelhos: 0, tempoMs: 13 * H, mediaMs: 6.5 * H, fracaoRegistrada: 13 / 15 });
   });
 
   it("o intervalo entre as sessões não entra no período", () => {
@@ -38,7 +38,7 @@ describe("resumirPeriodo", () => {
   });
 
   it("sem sessões não inventa média nem porcentagem", () => {
-    expect(resumirPeriodo([])).toEqual({ sessoes: 0, tempoMs: 0, mediaMs: null, fracaoRegistrada: null });
+    expect(resumirPeriodo([])).toEqual({ sessoes: 0, comVariosAparelhos: 0, tempoMs: 0, mediaMs: null, fracaoRegistrada: null });
   });
 });
 
@@ -101,5 +101,35 @@ describe("ResumoDoPeriodo (UI-52)", () => {
   it("período incompleto aparece escrito", () => {
     render(<ResumoDoPeriodo sessoes={sessoes} parcial />);
     expect(screen.getByRole("status").textContent).toContain("Período incompleto");
+  });
+});
+
+describe("o mesmo período com dois aparelhos (UI-56)", () => {
+  const grupo: SessaoDoPeriodo = {
+    ...sessao(25, 7 * H, 7.5 * H), chave: "g25",
+    partes: [
+      { rotulo: "Travesseiro", cor: "var(--chart-1)", tempo: 6.5 * H, periodo: 7 * H },
+      { rotulo: "Celular", cor: "var(--chart-5)", tempo: 7 * H, periodo: 7 * H },
+    ],
+  };
+
+  it("o grupo conta como uma sessão, e o topo diz que foi gravada com mais de um aparelho", () => {
+    render(<ResumoDoPeriodo sessoes={[grupo, sessao(22, 6 * H, 6 * H)]} />);
+    const [sessoes] = within(screen.getByRole("list", { name: "Números do período" })).getAllByRole("listitem");
+    expect(sessoes.textContent).toBe("2Sessões1 registrada com mais de um aparelho");
+  });
+
+  it("desenha uma barra por aparelho, lado a lado, na cor dele, e a legenda diz qual é qual", () => {
+    const { container } = render(<ResumoDoPeriodo sessoes={[grupo]} />);
+    const partes = Array.from(container.querySelectorAll('[data-barra="g25"] [data-parte]'));
+    expect(partes.map((p) => p.getAttribute("data-parte"))).toEqual(["Travesseiro", "Celular"]);
+    expect((partes[1].querySelector("[data-registrado]") as SVGElement).style.fill).toBe("var(--chart-5)");
+    expect(Array.from(container.querySelectorAll("[data-legenda-aparelho]")).map((l) => l.textContent?.trim()))
+      .toEqual(["Travesseiro", "Celular"]);
+  });
+
+  it("a barra diz por escrito o tempo de cada aparelho, sem somar", () => {
+    render(<ResumoDoPeriodo sessoes={[grupo]} />);
+    expect(screen.getByRole("button", { name: /2 aparelhos: Travesseiro, 6h 30m registrados de 7h 0m; Celular, 7h 0m registrados de 7h 0m$/ })).toBeTruthy();
   });
 });

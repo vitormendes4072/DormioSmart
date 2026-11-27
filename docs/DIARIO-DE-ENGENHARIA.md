@@ -14197,6 +14197,87 @@ A suíte passou com 1.099 testes em 73 arquivos. Lint, build, os dois Knip e as 
 
 ---
 
+# 2026-11-26 (xxi) — release R25: o Histórico novo e o "Tempo registrado" com detalhe
+
+**O problema, como foi entendido no início.** Com o `UI-51` a `UI-54` no `develop` (#320, #321, #323, #324), o autor pediu o release para o site.
+
+**Hipótese de trabalho.** Release só do site: sem migração, sem backend e sem APK (o app segue no 1.1.7). No `vercel.json`, muda só o hash de um script da landing (o do `UI-51`), que precisa chegar à CSP servida.
+
+**O que foi testado, e como.**
+- **PR #325** (`develop` → `main`): os 14 checks lidos antes do merge, incluindo o app Android, o firmware e o RLS nas três versões do Postgres.
+- **Deploy:** `scripts/verificar-deploy.sh` no commit do merge, que espera o deploy daquele commit antes de testar.
+- **De fora, desta máquina:** a CSP servida com a landing, a landing publicada, as rotas sem sessão e os pedaços JS do Histórico e do Início, baixados da produção e buscados.
+
+**Resultado medido.**
+- **Checks da #325:** todos passaram. Merge `7f9f4f9`, deploy de produção `8099626746`.
+- **`verificar-deploy.sh`:** landing, rota do SPA, `/health`, logo e pacote `200`; ingestão sem token e leitura sem sessão `401`.
+- `/health` `200` com o contrato 2.12.0 e o modelo; `/api/devices`, `/api/sleep-history` e `/api/features` sem token `401`.
+- A CSP da landing traz o hash novo (`sha256-HWInuL…`); a landing servida tem "TEMPO REGISTRADO" com 7h 06m e não tem mais "TEMPO MONITORADO".
+- `Historico-CxiEN5ao.js` contém "Tempo registrado por sessão", "Abrir no Início" e "Do período foi registrado"; `Dashboard-DydumHzo.js` contém o detalhe do tempo registrado e a leitura do aparelho no endereço.
+
+**Adaptação.** O laço que esperava os checks da #325 contava os checks "não concluídos" pelo campo `status`, e o check da Vercel (um `StatusContext`) não tem esse campo: o laço nunca terminou, embora os 14 estivessem verdes. Lido pelo `gh pr checks` e mesclado em seguida.
+
+**O que deu errado no caminho.** O laço acima atrasou o merge até o autor perguntar se o release tinha saído. A pasta `.claude/worktrees/ui-52` ficou presa por um processo ao remover a worktree (branches apagadas).
+
+**Risco em aberto.**
+- **O Histórico novo e o detalhe com a conta do autor**, logado, não foram vistos pelo Claude.
+- **30 dias no celular**, com 30 gráficos pequenos, não foi medido numa conta real.
+- O app 1.1.7 segue com o Histórico e o Início antigos até o próximo APK.
+
+**Procedência.** PR #325, merge `7f9f4f9`, deploy `8099626746`, em 26/11; verificação nesta máquina (Windows 11).
+
+---
+
+# 2026-11-26 (xxii) — UI-55: o Histórico diz de qual aparelho veio cada sessão, e filtra por ele
+
+**O problema, como foi entendido no início.** Depois do R25, o autor gravou uma noite com o celular e o travesseiro ao mesmo tempo (o protocolo do `VIA-02`). O Histórico mostrou duas sessões, "26/11" e "26/11", sem dizer de qual aparelho cada uma veio: parecia que eram dias diferentes. Ele pediu um filtro por aparelho e uma visão mista. O plano aprovado tem três partes: o filtro e o nome (`UI-55`), o mesmo período agrupado sem somar (`UI-56`) e o mesmo no Início (`UI-57`, opcional).
+
+**Hipótese de trabalho.** O Histórico já separa as sessões por aparelho (o `device_id` de cada leitura); faltava mostrar. Com mais de um aparelho na conta, cada linha e cada cartão diz o tipo e o nome ("Travesseiro · Quarto"), e o mesmo seletor do Início filtra a lista, os números e o gráfico. A escolha fica guardada para a próxima visita, como a barra lateral; um aparelho guardado que saiu da conta vale como "Todos".
+
+**O que foi testado, e como.**
+- `Historico.test.tsx` (+4, com a lista de aparelhos simulada): o nome de cada linha, o filtro (só a sessão do celular, e "1 Sessão" no topo) com a escolha lembrada depois de remontar, o aparelho guardado que não existe mais, e nenhum seletor nem nome com um aparelho só.
+- **Sabotagem:** o filtro sem efeito; caiu o teste que cobre a escolha.
+
+**Resultado medido.** Frontend **1 142 passam, 76 arquivos** (+4). `tsc`, `eslint`, `knip`, `knip:tipos` e `vite build` limpos.
+
+**Adaptação.** Em "Últimas 24 horas", o gráfico de movimento passa a valer também com dois aparelhos na conta, desde que um esteja escolhido no filtro.
+
+**O que deu errado no caminho.** Nada.
+
+**Risco em aberto.** Com "Todos os dispositivos", as duas sessões do mesmo período continuam em linhas separadas; o agrupamento é o `UI-56`, a seguir.
+
+**Procedência.** Branch `feature/UI-55-filtro-de-aparelho`, base `develop` depois do registro do R25 (#326). Execuções em Windows 11, Node 24.11.0, em 26/11.
+
+---
+
+# 2026-11-26 (xxiii) — UI-56: o mesmo período com dois aparelhos, lado a lado, sem somar
+
+**O problema, como foi entendido no início.** Com o filtro (`UI-55`), cada sessão diz de qual aparelho veio, mas em "Todos os dispositivos" a noite gravada pelo celular e pelo travesseiro ao mesmo tempo continua em duas sessões soltas. O autor pediu uma visão mista e sugeriu uma média, um mínimo e um máximo ou os pontos de movimento pintados.
+
+**Hipótese de trabalho.** A média não pode ser a visão mista: os dois aparelhos medem de formas diferentes (na primeira noite do `VIA-02`, com o mesmo limite, o celular marcou 0,7% do tempo com movimento e o travesseiro 8,6%), e o limite do celular está em aberto (`DATA-06`). Sessões de aparelhos diferentes que se sobrepõem em pelo menos 30% da mais curta viram um grupo (componente conexo, `mesmoPeriodo.ts`). No topo, o grupo conta como uma sessão; o tempo registrado é o tempo em que pelo menos um aparelho registrou (a união), e o gráfico mostra uma barra por aparelho, lado a lado, na cor dele. Na lista, uma linha por aparelho sob a mesma data (computador) ou uma seção por aparelho no mesmo cartão (celular), cada uma com a sua faixa ou gráfico, os seus números e as suas ações. O travesseiro sempre primeiro, depois o celular. O grupo não se chama "noite" (`ESC-01`): "2 aparelhos", "registrada com mais de um aparelho".
+
+**O que foi testado, e como.**
+- `mesmoPeriodo.test.ts` (6): o celular e o travesseiro na mesma noite, a borda dos 30% (36 min de 2 h juntam; 30 min não), a bancada à tarde fora da noite, o mesmo aparelho nunca junto, a ligação transitiva (o travesseiro reiniciado), e a união.
+- `ResumoDoPeriodo.test.tsx` (+3): o grupo conta como uma sessão com o aviso, as barras por aparelho na cor e a legenda, e o rótulo por escrito de cada aparelho.
+- `Historico.test.tsx` (+4): a data com "2 aparelhos" sobre duas linhas, o topo com a união (14 min, e não 22), o cartão do celular com uma seção e um "…" por aparelho e o "Abrir no Início" sem aparelho, e nenhum grupo com um aparelho escolhido.
+- **Sabotagens:** (1) sem o limite de 30%; (2) a soma no lugar da união; (3) o mesmo aparelho podendo juntar. Caíram 4, 1 e 1 testes.
+- **Na tela**, com `?demo=1` (os exemplos ganharam duas sessões do celular de exemplo, junto com o travesseiro): 390 px (as barras pareadas e o cartão com os dois aparelhos) e 1280 px (as linhas do grupo, conferidas pelo DOM).
+
+**Resultado medido.** Frontend **1 155 passam, 77 arquivos** (+13). `tsc`, `eslint`, `knip`, `knip:tipos`, `vite build` e `conferir_pacote_frontend.py` ok.
+
+**Adaptação.** Dentro do grupo, a ordem era a de início, e a legenda trocava de lugar conforme quem começou antes; passou a ser a do tipo (travesseiro, celular, outros), a mesma das cores.
+
+**O que deu errado no caminho.** Um teste esperava 12 min de união; o travesseiro terminava 2 min depois do celular, e a conta certa é 14 min. O teste estava errado, e o código certo.
+
+**Risco em aberto.**
+- As faixas e os gráficos de cada aparelho ainda usam as cores do app, e não a cor do aparelho; a cor aparece no ponto ao lado do nome e nas barras.
+- O Início, em "Todos os dispositivos", ainda junta os dois num gráfico só (`UI-57`, opcional).
+- A concordância entre os dois ("o travesseiro viu 4 dos 5 movimentos do celular") espera o limite do celular (`DATA-06`).
+
+**Procedência.** Branch `feature/UI-56-mesmo-periodo`, sobre a do `UI-55` (PR #327). Execuções em Windows 11, Node 24.11.0 e no navegador do Claude, em 26/11.
+
+---
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
