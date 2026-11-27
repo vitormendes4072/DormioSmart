@@ -1,6 +1,6 @@
 import { MensagemDeFalha } from "../components/MensagemDeFalha";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
-import { useLocation } from "react-router";
+import { Link, useLocation } from "react-router";
 
 import { BarraDoWorkspace } from "../components/BarraDoWorkspace";
 import { CartaoDeMetrica, EtiquetaDeRegistro } from "../components/CartoesDeRegistro";
@@ -14,6 +14,7 @@ import { apagarSessao, buscarJanelaDoHistorico, ErroApi, marcarSessao, MAX_PAGIN
 import { calcularCobertura, type Trecho as TrechoComRegistro } from "../lib/cobertura";
 import { marcasDaRegua, reguaDoHorario } from "../lib/faixaDaSessao";
 import { estaEmModoDemo } from "../lib/demo";
+import { destinoDoDia } from "../lib/diaNoEndereco";
 import { calcularMetricas, formatarDuracao, formatarPorcentagem, prepararSerie, type PontoDaSerie } from "../lib/metricas";
 import { ehBancada, sessoesDaMarca, trechoDaSessao, type Trecho } from "../lib/trecho";
 import { ehMovimento, instanteDaLeitura, type LeituraSono } from "../types/sleep";
@@ -426,7 +427,10 @@ function ListaDeSessoes({ linhas, acoes, rotulo = "Tabela do histórico" }: {
   rotulo?: string;
 }) {
   const estreita = useSyncExternalStore(observarLargura, telaEstreita);
+  const { search } = useLocation();
   const regua = reguaDoHorario(linhas);
+  // UI-54: a sessão abre no Início, no dia em que começou e no aparelho dela.
+  const noInicio = (linha: Linha) => destinoDoDia(linha.inicio, linha.trecho?.device, search);
   if (estreita) return (
     <ul aria-label={rotulo === "Tabela do histórico" ? "Sessões do histórico" : "Sessões de bancada"}
       className="space-y-3">
@@ -454,7 +458,12 @@ function ListaDeSessoes({ linhas, acoes, rotulo = "Tabela do histórico" }: {
               <CartaoDeMetrica valor={movimentoDaSessao(linha)}><p>com movimento</p></CartaoDeMetrica>
               <CartaoDeMetrica valor={linha.leituras}><p>{linha.leituras === 1 ? "registro" : "registros"}</p></CartaoDeMetrica>
             </ul>
-            {acoes && <div className="flex justify-end">{acoes(linha)}</div>}
+            <div className="flex items-center justify-between gap-2">
+              <Link to={noInicio(linha)} className="inline-flex min-h-9 items-center rounded-lg px-1 text-sm font-semibold text-primary hover:underline focus-visible:outline-2 focus-visible:outline-ring">
+                Abrir no Início
+              </Link>
+              {acoes?.(linha)}
+            </div>
           </article>
         </li>
       ))}
@@ -487,7 +496,12 @@ function ListaDeSessoes({ linhas, acoes, rotulo = "Tabela do histórico" }: {
         <tbody className="divide-y divide-border border-b border-border">
           {linhas.map((linha) => (
             <tr key={linha.chave} id={idDaSessao(linha.chave)} tabIndex={-1} className="scroll-mt-20 outline-none focus:bg-secondary/60">
-              <th scope="row" className="whitespace-nowrap px-2 py-3 font-semibold">{dataDaSessao(linha)}</th>
+              <th scope="row" className="whitespace-nowrap px-2 py-3 font-semibold">
+                <Link to={noInicio(linha)} title="Abrir no Início"
+                  className="rounded-sm text-foreground underline-offset-2 hover:text-primary hover:underline focus-visible:outline-2 focus-visible:outline-ring">
+                  {dataDaSessao(linha)}
+                </Link>
+              </th>
               <td className="px-2 py-3">
                 {linha.trechos
                   ? <FaixaDaSessao regua={regua} inicio={linha.inicio} fim={linha.fim} trechos={linha.trechos}

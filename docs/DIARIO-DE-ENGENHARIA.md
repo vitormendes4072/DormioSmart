@@ -14172,6 +14172,31 @@ A suíte passou com 1.099 testes em 73 arquivos. Lint, build, os dois Knip e as 
 
 ---
 
+# 2026-11-26 (xx) — UI-54: a sessão do Histórico abre no Início
+
+**O problema, como foi entendido no início.** Última parte do redesenho do Histórico. O Histórico mostra cada sessão com a sua forma (`UI-53`), mas para ver o gráfico com leitura por ponto, os detalhes técnicos e as sessões do dia, é preciso ir ao Início e achar o dia no calendário à mão.
+
+**Hipótese de trabalho.** O Início já sabe abrir um dia (o calendário, `UI-46`). Basta o dia e o aparelho virem do endereço: `/dashboard?dia=AAAA-MM-DD&aparelho=<id>`. O dia é o do começo da sessão, a mesma regra do calendário; o aparelho evita misturar o celular e o travesseiro. No computador, a data da linha é o link; no celular, o cartão ganha "Abrir no Início". O endereço é lido só na montagem, e escolher outro dia ou aparelho no Início o tira do endereço, para um recarregamento não voltar ao dia antigo.
+
+**O que foi testado, e como.**
+- `diaNoEndereco.test.ts` (5): o dia do começo de uma sessão que cruza a meia-noite, a ida e volta (dia ao meio-dia e aparelho), o modo demonstração guardado, dia malformado ou inexistente (2026-02-31) ignorado, aparelho com caractere fora do padrão recusado, e a limpeza do endereço.
+- `montagem.test.ts` (+4, no bloco do `UI-46`): o dia do endereço abre selecionado no calendário e com a última sessão do dia; com o aparelho, só as sessões dele; escolher outro dia tira o dia do endereço; dia inexistente abre o Início como sempre.
+- `Historico.test.tsx` (+2): o link da data na tabela e o "Abrir no Início" no cartão, com o dia e o aparelho da sessão.
+- **Sabotagem:** o Início sem tirar o dia do endereço; caiu o teste que cobre isso. O controle do meio-dia veio de um erro real (abaixo).
+- **Na tela**, com `?demo=1`: "Abrir no Início" num cartão leva a "Sessões de segunda-feira, 2 de novembro", com o calendário na semana dele.
+
+**Resultado medido.** Frontend **1 138 passam, 76 arquivos** (+11 sobre o `UI-53`). `tsc`, `eslint`, `knip`, `knip:tipos`, `vite build` e `conferir_pacote_frontend.py` ok.
+
+**Adaptação.** Nenhuma no desenho.
+
+**O que deu errado no caminho.** O dia lido do endereço era criado à meia-noite, e o calendário guarda cada dia ao meio-dia (`somarDias`) e marca o escolhido por igualdade. O Início abria no dia certo, mas nenhum dia aparecia marcado. Os dois testes do calendário caíram e mostraram o defeito; na tela, a captura não mostrava a diferença. Corrigido para o meio-dia, com o motivo no comentário.
+
+**Risco em aberto.** No modo demonstração, os exemplos do Histórico e os do Início são conjuntos diferentes: o link abre o dia certo, mas o Início mostra "Sem registros neste dia". Com a conta real, os dois vêm do mesmo banco.
+
+**Procedência.** Branch `feature/UI-54-sessao-no-inicio`, sobre a do `UI-53` (PR #323). Execuções em Windows 11, Node 24.11.0 e no navegador do Claude, em 26/11.
+
+---
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
