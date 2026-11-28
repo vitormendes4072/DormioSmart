@@ -14504,6 +14504,46 @@ Na revisão, o teste da faixa encontrou apenas a navegação do Início ao fim d
 
 ---
 
+# 2026-11-27 (v) — FW-23: o programa de calibração aceita o MPU6500
+
+**O problema, como foi entendido no início.** Com os MPU6500 soldados nas duas placas extras (`HW-13`), o próximo passo é calibrar cada uma nas 6 posições (`CAL-01`). O `firmware/caracterizacao/caracterizacao.ino` usa a biblioteca `Adafruit_MPU6050`. Lido no código dela (`Adafruit_MPU6050.cpp`, linha 94): o `begin()` recusa qualquer WHO_AM_I diferente de `0x68`. E o filtro dela vai só no CONFIG (0x1A), que no MPU6500 não filtra o acelerômetro (`FW-21`).
+
+**Hipótese de trabalho.** Falar com o chip pelos registradores, como o `sketch.ino` de produção, resolve os dois problemas. Para uma calibração antiga do MPU6050 continuar comparável, a inicialização e a conversão devem repetir as da biblioteca:
+- reset, caminhos de sinal, divisor 0, giroscópio ±500 °/s e PLL do eixo X;
+- m/s² = bruto/4 096 × 9,80665 (`SENSORS_GRAVITY_STANDARD`).
+
+**O que foi testado, e como.**
+- `make sintaxe` em contêiner `gcc:13` e a compilação com o `arduino-cli` para o ESP32.
+- Na A434 (MPU6500, COM4) e na placa do travesseiro (MPU6050, COM3), o programa antigo e o novo, com a placa parada na mesma posição. Um script mandou o ENTER da primeira pose pela serial.
+- As duas placas voltaram ao firmware de produto no fim: a A434 com os segredos dela e a calibração desligada; o travesseiro com os segredos e a calibração dele.
+
+**Resultado medido.**
+- **A434, programa antigo:** "ERRO: MPU6050 nao encontrado".
+- **A434, programa novo:** "MPU6500 (WHO_AM_I 0x70)", com o filtro em CONFIG e ACCEL_CONFIG 2. Leu ax −3,718, ay 5,618, az −7,167 e |a| 9,837 m/s² (placa inclinada, fora de pose), ruído 0,019 m/s², 27,0 °C.
+- **Controle positivo no travesseiro (MPU6050), mesma posição:**
+  - antigo: ax −1,407, ay 0,529, az 8,467, |a| 8,599, ruído 0,015, 25,4 °C;
+  - novo: ax −1,406, ay 0,529, az 8,466, |a| 8,598, ruído 0,014, 25,6 °C.
+  - A diferença fica dentro do ruído.
+- Para o chip: 301 340 B de programa.
+
+**Adaptação.**
+- O sketch acorda o sensor **antes** de gravar a configuração e depois confere o que ficou gravado (CONFIG, ACCEL_CONFIG e, no MPU6500, ACCEL_CONFIG 2). No erro, diz em que passo falhou.
+- O bloco "COPIE DAQUI PARA BAIXO" ganhou a linha `chip,<nome>,<WHO_AM_I>`. Nenhum script do repositório lê esse bloco (conferido por busca).
+
+**O que deu errado no caminho.**
+- **A primeira versão gravava a configuração com o chip dormindo**, logo depois do reset, na ordem da biblioteca. No MPU6500 funcionou. No MPU6050 a conferência acusou e o programa parou. Acordar antes de configurar resolveu.
+- Uma primeira rodada no travesseiro mostrou o mesmo erro para o programa "antigo" e o "novo". A gravação do antigo não tinha acontecido, e a saída lida era a do novo. A conclusão só foi tirada depois de regravar e ver o cabeçalho de cada um.
+- A gravação na COM3 falhou várias vezes a 921 600 baud ("No more data to read", `IndexError` do `esptool`) e passou a 115 200. Na COM4, uma vez, o reset automático não pôs a placa em modo de gravação ("Wrong boot mode"); a 115 200 passou.
+
+**Risco em aberto.**
+- As 6 posições não foram feitas em nenhuma placa com MPU6500: é o `HW-13`, com o autor.
+- O ruído e a temperatura do MPU6500 medidos aqui são de uma pose só.
+- O `diagnostico-i2c` também usa leituras próprias e já reconhece o MPU6500 (`HW-12`). O `envio-continuo.ino` ainda usa a `Adafruit_MPU6050` e não funciona com o MPU6500. Ele é um programa auxiliar antigo, sem item.
+
+**Procedência.** Branch `feature/FW-23-calibracao-mpu6500` sobre `develop` `1757160`. `arduino-cli` 1.6.0 com `esp32:esp32` 3.3.12; `make sintaxe` em contêiner `gcc:13`; placas A434 (COM4) e travesseiro (COM3). As saídas brutas estão em `dados-locais/sensores-compra-2/fw23-*.txt`, fora do Git. Windows 11, 27/11, das 22:30 às 23:10.
+
+---
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

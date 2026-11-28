@@ -1,5 +1,25 @@
 /*
- * caracterizacao.ino - calibracao de 6 posicoes do MPU6050 (CALC-02)
+ * caracterizacao.ino - calibracao de 6 posicoes do MPU6050 ou do MPU6500
+ * (CALC-02, CAL-01; FW-23)
+ *
+ * -- FW-23 (27/11): SEM A BIBLIOTECA DA ADAFRUIT ------------------------
+ *
+ * Ate 27/11 este sketch usava a Adafruit_MPU6050, cujo `begin()` recusa
+ * qualquer chip cujo WHO_AM_I nao seja 0x68 (Adafruit_MPU6050.cpp, linha 94:
+ * `if (chip_id.read() != MPU6050_DEVICE_ID)`). Os GY-521 vendidos hoje
+ * chegam com um MPU6500 (0x70, FW-21), e com eles o sketch parava em
+ * "MPU6050 nao encontrado". A biblioteca tambem grava o filtro so no CONFIG
+ * (0x1A), que no MPU6500 nao filtra o acelerometro.
+ *
+ * Agora o sketch fala com o chip pelos registradores, como o sketch.ino de
+ * producao: reconhece o chip pelo WHO_AM_I, acorda o sensor ANTES de gravar a
+ * configuracao (no MPU6050 a primeira versao gravava com o chip dormindo, logo
+ * apos o reset, e a conferencia acusou), grava o filtro de 21 Hz no 0x1A e,
+ * no MPU6500, tambem no ACCEL_CONFIG 2 (0x1D), e converte a temperatura com a
+ * formula de cada chip. A inicializacao e a conversao repetem as da
+ * biblioteca (reset, SMPLRT_DIV 0, giroscopio em +-500 deg/s, PLL do eixo X;
+ * m/s2 = bruto / 4096 * 9,80665), para que uma calibracao do MPU6050 feita
+ * com a versao antiga continue comparavel.
  *
  * INSTRUMENTO DE BANCADA, NAO FIRMWARE DE PRODUTO.
  * Ele nao conecta Wi-Fi, nao envia nada e nao dorme.
@@ -65,12 +85,48 @@
  * Uma caixinha ou um livro de capa dura ajuda mais do que a mao.
  */
 
-#include <Adafruit_MPU6050.h>
-#include <Adafruit_Sensor.h>
 #include <Wire.h>
 #include <math.h>
 
-Adafruit_MPU6050 mpu;
+// --- O chip, pelos registradores (FW-23) ----------------------------------
+
+const uint8_t MPU_ENDERECO = 0x68;
+const uint8_t REG_SMPLRT_DIV = 0x19;
+const uint8_t REG_CONFIG = 0x1A;         // DLPF: no MPU6050, acelerometro e giro
+const uint8_t REG_GYRO_CONFIG = 0x1B;
+const uint8_t REG_ACCEL_CONFIG = 0x1C;
+const uint8_t REG_ACCEL_CONFIG2 = 0x1D;  // so no MPU6500: o filtro do acelerometro
+const uint8_t REG_ACCEL_XOUT_H = 0x3B;   // 0x3B-0x40 aceleracao, 0x41-0x42 temperatura
+const uint8_t REG_SIGNAL_PATH_RESET = 0x68;
+const uint8_t REG_PWR_MGMT_1 = 0x6B;
+const uint8_t REG_WHO_AM_I = 0x75;
+
+const uint8_t WHO_AM_I_MPU6050 = 0x68;
+const uint8_t WHO_AM_I_MPU6500 = 0x70;
+
+// Os mesmos valores do sketch.ino (C2_ACCEL_CONFIG, C2_DLPF_CFG, C2_A_DLPF_CFG).
+const uint8_t ACCEL_8G = 2u << 3;     // AFS_SEL = 2: +-8 g, 4 096 LSB/g
+const uint8_t GYRO_500DPS = 1u << 3;  // FS_SEL = 1: +-500 deg/s
+const uint8_t DLPF_21HZ = 4;
+
+const float LSB_POR_G = 4096.0;
+const float G_PADRAO = 9.80665;  // o SENSORS_GRAVITY_STANDARD da Adafruit
+
+struct Chip {
+  const char *nome;
+  bool filtro_em_accel_config2;
+  float temp_lsb_por_grau;  // T = bruto / temp_lsb_por_grau + temp_com_bruto_zero
+  float temp_com_bruto_zero;
+};
+
+// As conversoes de temperatura sao as do perfil_do_sensor.h (FW-21; driver
+// `inv_mpu6050` do Linux). Chip desconhecido: sem 0x1D, temperatura do MPU6050.
+const Chip CHIP_MPU6050 = {"MPU6050", false, 340.0, 36.53};
+const Chip CHIP_MPU6500 = {"MPU6500", true, 333.87, 21.0};
+const Chip CHIP_DESCONHECIDO = {"desconhecido", false, 340.0, 36.53};
+
+const Chip *chip = &CHIP_DESCONHECIDO;
+uint8_t who_am_i = 0;
 
 // --- Parametros da medicao ----------------------------------------------
 
@@ -95,9 +151,9 @@ const float RUIDO_MAXIMO = 0.15;
 // para responder no barramento - entao `mpu.begin()` PASSA - e insuficiente
 // para os sensores funcionarem. Todos os registradores voltam zero.
 //
-// O sintoma delator e a temperatura: a biblioteca calcula
-// `raw / 340,0 + 36,53`, entao registrador zerado imprime exatamente
-// 36,53 C. Se aparecer isso com |a| = 0, o problema e fiacao, nao pose.
+// O sintoma delator e a temperatura: com o registrador zerado, a conversao
+// devolve exatamente a constante do chip -- 36,53 C no MPU6050, 21,0 C no
+// MPU6500. Se aparecer isso com |a| = 0, o problema e fiacao, nao pose.
 //
 // Foi um furo desta versao: os dois avisos anteriores nao disparavam com
 // zero (`0 > 0,15` e falso, e `0 < 0,90*0` tambem), entao o sketch aceitava
@@ -139,6 +195,102 @@ Medida medidas[N_POSES];
 void esperarEnter();
 Medida medirPose();
 void relatorio();
+bool escrever(uint8_t reg, uint8_t valor);
+bool ler(uint8_t reg, uint8_t *dest, uint8_t n);
+bool configurarSensor();
+bool lerAmostra(float *x, float *y, float *z, float *temp);
+
+// --- O chip --------------------------------------------------------------
+
+bool escrever(uint8_t reg, uint8_t valor) {
+  Wire.beginTransmission(MPU_ENDERECO);
+  Wire.write(reg);
+  Wire.write(valor);
+  return Wire.endTransmission() == 0;
+}
+
+bool ler(uint8_t reg, uint8_t *dest, uint8_t n) {
+  Wire.beginTransmission(MPU_ENDERECO);
+  Wire.write(reg);
+  if (Wire.endTransmission(false) != 0) return false;
+  if (Wire.requestFrom(MPU_ENDERECO, n) != n) return false;
+  for (uint8_t i = 0; i < n; i++) dest[i] = Wire.read();
+  return true;
+}
+
+// A sequencia do `Adafruit_MPU6050::_init` (reset, caminhos de sinal,
+// divisor 0, giroscopio +-500 deg/s, PLL do eixo X), com a faixa e o filtro
+// do produto, e o 0x1D quando o chip e um MPU6500.
+const char *passo_que_falhou = "";
+
+bool configurarSensor() {
+  passo_que_falhou = "ler o WHO_AM_I";
+  if (!ler(REG_WHO_AM_I, &who_am_i, 1)) return false;
+  if (who_am_i == WHO_AM_I_MPU6050) {
+    chip = &CHIP_MPU6050;
+  } else if (who_am_i == WHO_AM_I_MPU6500) {
+    chip = &CHIP_MPU6500;
+  } else {
+    chip = &CHIP_DESCONHECIDO;
+  }
+
+  passo_que_falhou = "pedir o reset";
+  if (!escrever(REG_PWR_MGMT_1, 0x80)) return false;  // DEVICE_RESET
+  // Logo depois do reset o chip pode nao responder no I2C: uma leitura que
+  // falha conta como "ainda em reset", e nao como erro.
+  uint8_t pwr = 0x80;
+  for (int i = 0; i < 200 && (pwr & 0x80); i++) {
+    delay(1);
+    if (!ler(REG_PWR_MGMT_1, &pwr, 1)) pwr = 0x80;
+  }
+  passo_que_falhou = "esperar o fim do reset";
+  if (pwr & 0x80) return false;
+  delay(100);
+  passo_que_falhou = "resetar os caminhos de sinal";
+  bool ok = escrever(REG_SIGNAL_PATH_RESET, 0x07);
+  delay(100);
+  // Acorda ANTES de configurar: o reset deixa o chip dormindo (SLEEP = 1).
+  passo_que_falhou = "acordar o sensor";
+  ok = ok && escrever(REG_PWR_MGMT_1, 0x01);  // acordado, PLL do giro X
+  delay(100);
+  if (!ok) return false;
+  passo_que_falhou = "gravar a configuracao";
+  ok = ok && escrever(REG_SMPLRT_DIV, 0);
+  ok = ok && escrever(REG_CONFIG, DLPF_21HZ);
+  if (chip->filtro_em_accel_config2) ok = ok && escrever(REG_ACCEL_CONFIG2, DLPF_21HZ);
+  ok = ok && escrever(REG_GYRO_CONFIG, GYRO_500DPS);
+  ok = ok && escrever(REG_ACCEL_CONFIG, ACCEL_8G);
+  delay(50);
+  if (!ok) return false;
+
+  // Confere o que ficou gravado: um registrador que nao pegou estragaria a
+  // calibracao inteira sem aviso.
+  passo_que_falhou = "conferir a configuracao gravada";
+  uint8_t cfg = 0, acc = 0, acc2 = 0;
+  ok = ok && ler(REG_CONFIG, &cfg, 1) && ler(REG_ACCEL_CONFIG, &acc, 1);
+  if (chip->filtro_em_accel_config2) ok = ok && ler(REG_ACCEL_CONFIG2, &acc2, 1);
+  ok = ok && (cfg & 0x07) == DLPF_21HZ && (acc & 0x18) == ACCEL_8G;
+  if (chip->filtro_em_accel_config2) ok = ok && (acc2 & 0x0F) == DLPF_21HZ;
+  if (!ok) {
+    Serial.printf("   lido: CONFIG 0x%02X, ACCEL_CONFIG 0x%02X, ACCEL_CONFIG 2 0x%02X\n", cfg, acc,
+                  acc2);
+  }
+  return ok;
+}
+
+bool lerAmostra(float *x, float *y, float *z, float *temp) {
+  uint8_t b[8];
+  if (!ler(REG_ACCEL_XOUT_H, b, 8)) return false;
+  const int16_t rx = (int16_t)((b[0] << 8) | b[1]);
+  const int16_t ry = (int16_t)((b[2] << 8) | b[3]);
+  const int16_t rz = (int16_t)((b[4] << 8) | b[5]);
+  const int16_t rt = (int16_t)((b[6] << 8) | b[7]);
+  *x = rx / LSB_POR_G * G_PADRAO;
+  *y = ry / LSB_POR_G * G_PADRAO;
+  *z = rz / LSB_POR_G * G_PADRAO;
+  *temp = rt / chip->temp_lsb_por_grau + chip->temp_com_bruto_zero;
+  return true;
+}
 
 // --- Utilitarios ---------------------------------------------------------
 
@@ -159,11 +311,13 @@ Medida medirPose() {
 
   double soma[3] = {0, 0, 0};
   double somaMag = 0, somaMag2 = 0, somaTemp = 0;
-  sensors_event_t a, g, t;
+  int falhas = 0;
 
   for (int i = 0; i < AMOSTRAS; i++) {
-    mpu.getEvent(&a, &g, &t);
-    float x = a.acceleration.x, y = a.acceleration.y, z = a.acceleration.z;
+    float x = 0, y = 0, z = 0, temperatura = 0;
+    // Uma falha de I2C vira amostra zerada, que a checagem de magnitude da
+    // pose acusa; a contagem sai no log.
+    if (!lerAmostra(&x, &y, &z, &temperatura)) falhas++;
     soma[0] += x;
     soma[1] += y;
     soma[2] += z;
@@ -171,8 +325,11 @@ Medida medirPose() {
     double m = sqrt((double)x * x + (double)y * y + (double)z * z);
     somaMag  += m;
     somaMag2 += m * m;
-    somaTemp += t.temperature;
+    somaTemp += temperatura;
     delay(INTERVALO_MS);
+  }
+  if (falhas > 0) {
+    Serial.printf("   AVISO: %d de %d leituras falharam no I2C.\n", falhas, AMOSTRAS);
   }
 
   Medida md;
@@ -192,22 +349,24 @@ void setup() {
   delay(500);
 
   Wire.begin(21, 22);
-  if (!mpu.begin()) {
-    Serial.println("ERRO: MPU6050 nao encontrado. Confira 3V3, GND, SDA=21, SCL=22.");
+  // Iguais ao sketch.ino de producao, para o resultado transferir: +-8 g e o
+  // filtro de 21 Hz (FW-06), no registrador certo de cada chip (FW-23).
+  if (!configurarSensor()) {
+    Serial.printf("ERRO: falhou ao %s (WHO_AM_I lido: 0x%02X). Confira 3V3, GND, SDA=21, "
+                  "SCL=22.\n", passo_que_falhou, who_am_i);
     while (1) delay(100);
   }
 
-  // Iguais ao sketch.ino de producao, para o resultado transferir.
-  mpu.setAccelerometerRange(MPU6050_RANGE_8_G);
-  mpu.setGyroRange(MPU6050_RANGE_500_DEG);
-  // Ver a nota sobre largura de banda no cabecalho (FW-06).
-  mpu.setFilterBandwidth(MPU6050_BAND_21_HZ);
-
   Serial.println();
   Serial.println("=====================================================");
-  Serial.println(" CARACTERIZACAO DE 6 POSICOES - MPU6050 (CALC-02)");
+  Serial.printf(" CARACTERIZACAO DE 6 POSICOES - %s (WHO_AM_I 0x%02X)\n", chip->nome, who_am_i);
   Serial.println("=====================================================");
-  Serial.println(" Faixa: +-8 g | Giro: +-500 deg/s | Filtro: 21 Hz");
+  Serial.printf(" Faixa: +-8 g | Giro: +-500 deg/s | Filtro: 21 Hz%s\n",
+                chip->filtro_em_accel_config2 ? " (CONFIG e ACCEL_CONFIG 2)" : "");
+  if (chip == &CHIP_DESCONHECIDO) {
+    Serial.println(" AVISO: chip desconhecido. O filtro do acelerometro pode nao estar");
+    Serial.println(" ligado, e a temperatura usa a conversao do MPU6050.");
+  }
   Serial.print  (" Amostras por pose: ");
   Serial.println(AMOSTRAS);
   Serial.println();
@@ -231,9 +390,9 @@ void setup() {
       Serial.println("   Em repouso, em qualquer pose, tem que dar ~9,81.");
       Serial.println();
       if (m.mag < 0.01) {
-        Serial.printf("   A temperatura marcou %.1f C. Se for 36,5, e o valor que a\n",
-                      m.temp);
-        Serial.println("   biblioteca produz com o registrador ZERADO (raw/340+36,53).");
+        Serial.printf("   A temperatura marcou %.1f C. Se for %.1f, e o valor que a\n",
+                      m.temp, chip->temp_com_bruto_zero);
+        Serial.printf("   conversao do %s produz com o registrador ZERADO.\n", chip->nome);
         Serial.println("   Sensor respondendo no I2C mas sem medir = alimentacao solta.");
         Serial.println();
         Serial.println("   CONFIRA, nesta ordem:");
@@ -291,6 +450,7 @@ void relatorio() {
   Serial.println("=====================================================");
   Serial.println("COPIE DAQUI PARA BAIXO");
   Serial.println("=====================================================");
+  Serial.printf("chip,%s,0x%02X\n", chip->nome, who_am_i);
 
   Serial.println("pose,ax,ay,az,mag,ruido,temp");
   for (int p = 0; p < N_POSES; p++) {
