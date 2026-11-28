@@ -167,6 +167,9 @@ static VigiaDaFifo vigia;
 // MPU6050 e so muda quando o WHO_AM_I e lido: sem resposta, nada se decide.
 // So a medicao (e o `setup`, antes dela existir) o tocam.
 static const PerfilDoSensor *perfil = &PERFIL_MPU6050;
+// So publica o chip que foi identificado. A tarefa de envio le este nome
+// mesmo quando a medicao esta reconfigurando o sensor apos falha no I2C.
+static std::atomic<const char *> chip_identificado{PERFIL_DESCONHECIDO.nome};
 // FW-17: conta as drenagens seguidas sem resposta do sensor no I2C.
 static GuardaDoBarramento guarda;
 static AcumuladorDeFeatures acumulador;
@@ -176,7 +179,7 @@ static uint64_t origem_us = 0;
 static RegistroDeEpoca rascunho[LEITURAS_POR_LOTE_NO_ESP32];
 // O texto do lote fica no heap, reservado uma vez no `setup` (FW-12, 12/11).
 // O tamanho e o do pior caso de 20 leituras (`tamanho_do_lote`, FW-14 etapa
-// 2: 7 235 B); ate 17/11 eram 520 B por leitura, sem conta (10 400 B). Como vetor estatico ele estourava a RAM estatica do ESP32
+// 2, com o envelope do FW-22: 7 259 B); ate 17/11 eram 520 B por leitura, sem conta (10 400 B). Como vetor estatico ele estourava a RAM estatica do ESP32
 // (`dram0_0_seg`) em 18 088 B com o Wi-Fi e o TLS do arduino-esp32 3.3.12 --
 // o que nenhum teste no host via, porque o host nao tem esse limite.
 // `scripts/compilar_sketch_esp32.py` compila para o chip e mede a folga.
@@ -276,6 +279,7 @@ static bool configurar_mpu() {
   uint8_t quem = 0;
   if (ler_registradores(MPU_REG_WHO_AM_I, &quem, 1)) {
     perfil = perfil_do_sensor(quem);
+    chip_identificado.store(perfil->nome, std::memory_order_relaxed);
     Serial.printf("[sensor] WHO_AM_I 0x%02X: %s, FIFO %u B, drenagem a cada %u ms%s\n", quem,
                   perfil->nome, static_cast<unsigned>(perfil->fifo_bytes),
                   static_cast<unsigned>(perfil->intervalo_de_drenagem_us / 1000u),
@@ -660,7 +664,8 @@ static bool enviar_pendentes() {
     const ResolucaoDeParede p = copia_da_parede();
     xSemaphoreTake(mutex_fila, portMAX_DELAY);
     const PreparoDoLote preparo =
-        preparar_lote(&fila, p, rascunho, max_no_lote, json_do_lote, TAMANHO_JSON_DO_LOTE);
+        preparar_lote(&fila, p, rascunho, max_no_lote, json_do_lote, TAMANHO_JSON_DO_LOTE,
+                      chip_identificado.load(std::memory_order_relaxed));
     xSemaphoreGive(mutex_fila);
     contadores.descartadas_no_envio += preparo.descartados;
     if (preparo.no_lote == 0) {

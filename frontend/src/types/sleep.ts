@@ -58,6 +58,8 @@ export type LeituraSono = {
   bancada?: boolean | null;
   movimento_total: number | null;
   temp: number | null;
+  /** Modelo do chip informado pelo travesseiro para essa leitura. */
+  sensor?: "MPU6050" | "MPU6500" | "desconhecido" | null;
   status: string | null;
   /** De qual dispositivo veio a leitura (DASH-05). Nulo nas linhas anteriores
    *  ao multiusuario, que nao tem dono nem dispositivo registrado. */

@@ -319,6 +319,15 @@ troca "$W/stubs-envio/Arduino.h" "inline uint32_t analogReadMilliVolts(uint8_t) 
   "uint32_t analogReadMilliVolts(uint8_t);"
 troca "$W/stubs-envio/freertos/task.h" "inline void vTaskDelete(TaskHandle_t) {}" \
   "void vTaskDelete(TaskHandle_t);"
+troca "$W/stubs-envio/Arduino.h" "class WireStub {" "int ler_who_am_i_falso();
+class WireStub {"
+troca "$W/stubs-envio/Arduino.h" "uint8_t requestFrom(uint8_t, size_t) { return 0; }" \
+  "uint8_t requestFrom(uint8_t, size_t n) { return n == 1 && ler_who_am_i_falso() >= 0 ? 1 : 0; }"
+troca "$W/stubs-envio/Arduino.h" "  int read() { return -1; }
+};
+extern WireStub Wire;" "  int read() { return ler_who_am_i_falso(); }
+};
+extern WireStub Wire;"
 cp "$W/stubs/secrets.h" "$W/stubs-envio/secrets.h"
 $CXX -std=c++11 -w -c -I"$W/stubs-envio" "$FIRMWARE/nucleo_amalgama.cpp" -o "$W/amalgama-envio.o" || exit 2
 $CXX -std=c++11 -w -c -I"$W/stubs-envio" "$W/stubs-envio/stubs.cpp" -o "$W/stubs-envio.o" || exit 2
@@ -347,8 +356,9 @@ sabotar_envio() { # sabotar_envio ROTULO DE PARA
   rodar_envio "$W/sabotado.ino"
   r=$?
   n=$(grep -c "FALHA" "$W/saida")
-  if [ $r -eq 1 ]; then
+  if [ "$r" -eq 1 ] && { [ -z "${4:-}" ] || grep -Fq "FALHA $4" "$W/saida"; }; then
     printf '  %-48s acusou (%s falhas)\n' "$1" "$n"
+    if [ -n "${4:-}" ]; then grep -F "FALHA $4" "$W/saida"; fi
   else
     printf '  %-48s NAO ACUSOU (saida %s)\n' "$1" "$r"
     falhas=$((falhas + 1))
@@ -402,6 +412,22 @@ sabotar_sensor "29. chip desconhecido tratado como MPU6500" \
 sabotar_sensor "30. a temperatura sempre na conversao do MPU6050" \
   "  return temperatura_do_chip_c(perfil, static_cast<int16_t>((b[0] << 8) | b[1]));" \
   "  return temperatura_mpu_c(static_cast<int16_t>((b[0] << 8) | b[1]));"
+
+# FW-22: o lote carrega o chip observado pelo sketch.
+sabotar_envio "31. omite o sensor do lote" \
+  "chip_identificado.load(std::memory_order_relaxed));" \
+  "nullptr);" \
+  "FW-22: lote informa MPU6500 uma vez"
+sabotar_envio "32. o lote sempre diz MPU6050" \
+  "chip_identificado.load(std::memory_order_relaxed));" \
+  '"MPU6050");' \
+  "FW-22: lote informa MPU6500 uma vez"
+
+sabotar_envio "33. HTTP 400 descarta a fila" \
+  "    const DecisaoDoLote d = aplicar_resposta(&fila, status, corpo.c_str()," \
+  "    if (status == 400) fila.confirmar(preparo.no_lote);
+    const DecisaoDoLote d = aplicar_resposta(&fila, status, corpo.c_str()," \
+  "FW-22: HTTP 400 por sensor invalido recua e preserva as epocas na flash"
 
 echo "$((total - falhas))/$total como esperado"
 [ $falhas -eq 0 ]

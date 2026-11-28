@@ -52,7 +52,7 @@ WEB = AQUI.parent.parent
 MIG = WEB / "migrations"
 RLS = WEB / "tests" / "rls"
 DIAG = MIG / "DIAGNOSTICO-migracoes-aplicadas.sql"
-ORDEM = ["001", "003", "004", "005", "006", "007", "008", "009", "010", "011", "012", "013", "014", "015", "016", "017", "018", "019", "022", "023", "024", "025", "026", "027"]
+ORDEM = ["001", "003", "004", "005", "006", "007", "008", "009", "010", "011", "012", "013", "014", "015", "016", "017", "018", "019", "022", "023", "024", "025", "026", "027", "028"]
 ARQ = {p.name[:3]: p for p in MIG.glob("0[0-9][0-9]_*.sql")}
 
 ANA = "00000000-0000-0000-0000-00000000000a"
@@ -145,7 +145,15 @@ def verificar_diagnostico(bancos) -> list[str]:
     for k in range(len(ORDEM) + 1):
         aplicadas = ORDEM[:k]
         c = montar(bancos, f"diag{k}", aplicadas)
-        res = diagnostico(c.cursor())
+        cur = c.cursor()
+        res = diagnostico(cur)
+        if aplicadas and aplicadas[-1] in ("027", "028"):
+            rodar(cur, DIAG.with_name("CONSULTA-sensor-da-leitura.sql"))
+            sensor = cur.fetchone()
+            esperado_sensor = (("028" in aplicadas),) * 4
+            print(f"  consulta do chip após {aplicadas[-1]}: {sensor}")
+            if sensor != esperado_sensor:
+                erros.append(f"consulta do chip: obtido {sensor}; esperado {esperado_sensor}")
         marcas = []
         for m in ORDEM:
             obtido, esperado = res[m][2], m in aplicadas
@@ -189,7 +197,7 @@ def verificar_diagnostico(bancos) -> list[str]:
     # A 022 (UI-14, 17/11) entra depois de todas: a lista de espera. A 020 e a
     # 021 estao reservadas e ainda nao existem.
     # A 023 (DATA-16, 21/11) entra depois de todas: excluir e marcar um trecho.
-    ordem_real = ["001", "003", "004", "005", "006", "008", "009", "007", "010", "011", "012", "014", "015", "016", "013", "017", "018", "019", "022", "023", "024", "025", "026", "027"]
+    ordem_real = ["001", "003", "004", "005", "006", "008", "009", "007", "010", "011", "012", "014", "015", "016", "013", "017", "018", "019", "022", "023", "024", "025", "026", "027", "028"]
     c = montar(bancos, "diagreal", ordem_real)
     cur = c.cursor()
     res = diagnostico(cur)

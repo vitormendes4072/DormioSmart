@@ -228,6 +228,24 @@ def test_o_token_vai_ao_banco_e_nenhum_user_id_no_payload():
     assert "user_id" not in payload
 
 
+@pytest.mark.parametrize("sensor", ["MPU6050", "MPU6500", "desconhecido"])
+def test_o_chip_do_envelope_e_gravado_em_cada_leitura(sensor):
+    with _com_device(), patch.object(database.db, "registrar_leitura", return_value=7) as gravar:
+        resp = _post({"sensor": sensor, "leituras": [dict(_LEITURA, sensor="outro"), _LEITURA]})
+    assert resp.status_code == 200
+    assert resp.get_json()["aceitas"] == [0, 1]
+    assert [chamada.args[1].get("sensor") for chamada in gravar.call_args_list] == [sensor, sensor]
+
+
+@pytest.mark.parametrize("sensor", ["mpu6050", "", None, [], {}, 6050, True])
+def test_chip_invalido_recusa_o_lote_inteiro_sem_gravar(sensor):
+    with _com_device(), patch.object(database.db, "registrar_leitura", return_value=7) as gravar:
+        resp = _post({"sensor": sensor, "leituras": [_LEITURA, _LEITURA]})
+    assert resp.status_code == 400
+    assert "sensor" in resp.get_json()["error"]
+    gravar.assert_not_called()
+
+
 # --- caminho por sessão (celular) ------------------------------------------
 
 def _com_sessao(device):
@@ -251,6 +269,17 @@ def test_sessao_com_dispositivo_proprio_grava_o_lote():
     assert resp.get_json()["aceitas"] == [0, 1]
     jwt, device_id, _ = gravar.call_args[0]
     assert (jwt, device_id) == ("jwt-da-ana", "dev-ana")
+    assert all(chamada.args[2].get("sensor") is None for chamada in gravar.call_args_list)
+
+
+def test_sessao_ignora_o_chip_mesmo_quando_informado():
+    a, b, c = _com_sessao({"id": "dev-ana"})
+    with a, b, c, patch.object(database.db, "registrar_leitura_da_sessao",
+                               return_value=7) as gravar:
+        resp = _post({"device_id": "dev-ana", "sensor": "MPU6500", "leituras": [_LEITURA]},
+                     headers=_SESSAO)
+    assert resp.status_code == 200
+    assert gravar.call_args.args[2].get("sensor") is None
 
 
 def test_sessao_nao_grava_no_dispositivo_de_outro():

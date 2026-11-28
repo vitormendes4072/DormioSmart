@@ -14540,6 +14540,90 @@ Na revisão, o teste da faixa encontrou apenas a navegação do Início ao fim d
 
 ---
 
+# 2026-11-27 (vii) — o chip associado a cada leitura (DATA-18, FW-22 e LGPD-19)
+
+**O problema, como foi entendido no início.** O FW-21 já distinguia o MPU6050
+do MPU6500 pelo WHO_AM_I. O histórico perdia essa identificação, o CSV
+atribuía toda temperatura do travesseiro ao MPU6050 e as leituras de bancada
+não podiam ser agrupadas pelo chip para o HW-13.
+
+**Hipótese de trabalho.** Informar o modelo uma vez no lote basta para guardar
+a origem por época. O modelo fica em cada leitura para preservar a informação
+quando o sensor de um mesmo travesseiro for trocado.
+
+**O que foi testado, e como.** Firmware em Docker `gcc:13` e compilação para
+ESP32. Flask e histórico no Windows. Funções de gravação, restrição, migrações
+e SQL manual em Postgres 17 no Docker. CSV pelo Vitest. Política pelo teste
+que compara as colunas gravadas com a §2.2. Os cenários de banco e hardware
+simulado usaram dados sintéticos.
+
+**Resultado medido.** Em 27/11, `make` passou com 1 830 verificações, o laço marcou 33/33 e a
+mutação da cadeia marcou 54/54 (quatro grupos no Docker, com o controle intacto repetido).
+Sintaxe, capacidade, paridade 15/15, fila 17/17 e coletor 20/20 passaram. No ESP32, a compilação
+no Windows usou 1 097 728 B de programa e 109 472 B de RAM fixa (+16 B sobre o FW-21), com 218
+208 B para o heap. O buffer do lote passou de 7 235 para 7 259 B no heap. O CI compilou 1 097
+664 B de programa com a mesma RAM e reprovou o controle do buffer estático. O backend passou com
+772 testes e um pulado. RLS passou com 363 testes e a mutação acusou 76/76 sabotagens em
+Postgres 17.11 no Docker, incluindo as quatro novas. O diagnóstico reconheceu 26 estados. Vitest
+passou com 1 193 testes em 80 arquivos, além de tipos, build, lint e os dois Knip. ML passou com
+332 testes e 12/12 mutações do dourado. O Android passou com 48 testes JVM e 11 no Pixel 6
+emulado, com quatro roteiros pulados. Depois da #335, política e consentimento passaram com 24
+testes no backend e 28 no frontend em cinco arquivos. As nove conferências de documento passaram
+sobre o texto integrado.
+
+| Sabotagem ou controle | Verificação que acusou |
+|---|---|
+| Omitir `sensor` no POST | Laço, “FW-22: lote informa MPU6500 uma vez”. |
+| Enviar sempre MPU6050 | Laço, “FW-22: lote informa MPU6500 uma vez”. |
+| Apagar o lote após HTTP 400 | Laço, “FW-22: HTTP 400 por sensor invalido recua e preserva as epocas na flash”. |
+| Aceitar chip fora da régua do banco | `test_sensor_fora_da_lista_e_recusado_no_banco`. |
+| Perder o chip na gravação por token | `test_token_guarda_o_sensor_da_leitura`. |
+| A sessão gravar o chip recebido | `test_sessao_grava_sem_sensor_mesmo_se_receber_o_campo`. |
+| Sobrescrever o chip ao reenviar a época | `test_troca_de_chip_e_reenvio_preservam_o_chip_da_epoca_antiga`. |
+| Tirar os bytes do chip da conta do buffer | `testes_c2` falhou em “20 leituras do pior caso cabem no buffer de 20, e o lote fecha nele”. |
+| Voltar o lote para RAM fixa no ESP32 | `compilar_sketch_esp32.py` reprovou o link no CI com estouro de 16 096 B na região de dados. |
+| Remover o filtro `sensor IS NULL` do preenchimento | A conferência de preservar os valores existentes acusou duas linhas alteradas no banco sintético. |
+| Rodar a conferência pós-aplicação após a 027 | `verificar_diagnostico` encontrou as quatro marcas falsas antes da 028. |
+| Tirar o modelo da §2.2 | Dois casos de `test_a_descricao_de_cada_coluna_esta_na_politica`, um por função de gravação. |
+| Rodar os testes novos em `develop` | 11 falharam no backend: `test_o_chip_do_envelope_e_gravado_em_cada_leitura`, `test_chip_invalido_recusa_o_lote_inteiro_sem_gravar` e `test_historico_consulta_e_devolve_o_chip_da_leitura`. O caso do CSV “exporta origem_temperatura por aparelho e deixa a origem vazia sem medição ou tipo” também falhou. |
+
+**Adaptação.** O envelope reserva mais 24 B no heap para o nome mais longo.
+Cada época mantém o formato de 64 B na flash. O celular grava a coluna nula.
+O SQL retroativo manual usa três UUIDs confirmados, sem recorte de data. A
+prévia não altera dados, a atualização preenche só valores nulos e repetir
+o SQL produz o mesmo resultado. O modelo é a origem técnica da medição para
+exportação, finalidade já registrada na política. A versão de consentimento
+`2026-11-22` segue vigente.
+
+**O que deu errado no caminho.** O sandbox bloqueou Git e Docker no primeiro
+acesso. O primeiro diagnóstico tentou acessar o Postgres antes da
+inicialização. O primeiro stub novo de I²C também casou com a função de outro
+stub e passou a selecionar só a definição do Wire. O primeiro Vitest acusou
+a mensagem de sensor sem tradução. Outras corridas em paralelo atingiram
+prazos de testes que carregam configuração e rotas sob demanda. A primeira tentativa de compilar para ESP32 encontrou o Arduino CLI sem o core requerido. O controle de vírgulas da cadeia ainda
+procurava a fórmula anterior do tamanho do lote e foi atualizado. O Git
+Credential Manager não concluiu a autenticação e a publicação foi retomada
+com a sessão do GitHub CLI. Ao incorporar a #335, os três conflitos foram
+resolvidos a partir da política, do backlog e do diário que já estavam em
+develop.
+
+**Risco em aberto.** Depois de trocar o sensor, épocas ainda na flash
+carregam o modelo visto no envio. Um valor inválido faz o servidor recusar
+o lote por inteiro com HTTP 400. O firmware recua e conserva as épocas.
+A fila tem 272 h de capacidade garantida e é drenada depois da correção.
+O CSV de duas placas ainda precisa da conferência física do HW-13. A #335
+já está integrada a esta revisão. A 028, sua conferência no banco de produção
+e o preenchimento manual ficam com o autor.
+
+**Procedência.** `develop` `1757160` e integração `25f838e`, Windows 11 e contêineres locais.
+O chip gravado permite rastrear a origem das medições físicas ligadas à
+pergunta de pesquisa. Os casos de bancada simulados nesta etapa não
+substituem o teste de comparabilidade do HW-13.
+
+
+**Revisão (28/11, Claude).** Testes rodados de novo nesta máquina: backend 772 passam; RLS no Postgres 17 em Docker, 363 passam; 76 de 76 sabotagens; as migrações nos 26 estados; firmware em `gcc:13` sem falhas, `laco` 33/33 e `mutacao-cadeia` 54/54. O frontend só passou no CI. Ajuste de texto na política: o chip tinha virado uma terceira entrada de "27 de novembro" na §10, separada da revisão da jornada, enquanto o resumo do topo o punha dentro dela. Como é a mesma revisão, ainda não publicada, a nota foi para a entrada da jornada, e o item do topo entrou na mesma lista dos demais.
+---
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

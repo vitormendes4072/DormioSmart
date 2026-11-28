@@ -91,7 +91,9 @@ varredura completa registrada nas notas do `LGPD-ELIMINACAO.md`.
 > - **um aviso prévio**: está em estudo o uso **opcional** do microfone para
 >   medir a respiração durante o sono (seção 10). **Hoje ele não acontece.** Se
 >   for adotado, esta política será atualizada antes, e o microfone terá um
->   consentimento próprio, pedido antes de qualquer uso.
+>   consentimento próprio, pedido antes de qualquer uso;
+> - **o modelo do chip do sensor** pode acompanhar cada leitura do
+>   travesseiro para indicar de onde veio a medição na exportação (seção 2.2).
 >
 > *Revisão anterior (27 de novembro de 2026):*
 >
@@ -196,6 +198,10 @@ continuamente e o resume em **épocas** de 30 segundos. Cada época enviada regi
 - A **taxa de amostragem** e o **número de amostras** que produziram a época;
 - Uma **temperatura**: a do circuito integrado do sensor, no dispositivo do
   travesseiro; a da **bateria**, no celular;
+- No travesseiro, o **modelo do chip do sensor** associado a cada leitura,
+  quando informado ou identificado com segurança em medições antigas. Isso
+  indica a origem da medição na exportação. Quando o modelo não é conhecido,
+  o CSV identifica a origem como “Chip do sensor”.
 - Leituras do **giroscópio**, quando o aparelho o tiver;
 - Dois **instantes**: quando a medição foi feita e quando ela chegou ao servidor;
 - A **duração da janela** resumida pela leitura e o **método** usado para
@@ -759,7 +765,9 @@ Quem não ligar o microfone continuará usando o serviço exatamente como hoje.
   *Primeiros passos* e em *Configurações → Conta*. Os dois campos continuam
   opcionais e com as mesmas finalidades (seções 2.1 e 3). A frase sobre microfone
   e câmera ficou mais precisa, sem mudança no que é coletado (seção 2.4), e entrou
-  o aviso prévio do estudo do microfone (esta seção).
+  o aviso prévio do estudo do microfone (esta seção). A exportação passou a
+  usar o modelo do chip associado a cada leitura do travesseiro, quando
+  conhecido (seção 2.2).
 - **27 de novembro de 2026:** a idade também no primeiro acesso, opcional
   (seção 2.1); a meta de tempo registrado por dia, opcional, com a sua
   finalidade (seções 2.1, 3, item 8, 6.3 e 6.5); a contagem agregada da chegada
