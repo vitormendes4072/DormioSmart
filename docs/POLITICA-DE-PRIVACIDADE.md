@@ -76,7 +76,7 @@ varredura completa registrada nas notas do `LGPD-ELIMINACAO.md`.
 
 # Política de Privacidade — Smart Dormio
 
-**Última atualização:** 27 de novembro de 2026 (revisão da jornada)
+**Última atualização:** 28 de novembro de 2026
 
 > **O que mudou nesta revisão** (seção 10 pede que mudança material seja
 > anunciada):
@@ -760,7 +760,7 @@ adotado:
 
 Quem não ligar o microfone continuará usando o serviço exatamente como hoje.
 
-- **27 de novembro de 2026, revisão da jornada:** a idade fica em
+- **28 de novembro de 2026:** a idade fica em
   *Configurações → Conta*. A meta de tempo registrado por dia fica na jornada
   *Primeiros passos* e em *Configurações → Conta*. Os dois campos continuam
   opcionais e com as mesmas finalidades (seções 2.1 e 3). A frase sobre microfone
