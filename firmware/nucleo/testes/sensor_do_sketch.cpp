@@ -98,8 +98,9 @@ struct MpuFalso {
       } else if (ponteiro == 0x74) {  // FIFO_R_W: x = 0, y = 0, z = bruto_z
         const uint32_t k = i % 6;
         b = k < 4 ? 0 : (k == 4 ? static_cast<uint8_t>(bruto_z >> 8) : static_cast<uint8_t>(bruto_z & 0xFF));
-      } else if (ponteiro == 0x41) {  // TEMP_OUT: ~30 graus C
-        const int16_t t = static_cast<int16_t>((30.0 - 36.53) * 340.0);
+      } else if (ponteiro == 0x41) {  // TEMP_OUT: ~30 graus C, na conversao de cada chip
+        const int16_t t = who_am_i == 0x70 ? static_cast<int16_t>((30.0 - 21.0) * 333.87)
+                                           : static_cast<int16_t>((30.0 - 36.53) * 340.0);
         b = i == 0 ? static_cast<uint8_t>(t >> 8) : static_cast<uint8_t>(t & 0xFF);
       } else if (ponteiro == 0x3A) {
         b = oflow ? 0x10 : 0;  // INT_STATUS: FIFO_OFLOW so quando injetado
@@ -375,6 +376,11 @@ int main() {
   conferir(mpu.regs[0x1D] == C2_A_DLPF_CFG && mpu.regs[0x1A] == C2_DLPF_CFG,
            "o filtro de ~21 Hz vai tambem para ACCEL_CONFIG 2 (0x1D)");
   {
+    const float t = ler_temperatura_c();
+    snprintf(msg, sizeof(msg), "a temperatura do MPU6500 a 30 C: %.2f C", static_cast<double>(t));
+    conferir(t > 29.9f && t < 30.1f, msg);
+  }
+  {
     origem_us = static_cast<uint64_t>(relogio_us);
     cadeia.iniciar(origem_us);
     const uint32_t transb = contadores.transbordos.load();
@@ -403,6 +409,10 @@ int main() {
     configurar_mpu();
     conferir(perfil == &PERFIL_DESCONHECIDO && mpu.regs[0x1D] == 0,
              "WHO_AM_I 0x72: perfil conservador, sem escrever o 0x1D");
+    const float t = ler_temperatura_c();
+    snprintf(msg, sizeof(msg), "chip desconhecido a 30 C, na conversao do MPU6050: %.2f C",
+             static_cast<double>(t));
+    conferir(t > 29.9f && t < 30.1f, msg);
   }
 
   printf("%d falhas\n", falhas);

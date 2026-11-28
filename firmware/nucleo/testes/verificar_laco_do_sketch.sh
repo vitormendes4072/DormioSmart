@@ -399,6 +399,9 @@ sabotar_sensor "28. a causa com o teto do MPU6050" \
 sabotar_sensor "29. chip desconhecido tratado como MPU6500" \
   "    perfil = perfil_do_sensor(quem);" \
   "    perfil = quem == 0x68 ? &PERFIL_MPU6050 : &PERFIL_MPU6500;"
+sabotar_sensor "30. a temperatura sempre na conversao do MPU6050" \
+  "  return temperatura_do_chip_c(perfil, static_cast<int16_t>((b[0] << 8) | b[1]));" \
+  "  return temperatura_mpu_c(static_cast<int16_t>((b[0] << 8) | b[1]));"
 
 echo "$((total - falhas))/$total como esperado"
 [ $falhas -eq 0 ]

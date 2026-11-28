@@ -1087,6 +1087,27 @@ static void testar_perfil_do_sensor() {
   VERIFICAR(MPU_REG_ACCEL_CONFIG2 == 0x1D && C2_A_DLPF_CFG == C2_DLPF_CFG,
             "o filtro do acelerometro do MPU6500 recebe o mesmo 4 do MPU6050");
 
+  // A temperatura: cada chip com a sua conversao (driver do Linux,
+  // `inv_mpu_iio.h`: T = (bruto + offset) * scale / 1e9).
+  VERIFICAR(fabs(temperatura_do_chip_c(p50, -2219) - temperatura_mpu_c(-2219)) < 1e-4 &&
+                fabs(temperatura_do_chip_c(p50, 0) - 36.53f) < 1e-4,
+            "MPU6050: a mesma conversao de antes (bruto / 340 + 36,53)");
+  VERIFICAR(fabs(temperatura_do_chip_c(p65, 0) - 21.0f) < 1e-4,
+            "MPU6500: bruto 0 = 21 C");
+  {
+    // O driver: (bruto + 7011) * 0,002995178. Bruto 1 336 sao ~25 C.
+    const double driver = (1336.0 + 7011.0) * 2995178.0 / 1e9;
+    char msg[120];
+    snprintf(msg, sizeof(msg), "MPU6500: bruto 1 336 = %.3f C, o driver diz %.3f C",
+             static_cast<double>(temperatura_do_chip_c(p65, 1336)), driver);
+    VERIFICAR(fabs(temperatura_do_chip_c(p65, 1336) - driver) < 0.01, msg);
+    // O defeito que motivou: com a formula do MPU6050, o mesmo bruto daria ~40,5 C.
+    VERIFICAR(temperatura_mpu_c(1336) - temperatura_do_chip_c(p65, 1336) > 15.0f,
+              "a formula do MPU6050 num MPU6500 erra mais de 15 C (por isso o perfil)");
+  }
+  VERIFICAR(fabs(temperatura_do_chip_c(outro, 0) - 36.53f) < 1e-4,
+            "chip desconhecido: a conversao de antes do FW-21");
+
   // A folga de cada perfil no pior caso: intervalo no maximo da variacao, mais
   // 3 ms de despertar e 0,4 s de trabalho (apagamento de setor), com o
   // oscilador a +10 %.

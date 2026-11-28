@@ -377,6 +377,10 @@ esperar "51. o MPU6500 com a FIFO do MPU6050" unidade perfil_do_sensor.h \
   "const PerfilDoSensor PERFIL_MPU6500 = {\"MPU6500\", FIFO_MPU6500_BYTES," \
   "const PerfilDoSensor PERFIL_MPU6500 = {\"MPU6500\", FIFO_CAPACIDADE_BYTES,"
 
+esperar "52. o MPU6500 com a temperatura do MPU6050" unidade perfil_do_sensor.h \
+  "                                       TEMP_MPU6500_LSB_POR_GRAU, TEMP_MPU6500_BRUTO_ZERO_C};" \
+  "                                       TEMP_MPU6050_LSB_POR_GRAU, TEMP_MPU6050_BRUTO_ZERO_C};"
+
 echo
 echo "-----------------------------------------"
 echo "$((total - falhas))/$total como esperado"

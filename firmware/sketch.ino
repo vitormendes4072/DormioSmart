@@ -301,7 +301,7 @@ static void resetar_fifo() {
 static float ler_temperatura_c() {
   uint8_t b[2];
   if (!ler_registradores(MPU_REG_TEMP_OUT_H, b, 2)) return 0.0f;
-  return temperatura_mpu_c(static_cast<int16_t>((b[0] << 8) | b[1]));
+  return temperatura_do_chip_c(perfil, static_cast<int16_t>((b[0] << 8) | b[1]));
 }
 
 // FW-11: a FIFO ficou vazia `DRENAGENS_VAZIAS_PARA_CONFERIR` vezes seguidas.
