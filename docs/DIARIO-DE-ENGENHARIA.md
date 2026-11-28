@@ -14620,6 +14620,8 @@ O chip gravado permite rastrear a origem das medições físicas ligadas à
 pergunta de pesquisa. Os casos de bancada simulados nesta etapa não
 substituem o teste de comparabilidade do HW-13.
 
+
+**Revisão (28/11, Claude).** Testes rodados de novo nesta máquina: backend 772 passam; RLS no Postgres 17 em Docker, 363 passam; 76 de 76 sabotagens; as migrações nos 26 estados; firmware em `gcc:13` sem falhas, `laco` 33/33 e `mutacao-cadeia` 54/54. O frontend só passou no CI. Ajuste de texto na política: o chip tinha virado uma terceira entrada de "27 de novembro" na §10, separada da revisão da jornada, enquanto o resumo do topo o punha dentro dela. Como é a mesma revisão, ainda não publicada, a nota foi para a entrada da jornada, e o item do topo entrou na mesma lista dos demais.
 ---
 
 # O que este diário não cobre

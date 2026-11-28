@@ -91,8 +91,7 @@ varredura completa registrada nas notas do `LGPD-ELIMINACAO.md`.
 > - **um aviso prévio**: está em estudo o uso **opcional** do microfone para
 >   medir a respiração durante o sono (seção 10). **Hoje ele não acontece.** Se
 >   for adotado, esta política será atualizada antes, e o microfone terá um
->   consentimento próprio, pedido antes de qualquer uso.
->
+>   consentimento próprio, pedido antes de qualquer uso;
 > - **o modelo do chip do sensor** pode acompanhar cada leitura do
 >   travesseiro para indicar de onde veio a medição na exportação (seção 2.2).
 >
@@ -761,14 +760,14 @@ adotado:
 
 Quem não ligar o microfone continuará usando o serviço exatamente como hoje.
 
-- **27 de novembro de 2026, origem da medição no travesseiro:** a exportação
-  usa o modelo do chip associado a cada leitura, quando conhecido (seção 2.2).
 - **27 de novembro de 2026, revisão da jornada:** a idade fica em
   *Configurações → Conta*. A meta de tempo registrado por dia fica na jornada
   *Primeiros passos* e em *Configurações → Conta*. Os dois campos continuam
   opcionais e com as mesmas finalidades (seções 2.1 e 3). A frase sobre microfone
   e câmera ficou mais precisa, sem mudança no que é coletado (seção 2.4), e entrou
-  o aviso prévio do estudo do microfone (esta seção).
+  o aviso prévio do estudo do microfone (esta seção). A exportação passou a
+  usar o modelo do chip associado a cada leitura do travesseiro, quando
+  conhecido (seção 2.2).
 - **27 de novembro de 2026:** a idade também no primeiro acesso, opcional
   (seção 2.1); a meta de tempo registrado por dia, opcional, com a sua
   finalidade (seções 2.1, 3, item 8, 6.3 e 6.5); a contagem agregada da chegada
