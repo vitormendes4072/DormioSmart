@@ -14504,7 +14504,43 @@ Na revisão, o teste da faixa encontrou apenas a navegação do Início ao fim d
 
 ---
 
-# 2026-11-27 (v) — o chip associado a cada leitura (DATA-18, FW-22 e LGPD-19)
+# 2026-11-27 (vi) — `LGPD-17`: o microfone diante da LGPD, antes do código; abre o `EXP-01`
+
+**O problema, como foi entendido no início.** O autor quer incluir um microfone (INMP441 no travesseiro e, antes dele, o microfone do celular no app) para medir a respiração e chegar ao REM. Uma pesquisa feita no mesmo dia, fora do repositório, sustentou a ideia: o REM se distingue pela respiração irregular, e o som capta a respiração. Mas três documentos dizem o contrário do que se quer fazer: a política ("O aparelho não tem microfone"), a `LIMITACOES-TCC.md` (X.5, "não incorporação de captação de áudio") e a `METODOLOGIA.md` (sem estagiamento). E o `EXP-01`, citado no `ML-DATASETS-E-PLANO.md` como "condicional", não existia no backlog. O autor pediu primeiro o estudo de LGPD e a mudança na política, e só depois o código.
+
+**Hipótese de trabalho.** Dizer agora na política que há microfone seria descrever uma coleta que não acontece, contra a regra de redação da própria política ("descrever o que o sistema faz hoje, não o que se pretende") e contra a transparência (art. 6º, VI). E mudaria a versão do consentimento, fazendo todos os usuários aceitarem algo que não existe. A saída proposta e aprovada pelo autor foi em **duas etapas**: agora, o estudo e o aviso prévio (o que os arts. 8º, § 6º, e 9º, § 2º, pedem); o texto das seções novas só entra na política na PR que ligar o microfone.
+
+**O que foi testado, e como.**
+- Os artigos foram lidos no texto compilado da Lei nº 13.709/2018 no Planalto, pelo navegador embutido (o `curl` levou "Connection reset"): 5º (II, XII, XVII), 6º, 7º, 8º (§§ 4º e 6º), 9º (*caput* e § 2º), 11, 38 e 46.
+- As regras do Android para o microfone foram lidas em *developer.android.com*: o tipo `microphone` do serviço em primeiro plano, `FOREGROUND_SERVICE_MICROPHONE`, `RECORD_AUDIO`, a proibição de iniciar o serviço com o app em segundo plano e o comportamento da fonte `UNPROCESSED`.
+- O código foi lido para confirmar o estado de hoje: o `AndroidManifest.xml` declara o serviço como `health` e não pede `RECORD_AUDIO`; a noite começa por toque do usuário (`MainActivity`, `NoitePlugin`); o `ReceptorDeInicializacao` só reagenda o lembrete.
+- `python scripts/conferir_backlog.py --conferir`, antes e depois de corrigir a contagem.
+- Testes do `/privacidade` e conferências de documento: ver "Resultado medido".
+
+**Resultado medido.**
+- `docs/LGPD-MICROFONE.md`, novo: o som como dado sensível; o consentimento **próprio e separado** do de movimento; a minimização (o som nunca gravado, só o nível a cada 20 ms); as pessoas no quarto; as regras do Android; a ordem das duas etapas; o texto das seções novas para a etapa 2; o relatório de impacto (art. 38, que a autoridade "poderá determinar", e não uma obrigação afirmada aqui).
+- Política: a frase da §2.4 passou a dizer que o travesseiro não tem microfone e que o app não usa o do celular; a §10 anuncia o estudo, diz que **nada acontece hoje** e o que acontecerá antes, se for adotado; a revisão de 27/11 no topo e na lista da §10 ganhou esses dois itens; uma linha nova nas lacunas fixa a ordem do release. **Consentimento sem versão nova.**
+- Backlog: entrou e fechou o `LGPD-17` (L0); entrou o `EXP-01` (L3), no quadro e na contagem (44 · L3: 13). A conferência acusou primeiro "total declarado 43, recontado 44" e "L3 declarado 12, recontado 13", e passou depois da correção.
+
+**Adaptação.** A revisão de 27/11 da política já estava publicada (release R27, mesmo dia). Os dois itens do microfone entraram **na mesma revisão**, sem criar uma segunda de mesma data.
+
+**O que deu errado no caminho.**
+- A primeira edição da política falhou: o checkout principal estava 18 commits atrás do `develop`, e o topo da política lido nele (a revisão de 19/11) já não era o do `develop`, que tinha a revisão de 27/11 do onboarding. Refeito sobre a worktree, a partir do `develop` `7a21e9f`.
+- Na conversa, antes da pesquisa, o Claude citou artigos científicos "de memória". O autor apontou o erro, e a regra passou a ser só citar o que foi conferido na fonte. Este estudo segue essa regra: todo artigo de lei citado foi lido no Planalto hoje.
+
+**Risco em aberto.**
+- **A data da revisão.** Se este PR for ao ar noutro dia, a data do topo e a da §10 precisam passar a ser a do release, numa revisão própria. Uma revisão já publicada não deve mudar em silêncio.
+- A frase "o nível a cada 20 ms não reconstrói fala" entrou no estudo como hipótese e, **conferida no mesmo dia a pedido do autor, não se sustentou como garantia**: Xu e Pfingst (2008, texto lido) dizem que o reconhecimento da fala só se beneficia do envelope abaixo de 16–20 Hz, que o nível a 50 Hz cobre; a fala volta a ser entendida com três ou quatro faixas (Dorman et al. 1997, lido), e o número para uma faixa só não foi achado em fonte lida (Shannon et al. 1995 não abriu). Decisão registrada no estudo (seção 4.1): a série de 20 ms não sai da memória; só medidas por época são guardadas e enviadas. Falta o teste próprio de que as medidas por época não revelam fala (`EXP-01`).
+- O escopo (X.5 da `LIMITACOES-TCC.md`) e o CEP dependem do orientador (`EXP-01`, portão 0).
+- A política diz no topo "Não publicar sem revisão jurídica" (`LGPD-01`).
+
+**Procedência.** Branch `docs/LGPD-17-estudo-microfone`, a partir do `develop` `7a21e9f`. Lei nº 13.709/2018 compilada no Planalto, lida em 27/11/2026; *developer.android.com*, lido em 27/11/2026. Windows 11, Python 3.13.
+
+**Integração (27/11, ~23:50).** A PR #335 ficou em conflito com o `develop`, que já tinha a revisão "da jornada" (`UI-62`, `LGPD-18`) e o `FW-21`. Na fusão, as duas novidades do microfone (a frase da §2.4 e o aviso prévio) tinham caído dentro da revisão de 27/11 **já publicada** no release R27, o que a mudaria em silêncio. Foram movidas para a revisão da jornada, que ainda não foi publicada, no topo e na lista da §10; a entrada publicada voltou ao texto do R27. A entrada deste diário passou de (iii) a (vi), porque a (iii) é a do `FW-21` e a (v) é a do `FW-23` (#338). **Continua valendo o risco da data:** se o release for noutro dia, a revisão da jornada (com o microfone) passa a ter a data do release.
+
+---
+
+# 2026-11-27 (vii) — o chip associado a cada leitura (DATA-18, FW-22 e LGPD-19)
 
 **O problema, como foi entendido no início.** O FW-21 já distinguia o MPU6050
 do MPU6500 pelo WHO_AM_I. O histórico perdia essa identificação, o CSV
@@ -14521,7 +14557,19 @@ e SQL manual em Postgres 17 no Docker. CSV pelo Vitest. Política pelo teste
 que compara as colunas gravadas com a §2.2. Os cenários de banco e hardware
 simulado usaram dados sintéticos.
 
-**Resultado medido.** Em 27/11, o backend passou com 772 testes e um pulado. RLS passou com 363 testes. O diagnóstico reconheceu os 26 estados. O laço marcou 33/33 controles, incluindo a retenção e a retomada depois de HTTP 400. A compilação ESP32, as demais mutações e a verificação final do frontend seguem em execução neste rascunho.
+**Resultado medido.** Em 27/11, `make` passou com 1 830 verificações, o laço marcou 33/33 e a
+mutação da cadeia marcou 54/54 (quatro grupos no Docker, com o controle intacto repetido).
+Sintaxe, capacidade, paridade 15/15, fila 17/17 e coletor 20/20 passaram. No ESP32, a compilação
+no Windows usou 1 097 728 B de programa e 109 472 B de RAM fixa (+16 B sobre o FW-21), com 218
+208 B para o heap. O buffer do lote passou de 7 235 para 7 259 B no heap. O CI compilou 1 097
+664 B de programa com a mesma RAM e reprovou o controle do buffer estático. O backend passou com
+772 testes e um pulado. RLS passou com 363 testes e a mutação acusou 76/76 sabotagens em
+Postgres 17.11 no Docker, incluindo as quatro novas. O diagnóstico reconheceu 26 estados. Vitest
+passou com 1 193 testes em 80 arquivos, além de tipos, build, lint e os dois Knip. ML passou com
+332 testes e 12/12 mutações do dourado. O Android passou com 48 testes JVM e 11 no Pixel 6
+emulado, com quatro roteiros pulados. Depois da #335, política e consentimento passaram com 24
+testes no backend e 28 no frontend em cinco arquivos. As nove conferências de documento passaram
+sobre o texto integrado.
 
 | Sabotagem ou controle | Verificação que acusou |
 |---|---|
@@ -14532,6 +14580,9 @@ simulado usaram dados sintéticos.
 | Perder o chip na gravação por token | `test_token_guarda_o_sensor_da_leitura`. |
 | A sessão gravar o chip recebido | `test_sessao_grava_sem_sensor_mesmo_se_receber_o_campo`. |
 | Sobrescrever o chip ao reenviar a época | `test_troca_de_chip_e_reenvio_preservam_o_chip_da_epoca_antiga`. |
+| Tirar os bytes do chip da conta do buffer | `testes_c2` falhou em “20 leituras do pior caso cabem no buffer de 20, e o lote fecha nele”. |
+| Voltar o lote para RAM fixa no ESP32 | `compilar_sketch_esp32.py` reprovou o link no CI com estouro de 16 096 B na região de dados. |
+| Remover o filtro `sensor IS NULL` do preenchimento | A conferência de preservar os valores existentes acusou duas linhas alteradas no banco sintético. |
 | Rodar a conferência pós-aplicação após a 027 | `verificar_diagnostico` encontrou as quatro marcas falsas antes da 028. |
 | Tirar o modelo da §2.2 | Dois casos de `test_a_descricao_de_cada_coluna_esta_na_politica`, um por função de gravação. |
 | Rodar os testes novos em `develop` | 11 falharam no backend: `test_o_chip_do_envelope_e_gravado_em_cada_leitura`, `test_chip_invalido_recusa_o_lote_inteiro_sem_gravar` e `test_historico_consulta_e_devolve_o_chip_da_leitura`. O caso do CSV “exporta origem_temperatura por aparelho e deixa a origem vazia sem medição ou tipo” também falhou. |
@@ -14549,17 +14600,22 @@ acesso. O primeiro diagnóstico tentou acessar o Postgres antes da
 inicialização. O primeiro stub novo de I²C também casou com a função de outro
 stub e passou a selecionar só a definição do Wire. O primeiro Vitest acusou
 a mensagem de sensor sem tradução. Outras corridas em paralelo atingiram
-prazos de testes que carregam configuração e rotas sob demanda. A primeira tentativa de compilar para ESP32 encontrou o Arduino CLI sem o core requerido.
+prazos de testes que carregam configuração e rotas sob demanda. A primeira tentativa de compilar para ESP32 encontrou o Arduino CLI sem o core requerido. O controle de vírgulas da cadeia ainda
+procurava a fórmula anterior do tamanho do lote e foi atualizado. O Git
+Credential Manager não concluiu a autenticação e a publicação foi retomada
+com a sessão do GitHub CLI. Ao incorporar a #335, os três conflitos foram
+resolvidos a partir da política, do backlog e do diário que já estavam em
+develop.
 
 **Risco em aberto.** Depois de trocar o sensor, épocas ainda na flash
 carregam o modelo visto no envio. Um valor inválido faz o servidor recusar
 o lote por inteiro com HTTP 400. O firmware recua e conserva as épocas.
 A fila tem 272 h de capacidade garantida e é drenada depois da correção.
 O CSV de duas placas ainda precisa da conferência física do HW-13. A #335
-deve entrar antes desta revisão. A 028, sua conferência no banco de produção
+já está integrada a esta revisão. A 028, sua conferência no banco de produção
 e o preenchimento manual ficam com o autor.
 
-**Procedência.** `develop` `1757160`, Windows 11 e contêineres locais.
+**Procedência.** `develop` `1757160` e integração `25f838e`, Windows 11 e contêineres locais.
 O chip gravado permite rastrear a origem das medições físicas ligadas à
 pergunta de pesquisa. Os casos de bancada simulados nesta etapa não
 substituem o teste de comparabilidade do HW-13.
