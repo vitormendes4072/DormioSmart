@@ -72,7 +72,7 @@ Medido em 10/11: o `aapt2 dump badging` mostra `application-debuggable` no de de
 release, e o `apksigner verify` aceita o de release (esquema v2), assinado com uma chave descartável
 de teste.
 
-**Versão:** `versionName` 1.1.8 e `versionCode` 10, em `app/build.gradle` (27/11, com o onboarding, UI-57 a UI-61; antes 1.1.7 e 9, de 26/11, depois do R22).
+**Versão:** `versionName` 1.1.9 e `versionCode` 11, em `app/build.gradle` (28/11, com a jornada de primeiro acesso, UI-62 e UI-63; antes 1.1.8 e 10, de 27/11, com o onboarding).
 A versão também está em `frontend/src/lib/appAndroid.ts`, em `frontend/public/versao-do-app.json` e nas duas landings.
 Os testes do frontend conferem a consistência entre esses pontos. A cada APK novo enviado,
 aumente o `versionCode`: o Android recusa instalar por cima uma versão de número igual ou menor.
