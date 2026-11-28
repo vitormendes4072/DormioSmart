@@ -61,11 +61,15 @@ struct MpuFalso {
   int descidas_de_scl;
   bool scl_alto;
   bool sda_puxado;          // o sketch segura o SDA baixo
+  // FW-21: o chip. 0 = o MPU6050 (0x68, FIFO de 1 024 B); o teste do MPU6500
+  // poe 0x70 e 512.
+  uint8_t who_am_i;
+  uint16_t capacidade;
 
   void reiniciar() {
     memset(regs, 0, sizeof(regs));
     regs[0x6B] = 0x40;  // PWR_MGMT_1: SLEEP, o padrao ao ligar
-    regs[0x75] = 0x68;  // WHO_AM_I
+    regs[0x75] = who_am_i != 0 ? who_am_i : 0x68;  // WHO_AM_I
     amostras_na_fifo = 0;
   }
   bool enchendo() const {
@@ -77,7 +81,10 @@ struct MpuFalso {
       return;
     }
     if (reg == 0x6A && (v & 0x04)) amostras_na_fifo = 0;  // FIFO_RESET
-    regs[reg] = static_cast<uint8_t>(v & ~0x04);
+    // So o FIFO_RESET (bit 2 do USER_CTRL) se apaga sozinho. FW-21: ate 27/11
+    // o bit 2 era apagado em TODO registrador, e o DLPF_CFG = 4 escrito no
+    // 0x1A lia 0 -- nenhum teste conferia o filtro.
+    regs[reg] = reg == 0x6A ? static_cast<uint8_t>(v & ~0x04) : v;
   }
   void preparar(uint32_t n) {
     n_leitura = 0;
@@ -91,8 +98,9 @@ struct MpuFalso {
       } else if (ponteiro == 0x74) {  // FIFO_R_W: x = 0, y = 0, z = bruto_z
         const uint32_t k = i % 6;
         b = k < 4 ? 0 : (k == 4 ? static_cast<uint8_t>(bruto_z >> 8) : static_cast<uint8_t>(bruto_z & 0xFF));
-      } else if (ponteiro == 0x41) {  // TEMP_OUT: ~30 graus C
-        const int16_t t = static_cast<int16_t>((30.0 - 36.53) * 340.0);
+      } else if (ponteiro == 0x41) {  // TEMP_OUT: ~30 graus C, na conversao de cada chip
+        const int16_t t = who_am_i == 0x70 ? static_cast<int16_t>((30.0 - 21.0) * 333.87)
+                                           : static_cast<int16_t>((30.0 - 36.53) * 340.0);
         b = i == 0 ? static_cast<uint8_t>(t >> 8) : static_cast<uint8_t>(t & 0xFF);
       } else if (ponteiro == 0x3A) {
         b = oflow ? 0x10 : 0;  // INT_STATUS: FIFO_OFLOW so quando injetado
@@ -183,6 +191,35 @@ static void conferir_perda(int esperada, const char *rotulo) {
     ok = ok && contadores.perdas[i].load() == antes[i] + (i == esperada ? 1u : 0u);
   }
   conferir(ok, rotulo);
+}
+
+// FW-21: uma volta no ritmo `intervalo_base_us`, com a FIFO enchendo a 50 Hz
+// pelo tempo que passou e transbordando como o chip: passou da capacidade,
+// liga FIFO_OFLOW e fica cheia ate o sketch resetar.
+static uint32_t estado_do_teste = 12345;
+static double fracao_de_amostra = 0.0;
+static void volta_no_ritmo(uint32_t intervalo_base_us) {
+  const uint32_t passo = intervalo_de_drenagem_us(&estado_do_teste, intervalo_base_us);
+  relogio_us += passo;
+  if (mpu.enchendo()) {
+    fracao_de_amostra += passo / 1e6 * 50.0;
+    const uint32_t novas = static_cast<uint32_t>(fracao_de_amostra);
+    fracao_de_amostra -= novas;
+    const uint32_t cabem = (mpu.capacidade != 0 ? mpu.capacidade : 1024u) / 6u;
+    uint32_t total = mpu.amostras_na_fifo + novas;
+    if (total > cabem) {
+      mpu.oflow = true;
+      total = cabem;
+    }
+    mpu.amostras_na_fifo = static_cast<uint16_t>(total);
+  }
+  drenar();
+  fechar_epocas();
+  mpu.oflow = false;  // o bit se apaga ao ser lido
+}
+
+static uint32_t epocas_prontas() {
+  return contadores.epocas_gravadas.load() + contadores.falhas_na_fila.load();
 }
 
 static double media_de_z_da_grade() {
@@ -324,6 +361,58 @@ int main() {
       volta(true);
     }
     conferir(contadores.liberacoes.load() == lib, "pares de falhas com uma resposta no meio nao liberam");
+  }
+
+  printf("FW-21: o MPU6500 (WHO_AM_I 0x70, FIFO de 512 B)\n");
+  mpu.travado = false;
+  mpu.falhas_pendentes = 0;
+  mpu.contagem_forcada = -1;
+  mpu.oflow = false;
+  mpu.who_am_i = 0x70;
+  mpu.capacidade = 512;
+  mpu.reiniciar();
+  conferir(configurar_mpu() && mpu.enchendo(), "configurar_mpu acorda o MPU6500 e liga a FIFO");
+  conferir(perfil == &PERFIL_MPU6500, "o WHO_AM_I 0x70 escolhe o perfil do MPU6500");
+  conferir(mpu.regs[0x1D] == C2_A_DLPF_CFG && mpu.regs[0x1A] == C2_DLPF_CFG,
+           "o filtro de ~21 Hz vai tambem para ACCEL_CONFIG 2 (0x1D)");
+  {
+    const float t = ler_temperatura_c();
+    snprintf(msg, sizeof(msg), "a temperatura do MPU6500 a 30 C: %.2f C", static_cast<double>(t));
+    conferir(t > 29.9f && t < 30.1f, msg);
+  }
+  {
+    origem_us = static_cast<uint64_t>(relogio_us);
+    cadeia.iniciar(origem_us);
+    const uint32_t transb = contadores.transbordos.load();
+    const uint32_t prontas = epocas_prontas();
+    for (int i = 0; i < 120; i++) volta_no_ritmo(perfil->intervalo_de_drenagem_us);
+    snprintf(msg, sizeof(msg), "~103 s no ritmo do perfil: %u transbordos, %u epocas prontas",
+             static_cast<unsigned>(contadores.transbordos.load() - transb),
+             static_cast<unsigned>(epocas_prontas() - prontas));
+    conferir(contadores.transbordos.load() == transb && epocas_prontas() - prontas >= 2, msg);
+  }
+  {
+    // Controle: o mesmo sensor drenado no ritmo do MPU6050 transborda.
+    const uint32_t transb = contadores.transbordos.load();
+    for (int i = 0; i < 20; i++) volta_no_ritmo(INTERVALO_DE_DRENAGEM_US);
+    snprintf(msg, sizeof(msg), "controle: a cada 1,7 s, %u transbordos em 20 drenagens",
+             static_cast<unsigned>(contadores.transbordos.load() - transb));
+    conferir(contadores.transbordos.load() - transb >= 5, msg);
+  }
+  mpu.contagem_forcada = 512;
+  conferir_perda(PERDA_TRANSBORDO_TETO, "512 B sem o bit, no MPU6500: transbordo (teto)");
+  mpu.contagem_forcada = -1;
+  {
+    // Um chip desconhecido nao ganha o 0x1D, que no MPU6050 nao e documentado.
+    mpu.who_am_i = 0x72;
+    mpu.reiniciar();
+    configurar_mpu();
+    conferir(perfil == &PERFIL_DESCONHECIDO && mpu.regs[0x1D] == 0,
+             "WHO_AM_I 0x72: perfil conservador, sem escrever o 0x1D");
+    const float t = ler_temperatura_c();
+    snprintf(msg, sizeof(msg), "chip desconhecido a 30 C, na conversao do MPU6050: %.2f C",
+             static_cast<double>(t));
+    conferir(t > 29.9f && t < 30.1f, msg);
   }
 
   printf("%d falhas\n", falhas);

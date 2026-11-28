@@ -4,7 +4,6 @@ import { Navigate, Outlet, useLocation } from "react-router";
 
 import { useAuth } from "../contexts/AuthContext";
 import { estaEmModoDemo } from "../lib/demo";
-import { noiteNativaDisponivel } from "../lib/noiteNativa";
 import { decidirDestino, destinoSeguro } from "../lib/rotas";
 
 function Aguardando() {
@@ -55,9 +54,8 @@ export function RotaDeVisitante({ children }: { children?: ReactNode }) {
 
   if (destino === "aguardar") return <Aguardando />;
   if (destino === "ir-para-dashboard") {
-    const app = noiteNativaDisponivel();
-    const origem = app && local.pathname === "/login" ? (local.state as { de?: unknown } | null)?.de : undefined;
-    return <Navigate to={destinoSeguro(origem, app)} replace />;
+    const origem = local.pathname === "/login" ? (local.state as { de?: unknown } | null)?.de : undefined;
+    return <Navigate to={destinoSeguro(origem, "/entrada")} replace />;
   }
   return <>{children ?? <Outlet />}</>;
 }

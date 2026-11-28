@@ -76,10 +76,24 @@ varredura completa registrada nas notas do `LGPD-ELIMINACAO.md`.
 
 # Política de Privacidade — Smart Dormio
 
-**Última atualização:** 27 de novembro de 2026
+**Última atualização:** 27 de novembro de 2026 (revisão da jornada)
 
 > **O que mudou nesta revisão** (seção 10 pede que mudança material seja
 > anunciada):
+>
+> - **a idade é informada em *Configurações → Conta***. A pergunta continua
+>   opcional (seção 2.1).
+> - **a meta de tempo registrado por dia** pode ser informada na jornada
+>   *Primeiros passos* ou em *Configurações → Conta*. Continua opcional (seção 2.1).
+> - **a frase sobre o microfone ficou mais precisa** (seção 2.4): o dispositivo
+>   do travesseiro não tem microfone, e o aplicativo para Android não usa o
+>   microfone do celular. Nada mudou no que é coletado;
+> - **um aviso prévio**: está em estudo o uso **opcional** do microfone para
+>   medir a respiração durante o sono (seção 10). **Hoje ele não acontece.** Se
+>   for adotado, esta política será atualizada antes, e o microfone terá um
+>   consentimento próprio, pedido antes de qualquer uso.
+>
+> *Revisão anterior (27 de novembro de 2026):*
 >
 > - **a idade passou a poder ser informada também no primeiro acesso**, num passo
 >   que pode ser pulado; continua opcional e com as mesmas finalidades (seções
@@ -90,14 +104,7 @@ varredura completa registrada nas notas do `LGPD-ELIMINACAO.md`.
 >   6.3 e 6.5);
 > - **o responsável pelo projeto passou a contar, só de forma agregada, quantas
 >   contas novas chegam ao primeiro registro**, para saber se as primeiras telas
->   ajudam (seção 3 e seção 5.3);
-> - **a frase sobre o microfone ficou mais precisa** (seção 2.4): o dispositivo
->   do travesseiro não tem microfone, e o aplicativo para Android não usa o
->   microfone do celular. Nada mudou no que é coletado;
-> - **um aviso prévio**: está em estudo o uso **opcional** do microfone para
->   medir a respiração durante o sono (seção 10). **Hoje ele não acontece.** Se
->   for adotado, esta política será atualizada antes, e o microfone terá um
->   consentimento próprio, pedido antes de qualquer uso.
+>   ajudam (seção 3 e seção 5.3).
 >
 > *Revisão anterior (19 de novembro de 2026):*
 >
@@ -149,8 +156,8 @@ O controlador dos dados é **[CONTROLADOR]**, que pode ser contatado em
 | **Endereço de e-mail** | No cadastro | Serviço de autenticação |
 | **Senha** | No cadastro | Serviço de autenticação, apenas como *hash* — nunca em texto legível |
 | **Nome** | No cadastro, e corrigível em *Configurações → Conta* | Tabela de perfis |
-| **Idade** | **Opcional**, no primeiro acesso (em *Primeiros passos*, no Início, com a opção de pular) ou em *Configurações → Conta*. Nunca pedida no formulário de cadastro | Tabela de perfis |
-| **Meta de tempo registrado por dia** | **Opcional**, no primeiro acesso (em *Primeiros passos*) ou em *Configurações → Conta*. É um número que você escolhe; o aplicativo não sugere valor | Tabela de perfis |
+| **Idade** | **Opcional**, em *Configurações → Conta*. Nunca pedida no formulário de cadastro | Tabela de perfis |
+| **Meta de tempo registrado por dia** | **Opcional**, na jornada *Primeiros passos* ou em *Configurações → Conta*. É um número que você escolhe; o aplicativo não sugere valor | Tabela de perfis |
 | **Nome do dispositivo** | Ao parear um aparelho, opcional. No aplicativo para Android, o celular começa com o fabricante e o modelo informados pelo sistema (por exemplo, "Motorola moto g54 5G"); dá para trocar em *Dispositivos* | Tabela de dispositivos |
 
 > ✏️ **Mudança de 2026-10-17, e ela é material** (seção 10): a **idade passou a
@@ -747,12 +754,16 @@ adotado:
 
 Quem não ligar o microfone continuará usando o serviço exatamente como hoje.
 
+- **27 de novembro de 2026, revisão da jornada:** a idade fica em
+  *Configurações → Conta*. A meta de tempo registrado por dia fica na jornada
+  *Primeiros passos* e em *Configurações → Conta*. Os dois campos continuam
+  opcionais e com as mesmas finalidades (seções 2.1 e 3). A frase sobre microfone
+  e câmera ficou mais precisa, sem mudança no que é coletado (seção 2.4), e entrou
+  o aviso prévio do estudo do microfone (esta seção).
 - **27 de novembro de 2026:** a idade também no primeiro acesso, opcional
   (seção 2.1); a meta de tempo registrado por dia, opcional, com a sua
   finalidade (seções 2.1, 3, item 8, 6.3 e 6.5); a contagem agregada da chegada
-  das contas novas ao primeiro registro (seção 3, item 9, e seção 5.3); a frase
-  sobre microfone e câmera mais precisa, sem mudança no que é coletado (seção
-  2.4); o aviso prévio do estudo do microfone (esta seção).
+  das contas novas ao primeiro registro (seção 3, item 9, e seção 5.3).
 - **19 de novembro de 2026:** a lista de espera do lançamento — e-mail e,
   opcionalmente, como a pessoa prefere ser chamada, com consentimento próprio,
   finalidade única e prazo de 12 meses (seções 2.6, 3, 4 e 7).

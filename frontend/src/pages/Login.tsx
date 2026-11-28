@@ -4,7 +4,6 @@ import { Link, useLocation, useNavigate } from "react-router";
 
 import { AuthLayout } from "../components/AuthLayout";
 import { entrar, recuperarSenha } from "../lib/autenticacao";
-import { noiteNativaDisponivel } from "../lib/noiteNativa";
 import { destinoSeguro } from "../lib/rotas";
 import { BOTAO_PRIMARIO_CLS, INPUT_CLS, LABEL_CLS } from "../lib/ui";
 
@@ -13,7 +12,7 @@ export function Login() {
   const local = useLocation();
   // O guarda de rota guarda aqui para onde a pessoa tentava ir antes do login.
   // Só caminho interno passa (SEC-16): ver `destinoSeguro`.
-  const destino = destinoSeguro((local.state as { de?: unknown } | null)?.de, noiteNativaDisponivel());
+  const destino = destinoSeguro((local.state as { de?: unknown } | null)?.de, "/entrada");
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
   const [mostrarSenha, setMostrarSenha] = useState(false);

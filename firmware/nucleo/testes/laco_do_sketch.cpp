@@ -150,6 +150,22 @@ int main() {
   conferir(deriva_acumulada.deriva_ms == 120 && deriva_acumulada.decorrido_ms == 1200000,
            "acumulada desde a primeira: +120 ms em 1200 s");
 
+  printf("FW-21: com o MPU6500, a drenagem a cada ~0,85 s\n");
+  perfil = &PERFIL_MPU6500;
+  for (int radio_ligado = 0; radio_ligado < 2; radio_ligado++) {
+    uint64_t t21[40];
+    for (int i = 0; i < 40; i++) t21[i] = 400000;
+    const Resultado r21 = rodar(t21, 40, radio_ligado == 1);
+    char msg21[140];
+    snprintf(msg21, sizeof(msg21), "%s, trabalho 400 ms: media %.3f s entre drenagens",
+             radio_ligado ? "radio ligado" : "sono leve", r21.media_s);
+    conferir(r21.media_s >= INTERVALO_DE_DRENAGEM_MPU6500_US / 1e6 &&
+                 r21.media_s < (INTERVALO_DE_DRENAGEM_MPU6500_US + VARIACAO_DA_DRENAGEM_US) / 1e6 &&
+                 contadores.prazos_estourados.load() == 0,
+             msg21);
+  }
+  perfil = &PERFIL_MPU6050;
+
   printf("FW-19: a serial esvazia antes do sono leve\n");
   // Texto deixado na serial por outra tarefa (as linhas do envio, por
   // exemplo) e pelo proprio laco: nenhum sono pode comecar com ele pendente.

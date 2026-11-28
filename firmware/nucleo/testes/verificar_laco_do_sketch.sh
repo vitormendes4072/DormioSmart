@@ -89,8 +89,12 @@ sabotar() { # sabotar ROTULO DE PARA
 }
 
 sabotar "1. sono relativo (o defeito de ate 03/11)" \
-  "    prazo_us = proximo_prazo_de_drenagem_us(prazo_us, agora_us, intervalo_de_drenagem_us(&xorshift));" \
-  "    prazo_us = agora_us + intervalo_de_drenagem_us(&xorshift);"
+  "    prazo_us = proximo_prazo_de_drenagem_us(
+        prazo_us, agora_us, intervalo_de_drenagem_us(&xorshift, perfil->intervalo_de_drenagem_us));" \
+  "    prazo_us = agora_us + intervalo_de_drenagem_us(&xorshift, perfil->intervalo_de_drenagem_us);"
+sabotar "25. MPU6500 drenado no ritmo do MPU6050 (FW-21)" \
+  "        prazo_us, agora_us, intervalo_de_drenagem_us(&xorshift, perfil->intervalo_de_drenagem_us));" \
+  "        prazo_us, agora_us, intervalo_de_drenagem_us(&xorshift));"
 sabotar "2. estouro do prazo nao contado" \
   "      contadores.prazos_estourados++;  // drena ja, sem dormir" \
   "      // drena ja, sem dormir"
@@ -211,7 +215,8 @@ sabotar_sensor "8. reacordar sem configurar o sensor" \
   "  const bool ok = true;"
 
 sabotar_sensor "9. toda perda vira i2c no estado" \
-  "    registrar_perda(causa_da_leitura_recusada(n_fifo, estado), t_us, n_fifo, estado);" \
+  "    registrar_perda(causa_da_leitura_recusada(n_fifo, estado, perfil->fifo_bytes), t_us, n_fifo,
+                    estado);" \
   "    registrar_perda(PERDA_I2C_NO_ESTADO, t_us, n_fifo, estado);"
 sabotar_sensor "10. falha nos bytes contada como no estado" \
   "      registrar_perda(PERDA_I2C_NA_LEITURA, t_us, n_fifo, estado);" \
@@ -378,6 +383,25 @@ sabotar_envio "24. a bateria nao e lida no envio" \
   "    if (bateria_no_envio_mv == 0) bateria_no_envio_mv = medir_bateria_mv();
 " \
   ""
+
+# FW-21: o MPU6500, contra o sensor falso.
+sabotar_sensor "26. filtro do MPU6500 fora do 0x1D" \
+  "  if (perfil->filtro_em_accel_config2) {
+    ok = ok && escrever_registrador(MPU_REG_ACCEL_CONFIG2, C2_A_DLPF_CFG);
+  }" \
+  ""
+sabotar_sensor "27. o WHO_AM_I e ignorado" \
+  "    perfil = perfil_do_sensor(quem);" \
+  "    (void)perfil_do_sensor(quem);"
+sabotar_sensor "28. a causa com o teto do MPU6050" \
+  "causa_da_leitura_recusada(n_fifo, estado, perfil->fifo_bytes)" \
+  "causa_da_leitura_recusada(n_fifo, estado)"
+sabotar_sensor "29. chip desconhecido tratado como MPU6500" \
+  "    perfil = perfil_do_sensor(quem);" \
+  "    perfil = quem == 0x68 ? &PERFIL_MPU6050 : &PERFIL_MPU6500;"
+sabotar_sensor "30. a temperatura sempre na conversao do MPU6050" \
+  "  return temperatura_do_chip_c(perfil, static_cast<int16_t>((b[0] << 8) | b[1]));" \
+  "  return temperatura_mpu_c(static_cast<int16_t>((b[0] << 8) | b[1]));"
 
 echo "$((total - falhas))/$total como esperado"
 [ $falhas -eq 0 ]

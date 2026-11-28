@@ -2,19 +2,20 @@
 
 namespace dormio {
 
-EstadoDaLeitura avaliar_fifo(uint16_t fifo_count, uint8_t int_status) {
+EstadoDaLeitura avaliar_fifo(uint16_t fifo_count, uint8_t int_status, uint16_t teto_bytes) {
   if ((int_status & MPU_INT_STATUS_FIFO_OFLOW) != 0) return LEITURA_TRANSBORDOU;
   // A contagem no teto e transbordo mesmo sem o bit: a interrupcao pode estar
   // desligada (INT_ENABLE nao e responsabilidade deste modulo), e o bit de
   // status so e confiavel quando ela esta ligada.
-  if (fifo_count >= FIFO_CAPACIDADE_BYTES) return LEITURA_TRANSBORDOU;
+  if (fifo_count >= teto_bytes) return LEITURA_TRANSBORDOU;
   if (fifo_count % BYTES_POR_AMOSTRA != 0) return LEITURA_DESALINHADA;
   return LEITURA_OK;
 }
 
-CausaDaPerda causa_da_leitura_recusada(uint16_t fifo_count, uint8_t int_status) {
+CausaDaPerda causa_da_leitura_recusada(uint16_t fifo_count, uint8_t int_status,
+                                       uint16_t teto_bytes) {
   if ((int_status & MPU_INT_STATUS_FIFO_OFLOW) != 0) return PERDA_TRANSBORDO_BIT;
-  if (fifo_count >= FIFO_CAPACIDADE_BYTES) return PERDA_TRANSBORDO_TETO;
+  if (fifo_count >= teto_bytes) return PERDA_TRANSBORDO_TETO;
   return PERDA_DESALINHADA;
 }
 

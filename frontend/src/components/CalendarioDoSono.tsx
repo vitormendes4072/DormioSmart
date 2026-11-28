@@ -44,7 +44,7 @@ function diasEmSequencia(total: number, podeSerMaior = false) {
 
 export function CalendarioDoSono({
   dispositivo, demo, selecionado, aoSelecionarDia, ancora, aoNavegar, destinoDoGrafico = null,
-  contaSemRegistro = false, abrirGuia, meta, dicaDaMeta,
+  contaSemRegistro = false, meta, dicaDaMeta,
 }: {
   dispositivo: string | null;
   demo: boolean;
@@ -55,7 +55,6 @@ export function CalendarioDoSono({
   /** UI-48: em tela larga, o gráfico vai para a coluna da direita do Início; sem destino, fica abaixo do calendário. */
   destinoDoGrafico?: HTMLElement | null;
   contaSemRegistro?: boolean;
-  abrirGuia?: () => void;
   meta?: number | null;
   dicaDaMeta?: "travesseiro" | "app";
 }) {
@@ -139,7 +138,7 @@ export function CalendarioDoSono({
   const grafico = (
     <GraficoDeTempoPorDia registros={registros} referencia={data} hoje={hoje} selecionado={selecionado}
       aoSelecionarDia={selecionarDia} carregando={carregando} falhou={dados === null}
-      parcial={dados?.truncada ?? false} recarregar={recarregar} abrirGuia={contaSemRegistro ? abrirGuia : undefined}
+      parcial={dados?.truncada ?? false} recarregar={recarregar} contaSemRegistro={contaSemRegistro}
       meta={meta} dicaDaMeta={dicaDaMeta} />
   );
 
