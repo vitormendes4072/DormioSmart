@@ -14504,6 +14504,42 @@ Na revisão, o teste da faixa encontrou apenas a navegação do Início ao fim d
 
 ---
 
+# 2026-11-27 (vi) — `LGPD-17`: o microfone diante da LGPD, antes do código; abre o `EXP-01`
+
+**O problema, como foi entendido no início.** O autor quer incluir um microfone (INMP441 no travesseiro e, antes dele, o microfone do celular no app) para medir a respiração e chegar ao REM. Uma pesquisa feita no mesmo dia, fora do repositório, sustentou a ideia: o REM se distingue pela respiração irregular, e o som capta a respiração. Mas três documentos dizem o contrário do que se quer fazer: a política ("O aparelho não tem microfone"), a `LIMITACOES-TCC.md` (X.5, "não incorporação de captação de áudio") e a `METODOLOGIA.md` (sem estagiamento). E o `EXP-01`, citado no `ML-DATASETS-E-PLANO.md` como "condicional", não existia no backlog. O autor pediu primeiro o estudo de LGPD e a mudança na política, e só depois o código.
+
+**Hipótese de trabalho.** Dizer agora na política que há microfone seria descrever uma coleta que não acontece, contra a regra de redação da própria política ("descrever o que o sistema faz hoje, não o que se pretende") e contra a transparência (art. 6º, VI). E mudaria a versão do consentimento, fazendo todos os usuários aceitarem algo que não existe. A saída proposta e aprovada pelo autor foi em **duas etapas**: agora, o estudo e o aviso prévio (o que os arts. 8º, § 6º, e 9º, § 2º, pedem); o texto das seções novas só entra na política na PR que ligar o microfone.
+
+**O que foi testado, e como.**
+- Os artigos foram lidos no texto compilado da Lei nº 13.709/2018 no Planalto, pelo navegador embutido (o `curl` levou "Connection reset"): 5º (II, XII, XVII), 6º, 7º, 8º (§§ 4º e 6º), 9º (*caput* e § 2º), 11, 38 e 46.
+- As regras do Android para o microfone foram lidas em *developer.android.com*: o tipo `microphone` do serviço em primeiro plano, `FOREGROUND_SERVICE_MICROPHONE`, `RECORD_AUDIO`, a proibição de iniciar o serviço com o app em segundo plano e o comportamento da fonte `UNPROCESSED`.
+- O código foi lido para confirmar o estado de hoje: o `AndroidManifest.xml` declara o serviço como `health` e não pede `RECORD_AUDIO`; a noite começa por toque do usuário (`MainActivity`, `NoitePlugin`); o `ReceptorDeInicializacao` só reagenda o lembrete.
+- `python scripts/conferir_backlog.py --conferir`, antes e depois de corrigir a contagem.
+- Testes do `/privacidade` e conferências de documento: ver "Resultado medido".
+
+**Resultado medido.**
+- `docs/LGPD-MICROFONE.md`, novo: o som como dado sensível; o consentimento **próprio e separado** do de movimento; a minimização (o som nunca gravado, só o nível a cada 20 ms); as pessoas no quarto; as regras do Android; a ordem das duas etapas; o texto das seções novas para a etapa 2; o relatório de impacto (art. 38, que a autoridade "poderá determinar", e não uma obrigação afirmada aqui).
+- Política: a frase da §2.4 passou a dizer que o travesseiro não tem microfone e que o app não usa o do celular; a §10 anuncia o estudo, diz que **nada acontece hoje** e o que acontecerá antes, se for adotado; a revisão de 27/11 no topo e na lista da §10 ganhou esses dois itens; uma linha nova nas lacunas fixa a ordem do release. **Consentimento sem versão nova.**
+- Backlog: entrou e fechou o `LGPD-17` (L0); entrou o `EXP-01` (L3), no quadro e na contagem (44 · L3: 13). A conferência acusou primeiro "total declarado 43, recontado 44" e "L3 declarado 12, recontado 13", e passou depois da correção.
+
+**Adaptação.** A revisão de 27/11 da política já estava publicada (release R27, mesmo dia). Os dois itens do microfone entraram **na mesma revisão**, sem criar uma segunda de mesma data.
+
+**O que deu errado no caminho.**
+- A primeira edição da política falhou: o checkout principal estava 18 commits atrás do `develop`, e o topo da política lido nele (a revisão de 19/11) já não era o do `develop`, que tinha a revisão de 27/11 do onboarding. Refeito sobre a worktree, a partir do `develop` `7a21e9f`.
+- Na conversa, antes da pesquisa, o Claude citou artigos científicos "de memória". O autor apontou o erro, e a regra passou a ser só citar o que foi conferido na fonte. Este estudo segue essa regra: todo artigo de lei citado foi lido no Planalto hoje.
+
+**Risco em aberto.**
+- **A data da revisão.** Se este PR for ao ar noutro dia, a data do topo e a da §10 precisam passar a ser a do release, numa revisão própria. Uma revisão já publicada não deve mudar em silêncio.
+- A frase "o nível a cada 20 ms não reconstrói fala" entrou no estudo como hipótese e, **conferida no mesmo dia a pedido do autor, não se sustentou como garantia**: Xu e Pfingst (2008, texto lido) dizem que o reconhecimento da fala só se beneficia do envelope abaixo de 16–20 Hz, que o nível a 50 Hz cobre; a fala volta a ser entendida com três ou quatro faixas (Dorman et al. 1997, lido), e o número para uma faixa só não foi achado em fonte lida (Shannon et al. 1995 não abriu). Decisão registrada no estudo (seção 4.1): a série de 20 ms não sai da memória; só medidas por época são guardadas e enviadas. Falta o teste próprio de que as medidas por época não revelam fala (`EXP-01`).
+- O escopo (X.5 da `LIMITACOES-TCC.md`) e o CEP dependem do orientador (`EXP-01`, portão 0).
+- A política diz no topo "Não publicar sem revisão jurídica" (`LGPD-01`).
+
+**Procedência.** Branch `docs/LGPD-17-estudo-microfone`, a partir do `develop` `7a21e9f`. Lei nº 13.709/2018 compilada no Planalto, lida em 27/11/2026; *developer.android.com*, lido em 27/11/2026. Windows 11, Python 3.13.
+
+**Integração (27/11, ~23:50).** A PR #335 ficou em conflito com o `develop`, que já tinha a revisão "da jornada" (`UI-62`, `LGPD-18`) e o `FW-21`. Na fusão, as duas novidades do microfone (a frase da §2.4 e o aviso prévio) tinham caído dentro da revisão de 27/11 **já publicada** no release R27, o que a mudaria em silêncio. Foram movidas para a revisão da jornada, que ainda não foi publicada, no topo e na lista da §10; a entrada publicada voltou ao texto do R27. A entrada deste diário passou de (iii) a (vi), porque a (iii) é a do `FW-21` e a (v) é a do `FW-23` (#338). **Continua valendo o risco da data:** se o release for noutro dia, a revisão da jornada (com o microfone) passa a ter a data do release.
+
+---
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
