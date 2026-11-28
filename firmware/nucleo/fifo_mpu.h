@@ -92,7 +92,9 @@ enum EstadoDaLeitura {
 };
 
 // Classifica a leitura de FIFO_COUNT e INT_STATUS antes de ler os bytes.
-EstadoDaLeitura avaliar_fifo(uint16_t fifo_count, uint8_t int_status);
+// `teto_bytes` e a capacidade da FIFO do sensor (FW-21: 512 B no MPU6500).
+EstadoDaLeitura avaliar_fifo(uint16_t fifo_count, uint8_t int_status,
+                             uint16_t teto_bytes = FIFO_CAPACIDADE_BYTES);
 
 // ── Por que uma drenagem foi descartada (FW-17) ─────────────────────────
 //
@@ -113,7 +115,8 @@ enum CausaDaPerda {
 // A causa de uma leitura que `avaliar_fifo` recusou. Com o bit e o teto juntos,
 // vale o bit, na mesma ordem de `avaliar_fifo`. So faz sentido chamar quando a
 // leitura NAO foi `LEITURA_OK`.
-CausaDaPerda causa_da_leitura_recusada(uint16_t fifo_count, uint8_t int_status);
+CausaDaPerda causa_da_leitura_recusada(uint16_t fifo_count, uint8_t int_status,
+                                       uint16_t teto_bytes = FIFO_CAPACIDADE_BYTES);
 
 // Nome curto da causa, para o log.
 const char *nome_da_causa(CausaDaPerda causa);

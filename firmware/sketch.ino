@@ -8,6 +8,9 @@
 // 50 Hz sozinho, guardando na propria FIFO, e o ESP32 acorda do SONO LEVE a
 // cada ~1,7 s para esvazia-la. Toda a logica disso mora no nucleo
 // (`nucleo/`), testada no host; este arquivo so liga as pecas ao hardware.
+// FW-21: com o MPU6500 (o GY-521 vendido como MPU6050 desde que este saiu de
+// linha), a FIFO e de 512 B e a drenagem e a cada ~0,85 s; o chip e
+// reconhecido pelo WHO_AM_I (`nucleo/perfil_do_sensor.h`).
 //
 //   FIFO do MPU --(I2C)--> CadeiaC2 --> grade de 960 pontos por epoca
 //        |                                  |
@@ -19,7 +22,8 @@
 //
 // ── DUAS TAREFAS, UMA EM CADA NUCLEO ───────────────────────────────────
 //
-// A FIFO guarda 3,4 s e e esvaziada a cada 1,7 s. Um POST por HTTPS leva de 1
+// A FIFO guarda 3,4 s e e esvaziada a cada 1,7 s (no MPU6500, guarda 1,7 s e
+// e esvaziada a cada 0,85 s). Um POST por HTTPS leva de 1
 // a 3 s. No mesmo laco, o envio faria a FIFO transbordar e a epoca seria
 // recusada. Por isso:
 //
@@ -69,6 +73,7 @@
 #include "nucleo/epoca_c2.h"
 #include "nucleo/fifo_mpu.h"
 #include "nucleo/fila_flash.h"
+#include "nucleo/perfil_do_sensor.h"
 #include "nucleo/reamostragem.h"
 #include "nucleo/radio.h"
 #include "nucleo/reconexao.h"
@@ -158,6 +163,10 @@ static CadeiaC2 cadeia;
 // percebe o sensor reiniciado. Os dois so sao tocados pela medicao.
 static Calibracao calibracao;
 static VigiaDaFifo vigia;
+// FW-21: o chip que respondeu no WHO_AM_I (`perfil_do_sensor.h`). Comeca no
+// MPU6050 e so muda quando o WHO_AM_I e lido: sem resposta, nada se decide.
+// So a medicao (e o `setup`, antes dela existir) o tocam.
+static const PerfilDoSensor *perfil = &PERFIL_MPU6050;
 // FW-17: conta as drenagens seguidas sem resposta do sensor no I2C.
 static GuardaDoBarramento guarda;
 static AcumuladorDeFeatures acumulador;
@@ -262,9 +271,22 @@ static bool configurar_mpu() {
   if (!escrever_registrador(MPU_REG_PWR_MGMT_1, PWR1_RESET)) return false;
   delay(100);
   bool ok = escrever_registrador(MPU_REG_PWR_MGMT_1, PWR1_RELOGIO_INTERNO);
+  // FW-21: qual chip e este. O MPU6500 (o GY-521 vendido como MPU6050) tem
+  // FIFO de 512 B e o filtro do acelerometro em outro registrador.
+  uint8_t quem = 0;
+  if (ler_registradores(MPU_REG_WHO_AM_I, &quem, 1)) {
+    perfil = perfil_do_sensor(quem);
+    Serial.printf("[sensor] WHO_AM_I 0x%02X: %s, FIFO %u B, drenagem a cada %u ms%s\n", quem,
+                  perfil->nome, static_cast<unsigned>(perfil->fifo_bytes),
+                  static_cast<unsigned>(perfil->intervalo_de_drenagem_us / 1000u),
+                  perfil->filtro_em_accel_config2 ? ", filtro em ACCEL_CONFIG 2" : "");
+  }
   ok = ok && escrever_registrador(MPU_REG_PWR_MGMT_2, PWR2_GIRO_EM_ESPERA);
   ok = ok && escrever_registrador(MPU_REG_SMPLRT_DIV, C2_SMPLRT_DIV);
   ok = ok && escrever_registrador(MPU_REG_CONFIG, C2_DLPF_CFG);
+  if (perfil->filtro_em_accel_config2) {
+    ok = ok && escrever_registrador(MPU_REG_ACCEL_CONFIG2, C2_A_DLPF_CFG);
+  }
   ok = ok && escrever_registrador(MPU_REG_ACCEL_CONFIG, C2_ACCEL_CONFIG);
   ok = ok && escrever_registrador(MPU_REG_USER_CTRL, MPU_USER_CTRL_FIFO_RESET);
   ok = ok && escrever_registrador(MPU_REG_USER_CTRL, MPU_USER_CTRL_FIFO_EN);
@@ -279,7 +301,7 @@ static void resetar_fifo() {
 static float ler_temperatura_c() {
   uint8_t b[2];
   if (!ler_registradores(MPU_REG_TEMP_OUT_H, b, 2)) return 0.0f;
-  return temperatura_mpu_c(static_cast<int16_t>((b[0] << 8) | b[1]));
+  return temperatura_do_chip_c(perfil, static_cast<int16_t>((b[0] << 8) | b[1]));
 }
 
 // FW-11: a FIFO ficou vazia `DRENAGENS_VAZIAS_PARA_CONFERIR` vezes seguidas.
@@ -393,10 +415,11 @@ static void drenar() {
   }
   guarda.observar(true);
   const uint16_t n_fifo = static_cast<uint16_t>((contagem[0] << 8) | contagem[1]);
-  if (avaliar_fifo(n_fifo, estado) != LEITURA_OK) {
+  if (avaliar_fifo(n_fifo, estado, perfil->fifo_bytes) != LEITURA_OK) {
     resetar_fifo();
     cadeia.registrar_drenagem(t_us, 0, 0, true);
-    registrar_perda(causa_da_leitura_recusada(n_fifo, estado), t_us, n_fifo, estado);
+    registrar_perda(causa_da_leitura_recusada(n_fifo, estado, perfil->fifo_bytes), t_us, n_fifo,
+                    estado);
     ultima_drenagem_us = t_us;
     return;
   }
@@ -486,8 +509,8 @@ static void tarefa_de_medicao(void *) {
   // Dorme ATE o prazo, e nao `intervalo` depois do trabalho (FW-10): o tempo de
   // drenar, fechar a epoca e gravar na flash nao empurra mais o despertar, e a
   // FIFO fica com ~1,4 s de folga em vez de ~0,9 s. Ver `cadeia_c2.h`.
-  uint64_t prazo_us =
-      static_cast<uint64_t>(esp_timer_get_time()) + intervalo_de_drenagem_us(&xorshift);
+  uint64_t prazo_us = static_cast<uint64_t>(esp_timer_get_time()) +
+                      intervalo_de_drenagem_us(&xorshift, perfil->intervalo_de_drenagem_us);
 
   for (;;) {
     const uint64_t espera_us =
@@ -514,7 +537,8 @@ static void tarefa_de_medicao(void *) {
     fechar_epocas();
 
     const uint64_t agora_us = static_cast<uint64_t>(esp_timer_get_time());
-    prazo_us = proximo_prazo_de_drenagem_us(prazo_us, agora_us, intervalo_de_drenagem_us(&xorshift));
+    prazo_us = proximo_prazo_de_drenagem_us(
+        prazo_us, agora_us, intervalo_de_drenagem_us(&xorshift, perfil->intervalo_de_drenagem_us));
     const uint32_t trabalho_us = static_cast<uint32_t>(agora_us - inicio_us);
     if (trabalho_us > contadores.trabalho_max_us.load()) contadores.trabalho_max_us.store(trabalho_us);
     // Reservar o radio ANTES do aviso (FW-09): ate 01/11 a flag era ligada

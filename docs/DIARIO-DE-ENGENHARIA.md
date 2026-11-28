@@ -14421,6 +14421,54 @@ Contra `develop`, falharam 5 testes de tela e vocabulário, 9 do PATCH e 4 de ac
 
 ---
 
+# 2026-11-27 (iii) — FW-21: o firmware aceita o MPU6500
+
+**O problema, como foi entendido no início.** O `HW-13` pedia sensores MPU6050 originais para as duas placas extras. A segunda compra, de outro anúncio descrito como "original", trouxe de novo dois MPU6500: WHO_AM_I `0x70` e FIFO de 512 B, com "MPU-6050" gravado no chip. Com o firmware de antes, a FIFO de 512 B transborda na drenagem de 1,7 s e nenhuma época é gravada; e o filtro do acelerômetro do MPU6500 fica em ACCEL_CONFIG 2 (0x1D), não no CONFIG (0x1A). O autor decidiu adaptar o firmware em vez de procurar outro sensor.
+
+**Hipótese de trabalho.**
+- O MPU6500 tem a mesma escala do acelerômetro (4 096 LSB/g em ±8 g, folha PS-MPU-6500A-01 rev. 1.3) e os mesmos registradores da FIFO. Um perfil por chip, escolhido pelo WHO_AM_I, basta: o tamanho da FIFO, o intervalo de drenagem (metade da FIFO: 0,85 s) e onde gravar o filtro.
+- O MPU6050 de verdade, se aparecer, continua exatamente como antes.
+
+**O que foi testado, e como.**
+- No host, em contêiner `gcc:13`: a suíte do núcleo, o laço do sketch contra um MPU6050 falso que ganhou o WHO_AM_I e a capacidade da FIFO, e as sabotagens.
+- Na placa A434, com o sensor da unidade 2: duas bancadas de 2 h com envio à produção ("Bancada A434"), o log serial completo de cada uma, e um controle positivo a 1,7 s numa cópia do firmware.
+- O ruído parado com e sem o filtro no 0x1D, para conferir que o registrador faz efeito.
+- A temperatura do chip pelo CSV exportado do app, antes e depois da correção, e contra a placa do travesseiro (MPU6050 original) ligada ao lado.
+
+**Resultado medido.**
+- No host: `make` 341, 157, **249**, 456, 115, 327 e 185 verificações, 0 falhas; `laco` **30/30**; `mutacao-cadeia` **53/53**; `sintaxe` ok. Para o chip: programa 1 097 608 B e RAM fixa 109 456 B (218 224 B para o heap).
+- O filtro: ruído parado de 1,0–3,1 mg com o 0x1D = 4, contra 4,7–17,6 mg sem ele (duas rodadas).
+- **Bancada 1** (firmware antes da correção da temperatura, 17:41 a 19:46): 248 épocas, 12 envios com `HTTP 200`, 50,01–50,08 Hz, 0 transbordos, **1 drenagem descartada por contagem desalinhada** (19:06:38, FIFO com 257 B) e a época 169 recusada.
+- **Bancada 2** (com a correção, 19:54 a 21:59): 248 épocas, 239 gravadas em 12 envios com `HTTP 200`, 49,99–50,08 Hz, **0 drenagens descartadas**, trabalho máximo 135 ms, heap mínimo **37 300 B**, pilha sem aviso.
+- **Controle positivo na placa** (`INTERVALO_DE_DRENAGEM_MPU6500_US = 1700000`): 55 drenagens descartadas por transbordo em ~3 min (FIFO de 510 a 512 B) e todas as épocas recusadas. O firmware certo foi regravado em seguida.
+- **A temperatura:** pelo CSV, a A434 marcava **37,1 °C** com a fórmula do MPU6050 e **21,5 °C** com a do MPU6500, com o mesmo valor bruto (~194). Lado a lado com o travesseiro (MPU6050 original), de 21:35 a 21:45: **21,5–21,6 °C** contra **23,6–23,7 °C**.
+
+**Adaptação.**
+- `firmware/nucleo/perfil_do_sensor.h` (novo): `PerfilDoSensor` com o nome, a FIFO, o intervalo de drenagem, se o filtro vai no 0x1D e a conversão da temperatura; três perfis (MPU6050, MPU6500 e desconhecido, conservador). O sketch lê o WHO_AM_I ao configurar o sensor e registra o perfil no log.
+- O anel de drenagens passou de 48 para 64 (+384 B de RAM fixa).
+- **A temperatura entrou no perfil na revisão** (abaixo): `temperatura_do_chip_c` usa bruto/340 + 36,53 no MPU6050 e no desconhecido, e bruto/333,87 + 21 no MPU6500. As constantes vêm do driver do Linux (`inv_mpu_iio.h`: `INV_MPU6500_TEMP_OFFSET` 7011 e `_SCALE` 2995178). Ganharam dois testes de unidade, a temperatura no MPU falso, a mutação 52 e a sabotagem 30 do laço.
+
+**O que deu errado no caminho.**
+- **A primeira versão do FW-21 manteve a temperatura do MPU6050.** Os testes passavam porque nenhum conferia a temperatura por chip. Achado só na revisão, lendo o código contra a folha: um MPU6500 a ~21 °C ia ao servidor como 37 °C, e o erro alcançaria a calibração (`CAL-03`) e o `CALC-05`.
+- **O resumo da bancada 1 dizia "0 descartadas"**, e o log tinha um descarte às 19:06. Na revisão, o log foi lido ainda sendo escrito, e a bancada foi dada como interrompida em 1 h 35 min. Ela tinha rodado as 2 h. Corrigido ao achar o processo de registro ainda com a porta COM4 aberta.
+- O MPU6050 falso dos testes apagava o bit 2 de **todo** registrador, e nenhum teste conferia o valor do filtro. Corrigido para apagar só no 0x6A.
+- As sabotagens 9 e 16 do laço quebraram com o código novo (o padrão de busca mudou) e foram refeitas. Uma asserção comparava 510 < 512 e esquecia a variação da drenagem.
+- O escape `\n` passado por heredoc virou quebra de linha num `printf`. Corrigido com a ferramenta de edição.
+- A fonte do fim de linha do MPU6050 não se confirmou: a página da TDK citada no backlog deu 404, a página do produto na TDK dá "Page Not Found", e o "Obsolete" da DigiKey só foi lido num resumo da página. O backlog foi corrigido para dizer isso.
+- Na comparação lado a lado, a placa do travesseiro estava **pausada** no site (`API-07`). Os lotes dela foram recusados e descartados até o autor retomar, às ~21:35.
+
+**Risco em aberto.**
+- **A contagem desalinhada** (1 em 248 épocas na bancada 1) já aconteceu com o MPU6050 (16/11 e 17/11), mas, drenando duas vezes mais vezes, pode ficar mais frequente. Ler só as amostras inteiras, em vez de descartar a drenagem, mexe na regra do `FW-17` e não tem item ainda.
+- **O heap mínimo de 37 300 B** é o menor das bancadas (41 700 e 39 468 nas outras): a observar com o `FW-14`.
+- **A banda exata do filtro** do MPU6500 (~21 Hz) não foi conferida na fonte primária: o mapa de registradores da TDK deu 403.
+- **A comparabilidade** do dado do MPU6500 com o do MPU6050 é o `HW-13`. **A temperatura absoluta** não foi conferida com termômetro: os ~2 °C de diferença para o MPU6050 ao lado podem ser desvio de fábrica ou o calor de cada placa.
+- O CSV escreve "Chip MPU6050" como origem da temperatura em todo travesseiro (`frontend/src/lib/exportar.ts`). O autor aprovou, em 27/11, mandar o chip no lote e gravá-lo por leitura, depois deste merge (contrato 2.13.0, migração 028).
+- O texto do TCC cita só o MPU6050 (`DOC-18`).
+
+**Procedência.** Branch `feature/FW-21-sensor-mpu6500` (commits `6ed2525` e `f394d7f`), sincronizada com `develop` `8d36050`. Testes em contêiner `gcc:13`; `arduino-cli` 1.6.0 com `esp32:esp32` 3.3.12; placa A434 (MAC `d8:bc:38:e5:a4:34`) na COM4; logs em `dados-locais/sensores-compra-2/` (`fw21-bancada-27-11.log`, `fw21-temperatura-bancada-27-11.log`, `fw21-controle-1700ms-27-11.log`), fora do Git; CSVs exportados do app às 20:06 e às 21:52. Windows 11, 27/11, das 15:00 às 22:15.
+
+---
+
 # 2026-11-27 (iv) — jornada de primeiro acesso (UI-62, UI-63 e LGPD-18)
 
 **O problema, como foi entendido no início.** A conta nova chegava a um Início vazio com as opções, todos os passos e perguntas opcionais no mesmo cartão. A pessoa precisava descobrir como começar, onde preparar o celular e como reconhecer que o travesseiro tinha enviado dados.
