@@ -23,7 +23,12 @@ describe("gerarCsv", () => {
       { id: "c", tipo: "celular" as const },
     ].map((d) => ({ ...d, nome: d.id, created_at: "", last_seen_at: null, revoked_at: null }));
     const [cabecalho, ...linhas] = gerarCsv([
+      leitura({ device_id: "p", sensor: "MPU6050" }),
+      leitura({ device_id: "p", sensor: "MPU6500" }),
+      leitura({ device_id: "p", sensor: "desconhecido" }),
+      leitura({ device_id: "p", sensor: null }),
       leitura({ device_id: "p" }),
+      leitura({ device_id: "p", sensor: "MPU6500", temp: null }),
       leitura({ device_id: "c" }),
       leitura({ device_id: "c", temp: null }),
       leitura({ device_id: "antigo" }),
@@ -32,7 +37,10 @@ describe("gerarCsv", () => {
     expect(colunas).toContain("temperatura");
     expect(colunas).toContain("origem_temperatura");
     expect(linhas.map((linha) => linha.split(",")[colunas.indexOf("origem_temperatura")]))
-      .toEqual(["Chip MPU6050", "Bateria", "", ""]);
+      .toEqual([
+        "Chip MPU6050", "Chip MPU6500", "Chip do sensor", "Chip do sensor",
+        "Chip do sensor", "", "Bateria", "", "",
+      ]);
   });
 
   it("gera so o cabecalho quando nao ha leitura", () => {

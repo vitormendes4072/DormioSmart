@@ -1,5 +1,6 @@
 #include "lote.h"
 
+#include <stdio.h>
 #include <string.h>
 
 namespace dormio {
@@ -11,15 +12,24 @@ static const char FECHAMENTO[] = "]}";
 static const uint32_t TAMANHO_ABERTURA = sizeof(ABERTURA) - 1;
 static const uint32_t TAMANHO_FECHAMENTO = sizeof(FECHAMENTO) - 1;
 
-MontadorDeLote::MontadorDeLote(char *destino, uint32_t capacidade)
+MontadorDeLote::MontadorDeLote(char *destino, uint32_t capacidade, const char *sensor)
     : destino_(destino), capacidade_(capacidade), usado_(0), quantidade_(0) {
   // Abertura + fechamento + NUL tem de caber, senao o montador nasce cheio.
   if (destino_ == 0 || capacidade_ < TAMANHO_ABERTURA + TAMANHO_FECHAMENTO + 1) {
     capacidade_ = 0;
     return;
   }
-  memcpy(destino_, ABERTURA, TAMANHO_ABERTURA);
-  usado_ = TAMANHO_ABERTURA;
+  if (sensor == nullptr) {
+    memcpy(destino_, ABERTURA, TAMANHO_ABERTURA);
+    usado_ = TAMANHO_ABERTURA;
+    return;
+  }
+  const int abertura = snprintf(destino_, capacidade_, "{\"sensor\":\"%s\",\"leituras\":[", sensor);
+  if (abertura < 0 || static_cast<uint32_t>(abertura) + TAMANHO_FECHAMENTO + 1 > capacidade_) {
+    capacidade_ = 0;
+    return;
+  }
+  usado_ = static_cast<uint32_t>(abertura);
 }
 
 bool MontadorDeLote::adicionar(const char *leitura_json, uint32_t tamanho) {

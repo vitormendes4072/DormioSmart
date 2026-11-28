@@ -17,6 +17,7 @@
 //
 // O servidor responde `aceitas` para todas as leituras, e o teste pode mandar
 // ele fechar a conexao depois de cada resposta ou falhar um POST.
+#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -68,6 +69,10 @@ static int handshakes = 0;
 static int fechar_depois_de_cada = 0;  // 1 = o servidor nao mantem a conexao
 static int falhar_o_post = 0;          // n > 0: o n-esimo POST falha (-1)
 static char resposta[1024];
+static int who_am_i_falso = -1;
+static char sensor_do_post[32];
+static int rejeicoes_do_sensor = 0;
+int ler_who_am_i_falso() { return who_am_i_falso; }
 
 void wcs_stop(bool *conectado) { *conectado = false; }
 
@@ -93,6 +98,25 @@ int http_post(bool *conectado, const uint8_t *corpo, size_t n) {
     *conectado = false;  // a conexao caiu no meio
     resposta[0] = '\0';
     return -1;
+  }
+  // O sensor aparece uma vez, como primeira chave do envelope do firmware.
+  const char *json = reinterpret_cast<const char *>(corpo);
+  const char abertura[] = "{\"sensor\":\"";
+  sensor_do_post[0] = '\0';
+  if (n >= sizeof(abertura) - 1 && strncmp(json, abertura, sizeof(abertura) - 1) == 0) {
+    const char *valor = json + sizeof(abertura) - 1;
+    const char *fim_valor = static_cast<const char *>(memchr(valor, '"', n - (valor - json)));
+    if (fim_valor && fim_valor - valor < static_cast<ptrdiff_t>(sizeof(sensor_do_post))) {
+      memcpy(sensor_do_post, valor, fim_valor - valor);
+      sensor_do_post[fim_valor - valor] = '\0';
+      if (strstr(fim_valor, "\"sensor\"")) sensor_do_post[0] = '\0';
+    }
+  }
+  if (sensor_do_post[0] != '\0' && strcmp(sensor_do_post, "MPU6050") != 0 &&
+      strcmp(sensor_do_post, "MPU6500") != 0 && strcmp(sensor_do_post, "desconhecido") != 0) {
+    rejeicoes_do_sensor++;
+    snprintf(resposta, sizeof(resposta), "{\"error\":\"sensor invalido\"}");
+    return 400;
   }
   // Uma leitura por "total" no envelope: o servidor aceita todas.
   int leituras = 0;
@@ -218,6 +242,39 @@ int main() {
 
   conferir(TAMANHO_JSON_DO_LOTE == tamanho_do_lote(LEITURAS_POR_LOTE_NO_ESP32),
            "o buffer do lote e o do pior caso de 20 leituras, nao uma estimativa");
+
+  struct CasoDoSensor {
+    int who;
+    const char *nome;
+    const char *teste;
+  };
+  const CasoDoSensor casos[] = {
+      {-1, "desconhecido", "FW-22: lote sem identificacao informa desconhecido"},
+      {0x68, "MPU6050", "FW-22: lote informa MPU6050 uma vez"},
+      {0x70, "MPU6500", "FW-22: lote informa MPU6500 uma vez"},
+      {0xff, "desconhecido", "FW-22: lote com WHO_AM_I desconhecido informa desconhecido"},
+  };
+  for (const auto &caso : casos) {
+    guardar(2);
+    who_am_i_falso = caso.who;
+    configurar_mpu();
+    zerar();
+    ok = enviar_pendentes();
+    conferir(ok && posts == 1 && strcmp(sensor_do_post, caso.nome) == 0, caso.teste);
+  }
+
+  guardar(2);
+  zerar();
+  chip_identificado.store("invalido", std::memory_order_relaxed);
+  ok = enviar_pendentes();
+  conferir(!ok && posts == 1 && rejeicoes_do_sensor == 1 && fila.pendentes() == 2,
+           "FW-22: HTTP 400 por sensor invalido recua e preserva as epocas na flash");
+  who_am_i_falso = 0x70;
+  configurar_mpu();
+  zerar();
+  ok = enviar_pendentes();
+  conferir(ok && posts == 1 && fila.pendentes() == 0,
+           "FW-22: corrigido o chip, a proxima tentativa entrega as epocas");
 
   printf("%d falhas\n", falhas);
   return falhas == 0 ? 0 : 1;

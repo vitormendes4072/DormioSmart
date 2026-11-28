@@ -40,8 +40,13 @@ export const COLUNAS = [
  * O valor da coluna `origem_temperatura`. E contrato do arquivo: nao acompanha
  * o rotulo da tela, que o UI-39 trocou por "Chip do sensor".
  */
-function origemNoCsv(tipo: Dispositivo["tipo"] | undefined): string | null {
-  return tipo === "travesseiro" ? "Chip MPU6050" : origemDaTemperatura(tipo);
+function origemNoCsv(
+  tipo: Dispositivo["tipo"] | undefined,
+  sensor: LeituraSono["sensor"],
+): string | null {
+  if (sensor === "MPU6050" || sensor === "MPU6500") return "Chip " + sensor;
+  if (sensor === "desconhecido") return "Chip do sensor";
+  return origemDaTemperatura(tipo);
 }
 
 /**
@@ -77,7 +82,7 @@ export function gerarCsv(leituras: LeituraSono[], dispositivos: Dispositivo[] = 
         escapar(leitura.temp),
         escapar(leitura.status),
         escapar(ehMovimento(leitura.status) ? "1" : "0"),
-        escapar(leitura.temp == null ? null : origemNoCsv(tipos.get(leitura.device_id ?? ""))),
+        escapar(leitura.temp == null ? null : origemNoCsv(tipos.get(leitura.device_id ?? ""), leitura.sensor)),
         escapar(leitura.bancada === true ? "1" : "0"),
       ].join(","),
     );

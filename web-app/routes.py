@@ -18,7 +18,7 @@ from database import INDISPONIVEL, TrechoDivergente, db
 from consulta import ler_parametros, validar_instante, validar_uuid
 from ingestao import CAMINHO_SESSAO, CAMINHO_TOKEN, extrair_device_id, identificar_caminho
 from device_auth import extrair_token, gerar_token, hash_token
-from validacao import colunas_de_features, validar_captacao, validar_leitura
+from validacao import colunas_de_features, validar_captacao, validar_leitura, validar_sensor_do_lote
 
 logger = logging.getLogger(__name__)
 
@@ -82,7 +82,8 @@ def _resposta_de_falha(e, rota):
 # 2.12.0 (23/11, CAL-03 etapa 3) e MINOR: `GET /api/features` devolve, por
 # epoca, `g`, `g_norma`, `calibrada` e `temp`, que ja estavam gravados. Campos
 # novos na resposta; a ingestao nao muda.
-CONTRATO_DE_DADOS = "2.12.0"
+# 2.13.0 (DATA-18): o lote aceita o chip do travesseiro e o histórico o devolve por leitura.
+CONTRATO_DE_DADOS = "2.13.0"
 
 # Frase exigida no corpo de `DELETE /api/me` (SEC-07). Em portugues e em
 # maiusculas de proposito: tem de ser digitada, e nao pode ser o resultado de
@@ -785,7 +786,7 @@ def init_routes(app):
             device["jwt"], device["id"], payload, cliente=device.get("cliente")
         )
 
-    def _gravar_leitura(caminho, device, content, persistir=_persistir_leitura):
+    def _gravar_leitura(caminho, device, content, persistir=_persistir_leitura, *, sensor=None):
         """Valida, traduz e grava UMA leitura (FIX-02, SEC-03, SEC-06).
 
         Devolve `(True, None, 201)` quando a gravação foi confirmada, e
@@ -840,6 +841,9 @@ def init_routes(app):
             # que separavam uma chave vazada da posse de dado alheio; agora
             # não existe parâmetro por onde escolher o dono.
         }
+
+        if sensor is not None and caminho == CAMINHO_TOKEN:
+            payload["sensor"] = sensor
 
         # Persiste e confirma: só responde 201 se o dado foi realmente
         # gravado. Se nada persistiu (fonte indisponível), responde 503 em
@@ -907,9 +911,13 @@ def init_routes(app):
             if device is None:
                 return jsonify({"error": erro}), status
 
-            leituras, erro, status = lote.extrair_leituras(request.get_json(silent=True))
+            corpo = request.get_json(silent=True)
+            leituras, erro, status = lote.extrair_leituras(corpo)
             if erro:
                 return jsonify({"error": erro}), status
+            sensor, erro = validar_sensor_do_lote(corpo)
+            if erro:
+                return jsonify({"error": erro}), 400
 
             resposta = lote.nova_resposta()
             inicio = time.monotonic()
@@ -935,7 +943,9 @@ def init_routes(app):
                     break
 
                 try:
-                    gravado, erro, status = _gravar_leitura(caminho, device, content, persistir=persistir_medido)
+                    gravado, erro, status = _gravar_leitura(
+                        caminho, device, content, persistir=persistir_medido, sensor=sensor,
+                    )
                 except Exception:
                     # Leitura inválida não levanta: `_gravar_leitura` devolve 400.
                     # Exceção aqui é bug do servidor (API-04), e a leitura pode ser

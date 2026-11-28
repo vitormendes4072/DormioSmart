@@ -33,7 +33,8 @@ class Query:
         self.inicio = 0
         return self
 
-    def select(self, *args):
+    def select(self, colunas):
+        self.colunas = [coluna.strip() for coluna in colunas.split(",")]
         return self
 
     def eq(self, *args):
@@ -93,6 +94,19 @@ def test_historico_preserva_filtros_e_avanca_cursor_em_todas_as_paginas():
         (1000, [*filtros, ("or", filtro_cursor(TEMPO, "2000"))]),
         (500, [*filtros, ("or", filtro_cursor(TEMPO, "1000"))]),
     ]
+
+
+def test_historico_consulta_e_devolve_o_chip_da_leitura():
+    linha = dict(leitura(1), sensor="MPU6500")
+    query = Query([linha])
+    app = Flask(__name__)
+    init_routes(app)
+    with patch.object(database.db, "validar_token_de_usuario", return_value="user"), \
+            patch.object(database.db, "cliente_do_usuario", return_value=query):
+        resp = app.test_client().get("/api/sleep-history", headers={"Authorization": "Bearer jwt"})
+    assert resp.status_code == 200
+    assert "sensor" in query.colunas
+    assert resp.get_json() == [linha]
 
 
 def test_insercao_entre_paginas_nao_duplica_nem_pula_leitura():

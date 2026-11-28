@@ -14504,6 +14504,68 @@ Na revisão, o teste da faixa encontrou apenas a navegação do Início ao fim d
 
 ---
 
+# 2026-11-27 (v) — o chip associado a cada leitura (DATA-18, FW-22 e LGPD-19)
+
+**O problema, como foi entendido no início.** O FW-21 já distinguia o MPU6050
+do MPU6500 pelo WHO_AM_I. O histórico perdia essa identificação, o CSV
+atribuía toda temperatura do travesseiro ao MPU6050 e as leituras de bancada
+não podiam ser agrupadas pelo chip para o HW-13.
+
+**Hipótese de trabalho.** Informar o modelo uma vez no lote basta para guardar
+a origem por época. O modelo fica em cada leitura para preservar a informação
+quando o sensor de um mesmo travesseiro for trocado.
+
+**O que foi testado, e como.** Firmware em Docker `gcc:13` e compilação para
+ESP32. Flask e histórico no Windows. Funções de gravação, restrição, migrações
+e SQL manual em Postgres 17 no Docker. CSV pelo Vitest. Política pelo teste
+que compara as colunas gravadas com a §2.2. Os cenários de banco e hardware
+simulado usaram dados sintéticos.
+
+**Resultado medido.** Em 27/11, o backend passou com 772 testes e um pulado. RLS passou com 363 testes. O diagnóstico reconheceu os 26 estados. O laço marcou 33/33 controles, incluindo a retenção e a retomada depois de HTTP 400. A compilação ESP32, as demais mutações e a verificação final do frontend seguem em execução neste rascunho.
+
+| Sabotagem ou controle | Verificação que acusou |
+|---|---|
+| Omitir `sensor` no POST | Laço, “FW-22: lote informa MPU6500 uma vez”. |
+| Enviar sempre MPU6050 | Laço, “FW-22: lote informa MPU6500 uma vez”. |
+| Apagar o lote após HTTP 400 | Laço, “FW-22: HTTP 400 por sensor invalido recua e preserva as epocas na flash”. |
+| Aceitar chip fora da régua do banco | `test_sensor_fora_da_lista_e_recusado_no_banco`. |
+| Perder o chip na gravação por token | `test_token_guarda_o_sensor_da_leitura`. |
+| A sessão gravar o chip recebido | `test_sessao_grava_sem_sensor_mesmo_se_receber_o_campo`. |
+| Sobrescrever o chip ao reenviar a época | `test_troca_de_chip_e_reenvio_preservam_o_chip_da_epoca_antiga`. |
+| Rodar a conferência pós-aplicação após a 027 | `verificar_diagnostico` encontrou as quatro marcas falsas antes da 028. |
+| Tirar o modelo da §2.2 | Dois casos de `test_a_descricao_de_cada_coluna_esta_na_politica`, um por função de gravação. |
+| Rodar os testes novos em `develop` | 11 falharam no backend: `test_o_chip_do_envelope_e_gravado_em_cada_leitura`, `test_chip_invalido_recusa_o_lote_inteiro_sem_gravar` e `test_historico_consulta_e_devolve_o_chip_da_leitura`. O caso do CSV “exporta origem_temperatura por aparelho e deixa a origem vazia sem medição ou tipo” também falhou. |
+
+**Adaptação.** O envelope reserva mais 24 B no heap para o nome mais longo.
+Cada época mantém o formato de 64 B na flash. O celular grava a coluna nula.
+O SQL retroativo manual usa três UUIDs confirmados, sem recorte de data. A
+prévia não altera dados, a atualização preenche só valores nulos e repetir
+o SQL produz o mesmo resultado. O modelo é a origem técnica da medição para
+exportação, finalidade já registrada na política. A versão de consentimento
+`2026-11-22` segue vigente.
+
+**O que deu errado no caminho.** O sandbox bloqueou Git e Docker no primeiro
+acesso. O primeiro diagnóstico tentou acessar o Postgres antes da
+inicialização. O primeiro stub novo de I²C também casou com a função de outro
+stub e passou a selecionar só a definição do Wire. O primeiro Vitest acusou
+a mensagem de sensor sem tradução. Outras corridas em paralelo atingiram
+prazos de testes que carregam configuração e rotas sob demanda. A primeira tentativa de compilar para ESP32 encontrou o Arduino CLI sem o core requerido.
+
+**Risco em aberto.** Depois de trocar o sensor, épocas ainda na flash
+carregam o modelo visto no envio. Um valor inválido faz o servidor recusar
+o lote por inteiro com HTTP 400. O firmware recua e conserva as épocas.
+A fila tem 272 h de capacidade garantida e é drenada depois da correção.
+O CSV de duas placas ainda precisa da conferência física do HW-13. A #335
+deve entrar antes desta revisão. A 028, sua conferência no banco de produção
+e o preenchimento manual ficam com o autor.
+
+**Procedência.** `develop` `1757160`, Windows 11 e contêineres locais.
+O chip gravado permite rastrear a origem das medições físicas ligadas à
+pergunta de pesquisa. Os casos de bancada simulados nesta etapa não
+substituem o teste de comparabilidade do HW-13.
+
+---
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

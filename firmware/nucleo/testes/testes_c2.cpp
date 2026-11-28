@@ -797,12 +797,12 @@ static void testar_pior_caso_da_leitura() {
   static char lote[tamanho_do_lote(20)];
   static char leitura[PIOR_LEITURA_BYTES];
   memset(leitura, 'x', sizeof(leitura));
-  MontadorDeLote cheio(lote, tamanho_do_lote(20));
+  MontadorDeLote cheio(lote, tamanho_do_lote(20), "desconhecido");
   uint32_t cabem = 0;
   while (cabem < 25 && cheio.adicionar(leitura, PIOR_LEITURA_BYTES)) cabem++;
   VERIFICAR(cabem == 20 && cheio.fechar() == tamanho_do_lote(20) - 1,
             "20 leituras do pior caso cabem no buffer de 20, e o lote fecha nele");
-  MontadorDeLote curto(lote, tamanho_do_lote(20) - 1);
+  MontadorDeLote curto(lote, tamanho_do_lote(20) - 1, "desconhecido");
   cabem = 0;
   while (cabem < 25 && curto.adicionar(leitura, PIOR_LEITURA_BYTES)) cabem++;
   VERIFICAR(cabem == 19, "com um byte a menos, so 19 (o lote fecha antes, sem estourar)");
@@ -881,7 +881,7 @@ static void testar_aviso_de_pilha_baixa() {
   const uint32_t sem_aviso = static_cast<uint32_t>(strlen(
       "[memoria] heap 130000 (minimo 30000); maior bloco 110000 antes, 60000 depois; "
       "pilha livre: envio 200 de 8192 B, medicao 1800 de 4096 B; "
-      "maior lote 6127 de 7235 B; 1 conexoes TLS para 1 lotes"));
+      "maior lote 6127 de 7259 B; 1 conexoes TLS para 1 lotes"));
   VERIFICAR(sem_aviso < sizeof(curto) &&
                 formatar_folga(f, curto, sem_aviso + 5) == 0 && curto[0] == '\0',
             "o aviso que nao cabe nao sai pela metade");

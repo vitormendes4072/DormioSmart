@@ -38,6 +38,7 @@ DESCRICAO = {
     "movimento_total": "magnitude",
     "status": "rótulo de estado",
     "temp": "temperatura",
+    "sensor": "modelo do chip do sensor",
     "gyro_x": "giroscópio",
     "gyro_y": "giroscópio",
     "gyro_z": "giroscópio",

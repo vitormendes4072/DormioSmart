@@ -15,14 +15,14 @@ static_assert(PIOR_LEITURA_BYTES < TAMANHO_DA_LEITURA, "o rascunho nao cabe o pi
 
 PreparoDoLote preparar_lote(FilaNaFlash *fila, const ResolucaoDeParede &parede,
                             RegistroDeEpoca *rascunho, uint32_t max, char *destino,
-                            uint32_t tamanho) {
+                            uint32_t tamanho, const char *sensor) {
   PreparoDoLote p;
   p.no_lote = 0;
   p.descartados = 0;
   p.tamanho = 0;
   if (max > MAX_LEITURAS_POR_LOTE) max = MAX_LEITURAS_POR_LOTE;
 
-  MontadorDeLote lote(destino, tamanho);
+  MontadorDeLote lote(destino, tamanho, sensor);
   const uint32_t n = fila->ler_pendentes(rascunho, max);
   for (uint32_t i = 0; i < n; i++) {
     char leitura[TAMANHO_DA_LEITURA];

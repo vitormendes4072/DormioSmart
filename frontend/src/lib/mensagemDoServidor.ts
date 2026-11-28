@@ -40,6 +40,7 @@ const frases: Record<string, string> = {
   "campo ts precisa de fuso horario": "Confira o fuso horário configurado no aparelho.",
   "campo ts deve ser um instante ISO 8601": "O horário do registro não é válido. Confira a data e a hora do aparelho.",
   "aparelho_pausado": "O recebimento está pausado. Retome em Dispositivos antes de enviar novos registros.",
+  "sensor deve ser MPU6050, MPU6500 ou desconhecido": "O aparelho informou um modelo de sensor inválido.",
   "device nao autorizado": "O aparelho não tem acesso. Confira se ele está vinculado à sua conta.",
   "pedido grande demais": "O pedido é grande demais. Reduza a quantidade e tente novamente.",
   "muitas inscricoes agora; tente de novo daqui a pouco": "Há muitas inscrições agora. Tente novamente em instantes.",

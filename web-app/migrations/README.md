@@ -75,6 +75,19 @@ descartável e tenta de fato alcançar dado alheio. Rode depois de escrever
 migração nova — e rode `tests/rls/verificar_por_mutacao.py` depois de qualquer
 mudança de esquema, que é o que confere se a suíte ainda acusa.
 
+### Chip do sensor por leitura (028, DATA-18)
+
+Aplicar `028_sensor_da_leitura.sql` antes do deploy do contrato 2.13.0.
+Executar `CONSULTA-sensor-da-leitura.sql` e esperar quatro resultados
+verdadeiros. O diagnóstico geral deve mostrar a 028 aplicada, com três de
+três marcas. Depois do deploy, gravar o firmware novo nos travesseiros. O
+backend anterior aceita as épocas do firmware novo e ignora o chip informado.
+
+`PREENCHER-sensor-da-leitura.sql` é uma operação manual fora da sequência
+de migrações. Usar apenas os três UUIDs confirmados e rodar primeiro em
+modo de prévia. O script preserva leituras já classificadas, inclusive
+quando o valor gravado diverge do chip informado para o preenchimento.
+
 ## Ordem de execução com os itens de código
 
 ```

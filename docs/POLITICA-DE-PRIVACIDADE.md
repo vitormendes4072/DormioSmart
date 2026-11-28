@@ -76,10 +76,15 @@ varredura completa registrada nas notas do `LGPD-ELIMINACAO.md`.
 
 # Política de Privacidade — Smart Dormio
 
-**Última atualização:** 27 de novembro de 2026 (revisão da jornada)
+**Última atualização:** 27 de novembro de 2026 (origem da medição no travesseiro)
 
 > **O que mudou nesta revisão** (seção 10 pede que mudança material seja
 > anunciada):
+>
+> - **o modelo do chip do sensor** pode acompanhar cada leitura do
+>   travesseiro para indicar de onde veio a medição na exportação (seção 2.2).
+>
+> *Revisão da jornada (27 de novembro de 2026):*
 >
 > - **a idade é informada em *Configurações → Conta***. A pergunta continua
 >   opcional (seção 2.1).
@@ -189,6 +194,10 @@ continuamente e o resume em **épocas** de 30 segundos. Cada época enviada regi
 - A **taxa de amostragem** e o **número de amostras** que produziram a época;
 - Uma **temperatura**: a do circuito integrado do sensor, no dispositivo do
   travesseiro; a da **bateria**, no celular;
+- No travesseiro, o **modelo do chip do sensor** associado a cada leitura,
+  quando informado ou identificado com segurança em medições antigas. Isso
+  indica a origem da medição na exportação. Se o modelo não foi reconhecido,
+  a exportação indica apenas que a temperatura veio do chip do sensor;
 - Leituras do **giroscópio**, quando o aparelho o tiver;
 - Dois **instantes**: quando a medição foi feita e quando ela chegou ao servidor;
 - A **duração da janela** resumida pela leitura e o **método** usado para
@@ -726,6 +735,8 @@ Mudanças materiais — nova categoria de dado, nova finalidade, novo operador �
 serão anunciadas antes de entrarem em vigor. A data no topo indica a última
 revisão.
 
+- **27 de novembro de 2026, origem da medição no travesseiro:** a exportação
+  usa o modelo do chip associado a cada leitura, quando conhecido (seção 2.2).
 - **27 de novembro de 2026, revisão da jornada:** a idade fica em
   *Configurações → Conta*. A meta de tempo registrado por dia fica na jornada
   *Primeiros passos* e em *Configurações → Conta*. Os dois campos continuam

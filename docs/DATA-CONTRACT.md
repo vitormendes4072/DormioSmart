@@ -1,9 +1,13 @@
 # Contrato de dados — Smart Dormio
 
-**Versão:** 2.12.0 · **Itens:** API-03, DATA-01, DATA-02, SEC-02, SEC-03, DASH-05, DASH-06, DATA-04, APP-01, SEC-06, SEC-07, APP-08, DASH-08, DASH-12, DASH-13, DATA-07a, DATA-07b, DATA-07c, ML-INF, CAL-03, DATA-14
+**Versão:** 2.13.0 · **Itens:** API-03, DATA-01, DATA-02, SEC-02, SEC-03, DASH-05, DASH-06, DATA-04, APP-01, SEC-06, SEC-07, APP-08, DASH-08, DASH-12, DASH-13, DATA-07a, DATA-07b, DATA-07c, ML-INF, CAL-03, DATA-14, DATA-18
+
+> **2.13.0 (MINOR, DATA-18):** o travesseiro pode informar o modelo do chip uma
+> vez no lote (§5.2). O histórico devolve o chip por leitura (§6). Envios pelo
+> celular e firmware antigo continuam válidos sem o campo.
 
 > **2.10.0 (MINOR — nada quebra em campo):** `t` é a temperatura **do aparelho que mediu**: a
-> do chip do MPU6050 no travesseiro e a da **bateria** no celular — a mesma coisa que a
+> do chip do sensor no travesseiro e a da **bateria** no celular — a mesma coisa que a
 > política de privacidade já dizia. Quando o aparelho não a informa, o `t` **não vem**, em vez
 > de um número que ninguém mediu. A faixa aceita não muda. A origem de cada leitura sai do
 > tipo do dispositivo (`devices.tipo`): as duas temperaturas **não são comparáveis** entre si.
@@ -109,7 +113,7 @@ Três caminhos, credenciais distintas e propositalmente diferentes:
 | `gx` | float | rad/s | `g.gyro.x` | não (v2.0.0) |
 | `gy` | float | rad/s | `g.gyro.y` | não (v2.0.0) |
 | `gz` | float | rad/s | `g.gyro.z` | não (v2.0.0) |
-| `t` | float | °C | travesseiro: `temp.temperature` (chip do MPU6050) · celular: bateria (v2.10.0) | não (v2.0.0) |
+| `t` | float | °C | travesseiro: temperatura do chip do sensor · celular: bateria (v2.10.0) | não (v2.0.0) |
 | `ts` | string | ISO 8601 | relógio do dispositivo | não (v2.0.0) |
 | `epoca_s` | int | s | janela agregada | não (v2.0.0) |
 | `metodo` | string | — | como a janela foi resumida | se `epoca_s` |
@@ -546,13 +550,13 @@ registrado é o que o dispositivo de fato reportou naquele momento.
 
 | Aparelho (`devices.tipo`) | O que o `t` é | Ausente quando |
 |---|---|---|
-| travesseiro | temperatura do **chip do MPU6050** | nunca: o sensor a lê junto da aceleração |
+| travesseiro | temperatura do **chip do sensor** | nunca: o sensor a lê junto da aceleração |
 | celular | temperatura da **bateria** do aparelho (`BatteryManager`) | o Android não a informou |
 
 As duas **não são comparáveis**: a bateria aquece com o uso e com a carga, o chip do sensor
 acompanha o travesseiro. Qualquer análise de temperatura separa por tipo de aparelho.
 
-O MPU6050 reporta a temperatura **do próprio circuito integrado**. Não é
+O MPU6050 e o MPU6500 reportam a temperatura **do próprio circuito integrado**. Não é
 temperatura ambiente, não é temperatura corporal e não deve ser apresentada
 como qualquer uma das duas (ver "Escopo" em `docs/METODOLOGIA.md`). O mesmo vale para a da bateria.
 
@@ -719,6 +723,21 @@ o `device_id` vai no envelope, não em cada leitura. E vale a mesma ordem: sem c
 {"leituras": [ {<leitura da seção 2>}, {<leitura>}, ... ]}
 ```
 
+Desde a **2.13.0** (DATA-18), o envelope também aceita `"sensor": "MPU6500"`.
+É opcional. Quando presente, o valor precisa ser exatamente `"MPU6050"`,
+`"MPU6500"` ou `"desconhecido"`. Qualquer outro valor, inclusive `null`,
+responde `400` para o lote inteiro antes da primeira gravação. A placa recua
+e mantém todas as épocas na flash. A fila deixa de esvaziar até corrigir
+o firmware e voltar a enviar um valor válido. O `400` em si não elimina
+leituras. A fila tem capacidade garantida de 272 h de épocas de 30 s.
+
+No caminho por token, o servidor guarda esse valor em cada época aceita.
+Firmware antigo sem o campo e envios por sessão gravam a coluna nula. A
+gravação idempotente de uma época já registrada preserva o chip anterior.
+O firmware informa o chip que observa na hora do envio. Se o sensor for
+trocado antes de esvaziar a fila, as épocas que ainda estavam na flash saem
+com o chip novo.
+
 Cada leitura é **exatamente** o corpo do `POST /api/data`, validado pelas mesmas regras (5.1)
 e gravado pela mesma função. Uma leitura não pode ser válida num caminho e inválida no outro.
 
@@ -746,7 +765,7 @@ função serverless.
 | Código | Significado |
 |---|---|
 | `200` | Lote processado; ler as três listas |
-| `400` | Envelope malformado (`leituras` ausente, não lista, vazia) |
+| `400` | Envelope malformado (`leituras` ausente, não lista ou vazia, ou `sensor` inválido) |
 | `401` | Credencial ausente, inválida ou revogada |
 | `404` | Caminho por sessão: dispositivo inexistente, revogado ou de outra pessoa |
 | `413` | Mais de 60 leituras |
@@ -822,13 +841,18 @@ Devolve um array (possivelmente vazio — nunca `500`, FIX-01) das leituras
 ```json
 [{ "created_at": "2026-08-19T03:14:22.511Z",
    "captured_at": "2026-08-19T03:14:20.000Z",
-   "movimento_total": 9.83, "temp": 31.2, "status": "Dormindo",
+   "movimento_total": 9.83, "temp": 31.2, "sensor": "MPU6500", "status": "Dormindo",
    "epoca_segundos": 30,
    "device_id": "8f14e45f-ceea-467a-9f3d-a1b2c3d4e5f6" }]
 ```
 
 `401` sem JWT válido. O isolamento entre usuários é garantido pelo **RLS**, não
 por filtro em código.
+
+Desde a 2.13.0, `sensor` é o modelo do chip associado à leitura, com os
+mesmos valores do lote. É nulo para o celular e para leituras antigas sem
+atribuição confirmada. O CSV usa esse dado para descrever a origem da
+temperatura.
 
 ### 6.0 Os dois instantes (DASH-12, v2.3.0)
 
@@ -969,6 +993,7 @@ unidade alterada, novo header obrigatório). **MINOR** = campo opcional novo.
 
 | Versão | Data | Mudança |
 |---|---|---|
+| 2.13.0 | 2026-11-27 | **MINOR.** DATA-18: campo opcional no envelope do lote e modelo do chip por leitura no histórico. |
 | 2.12.0 | 2026-11-23 | **MINOR.** `CAL-03`, etapa 3: `GET /api/features` devolve, por época, `g`, `g_norma`, `calibrada` e `temp`, que já estavam gravados (migração 018 e `t`). Campos novos na resposta, como a 2.3.0; a ingestão não muda e nenhum aparelho precisa ser atualizado. |
 | 2.11.0 | 2026-11-13 | **MINOR.** API-07: pausar ou retomar o recebimento por aparelho. Descarte explícito durante a pausa, com `aparelho_pausado` no avulso e no lote. |
 | 2.10.0 | 2026-11-13 | **MINOR.** `t` declarado por tipo de aparelho (`DATA-14`): chip do MPU6050 no travesseiro, bateria no celular, ausente quando não lida. O núcleo do celular deixa de mandar os 25,0 °C que inventava sem a temperatura da bateria, e não grava ponto de calibração sem ela. Sem campo novo, sem migração, faixa igual. |
