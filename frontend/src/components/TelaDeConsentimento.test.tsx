@@ -130,6 +130,7 @@ function plugin(): PluginNoite & { atual: EstadoDaNoite } {
     lembrete: vi.fn(async () => ({ ativo: false, hora: 22, minuto: 30, notificacoes: true })),
     definirLembrete: vi.fn(async (o: { ativo: boolean; hora: number; minuto: number }) => ({ ...o, notificacoes: true })),
     pedirIsencaoDeBateria: vi.fn(async () => ({ isentoDeBateria: true })),
+    pedirNotificacoes: vi.fn(async () => ({ notificacoes: true })),
     salvarNotas: vi.fn(async ({ notas }: { arquivo: string; notas: object }) => notas),
     modeloDoAparelho: vi.fn(async () => ({})),
   };

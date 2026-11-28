@@ -65,6 +65,7 @@ function criarPlugin(cenario: Cenario): PluginNoite {
       estado = { ...estado, isentoDeBateria: true };
       return { isentoDeBateria: true };
     },
+    pedirNotificacoes: async () => ({ notificacoes: true }),
     compartilharTeste: async () => {},
     apagarTeste: async ({ arquivo }) => { noites = noites.filter((noite) => noite.arquivo !== arquivo); },
     salvarNotas: async ({ arquivo, notas }) => {

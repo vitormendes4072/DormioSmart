@@ -1,8 +1,10 @@
 package app.dormiosmart.coleta;
 
 import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
 
+import androidx.activity.OnBackPressedCallback;
 import androidx.core.content.ContextCompat;
 
 import com.getcapacitor.BridgeActivity;
@@ -23,6 +25,22 @@ public class MainActivity extends BridgeActivity {
         // Plugins locais entram antes do super.onCreate, que monta a ponte.
         registerPlugin(NoitePlugin.class);
         super.onCreate(savedInstanceState);
+        getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
+            @Override
+            public void handleOnBackPressed() {
+                final String endereco = bridge == null ? null : bridge.getWebView().getUrl();
+                if (endereco != null && "/primeiros-passos".equals(Uri.parse(endereco).getPath())) {
+                    bridge.triggerWindowJSEvent("dormio-voltar-na-jornada");
+                    return;
+                }
+                setEnabled(false);
+                try {
+                    getOnBackPressedDispatcher().onBackPressed();
+                } finally {
+                    setEnabled(true);
+                }
+            }
+        });
         roteiro(getIntent());
     }
 

@@ -19,7 +19,7 @@ type Props = {
   falhou: boolean;
   parcial: boolean;
   recarregar: () => void;
-  abrirGuia?: () => void;
+  contaSemRegistro?: boolean;
   meta?: number | null;
   dicaDaMeta?: "travesseiro" | "app";
 };
@@ -47,7 +47,7 @@ function contornoDaBarra(indice: number, topo: number) {
 }
 
 export function GraficoDeTempoPorDia({
-  registros, referencia, hoje, selecionado, aoSelecionarDia, carregando, falhou, parcial, recarregar, abrirGuia,
+  registros, referencia, hoje, selecionado, aoSelecionarDia, carregando, falhou, parcial, recarregar, contaSemRegistro,
   meta = null, dicaDaMeta,
 }: Props) {
   const titulo = useId();
@@ -85,13 +85,8 @@ export function GraficoDeTempoPorDia({
         <>
           {parcial && <p role="status" className="mt-1 text-xs font-semibold text-muted-foreground">Histórico parcial. A semana está incompleta.</p>}
           {meta !== null && <ComparacaoDaMeta serie={serie} meta={meta} hoje={hoje} parcial={parcial} orientacao={dicaDaMeta} />}
-          {media === null && !parcial && abrirGuia ? (
-            <>
-              <p className="mt-2 text-sm text-muted-foreground">Depois da primeira sessão, o tempo registrado de cada dia aparece aqui.</p>
-              <button type="button" onClick={abrirGuia} className="mt-1 inline-flex min-h-11 items-center rounded-lg px-2.5 text-sm font-semibold text-primary hover:bg-secondary focus-visible:outline-2 focus-visible:outline-ring">
-                Como registrar
-              </button>
-            </>
+          {media === null && !parcial && contaSemRegistro ? (
+            <p className="mt-2 text-sm text-muted-foreground">Depois da primeira sessão, o tempo registrado de cada dia aparece aqui.</p>
           ) : media === null && !existeDadoIndeterminado ? (
             <p className="mt-2 text-sm text-muted-foreground">
               {parcial ? "Nenhum registro da semana nos dados carregados" : "Sem registros nesta semana"}

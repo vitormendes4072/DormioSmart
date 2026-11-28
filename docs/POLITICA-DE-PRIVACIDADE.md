@@ -76,10 +76,17 @@ varredura completa registrada nas notas do `LGPD-ELIMINACAO.md`.
 
 # Política de Privacidade — Smart Dormio
 
-**Última atualização:** 27 de novembro de 2026
+**Última atualização:** 27 de novembro de 2026 (revisão da jornada)
 
 > **O que mudou nesta revisão** (seção 10 pede que mudança material seja
 > anunciada):
+>
+> - **a idade é informada em *Configurações → Conta***. A pergunta continua
+>   opcional (seção 2.1).
+> - **a meta de tempo registrado por dia** pode ser informada na jornada
+>   *Primeiros passos* ou em *Configurações → Conta*. Continua opcional (seção 2.1).
+>
+> *Revisão anterior (27 de novembro de 2026):*
 >
 > - **a idade passou a poder ser informada também no primeiro acesso**, num passo
 >   que pode ser pulado; continua opcional e com as mesmas finalidades (seções
@@ -142,8 +149,8 @@ O controlador dos dados é **[CONTROLADOR]**, que pode ser contatado em
 | **Endereço de e-mail** | No cadastro | Serviço de autenticação |
 | **Senha** | No cadastro | Serviço de autenticação, apenas como *hash* — nunca em texto legível |
 | **Nome** | No cadastro, e corrigível em *Configurações → Conta* | Tabela de perfis |
-| **Idade** | **Opcional**, no primeiro acesso (em *Primeiros passos*, no Início, com a opção de pular) ou em *Configurações → Conta*. Nunca pedida no formulário de cadastro | Tabela de perfis |
-| **Meta de tempo registrado por dia** | **Opcional**, no primeiro acesso (em *Primeiros passos*) ou em *Configurações → Conta*. É um número que você escolhe; o aplicativo não sugere valor | Tabela de perfis |
+| **Idade** | **Opcional**, em *Configurações → Conta*. Nunca pedida no formulário de cadastro | Tabela de perfis |
+| **Meta de tempo registrado por dia** | **Opcional**, na jornada *Primeiros passos* ou em *Configurações → Conta*. É um número que você escolhe; o aplicativo não sugere valor | Tabela de perfis |
 | **Nome do dispositivo** | Ao parear um aparelho, opcional. No aplicativo para Android, o celular começa com o fabricante e o modelo informados pelo sistema (por exemplo, "Motorola moto g54 5G"); dá para trocar em *Dispositivos* | Tabela de dispositivos |
 
 > ✏️ **Mudança de 2026-10-17, e ela é material** (seção 10): a **idade passou a
@@ -719,6 +726,10 @@ Mudanças materiais — nova categoria de dado, nova finalidade, novo operador �
 serão anunciadas antes de entrarem em vigor. A data no topo indica a última
 revisão.
 
+- **27 de novembro de 2026, revisão da jornada:** a idade fica em
+  *Configurações → Conta*. A meta de tempo registrado por dia fica na jornada
+  *Primeiros passos* e em *Configurações → Conta*. Os dois campos continuam
+  opcionais e com as mesmas finalidades (seções 2.1 e 3).
 - **27 de novembro de 2026:** a idade também no primeiro acesso, opcional
   (seção 2.1); a meta de tempo registrado por dia, opcional, com a sua
   finalidade (seções 2.1, 3, item 8, 6.3 e 6.5); a contagem agregada da chegada
