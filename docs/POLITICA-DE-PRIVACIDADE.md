@@ -76,10 +76,26 @@ varredura completa registrada nas notas do `LGPD-ELIMINACAO.md`.
 
 # Política de Privacidade — Smart Dormio
 
-**Última atualização:** 27 de novembro de 2026
+**Última atualização:** 28 de novembro de 2026
 
 > **O que mudou nesta revisão** (seção 10 pede que mudança material seja
 > anunciada):
+>
+> - **a idade é informada em *Configurações → Conta***. A pergunta continua
+>   opcional (seção 2.1).
+> - **a meta de tempo registrado por dia** pode ser informada na jornada
+>   *Primeiros passos* ou em *Configurações → Conta*. Continua opcional (seção 2.1).
+> - **a frase sobre o microfone ficou mais precisa** (seção 2.4): o dispositivo
+>   do travesseiro não tem microfone, e o aplicativo para Android não usa o
+>   microfone do celular. Nada mudou no que é coletado;
+> - **um aviso prévio**: está em estudo o uso **opcional** do microfone para
+>   medir a respiração durante o sono (seção 10). **Hoje ele não acontece.** Se
+>   for adotado, esta política será atualizada antes, e o microfone terá um
+>   consentimento próprio, pedido antes de qualquer uso;
+> - **o modelo do chip do sensor** pode acompanhar cada leitura do
+>   travesseiro para indicar de onde veio a medição na exportação (seção 2.2).
+>
+> *Revisão anterior (27 de novembro de 2026):*
 >
 > - **a idade passou a poder ser informada também no primeiro acesso**, num passo
 >   que pode ser pulado; continua opcional e com as mesmas finalidades (seções
@@ -142,8 +158,8 @@ O controlador dos dados é **[CONTROLADOR]**, que pode ser contatado em
 | **Endereço de e-mail** | No cadastro | Serviço de autenticação |
 | **Senha** | No cadastro | Serviço de autenticação, apenas como *hash* — nunca em texto legível |
 | **Nome** | No cadastro, e corrigível em *Configurações → Conta* | Tabela de perfis |
-| **Idade** | **Opcional**, no primeiro acesso (em *Primeiros passos*, no Início, com a opção de pular) ou em *Configurações → Conta*. Nunca pedida no formulário de cadastro | Tabela de perfis |
-| **Meta de tempo registrado por dia** | **Opcional**, no primeiro acesso (em *Primeiros passos*) ou em *Configurações → Conta*. É um número que você escolhe; o aplicativo não sugere valor | Tabela de perfis |
+| **Idade** | **Opcional**, em *Configurações → Conta*. Nunca pedida no formulário de cadastro | Tabela de perfis |
+| **Meta de tempo registrado por dia** | **Opcional**, na jornada *Primeiros passos* ou em *Configurações → Conta*. É um número que você escolhe; o aplicativo não sugere valor | Tabela de perfis |
 | **Nome do dispositivo** | Ao parear um aparelho, opcional. No aplicativo para Android, o celular começa com o fabricante e o modelo informados pelo sistema (por exemplo, "Motorola moto g54 5G"); dá para trocar em *Dispositivos* | Tabela de dispositivos |
 
 > ✏️ **Mudança de 2026-10-17, e ela é material** (seção 10): a **idade passou a
@@ -182,6 +198,10 @@ continuamente e o resume em **épocas** de 30 segundos. Cada época enviada regi
 - A **taxa de amostragem** e o **número de amostras** que produziram a época;
 - Uma **temperatura**: a do circuito integrado do sensor, no dispositivo do
   travesseiro; a da **bateria**, no celular;
+- No travesseiro, o **modelo do chip do sensor** associado a cada leitura,
+  quando informado ou identificado com segurança em medições antigas. Isso
+  indica a origem da medição na exportação. Quando o modelo não é conhecido,
+  o CSV identifica a origem como “Chip do sensor”.
 - Leituras do **giroscópio**, quando o aparelho o tiver;
 - Dois **instantes**: quando a medição foi feita e quando ela chegou ao servidor;
 - A **duração da janela** resumida pela leitura e o **método** usado para
@@ -247,7 +267,9 @@ o serviço não integra nenhuma ferramenta de medição de comportamento.
 
 ### 2.4 O que o sistema explicitamente NÃO coleta
 
-- **Áudio, imagem ou vídeo.** O aparelho não tem microfone nem câmera.
+- **Áudio, imagem ou vídeo.** O dispositivo do travesseiro não tem microfone nem
+  câmera. O aplicativo para Android não usa o microfone nem a câmera do celular, e
+  não pede permissão para isso.
 - **Localização.** Nem do aparelho, nem do navegador.
 - **Dados de contatos, agenda, aplicativos instalados ou navegação.**
 - **Diagnóstico ou histórico clínico.** O aplicativo não pede, não guarda e não
@@ -255,6 +277,11 @@ o serviço não integra nenhuma ferramenta de medição de comportamento.
   sono e vigília** a partir do movimento (seção 3, item 6) — e é por isso que a
   série de movimento passou a ser tratada como dado de saúde (seção 2.5).
 
+> ✏️ **A primeira linha desta lista mudou em 2026-11-27.** Dizia: *"O aparelho
+> não tem microfone nem câmera."* Era verdade para o dispositivo do travesseiro,
+> mas o celular tem microfone e câmera; o que é verdade é que o aplicativo não os
+> usa. A frase passou a dizer as duas coisas. Nada mudou no que é coletado.
+>
 > ✏️ **A última linha desta lista mudou em 2026-11-10.** Dizia que nada no
 > aplicativo "pede, guarda ou infere condição de saúde" e que a série de
 > movimento **não** era tratada como dado de saúde. A segunda parte deixou de
@@ -719,6 +746,28 @@ Mudanças materiais — nova categoria de dado, nova finalidade, novo operador �
 serão anunciadas antes de entrarem em vigor. A data no topo indica a última
 revisão.
 
+**Mudança em estudo, anunciada com antecedência: o microfone.** Está em estudo
+usar o microfone, **de forma opcional e desligada por padrão**, para medir a
+respiração e o ronco durante o sono: no celular, pelo aplicativo, e talvez num
+dispositivo de travesseiro com microfone. **Nada disso acontece hoje.** Se for
+adotado:
+
+- esta política será atualizada **antes**, dizendo exatamente o que é medido;
+- o microfone terá **um consentimento próprio**, separado do de movimento, pedido
+  antes de qualquer uso, e o Android pedirá também a permissão de microfone;
+- o estudo prevê que **o som não seja gravado**: o aparelho mediria só o volume
+  do som, instante a instante, e descartaria o som em si.
+
+Quem não ligar o microfone continuará usando o serviço exatamente como hoje.
+
+- **28 de novembro de 2026:** a idade fica em
+  *Configurações → Conta*. A meta de tempo registrado por dia fica na jornada
+  *Primeiros passos* e em *Configurações → Conta*. Os dois campos continuam
+  opcionais e com as mesmas finalidades (seções 2.1 e 3). A frase sobre microfone
+  e câmera ficou mais precisa, sem mudança no que é coletado (seção 2.4), e entrou
+  o aviso prévio do estudo do microfone (esta seção). A exportação passou a
+  usar o modelo do chip associado a cada leitura do travesseiro, quando
+  conhecido (seção 2.2).
 - **27 de novembro de 2026:** a idade também no primeiro acesso, opcional
   (seção 2.1); a meta de tempo registrado por dia, opcional, com a sua
   finalidade (seções 2.1, 3, item 8, 6.3 e 6.5); a contagem agregada da chegada
@@ -766,6 +815,7 @@ O que esta política teve de declarar como ausente, e que vira item:
 | Sem bloqueio nem anonimização parcial | §6.5 | Provavelmente não vale implementar num protótipo; manter declarado |
 | Exportação limitada a 2.000 linhas | §6.2 | Herdado do `DASH-13`. Paginação resolve, mas só importa quando houver histórico longo |
 | Remoção parcial de conta possível | §6.4 | Já tratado no `UI-10`; o conserto de raiz está no cabeçalho da migração `006` |
+| **Microfone em estudo, anunciado na §10** | §2.4, §10 | ✏️ *27/11, `LGPD-17`:* o estudo e o texto das seções novas estão em `docs/LGPD-MICROFONE.md`. ⚠️ **Ordem do release:** as seções 2.2 a 2.5, 3 e 4 só mudam **na mesma PR** do código que ligar o microfone, com o consentimento próprio. Antes disso, a política continua dizendo que o app não usa o microfone, porque é verdade |
 | Sem página que sirva esta política | — | `LGPD-01` continua aberto: falta a rota e o link em *Configurações* |
 | ~~`profiles.idade` existe e não é usada~~ | §2.4 | ✅ **Fechada em 17/10 pelo `PERFIL-01`/`LGPD-04`**, pelo primeiro dos dois caminhos: a coluna **passou a ser coletada com finalidade declarada** (§3), opcional e retirável (§6.5) |
 

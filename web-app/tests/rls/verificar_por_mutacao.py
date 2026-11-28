@@ -751,7 +751,47 @@ SABOTADORES = {
         minimo=1,
         exige="test_o_expurgo_apaga_so_o_que_passou_de_12_meses",
     ),
-    # APP-19 (23/11): a versao do app no aparelho, migracao 026.
+    # DATA-18: o chip por leitura, migracao 028.
+    "sensor_sem_restricao": dict(
+        descricao="a coluna aceita chip fora da lista",
+        sql="alter table public.sleep_data drop constraint sleep_data_sensor_valido;",
+        minimo=1,
+        exige="test_sensor_fora_da_lista_e_recusado_no_banco",
+    ),
+    "sensor_token_descartado": dict(
+        descricao="a gravacao por token perde o chip",
+        sql="""
+            do $SAB$ begin
+                execute replace(pg_get_functiondef('public.registrar_leitura(text,jsonb)'::regprocedure),
+                                'p_leitura ->> ''sensor''', 'null');
+            end $SAB$;
+        """,
+        minimo=3,
+        exige="test_token_guarda_o_sensor_da_leitura",
+    ),
+    "sensor_reenvio_sobrescreve": dict(
+        descricao="o reenvio muda o chip ja guardado na epoca",
+        sql="""
+            do $SAB$ begin
+                execute replace(pg_get_functiondef('public.registrar_leitura(text,jsonb)'::regprocedure),
+                                'do nothing', 'do update set sensor = excluded.sensor');
+            end $SAB$;
+        """,
+        minimo=1,
+        exige="test_troca_de_chip_e_reenvio_preservam_o_chip_da_epoca_antiga",
+    ),
+    "sensor_sessao_gravado": dict(
+        descricao="a gravacao pela sessao aceita o chip do payload",
+        sql="""
+            do $SAB$ begin
+                execute replace(pg_get_functiondef('public.registrar_leitura_da_sessao(uuid,jsonb)'::regprocedure),
+                                'null,' || chr(10) || '        v_dono',
+                                'p_leitura ->> ''sensor'',' || chr(10) || '        v_dono');
+            end $SAB$;
+        """,
+        minimo=1,
+        exige="test_sessao_grava_sem_sensor_mesmo_se_receber_o_campo",
+    ),
     "meta_sem_faixa": dict(
         descricao="a meta aceita valores fora da faixa",
         sql="alter table public.profiles drop constraint profiles_meta_diaria_faixa;",

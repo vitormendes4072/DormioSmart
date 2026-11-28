@@ -50,7 +50,7 @@ public class NoitePlugin extends Plugin {
         // Android 13+: sem a permissao, o servico roda, mas a notificacao fica
         // escondida -- e o usuario perde o unico sinal de que a noite esta sendo
         // registrada. Pede antes; se negar, inicia assim mesmo e diz na resposta.
-        if (Build.VERSION.SDK_INT >= 33 && getPermissionState("notificacoes") != PermissionState.GRANTED) {
+        if (!podeNotificar()) {
             requestPermissionForAlias("notificacoes", call, "aposPermissao");
             return;
         }
@@ -71,9 +71,28 @@ public class NoitePlugin extends Plugin {
         i.putExtra(ServicoDaNoite.EXTRA_TESTE, Boolean.TRUE.equals(call.getBoolean("teste")));
         ContextCompat.startForegroundService(c, i);
         final JSObject r = new JSObject();
-        r.put("notificacoes", Build.VERSION.SDK_INT < 33
-                || getPermissionState("notificacoes") == PermissionState.GRANTED);
+        r.put("notificacoes", podeNotificar());
         call.resolve(r);
+    }
+
+    private boolean podeNotificar() {
+        return Build.VERSION.SDK_INT < 33 || getPermissionState("notificacoes") == PermissionState.GRANTED;
+    }
+
+    @PluginMethod
+    public void pedirNotificacoes(PluginCall call) {
+        if (podeNotificar()) {
+            aposPermissaoDaPreparacao(call);
+        } else {
+            requestPermissionForAlias("notificacoes", call, "aposPermissaoDaPreparacao");
+        }
+    }
+
+    @PermissionCallback
+    private void aposPermissaoDaPreparacao(PluginCall call) {
+        final JSObject resposta = new JSObject();
+        resposta.put("notificacoes", podeNotificar());
+        call.resolve(resposta);
     }
 
     // ── O lembrete de dormir (APP-20) ──────────────────────────────────────
@@ -84,8 +103,7 @@ public class NoitePlugin extends Plugin {
         r.put("ativo", cfg.ativo);
         r.put("hora", cfg.hora);
         r.put("minuto", cfg.minuto);
-        r.put("notificacoes", Build.VERSION.SDK_INT < 33
-                || getPermissionState("notificacoes") == PermissionState.GRANTED);
+        r.put("notificacoes", podeNotificar());
         return r;
     }
 
@@ -106,7 +124,7 @@ public class NoitePlugin extends Plugin {
             return;
         }
         LembreteDeDormir.gravar(getContext(), new LembreteDeDormir.Config(ativo, hora, minuto));
-        if (ativo && Build.VERSION.SDK_INT >= 33 && getPermissionState("notificacoes") != PermissionState.GRANTED) {
+        if (ativo && !podeNotificar()) {
             requestPermissionForAlias("notificacoes", call, "aposPermissaoDoLembrete");
             return;
         }

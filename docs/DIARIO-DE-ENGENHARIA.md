@@ -14388,6 +14388,242 @@ Contra `develop`, falharam 5 testes de tela e vocabulário, 9 do PATCH e 4 de ac
 
 ---
 
+# 2026-11-27 (ii) — release R27: o onboarding e o app 1.1.8
+
+**O problema, como foi entendido no início.** As duas etapas do onboarding (`UI-57` a `UI-59`, #322; `UI-60`, `UI-61` e `LGPD-16`, #331) estavam no `develop`, com a migração 027 aplicada na produção pelo autor. Sem release, a conta nova seguia caindo no Início vazio, e o celular só recebe o onboarding com um APK novo. O autor pediu o release no mesmo dia, para a data da política (27/11) valer.
+
+**Hipótese de trabalho.** Release com site, backend e APK: o backend passa a ler `profiles.meta_diaria_min`, o que só é seguro com a 027 já aplicada, e o app sobe para 1.1.8 (`versionCode` 10).
+
+**O que foi testado, e como.**
+- **PR #332** (`chore/app-1.1.8` → `develop`): a versão em `app/build.gradle`, `appAndroid.ts`, `versao-do-app.json`, na landing completa e em `DISTRIBUICAO-DO-APP.md`. `appAndroid.test.ts` e `LandingLeve.test.tsx` (29) e o `npm run build:app`, nesta máquina; o CI da PR inteiro.
+- **APK:** `./gradlew assembleRelease` na branch da #332 (`916c758`), numa cópia com o `frontend/.env`; `conferir_apk.py`, `apksigner verify --print-certs` e `aapt2 dump badging`. No emulador Pixel 6, instalado por cima do 1.1.7 e aberto.
+- **PR #333** (`develop` → `main`): o código é a árvore de `develop` `2887039`, a mesma que passou no "CI ok" da #332; o merge foi feito com os checks da própria #333 ainda rodando, porque a `main` não é protegida e o `--auto` não esperaria.
+- **Release `app-v1.1.8`:** rascunho com o APK antes do merge, publicado depois com a tag no merge.
+- **De fora, desta máquina:** `/health`, as rotas da conta sem sessão, a CSP das cinco páginas, o `versao-do-app.json`, a landing, os pedaços JS publicados e o APK baixado pelo link `latest`.
+
+**Resultado medido.**
+- **#332:** CI verde, merge `2887039`. **#333:** merge `6424528`, deploy de produção `8104903163` com `success`.
+- **APK 1.1.8:** `conferir_apk.py` com código 0; certificado do autor (SHA-256 `06b2e4f9…d14a`); `versionCode` 10, `versionName` 1.1.8, sem `application-debuggable`, ABIs `arm64-v8a`, `armeabi-v7a` e `x86_64`; 5 285 011 B, SHA-256 `14eb37de…2af5`. No emulador, o `versionName` passou de 1.1.7 a 1.1.8 e o app abriu na tela de entrada, sem erro do app no log.
+- `/health` `200` com o contrato 2.12.0 e o modelo; `/api/devices`, `/api/sleep-history` e `/api/me/perfil` sem token `401`; `PATCH /api/me/perfil` sem token e `GET` com `Bearer` inválido `401`; `/privacidade` `200`; a CSP igual nas cinco páginas.
+- `versao-do-app.json` com 1.1.8; a landing com "Versão 1.1.8 (beta)"; o link `latest` baixa o APK com `200` e o mesmo SHA-256.
+- Os pedaços publicados contêm "Primeiros passos", "Opcional: idade e meta", "Sua meta", "Calendário de registros", `meta_diaria_min` e "27 de novembro de 2026", e não contêm "Calendário do sono".
+
+**Adaptação.** O merge da #333 não esperou os checks dela: a árvore era idêntica à que já tinha passado no "CI ok" da #332.
+
+**O que deu errado no caminho.** A remoção da worktree `app-118` por `git worktree remove --force` parou em "Filename too long" (as pastas de build do Gradle) com a junction de `frontend/node_modules`, que aponta para as dependências de outra worktree, ainda montada. Conferido em seguida: os 548 pacotes de topo do `package-lock.json` seguiam no destino. A junction foi desfeita com `rmdir` (sem `/s`) e a pasta apagada depois (§5 das lições, ocorrência 10: desfazer a junction **antes** de remover). No emulador, o aviso "System UI isn't responding" apareceu logo após o boot; é do sistema, não do app.
+
+**Risco em aberto.**
+- **O login com uma conta no 1.1.8 e o onboarding logado** (o guia, a meta gravada, a Noite depois do login) não foram vistos pelo Claude na produção: ficam com o autor.
+- A tela de entrada diz "Seu guia para um sono de qualidade". Ela fica fora do `linguagem.test.ts`, que cobre só as telas depois do login, e a frase promete o que o produto diz não medir. Sem item ainda: a decidir com o autor.
+- O campo da meta é texto livre "H:MM", ruim no teclado do celular. Sem item ainda: a decidir com o autor.
+
+**Procedência.** PRs #332 e #333, merges `2887039` e `6424528`, deploy `8104903163`, release `app-v1.1.8`, em 27/11; verificação nesta máquina (Windows 11, Node 24.11.0, JDK do Android Studio, emulador Pixel 6).
+
+---
+
+# 2026-11-27 (iii) — FW-21: o firmware aceita o MPU6500
+
+**O problema, como foi entendido no início.** O `HW-13` pedia sensores MPU6050 originais para as duas placas extras. A segunda compra, de outro anúncio descrito como "original", trouxe de novo dois MPU6500: WHO_AM_I `0x70` e FIFO de 512 B, com "MPU-6050" gravado no chip. Com o firmware de antes, a FIFO de 512 B transborda na drenagem de 1,7 s e nenhuma época é gravada; e o filtro do acelerômetro do MPU6500 fica em ACCEL_CONFIG 2 (0x1D), não no CONFIG (0x1A). O autor decidiu adaptar o firmware em vez de procurar outro sensor.
+
+**Hipótese de trabalho.**
+- O MPU6500 tem a mesma escala do acelerômetro (4 096 LSB/g em ±8 g, folha PS-MPU-6500A-01 rev. 1.3) e os mesmos registradores da FIFO. Um perfil por chip, escolhido pelo WHO_AM_I, basta: o tamanho da FIFO, o intervalo de drenagem (metade da FIFO: 0,85 s) e onde gravar o filtro.
+- O MPU6050 de verdade, se aparecer, continua exatamente como antes.
+
+**O que foi testado, e como.**
+- No host, em contêiner `gcc:13`: a suíte do núcleo, o laço do sketch contra um MPU6050 falso que ganhou o WHO_AM_I e a capacidade da FIFO, e as sabotagens.
+- Na placa A434, com o sensor da unidade 2: duas bancadas de 2 h com envio à produção ("Bancada A434"), o log serial completo de cada uma, e um controle positivo a 1,7 s numa cópia do firmware.
+- O ruído parado com e sem o filtro no 0x1D, para conferir que o registrador faz efeito.
+- A temperatura do chip pelo CSV exportado do app, antes e depois da correção, e contra a placa do travesseiro (MPU6050 original) ligada ao lado.
+
+**Resultado medido.**
+- No host: `make` 341, 157, **249**, 456, 115, 327 e 185 verificações, 0 falhas; `laco` **30/30**; `mutacao-cadeia` **53/53**; `sintaxe` ok. Para o chip: programa 1 097 608 B e RAM fixa 109 456 B (218 224 B para o heap).
+- O filtro: ruído parado de 1,0–3,1 mg com o 0x1D = 4, contra 4,7–17,6 mg sem ele (duas rodadas).
+- **Bancada 1** (firmware antes da correção da temperatura, 17:41 a 19:46): 248 épocas, 12 envios com `HTTP 200`, 50,01–50,08 Hz, 0 transbordos, **1 drenagem descartada por contagem desalinhada** (19:06:38, FIFO com 257 B) e a época 169 recusada.
+- **Bancada 2** (com a correção, 19:54 a 21:59): 248 épocas, 239 gravadas em 12 envios com `HTTP 200`, 49,99–50,08 Hz, **0 drenagens descartadas**, trabalho máximo 135 ms, heap mínimo **37 300 B**, pilha sem aviso.
+- **Controle positivo na placa** (`INTERVALO_DE_DRENAGEM_MPU6500_US = 1700000`): 55 drenagens descartadas por transbordo em ~3 min (FIFO de 510 a 512 B) e todas as épocas recusadas. O firmware certo foi regravado em seguida.
+- **A temperatura:** pelo CSV, a A434 marcava **37,1 °C** com a fórmula do MPU6050 e **21,5 °C** com a do MPU6500, com o mesmo valor bruto (~194). Lado a lado com o travesseiro (MPU6050 original), de 21:35 a 21:45: **21,5–21,6 °C** contra **23,6–23,7 °C**.
+
+**Adaptação.**
+- `firmware/nucleo/perfil_do_sensor.h` (novo): `PerfilDoSensor` com o nome, a FIFO, o intervalo de drenagem, se o filtro vai no 0x1D e a conversão da temperatura; três perfis (MPU6050, MPU6500 e desconhecido, conservador). O sketch lê o WHO_AM_I ao configurar o sensor e registra o perfil no log.
+- O anel de drenagens passou de 48 para 64 (+384 B de RAM fixa).
+- **A temperatura entrou no perfil na revisão** (abaixo): `temperatura_do_chip_c` usa bruto/340 + 36,53 no MPU6050 e no desconhecido, e bruto/333,87 + 21 no MPU6500. As constantes vêm do driver do Linux (`inv_mpu_iio.h`: `INV_MPU6500_TEMP_OFFSET` 7011 e `_SCALE` 2995178). Ganharam dois testes de unidade, a temperatura no MPU falso, a mutação 52 e a sabotagem 30 do laço.
+
+**O que deu errado no caminho.**
+- **A primeira versão do FW-21 manteve a temperatura do MPU6050.** Os testes passavam porque nenhum conferia a temperatura por chip. Achado só na revisão, lendo o código contra a folha: um MPU6500 a ~21 °C ia ao servidor como 37 °C, e o erro alcançaria a calibração (`CAL-03`) e o `CALC-05`.
+- **O resumo da bancada 1 dizia "0 descartadas"**, e o log tinha um descarte às 19:06. Na revisão, o log foi lido ainda sendo escrito, e a bancada foi dada como interrompida em 1 h 35 min. Ela tinha rodado as 2 h. Corrigido ao achar o processo de registro ainda com a porta COM4 aberta.
+- O MPU6050 falso dos testes apagava o bit 2 de **todo** registrador, e nenhum teste conferia o valor do filtro. Corrigido para apagar só no 0x6A.
+- As sabotagens 9 e 16 do laço quebraram com o código novo (o padrão de busca mudou) e foram refeitas. Uma asserção comparava 510 < 512 e esquecia a variação da drenagem.
+- O escape `\n` passado por heredoc virou quebra de linha num `printf`. Corrigido com a ferramenta de edição.
+- A fonte do fim de linha do MPU6050 não se confirmou: a página da TDK citada no backlog deu 404, a página do produto na TDK dá "Page Not Found", e o "Obsolete" da DigiKey só foi lido num resumo da página. O backlog foi corrigido para dizer isso.
+- Na comparação lado a lado, a placa do travesseiro estava **pausada** no site (`API-07`). Os lotes dela foram recusados e descartados até o autor retomar, às ~21:35.
+
+**Risco em aberto.**
+- **A contagem desalinhada** (1 em 248 épocas na bancada 1) já aconteceu com o MPU6050 (16/11 e 17/11), mas, drenando duas vezes mais vezes, pode ficar mais frequente. Ler só as amostras inteiras, em vez de descartar a drenagem, mexe na regra do `FW-17` e não tem item ainda.
+- **O heap mínimo de 37 300 B** é o menor das bancadas (41 700 e 39 468 nas outras): a observar com o `FW-14`.
+- **A banda exata do filtro** do MPU6500 (~21 Hz) não foi conferida na fonte primária: o mapa de registradores da TDK deu 403.
+- **A comparabilidade** do dado do MPU6500 com o do MPU6050 é o `HW-13`. **A temperatura absoluta** não foi conferida com termômetro: os ~2 °C de diferença para o MPU6050 ao lado podem ser desvio de fábrica ou o calor de cada placa.
+- O CSV escreve "Chip MPU6050" como origem da temperatura em todo travesseiro (`frontend/src/lib/exportar.ts`). O autor aprovou, em 27/11, mandar o chip no lote e gravá-lo por leitura, depois deste merge (contrato 2.13.0, migração 028).
+- O texto do TCC cita só o MPU6050 (`DOC-18`).
+
+**Procedência.** Branch `feature/FW-21-sensor-mpu6500` (commits `6ed2525` e `f394d7f`), sincronizada com `develop` `8d36050`. Testes em contêiner `gcc:13`; `arduino-cli` 1.6.0 com `esp32:esp32` 3.3.12; placa A434 (MAC `d8:bc:38:e5:a4:34`) na COM4; logs em `dados-locais/sensores-compra-2/` (`fw21-bancada-27-11.log`, `fw21-temperatura-bancada-27-11.log`, `fw21-controle-1700ms-27-11.log`), fora do Git; CSVs exportados do app às 20:06 e às 21:52. Windows 11, 27/11, das 15:00 às 22:15.
+
+---
+
+# 2026-11-27 (iv) — jornada de primeiro acesso (UI-62, UI-63 e LGPD-18)
+
+**O problema, como foi entendido no início.** A conta nova chegava a um Início vazio com as opções, todos os passos e perguntas opcionais no mesmo cartão. A pessoa precisava descobrir como começar, onde preparar o celular e como reconhecer que o travesseiro tinha enviado dados.
+
+**Hipótese de trabalho.** Uma rota própria com uma ação principal por tela e retomada no mesmo aparelho torna o próximo passo visível. O histórico confirma que a conta está vazia, o perfil informa consentimento e meta, e a lista de aparelhos confirma o sinal do travesseiro pareado.
+
+**O que foi testado, e como.** Montagem pelo ponto de entrada real, testes da consulta do travesseiro com relógio controlado e guarda de vocabulário. Edge a 390 e 1280 px, em claro e escuro, com preferência por movimento reduzido e dados sintéticos. O emulador usa um APK de depuração com identificador próprio e respostas sintéticas da autenticação e da API. Os contratos das rotas de histórico, dispositivos, perfil e consentimento foram conferidos por leitura no Flask.
+
+**Resultado medido.** A suíte do frontend passou com 1.190 testes em 80 arquivos. Lint, builds web e Android, os dois Knip, orçamento e as três conferências passaram. O leitor de QR recuperou o endereço fixo do APK do PNG de 794 B. No Edge, o foco voltou para o título ao trocar de passo e as telas couberam nas duas larguras. O Início mostrou “Sua primeira sessão: 6 h 12 registradas” a partir de 744 épocas sintéticas de 30 s e omitiu o aviso na reabertura. No Pixel 6, o APK percorreu login, boas-vindas, Voltar na tela, escolha, consentimento, bateria e notificação com “Continuar depois”, e chegou a `/noite`. Contra `develop` `7a21e9f`, falharam 12 casos de comportamento novo. O retorno a Noite depois da jornada, que preserva o destino anterior do Android, passou também na base.
+
+| Sabotagem | Resultado |
+|---|---|
+| Abrir para conta com registros | O teste de entrada ficou na jornada e falhou ao esperar o Início. |
+| Deixar a consulta ativa após sair | O teste encontrou a consulta em andamento sem cancelamento. |
+| Mostrar o aviso da primeira sessão duas vezes | O teste encontrou o aviso ao voltar para o Início. |
+| Trocar o título da meta por “Seu sono ideal” | A guarda do UI-61 acusou a frase fora do vocabulário de registro. |
+
+✏️ **Revisão da PR #336.** A suíte passou com 1.192 testes em 80 arquivos no Windows 11. A primeira confirmação de histórico com registro grava `com-registro` por conta no aparelho. A entrada usa essa marca definitiva para seguir direto ao destino. No Android, a segunda abertura fez zero consultas ao histórico. Com uma consulta que ficou pendente, abriu Noite em 3 s no relógio controlado, cancelou o pedido e ignorou uma resposta vazia tardia. Os dois testes falharam na ponta anterior da PR, `ef7468e`: ela fez duas consultas no total, uma por abertura e permanecia na entrada após 3 s. Na revisão, as sabotagens de abrir a jornada com histórico inconclusivo e continuar consultando o travesseiro depois de sair também falharam novamente nos testes correspondentes.
+
+O Edge repetiu os dois caminhos a 390 e 1280 px em claro e escuro. A escolha mostra a marca, duas opções em cartões com ícone e descrição, e barra e texto de progresso. A barra da segunda etapa preenche 40% nos dois temas. A 1280 px, o cartão fica centralizado. O APK revisado também repetiu o percurso até `/noite` no Pixel 6 e renovou as oito capturas.
+
+✏️ **Indicador da espera na revisão da PR #336.** “Procurando o travesseiro…” aparece numa região de estado com `aria-live="polite"`. O Edge confirmou rotação normal, ícone parado com movimento reduzido e animação pausada enquanto a consulta está suspensa com a tela oculta. Uma consulta adicional preservou a região e o texto sem mudanças no DOM. Os testes verificaram a presença da mensagem durante a espera, a ausência após erro ou sinal e a pausa ao ocultar. Dois casos falharam na ponta anterior `d5c60b0`. As quatro capturas da espera foram renovadas em 390 e 1280 px, nos dois temas.
+
+**Adaptação.** A entrada tem prazo de 3 s no Android e de 12 s no site antes de seguir para o destino normal. Na espera do travesseiro, a consulta tem prazo de 10 s e é repetida 5 s depois de terminar. Sair do passo ou esconder a tela cancela a consulta e a próxima tentativa. O código fica em memória até a pessoa seguir para a espera. A retomada guarda só o ID do aparelho, o caminho e o passo. No celular, o botão Voltar do Android percorre a jornada e fecha a janela de consentimento quando ela está aberta. No caminho web, a conclusão indica entrar no app com o mesmo e-mail da conta. A política usa 27/11 como data prevista, a confirmar para o release.
+
+**O que deu errado no caminho.** O cache do npm estava incompleto. As dependências foram copiadas de uma worktree com o mesmo lockfile. A primeira cópia usada para o controle de base ficou dentro de `node_modules` e não recebeu a transformação JSX do Vite. O controle foi repetido numa pasta separada com as dependências copiadas. O isolamento de loopback afetou a prova do servidor do Vite e as primeiras capturas. O Edge concluiu os cenários com o pacote servido localmente. O executor de testes do Gradle perdeu a comunicação por loopback. Os 48 testes Java passaram diretamente pelo JUnitCore com as classes compiladas. Na WebView, a primeira interceptação não alcançou as requisições que o Capacitor encaminhava pelo HTTP nativo. Os avisos de travamento do launcher e da interface do sistema receberam a tecla Voltar antes do aplicativo. A WebView permitiu completar e capturar a jornada com o botão Voltar da tela. A PR #335 abriu em paralelo e usou LGPD-17 e a entrada (iii). A jornada ficou com LGPD-18 e a entrada (iv).
+
+Na revisão, o teste da faixa encontrou apenas a navegação do Início ao fim do prazo inicial de 1 s. Com até 5 s para a tela carregar, a rodada focada e a suíte passaram. No ajuste do indicador, duas rodadas em paralelo com build ou lint atingiram o prazo de 1 s em rotas carregadas sob demanda. A montagem foi reexecutada isoladamente. O APK atualizado ficou atrás de um aviso de travamento do Bem-estar Digital no emulador. A segunda abertura liberou a WebView e o percurso passou.
+
+**Risco em aberto.** O aviso da primeira sessão depende do navegador ou app que reconheceu a conta vazia. Se a primeira sessão vier do app e a pessoa abrir o site em outro aparelho, o aviso pode não aparecer ali. A disponibilidade do fluxo no Android depende da distribuição do próximo APK. A data da política deve acompanhar o release e o merge depende de aceite explícito do autor após a revisão do diff.
+
+**Procedência.** Base `develop` `7a21e9f`, Windows 11, Node 24.11, Python 3.13, Edge e emulador Pixel 6. Os pedidos e dados da validação de tela foram sintéticos. [Capturas da jornada e do Início](evidencias/jornada-primeiros-passos/).
+
+---
+
+# 2026-11-27 (vi) — `LGPD-17`: o microfone diante da LGPD, antes do código; abre o `EXP-01`
+
+**O problema, como foi entendido no início.** O autor quer incluir um microfone (INMP441 no travesseiro e, antes dele, o microfone do celular no app) para medir a respiração e chegar ao REM. Uma pesquisa feita no mesmo dia, fora do repositório, sustentou a ideia: o REM se distingue pela respiração irregular, e o som capta a respiração. Mas três documentos dizem o contrário do que se quer fazer: a política ("O aparelho não tem microfone"), a `LIMITACOES-TCC.md` (X.5, "não incorporação de captação de áudio") e a `METODOLOGIA.md` (sem estagiamento). E o `EXP-01`, citado no `ML-DATASETS-E-PLANO.md` como "condicional", não existia no backlog. O autor pediu primeiro o estudo de LGPD e a mudança na política, e só depois o código.
+
+**Hipótese de trabalho.** Dizer agora na política que há microfone seria descrever uma coleta que não acontece, contra a regra de redação da própria política ("descrever o que o sistema faz hoje, não o que se pretende") e contra a transparência (art. 6º, VI). E mudaria a versão do consentimento, fazendo todos os usuários aceitarem algo que não existe. A saída proposta e aprovada pelo autor foi em **duas etapas**: agora, o estudo e o aviso prévio (o que os arts. 8º, § 6º, e 9º, § 2º, pedem); o texto das seções novas só entra na política na PR que ligar o microfone.
+
+**O que foi testado, e como.**
+- Os artigos foram lidos no texto compilado da Lei nº 13.709/2018 no Planalto, pelo navegador embutido (o `curl` levou "Connection reset"): 5º (II, XII, XVII), 6º, 7º, 8º (§§ 4º e 6º), 9º (*caput* e § 2º), 11, 38 e 46.
+- As regras do Android para o microfone foram lidas em *developer.android.com*: o tipo `microphone` do serviço em primeiro plano, `FOREGROUND_SERVICE_MICROPHONE`, `RECORD_AUDIO`, a proibição de iniciar o serviço com o app em segundo plano e o comportamento da fonte `UNPROCESSED`.
+- O código foi lido para confirmar o estado de hoje: o `AndroidManifest.xml` declara o serviço como `health` e não pede `RECORD_AUDIO`; a noite começa por toque do usuário (`MainActivity`, `NoitePlugin`); o `ReceptorDeInicializacao` só reagenda o lembrete.
+- `python scripts/conferir_backlog.py --conferir`, antes e depois de corrigir a contagem.
+- Testes do `/privacidade` e conferências de documento: ver "Resultado medido".
+
+**Resultado medido.**
+- `docs/LGPD-MICROFONE.md`, novo: o som como dado sensível; o consentimento **próprio e separado** do de movimento; a minimização (o som nunca gravado, só o nível a cada 20 ms); as pessoas no quarto; as regras do Android; a ordem das duas etapas; o texto das seções novas para a etapa 2; o relatório de impacto (art. 38, que a autoridade "poderá determinar", e não uma obrigação afirmada aqui).
+- Política: a frase da §2.4 passou a dizer que o travesseiro não tem microfone e que o app não usa o do celular; a §10 anuncia o estudo, diz que **nada acontece hoje** e o que acontecerá antes, se for adotado; a revisão de 27/11 no topo e na lista da §10 ganhou esses dois itens; uma linha nova nas lacunas fixa a ordem do release. **Consentimento sem versão nova.**
+- Backlog: entrou e fechou o `LGPD-17` (L0); entrou o `EXP-01` (L3), no quadro e na contagem (44 · L3: 13). A conferência acusou primeiro "total declarado 43, recontado 44" e "L3 declarado 12, recontado 13", e passou depois da correção.
+
+**Adaptação.** A revisão de 27/11 da política já estava publicada (release R27, mesmo dia). Os dois itens do microfone entraram **na mesma revisão**, sem criar uma segunda de mesma data.
+
+**O que deu errado no caminho.**
+- A primeira edição da política falhou: o checkout principal estava 18 commits atrás do `develop`, e o topo da política lido nele (a revisão de 19/11) já não era o do `develop`, que tinha a revisão de 27/11 do onboarding. Refeito sobre a worktree, a partir do `develop` `7a21e9f`.
+- Na conversa, antes da pesquisa, o Claude citou artigos científicos "de memória". O autor apontou o erro, e a regra passou a ser só citar o que foi conferido na fonte. Este estudo segue essa regra: todo artigo de lei citado foi lido no Planalto hoje.
+
+**Risco em aberto.**
+- **A data da revisão.** Se este PR for ao ar noutro dia, a data do topo e a da §10 precisam passar a ser a do release, numa revisão própria. Uma revisão já publicada não deve mudar em silêncio.
+- A frase "o nível a cada 20 ms não reconstrói fala" entrou no estudo como hipótese e, **conferida no mesmo dia a pedido do autor, não se sustentou como garantia**: Xu e Pfingst (2008, texto lido) dizem que o reconhecimento da fala só se beneficia do envelope abaixo de 16–20 Hz, que o nível a 50 Hz cobre; a fala volta a ser entendida com três ou quatro faixas (Dorman et al. 1997, lido), e o número para uma faixa só não foi achado em fonte lida (Shannon et al. 1995 não abriu). Decisão registrada no estudo (seção 4.1): a série de 20 ms não sai da memória; só medidas por época são guardadas e enviadas. Falta o teste próprio de que as medidas por época não revelam fala (`EXP-01`).
+- O escopo (X.5 da `LIMITACOES-TCC.md`) e o CEP dependem do orientador (`EXP-01`, portão 0).
+- A política diz no topo "Não publicar sem revisão jurídica" (`LGPD-01`).
+
+**Procedência.** Branch `docs/LGPD-17-estudo-microfone`, a partir do `develop` `7a21e9f`. Lei nº 13.709/2018 compilada no Planalto, lida em 27/11/2026; *developer.android.com*, lido em 27/11/2026. Windows 11, Python 3.13.
+
+**Integração (27/11, ~23:50).** A PR #335 ficou em conflito com o `develop`, que já tinha a revisão "da jornada" (`UI-62`, `LGPD-18`) e o `FW-21`. Na fusão, as duas novidades do microfone (a frase da §2.4 e o aviso prévio) tinham caído dentro da revisão de 27/11 **já publicada** no release R27, o que a mudaria em silêncio. Foram movidas para a revisão da jornada, que ainda não foi publicada, no topo e na lista da §10; a entrada publicada voltou ao texto do R27. A entrada deste diário passou de (iii) a (vi), porque a (iii) é a do `FW-21` e a (v) é a do `FW-23` (#338). **Continua valendo o risco da data:** se o release for noutro dia, a revisão da jornada (com o microfone) passa a ter a data do release.
+
+---
+
+# 2026-11-27 (vii) — o chip associado a cada leitura (DATA-18, FW-22 e LGPD-19)
+
+**O problema, como foi entendido no início.** O FW-21 já distinguia o MPU6050
+do MPU6500 pelo WHO_AM_I. O histórico perdia essa identificação, o CSV
+atribuía toda temperatura do travesseiro ao MPU6050 e as leituras de bancada
+não podiam ser agrupadas pelo chip para o HW-13.
+
+**Hipótese de trabalho.** Informar o modelo uma vez no lote basta para guardar
+a origem por época. O modelo fica em cada leitura para preservar a informação
+quando o sensor de um mesmo travesseiro for trocado.
+
+**O que foi testado, e como.** Firmware em Docker `gcc:13` e compilação para
+ESP32. Flask e histórico no Windows. Funções de gravação, restrição, migrações
+e SQL manual em Postgres 17 no Docker. CSV pelo Vitest. Política pelo teste
+que compara as colunas gravadas com a §2.2. Os cenários de banco e hardware
+simulado usaram dados sintéticos.
+
+**Resultado medido.** Em 27/11, `make` passou com 1 830 verificações, o laço marcou 33/33 e a
+mutação da cadeia marcou 54/54 (quatro grupos no Docker, com o controle intacto repetido).
+Sintaxe, capacidade, paridade 15/15, fila 17/17 e coletor 20/20 passaram. No ESP32, a compilação
+no Windows usou 1 097 728 B de programa e 109 472 B de RAM fixa (+16 B sobre o FW-21), com 218
+208 B para o heap. O buffer do lote passou de 7 235 para 7 259 B no heap. O CI compilou 1 097
+664 B de programa com a mesma RAM e reprovou o controle do buffer estático. O backend passou com
+772 testes e um pulado. RLS passou com 363 testes e a mutação acusou 76/76 sabotagens em
+Postgres 17.11 no Docker, incluindo as quatro novas. O diagnóstico reconheceu 26 estados. Vitest
+passou com 1 193 testes em 80 arquivos, além de tipos, build, lint e os dois Knip. ML passou com
+332 testes e 12/12 mutações do dourado. O Android passou com 48 testes JVM e 11 no Pixel 6
+emulado, com quatro roteiros pulados. Depois da #335, política e consentimento passaram com 24
+testes no backend e 28 no frontend em cinco arquivos. As nove conferências de documento passaram
+sobre o texto integrado.
+
+| Sabotagem ou controle | Verificação que acusou |
+|---|---|
+| Omitir `sensor` no POST | Laço, “FW-22: lote informa MPU6500 uma vez”. |
+| Enviar sempre MPU6050 | Laço, “FW-22: lote informa MPU6500 uma vez”. |
+| Apagar o lote após HTTP 400 | Laço, “FW-22: HTTP 400 por sensor invalido recua e preserva as epocas na flash”. |
+| Aceitar chip fora da régua do banco | `test_sensor_fora_da_lista_e_recusado_no_banco`. |
+| Perder o chip na gravação por token | `test_token_guarda_o_sensor_da_leitura`. |
+| A sessão gravar o chip recebido | `test_sessao_grava_sem_sensor_mesmo_se_receber_o_campo`. |
+| Sobrescrever o chip ao reenviar a época | `test_troca_de_chip_e_reenvio_preservam_o_chip_da_epoca_antiga`. |
+| Tirar os bytes do chip da conta do buffer | `testes_c2` falhou em “20 leituras do pior caso cabem no buffer de 20, e o lote fecha nele”. |
+| Voltar o lote para RAM fixa no ESP32 | `compilar_sketch_esp32.py` reprovou o link no CI com estouro de 16 096 B na região de dados. |
+| Remover o filtro `sensor IS NULL` do preenchimento | A conferência de preservar os valores existentes acusou duas linhas alteradas no banco sintético. |
+| Rodar a conferência pós-aplicação após a 027 | `verificar_diagnostico` encontrou as quatro marcas falsas antes da 028. |
+| Tirar o modelo da §2.2 | Dois casos de `test_a_descricao_de_cada_coluna_esta_na_politica`, um por função de gravação. |
+| Rodar os testes novos em `develop` | 11 falharam no backend: `test_o_chip_do_envelope_e_gravado_em_cada_leitura`, `test_chip_invalido_recusa_o_lote_inteiro_sem_gravar` e `test_historico_consulta_e_devolve_o_chip_da_leitura`. O caso do CSV “exporta origem_temperatura por aparelho e deixa a origem vazia sem medição ou tipo” também falhou. |
+
+**Adaptação.** O envelope reserva mais 24 B no heap para o nome mais longo.
+Cada época mantém o formato de 64 B na flash. O celular grava a coluna nula.
+O SQL retroativo manual usa três UUIDs confirmados, sem recorte de data. A
+prévia não altera dados, a atualização preenche só valores nulos e repetir
+o SQL produz o mesmo resultado. O modelo é a origem técnica da medição para
+exportação, finalidade já registrada na política. A versão de consentimento
+`2026-11-22` segue vigente.
+
+**O que deu errado no caminho.** O sandbox bloqueou Git e Docker no primeiro
+acesso. O primeiro diagnóstico tentou acessar o Postgres antes da
+inicialização. O primeiro stub novo de I²C também casou com a função de outro
+stub e passou a selecionar só a definição do Wire. O primeiro Vitest acusou
+a mensagem de sensor sem tradução. Outras corridas em paralelo atingiram
+prazos de testes que carregam configuração e rotas sob demanda. A primeira tentativa de compilar para ESP32 encontrou o Arduino CLI sem o core requerido. O controle de vírgulas da cadeia ainda
+procurava a fórmula anterior do tamanho do lote e foi atualizado. O Git
+Credential Manager não concluiu a autenticação e a publicação foi retomada
+com a sessão do GitHub CLI. Ao incorporar a #335, os três conflitos foram
+resolvidos a partir da política, do backlog e do diário que já estavam em
+develop.
+
+**Risco em aberto.** Depois de trocar o sensor, épocas ainda na flash
+carregam o modelo visto no envio. Um valor inválido faz o servidor recusar
+o lote por inteiro com HTTP 400. O firmware recua e conserva as épocas.
+A fila tem 272 h de capacidade garantida e é drenada depois da correção.
+O CSV de duas placas ainda precisa da conferência física do HW-13. A #335
+já está integrada a esta revisão. A 028, sua conferência no banco de produção
+e o preenchimento manual ficam com o autor.
+
+**Procedência.** `develop` `1757160` e integração `25f838e`, Windows 11 e contêineres locais.
+O chip gravado permite rastrear a origem das medições físicas ligadas à
+pergunta de pesquisa. Os casos de bancada simulados nesta etapa não
+substituem o teste de comparabilidade do HW-13.
+
+
+**Revisão (28/11, Claude).** Testes rodados de novo nesta máquina: backend 772 passam; RLS no Postgres 17 em Docker, 363 passam; 76 de 76 sabotagens; as migrações nos 26 estados; firmware em `gcc:13` sem falhas, `laco` 33/33 e `mutacao-cadeia` 54/54. O frontend só passou no CI. Ajuste de texto na política: o chip tinha virado uma terceira entrada de "27 de novembro" na §10, separada da revisão da jornada, enquanto o resumo do topo o punha dentro dela. Como é a mesma revisão, ainda não publicada, a nota foi para a entrada da jornada, e o item do topo entrou na mesma lista dos demais.
+---
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.

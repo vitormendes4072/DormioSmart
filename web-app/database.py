@@ -207,7 +207,7 @@ class Database:
             while len(linhas) < limite:
                 consulta = (client.table("sleep_data")
                     .select(
-                        "id, created_at, movimento_total, temp, status, device_id, "
+                        "id, created_at, movimento_total, temp, sensor, status, device_id, "
                         # `epoca_segundos` diz QUANTO TEMPO a linha resume. Sem
                         # ele, o painel nao consegue distinguir "duas horas de
                         # repouso" de "duas horas sem leitura nenhuma" — e passava

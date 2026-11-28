@@ -35,12 +35,15 @@ namespace dormio {
 // e `413` e nada e gravado.
 const uint32_t MAX_LEITURAS_POR_LOTE = 60;
 
+// Maior campo opcional do envelope, incluindo a virgula antes de leituras.
+constexpr uint32_t SENSOR_DO_LOTE_BYTES = sizeof("\"sensor\":\"desconhecido\",") - 1;
+
 // Monta `{"leituras":[<l0>,<l1>,...]}` num buffer de tamanho fixo, uma leitura
 // por vez. Cada leitura e o JSON que `montar_payload` ja produz -- o mesmo
 // corpo do `POST /api/data`, validado pelas mesmas regras no servidor.
 class MontadorDeLote {
  public:
-  MontadorDeLote(char *destino, uint32_t capacidade);
+  MontadorDeLote(char *destino, uint32_t capacidade, const char *sensor = nullptr);
 
   // Acrescenta uma leitura. Devolve false -- e nao muda nada -- se ela nao
   // cabe junto com o fechamento, ou se o lote ja tem `MAX_LEITURAS_POR_LOTE`.

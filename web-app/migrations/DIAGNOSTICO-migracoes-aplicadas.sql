@@ -226,7 +226,17 @@ marcas (migracao, item, marca, presente) as (values
         exists (select 1 from col where nome = 'profiles.meta_diaria_min')),
     ('027', 'UI-61', 'restrição profiles_meta_diaria_faixa',
         exists (select 1 from pg_constraint
-                where conrelid = to_regclass('public.profiles') and conname = 'profiles_meta_diaria_faixa'))
+                where conrelid = to_regclass('public.profiles') and conname = 'profiles_meta_diaria_faixa')),
+    ('028', 'DATA-18', 'coluna sleep_data.sensor',
+        exists (select 1 from col where nome = 'sleep_data.sensor')),
+    ('028', 'DATA-18', 'restrição sleep_data_sensor_valido',
+        exists (select 1 from pg_constraint
+                where conrelid = to_regclass('public.sleep_data') and conname = 'sleep_data_sensor_valido')),
+    ('028', 'DATA-18', 'as duas funções gravam a coluna sensor',
+        coalesce(pg_get_functiondef(to_regprocedure('public.registrar_leitura(text,jsonb)'))
+                 like '%calibrada, sensor,%', false)
+        and coalesce(pg_get_functiondef(to_regprocedure('public.registrar_leitura_da_sessao(uuid,jsonb)'))
+                     like '%calibrada, sensor,%', false))
 ),
 esquema as (
     select migracao, min(item) as item,

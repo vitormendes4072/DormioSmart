@@ -42,7 +42,7 @@ struct PreparoDoLote {
 // `rascunho` precisa de `max` posicoes (64 B cada).
 PreparoDoLote preparar_lote(FilaNaFlash *fila, const ResolucaoDeParede &parede,
                             RegistroDeEpoca *rascunho, uint32_t max, char *destino,
-                            uint32_t tamanho);
+                            uint32_t tamanho, const char *sensor = nullptr);
 
 // Le a resposta do servidor e confirma na fila o prefixo que saiu.
 DecisaoDoLote aplicar_resposta(FilaNaFlash *fila, int status_http, const char *corpo,
@@ -62,10 +62,11 @@ DecisaoDoLote aplicar_resposta(FilaNaFlash *fila, int status_http, const char *c
 // resto vai no seguinte.
 const uint32_t PIOR_LEITURA_BYTES = 360;
 
+// Inclui o maior texto de sensor no envelope, uma vez por lote.
 // O buffer de um lote de `leituras` no pior caso: a abertura
 // `{"leituras":[` (13), as leituras com as virgulas entre elas, `]}` e o NUL.
 constexpr uint32_t tamanho_do_lote(uint32_t leituras) {
-  return 13u + leituras * PIOR_LEITURA_BYTES + (leituras > 0 ? leituras - 1u : 0u) + 2u + 1u;
+  return 13u + SENSOR_DO_LOTE_BYTES + leituras * PIOR_LEITURA_BYTES + (leituras > 0 ? leituras - 1u : 0u) + 2u + 1u;
 }
 
 // ── A folga de memoria do envio (FW-14) ───────────────────────────────

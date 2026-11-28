@@ -89,10 +89,19 @@ const uint32_t INTERVALO_DE_DRENAGEM_US = 1700000;
 // das 170 da FIFO.
 const uint32_t VARIACAO_DA_DRENAGEM_US = 20000;
 
+// FW-21: o MPU6500 (os GY-521 vendidos como MPU6050 desde que este saiu de
+// linha) tem FIFO de 512 B -- 85 amostras, 1,7 s a 50 Hz. A mesma regra,
+// metade da FIFO, da 0,85 s. Pior caso: (0,87 s + 0,4 s de apagamento de
+// setor) x 55 Hz = 70 amostras, contra as 85 que cabem. 0,85 s a 50 Hz sao
+// 42,5 amostras, e a variacao acima continua quebrando a trava de fase.
+const uint32_t INTERVALO_DE_DRENAGEM_MPU6500_US = 850000;
+
 // O proximo intervalo de drenagem, com a variacao. `estado` e um xorshift32
 // que o sketch guarda (comece em qualquer valor diferente de zero).
 // Deterministico de proposito: um teste consegue reproduzir a sequencia.
-uint32_t intervalo_de_drenagem_us(uint32_t *estado);
+// `base_us` e o intervalo do sensor (`perfil_do_sensor.h`).
+uint32_t intervalo_de_drenagem_us(uint32_t *estado,
+                                  uint32_t base_us = INTERVALO_DE_DRENAGEM_US);
 
 // ── O PRAZO DA DRENAGEM (FW-10) ────────────────────────────────────────
 //
@@ -116,8 +125,11 @@ uint64_t espera_ate_o_prazo_us(uint64_t prazo_us, uint64_t agora_us);
 // O anel guarda ~42 s a 55 Hz: a janela (31 s), a espera pela folga (2,5 s) e
 // mais uns segundos de atraso de processamento. 13,8 KB.
 const uint32_t CAPACIDADE_DE_AMOSTRAS = 2304;
-// 48 drenagens = ~82 s de historico, o dobro do que a janela precisa.
-const uint32_t CAPACIDADE_DE_DRENAGENS = 48;
+// 48 drenagens eram ~82 s de historico a 1,7 s, o dobro do que a janela
+// precisa. FW-21: com o MPU6500 (0,85 s), 48 dariam ~41 s, menos que o anel
+// de amostras guarda; 64 dao ~54 s, e o anel de amostras volta a ser o
+// limite. Custa 384 B de RAM fixa e 256 B na pilha de `proxima_epoca`.
+const uint32_t CAPACIDADE_DE_DRENAGENS = 64;
 
 enum ResultadoDaEpoca {
   EPOCA_AINDA_NAO = 0,               // falta drenagem depois da folga

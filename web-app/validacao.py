@@ -111,6 +111,19 @@ def _numero_valido(valor):
     return math.isfinite(valor)
 
 
+SENSORES_DO_TRAVESSEIRO = ("MPU6050", "MPU6500", "desconhecido")
+
+
+def validar_sensor_do_lote(corpo):
+    """Valida o metadado opcional após extrair o envelope do lote."""
+    if "sensor" not in corpo:
+        return None, None
+    sensor = corpo["sensor"]
+    if sensor not in SENSORES_DO_TRAVESSEIRO:
+        return None, "sensor deve ser MPU6050, MPU6500 ou desconhecido"
+    return sensor, None
+
+
 def validar_leitura(content):
     """Valida o corpo do POST /api/data.
 
