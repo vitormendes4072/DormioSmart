@@ -14624,6 +14624,41 @@ substituem o teste de comparabilidade do HW-13.
 **Revisão (28/11, Claude).** Testes rodados de novo nesta máquina: backend 772 passam; RLS no Postgres 17 em Docker, 363 passam; 76 de 76 sabotagens; as migrações nos 26 estados; firmware em `gcc:13` sem falhas, `laco` 33/33 e `mutacao-cadeia` 54/54. O frontend só passou no CI. Ajuste de texto na política: o chip tinha virado uma terceira entrada de "27 de novembro" na §10, separada da revisão da jornada, enquanto o resumo do topo o punha dentro dela. Como é a mesma revisão, ainda não publicada, a nota foi para a entrada da jornada, e o item do topo entrou na mesma lista dos demais.
 ---
 
+# 2026-11-28 — release R28: a jornada de primeiro acesso, o chip do sensor e o app 1.1.9
+
+**O problema, como foi entendido no início.** O `develop` estava cinco PRs à frente da produção (R27): a jornada de primeiro acesso (#336), o chip do sensor por leitura com o contrato 2.13.0 e a migração 028 (#339), o aviso prévio do microfone (#335), o firmware do MPU6500 (#337) e o registro do R27 (#334). O autor pediu o release.
+
+**Hipótese de trabalho.** Release com site, backend e APK. O backend novo lê e grava `sleep_data.sensor`, então a 028 tinha de estar na produção antes do merge. A data da política (27/11, "revisão da jornada") tinha de virar a do release, porque as três mudanças de texto só entram em vigor com ele.
+
+**O que foi testado, e como.**
+- **028 na produção:** aplicada pelo autor no SQL Editor; conferida com o `CONSULTA-sensor-da-leitura.sql` e, depois, com uma consulta que ignora espaços e quebras de linha na definição de `registrar_leitura_da_sessao`. Antes, conferido nesta máquina que a 028 parte da versão mais recente das duas funções (a 019) e só acrescenta a coluna `sensor`.
+- **PR #340** (`chore/R28-app-1.1.9` → `develop`): a versão 1.1.9 nos cinco lugares e as duas datas da política. `appAndroid.test.ts`, `LandingLeve.test.tsx`, `politica.test.ts` e `Privacidade.test.tsx`, o `npm run build:app`, `conferir_docs_versionados.py` e `test_politica_cobre_as_colunas.py`, nesta máquina; o CI da PR.
+- **APK:** `./gradlew assembleRelease` na branch da #340 (`5946e09`), com `conferir_apk.py`, `apksigner` e `aapt2`; no emulador Pixel 6, instalado por cima do 1.1.8 e aberto.
+- **PR #341** (`develop` → `main`): a árvore de `develop` `ad8806c`, a mesma do "CI ok" da #340.
+- **De fora, desta máquina:** `/health`, as rotas da conta e da ingestão sem sessão, a CSP das cinco páginas, `/primeiros-passos`, o `versao-do-app.json`, a landing, os pedaços JS publicados e o APK pelo link `latest`.
+
+**Resultado medido.**
+- **028:** a conferência deu `true`, `true`, `true` e `false` (`sessao_grava_nulo`). A consulta tolerante deu `tem_a_coluna`, `grava_nulo` e `tem_quebra_do_windows` em `true`: a função está certa, e a conferência original falha com a quebra de linha do Windows que o SQL Editor guardou.
+- **#340:** 41 testes, o build do app, a conferência de documentos e 8 testes do backend passaram; merge `ad8806c`. **#341:** merge `509a8a6`, deploy de produção `8125652213` com `success`.
+- **APK 1.1.9:** `conferir_apk.py` com código 0; certificado do autor (SHA-256 `06b2e4f9…d14a`); `versionCode` 11, `versionName` 1.1.9, sem `application-debuggable`, ABIs `arm64-v8a`, `armeabi-v7a` e `x86_64`; 5 295 684 B, SHA-256 `37bd0932…8808`. No emulador, o `versionName` passou de 1.1.8 a 1.1.9 e o app abriu na tela de entrada, sem erro do app no log (a primeira captura, logo após ligar o emulador, saiu em branco; a seguinte mostrou a tela).
+- `/health` `200` com o contrato **2.13.0** e o modelo; `401` sem token em dispositivos, histórico, perfil, features e lote, e com `Bearer` inválido no histórico; `/privacidade` e `/primeiros-passos` `200`; a CSP igual nas cinco páginas.
+- `versao-do-app.json` com 1.1.9; a landing com "Versão 1.1.9 (beta)"; o link `latest` baixa o APK com `200` e o mesmo SHA-256.
+- Os pedaços publicados contêm "Como você vai registrar?", "Aguardando o travesseiro", "Procurando o travesseiro", "Chip do sensor" e "28 de novembro de 2026", e não contêm "revisão da jornada".
+
+**Adaptação.** A conferência da 028 foi completada por uma consulta que normaliza espaços, em vez de reaplicar a migração (que não é idempotente: `add column` sem `if not exists`).
+
+**O que deu errado no caminho.** A quarta conferência do `CONSULTA-sensor-da-leitura.sql` acusou erro numa função correta: ela compara o texto com `chr(10)` e oito espaços, e o SQL Editor guardou a definição com a quebra de linha do Windows. No PowerShell, `adb exec-out screencap -p > arquivo` corrompeu o PNG (conversão de texto); refeito pelo Bash. O primeiro comando que escreveria este registro quebrou na montagem das aspas e não alterou nada.
+
+**Risco em aberto.**
+- O `CONSULTA-sensor-da-leitura.sql` reprova a função certa quando ela foi colada pelo SQL Editor do Windows. Sem item ainda: a corrigir com o Codex (normalizar espaços antes de comparar).
+- O preenchimento do chip nas leituras antigas (`PREENCHER-sensor-da-leitura.sql`) e a gravação do firmware do MPU6500 na placa ficam com o autor.
+- A jornada, o login e a meta com uma conta, na produção e no 1.1.9, não foram vistos pelo Claude: ficam com o autor. A tecla voltar do Android e a concessão das permissões seguem sem confirmação no emulador desde a #336.
+- A PR #338 (`FW-23`, só firmware) segue aberta e com conflito.
+
+**Procedência.** PRs #340 e #341, merges `ad8806c` e `509a8a6`, deploy `8125652213`, release `app-v1.1.9`, em 28/11; verificação nesta máquina (Windows 11, Node 24.11.0, JDK do Android Studio, emulador Pixel 6); a 028 aplicada e conferida pelo autor no Supabase.
+
+---
+
 # O que este diário não cobre
 
 Registrado para que a ausência não passe por completude.
